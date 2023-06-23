@@ -61,8 +61,10 @@ type (
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
 
-		localhost string
 		fsWatcher *fsnotify.Watcher
+		localhost string
+
+		objectList *objectList
 
 		subCfgUpdated     pubsub.Subscription
 		subCfgDeleted     pubsub.Subscription
@@ -90,6 +92,7 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
 		objectMonitor: make(map[string]map[string]struct{}),
+		objectList:    newObjectList(),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -99,7 +102,7 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		dropCmdDuration:   drainDuration,
 		imonStarter:       imon.Factory{DrainDuration: drainDuration},
 	}
-	wg.Add(2)
+	wg.Add(3)
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer wg.Done()
@@ -113,6 +116,11 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		d.omon(c)
 	}(omonStarted)
 	<-omonStarted
+
+	go func() {
+		defer wg.Done()
+		d.objectList.Loop()
+	}()
 
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {

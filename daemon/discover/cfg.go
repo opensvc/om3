@@ -29,6 +29,8 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 	sub.Start()
 	return sub
 }
@@ -74,6 +76,10 @@ func (d *discover) cfg(started chan<- bool) {
 				d.onConfigFileUpdated(c)
 			case *msgbus.ClusterConfigUpdated:
 				d.onClusterConfigUpdated(c)
+			case *msgbus.ObjectStatusUpdated:
+				d.onObjectStatusUpdated(c)
+			case *msgbus.ObjectStatusDeleted:
+				d.onObjectStatusDeleted(c)
 			}
 		case i := <-d.cfgCmdC:
 			switch c := i.(type) {
@@ -84,12 +90,24 @@ func (d *discover) cfg(started chan<- bool) {
 			default:
 				d.log.Error().Interface("cmd", i).Msg("unknown cmd")
 			}
+		case nfo := <-d.objectList.InfoC:
+			d.log.Info().Msg(nfo)
+		case err := <-d.objectList.ErrC:
+			d.log.Info().Err(err).Msg("")
 		}
 	}
 }
 
 func (d *discover) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	d.clusterConfig = c.Value
+}
+
+func (d *discover) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	d.objectList.Add(c.Path)
+}
+
+func (d *discover) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	d.objectList.Del(c.Path)
 }
 
 func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
