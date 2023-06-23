@@ -13,6 +13,7 @@ package discover
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/imon"
@@ -64,6 +67,7 @@ type (
 		fsWatcher *fsnotify.Watcher
 		localhost string
 
+		nodeList   *objectList
 		objectList *objectList
 
 		subCfgUpdated     pubsub.Subscription
@@ -92,7 +96,8 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
 		objectMonitor: make(map[string]map[string]struct{}),
-		objectList:    newObjectList(),
+		nodeList:      newObjectList(filepath.Join(rawconfig.Paths.Var, "list.nodes")),
+		objectList:    newObjectList(filepath.Join(rawconfig.Paths.Var, "list.objects")),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -116,6 +121,14 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		d.omon(c)
 	}(omonStarted)
 	<-omonStarted
+
+	go func() {
+		defer wg.Done()
+		d.nodeList.Loop()
+	}()
+
+	// initialize node list
+	d.nodeList.Add(clusternode.Get()...)
 
 	go func() {
 		defer wg.Done()

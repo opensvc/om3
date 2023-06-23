@@ -94,20 +94,26 @@ func (d *discover) cfg(started chan<- bool) {
 			d.log.Info().Msg(nfo)
 		case err := <-d.objectList.ErrC:
 			d.log.Info().Err(err).Msg("")
+		case nfo := <-d.nodeList.InfoC:
+			d.log.Info().Msg(nfo)
+		case err := <-d.nodeList.ErrC:
+			d.log.Info().Err(err).Msg("")
 		}
 	}
 }
 
 func (d *discover) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	d.clusterConfig = c.Value
+	d.nodeList.Add(c.NodesAdded...)
+	d.nodeList.Del(c.NodesRemoved...)
 }
 
 func (d *discover) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
-	d.objectList.Add(c.Path)
+	d.objectList.Add(c.Path.String())
 }
 
 func (d *discover) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
-	d.objectList.Del(c.Path)
+	d.objectList.Del(c.Path.String())
 }
 
 func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {

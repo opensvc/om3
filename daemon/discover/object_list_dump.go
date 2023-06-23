@@ -3,11 +3,7 @@ package discover
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
-
-	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
@@ -25,7 +21,7 @@ type (
 		// On ObjectStatusUpdated, add the object path in the map.
 		// On ObjectStatusDeleted, del the object path from the map.
 		// If the top level map changes, dump to file.
-		m map[path.T]any
+		m map[string]any
 
 		// q is used for dump request coalescing and
 		// rate limiting
@@ -39,11 +35,11 @@ type (
 	}
 )
 
-func newObjectList() *objectList {
+func newObjectList(file string) *objectList {
 	t := objectList{
-		File:  filepath.Join(rawconfig.Paths.Var, "list.objects"),
+		File:  file,
 		Delay: time.Second,
-		m:     make(map[path.T]any),
+		m:     make(map[string]any),
 		q:     make(chan bool, 2),
 		ErrC:  make(chan error, 2),
 		InfoC: make(chan string, 2),
@@ -74,20 +70,32 @@ func (t *objectList) requestWrite() bool {
 	}
 }
 
-func (t *objectList) Add(p path.T) {
-	if _, ok := t.m[p]; ok {
-		return
+func (t *objectList) Add(l ...string) {
+	var changed bool
+	for _, s := range l {
+		if _, ok := t.m[s]; ok {
+			continue
+		}
+		t.m[s] = nil
+		changed = true
 	}
-	t.m[p] = nil
-	t.requestWrite()
+	if changed {
+		t.requestWrite()
+	}
 }
 
-func (t *objectList) Del(p path.T) {
-	if _, ok := t.m[p]; !ok {
-		return
+func (t *objectList) Del(l ...string) {
+	var changed bool
+	for _, s := range l {
+		if _, ok := t.m[s]; !ok {
+			continue
+		}
+		delete(t.m, s)
+		changed = true
 	}
-	delete(t.m, p)
-	t.requestWrite()
+	if changed {
+		t.requestWrite()
+	}
 }
 
 func (t *objectList) write() error {
