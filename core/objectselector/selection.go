@@ -168,6 +168,9 @@ func (t *Selection) localExpand() error {
 		Str("mode", "local").
 		Msg("expand object selection")
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
+		if len(s) == 0 {
+			continue
+		}
 		pset, err := t.localExpandIntersector(s)
 		if err != nil {
 			return err
