@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -32,10 +33,12 @@ type (
 
 		// report information to the users (for logging, ...)
 		InfoC chan string
+
+		ctx context.Context
 	}
 )
 
-func newObjectList(file string) *objectList {
+func newObjectList(ctx context.Context, file string) *objectList {
 	t := objectList{
 		File:  file,
 		Delay: time.Second,
@@ -43,6 +46,7 @@ func newObjectList(file string) *objectList {
 		q:     make(chan bool, 2),
 		ErrC:  make(chan error, 2),
 		InfoC: make(chan string, 2),
+		ctx:   ctx,
 	}
 	return &t
 }
@@ -50,9 +54,13 @@ func newObjectList(file string) *objectList {
 func (t *objectList) Loop() {
 	for {
 		select {
+		case <-t.ctx.Done():
+			return
 		case <-t.q:
 			if err := t.write(); err != nil {
 				select {
+				case <-t.ctx.Done():
+					return
 				case t.ErrC <- err:
 				default:
 				}
@@ -64,6 +72,8 @@ func (t *objectList) Loop() {
 
 func (t *objectList) requestWrite() bool {
 	select {
+	case <-t.ctx.Done():
+		return false
 	case t.q <- true:
 		return true
 	default:
@@ -111,6 +121,8 @@ func (t *objectList) write() error {
 		}
 	}
 	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
 	case t.InfoC <- fmt.Sprintf("%s dumped", t.File):
 	default:
 	}

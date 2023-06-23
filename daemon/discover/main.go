@@ -96,8 +96,8 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
 		objectMonitor: make(map[string]map[string]struct{}),
-		nodeList:      newObjectList(filepath.Join(rawconfig.Paths.Var, "list.nodes")),
-		objectList:    newObjectList(filepath.Join(rawconfig.Paths.Var, "list.objects")),
+		nodeList:      newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes")),
+		objectList:    newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.objects")),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
