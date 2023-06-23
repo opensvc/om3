@@ -6,6 +6,7 @@ package dns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -105,10 +106,10 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 	go func() {
 		defer func() {
-			draincommand.Do(t.cmdC, drainDuration)
-			if err := t.sub.Stop(); err != nil {
+			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Error().Err(err).Msg("subscription stop")
 			}
+			draincommand.Do(t.cmdC, drainDuration)
 		}()
 		t.worker()
 	}()
