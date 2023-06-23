@@ -107,7 +107,7 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		dropCmdDuration:   drainDuration,
 		imonStarter:       imon.Factory{DrainDuration: drainDuration},
 	}
-	wg.Add(3)
+	wg.Add(1)
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer wg.Done()
@@ -116,12 +116,14 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 	<-cfgStarted
 
 	omonStarted := make(chan bool)
+	wg.Add(1)
 	go func(c chan<- bool) {
 		defer wg.Done()
 		d.omon(c)
 	}(omonStarted)
 	<-omonStarted
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		d.nodeList.Loop()
@@ -130,6 +132,7 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 	// initialize node list
 	d.nodeList.Add(clusternode.Get()...)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		d.objectList.Loop()

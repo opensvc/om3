@@ -93,11 +93,11 @@ func (d *discover) cfg(started chan<- bool) {
 		case nfo := <-d.objectList.InfoC:
 			d.log.Info().Msg(nfo)
 		case err := <-d.objectList.ErrC:
-			d.log.Info().Err(err).Msg("")
+			d.log.Info().Err(err).Send()
 		case nfo := <-d.nodeList.InfoC:
 			d.log.Info().Msg(nfo)
 		case err := <-d.nodeList.ErrC:
-			d.log.Info().Err(err).Msg("")
+			d.log.Info().Err(err).Send()
 		}
 	}
 }

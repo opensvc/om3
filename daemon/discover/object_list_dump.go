@@ -54,6 +54,7 @@ func (t *objectList) Loop() {
 			if err := t.write(); err != nil {
 				select {
 				case t.ErrC <- err:
+				default:
 				}
 			}
 			time.Sleep(time.Second)
@@ -111,6 +112,7 @@ func (t *objectList) write() error {
 	}
 	select {
 	case t.InfoC <- fmt.Sprintf("%s dumped", t.File):
+	default:
 	}
 	return nil
 }
