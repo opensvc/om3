@@ -94,7 +94,11 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	}
 
 	sub.Start()
-	defer sub.Stop()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			log.Debug().Err(err).Msgf("sub.Stop")
+		}
+	}()
 
 	w.WriteHeader(http.StatusOK)
 
