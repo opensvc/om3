@@ -56,7 +56,15 @@ func (t ccfg) Name() string {
 }
 
 // Nodes implements Nodes() ([]string, error) to retrieve cluster nodes from config cluster.nodes
+// This is required because embedded implementation from core is not valid for ccfg
 func (t ccfg) Nodes() ([]string, error) {
 	k := key.New("cluster", "nodes")
+	return t.config.GetStrings(k), nil
+}
+
+// DRPNodes implements DRPNodes() ([]string, error) to retrieve cluster drpnodes from config cluster.drpnodes
+// This is required because embedded implementation from core is not valid for ccfg
+func (t ccfg) DRPNodes() ([]string, error) {
+	k := key.New("cluster", "drpnodes")
 	return t.config.GetStrings(k), nil
 }
