@@ -19,7 +19,10 @@ import (
 //
 // When role parameter exists a new user is created with grants from role and
 // extra claims may be added to token
-func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams) error {
+func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenParams) error {
+	if err := assertRoleRoot(ctx); err != nil {
+		return err
+	}
 	var (
 		// duration define the default token duration
 		duration = time.Minute * 10
@@ -29,11 +32,11 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 
 		xClaims = make(daemonauth.Claims)
 	)
-	log := LogHandler(c, "PostAuthToken")
+	log := LogHandler(ctx, "PostAuthToken")
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
-			return JSONProblemf(c, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
 		} else {
 			duration = *v.(*time.Duration)
 			if duration > durationMax {
@@ -41,20 +44,15 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 			}
 		}
 	}
-	user := c.Get("user").(auth.Info)
+	user := ctx.Get("user").(auth.Info)
 	username := user.GetUserName()
 	// TODO verify if user is allowed to create token => 403 Forbidden
 	if params.Role != nil {
-		grants := Grants(user)
-		if !grants.HasRoot() {
-			log.Info().Msg("not allowed, need grant root")
-			return c.NoContent(http.StatusForbidden)
-		}
 		var err error
 		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
 			log.Error().Err(err).Msg("userXClaims")
-			return JSONProblemf(c, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", username)
+			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", username)
 		}
 	}
 
@@ -63,13 +61,13 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 		switch err {
 		case daemonauth.NotImplementedError:
 			log.Warn().Err(err).Send()
-			return JSONProblemf(c, http.StatusNotImplemented, err.Error(), "")
+			return JSONProblemf(ctx, http.StatusNotImplemented, err.Error(), "")
 		default:
 			log.Error().Err(err).Msg("can't create token")
-			return JSONProblemf(c, http.StatusInternalServerError, "Unexpected error", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
 		}
 	}
-	return c.JSON(http.StatusOK, api.AuthToken{
+	return ctx.JSON(http.StatusOK, api.AuthToken{
 		ExpiredAt: expireAt,
 		Token:     tk,
 	})

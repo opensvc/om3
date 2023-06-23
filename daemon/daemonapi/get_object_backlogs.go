@@ -8,24 +8,16 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 )
 
 // GetObjectBacklogs feeds publications in rss format.
 func (a *DaemonApi) GetObjectBacklogs(ctx echo.Context, params api.GetObjectBacklogsParams) error {
-	var (
-		handlerName = "GetObjectBacklogs"
-	)
-	log := LogHandler(ctx, handlerName)
+	if err := assertRoleRoot(ctx); err != nil {
+		return err
+	}
+	log := LogHandler(ctx, "GetObjectBacklogs")
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
-
-	user := User(ctx)
-	grants := Grants(user)
-	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
-		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
-		return ctx.NoContent(http.StatusForbidden)
-	}
 
 	filters, err := parseLogFilters(params.Filter)
 	if err != nil {
