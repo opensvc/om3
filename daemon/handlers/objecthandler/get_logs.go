@@ -44,7 +44,7 @@ func GetObjectsBacklog(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Debug().Interface("payload", payload).Msg("")
+	log.Debug().Interface("payload", payload).Send()
 	grants := daemonauth.UserGrants(r)
 	allowed := make(path.L, 0)
 	for _, p := range payload.Paths {
@@ -52,7 +52,7 @@ func GetObjectsBacklog(w http.ResponseWriter, r *http.Request) {
 			allowed = append(allowed, p)
 		}
 	}
-	log.Debug().Interface("allowed", allowed).Msg("")
+	log.Debug().Interface("allowed", allowed).Send()
 
 	events, err := slog.GetEventsFromObjects(allowed, payload.Filters)
 	if err != nil {

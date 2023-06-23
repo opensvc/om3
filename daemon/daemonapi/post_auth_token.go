@@ -62,7 +62,7 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 	if err != nil {
 		switch err {
 		case daemonauth.NotImplementedError:
-			log.Warn().Err(err).Msg("")
+			log.Warn().Err(err).Send()
 			return JSONProblemf(c, http.StatusNotImplemented, err.Error(), "")
 		default:
 			log.Error().Err(err).Msg("can't create token")

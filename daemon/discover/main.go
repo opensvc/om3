@@ -13,6 +13,7 @@ package discover
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -20,6 +21,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/imon"
@@ -61,8 +65,11 @@ type (
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
 
-		localhost string
 		fsWatcher *fsnotify.Watcher
+		localhost string
+
+		nodeList   *objectList
+		objectList *objectList
 
 		subCfgUpdated     pubsub.Subscription
 		subCfgDeleted     pubsub.Subscription
@@ -90,6 +97,8 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
 		objectMonitor: make(map[string]map[string]struct{}),
+		nodeList:      newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes")),
+		objectList:    newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.objects")),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -99,7 +108,7 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		dropCmdDuration:   drainDuration,
 		imonStarter:       imon.Factory{DrainDuration: drainDuration},
 	}
-	wg.Add(2)
+	wg.Add(1)
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer wg.Done()
@@ -108,11 +117,26 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 	<-cfgStarted
 
 	omonStarted := make(chan bool)
+	wg.Add(1)
 	go func(c chan<- bool) {
 		defer wg.Done()
 		d.omon(c)
 	}(omonStarted)
 	<-omonStarted
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.nodeList.Add(clusternode.Get()...)
+		d.nodeList.Loop()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.nodeList.Add(object.StatusData.GetPaths().StrSlice()...)
+		d.objectList.Loop()
+	}()
 
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {

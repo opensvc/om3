@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-//
 // Delete is the 'delete' object action entrypoint.
 //
 // If no resource selector is set, remove all etc, var and log
@@ -18,7 +17,6 @@ import (
 //
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
-//
 func (t core) DeleteSection(ctx context.Context, rid string) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
 	unlock, err := t.lockAction(ctx)
@@ -47,7 +45,7 @@ func (t core) deleteInstance() error {
 		return err
 	}
 	if err := t.setPurgeCollectorTag(); err != nil {
-		t.log.Warn().Err(err).Msg("")
+		t.log.Warn().Err(err).Send()
 		return nil
 	}
 	return nil

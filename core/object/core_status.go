@@ -168,11 +168,11 @@ func (t *core) statusDump(data instance.Status) error {
 	enc := json.NewEncoder(jsonFile)
 	err = enc.Encode(data)
 	if err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Msg("")
+		t.log.Error().Str("file", tmp).Err(err).Send()
 		return err
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Msg("")
+		t.log.Error().Str("file", tmp).Err(err).Send()
 		return err
 	}
 	t.log.Debug().Str("file", p).Msg("dumped")
@@ -239,7 +239,7 @@ func (t *core) statusLoad() (instance.Status, error) {
 		t.log.Error().
 			Str("file", p).
 			Err(err).
-			Msg("")
+			Send()
 		return data, err
 	}
 	return data, err

@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog/log"
 )
 
 var ExecCommand = exec.Command
@@ -84,7 +84,7 @@ func (r *runner) doRegisteredCheck(c Checker) {
 	log.Debug().
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
-		Msg("")
+		Send()
 	r.q <- rs
 }
 
@@ -106,6 +106,6 @@ func (r *runner) doCustomCheck(path string) {
 		Str("c", "checks").
 		Str("driver", path).
 		Int("instances", len(rs.Data)).
-		Msg("")
+		Send()
 	r.q <- rs
 }

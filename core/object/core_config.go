@@ -76,7 +76,7 @@ func (t *core) ID() uuid.UUID {
 	}
 	_ = t.config.Set(op)
 	if err := t.config.Commit(); err != nil {
-		t.log.Error().Err(err).Msg("")
+		t.log.Error().Err(err).Send()
 	}
 	return t.id
 }
@@ -119,7 +119,7 @@ func (t core) Placement() placement.Policy {
 func (t core) Priority() priority.T {
 	k := key.Parse("priority")
 	if i, err := t.config.GetIntStrict(k); err != nil {
-		//t.log.Error().Err(err).Msg("")
+		//t.log.Error().Err(err).Send()
 		return *priority.New()
 	} else {
 		return priority.T(i)
@@ -146,7 +146,7 @@ func (t core) Children() []path.Relation {
 	k := key.Parse("children")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
-		t.log.Error().Err(err).Msg("")
+		t.log.Error().Err(err).Send()
 		return data
 	}
 	for _, e := range l {
@@ -160,7 +160,7 @@ func (t core) Parents() []path.Relation {
 	k := key.Parse("parents")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
-		t.log.Error().Err(err).Msg("")
+		t.log.Error().Err(err).Send()
 		return data
 	}
 	for _, e := range l {

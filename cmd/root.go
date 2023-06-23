@@ -54,7 +54,7 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 }
 
 func listObjectPaths() []string {
-	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.services")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.objects")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
@@ -127,7 +127,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	configureLogger()
 	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
-			log.Logger.Debug().Err(err).Msg("")
+			log.Logger.Debug().Err(err).Send()
 		}
 	}
 	return nil

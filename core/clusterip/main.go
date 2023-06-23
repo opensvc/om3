@@ -91,7 +91,7 @@ func (t L) Load(clusterStatus cluster.Data) L {
 				if ipIntf, ok := resourceData.Info["ipaddr"]; ok {
 					p, err := path.Parse(ps)
 					if err != nil {
-						log.Debug().Err(err).Str("path", ps).Msg("")
+						log.Debug().Err(err).Str("path", ps).Send()
 						continue
 					}
 					ip := T{
