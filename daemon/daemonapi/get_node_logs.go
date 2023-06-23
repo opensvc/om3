@@ -46,7 +46,11 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
-	defer stream.Stop()
+	defer func() {
+		if err :=stream.Stop(); err != nil {
+			log.Debug().Err(err).Msgf("stream.Stop")
+		}
+	}()
 	w.WriteHeader(http.StatusOK)
 
 	// don't wait first event to flush response

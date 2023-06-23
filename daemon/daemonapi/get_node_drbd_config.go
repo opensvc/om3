@@ -23,8 +23,8 @@ func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, params api.GetNodeDRBDCo
 	resp := api.DRBDConfig{}
 
 	if data, err := os.ReadFile(filename); err != nil {
-		log.Info().Err(err).Msgf("Readfile %s (may be deleted)", filename)
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Readfile %s (may be deleted)", filename)
+		log.Info().Err(err).Msgf("ReadFile %s (may be deleted)", filename)
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "ReadFile %s (may be deleted)", filename)
 	} else {
 		resp.Data = data
 	}
