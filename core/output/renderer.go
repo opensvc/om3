@@ -25,6 +25,7 @@ type (
 		Data          interface{}
 		HumanRenderer RenderFunc
 		Colorize      *palette.ColorPaletteFunc
+		Stream        bool
 	}
 
 	renderer interface {
@@ -92,12 +93,16 @@ func (t Renderer) Sprint() string {
 		}
 		return string(b) + "\n"
 	case YAML:
+		var sep string
+		if t.Stream {
+			sep = "---\n"
+		}
 		if color.NoColor {
 			b, err := yaml.Marshal(t.Data)
 			if err != nil {
 				panic(err)
 			}
-			return string(b)
+			return string(b) + sep
 		} else {
 			b := bytes.NewBuffer(nil)
 			enc := yaml.NewEncoder(b)
@@ -109,7 +114,7 @@ func (t Renderer) Sprint() string {
 			if err != nil {
 				panic(err)
 			}
-			return s
+			return s + sep
 		}
 	default:
 		if t.HumanRenderer != nil {
