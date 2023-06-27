@@ -538,7 +538,7 @@ func GetMapping(p ArrayPooler, nodes []string) (san.Paths, error) {
 	if err != nil {
 		return san.Paths{}, err
 	}
-	nodesInfo, err := nodesinfo.Get()
+	nodesInfo, err := nodesinfo.Load()
 	if err != nil {
 		return san.Paths{}, err
 	}
