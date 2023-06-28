@@ -29,6 +29,13 @@ type (
 		Data json.RawMessage `json:"data" yaml:"data"`
 	}
 
+	ConcreteEvent struct {
+		Kind string    `json:"kind" yaml:"kind"`
+		ID   uint64    `json:"id" yaml:"id"`
+		Time time.Time `json:"t" yaml:"t"`
+		Data any       `json:"data" yaml:"data"`
+	}
+
 	Reader interface {
 		Read() (*Event, error)
 	}
@@ -94,4 +101,13 @@ func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
 	}()
 
 	return eventC
+}
+
+func (e Event) AsConcreteEvent(data any) *ConcreteEvent {
+	return &ConcreteEvent{
+		Kind: e.Kind,
+		ID:   e.ID,
+		Time: e.Time,
+		Data: data,
+	}
 }

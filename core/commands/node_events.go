@@ -267,28 +267,26 @@ func (t *CmdNodeEvents) Run() error {
 }
 
 func (t *CmdNodeEvents) doEvent(e event.Event) {
+	msg, err := msgbus.EventToMessage(e)
+	if err != nil {
+		return
+	}
+	ce := e.AsConcreteEvent(msg)
 	if t.templ != nil {
-		msg, err := msgbus.EventToMessage(e)
-		if err != nil {
-			return
-		}
 		msg.GetLabels()
 		if err := t.templ.Execute(os.Stdout, msg); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "template execute error %s\n", err)
 		}
 		return
 	}
-	human := func() string {
-		return event.Render(e)
-	}
 	if t.Format == output.JSON.String() {
 		t.Format = output.JSONLine.String()
 	}
 	output.Renderer{
-		Format:        t.Format,
-		Color:         t.Color,
-		Data:          e,
-		HumanRenderer: human,
-		Colorize:      rawconfig.Colorize,
+		Format:   t.Format,
+		Color:    t.Color,
+		Data:     ce,
+		Colorize: rawconfig.Colorize,
+		Stream:   true,
 	}.Print()
 }
