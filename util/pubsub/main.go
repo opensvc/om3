@@ -157,21 +157,36 @@ type (
 	}
 
 	Msg struct {
-		Labels []Label
+		Labels labelMap
 	}
 
 	Messager interface {
 		AddLabels(...Label)
-		GetLabels() []Label
+		GetLabels() labelMap
 	}
 )
 
-func (p *Msg) GetLabels() []Label {
-	return append([]Label{}, p.Labels...)
+func (p *Msg) GetLabels() labelMap {
+	m := make(labelMap)
+	if p.Labels == nil {
+		return m
+	}
+	for k, v := range p.Labels {
+		m[k] = v
+	}
+	return m
 }
 
 func (p *Msg) AddLabels(l ...Label) {
-	p.Labels = append(p.Labels, l...)
+	if len(l) == 0 {
+		return
+	}
+	if p.Labels == nil {
+		p.Labels = make(labelMap)
+	}
+	for _, e := range l {
+		p.Labels[e[0]] = e[1]
+	}
 }
 
 var (
@@ -469,7 +484,7 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 	done := make(chan bool)
 	v.AddLabels(labels...)
 	op := cmdPub{
-		labels: newLabels(v.GetLabels()...),
+		labels: v.GetLabels(),
 		data:   v,
 		resp:   done,
 	}
