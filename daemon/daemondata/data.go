@@ -285,7 +285,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				return
 			case <-subHbRefreshTicker.C:
 				d.setDaemonHb()
-				d.log.Debug().Msgf("current hb msg mode %s", d.hbMsgPatchLength[d.localNode])
+				d.log.Debug().Msgf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
 					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
