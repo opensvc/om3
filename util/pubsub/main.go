@@ -299,6 +299,10 @@ func NewBus(name string) *Bus {
 	return b
 }
 
+func (b *Bus) Name() string {
+	return b.name
+}
+
 func (b *Bus) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
 	started := make(chan bool)

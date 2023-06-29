@@ -593,7 +593,7 @@ type (
 
 	WatchDog struct {
 		pubsub.Msg `yaml:",inline"`
-		Name       string
+		Bus        string
 	}
 
 	ZoneRecordDeleted struct {
@@ -902,7 +902,7 @@ func (e *SetNodeMonitor) Kind() string {
 }
 
 func (e *WatchDog) String() string {
-	return e.Name
+	return e.Bus
 }
 
 func (e *WatchDog) Kind() string {
