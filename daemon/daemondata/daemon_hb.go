@@ -11,9 +11,9 @@ import (
 )
 
 func (d *data) setDaemonHb() {
-	hbModes := make([]cluster.HbMode, 0)
+	lastMessages := make([]cluster.HbLastMessage, 0)
 	nodes := make([]string, 0)
-	for node := range d.hbMsgMode {
+	for node := range d.hbMsgPatchLength {
 		if !stringslice.Has(node, d.clusterData.Cluster.Config.Nodes) {
 			// Drop not anymore in cluster config nodes
 			hbcache.DropPeer(node)
@@ -23,23 +23,23 @@ func (d *data) setDaemonHb() {
 	}
 	sort.Strings(nodes)
 	for _, node := range nodes {
-		hbModes = append(hbModes, cluster.HbMode{
-			Node: node,
-			Mode: d.hbMsgMode[node],
-			Type: d.hbMsgType[node],
+		lastMessages = append(lastMessages, cluster.HbLastMessage{
+			From:        node,
+			PatchLength: d.hbMsgPatchLength[node],
+			Type:        d.hbMsgType[node],
 		})
 	}
 
 	subHb := cluster.DaemonHb{
-		Streams: hbcache.Heartbeats(),
-		Modes:   hbModes,
+		Streams:      hbcache.Heartbeats(),
+		LastMessages: lastMessages,
 	}
 	d.clusterData.Daemon.Hb = subHb
 	d.bus.Pub(&msgbus.DaemonHb{Node: d.localNode, Value: subHb}, d.labelLocalNode)
 }
 
-func (d *data) setHbMsgMode(node string, mode string) {
-	d.hbMsgMode[node] = mode
+func (d *data) setHbMsgPatchLength(node string, length int) {
+	d.hbMsgPatchLength[node] = length
 }
 
 // setHbMsgType update the sub.hb.mode.x.Type for node,

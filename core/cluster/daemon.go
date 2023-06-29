@@ -39,9 +39,11 @@ type (
 	// which is responsible for sending or receiving the node DataSet
 	// changes to or from peer nodes.
 	HeartbeatStream struct {
-		DaemonSubsystemStatus
+		DaemonSubsystemStatus `yaml:",inline"`
+
 		// Type is the heartbeat type example: unicast, ...
-		Type  string                         `json:"type" yaml:"type"`
+		Type string `json:"type" yaml:"type"`
+
 		Peers map[string]HeartbeatPeerStatus `json:"peers" yaml:"peers"`
 	}
 

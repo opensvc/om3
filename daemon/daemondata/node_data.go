@@ -45,7 +45,7 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) error {
 		delete(d.hbGens, peerNode)
 		delete(d.hbGens[d.localNode], peerNode)
 		delete(d.hbPatchMsgUpdated, peerNode)
-		delete(d.hbMsgMode, peerNode)
+		delete(d.hbMsgPatchLength, peerNode)
 		delete(d.hbMsgType, peerNode)
 	}
 	d.setDaemonHb()

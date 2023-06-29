@@ -195,11 +195,16 @@ func (f Frame) sNodeVersion(n string) string {
 }
 
 func (f Frame) sNodeHbMode() string {
-	modes := f.Current.Daemon.Hb.Modes
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator+"\t")
 	mode := make(map[string]string)
-	for _, m := range modes {
-		mode[m.Node] = m.Mode
+	for _, lastMessage := range f.Current.Daemon.Hb.LastMessages {
+		switch lastMessage.Type {
+		case "patch":
+			mode[lastMessage.From] = fmt.Sprintf("%d", lastMessage.PatchLength)
+		default:
+			mode[lastMessage.From] = lastMessage.Type
+		}
+
 	}
 	nodeCount := len(f.Current.Cluster.Config.Nodes)
 	for _, peer := range f.Current.Cluster.Config.Nodes {
@@ -232,7 +237,7 @@ func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
-	if len(f.Current.Daemon.Hb.Modes) > 1 {
+	if len(f.Current.Daemon.Hb.LastMessages) > 1 {
 		fmt.Fprintln(f.w, f.sNodeHbMode())
 	}
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())
