@@ -6,6 +6,6 @@ type (
 	// which is responsible for the node DataSets aggregation and
 	// decision-making.
 	DaemonMonitor struct {
-		DaemonSubsystemStatus
+		DaemonSubsystemStatus `yaml:",inline"`
 	}
 )

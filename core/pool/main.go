@@ -43,7 +43,7 @@ type (
 		Head         string         `json:"head" yaml:"head"`
 		Errors       []string       `json:"errors" yaml:"errors"`
 		Volumes      []VolumeStatus `json:"volumes" yaml:"volumes"`
-		StatusUsage
+		StatusUsage  `yaml:",inline"`
 	}
 	StatusList   []Status
 	Capabilities []string

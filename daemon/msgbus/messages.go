@@ -182,40 +182,40 @@ type (
 
 	// ArbitratorError message is published when an arbitrator error is detected
 	ArbitratorError struct {
-		pubsub.Msg
-		Node string
-		Name string
-		ErrS string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Name       string
+		ErrS       string
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Filename   string
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Filename   string
 	}
 
 	ClientSub struct {
-		pubsub.Msg
-		ApiClient
+		pubsub.Msg `yaml:",inline"`
+		ApiClient  `yaml:",inline"`
 	}
 
 	ClientUnSub struct {
-		pubsub.Msg
-		ApiClient
+		pubsub.Msg `yaml:",inline"`
+		ApiClient  `yaml:",inline"`
 	}
 
 	ClusterConfigUpdated struct {
-		pubsub.Msg
+		pubsub.Msg   `yaml:",inline"`
 		Node         string
 		Value        cluster.Config
 		NodesAdded   []string
@@ -223,27 +223,27 @@ type (
 	}
 
 	ClusterStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.Status
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      cluster.Status
 	}
 
 	DaemonCtl struct {
-		pubsub.Msg
-		Component string
-		Action    string
+		pubsub.Msg `yaml:",inline"`
+		Component  string
+		Action     string
 	}
 
 	DaemonHb struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.DaemonHb
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      cluster.DaemonHb
 	}
 
 	DaemonStart struct {
-		pubsub.Msg
-		Node    string
-		Version string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Version    string
 	}
 
 	Exit struct {
@@ -252,29 +252,29 @@ type (
 	}
 
 	ForgetPeer struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
 	}
 
 	HbNodePing struct {
-		pubsub.Msg
-		Node   string
-		Status bool
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Status     bool
 	}
 
 	HbPing struct {
-		pubsub.Msg
-		Nodename string
-		HbId     string
-		Time     time.Time
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string
+		HbId       string
+		Time       time.Time
 	}
 
 	HbMessageTypeUpdated struct {
-		pubsub.Msg
-		Node  string
-		From  string
-		To    string
-		Nodes []string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		From       string
+		To         string
+		Nodes      []string
 		// JoinedNodes are nodes with hb message type patch
 		JoinedNodes []string
 		// InstalledGens are the current installed node gens
@@ -282,160 +282,160 @@ type (
 	}
 
 	HbStale struct {
-		pubsub.Msg
-		Nodename string
-		HbId     string
-		Time     time.Time
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string
+		HbId       string
+		Time       time.Time
 	}
 
 	HbStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.HeartbeatStream
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      cluster.HeartbeatStream
 	}
 
 	InstanceConfigDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
 	}
 
 	InstanceConfigUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Config
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.Config
 	}
 
 	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
 	InstanceFrozenFileUpdated struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Filename   string
+		Updated    time.Time
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
 	InstanceFrozenFileRemoved struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Filename   string
+		Updated    time.Time
 	}
 
 	InstanceMonitorAction struct {
-		pubsub.Msg
-		Path   path.T
-		Node   string
-		Action instance.MonitorAction
-		RID    string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Action     instance.MonitorAction
+		RID        string
 	}
 
 	InstanceMonitorDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
 	}
 
 	InstanceMonitorUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Monitor
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.Monitor
 	}
 
 	InstanceStatusDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
 	}
 
 	InstanceStatusPost struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Status
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.Status
 	}
 
 	InstanceStatusUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Status
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.Status
 	}
 
 	InstanceConfigManagerDone struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Filename   string
 	}
 
 	JoinError struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that can't be added to cluster config nodes
 		Node   string
 		Reason string
 	}
 
 	JoinIgnored struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that is already in cluster config nodes
 		Node string
 	}
 
 	JoinRequest struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node to add to cluster config nodes
 		Node string
 	}
 
 	JoinSuccess struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully added node in cluster config nodes
 		Node string
 	}
 
 	LeaveError struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that can't be removed from cluster config nodes
 		Node   string
 		Reason string
 	}
 
 	LeaveIgnored struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that is not in cluster config nodes
 		Node string
 	}
 
 	LeaveRequest struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node to remove to cluster config nodes
 		Node string
 	}
 
 	LeaveSuccess struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully removed node from cluster config nodes
 		Node string
 	}
 
 	NodeConfigUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Config
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Config
 	}
 
 	NodeDataUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Node
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Node
 	}
 
 	// NodeFrozen message describe a node frozen state update
 	NodeFrozen struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
 		// Status is true when frozen, else false
 		Status bool
 		// FrozenAt is the time when node has been frozen or zero when not frozen
@@ -445,37 +445,37 @@ type (
 	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileRemoved struct {
-		pubsub.Msg
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Filename   string
 	}
 
 	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileUpdated struct {
-		pubsub.Msg
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		Filename   string
+		Updated    time.Time
 	}
 
 	NodeMonitorDeleted struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
 	}
 
 	NodeMonitorUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Monitor
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Monitor
 	}
 
 	NodeOsPathsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value san.Paths
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      san.Paths
 	}
 
 	NodeSplitAction struct {
-		pubsub.Msg
+		pubsub.Msg      `yaml:",inline"`
 		Node            string
 		Action          string
 		NodeVotes       int
@@ -485,134 +485,134 @@ type (
 	}
 
 	NodeStatsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Stats
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Stats
 	}
 
 	NodeStatusArbitratorsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value map[string]node.ArbitratorStatus
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      map[string]node.ArbitratorStatus
 	}
 
 	// NodeStatusGenUpdates is emitted when then hb message gens are changed
 	NodeStatusGenUpdates struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
 		// Value is Node.Status.Gen
 		Value map[string]uint64
 	}
 
 	NodeStatusLabelsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value nodesinfo.Labels
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      nodesinfo.Labels
 	}
 
 	// NodeStatusUpdated is the message that nmon publish when node status is modified.
 	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Status
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Status
 	}
 
 	ObjectOrchestrationEnd struct {
-		pubsub.Msg
-		Id   string
-		Node string
-		Path path.T
+		pubsub.Msg `yaml:",inline"`
+		Id         string
+		Node       string
+		Path       path.T
 	}
 
 	ObjectOrchestrationRefused struct {
-		pubsub.Msg
-		Id     string
-		Node   string
-		Path   path.T
-		Reason string
+		pubsub.Msg `yaml:",inline"`
+		Id         string
+		Node       string
+		Path       path.T
+		Reason     string
 	}
 
 	ObjectStatusDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
 	}
 
 	ObjectStatusDone struct {
-		pubsub.Msg
-		Path path.T
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
 	}
 
 	ObjectStatusUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value object.Status
-		SrcEv any
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      object.Status
+		SrcEv      any
 	}
 
 	ProgressInstanceMonitor struct {
-		pubsub.Msg
-		Path      path.T
-		Node      string
-		State     instance.MonitorState
-		SessionId uuid.UUID
-		IsPartial bool
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		State      instance.MonitorState
+		SessionId  uuid.UUID
+		IsPartial  bool
 	}
 
 	RemoteFileConfig struct {
-		pubsub.Msg
-		Path     path.T
-		Node     string
-		Filename string
-		Updated  time.Time
-		Ctx      context.Context
-		Err      chan error
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Filename   string
+		Updated    time.Time
+		Ctx        context.Context
+		Err        chan error
 	}
 
 	SetInstanceMonitor struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.MonitorUpdate
 	}
 
 	SetInstanceMonitorRefused struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Value      instance.MonitorUpdate
 	}
 
 	SetNodeMonitor struct {
-		pubsub.Msg
-		Node  string
-		Value node.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.MonitorUpdate
 	}
 
 	WatchDog struct {
-		pubsub.Msg
-		Name string
+		pubsub.Msg `yaml:",inline"`
+		Name       string
 	}
 
 	ZoneRecordDeleted struct {
-		pubsub.Msg
-		Path    path.T
-		Node    string
-		Name    string
-		Type    string
-		TTL     int
-		Content string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Name       string
+		Type       string
+		TTL        int
+		Content    string
 	}
 	ZoneRecordUpdated struct {
-		pubsub.Msg
-		Path    path.T
-		Node    string
-		Name    string
-		Type    string
-		TTL     int
-		Content string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T
+		Node       string
+		Name       string
+		Type       string
+		TTL        int
+		Content    string
 	}
 )
 

@@ -6,7 +6,7 @@ type (
 	// SubscriptionError is an emitted publication made when a subscriber notification
 	// exceeds its timeout
 	SubscriptionError struct {
-		Msg
+		Msg   `yaml:",inline"`
 		Id    uuid.UUID
 		Name  string
 		Error error
@@ -15,7 +15,7 @@ type (
 	// SubscriptionQueueThreshold is an emitted publication made when a subscriber queue
 	// reach/leave its current max value
 	SubscriptionQueueThreshold struct {
-		Msg
+		Msg   `yaml:",inline"`
 		Id    uuid.UUID
 		Name  string
 		Value uint64

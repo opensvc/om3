@@ -24,7 +24,7 @@ type (
 	// which is responsible for communicating with the collector on behalf
 	// of the cluster. Only one node runs a collector thread.
 	DaemonCollector struct {
-		DaemonSubsystemStatus
+		DaemonSubsystemStatus `yaml:",inline"`
 	}
 
 	// DaemonDNS describes the OpenSVC daemon dns thread, which is
@@ -32,7 +32,7 @@ type (
 	// zone is dynamically populated by ip address allocated for the
 	// services (frontend and backend).
 	DaemonDNS struct {
-		DaemonSubsystemStatus
+		DaemonSubsystemStatus `yaml:",inline"`
 	}
 
 	// HeartbeatStream describes one OpenSVC daemon heartbeat thread,
