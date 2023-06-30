@@ -78,8 +78,8 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
-	AnnounceSub(a.EventBus, name)
-	defer AnnounceUnSub(a.EventBus, name)
+	announceSub(a.EventBus, name)
+	defer announceUnSub(a.EventBus, name)
 
 	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
