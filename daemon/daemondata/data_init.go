@@ -47,8 +47,8 @@ func newData() *data {
 			},
 			Nodename: localNode,
 			Hb: cluster.DaemonHb{
-				Streams: make([]cluster.HeartbeatStream, 0),
-				Modes:   make([]cluster.HbMode, 0),
+				Streams:      make([]cluster.HeartbeatStream, 0),
+				LastMessages: make([]cluster.HbLastMessage, 0),
 			},
 		},
 	}
@@ -64,7 +64,7 @@ func newData() *data {
 		clusterData:        msgbus.NewClusterData(status.DeepCopy()),
 		eventQueue:         make(eventQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),
-		hbMsgMode:          map[string]string{localNode: initialMsgType},
+		hbMsgPatchLength:   map[string]int{localNode: 0},
 		hbMsgType:          map[string]string{localNode: initialMsgType},
 		labelLocalNode:     pubsub.Label{"node", hostname.Hostname()},
 	}

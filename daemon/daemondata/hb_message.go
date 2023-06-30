@@ -94,7 +94,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			return msg, err
 		}
 		msg.Events = events
-		d.setHbMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Events)))
+		d.setHbMsgPatchLength(d.localNode, len(msg.Events))
 		return msg, nil
 	case "full":
 		events, err := d.eventQueue.deepCopy()
@@ -106,10 +106,10 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 		}
 		nodeData := d.clusterData.Cluster.Node[d.localNode]
 		msg.NodeData = *nodeData.DeepCopy()
-		d.setHbMsgMode(d.localNode, msg.Kind)
+		d.setHbMsgPatchLength(d.localNode, 0)
 		return msg, nil
 	case "ping":
-		d.setHbMsgMode(d.localNode, msg.Kind)
+		d.setHbMsgPatchLength(d.localNode, 0)
 		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMessageType)

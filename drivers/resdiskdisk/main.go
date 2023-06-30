@@ -241,7 +241,7 @@ func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
 	if err != nil {
 		return err
 	}
-	nodesInfo, err := nodesinfo.Get()
+	nodesInfo, err := nodesinfo.Load()
 	if err != nil {
 		return err
 	}

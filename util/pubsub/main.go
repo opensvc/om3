@@ -66,8 +66,8 @@ const (
 )
 
 type (
-	// labelMap allow message routing filtering based on key/value matching
-	labelMap map[string]string
+	// Labels allow message routing filtering based on key/value matching
+	Labels map[string]string
 
 	// Label is a {key, val} array
 	Label [2]string
@@ -76,7 +76,7 @@ type (
 	subscriptionMap map[string]map[uuid.UUID]any
 
 	filter struct {
-		labels   labelMap
+		labels   Labels
 		dataType string
 	}
 
@@ -109,7 +109,7 @@ type (
 	}
 
 	cmdPub struct {
-		labels   labelMap
+		labels   Labels
 		dataType string
 		data     any
 		resp     chan<- bool
@@ -117,7 +117,7 @@ type (
 
 	cmdSubAddFilter struct {
 		id       uuid.UUID
-		labels   labelMap
+		labels   Labels
 		dataType string
 		resp     chan<- error
 	}
@@ -157,21 +157,50 @@ type (
 	}
 
 	Msg struct {
-		Labels []Label
+		Labels Labels `json:"labels" yaml:"labels"`
 	}
 
 	Messager interface {
 		AddLabels(...Label)
-		GetLabels() []Label
+		GetLabels() Labels
 	}
 )
 
-func (p *Msg) GetLabels() []Label {
-	return append([]Label{}, p.Labels...)
+func NewLabels(l ...string) Labels {
+	var k string
+	m := make(Labels)
+	for i, s := range l {
+		switch i % 2 {
+		case 0:
+			k = s
+		case 1:
+			m[k] = s
+		}
+	}
+	return m
+}
+
+func (p *Msg) GetLabels() Labels {
+	m := make(Labels)
+	if p.Labels == nil {
+		return m
+	}
+	for k, v := range p.Labels {
+		m[k] = v
+	}
+	return m
 }
 
 func (p *Msg) AddLabels(l ...Label) {
-	p.Labels = append(p.Labels, l...)
+	if len(l) == 0 {
+		return
+	}
+	if p.Labels == nil {
+		p.Labels = make(Labels)
+	}
+	for _, e := range l {
+		p.Labels[e[0]] = e[1]
+	}
 }
 
 var (
@@ -214,7 +243,7 @@ var (
 
 // Key returns labelMap key as a string
 // with ordered label names
-func (t labelMap) Key() string {
+func (t Labels) Key() string {
 	s := ""
 	var sortKeys []string
 	for key := range t {
@@ -246,7 +275,7 @@ func (t labelMap) Key() string {
 //	 {l2=foo}{l3=foo}{l1=foo}
 //	 {l3=foo}{l1=foo}{l2=foo}
 //	 {l3=foo}{l2=foo}{l1=foo}
-func (t labelMap) keys() []string {
+func (t Labels) keys() []string {
 	m := map[string]any{"": nil}
 	keys := xmap.Keys(t)
 	total := len(keys)
@@ -264,8 +293,8 @@ func (t labelMap) keys() []string {
 	return xmap.Keys(m)
 }
 
-func newLabels(labels ...Label) labelMap {
-	m := make(labelMap)
+func newLabels(labels ...Label) Labels {
+	m := make(Labels)
 	for _, label := range labels {
 		m[label[0]] = label[1]
 	}
@@ -282,6 +311,10 @@ func NewBus(name string) *Bus {
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	b.drainChanDuration = defaultDrainChanDuration
 	return b
+}
+
+func (b *Bus) Name() string {
+	return b.name
 }
 
 func (b *Bus) Start(ctx context.Context) {
@@ -469,7 +502,7 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 	done := make(chan bool)
 	v.AddLabels(labels...)
 	op := cmdPub{
-		labels: newLabels(v.GetLabels()...),
+		labels: v.GetLabels(),
 		data:   v,
 		resp:   done,
 	}
@@ -633,7 +666,7 @@ func (cmd cmdUnsub) String() string {
 	return fmt.Sprintf("unsubscribe key %s", cmd.id)
 }
 
-func (t labelMap) String() string {
+func (t Labels) String() string {
 	if len(t) == 0 {
 		return ""
 	}
@@ -702,18 +735,18 @@ func (pub cmdPub) keys() []string {
 	return pubKeys(pub.dataType, pub.labels)
 }
 
-func fmtKey(dataType string, labels labelMap) string {
+func fmtKey(dataType string, labels Labels) string {
 	return dataType + ":" + labels.Key()
 }
 
-func pubKeys(dataType string, labels labelMap) []string {
+func pubKeys(dataType string, labels Labels) []string {
 	return append(
 		keys(dataType, labels),
 		keys("", labels)...,
 	)
 }
 
-func keys(dataType string, labels labelMap) []string {
+func keys(dataType string, labels Labels) []string {
 	var l []string
 	if len(labels) == 0 {
 		return []string{dataType + ":"}

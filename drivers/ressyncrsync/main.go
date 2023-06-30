@@ -566,7 +566,7 @@ func (t *T) isFlexAndNotPrimary() bool {
 
 func (t *T) isSendAllowedToPeerEnv(nodename string) error {
 	var localEnv, peerEnv string
-	nodesInfo, err := nodesinfo.Get()
+	nodesInfo, err := nodesinfo.Load()
 	if err != nil {
 		return fmt.Errorf("get nodes info: %w", err)
 	}

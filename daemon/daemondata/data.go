@@ -56,12 +56,11 @@ type (
 		msgLocalGen map[string]uint64
 		hbSendQ     chan<- hbtype.Msg
 
-		// hbMsgMode holds the hb mode of cluster nodes:
+		// hbMsgPatchLength holds the hb mode of cluster nodes:
 		//
 		// for local node: value is set during func (d *data) getHbMessage()
 		// for peer:  value it set during func (d *data) onReceiveHbMsg
-		// It has same value as hbMsgType, except when type is patch where it represents size of patch queue
-		hbMsgMode map[string]string
+		hbMsgPatchLength map[string]int
 
 		// hbMsgType track the hb message type of cluster nodes
 		// - localhost associated value is changed during setNextMsgType
@@ -121,7 +120,7 @@ var (
 
 	ErrDrained = errors.New("drained command")
 
-	labelPeerNode = pubsub.Label{"peer", "true"}
+	labelFromPeer = pubsub.Label{"from", "peer"}
 )
 
 func PropagationInterval() time.Duration {
@@ -286,7 +285,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				return
 			case <-subHbRefreshTicker.C:
 				d.setDaemonHb()
-				d.log.Debug().Msgf("current hb msg mode %s", d.hbMsgMode[d.localNode])
+				d.log.Debug().Msgf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
 					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
@@ -410,7 +409,7 @@ func (d *data) appendEv(i event.Kinder) {
 	d.pendingEvs = append(d.pendingEvs, event.Event{
 		Kind: i.Kind(),
 		ID:   eventId,
-		Time: time.Now(),
+		At:   time.Now(),
 		Data: marshalEventData(i),
 	})
 }

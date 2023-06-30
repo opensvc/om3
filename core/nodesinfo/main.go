@@ -3,14 +3,13 @@ package nodesinfo
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/san"
 )
 
@@ -81,15 +80,7 @@ func Load() (NodesInfo, error) {
 	return data, err
 }
 
-func Req() (NodesInfo, error) {
-	c, err := client.New()
-	if err != nil {
-		return nil, err
-	}
-	return ReqWithClient(c)
-}
-
-func ReqWithClient(c *client.T) (NodesInfo, error) {
+func ReqWithClient(c api.ClientInterface) (NodesInfo, error) {
 	if c == nil {
 		panic("nodesinfo.ReqWithClient(nil): no client")
 	}
@@ -103,23 +94,6 @@ func ReqWithClient(c *client.T) (NodesInfo, error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	return data, err
-}
-
-// Get returns the nodes info structure from the daemon api
-// if available, and falls back to a file cache.
-func Get() (NodesInfo, error) {
-	var errs error
-	if data, err := Req(); err == nil {
-		return data, nil
-	} else {
-		errs = errors.Join(errs, err)
-	}
-	if data, err := Load(); err == nil {
-		return data, nil
-	} else {
-		errs = errors.Join(errs, err)
-	}
-	return nil, errs
 }
 
 // GetNodesWithAnyPaths return the list of nodes having any of the given paths.

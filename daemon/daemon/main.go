@@ -130,8 +130,8 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	go func(ctx context.Context) {
 		labels := []pubsub.Label{
-			{"os", localhost},
-			{"sub", "pubsub"},
+			{"node", localhost},
+			{"bus", bus.Name()},
 		}
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
@@ -140,7 +140,7 @@ func (t *T) MainStart(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				bus.Pub(&msgbus.WatchDog{Name: "pubsub"}, labels...)
+				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
 			}
 		}
 	}(ctx)

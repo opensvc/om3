@@ -19,7 +19,7 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem" yaml:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap" yaml:"min_avail_swap"`
 		IsSpeaker       bool                        `json:"is_speaker" yaml:"is_speaker"`
-		Labels          nodesinfo.Labels            `json:"labels" yaml:"label"`
+		Labels          nodesinfo.Labels            `json:"labels" yaml:"labels"`
 	}
 
 	// Instances groups instances configuration digest and status

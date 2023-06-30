@@ -34,7 +34,7 @@ type (
 		Devices         string `json:"devices"`
 	}
 	LV struct {
-		driver
+		driver `yaml:",inline"`
 		LVName string
 		VGName string
 	}

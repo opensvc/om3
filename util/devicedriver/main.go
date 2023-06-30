@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -23,10 +23,10 @@ type (
 		log *zerolog.Logger
 	}
 	Loop struct {
-		logT
+		logT `yaml:",inline"`
 	}
 	DeviceMapper struct {
-		logT
+		logT `yaml:",inline"`
 	}
 )
 

@@ -78,8 +78,8 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
-	AnnounceSub(a.EventBus, name)
-	defer AnnounceUnSub(a.EventBus, name)
+	announceSub(a.EventBus, name)
+	defer announceUnSub(a.EventBus, name)
 
 	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
@@ -147,7 +147,7 @@ func parseFilter(s string) (filter Filter, err error) {
 			// TODO filter data ?
 			continue
 		}
-		splitted := strings.Split(elem, "=")
+		splitted := strings.SplitN(elem, "=", 2)
 		if len(splitted) == 1 {
 			// ignore error => use kind nil when value has invalid kind
 			filter.Kind, _ = msgbus.KindToT(splitted[0])

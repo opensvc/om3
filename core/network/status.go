@@ -20,12 +20,12 @@ type (
 	}
 
 	Status struct {
-		Name    string      `json:"name" yaml:"name"`
-		Type    string      `json:"type" yaml:"type"`
-		Network string      `json:"network" yaml:"network"`
-		IPs     clusterip.L `json:"ips" yaml:"ips"`
-		Errors  []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
-		StatusUsage
+		Name        string      `json:"name" yaml:"name"`
+		Type        string      `json:"type" yaml:"type"`
+		Network     string      `json:"network" yaml:"network"`
+		IPs         clusterip.L `json:"ips" yaml:"ips"`
+		Errors      []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
+		StatusUsage `yaml:",inline"`
 	}
 	StatusList []Status
 )

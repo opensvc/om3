@@ -2,15 +2,15 @@
   "kind": "patch",
   "events": {
     "19": [
-      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.17,"mem_avail":68,"mem_total":1987,"score":0,"swap_avail":89,"swap_total":1961}}}
+      {"kind":"NodeStatsUpdated","data":{"labels":{"node":"node2","peer":"true"},"node":"node2","node_stats":{"load_15m":0.17,"mem_avail":68,"mem_total":1987,"score":0,"swap_avail":89,"swap_total":1961}}}
     ],
     "20": [
-      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.5,"mem_avail":68,"mem_total":1987,"score":0,"swap_avail":89,"swap_total":1961}}},
-      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.5,"mem_avail":68,"mem_total":1000,"score":0,"swap_avail":89,"swap_total":1961}}}
+      {"kind":"NodeStatsUpdated","data":{"labels":{"node":"node2","peer":"true"},"node":"node2","node_stats":{"load_15m":0.5,"mem_avail":68,"mem_total":1987,"score":0,"swap_avail":89,"swap_total":1961}}},
+      {"kind":"NodeStatsUpdated","data":{"labels":{"node":"node2","peer":"true"},"node":"node2","node_stats":{"load_15m":0.5,"mem_avail":68,"mem_total":1000,"score":0,"swap_avail":89,"swap_total":1961}}}
     ],
     "21": [
-      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.5,"mem_avail":10,"mem_total":1000,"score":0,"swap_avail":89,"swap_total":1961}}},
-      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.5,"mem_avail":10,"mem_total":1000,"score":2,"swap_avail":89,"swap_total":11}}}
+      {"kind":"NodeStatsUpdated","data":{"labels":{"node":"node2","peer":"true"},"node":"node2","node_stats":{"load_15m":0.5,"mem_avail":10,"mem_total":1000,"score":0,"swap_avail":89,"swap_total":1961}}},
+      {"kind":"NodeStatsUpdated","data":{"labels":{"node":"node2","peer":"true"},"node":"node2","node_stats":{"load_15m":0.5,"mem_avail":10,"mem_total":1000,"score":2,"swap_avail":89,"swap_total":11}}}
     ]
   },
   "gen": {

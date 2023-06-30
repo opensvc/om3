@@ -18,7 +18,7 @@ type (
 	// state, which is responsible for executing node and objects scheduled
 	// jobs.
 	DaemonScheduler struct {
-		DaemonSubsystemStatus
-		Delayed []SchedulerThreadEntry `json:"delayed" yaml:"delayed"`
+		DaemonSubsystemStatus `yaml:",inline"`
+		Delayed               []SchedulerThreadEntry `json:"delayed" yaml:"delayed"`
 	}
 )

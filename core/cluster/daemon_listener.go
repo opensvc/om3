@@ -41,9 +41,9 @@ type (
 	// DaemonListener describes the OpenSVC daemon listener thread,
 	// which is responsible for serving the API.
 	DaemonListener struct {
-		DaemonSubsystemStatus
-		Config ListenerThreadStatusConfig `json:"config" yaml:"config"`
-		Stats  ListenerThreadStats        `json:"stats" yaml:"stats"`
+		DaemonSubsystemStatus `yaml:",inline"`
+		Config                ListenerThreadStatusConfig `json:"config" yaml:"config"`
+		Stats                 ListenerThreadStats        `json:"stats" yaml:"stats"`
 	}
 
 	// ListenerThreadStatusConfig holds a summary of the listener configuration

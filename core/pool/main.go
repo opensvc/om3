@@ -43,7 +43,7 @@ type (
 		Head         string         `json:"head" yaml:"head"`
 		Errors       []string       `json:"errors" yaml:"errors"`
 		Volumes      []VolumeStatus `json:"volumes" yaml:"volumes"`
-		StatusUsage
+		StatusUsage  `yaml:",inline"`
 	}
 	StatusList   []Status
 	Capabilities []string
@@ -538,7 +538,7 @@ func GetMapping(p ArrayPooler, nodes []string) (san.Paths, error) {
 	if err != nil {
 		return san.Paths{}, err
 	}
-	nodesInfo, err := nodesinfo.Get()
+	nodesInfo, err := nodesinfo.Load()
 	if err != nil {
 		return san.Paths{}, err
 	}

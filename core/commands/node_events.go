@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/output"
@@ -267,28 +268,31 @@ func (t *CmdNodeEvents) Run() error {
 }
 
 func (t *CmdNodeEvents) doEvent(e event.Event) {
+	msg, err := msgbus.EventToMessage(e)
+	if err != nil {
+		return
+	}
+	ce := e.AsConcreteEvent(msg)
 	if t.templ != nil {
-		msg, err := msgbus.EventToMessage(e)
-		if err != nil {
+		var i any
+		if err := json.Unmarshal(e.Data, &i); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "unmarshal event data in a any-typed variable: %s\n", err)
 			return
 		}
 		msg.GetLabels()
-		if err := t.templ.Execute(os.Stdout, msg); err != nil {
+		if err := t.templ.Execute(os.Stdout, i); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "template execute error %s\n", err)
 		}
 		return
-	}
-	human := func() string {
-		return event.Render(e)
 	}
 	if t.Format == output.JSON.String() {
 		t.Format = output.JSONLine.String()
 	}
 	output.Renderer{
-		Format:        t.Format,
-		Color:         t.Color,
-		Data:          e,
-		HumanRenderer: human,
-		Colorize:      rawconfig.Colorize,
+		Format:   t.Format,
+		Color:    t.Color,
+		Data:     ce,
+		Colorize: rawconfig.Colorize,
+		Stream:   true,
 	}.Print()
 }

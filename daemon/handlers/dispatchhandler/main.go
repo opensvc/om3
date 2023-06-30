@@ -25,13 +25,13 @@ import (
 
 type (
 	EndpointResponse struct {
-		apimodel.BaseResponseMuxData
-		Data json.RawMessage `json:"data,omitempty"`
+		apimodel.BaseResponseMuxData `yaml:",inline"`
+		Data                         json.RawMessage `json:"data,omitempty" yaml:"data,omitempty"`
 	}
 
 	EntrypointResponse struct {
-		apimodel.BaseResponseMux
-		Data []EndpointResponse `json:"data"`
+		apimodel.BaseResponseMux `yaml:",inline"`
+		Data                     []EndpointResponse `json:"data" yaml:"data"`
 	}
 
 	// dispatch holds srcRequest, nodes, responses for srcHandler HandlerFunc

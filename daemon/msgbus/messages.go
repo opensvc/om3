@@ -21,8 +21,6 @@ import (
 
 var (
 	kindToT = map[string]func() any{
-		"ApiClient": func() any { return &ApiClient{} },
-
 		"ArbitratorError": func() any { return &ArbitratorError{} },
 
 		"ClusterConfigUpdated": func() any { return &ClusterConfigUpdated{} },
@@ -33,9 +31,9 @@ var (
 
 		"ConfigFileUpdated": func() any { return &ConfigFileUpdated{} },
 
-		"ClientSub": func() any { return &ClientSub{} },
+		"ClientSubscribed": func() any { return &ClientSubscribed{} },
 
-		"ClientUnSub": func() any { return &ClientUnSub{} },
+		"ClientUnsubscribed": func() any { return &ClientUnsubscribed{} },
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
@@ -175,444 +173,445 @@ func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 }
 
 type (
-	ApiClient struct {
-		Time time.Time
-		Name string
-	}
-
 	// ArbitratorError message is published when an arbitrator error is detected
 	ArbitratorError struct {
-		pubsub.Msg
-		Node string
-		Name string
-		ErrS string
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+		ErrS       string `json:"error" yaml:"error"`
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		File       string `json:"file" yaml:"file"`
 	}
 
-	ClientSub struct {
-		pubsub.Msg
-		ApiClient
+	ClientSubscribed struct {
+		pubsub.Msg `yaml:",inline"`
+		Time       time.Time `json:"at" yaml:"at"`
+		Name       string    `json:"name" yaml:"name"`
 	}
 
-	ClientUnSub struct {
-		pubsub.Msg
-		ApiClient
+	ClientUnsubscribed struct {
+		pubsub.Msg `yaml:",inline"`
+		Time       time.Time `json:"at" yaml:"at"`
+		Name       string    `json:"name" yaml:"name"`
 	}
 
 	ClusterConfigUpdated struct {
-		pubsub.Msg
-		Node         string
-		Value        cluster.Config
-		NodesAdded   []string
-		NodesRemoved []string
+		pubsub.Msg   `yaml:",inline"`
+		Node         string         `json:"node" yaml:"node"`
+		Value        cluster.Config `json:"cluster_config" yaml:"cluster_config"`
+		NodesAdded   []string       `json:"nodes_added" yaml:"nodes_added"`
+		NodesRemoved []string       `json:"nodes_removed" yaml:"nodes_removed"`
 	}
 
 	ClusterStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.Status
+		pubsub.Msg `yaml:",inline"`
+		Node       string         `json:"node" yaml:"node"`
+		Value      cluster.Status `json:"cluster_status" yaml:"cluster_status"`
 	}
 
 	DaemonCtl struct {
-		pubsub.Msg
-		Component string
-		Action    string
+		pubsub.Msg `yaml:",inline"`
+		Component  string `json:"component" yaml:"component"`
+		Action     string `json:"action" yaml:"action"`
 	}
 
 	DaemonHb struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.DaemonHb
+		pubsub.Msg `yaml:",inline"`
+		Node       string           `json:"node" yaml:"node"`
+		Value      cluster.DaemonHb `json:"hb" yaml:"hb"`
 	}
 
 	DaemonStart struct {
-		pubsub.Msg
-		Node    string
-		Version string
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Version    string `json:"version" yaml:"version"`
 	}
 
 	Exit struct {
-		Path     path.T
-		Filename string
+		Path path.T `json:"path" yaml:"path"`
+		File string `json:"file" yaml:"file"`
 	}
 
 	ForgetPeer struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	HbNodePing struct {
-		pubsub.Msg
-		Node   string
-		Status bool
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		IsAlive    bool   `json:"is_alive" yaml:"is_alive"`
 	}
 
 	HbPing struct {
-		pubsub.Msg
-		Nodename string
-		HbId     string
-		Time     time.Time
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string    `json:"to" yaml:"to"`
+		HbId       string    `json:"hb_id" yaml:"hb_id"`
+		Time       time.Time `json:"at" yaml:"at"`
 	}
 
 	HbMessageTypeUpdated struct {
-		pubsub.Msg
-		Node  string
-		From  string
-		To    string
-		Nodes []string
+		pubsub.Msg `yaml:",inline"`
+		Node       string   `json:"node" yaml:"node"`
+		From       string   `json:"old_type" yaml:"old_type"`
+		To         string   `json:"new_type" yaml:"new_type"`
+		Nodes      []string `json:"nodes" yaml:"nodes"`
+
 		// JoinedNodes are nodes with hb message type patch
-		JoinedNodes []string
+		JoinedNodes []string `json:"joined_nodes" yaml:"joined_nodes"`
+
 		// InstalledGens are the current installed node gens
-		InstalledGens map[string]uint64
+		InstalledGens map[string]uint64 `json:"installed_gens" yaml:"installed_gens"`
 	}
 
 	HbStale struct {
-		pubsub.Msg
-		Nodename string
-		HbId     string
-		Time     time.Time
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string    `json:"node" yaml:"node"`
+		HbId       string    `json:"hb_id" yaml:"hb_id"`
+		Time       time.Time `json:"at" yaml:"at"`
 	}
 
 	HbStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value cluster.HeartbeatStream
+		pubsub.Msg `yaml:",inline"`
+		Node       string                  `json:"node" yaml:"node"`
+		Value      cluster.HeartbeatStream `json:"stream" yaml:"stream"`
 	}
 
 	InstanceConfigDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	InstanceConfigUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Config
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T          `json:"path" yaml:"path"`
+		Node       string          `json:"node" yaml:"node"`
+		Value      instance.Config `json:"instance_config" yaml:"instance_config"`
 	}
 
 	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
 	InstanceFrozenFileUpdated struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T    `json:"path" yaml:"path"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
 	InstanceFrozenFileRemoved struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T    `json:"path" yaml:"path"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	InstanceMonitorAction struct {
-		pubsub.Msg
-		Path   path.T
-		Node   string
-		Action instance.MonitorAction
-		RID    string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T                 `json:"path" yaml:"path"`
+		Node       string                 `json:"node" yaml:"node"`
+		Action     instance.MonitorAction `json:"action" yaml:"action"`
+		RID        string                 `json:"rid" yaml:"rid"`
 	}
 
 	InstanceMonitorDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	InstanceMonitorUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Monitor
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T           `json:"path" yaml:"path"`
+		Node       string           `json:"node" yaml:"node"`
+		Value      instance.Monitor `json:"instance_monitor" yaml:"instance_monitor"`
 	}
 
 	InstanceStatusDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	InstanceStatusPost struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Status
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T          `json:"path" yaml:"path"`
+		Node       string          `json:"node" yaml:"node"`
+		Value      instance.Status `json:"instance_status" yaml:"instance_status"`
 	}
 
 	InstanceStatusUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.Status
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T          `json:"path" yaml:"path"`
+		Node       string          `json:"node" yaml:"node"`
+		Value      instance.Status `json:"instance_status" yaml:"instance_status"`
 	}
 
 	InstanceConfigManagerDone struct {
-		pubsub.Msg
-		Path     path.T
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	JoinError struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that can't be added to cluster config nodes
-		Node   string
-		Reason string
+		Node   string `json:"node" yaml:"node"`
+		Reason string `json:"reason" yaml:"reason"`
 	}
 
 	JoinIgnored struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that is already in cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	JoinRequest struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node to add to cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	JoinSuccess struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully added node in cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	LeaveError struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that can't be removed from cluster config nodes
-		Node   string
+		Node   string `json:"node" yaml:"node"`
 		Reason string
 	}
 
 	LeaveIgnored struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node that is not in cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	LeaveRequest struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is a node to remove to cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	LeaveSuccess struct {
-		pubsub.Msg
+		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully removed node from cluster config nodes
-		Node string
+		Node string `json:"node" yaml:"node"`
 	}
 
 	NodeConfigUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Config
+		pubsub.Msg `yaml:",inline"`
+		Node       string      `json:"node" yaml:"node"`
+		Value      node.Config `json:"node_config" yaml:"node_config"`
 	}
 
 	NodeDataUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Node
+		pubsub.Msg `yaml:",inline"`
+		Node       string    `json:"node" yaml:"node"`
+		Value      node.Node `json:"node_data" yaml:"node_data"`
 	}
 
 	// NodeFrozen message describe a node frozen state update
 	NodeFrozen struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+
 		// Status is true when frozen, else false
-		Status bool
+		Status bool `json:"is_frozen" yaml:"is_frozen"`
+
 		// FrozenAt is the time when node has been frozen or zero when not frozen
-		FrozenAt time.Time
+		FrozenAt time.Time `json:"frozen_at" yaml:"frozen_at"`
 	}
 
 	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileRemoved struct {
-		pubsub.Msg
-		Filename string
+		pubsub.Msg `yaml:",inline"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileUpdated struct {
-		pubsub.Msg
-		Filename string
-		Updated  time.Time
+		pubsub.Msg `yaml:",inline"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	NodeMonitorDeleted struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	NodeMonitorUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Monitor
+		pubsub.Msg `yaml:",inline"`
+		Node       string       `json:"node" yaml:"node"`
+		Value      node.Monitor `json:"node_monitor" yaml:"node_monitor"`
 	}
 
 	NodeOsPathsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value san.Paths
+		pubsub.Msg `yaml:",inline"`
+		Node       string    `json:"node" yaml:"node"`
+		Value      san.Paths `json:"san_paths" yaml:"san_paths"`
 	}
 
 	NodeSplitAction struct {
-		pubsub.Msg
-		Node            string
-		Action          string
-		NodeVotes       int
-		ArbitratorVotes int
-		Voting          int
-		ProVoters       int
+		pubsub.Msg      `yaml:",inline"`
+		Node            string `json:"node" yaml:"node"`
+		Action          string `json:"action" yaml:"action"`
+		NodeVotes       int    `json:"node_votes" yaml:"node_votes"`
+		ArbitratorVotes int    `json:"arbitrator_votes" yaml:"arbitrator_votes"`
+		Voting          int    `json:"voting" yaml:"voting"`
+		ProVoters       int    `json:"pro_voters" yaml:"pro_voters"`
 	}
 
 	NodeStatsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Stats
+		pubsub.Msg `yaml:",inline"`
+		Node       string     `json:"node" yaml:"node"`
+		Value      node.Stats `json:"node_stats" yaml:"node_stats"`
 	}
 
 	NodeStatusArbitratorsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value map[string]node.ArbitratorStatus
+		pubsub.Msg `yaml:",inline"`
+		Node       string                           `json:"node" yaml:"node"`
+		Value      map[string]node.ArbitratorStatus `json:"arbitrator_status" yaml:"arbitrator_status"`
 	}
 
 	// NodeStatusGenUpdates is emitted when then hb message gens are changed
 	NodeStatusGenUpdates struct {
-		pubsub.Msg
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Node       string
 		// Value is Node.Status.Gen
-		Value map[string]uint64
+		Value map[string]uint64 `json:"gens" yaml:"gens"`
 	}
 
 	NodeStatusLabelsUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value nodesinfo.Labels
+		pubsub.Msg `yaml:",inline"`
+		Node       string           `json:"node" yaml:"node"`
+		Value      nodesinfo.Labels `json:"node_labels" yaml:"node_labels"`
 	}
 
 	// NodeStatusUpdated is the message that nmon publish when node status is modified.
 	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
-		pubsub.Msg
-		Node  string
-		Value node.Status
+		pubsub.Msg `yaml:",inline"`
+		Node       string
+		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
 	ObjectOrchestrationEnd struct {
-		pubsub.Msg
-		Id   string
-		Node string
-		Path path.T
+		pubsub.Msg `yaml:",inline"`
+		Id         string `json:"id" yaml:"id"`
+		Node       string `json:"node" yaml:"node"`
+		Path       path.T `json:"path" yaml:"path"`
 	}
 
 	ObjectOrchestrationRefused struct {
-		pubsub.Msg
-		Id     string
-		Node   string
-		Path   path.T
-		Reason string
+		pubsub.Msg `yaml:",inline"`
+		Id         string `json:"id" yaml:"id"`
+		Node       string `json:"node" yaml:"node"`
+		Path       path.T `json:"path" yaml:"path"`
+		Reason     string `json:"reason" yaml:"reason"`
 	}
 
 	ObjectStatusDeleted struct {
-		pubsub.Msg
-		Path path.T
-		Node string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	ObjectStatusDone struct {
-		pubsub.Msg
-		Path path.T
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
 	}
 
 	ObjectStatusUpdated struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value object.Status
-		SrcEv any
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T        `json:"path" yaml:"path"`
+		Node       string        `json:"node" yaml:"node"`
+		Value      object.Status `json:"object_status" yaml:"object_status"`
+		SrcEv      any           `json:"source_event" yaml:"source_event"`
 	}
 
 	ProgressInstanceMonitor struct {
-		pubsub.Msg
-		Path      path.T
-		Node      string
-		State     instance.MonitorState
-		SessionId uuid.UUID
-		IsPartial bool
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T                `json:"path" yaml:"path"`
+		Node       string                `json:"node" yaml:"node"`
+		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
+		SessionId  uuid.UUID             `json:"sessionId" yaml:"sessionId"`
+		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 
 	RemoteFileConfig struct {
-		pubsub.Msg
-		Path     path.T
-		Node     string
-		Filename string
-		Updated  time.Time
-		Ctx      context.Context
-		Err      chan error
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T          `json:"path" yaml:"path"`
+		Node       string          `json:"node" yaml:"node"`
+		File       string          `json:"file" yaml:"file"`
+		UpdatedAt  time.Time       `json:"updated_at" yaml:"updated_at"`
+		Ctx        context.Context `json:"-" yaml:"-"`
+		Err        chan error      `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitor struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T                 `json:"path" yaml:"path"`
+		Node       string                 `json:"node" yaml:"node"`
+		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 	}
 
 	SetInstanceMonitorRefused struct {
-		pubsub.Msg
-		Path  path.T
-		Node  string
-		Value instance.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T                 `json:"path" yaml:"path"`
+		Node       string                 `json:"node" yaml:"node"`
+		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 	}
 
 	SetNodeMonitor struct {
-		pubsub.Msg
-		Node  string
-		Value node.MonitorUpdate
+		pubsub.Msg `yaml:",inline"`
+		Node       string             `json:"node" yaml:"node"`
+		Value      node.MonitorUpdate `json:"node_monitor_update" yaml:"node_monitor_update"`
 	}
 
 	WatchDog struct {
-		pubsub.Msg
-		Name string
+		pubsub.Msg `yaml:",inline"`
+		Bus        string `json:"bus" yaml:"bus"`
 	}
 
 	ZoneRecordDeleted struct {
-		pubsub.Msg
-		Path    path.T
-		Node    string
-		Name    string
-		Type    string
-		TTL     int
-		Content string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+		Type       string `json:"type" yaml:"type"`
+		TTL        int    `json:"ttl" yaml:"ttl"`
+		Content    string `json:"content" yaml:"content"`
 	}
 	ZoneRecordUpdated struct {
-		pubsub.Msg
-		Path    path.T
-		Node    string
-		Name    string
-		Type    string
-		TTL     int
-		Content string
+		pubsub.Msg `yaml:",inline"`
+		Path       path.T `json:"path" yaml:"path"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+		Type       string `json:"type" yaml:"type"`
+		TTL        int    `json:"ttl" yaml:"ttl"`
+		Content    string `json:"content" yaml:"content"`
 	}
 )
 
@@ -631,10 +630,6 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 		}
 	}()
 	<-dropping
-}
-
-func (e *ApiClient) String() string {
-	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
 func (e *ArbitratorError) Kind() string {
@@ -657,12 +652,20 @@ func (e *ConfigFileUpdated) Kind() string {
 	return "ConfigFileUpdated"
 }
 
-func (e *ClientSub) Kind() string {
-	return "ClientSub"
+func (e *ClientSubscribed) Kind() string {
+	return "ClientSubscribed"
 }
 
-func (e *ClientUnSub) Kind() string {
-	return "ClientUnSub"
+func (e *ClientSubscribed) String() string {
+	return fmt.Sprintf("%s %s", e.Name, e.Time)
+}
+
+func (e *ClientUnsubscribed) Kind() string {
+	return "ClientUnsubscribed"
+}
+
+func (e *ClientUnsubscribed) String() string {
+	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
 func (e *DaemonCtl) Kind() string {
@@ -690,7 +693,7 @@ func (e *HbMessageTypeUpdated) Kind() string {
 }
 
 func (e *HbNodePing) String() string {
-	if e.Status {
+	if e.IsAlive {
 		return e.Node + " ok"
 	} else {
 		return e.Node + " stale"
@@ -902,7 +905,7 @@ func (e *SetNodeMonitor) Kind() string {
 }
 
 func (e *WatchDog) String() string {
-	return e.Name
+	return e.Bus
 }
 
 func (e *WatchDog) Kind() string {

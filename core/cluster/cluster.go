@@ -42,15 +42,15 @@ type (
 	}
 
 	DaemonHb struct {
-		Streams []HeartbeatStream `json:"streams" yaml:"streams"`
-		Modes   []HbMode          `json:"modes" yaml:"modes"`
+		Streams      []HeartbeatStream `json:"streams" yaml:"streams"`
+		LastMessages []HbLastMessage   `json:"last_messages" yaml:"last_messages"`
 	}
 
-	HbMode struct {
-		Node string `json:"node" yaml:"node"`
+	HbLastMessage struct {
+		From string `json:"from" yaml:"from"`
 
-		// Mode is the type of hb message except when Type is patch where it is the patch queue length
-		Mode string `json:"mode" yaml:"mode"`
+		// PatchLength is the type of hb message except when Type is patch where it is the patch queue length
+		PatchLength int `json:"patch_length" yaml:"patch_length"`
 
 		// Type is the hb message type (unset/ping/full/patch)
 		Type string `json:"type" yaml:"type"`
