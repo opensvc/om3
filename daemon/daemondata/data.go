@@ -120,7 +120,7 @@ var (
 
 	ErrDrained = errors.New("drained command")
 
-	labelPeerNode = pubsub.Label{"peer", "true"}
+	labelFromPeer = pubsub.Label{"from", "peer"}
 )
 
 func PropagationInterval() time.Duration {

@@ -135,47 +135,47 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	switch c := msg.(type) {
 	case *msgbus.ObjectStatusDeleted:
 		object.StatusData.Unset(c.Path)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusUpdated:
 		object.StatusData.Set(c.Path, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigUpdated:
 		instance.ConfigData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceMonitorDeleted:
 		instance.MonitorData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceMonitorUpdated:
 		instance.MonitorData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusDeleted:
 		instance.StatusData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusUpdated:
 		instance.StatusData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeConfigUpdated:
 		node.ConfigData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeMonitorDeleted:
 		node.MonitorData.Unset(c.Node)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeMonitorUpdated:
 		node.MonitorData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeOsPathsUpdated:
 		node.OsPathsData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeStatsUpdated:
 		node.StatsData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.NodeStatusUpdated:
 		node.StatusData.Set(c.Node, &c.Value)
 		node.GenData.Set(c.Node, &c.Value.Gen)
-		d.bus.Pub(c, labelPeerNode)
+		d.bus.Pub(c, labelFromPeer)
 	default:
 		d.log.Error().Msgf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)
 	}
