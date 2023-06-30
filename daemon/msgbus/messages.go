@@ -31,9 +31,9 @@ var (
 
 		"ConfigFileUpdated": func() any { return &ConfigFileUpdated{} },
 
-		"ClientSub": func() any { return &ClientSub{} },
+		"ClientSubscribed": func() any { return &ClientSubscribed{} },
 
-		"ClientUnSub": func() any { return &ClientUnSub{} },
+		"ClientUnsubscribed": func() any { return &ClientUnsubscribed{} },
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
@@ -198,13 +198,13 @@ type (
 		Filename   string
 	}
 
-	ClientSub struct {
+	ClientSubscribed struct {
 		pubsub.Msg `yaml:",inline"`
 		Time       time.Time
 		Name       string
 	}
 
-	ClientUnSub struct {
+	ClientUnsubscribed struct {
 		pubsub.Msg `yaml:",inline"`
 		Time       time.Time
 		Name       string
@@ -649,19 +649,19 @@ func (e *ConfigFileUpdated) Kind() string {
 	return "ConfigFileUpdated"
 }
 
-func (e *ClientSub) Kind() string {
-	return "ClientSub"
+func (e *ClientSubscribed) Kind() string {
+	return "ClientSubscribed"
 }
 
-func (e *ClientSub) String() string {
+func (e *ClientSubscribed) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
-func (e *ClientUnSub) Kind() string {
-	return "ClientUnSub"
+func (e *ClientUnsubscribed) Kind() string {
+	return "ClientUnsubscribed"
 }
 
-func (e *ClientUnSub) String() string {
+func (e *ClientUnsubscribed) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
