@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/output"
@@ -273,8 +274,13 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 	}
 	ce := e.AsConcreteEvent(msg)
 	if t.templ != nil {
+		var i any
+		if err := json.Unmarshal(e.Data, &i); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "unmarshal event data in a any-typed variable: %s\n", err)
+			return
+		}
 		msg.GetLabels()
-		if err := t.templ.Execute(os.Stdout, msg); err != nil {
+		if err := t.templ.Execute(os.Stdout, i); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "template execute error %s\n", err)
 		}
 		return
