@@ -79,7 +79,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node5"}}}, Node: "node5", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node5")}, Node: "node5", Status: true},
 			},
 		},
 
@@ -95,9 +95,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: false},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", Status: true},
 			},
 		},
 
@@ -132,7 +132,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node7"}}}, Node: "node7", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node7")}, Node: "node7", Status: true},
 			},
 		},
 
@@ -148,8 +148,8 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node8"}}}, Node: "node8", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node8"}}}, Node: "node8", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8", Status: false},
 			},
 		},
 
@@ -170,14 +170,14 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 500 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
-				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", Status: false},
 			},
 		},
 	}
