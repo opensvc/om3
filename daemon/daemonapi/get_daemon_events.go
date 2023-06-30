@@ -147,7 +147,7 @@ func parseFilter(s string) (filter Filter, err error) {
 			// TODO filter data ?
 			continue
 		}
-		splitted := strings.Split(elem, "=")
+		splitted := strings.SplitN(elem, "=", 2)
 		if len(splitted) == 1 {
 			// ignore error => use kind nil when value has invalid kind
 			filter.Kind, _ = msgbus.KindToT(splitted[0])
