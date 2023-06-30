@@ -48,6 +48,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/version"
 )
 
 type (
@@ -164,6 +165,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
 		nodeStatus: node.Status{
+			Agent:    version.Version(),
 			FrozenAt: time.Now(), // ensure initial frozen
 		},
 		frozen:    true, // ensure initial frozen
