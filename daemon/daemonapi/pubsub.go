@@ -8,9 +8,9 @@ import (
 )
 
 func announceSub(bus *pubsub.Bus, name string) {
-	bus.Pub(&msgbus.ClientSub{ApiClient: msgbus.ApiClient{Time: time.Now(), Name: name}})
+	bus.Pub(&msgbus.ClientSub{Time: time.Now(), Name: name})
 }
 
 func announceUnSub(bus *pubsub.Bus, name string) {
-	bus.Pub(&msgbus.ClientUnSub{ApiClient: msgbus.ApiClient{Time: time.Now(), Name: name}})
+	bus.Pub(&msgbus.ClientUnSub{Time: time.Now(), Name: name})
 }

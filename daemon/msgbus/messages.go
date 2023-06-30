@@ -21,8 +21,6 @@ import (
 
 var (
 	kindToT = map[string]func() any{
-		"ApiClient": func() any { return &ApiClient{} },
-
 		"ArbitratorError": func() any { return &ArbitratorError{} },
 
 		"ClusterConfigUpdated": func() any { return &ClusterConfigUpdated{} },
@@ -175,10 +173,6 @@ func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 }
 
 type (
-	ApiClient struct {
-		Time time.Time
-		Name string
-	}
 
 	// ArbitratorError message is published when an arbitrator error is detected
 	ArbitratorError struct {
@@ -206,12 +200,14 @@ type (
 
 	ClientSub struct {
 		pubsub.Msg `yaml:",inline"`
-		ApiClient  `yaml:",inline"`
+		Time       time.Time
+		Name       string
 	}
 
 	ClientUnSub struct {
 		pubsub.Msg `yaml:",inline"`
-		ApiClient  `yaml:",inline"`
+		Time       time.Time
+		Name       string
 	}
 
 	ClusterConfigUpdated struct {
@@ -633,10 +629,6 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 	<-dropping
 }
 
-func (e *ApiClient) String() string {
-	return fmt.Sprintf("%s %s", e.Name, e.Time)
-}
-
 func (e *ArbitratorError) Kind() string {
 	return "ArbitratorError"
 }
@@ -661,8 +653,16 @@ func (e *ClientSub) Kind() string {
 	return "ClientSub"
 }
 
+func (e *ClientSub) String() string {
+	return fmt.Sprintf("%s %s", e.Name, e.Time)
+}
+
 func (e *ClientUnSub) Kind() string {
 	return "ClientUnSub"
+}
+
+func (e *ClientUnSub) String() string {
+	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
 func (e *DaemonCtl) Kind() string {
