@@ -409,7 +409,7 @@ func (d *data) appendEv(i event.Kinder) {
 	d.pendingEvs = append(d.pendingEvs, event.Event{
 		Kind: i.Kind(),
 		ID:   eventId,
-		Time: time.Now(),
+		At:   time.Now(),
 		Data: marshalEventData(i),
 	})
 }

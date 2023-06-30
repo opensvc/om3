@@ -122,13 +122,13 @@ func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 		return
 	}
 	s := c.Path.String()
-	mtime := file.ModTime(c.Filename)
+	mtime := file.ModTime(c.File)
 	if mtime.IsZero() {
-		d.log.Info().Msgf("configFile no present(mtime) %s", c.Filename)
+		d.log.Info().Msgf("configFile no present(mtime) %s", c.File)
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
-		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
+		if err := icfg.Start(d.ctx, c.Path, c.File, d.cfgCmdC); err != nil {
 			return
 		}
 	}
@@ -137,7 +137,7 @@ func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
 func (d *discover) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
-	filename := c.Filename
+	filename := c.File
 	p := c.Path
 	s := p.String()
 
@@ -226,7 +226,7 @@ func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		s := c.Path.String()
 		confFile := rawconfig.Paths.Etc + "/" + prefix + s + ".conf"
 		d.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
-		err := os.Rename(c.Filename, confFile)
+		err := os.Rename(c.File, confFile)
 		if err != nil {
 			d.log.Error().Err(err).Msgf("can't install fetched config to %s", confFile)
 		}
@@ -332,12 +332,12 @@ func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<
 	default:
 		err := make(chan error)
 		cmdC <- &msgbus.RemoteFileConfig{
-			Path:     p,
-			Node:     node,
-			Filename: tmpFilename,
-			Updated:  updated,
-			Ctx:      ctx,
-			Err:      err,
+			Path:      p,
+			Node:      node,
+			File:      tmpFilename,
+			UpdatedAt: updated,
+			Ctx:       ctx,
+			Err:       err,
 		}
 		<-err
 	}

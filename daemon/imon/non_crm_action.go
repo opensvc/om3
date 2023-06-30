@@ -47,7 +47,7 @@ func (o *imon) freeze() error {
 		o.log.Error().Err(err).Msg("freeze")
 		return err
 	}
-	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileUpdated{Path: o.path, Updated: frozen},
+	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileUpdated{Path: o.path, At: frozen},
 		o.labelPath,
 		o.labelLocalhost,
 	)
@@ -72,7 +72,7 @@ func (o *imon) unfreeze() error {
 		instanceStatus.FrozenAt = time.Time{}
 		o.instStatus[o.localhost] = instanceStatus
 	}
-	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileRemoved{Path: o.path, Updated: time.Now()},
+	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileRemoved{Path: o.path, At: time.Now()},
 		o.labelLocalhost,
 		o.labelPath,
 	)

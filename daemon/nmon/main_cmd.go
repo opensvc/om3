@@ -241,8 +241,8 @@ func (o *nmon) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 
 func (o *nmon) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
-	o.nodeStatus.FrozenAt = m.Updated
-	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated}, o.labelLocalhost)
+	o.nodeStatus.FrozenAt = m.At
+	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.At}, o.labelLocalhost)
 	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
 	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 }

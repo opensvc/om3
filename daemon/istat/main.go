@@ -127,8 +127,8 @@ func (o *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRe
 		return
 	}
 	iStatus.FrozenAt = time.Time{}
-	if iStatus.UpdatedAt.Before(fileRemoved.Updated) {
-		iStatus.UpdatedAt = fileRemoved.Updated
+	if iStatus.UpdatedAt.Before(fileRemoved.At) {
+		iStatus.UpdatedAt = fileRemoved.At
 	}
 	o.iStatusM[s] = iStatus
 	instance.StatusData.Set(fileRemoved.Path, o.localhost, iStatus.DeepCopy())
@@ -146,14 +146,14 @@ func (o *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated
 		// no instance status to update
 		return
 	}
-	if frozen.Updated.Before(iStatus.FrozenAt) {
+	if frozen.At.Before(iStatus.FrozenAt) {
 		// skip event from past
 		return
 	}
 
-	iStatus.FrozenAt = frozen.Updated
-	if frozen.Updated.After(iStatus.UpdatedAt) {
-		iStatus.UpdatedAt = frozen.Updated
+	iStatus.FrozenAt = frozen.At
+	if frozen.At.After(iStatus.UpdatedAt) {
+		iStatus.UpdatedAt = frozen.At
 	}
 	o.iStatusM[s] = iStatus
 	instance.StatusData.Set(frozen.Path, o.localhost, iStatus.DeepCopy())

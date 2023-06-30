@@ -172,16 +172,16 @@ func (r *ReadCloser) parse() {
 				case "retry":
 					// drop reconnection field
 				case "time":
-					if err := ev.Time.UnmarshalText(fieldValue); err != nil {
-						ev.Time = time.Now()
+					if err := ev.At.UnmarshalText(fieldValue); err != nil {
+						ev.At = time.Now()
 					}
 				}
 			}
 		} else if dispatchReady {
-			if ev.Time.IsZero() {
-				ev.Time = time.Now()
+			if ev.At.IsZero() {
+				ev.At = time.Now()
 			}
-			ev.Time = time.Now()
+			ev.At = time.Now()
 			select {
 			case <-r.ctx.Done():
 				return

@@ -22,8 +22,8 @@ type (
 		// ID is a unique event id
 		ID uint64 `json:"id" yaml:"id"`
 
-		// Time is the time the event was published
-		Time time.Time `json:"t" yaml:"t"`
+		// At is the time the event was published
+		At time.Time `json:"at" yaml:"at"`
 
 		// Data is the free-format dataset of the event
 		Data json.RawMessage `json:"data" yaml:"data"`
@@ -32,7 +32,7 @@ type (
 	ConcreteEvent struct {
 		Kind string    `json:"kind" yaml:"kind"`
 		ID   uint64    `json:"id" yaml:"id"`
-		Time time.Time `json:"t" yaml:"t"`
+		At   time.Time `json:"at" yaml:"at"`
 		Data any       `json:"data" yaml:"data"`
 	}
 
@@ -86,7 +86,7 @@ func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
 					}
 
 					if o, ok := i.(Timer); ok {
-						ev.Time = o.Time()
+						ev.At = o.Time()
 					}
 
 					if o, ok := i.(Byter); ok {
@@ -107,7 +107,7 @@ func (e Event) AsConcreteEvent(data any) *ConcreteEvent {
 	return &ConcreteEvent{
 		Kind: e.Kind,
 		ID:   e.ID,
-		Time: e.Time,
+		At:   e.At,
 		Data: data,
 	}
 }

@@ -186,7 +186,7 @@ type (
 	ConfigFileRemoved struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T `json:"path" yaml:"path"`
-		Filename   string `json:"file" yaml:"file"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
@@ -194,7 +194,7 @@ type (
 	ConfigFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T `json:"path" yaml:"path"`
-		Filename   string `json:"file" yaml:"file"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	ClientSubscribed struct {
@@ -242,8 +242,8 @@ type (
 	}
 
 	Exit struct {
-		Path     path.T `json:"path" yaml:"path"`
-		Filename string `json:"file" yaml:"file"`
+		Path path.T `json:"path" yaml:"path"`
+		File string `json:"file" yaml:"file"`
 	}
 
 	ForgetPeer struct {
@@ -308,16 +308,16 @@ type (
 	InstanceFrozenFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T    `json:"path" yaml:"path"`
-		Filename   string    `json:"file" yaml:"file"`
-		Updated    time.Time `json:"updated_at" yaml:"updated_at"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
 	InstanceFrozenFileRemoved struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T    `json:"path" yaml:"path"`
-		Filename   string    `json:"file" yaml:"file"`
-		Updated    time.Time `json:"updated_at" yaml:"updated_at"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	InstanceMonitorAction struct {
@@ -364,7 +364,7 @@ type (
 	InstanceConfigManagerDone struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T `json:"path" yaml:"path"`
-		Filename   string `json:"file" yaml:"file"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	JoinError struct {
@@ -445,15 +445,15 @@ type (
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileRemoved struct {
 		pubsub.Msg `yaml:",inline"`
-		Filename   string `json:"file" yaml:"file"`
+		File       string `json:"file" yaml:"file"`
 	}
 
 	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Filename   string    `json:"file" yaml:"file"`
-		Updated    time.Time `json:"updated_at" yaml:"updated_at"`
+		File       string    `json:"file" yaml:"file"`
+		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	NodeMonitorDeleted struct {
@@ -564,8 +564,8 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T          `json:"path" yaml:"path"`
 		Node       string          `json:"node" yaml:"node"`
-		Filename   string          `json:"file" yaml:"file"`
-		Updated    time.Time       `json:"updated" yaml:"updated"`
+		File       string          `json:"file" yaml:"file"`
+		UpdatedAt  time.Time       `json:"updated_at" yaml:"updated_at"`
 		Ctx        context.Context `json:"-" yaml:"-"`
 		Err        chan error      `json:"-" yaml:"-"`
 	}

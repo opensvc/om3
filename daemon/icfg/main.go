@@ -420,8 +420,8 @@ func (o *T) delete() {
 
 func (o *T) done(parent context.Context, doneChan chan<- any) {
 	op := &msgbus.InstanceConfigManagerDone{
-		Path:     o.path,
-		Filename: o.filename,
+		Path: o.path,
+		File: o.filename,
 	}
 	select {
 	case <-parent.Done():
