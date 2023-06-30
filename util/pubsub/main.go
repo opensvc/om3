@@ -157,7 +157,7 @@ type (
 	}
 
 	Msg struct {
-		Labels Labels
+		Labels Labels `json:"labels" yaml:"labels"`
 	}
 
 	Messager interface {
