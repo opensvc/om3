@@ -254,7 +254,7 @@ type (
 	HbNodePing struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
-		Status     bool   `json:"is_alive" yaml:"is_alive"`
+		IsAlive    bool   `json:"is_alive" yaml:"is_alive"`
 	}
 
 	HbPing struct {
@@ -693,7 +693,7 @@ func (e *HbMessageTypeUpdated) Kind() string {
 }
 
 func (e *HbNodePing) String() string {
-	if e.Status {
+	if e.IsAlive {
 		return e.Node + " ok"
 	} else {
 		return e.Node + " stale"

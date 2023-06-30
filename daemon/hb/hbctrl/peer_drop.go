@@ -92,7 +92,7 @@ func peerDropWorker(ctx context.Context) {
 
 	onHbNodePing := func(c *msgbus.HbNodePing) {
 		peer := c.Node
-		if c.Status {
+		if c.IsAlive {
 			if drop, ok := dropM[peer]; ok {
 				drop.cancel()
 			}

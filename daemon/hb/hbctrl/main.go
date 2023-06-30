@@ -273,7 +273,7 @@ func (c *ctrl) run(ctx context.Context) {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Info().Msgf("beating node %s", o.Nodename)
-								bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, Status: true}, pubsub.Label{"node", o.Nodename})
+								bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
 						case evStale:
@@ -284,7 +284,7 @@ func (c *ctrl) run(ctx context.Context) {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Info().Msgf("stale node %s", o.Nodename)
-							bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, Status: false}, pubsub.Label{"node", o.Nodename})
+							bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
 					}

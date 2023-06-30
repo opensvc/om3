@@ -25,20 +25,20 @@ func TestSubscriptionFilter(t *testing.T) {
 
 	// publish message with watched type but not watched label
 	bus.Pub(&HbNodePing{
-		Node:   "node1",
-		Status: true,
+		Node:    "node1",
+		IsAlive: true,
 	}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but without label
 	bus.Pub(&HbNodePing{
-		Node:   "node1",
-		Status: true,
+		Node:    "node1",
+		IsAlive: true,
 	})
 
 	// publish message with the watched type and label
 	bus.Pub(&HbNodePing{
-		Node:   "node10",
-		Status: true,
+		Node:    "node10",
+		IsAlive: true,
 	}, pubsub.Label{"node", "node10"})
 
 	receiveMsgTimeout := 50 * time.Millisecond
