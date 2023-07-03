@@ -46,7 +46,7 @@ func (t T) Capabilities() []string {
 
 func (t T) Usage() (pool.StatusUsage, error) {
 	head := t.Head()
-	entries, err := df.MountUsage(head)
+	entries, err := df.ContainingMountUsage(head)
 	if err != nil {
 		return pool.StatusUsage{}, err
 	}

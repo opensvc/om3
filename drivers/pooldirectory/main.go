@@ -44,7 +44,7 @@ func (t T) Capabilities() []string {
 }
 
 func (t T) Usage() (pool.StatusUsage, error) {
-	entries, err := df.MountUsage(t.path())
+	entries, err := df.ContainingMountUsage(t.path())
 	if err != nil {
 		return pool.StatusUsage{}, err
 	}

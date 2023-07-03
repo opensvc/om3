@@ -1,7 +1,11 @@
 package df
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 type (
@@ -32,6 +36,27 @@ func Inode() ([]Entry, error) {
 		return nil, err
 	}
 	return parseInode(b)
+}
+
+// ContainingMountUsage executes and parses a df command for the mount point containing the path
+func ContainingMountUsage(p string) ([]Entry, error) {
+	pp := p
+	for {
+		if _, err := os.Stat(pp); errors.Is(err, os.ErrNotExist) {
+			if pp = filepath.Dir(pp); pp == "" {
+				return nil, fmt.Errorf("failed to find a mount containing %s", p)
+			} else {
+				continue
+			}
+		} else if err != nil {
+			return nil, err
+		}
+		if b, err := doDFUsage(pp); err == nil {
+			return parseUsage(b)
+		} else {
+			return nil, err
+		}
+	}
 }
 
 // MountUsage executes and parses a df command for a mount point
