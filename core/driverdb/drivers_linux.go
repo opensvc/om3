@@ -6,6 +6,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/networkbridge"
 	_ "github.com/opensvc/om3/drivers/networklo"
 	_ "github.com/opensvc/om3/drivers/networkroutedbridge"
+	_ "github.com/opensvc/om3/drivers/pooldrbd"
 	_ "github.com/opensvc/om3/drivers/poolloop"
 	_ "github.com/opensvc/om3/drivers/poolvg"
 	_ "github.com/opensvc/om3/drivers/rescontainerdocker"

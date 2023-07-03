@@ -1,0 +1,270 @@
+//go:build linux
+
+package pooldrbd
+
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/df"
+	"github.com/opensvc/om3/util/lvm2"
+	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/zfs"
+)
+
+type (
+	T struct {
+		pool.T
+	}
+)
+
+var (
+	drvID = driver.NewID(driver.GroupPool, "drbd")
+)
+
+func init() {
+	driver.Register(drvID, NewPooler)
+}
+
+func NewPooler() pool.Pooler {
+	t := New()
+	var i interface{} = t
+	return i.(pool.Pooler)
+}
+
+func New() *T {
+	t := T{}
+	return &t
+}
+
+func (t T) Capabilities() []string {
+	return []string{"rox", "rwx", "roo", "rwo", "snap", "blk", "shared"}
+}
+
+func (t T) vg() string {
+	return t.GetString("vg")
+}
+
+func (t T) zpool() string {
+	return t.GetString("zpool")
+}
+
+func (t T) maxPeers() string {
+	return t.GetString("max_peers")
+}
+
+func (t T) network() string {
+	return t.GetString("network")
+}
+
+func (t T) path() string {
+	if p := t.GetString("path"); p != "" {
+		return p
+	}
+	return filepath.Join(rawconfig.Paths.Var, "pool", t.Name())
+}
+
+func (t T) Head() string {
+	if vg := t.vg(); vg != "" {
+		return vg
+	} else if zpool := t.zpool(); zpool != "" {
+		return zpool
+	} else {
+		return t.path()
+	}
+}
+
+func (t T) Usage() (pool.StatusUsage, error) {
+	if t.vg() != "" {
+		return t.usageVG()
+	} else if t.zpool() != "" {
+		return t.usageZpool()
+	} else {
+		return t.usageFile()
+	}
+}
+
+func (t T) usageVG() (pool.StatusUsage, error) {
+	vg := lvm2.NewVG(t.vg())
+	info, err := vg.Show("vg_name,vg_free,vg_size")
+	if err != nil {
+		return pool.StatusUsage{}, err
+	}
+	size, err := info.Size()
+	if err != nil {
+		return pool.StatusUsage{}, err
+	}
+	free, err := info.Free()
+	if err != nil {
+		return pool.StatusUsage{}, err
+	}
+	var used int64
+	if size > 0 {
+		size = size / 1024
+		free = free / 1024
+		used = size - free
+	} else {
+		size = 0
+		free = 0
+	}
+	usage := pool.StatusUsage{
+		Size: float64(size),
+		Free: float64(free),
+		Used: float64(used),
+	}
+	return usage, nil
+}
+
+func (t T) usageZpool() (pool.StatusUsage, error) {
+	poolName := t.zpool()
+	zpool := zfs.Pool{Name: poolName}
+	e, err := zpool.Usage()
+	if err != nil {
+		return pool.StatusUsage{}, err
+	}
+	var size, free, used int64
+	if e.Size > 0 {
+		size = e.Size / 1024
+		free = e.Free / 1024
+		used = e.Alloc / 1024
+	}
+	usage := pool.StatusUsage{
+		Size: float64(size),
+		Free: float64(free),
+		Used: float64(used),
+	}
+	return usage, nil
+}
+
+func (t T) usageFile() (pool.StatusUsage, error) {
+	entries, err := df.ContainingMountUsage(t.path())
+	if err != nil {
+		return pool.StatusUsage{}, err
+	}
+	if len(entries) == 0 {
+		return pool.StatusUsage{}, fmt.Errorf("not mounted")
+	}
+	usage := pool.StatusUsage{
+		Size: float64(entries[0].Total),
+		Free: float64(entries[0].Free),
+		Used: float64(entries[0].Used),
+	}
+	return usage, nil
+}
+
+func (t *T) blkTranslateFile(name string, size float64, shared bool) (string, []string, error) {
+	p := fmt.Sprintf("%s/%s.img", t.path(), name)
+	data := []string{
+		"disk#1.type=loop",
+		"disk#1.name=" + name,
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.file=" + p,
+		"disk#1.standby=true",
+		"disk#2.type=vg",
+		"disk#2.name=" + name,
+		"disk#2.pvs=" + p,
+		"disk#2.standby=true",
+		"disk#3.type=lv",
+		"disk#3.name=lv",
+		"disk#3.vg=" + name,
+		"disk#3.size=100%FREE",
+		"disk#3.standby=true",
+		"disk#4.type=drbd",
+		"disk#4.res=" + name,
+		"disk#4.disk=/dev/" + name + "/lv",
+		"disk#4.standby=true",
+		"disk#4.shared=true",
+	}
+	if opts := t.MkblkOptions(); opts != "" {
+		data = append(data, "disk#3.create_options="+opts)
+	}
+	data = append(data, t.commonDrbdKeywords("disk#4")...)
+	return "disk#4", data, nil
+}
+
+func (t *T) blkTranslateVG(name string, size float64, shared bool) (string, []string, error) {
+	data := []string{
+		"disk#1.type=lv",
+		"disk#1.name=" + name,
+		"disk#1.vg=" + t.vg(),
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.standby=true",
+		"disk#2.type=drbd",
+		"disk#2.res=" + name,
+		"disk#2.disk=/dev/" + t.vg() + "/" + name,
+		"disk#2.standby=true",
+		"disk#2.shared=true",
+	}
+	if opts := t.MkblkOptions(); opts != "" {
+		data = append(data, "disk#1.create_options="+opts)
+	}
+	data = append(data, t.commonDrbdKeywords("disk#2")...)
+	return "disk#2", data, nil
+}
+
+func (t *T) blkTranslateZpool(name string, size float64, shared bool) (string, []string, error) {
+	data := []string{
+		"disk#1.type=zvol",
+		"disk#1.dev=" + t.zpool() + "/" + name,
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.standby=true",
+		"disk#2.type=drbd",
+		"disk#2.res=" + name,
+		"disk#2.disk=/dev/" + t.zpool() + "/" + name,
+		"disk#2.standby=true",
+		"disk#2.shared=true",
+	}
+	if opts := t.MkblkOptions(); opts != "" {
+		data = append(data, "disk#1.create_options="+opts)
+	}
+	data = append(data, t.commonDrbdKeywords("disk#2")...)
+	return "disk#2", data, nil
+}
+
+func (t *T) commonDrbdKeywords(rid string) (l []string) {
+	maxPeers := t.maxPeers()
+	if maxPeers != "" {
+		l = append(l, rid+".max_peers="+maxPeers)
+	}
+	network := t.network()
+	if network != "" {
+		l = append(l, rid+".network="+network)
+	}
+	return
+}
+
+func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+	if t.vg() != "" {
+		_, kws, err := t.blkTranslateVG(name, size, shared)
+		return kws, err
+	} else if t.zpool() != "" {
+		_, kws, err := t.blkTranslateZpool(name, size, shared)
+		return kws, err
+	} else {
+		_, kws, err := t.blkTranslateFile(name, size, shared)
+		return kws, err
+	}
+}
+
+func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+	var (
+		rid string
+		kws []string
+		err error
+	)
+	if t.vg() != "" {
+		rid, kws, err = t.blkTranslateVG(name, size, shared)
+	} else if t.zpool() != "" {
+		rid, kws, err = t.blkTranslateZpool(name, size, shared)
+	} else {
+		rid, kws, err = t.blkTranslateFile(name, size, shared)
+	}
+	if err != nil {
+		return nil, err
+	}
+	kws = append(kws, t.AddFS(name, shared, 1, 0, rid)...)
+	return kws, nil
+}
