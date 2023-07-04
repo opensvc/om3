@@ -1042,6 +1042,7 @@ func newCmdNodeEval() *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagImpersonate(flags, &options.Impersonate)
 	addFlagKeyword(flags, &options.Keyword)
+	cmd.MarkFlagRequired("kw")
 	return cmd
 }
 
@@ -2000,6 +2001,7 @@ func newCmdObjectEval(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagKeyword(flags, &options.Keyword)
 	addFlagImpersonate(flags, &options.Impersonate)
+	cmd.MarkFlagRequired("kw")
 	return cmd
 }
 
