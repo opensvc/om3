@@ -11,9 +11,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+)
+
+type (
+	Strategier interface {
+		AuthenticateRequest(r *http.Request) (auth.Strategy, auth.Info, error)
+	}
 )
 
 var (
@@ -49,6 +54,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
+	strategies := parent.Value("authStrategies").(Strategier)
 	newExtensions := func(strategy string) *auth.Extensions {
 		return &auth.Extensions{"strategy": []string{strategy}}
 	}
@@ -74,7 +80,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			req := c.Request()
 			// serverAddr is used by AuthenticateRequest
 			reqCtx := daemonctx.WithListenAddr(req.Context(), serverAddr)
-			_, user, err := daemonauth.Strategies.AuthenticateRequest(req.WithContext(reqCtx))
+			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
 				log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
