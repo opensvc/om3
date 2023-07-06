@@ -176,7 +176,6 @@ func (t *T) blkTranslateFile(name string, size float64, shared bool) (string, []
 		"disk#4.res=" + name,
 		"disk#4.disk=/dev/" + name + "/lv",
 		"disk#4.standby=true",
-		"disk#4.shared=true",
 	}
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#3.create_options="+opts)
@@ -196,7 +195,6 @@ func (t *T) blkTranslateVG(name string, size float64, shared bool) (string, []st
 		"disk#2.res=" + name,
 		"disk#2.disk=/dev/" + t.vg() + "/" + name,
 		"disk#2.standby=true",
-		"disk#2.shared=true",
 	}
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#1.create_options="+opts)
@@ -215,7 +213,6 @@ func (t *T) blkTranslateZpool(name string, size float64, shared bool) (string, [
 		"disk#2.res=" + name,
 		"disk#2.disk=/dev/" + t.zpool() + "/" + name,
 		"disk#2.standby=true",
-		"disk#2.shared=true",
 	}
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#1.create_options="+opts)
