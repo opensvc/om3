@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -41,7 +41,7 @@ func JSONProblemf(ctx echo.Context, code int, title, detail string, argv ...any)
 	})
 }
 
-func JSONForbiddenMissingRole(ctx echo.Context, missing ...daemonauth.Role) error {
+func JSONForbiddenMissingRole(ctx echo.Context, missing ...rbac.Role) error {
 	return JSONProblemf(ctx, http.StatusForbidden, "Missing grants", "not allowed, need one of %v role", missing)
 }
 
