@@ -48,9 +48,9 @@ func initCache() error {
 	return nil
 }
 
-// InitAuth initialize Strategies
+// InitStategies initialize Strategies
 // to enable all strategies, i has to implement AllStrategieser
-func InitAuth(i any) error {
+func InitStategies(i any) error {
 	if err := initCache(); err != nil {
 		return err
 	}
