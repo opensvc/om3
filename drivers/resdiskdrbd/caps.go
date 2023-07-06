@@ -24,5 +24,5 @@ func capabilitiesScanner() ([]string, error) {
 	} else if strings.HasPrefix(v, "9.") {
 		caps = append(caps, drvID.Cap()+".mesh")
 	}
-	return []string{drvID.Cap()}, nil
+	return caps, nil
 }

@@ -89,11 +89,11 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, erro
 	poolName := t.poolName()
 	data := []string{
 		"disk#0.type=zvol",
-		"fs#0.dev=" + poolName + "/" + name,
+		"disk#0.dev=" + poolName + "/" + name,
 		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
 	}
 	if mkblkOpt := t.GetString("create_options"); mkblkOpt != "" {
-		data = append(data, "fs#0.mkblk_opt="+mkblkOpt)
+		data = append(data, "disk#0.create_options="+mkblkOpt)
 	}
 	return data, nil
 }

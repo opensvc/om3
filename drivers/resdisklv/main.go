@@ -130,7 +130,17 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already provisioned", lv.FQN())
 		return nil
 	}
-	return lvi.Create(t.Size, t.CreateOptions)
+	if lvi.Create(t.Size, t.CreateOptions); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		if lvi, ok := lv.(LVDriverUnprovisioner); ok {
+			return lvi.Remove([]string{"-f"})
+		} else {
+			return nil
+		}
+	})
+	return nil
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
@@ -152,8 +162,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("lv %s %s driver does not implement unprovisioning", lv.FQN(), lv.DriverName())
 	}
-	args := []string{"-f"}
-	return lvi.Remove(args)
+	return lvi.Remove([]string{"-f"})
 }
 
 func (t T) Provisioned() (provisioned.T, error) {

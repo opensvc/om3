@@ -403,15 +403,16 @@ func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 			return nil, err
 		}
 		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background())
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, err
-		} else if resp.StatusCode() != http.StatusOK {
-			return nil, fmt.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
+		case resp.StatusCode() == 500:
+			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON500)
+		case resp.StatusCode() == 200:
+			allocations[nodename] = *resp.JSON200
+		default:
+			return nil, fmt.Errorf("get node %s drbd allocations: unexpected status code %d", nodename, resp.StatusCode())
 		}
-		if resp.JSON200 == nil {
-			return nil, fmt.Errorf("drbd allocation response: no json data")
-		}
-		allocations[nodename] = *resp.JSON200
 	}
 	return allocations, nil
 }
@@ -675,6 +676,9 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {
+	actionrollback.Register(ctx, func() error {
+		return t.UnprovisionLeaded(ctx)
+	})
 	if err := t.fetchConfig(); err != nil {
 		return err
 	}
@@ -691,6 +695,9 @@ func (t *T) ProvisionLeaded(ctx context.Context) error {
 }
 
 func (t *T) ProvisionLeader(ctx context.Context) error {
+	actionrollback.Register(ctx, func() error {
+		return t.UnprovisionLeader(ctx)
+	})
 	if err := t.writeConfig(ctx); err != nil {
 		return err
 	}

@@ -210,6 +210,9 @@ func (t TSize) convert(s string) (*int64, error) {
 	if s == "" {
 		return nil, err
 	}
+	if strings.Contains(s, "%") {
+		return nil, err
+	}
 	if i, err = sizeconv.FromSize(s); err != nil {
 		return nil, err
 	}

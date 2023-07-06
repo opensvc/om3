@@ -339,6 +339,29 @@ func (t T) Label() string {
 	return t.Name
 }
 
+func (t T) ProvisionLeaded(ctx context.Context) error {
+	volume, err := t.Volume()
+	if err != nil {
+		return err
+	}
+	if !volume.Path().Exists() {
+		return fmt.Errorf("%s does not exists", volume.Path())
+	}
+	return volume.Provision(ctx)
+}
+
+func (t T) UnprovisionLeaded(ctx context.Context) error {
+	volume, err := t.Volume()
+	if err != nil {
+		return err
+	}
+	if !volume.Path().Exists() {
+		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path())
+		return nil
+	}
+	return nil
+}
+
 func (t T) ProvisionLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {

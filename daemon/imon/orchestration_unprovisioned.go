@@ -8,6 +8,7 @@ import (
 func (o *imon) orchestrateUnprovisioned() {
 	switch o.state.State {
 	case instance.MonitorStateIdle,
+		instance.MonitorStateProvisionFailed,
 		instance.MonitorStateStartFailed:
 		o.UnprovisionedFromIdle()
 	case instance.MonitorStateWaitNonLeader:

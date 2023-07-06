@@ -421,7 +421,7 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	switch action.Name {
 	case "stop":
 		switch instStatus.Avail {
-		case status.Down, status.StandbyUp, status.StandbyUpWithDown, status.NotApplicable:
+		case status.Down, status.StandbyUp, status.StandbyUpWithDown, status.NotApplicable, status.StandbyDown:
 		default:
 			return fmt.Errorf("the stop action returned no error but end avail status is %s", instStatus.Avail)
 		}

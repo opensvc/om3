@@ -42,6 +42,7 @@ func Version() (string, error) {
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(1),
 	)
 	b, err := cmd.Output()
 	if err != nil {

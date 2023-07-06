@@ -89,13 +89,13 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
 	if err != nil {
 		detail := "get drbd dump digest"
 		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
 	}
 
 	if minor, err := digest.FreeMinor(pendingDRBDAllocations.minors()); err != nil {
 		detail := "get free minor from drbd dump digest"
 		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
 	} else {
 		resp.Minor = minor
 	}
@@ -103,7 +103,7 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
 	if port, err := digest.FreePort(pendingDRBDAllocations.ports()); err != nil {
 		detail := "get free port from drbd dump digest"
 		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
 	} else {
 		resp.Port = port
 	}

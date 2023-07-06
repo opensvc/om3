@@ -276,6 +276,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			// update GlobalExpectUpdated now
 			// This will allow remote nodes to pickup most recent value
 			o.state.GlobalExpectUpdatedAt = time.Now()
+
+			// reset state to idle to allow the new orchestration to begin
+			o.state.State = instance.MonitorStateIdle
 		}
 	}
 
