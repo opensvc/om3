@@ -682,6 +682,9 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {
+	actionrollback.Register(ctx, func() error {
+		return t.UnprovisionLeaded(ctx)
+	})
 	if err := t.fetchConfig(); err != nil {
 		return err
 	}
@@ -698,6 +701,9 @@ func (t *T) ProvisionLeaded(ctx context.Context) error {
 }
 
 func (t *T) ProvisionLeader(ctx context.Context) error {
+	actionrollback.Register(ctx, func() error {
+		return t.UnprovisionLeader(ctx)
+	})
 	if err := t.writeConfig(ctx); err != nil {
 		return err
 	}
