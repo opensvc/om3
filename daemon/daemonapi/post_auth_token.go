@@ -10,7 +10,6 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
@@ -31,7 +30,7 @@ func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		// duration define the maximum token duration
 		durationMax = time.Hour * 24
 
-		xClaims = make(daemonauth.Claims)
+		xClaims = make(map[string]interface{})
 	)
 	log := LogHandler(ctx, "PostAuthToken")
 	if params.Duration != nil {
@@ -57,16 +56,14 @@ func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		}
 	}
 
-	tk, expireAt, err := daemonauth.CreateUserToken(user, duration, xClaims)
+	tk, expireAt, err := a.JWTcreator.CreateUserToken(user, duration, xClaims)
 	if err != nil {
-		switch err {
-		case daemonauth.NotImplementedError:
-			log.Warn().Err(err).Send()
-			return JSONProblemf(ctx, http.StatusNotImplemented, err.Error(), "")
-		default:
-			log.Error().Err(err).Msg("can't create token")
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
-		}
+		log.Error().Err(err).Msg("can't create token")
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
+	} else if tk == "" {
+		err := fmt.Errorf("create token error: jwt auth is not enabled")
+		log.Warn().Err(err).Send()
+		return JSONProblemf(ctx, http.StatusNotImplemented, err.Error(), "")
 	}
 	return ctx.JSON(http.StatusOK, api.AuthToken{
 		ExpiredAt: expireAt,

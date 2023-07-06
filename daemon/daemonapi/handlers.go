@@ -3,8 +3,10 @@ package daemonapi
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -14,11 +16,18 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-type DaemonApi struct {
-	Daemon     subdaemon.RootManager
-	Daemondata *daemondata.T
-	EventBus   *pubsub.Bus
-}
+type (
+	JWTCreater interface {
+		CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error)
+	}
+
+	DaemonApi struct {
+		Daemon     subdaemon.RootManager
+		Daemondata *daemondata.T
+		EventBus   *pubsub.Bus
+		JWTcreator JWTCreater
+	}
+)
 
 var (
 	labelApi  = pubsub.Label{"origin", "api"}
