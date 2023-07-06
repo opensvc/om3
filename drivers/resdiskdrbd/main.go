@@ -406,12 +406,6 @@ func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 		switch {
 		case err != nil:
 			return nil, err
-		case resp.StatusCode() == 401:
-			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON401)
-		case resp.StatusCode() == 403:
-			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON403)
-		case resp.StatusCode() == 404:
-			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON404)
 		case resp.StatusCode() == 500:
 			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON500)
 		case resp.StatusCode() == 200:
