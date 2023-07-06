@@ -11,6 +11,7 @@ package ccfg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -58,6 +59,9 @@ type (
 		draincommand.ErrC
 		resp chan cluster.Config
 	}
+
+	// NodeDB implements AuthenticateNode
+	NodeDB struct{}
 )
 
 var (
@@ -147,4 +151,23 @@ func Get() cluster.Config {
 		return cluster.Config{}
 	}
 	return <-c.resp
+}
+
+// AuthenticateNode returns nil if nodename is a cluster node and password is cluster secret
+func (_ *NodeDB) AuthenticateNode(nodename, password string) error {
+	if nodename == "" {
+		return fmt.Errorf("can't authenticate: nodename is empty")
+	}
+	clu := Get()
+	if !clu.Nodes.Contains(nodename) {
+		return fmt.Errorf("can't authenticate: %s is not a cluster node", nodename)
+	}
+	clusterSecret := clu.Secret()
+	if clusterSecret == "" {
+		return fmt.Errorf("can't authenticate: empty cluster secret")
+	}
+	if clusterSecret != password {
+		return fmt.Errorf("can't authenticate: %s has wrong password")
+	}
+	return nil
 }
