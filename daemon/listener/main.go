@@ -154,6 +154,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	} else {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)
+		ctx = context.WithValue(ctx, "JWTCreator", daemonauth.JWTCreator{})
 	}
 	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))
 	daemonenv.RawPort = node.Config().GetInt(key.New("listener", "port"))

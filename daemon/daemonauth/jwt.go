@@ -3,7 +3,6 @@ package daemonauth
 import (
 	"context"
 	"crypto/rsa"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,7 +19,8 @@ import (
 )
 
 type (
-	Claims map[string]interface{}
+	// JWTCreator implements CreateUserToken method
+	JWTCreator struct{}
 
 	// apiClaims defines api claims
 	apiClaims struct {
@@ -38,8 +38,6 @@ type (
 
 var (
 	jwtAuth *jwtauth.JWTAuth
-
-	NotImplementedError = errors.New("token based authentication is not configured")
 )
 
 func initJWT(i interface{}) (string, auth.Strategy, error) {
@@ -124,13 +122,14 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 	return verifyKey, jwtauth.New("RS256", signKey, verifyKey), nil
 }
 
-func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims) (tk string, expiredAt time.Time, err error) {
+// CreateUserToken implements CreateUserToken interface for JWTCreator.
+// empty token is returned if jwtAuth is not initialized
+func (_ *JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
 	if jwtAuth == nil {
-		err = NotImplementedError
 		return
 	}
 	expiredAt = time.Now().Add(duration)
-	claims := Claims{
+	claims := map[string]interface{} {
 		"sub":   userInfo.GetUserName(),
 		"exp":   expiredAt.Unix(),
 		"grant": userInfo.GetExtensions()["grant"],
