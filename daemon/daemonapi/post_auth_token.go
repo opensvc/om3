@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
 )
 
@@ -74,17 +75,17 @@ func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 }
 
 // userXClaims returns new user and Claims from p and current user
-func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, xClaims daemonauth.Claims, err error) {
-	xClaims = make(daemonauth.Claims)
-	grants := daemonauth.Grants{}
+func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, xClaims map[string]interface{}, err error) {
+	xClaims = make(map[string]interface{})
+	extensions := auth.Extensions{"grant": []string{}}
 	roleDone := make(map[api.Role]bool)
 	for _, r := range *p.Role {
 		if _, ok := roleDone[r]; ok {
 			continue
 		}
-		role := daemonauth.Role(r)
+		role := rbac.Role(r)
 		switch role {
-		case daemonauth.RoleJoin:
+		case rbac.RoleJoin:
 			var b []byte
 			filename := daemonenv.CertChainFile()
 			b, err = os.ReadFile(filename)
@@ -92,22 +93,22 @@ func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, 
 				return
 			}
 			xClaims["ca"] = string(b)
-		case daemonauth.RoleAdmin:
-		case daemonauth.RoleBlacklistAdmin:
-		case daemonauth.RoleGuest:
-		case daemonauth.RoleHeartbeat:
-		case daemonauth.RoleLeave:
-		case daemonauth.RoleRoot:
-		case daemonauth.RoleSquatter:
-		case daemonauth.RoleUndef:
+		case rbac.RoleAdmin:
+		case rbac.RoleBlacklistAdmin:
+		case rbac.RoleGuest:
+		case rbac.RoleHeartbeat:
+		case rbac.RoleLeave:
+		case rbac.RoleRoot:
+		case rbac.RoleSquatter:
+		case rbac.RoleUndef:
 		default:
 			err = fmt.Errorf("%w: unexpected role %s", echo.ErrBadRequest, role)
 			return
 		}
-		grants = append(grants, daemonauth.Grant(r))
+		extensions.Add("grant", string(r))
 		roleDone[r] = true
 	}
 	userName := srcInfo.GetUserName()
-	info = auth.NewUserInfo(userName, userName, nil, grants.Extensions())
+	info = auth.NewUserInfo(userName, userName, nil, extensions)
 	return
 }
