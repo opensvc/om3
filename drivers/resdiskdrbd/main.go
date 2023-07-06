@@ -403,15 +403,22 @@ func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 			return nil, err
 		}
 		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background())
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, err
-		} else if resp.StatusCode() != http.StatusOK {
-			return nil, fmt.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
+		case resp.StatusCode() == 401:
+			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON401)
+		case resp.StatusCode() == 403:
+			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON403)
+		case resp.StatusCode() == 404:
+			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON404)
+		case resp.StatusCode() == 500:
+			return nil, fmt.Errorf("get node %s drbd allocations: %s", nodename, resp.JSON500)
+		case resp.StatusCode() == 200:
+			allocations[nodename] = *resp.JSON200
+		default:
+			return nil, fmt.Errorf("get node %s drbd allocations: unexpected status code %d", nodename, resp.StatusCode())
 		}
-		if resp.JSON200 == nil {
-			return nil, fmt.Errorf("drbd allocation response: no json data")
-		}
-		allocations[nodename] = *resp.JSON200
 	}
 	return allocations, nil
 }
