@@ -93,7 +93,7 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 	)
 	if signKeyFile == "" && verifyKeyFile == "" {
 		return nil, nil, fmt.Errorf("jwt undefined files: sign key and verify key")
-	} else if signKeyFile != "" {
+	} else if signKeyFile == "" {
 		return nil, nil, fmt.Errorf("jwt undefined file: sign key")
 		// If we want to support less secure HMAC token from a static sign key:
 		//	jwtAuth = jwtauth.New("HMAC", []byte(jwtSignKey), nil)
