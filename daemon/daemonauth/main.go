@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	Strategies union.Union
 	cache      libcache.Cache
 )
 
@@ -48,11 +47,11 @@ func initCache() error {
 	return nil
 }
 
-// InitStategies initialize Strategies
+// InitStategies initialize and returns strategies
 // to enable all strategies, i has to implement AllStrategieser
-func InitStategies(i any) error {
+func InitStategies(i any) (union.Union, error) {
 	if err := initCache(); err != nil {
-		return err
+		return nil, err
 	}
 	l := make([]auth.Strategy, 0)
 	for _, fn := range []func(i interface{}) (string, auth.Strategy, error){
@@ -70,6 +69,5 @@ func InitStategies(i any) error {
 			l = append(l, s)
 		}
 	}
-	Strategies = union.New(l...)
-	return nil
+	return union.New(l...), nil
 }

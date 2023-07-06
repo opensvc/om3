@@ -150,8 +150,10 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := startCertFS(); err != nil {
 		t.log.Err(err).Msgf("start certificates volatile fs")
 	}
-	if err := daemonauth.InitStategies(&authOption{}); err != nil {
+	if strategies, err := daemonauth.InitStategies(&authOption{}); err != nil {
 		return err
+	} else {
+		ctx = context.WithValue(ctx, "authStrategies", strategies)
 	}
 	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))
 	daemonenv.RawPort = node.Config().GetInt(key.New("listener", "port"))
