@@ -6,14 +6,14 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 // PostDaemonJoin publishes msgbus.JoinRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
 func (a *DaemonApi) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinParams) error {
-	neededRoles := []daemonauth.Role{daemonauth.RoleRoot, daemonauth.RoleJoin}
+	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleJoin}
 	if !hasAnyRole(ctx, neededRoles...) {
 		return JSONForbiddenMissingRole(ctx, neededRoles...)
 	}

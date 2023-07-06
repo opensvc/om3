@@ -6,14 +6,14 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 // PostDaemonLeave publishes msgbus.LeaveRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
 func (a *DaemonApi) PostDaemonLeave(ctx echo.Context, params api.PostDaemonLeaveParams) error {
-	neededRoles := []daemonauth.Role{daemonauth.RoleRoot, daemonauth.RoleLeave}
+	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleLeave}
 	if !hasAnyRole(ctx, neededRoles...) {
 		return JSONForbiddenMissingRole(ctx, neededRoles...)
 	}

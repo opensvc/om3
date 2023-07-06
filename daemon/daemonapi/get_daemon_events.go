@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -29,7 +29,7 @@ type (
 // GetDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
 func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
-	neededRoles := []daemonauth.Role{daemonauth.RoleRoot, daemonauth.RoleJoin}
+	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleJoin}
 	if !hasAnyRole(ctx, neededRoles...) {
 		return JSONForbiddenMissingRole(ctx, neededRoles...)
 	}
