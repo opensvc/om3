@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonauth"
+	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
@@ -50,7 +51,29 @@ type (
 		new        func(t *T) subdaemon.Manager
 		subActions subdaemon.Manager
 	}
+
+	// authOption implements interfaces for daemonauth.Init
+	authOption struct {
+		*ccfg.NodeDB
+		*object.UsrDB
+	}
 )
+
+func (a *authOption) ListenAddr(ctx context.Context) string {
+	return daemonctx.ListenAddr(ctx)
+}
+
+func (a *authOption) X509CACertFile() string {
+	return daemonenv.CAsCertFile()
+}
+
+func (a *authOption) SignKeyFile() string {
+	return daemonenv.CAKeyFile()
+}
+
+func (a *authOption) VerifyKeyFile() string {
+	return daemonenv.CAsCertFile()
+}
 
 func getMandatorySub() map[string]sub {
 	clusterConfig := ccfg.Get()
@@ -127,7 +150,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := startCertFS(); err != nil {
 		t.log.Err(err).Msgf("start certificates volatile fs")
 	}
-	if err := daemonauth.Init(); err != nil {
+	if err := daemonauth.InitStategies(&authOption{}); err != nil {
 		return err
 	}
 	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))
