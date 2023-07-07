@@ -41,7 +41,10 @@ func (t *CmdDaemonAuth) Run() error {
 	}
 	params := api.PostAuthTokenParams{
 		Duration: &duration,
-		Role:     &roles,
+	}
+	if len(roles) > 0 {
+		// Don't set params.Role when --role isn't used
+		params.Role = &roles
 	}
 	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
 	if err != nil {

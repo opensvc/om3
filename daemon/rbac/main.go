@@ -95,3 +95,15 @@ func (t *Grant) Split() (string, string) {
 func (t *Grant) String() string {
 	return string(*t)
 }
+
+// Roles returns list of defined roles
+func Roles() []string {
+	l := make([]string, 0)
+	for s := range roleMap {
+		if s == "" {
+			continue
+		}
+		l = append(l, s)
+	}
+	return l
+}
