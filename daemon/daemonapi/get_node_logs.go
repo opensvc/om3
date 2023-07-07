@@ -11,24 +11,19 @@ import (
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 )
 
 // GetNodeLogs feeds publications in rss format.
 func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) error {
+	if err := assertRoleRoot(ctx); err != nil {
+		return err
+	}
 	var (
 		handlerName = "GetNodeLogs"
 	)
 	log := LogHandler(ctx, handlerName)
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
-
-	user := User(ctx)
-	grants := Grants(user)
-	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
-		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
-		return ctx.NoContent(http.StatusForbidden)
-	}
 
 	filters, err := parseLogFilters(params.Filter)
 	if err != nil {
@@ -51,7 +46,11 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
-	defer stream.Stop()
+	defer func() {
+		if err :=stream.Stop(); err != nil {
+			log.Debug().Err(err).Msgf("stream.Stop")
+		}
+	}()
 	w.WriteHeader(http.StatusOK)
 
 	// don't wait first event to flush response

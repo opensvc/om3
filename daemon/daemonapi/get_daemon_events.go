@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -29,6 +29,11 @@ type (
 // GetDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
 func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
+	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleJoin}
+	if !hasAnyRole(ctx, neededRoles...) {
+		return JSONForbiddenMissingRole(ctx, neededRoles...)
+	}
+
 	var (
 		handlerName = "GetDaemonEvents"
 		limit       uint64
@@ -52,13 +57,6 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 			evCtx, cancel = context.WithTimeout(evCtx, timeout)
 			defer cancel()
 		}
-	}
-
-	user := User(ctx)
-	grants := Grants(user)
-	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
-		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
-		return ctx.NoContent(http.StatusForbidden)
 	}
 
 	filters, err := parseFilters(params)
@@ -96,7 +94,11 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	}
 
 	sub.Start()
-	defer sub.Stop()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			log.Debug().Err(err).Msgf("sub.Stop")
+		}
+	}()
 
 	w.WriteHeader(http.StatusOK)
 
@@ -160,56 +162,3 @@ func parseFilter(s string) (filter Filter, err error) {
 	}
 	return
 }
-
-//func allowPatchEvent(r *http.Request, ev event.Event, selected path.M) bool {
-//	log := daemonlogctx.Logger(r.Context()).With().Str("func", "daemonhandler.allowPatchEvent").Logger()
-//	log.Warn().Msg("TODO")
-//	return true
-//}
-//
-//func allowEventEvent(r *http.Request, ev event.Event, selected path.M) bool {
-//	log := daemonlogctx.Logger(r.Context()).With().Str("func", "daemonhandler.allowEventEvent").Logger()
-//	var d struct {
-//		Path path.T `json:"path"`
-//	}
-//	if err := json.Unmarshal([]byte(ev.Data), &d); err != nil {
-//		log.Error().Err(err).Msg("extract object path from event event")
-//		return false
-//	}
-//	if _, ok := selected[d.Path.String()]; ok {
-//		return true
-//	}
-//	return false
-//}
-//
-//func allowEvent(r *http.Request, ev event.Event, payload eventsPayload) bool {
-//	log := daemonlogctx.Logger(r.Context()).With().Str("func", "daemonhandler.allowEvent").Logger()
-//	grants := daemonauth.UserGrants(r)
-//	if grants.HasRoot() {
-//		return true
-//	}
-//
-//	// selected paths
-//	paths, err := objectselector.NewSelection(
-//		payload.Selector,
-//		objectselector.SelectionWithLocal(true),
-//	).Expand()
-//	if err != nil {
-//		log.Error().Err(err).Msg("expand selector")
-//		return false
-//	}
-//	grants.FilterPaths(r, daemonauth.RoleGuest, paths)
-//	selected := paths.StrMap()
-//
-//	switch {
-//	case ev.Kind == "patch":
-//		return allowPatchEvent(r, ev, selected)
-//	case ev.Kind == "event":
-//		return allowPatchEvent(r, ev, selected)
-//	case ev.Kind == "full":
-//		// TODO: does that still exist in b3 ?
-//		return true
-//	default:
-//		return false
-//	}
-//}

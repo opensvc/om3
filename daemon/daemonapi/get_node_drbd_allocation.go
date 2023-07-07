@@ -23,19 +23,19 @@ var (
 	pendingDRBDAllocations *pendingDRBDAllocationsMap
 )
 
-func newpendingDRBDAllocationsMap() *pendingDRBDAllocationsMap {
+func newPendingDRBDAllocationsMap() *pendingDRBDAllocationsMap {
 	t := pendingDRBDAllocationsMap{
 		m: make(map[uuid.UUID]api.DRBDAllocation),
 	}
 	return &t
 }
 
-func (t pendingDRBDAllocationsMap) get(id uuid.UUID) (api.DRBDAllocation, bool) {
+func (t *pendingDRBDAllocationsMap) get(id uuid.UUID) (api.DRBDAllocation, bool) {
 	a, ok := t.m[id]
 	return a, ok
 }
 
-func (t pendingDRBDAllocationsMap) minors() []int {
+func (t *pendingDRBDAllocationsMap) minors() []int {
 	l := make([]int, len(t.m))
 	i := 0
 	for _, a := range t.m {
@@ -45,7 +45,7 @@ func (t pendingDRBDAllocationsMap) minors() []int {
 	return l
 }
 
-func (t pendingDRBDAllocationsMap) ports() []int {
+func (t *pendingDRBDAllocationsMap) ports() []int {
 	l := make([]int, len(t.m))
 	i := 0
 	for _, a := range t.m {
@@ -69,7 +69,7 @@ func (t *pendingDRBDAllocationsMap) add(a api.DRBDAllocation) {
 }
 
 func init() {
-	pendingDRBDAllocations = newpendingDRBDAllocationsMap()
+	pendingDRBDAllocations = newPendingDRBDAllocationsMap()
 }
 
 func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {

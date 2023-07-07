@@ -20,7 +20,7 @@ func (a *DaemonApi) PostDaemonLogsControl(ctx echo.Context) error {
 	if payload.Level != "none" {
 		level = string(payload.Level)
 	}
-	newLevel, err := zerolog.ParseLevel(string(level))
+	newLevel, err := zerolog.ParseLevel(level)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing 'level': %s", err)
 	}

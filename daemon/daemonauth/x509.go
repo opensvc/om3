@@ -1,49 +1,54 @@
 package daemonauth
 
 import (
-	crypto_x509 "crypto/x509"
+	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"os"
 
-	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/x509"
-
-	"github.com/opensvc/om3/daemon/daemonenv"
+	x509Strategy "github.com/shaj13/go-guardian/v2/auth/strategies/x509"
 )
 
-func initX509() auth.Strategy {
-	log.Logger.Info().Msg("init x509 auth strategy")
-	opts := CreateVerifyOptions()
-	strategy := x509.New(opts)
-	return strategy
+type (
+	// X509CACertFiler is the interface for X509CACertFile method for x509 auth.
+	X509CACertFiler interface {
+		X509CACertFile() string
+	}
+)
+
+func initX509(i interface{}) (string, auth.Strategy, error) {
+	name := "x509"
+	caFiler, ok := i.(X509CACertFiler)
+	if !ok {
+		return name, nil, fmt.Errorf("missing ca certificates")
+	}
+	caCertsFile := caFiler.X509CACertFile()
+	cert, err := x509CertificateFromFile(caCertsFile)
+	if err != nil {
+		return name, nil, fmt.Errorf("initX509 retrieve cert from file %s: %w", caCertsFile, err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(cert)
+	opts := x509.VerifyOptions{
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		Roots:     roots,
+	}
+	return name, x509Strategy.New(opts), nil
 }
 
-func ParseCertificate() *crypto_x509.Certificate {
-	ca, err := os.ReadFile(daemonenv.CAsCertFile())
+func x509CertificateFromFile(s string) (*x509.Certificate, error) {
+	ca, err := os.ReadFile(s)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("read ca certificate")
-		return nil
+		return nil, fmt.Errorf("read file: %w", err)
 	}
 	p, _ := pem.Decode(ca)
 	if p == nil {
-		log.Logger.Error().Msg("failed to decode PEM ca certificate")
-		return nil
+		return nil, fmt.Errorf("pem decode: %w", err)
 	}
-	cert, err := crypto_x509.ParseCertificate(p.Bytes)
+	cert, err := x509.ParseCertificate(p.Bytes)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("parse ca certificate")
-		return nil
+		return nil, fmt.Errorf("x509 parse certificate: %w", err)
 	}
-	return cert
-}
-
-func CreateVerifyOptions() crypto_x509.VerifyOptions {
-	opts := crypto_x509.VerifyOptions{}
-	opts.KeyUsages = []crypto_x509.ExtKeyUsage{crypto_x509.ExtKeyUsageClientAuth}
-	opts.Roots = crypto_x509.NewCertPool()
-	if cert := ParseCertificate(); cert != nil {
-		opts.Roots.AddCert(cert)
-	}
-	return opts
+	return cert, nil
 }

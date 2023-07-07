@@ -11,9 +11,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+)
+
+type (
+	Strategier interface {
+		AuthenticateRequest(r *http.Request) (auth.Strategy, auth.Info, error)
+	}
 )
 
 var (
@@ -49,30 +54,33 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
+	strategies := parent.Value("authStrategies").(Strategier)
+	newExtensions := func(strategy string) *auth.Extensions {
+		return &auth.Extensions{"strategy": []string{strategy}}
+	}
+
+	isPublic := func(c echo.Context) bool {
+		if c.Request().Method != http.MethodGet {
+			return false
+		}
+		usrPath := c.Path()
+		// TODO confirm no auth GET /metrics
+		return strings.HasPrefix(usrPath, "/public") || strings.HasPrefix(usrPath, "/metrics")
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// TODO verify for alternate method for /public
-			if c.Request().Method == http.MethodGet {
-				if strings.HasPrefix(c.Path(), "/public") {
-					extensions := daemonauth.NewGrants().Extensions()
-					extensions.Add("strategy", "public")
-					user := auth.NewUserInfo("nobody", "", nil, extensions)
-					c.Set("user", user)
-					return next(c)
-				} else if c.Path() == "/metrics" {
-					// TODO confirm no auth GET /metrics
-					extensions := daemonauth.NewGrants().Extensions()
-					extensions.Add("strategy", "metrics")
-					user := auth.NewUserInfo("nobody", "", nil, extensions)
-					c.Set("user", user)
-					return next(c)
-				}
+			// TODO verify for alternate method for /public, /metrics
+			if isPublic(c) {
+				user := auth.NewUserInfo("nobody", "", nil, *newExtensions("public"))
+				c.Set("user", user)
+				return next(c)
 			}
 			log := LogHandler(c, "auth")
 			req := c.Request()
 			// serverAddr is used by AuthenticateRequest
 			reqCtx := daemonctx.WithListenAddr(req.Context(), serverAddr)
-			_, user, err := daemonauth.Strategies.AuthenticateRequest(req.WithContext(reqCtx))
+			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
 				log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
@@ -132,16 +140,9 @@ func GetLogger(c echo.Context) *zerolog.Logger {
 	return c.Get("logger").(*zerolog.Logger)
 }
 
+// User returns the logged-in user information stored in the request context.
 func User(ctx echo.Context) auth.Info {
 	return ctx.Get("user").(auth.Info)
-}
-
-func GrantsFromContext(ctx echo.Context) daemonauth.Grants {
-	return daemonauth.NewGrants(User(ctx).GetExtensions()["grant"]...)
-}
-
-func Grants(user auth.Info) daemonauth.Grants {
-	return daemonauth.NewGrants(user.GetExtensions()["grant"]...)
 }
 
 func LogHandler(c echo.Context, name string) *zerolog.Logger {

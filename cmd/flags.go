@@ -2,11 +2,14 @@ package cmd
 
 import (
 	_ "embed"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/core/commands"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 var (
@@ -258,7 +261,13 @@ func addFlagModuleset(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagRoles(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringArrayVar(p, "role", []string{}, "Api role. Example 'root'")
+	flagSet.StringSliceVar(p,
+		"role",
+		nil,
+		fmt.Sprintf(
+			"The api role to include to token.\nAvailable roles: %s\n"+
+				"Example --role 'root,guest'\nDefault value: user role",
+			strings.Join(rbac.Roles(), ",")))
 }
 
 func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {

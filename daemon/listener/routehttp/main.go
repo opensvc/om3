@@ -46,6 +46,7 @@ func New(ctx context.Context, enableUi bool) *T {
 		Daemon:     daemonctx.Daemon(ctx),
 		Daemondata: daemondata.FromContext(ctx),
 		EventBus:   pubsub.BusFromContext(ctx),
+		JWTcreator: ctx.Value("JWTCreator").(daemonapi.JWTCreater),
 	})
 	g := e.Group("/public/ui")
 	if enableUi {
