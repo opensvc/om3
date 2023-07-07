@@ -167,7 +167,7 @@ func (_ *NodeDB) AuthenticateNode(nodename, password string) error {
 		return fmt.Errorf("can't authenticate: empty cluster secret")
 	}
 	if clusterSecret != password {
-		return fmt.Errorf("can't authenticate: %s has wrong password")
+		return fmt.Errorf("can't authenticate: %s has wrong password", nodename)
 	}
 	return nil
 }
