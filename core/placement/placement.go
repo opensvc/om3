@@ -22,6 +22,8 @@ const (
 	None
 	// NodesOrder is the policy where node priorities are assigned to nodes descending from left to right in the nodes list.
 	NodesOrder
+	// LastStart is the policy where node priorities are assigned to nodes based on instance last start time. The more recent, the higher the priority.
+	LastStart
 	// LoadAvg is the policy where node priorities are assigned to nodes based on load average. The higher the load, the lower the priority.
 	LoadAvg
 	// Shift is the policy where node priorities are assigned to nodes based on the scaler slice number.
@@ -44,6 +46,7 @@ var (
 		Invalid:    "",
 		None:       "none",
 		NodesOrder: "nodes order",
+		LastStart:  "last start",
 		LoadAvg:    "load avg",
 		Shift:      "shift",
 		Spread:     "spread",
@@ -54,6 +57,7 @@ var (
 		"":            Invalid,
 		"none":        None,
 		"nodes order": NodesOrder,
+		"last start":  LastStart,
 		"load avg":    LoadAvg,
 		"shift":       Shift,
 		"spread":      Spread,

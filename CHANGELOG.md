@@ -4,6 +4,8 @@
 
 ### core
 
+* New placement policy `last start`. Use the mtime of `<objvar>/last_start` as the candidate sort key. More recent has higher priority.
+
 * **breaking change:** Drop the `default_mon_format` node keyword. It should be a user-level setting, not a node-level config.
 
 * **breaking change:** Drop the `reboot` node command and associated keywords: `reboot.schedule`, `reboot.pre`, `reboot.once`, `reboot.blocking_pre`

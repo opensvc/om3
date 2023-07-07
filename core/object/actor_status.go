@@ -2,6 +2,8 @@ package object
 
 import (
 	"context"
+	"errors"
+	"os"
 	"sync"
 	"time"
 
@@ -56,7 +58,21 @@ func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
 	return t.lockedStatusEval(ctx)
 }
 
+func (t *actor) setLastStartedAt(data *instance.Status) error {
+	stat, err := os.Stat(t.lastStartFile())
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		data.LastStartedAt = time.Time{}
+	case err != nil:
+		return err
+	default:
+		data.LastStartedAt = stat.ModTime()
+	}
+	return nil
+}
+
 func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
+	t.setLastStartedAt(&data)
 	data.App = t.App()
 	data.Env = t.Env()
 	data.UpdatedAt = time.Now()

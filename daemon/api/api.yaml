@@ -1078,6 +1078,7 @@ components:
       required:
         - avail
         - frozen_at
+        - last_started_at
         - overall
         - provisioned
         - updated_at
@@ -1103,6 +1104,9 @@ components:
         flex_target:
           type: integer
         frozen_at:
+          type: string
+          format: date-time
+        last_started_at:
           type: string
           format: date-time
         optional:
@@ -1365,6 +1369,7 @@ components:
       default: none
       description: object placement policy
       enum:
+        - last start
         - load avg
         - nodes order
         - none

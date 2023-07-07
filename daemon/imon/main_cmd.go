@@ -495,6 +495,8 @@ func (o *imon) sortCandidates(candidates []string) []string {
 		return o.sortWithScorePolicy(candidates)
 	case placement.Shift:
 		return o.sortWithShiftPolicy(candidates)
+	case placement.LastStart:
+		return o.sortWithLastStartPolicy(candidates)
 	default:
 		return []string{}
 	}
@@ -529,8 +531,33 @@ func (o *imon) sortWithScorePolicy(candidates []string) []string {
 }
 
 func (o *imon) sortWithLoadAvgPolicy(candidates []string) []string {
-	o.log.Warn().Msg("TODO: sortWithLoadAvgPolicy")
-	return candidates
+	l := append([]string{}, candidates...)
+	sort.SliceStable(l, func(i, j int) bool {
+		var si, sj float64
+		if stats, ok := o.nodeStats[l[i]]; ok {
+			si = stats.Load15M
+		}
+		if stats, ok := o.nodeStats[l[j]]; ok {
+			sj = stats.Load15M
+		}
+		return si > sj
+	})
+	return l
+}
+
+func (o *imon) sortWithLastStartPolicy(candidates []string) []string {
+	l := append([]string{}, candidates...)
+	sort.SliceStable(l, func(i, j int) bool {
+		var si, sj time.Time
+		if instStatus, ok := o.instStatus[l[i]]; ok {
+			si = instStatus.LastStartedAt
+		}
+		if instStatus, ok := o.instStatus[l[j]]; ok {
+			sj = instStatus.LastStartedAt
+		}
+		return si.After(sj)
+	})
+	return l
 }
 
 func (o *imon) sortWithShiftPolicy(candidates []string) []string {

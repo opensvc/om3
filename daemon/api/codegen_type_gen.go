@@ -23,6 +23,7 @@ const (
 
 // Defines values for Placement.
 const (
+	PlacementLastStart  Placement = "last start"
 	PlacementLoadAvg    Placement = "load avg"
 	PlacementNodesOrder Placement = "nodes order"
 	PlacementNone       Placement = "none"
@@ -242,21 +243,22 @@ type EventList = openapi_types.File
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus struct {
-	App         *string       `json:"app,omitempty"`
-	Avail       Status        `json:"avail"`
-	Children    *PathRelation `json:"children,omitempty"`
-	Constraints *bool         `json:"constraints,omitempty"`
-	Csum        *string       `json:"csum,omitempty"`
-	Drp         *bool         `json:"drp,omitempty"`
-	Env         *string       `json:"env,omitempty"`
-	FlexMax     *int          `json:"flex_max,omitempty"`
-	FlexMin     *int          `json:"flex_min,omitempty"`
-	FlexTarget  *int          `json:"flex_target,omitempty"`
-	FrozenAt    time.Time     `json:"frozen_at"`
-	Optional    *Status       `json:"optional,omitempty"`
-	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
-	Overall     Status        `json:"overall"`
-	Parents     *PathRelation `json:"parents,omitempty"`
+	App           *string       `json:"app,omitempty"`
+	Avail         Status        `json:"avail"`
+	Children      *PathRelation `json:"children,omitempty"`
+	Constraints   *bool         `json:"constraints,omitempty"`
+	Csum          *string       `json:"csum,omitempty"`
+	Drp           *bool         `json:"drp,omitempty"`
+	Env           *string       `json:"env,omitempty"`
+	FlexMax       *int          `json:"flex_max,omitempty"`
+	FlexMin       *int          `json:"flex_min,omitempty"`
+	FlexTarget    *int          `json:"flex_target,omitempty"`
+	FrozenAt      time.Time     `json:"frozen_at"`
+	LastStartedAt time.Time     `json:"last_started_at"`
+	Optional      *Status       `json:"optional,omitempty"`
+	Orchestrate   *Orchestrate  `json:"orchestrate,omitempty"`
+	Overall       Status        `json:"overall"`
+	Parents       *PathRelation `json:"parents,omitempty"`
 
 	// Placement object placement policy
 	Placement *Placement `json:"placement,omitempty"`

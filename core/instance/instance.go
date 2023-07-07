@@ -54,25 +54,27 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		App         string                   `json:"app,omitempty" yaml:"app,omitempty"`
-		Avail       status.T                 `json:"avail" yaml:"avail"`
-		Constraints bool                     `json:"constraints,omitempty" yaml:"constraints,omitempty"`
-		DRP         bool                     `json:"drp,omitempty" yaml:"drp,omitempty"`
-		Overall     status.T                 `json:"overall" yaml:"overall"`
-		Csum        string                   `json:"csum,omitempty" yaml:"csum,omitempty"`
-		Env         string                   `json:"env,omitempty" yaml:"env,omitempty"`
-		FrozenAt    time.Time                `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
-		Optional    status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
-		Provisioned provisioned.T            `json:"provisioned" yaml:"provisioned"`
-		Preserved   bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`
-		UpdatedAt   time.Time                `json:"updated_at" yaml:"updated_at"`
-		Subsets     map[string]SubsetStatus  `json:"subsets,omitempty" yaml:"subsets,omitempty"`
-		Resources   []resource.ExposedStatus `json:"resources,omitempty" yaml:"resources,omitempty"`
-		Running     ResourceRunningSet       `json:"running,omitempty" yaml:"running,omitempty"`
-		Parents     []path.Relation          `json:"parents,omitempty" yaml:"parents,omitempty"`
-		Children    []path.Relation          `json:"children,omitempty" yaml:"children,omitempty"`
-		Slaves      []path.Relation          `json:"slaves,omitempty" yaml:"slaves,omitempty"`
-		StatusGroup map[string]string        `json:"status_group,omitempty" yaml:"status_group,omitempty"`
+		App           string                   `json:"app,omitempty" yaml:"app,omitempty"`
+		Avail         status.T                 `json:"avail" yaml:"avail"`
+		Constraints   bool                     `json:"constraints,omitempty" yaml:"constraints,omitempty"`
+		Csum          string                   `json:"csum,omitempty" yaml:"csum,omitempty"`
+		DRP           bool                     `json:"drp,omitempty" yaml:"drp,omitempty"`
+		Env           string                   `json:"env,omitempty" yaml:"env,omitempty"`
+		FrozenAt      time.Time                `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
+		LastStartedAt time.Time                `json:"last_started_at" yaml:"last_started_at"`
+		Optional      status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
+		Overall       status.T                 `json:"overall" yaml:"overall"`
+		Parents       []path.Relation          `json:"parents,omitempty" yaml:"parents,omitempty"`
+		Preserved     bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`
+		Provisioned   provisioned.T            `json:"provisioned" yaml:"provisioned"`
+		Resources     []resource.ExposedStatus `json:"resources,omitempty" yaml:"resources,omitempty"`
+		Running       ResourceRunningSet       `json:"running,omitempty" yaml:"running,omitempty"`
+		StatusGroup   map[string]string        `json:"status_group,omitempty" yaml:"status_group,omitempty"`
+		Subsets       map[string]SubsetStatus  `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+		UpdatedAt     time.Time                `json:"updated_at" yaml:"updated_at"`
+
+		Children []path.Relation `json:"children,omitempty" yaml:"children,omitempty"`
+		Slaves   []path.Relation `json:"slaves,omitempty" yaml:"slaves,omitempty"`
 	}
 
 	// ResourceOrder is a sortable list representation of the
