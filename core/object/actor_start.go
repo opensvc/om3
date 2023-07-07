@@ -2,9 +2,12 @@ package object
 
 import (
 	"context"
+	"path/filepath"
+	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/file"
 )
 
 // Start starts the local instance of the object
@@ -32,7 +35,14 @@ func (t *actor) lockedStart(ctx context.Context) error {
 	return nil
 }
 
+func (t *actor) lastStartFile() string {
+	return filepath.Join(t.varDir(), "last_start")
+}
+
 func (t *actor) masterStart(ctx context.Context) error {
+	if err := file.Touch(t.lastStartFile(), time.Now()); err != nil {
+		return err
+	}
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.Start(ctx, r)
 	})

@@ -50,11 +50,12 @@ func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
 func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instance.Status, error) {
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
-		Avail:       status.Parse(string(payloadStatus.Avail)),
-		FrozenAt:    payloadStatus.FrozenAt,
-		Overall:     status.Parse(string(payloadStatus.Overall)),
-		StatusGroup: nil,
-		UpdatedAt:   payloadStatus.UpdatedAt,
+		Avail:         status.Parse(string(payloadStatus.Avail)),
+		FrozenAt:      payloadStatus.FrozenAt,
+		Overall:       status.Parse(string(payloadStatus.Overall)),
+		StatusGroup:   nil,
+		UpdatedAt:     payloadStatus.UpdatedAt,
+		LastStartedAt: payloadStatus.LastStartedAt,
 	}
 	if payloadStatus.App != nil {
 		instanceStatus.App = *payloadStatus.App

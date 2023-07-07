@@ -9,6 +9,10 @@ Set a service instances placement policy:
   The left-most available node is allowed to start a service instance when
   necessary.
 
+* `last start`
+
+  The preferred instances is the one started last.
+
 * `load avg`
 
   The least loaded node takes precedences.
