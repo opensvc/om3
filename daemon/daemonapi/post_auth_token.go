@@ -98,6 +98,7 @@ func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, 
 		case rbac.RoleRoot:
 		case rbac.RoleSquatter:
 		case rbac.RoleUndef:
+			continue
 		default:
 			err = fmt.Errorf("%w: unexpected role %s", echo.ErrBadRequest, role)
 			return
