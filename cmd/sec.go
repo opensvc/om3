@@ -32,6 +32,7 @@ func init() {
 		newCmdObjectLs(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectMonitor(kind),
+		newCmdObjectPurge(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
 		newCmdSecGenCert(kind),
