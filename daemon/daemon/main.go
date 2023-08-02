@@ -114,8 +114,8 @@ func (t *T) MainStart(ctx context.Context) error {
 		}
 	})
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	signal.Ignore(syscall.SIGHUP)
+	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	t.ctx = ctx
 	started := make(chan bool)
@@ -141,17 +141,14 @@ func (t *T) MainStart(ctx context.Context) error {
 		}
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
+		defer stop()
 		for {
 			select {
-			case sig := <-sigs:
-				t.log.Info().Msgf("received %s signal", sig)
-				switch sig {
-				case os.Interrupt, os.Kill:
-					t.Stop()
-					return
-				}
 			case <-ticker.C:
 				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
+			case <-notifyCtx.Done():
+				t.Stop()
+				return
 			case <-ctx.Done():
 				return
 			}
