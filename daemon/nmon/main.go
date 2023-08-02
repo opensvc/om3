@@ -91,9 +91,8 @@ type (
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
 
-		cancelReady context.CancelFunc
-		localhost   string
-		change      bool
+		localhost string
+		change    bool
 
 		sub *pubsub.Subscription
 
