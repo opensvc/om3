@@ -746,3 +746,41 @@ func (o *imon) initResourceMonitor() {
 	o.state.Resources = m
 	o.change = true
 }
+
+func (o *imon) onNodeRejoin(c *msgbus.NodeRejoin) {
+	if c.IsUpgrading {
+		return
+	}
+	if len(o.instStatus) < 2 {
+		// no need to merge frozen if the object has a single instance
+		return
+	}
+	instStatus, ok := o.instStatus[o.localhost]
+	if !ok {
+		return
+	}
+	if !instStatus.FrozenAt.IsZero() {
+		// already frozen
+		return
+	}
+	if o.state.GlobalExpect == instance.MonitorGlobalExpectThawed {
+		return
+	}
+	if o.instConfig.Orchestrate != "ha" {
+		return
+	}
+	for peer, peerStatus := range o.instStatus {
+		if peer == o.localhost {
+			continue
+		}
+		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
+			if err := o.crmFreeze(); err != nil {
+				o.log.Info().Err(err).Send()
+			} else {
+				o.log.Info().Msgf("instance freeze because peer %s instance was frozen while this daemon was down", peer)
+			}
+			return
+		}
+
+	}
+}

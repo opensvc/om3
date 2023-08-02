@@ -184,6 +184,7 @@ func (o *imon) startSubscriptions() {
 	sub.AddFilter(&msgbus.SetInstanceMonitor{}, o.labelPath)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeStatsUpdated{})
 	sub.Start()
@@ -286,6 +287,8 @@ func (o *imon) worker(initialNodes []string) {
 				o.onNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
+			case *msgbus.NodeRejoin:
+				o.onNodeRejoin(c)
 			case *msgbus.NodeStatusUpdated:
 				o.onNodeStatusUpdated(c)
 			case *msgbus.NodeStatsUpdated:

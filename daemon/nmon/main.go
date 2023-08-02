@@ -254,6 +254,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, pubsub.Label{"from", "peer"})
+	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.Start()
@@ -276,6 +277,15 @@ func (o *nmon) startRejoin() {
 		o.rejoinTicker = time.NewTicker(rejoinGracePeriod)
 		o.log.Info().Msgf("rejoin grace period timer set to %s", rejoinGracePeriod)
 		o.transitionTo(node.MonitorStateRejoin)
+	}
+}
+
+func (o *nmon) touchLastShutdown() {
+	// remember the last shutdown date via a file mtime
+	if err := file.Touch(rawconfig.Paths.LastShutdown, time.Now()); err != nil {
+		o.log.Error().Err(err).Msgf("touch %s", rawconfig.Paths.LastShutdown)
+	} else {
+		o.log.Info().Msgf("touch %s", rawconfig.Paths.LastShutdown)
 	}
 }
 
@@ -315,6 +325,7 @@ func (o *nmon) worker() {
 	defer statsTicker.Stop()
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
+	defer o.touchLastShutdown()
 
 	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
@@ -351,6 +362,8 @@ func (o *nmon) worker() {
 				o.onNodeStatusGenUpdates(c)
 			case *msgbus.LeaveRequest:
 				o.onLeaveRequest(c)
+			case *msgbus.NodeRejoin:
+				o.onNodeRejoin(c)
 			case *msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			}
