@@ -295,6 +295,12 @@ func (o *nmon) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		return
 	}
 	o.rejoinTicker.Stop()
+	o.bus.Pub(&msgbus.NodeRejoin{
+		Nodes:          c.Nodes,
+		LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
+		IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
+	}, o.labelLocalhost)
+	_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
 	o.transitionTo(node.MonitorStateIdle)
 }
 
