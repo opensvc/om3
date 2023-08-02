@@ -216,7 +216,7 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 		ArbitratorVotes: len(arbitratorVotes),
 		Voting:          total,
 		ProVoters:       len(o.livePeers) + len(arbitratorVotes),
-	}, pubsub.Label{"node", o.localhost})
+	}, o.labelLocalhost)
 
 	splitAction, ok := slitActions[action]
 	if !ok {
