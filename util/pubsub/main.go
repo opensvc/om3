@@ -466,7 +466,7 @@ func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 }
 
 func (b *Bus) drain() {
-	b.log.Info().Msg("draining")
+	b.log.Info().Msg("draining the message bus")
 	defer b.log.Info().Msg("drained")
 	i := 0
 	tC := time.After(b.drainChanDuration)
