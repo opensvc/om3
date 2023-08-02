@@ -8,7 +8,9 @@ package daemon
 import (
 	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/retailnext/cannula"
@@ -106,11 +108,15 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := pidfile.WriteControl(daemonPidFile, os.Getpid(), true); err != nil {
 		return nil
 	}
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			_ = os.Remove(DaemonPidFile())
-		})
-	}()
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		if err := os.Remove(DaemonPidFile()); err != nil {
+			t.log.Error().Err(err).Msg("remove pid file")
+		}
+	})
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
 	t.ctx = ctx
 	started := make(chan bool)
 	t.Add(1)
@@ -137,10 +143,17 @@ func (t *T) MainStart(ctx context.Context) error {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
-				return
+			case sig := <-sigs:
+				t.log.Info().Msgf("received %s signal", sig)
+				switch sig {
+				case os.Interrupt, os.Kill:
+					t.Stop()
+					return
+				}
 			case <-ticker.C:
 				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
+			case <-ctx.Done():
+				return
 			}
 		}
 	}(ctx)
@@ -153,18 +166,14 @@ func (t *T) MainStart(ctx context.Context) error {
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			t.log.Debug().Msg("stop daemon data")
-			dataCmdCancel()
-		})
-	}()
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			t.log.Debug().Msg("stop daemon pubsub bus")
-			bus.Stop()
-		})
-	}()
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon data")
+		dataCmdCancel()
+	})
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon pubsub bus")
+		bus.Stop()
+	})
 
 	<-started
 
@@ -225,8 +234,8 @@ func (t *T) MainStart(ctx context.Context) error {
 
 func (t *T) MainStop() error {
 	// stop goroutines without cancel context
-	for _, cancel := range t.cancelFuncs {
-		cancel()
+	for i := len(t.cancelFuncs) - 1; i >= 0; i-- {
+		t.cancelFuncs[i]()
 	}
 
 	// goroutines started by MainStart are stopped by the context cancel
