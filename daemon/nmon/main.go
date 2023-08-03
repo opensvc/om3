@@ -27,6 +27,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/prometheus/procfs"
@@ -53,6 +54,8 @@ import (
 
 type (
 	nmon struct {
+		sync.WaitGroup
+
 		// config is the node merged config
 		config *xconfig.T
 
@@ -140,8 +143,8 @@ var (
 )
 
 // Start launches the nmon worker goroutine
-func Start(parent context.Context, drainDuration time.Duration) error {
-	ctx, cancel := context.WithCancel(parent)
+func Start(parent context.Context, drainDuration time.Duration) (context.CancelFunc, error) {
+	ctx, cancelCtx := context.WithCancel(parent)
 	localhost := hostname.Hostname()
 	o := &nmon{
 		state: node.Monitor{
@@ -155,7 +158,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 			State:        node.MonitorStateZero,
 		},
 		ctx:         ctx,
-		cancel:      cancel,
+		cancel:      cancelCtx,
 		cmdC:        make(chan any),
 		databus:     daemondata.FromContext(ctx),
 		bus:         pubsub.BusFromContext(ctx),
@@ -174,10 +177,15 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 
+	cancel := func() {
+		cancelCtx()
+		o.Wait()
+	}
+
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
 	if err := o.loadAndPublishConfig(); err != nil {
-		return err
+		return cancel, err
 	}
 
 	bootID := bootid.Get()
@@ -195,7 +203,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 					err := o.crmFreeze()
 					if err != nil {
 						o.log.Error().Err(err).Msgf("freeze node due to kernel cmdline flag")
-						return err
+						return cancel, err
 					}
 				}
 			}
@@ -210,7 +218,9 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	o.setArbitratorConfig()
 
 	o.startSubscriptions()
+	o.Add(1)
 	go func() {
+		defer o.Done()
 		defer func() {
 			go func() {
 				tC := time.After(drainDuration)
@@ -228,7 +238,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		}()
 		o.worker()
 	}()
-	return nil
+	return cancel, nil
 }
 
 func (o *nmon) startSubscriptions() {

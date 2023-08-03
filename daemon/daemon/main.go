@@ -130,6 +130,10 @@ func (t *T) MainStart(ctx context.Context) error {
 	bus := pubsub.NewBus("daemon")
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
 	bus.Start(t.ctx)
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon pubsub bus")
+		bus.Stop()
+	})
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
 	localhost := hostname.Hostname()
@@ -160,17 +164,12 @@ func (t *T) MainStart(ctx context.Context) error {
 	hbcache.Start(t.ctx, 2*daemonenv.DrainChanDuration)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
-	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
-	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
-
 	t.cancelFuncs = append(t.cancelFuncs, func() {
 		t.log.Debug().Msg("stop daemon data")
 		dataCmdCancel()
 	})
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop daemon pubsub bus")
-		bus.Stop()
-	})
+	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
+	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
 	<-started
 
@@ -196,9 +195,16 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 
-	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+	cancelNMon, err := nmon.Start(t.ctx, daemonenv.DrainChanDuration)
+	if err != nil {
 		return err
 	}
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop nmon")
+		cancelNMon()
+		t.log.Debug().Msg("stopped nmon")
+	})
+
 	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
