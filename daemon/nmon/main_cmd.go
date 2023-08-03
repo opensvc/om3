@@ -1,12 +1,14 @@
 package nmon
 
 import (
+	"os"
 	"time"
 
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/toc"
 )
 
@@ -216,7 +218,7 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 		ArbitratorVotes: len(arbitratorVotes),
 		Voting:          total,
 		ProVoters:       len(o.livePeers) + len(arbitratorVotes),
-	}, pubsub.Label{"node", o.localhost})
+	}, o.labelLocalhost)
 
 	splitAction, ok := slitActions[action]
 	if !ok {
@@ -295,7 +297,47 @@ func (o *nmon) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		return
 	}
 	o.rejoinTicker.Stop()
+	o.bus.Pub(&msgbus.NodeRejoin{
+		Nodes:          c.Nodes,
+		LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
+		IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
+	}, o.labelLocalhost)
+	_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
 	o.transitionTo(node.MonitorStateIdle)
+}
+
+func (o *nmon) onNodeRejoin(c *msgbus.NodeRejoin) {
+	if c.IsUpgrading {
+		return
+	}
+	if len(c.Nodes) < 2 {
+		// no need to merge frozen on a single node cluster
+		return
+	}
+	if !o.nodeStatus.FrozenAt.IsZero() {
+		// already frozen
+		return
+	}
+	if o.state.GlobalExpect == node.MonitorGlobalExpectThawed {
+		return
+	}
+	for _, peer := range o.clusterConfig.Nodes {
+		if peer == o.localhost {
+			continue
+		}
+		peerStatus := node.StatusData.Get(peer)
+		if peerStatus == nil {
+			continue
+		}
+		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
+			if err := o.crmFreeze(); err != nil {
+				o.log.Info().Err(err).Send()
+			} else {
+				o.log.Info().Msgf("node freeze because peer %s was frozen while this daemon was down", peer)
+			}
+			return
+		}
+	}
 }
 
 func (o *nmon) onOrchestrate(c cmdOrchestrate) {

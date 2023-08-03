@@ -133,6 +133,8 @@ var (
 
 		"ProgressInstanceMonitor": func() any { return &ProgressInstanceMonitor{} },
 
+		"NodeRejoin": func() any { return &NodeRejoin{} },
+
 		"RemoteFileConfig": func() any { return &RemoteFileConfig{} },
 
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
@@ -560,6 +562,13 @@ type (
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 
+	NodeRejoin struct {
+		pubsub.Msg     `yaml:",inline"`
+		IsUpgrading    bool
+		LastShutdownAt time.Time
+		Nodes          []string
+	}
+
 	RemoteFileConfig struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       path.T          `json:"path" yaml:"path"`
@@ -886,6 +895,10 @@ func (e *ObjectStatusUpdated) Kind() string {
 
 func (e *ProgressInstanceMonitor) Kind() string {
 	return "ProgressInstanceMonitor"
+}
+
+func (e *NodeRejoin) Kind() string {
+	return "NodeRejoin"
 }
 
 func (e *RemoteFileConfig) Kind() string {

@@ -8,7 +8,9 @@ package daemon
 import (
 	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/retailnext/cannula"
@@ -106,11 +108,15 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := pidfile.WriteControl(daemonPidFile, os.Getpid(), true); err != nil {
 		return nil
 	}
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			_ = os.Remove(DaemonPidFile())
-		})
-	}()
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		if err := os.Remove(DaemonPidFile()); err != nil {
+			t.log.Error().Err(err).Msg("remove pid file")
+		}
+	})
+
+	signal.Ignore(syscall.SIGHUP)
+	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
 	t.ctx = ctx
 	started := make(chan bool)
 	t.Add(1)
@@ -124,6 +130,10 @@ func (t *T) MainStart(ctx context.Context) error {
 	bus := pubsub.NewBus("daemon")
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
 	bus.Start(t.ctx)
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon pubsub bus")
+		bus.Stop()
+	})
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
 	localhost := hostname.Hostname()
@@ -135,12 +145,16 @@ func (t *T) MainStart(ctx context.Context) error {
 		}
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
+		defer stop()
 		for {
 			select {
-			case <-ctx.Done():
-				return
 			case <-ticker.C:
 				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
+			case <-notifyCtx.Done():
+				t.Stop()
+				return
+			case <-ctx.Done():
+				return
 			}
 		}
 	}(ctx)
@@ -150,21 +164,12 @@ func (t *T) MainStart(ctx context.Context) error {
 	hbcache.Start(t.ctx, 2*daemonenv.DrainChanDuration)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon data")
+		dataCmdCancel()
+	})
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
-
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			t.log.Debug().Msg("stop daemon data")
-			dataCmdCancel()
-		})
-	}()
-	defer func() {
-		t.cancelFuncs = append(t.cancelFuncs, func() {
-			t.log.Debug().Msg("stop daemon pubsub bus")
-			bus.Stop()
-		})
-	}()
 
 	<-started
 
@@ -190,9 +195,16 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 
-	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+	cancelNMon, err := nmon.Start(t.ctx, daemonenv.DrainChanDuration)
+	if err != nil {
 		return err
 	}
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop nmon")
+		cancelNMon()
+		t.log.Debug().Msg("stopped nmon")
+	})
+
 	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
@@ -225,8 +237,8 @@ func (t *T) MainStart(ctx context.Context) error {
 
 func (t *T) MainStop() error {
 	// stop goroutines without cancel context
-	for _, cancel := range t.cancelFuncs {
-		cancel()
+	for i := len(t.cancelFuncs) - 1; i >= 0; i-- {
+		t.cancelFuncs[i]()
 	}
 
 	// goroutines started by MainStart are stopped by the context cancel

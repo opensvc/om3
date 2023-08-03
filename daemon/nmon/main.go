@@ -27,6 +27,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/prometheus/procfs"
@@ -53,6 +54,8 @@ import (
 
 type (
 	nmon struct {
+		sync.WaitGroup
+
 		// config is the node merged config
 		config *xconfig.T
 
@@ -91,9 +94,8 @@ type (
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
 
-		cancelReady context.CancelFunc
-		localhost   string
-		change      bool
+		localhost string
+		change    bool
 
 		sub *pubsub.Subscription
 
@@ -141,8 +143,8 @@ var (
 )
 
 // Start launches the nmon worker goroutine
-func Start(parent context.Context, drainDuration time.Duration) error {
-	ctx, cancel := context.WithCancel(parent)
+func Start(parent context.Context, drainDuration time.Duration) (context.CancelFunc, error) {
+	ctx, cancelCtx := context.WithCancel(parent)
 	localhost := hostname.Hostname()
 	o := &nmon{
 		state: node.Monitor{
@@ -156,7 +158,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 			State:        node.MonitorStateZero,
 		},
 		ctx:         ctx,
-		cancel:      cancel,
+		cancel:      cancelCtx,
 		cmdC:        make(chan any),
 		databus:     daemondata.FromContext(ctx),
 		bus:         pubsub.BusFromContext(ctx),
@@ -175,10 +177,15 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 
+	cancel := func() {
+		cancelCtx()
+		o.Wait()
+	}
+
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
 	if err := o.loadAndPublishConfig(); err != nil {
-		return err
+		return cancel, err
 	}
 
 	bootID := bootid.Get()
@@ -196,7 +203,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 					err := o.crmFreeze()
 					if err != nil {
 						o.log.Error().Err(err).Msgf("freeze node due to kernel cmdline flag")
-						return err
+						return cancel, err
 					}
 				}
 			}
@@ -211,7 +218,9 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	o.setArbitratorConfig()
 
 	o.startSubscriptions()
+	o.Add(1)
 	go func() {
+		defer o.Done()
 		defer func() {
 			go func() {
 				tC := time.After(drainDuration)
@@ -229,7 +238,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		}()
 		o.worker()
 	}()
-	return nil
+	return cancel, nil
 }
 
 func (o *nmon) startSubscriptions() {
@@ -255,6 +264,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, pubsub.Label{"from", "peer"})
+	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.Start()
@@ -280,6 +290,15 @@ func (o *nmon) startRejoin() {
 	}
 }
 
+func (o *nmon) touchLastShutdown() {
+	// remember the last shutdown date via a file mtime
+	if err := file.Touch(rawconfig.Paths.LastShutdown, time.Now()); err != nil {
+		o.log.Error().Err(err).Msgf("touch %s", rawconfig.Paths.LastShutdown)
+	} else {
+		o.log.Info().Msgf("touch %s", rawconfig.Paths.LastShutdown)
+	}
+}
+
 // worker watch for local nmon updates
 func (o *nmon) worker() {
 	defer o.log.Debug().Msg("done")
@@ -298,7 +317,7 @@ func (o *nmon) worker() {
 	o.updateStats()
 	o.refreshSanPaths()
 	o.updateIfChange()
-	defer o.bus.Pub(&msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
+	defer o.bus.Pub(&msgbus.NodeMonitorDeleted{Node: o.localhost}, o.labelLocalhost)
 	defer node.MonitorData.Unset(o.localhost)
 
 	o.getAndUpdateStatusArbitrator()
@@ -316,6 +335,7 @@ func (o *nmon) worker() {
 	defer statsTicker.Stop()
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
+	defer o.touchLastShutdown()
 
 	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
@@ -352,6 +372,8 @@ func (o *nmon) worker() {
 				o.onNodeStatusGenUpdates(c)
 			case *msgbus.LeaveRequest:
 				o.onLeaveRequest(c)
+			case *msgbus.NodeRejoin:
+				o.onNodeRejoin(c)
 			case *msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			}
@@ -397,8 +419,7 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 func (o *nmon) update() {
 	newValue := o.state
 	node.MonitorData.Set(o.localhost, newValue.DeepCopy())
-	o.bus.Pub(&msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()},
-		pubsub.Label{"node", o.localhost})
+	o.bus.Pub(&msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()}, o.labelLocalhost)
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
 	o.nodeMonitor[o.localhost] = o.state
 }
@@ -486,8 +507,7 @@ func (o *nmon) updateStats() {
 		o.log.Error().Err(err).Msg("get stats")
 	}
 	node.StatsData.Set(o.localhost, stats.DeepCopy())
-	o.bus.Pub(&msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()},
-		pubsub.Label{"node", o.localhost})
+	o.bus.Pub(&msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()}, o.labelLocalhost)
 }
 
 func (o *nmon) refreshSanPaths() {
@@ -499,8 +519,7 @@ func (o *nmon) refreshSanPaths() {
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
 	localNodeInfo.Paths = append(san.Paths{}, paths...)
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
-	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths},
-		pubsub.Label{"node", o.localhost})
+	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths}, o.labelLocalhost)
 }
 
 func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {

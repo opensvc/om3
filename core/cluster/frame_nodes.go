@@ -189,7 +189,12 @@ func (f Frame) sNodeCompat(n string) string {
 
 func (f Frame) sNodeVersion(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		return fmt.Sprintf("%s", val.Status.Agent)
+		if len(val.Status.Agent) == 40 {
+			// commit id => abbrev
+			return fmt.Sprintf("%s", val.Status.Agent[:8])
+		} else {
+			return fmt.Sprintf("%s", val.Status.Agent)
+		}
 	}
 	return iconUndef
 }

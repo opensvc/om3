@@ -3,7 +3,9 @@ package daemon_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -91,8 +93,14 @@ func TestDaemon(t *testing.T) {
 	require.True(t, main.Running(), "The daemon should be Running after RunDaemon")
 
 	t.Log("Stop")
+	minLastShutdown := time.Now()
 	require.NoError(t, main.Stop())
 	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
 	require.False(t, main.Running(), "The daemon should not be Running after Stop")
 	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
+
+	lastShutdownFile := filepath.Join(env.Root, "var", "last_shutdown")
+	stat, err := os.Stat(lastShutdownFile)
+	require.NoError(t, err)
+	require.Truef(t, minLastShutdown.Before(stat.ModTime()), "min %s should before last_shutdown file mtime %s", minLastShutdown, stat.ModTime())
 }
