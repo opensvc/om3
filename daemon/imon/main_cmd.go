@@ -617,6 +617,19 @@ func (o *imon) nextPlacedAtCandidate() string {
 	return ""
 }
 
+func (o *imon) IsInstanceStatusNotApplicable(node string) (bool, bool) {
+	instStatus, ok := o.instStatus[node]
+	if !ok {
+		return false, false
+	}
+	switch instStatus.Avail {
+	case status.NotApplicable:
+		return true, true
+	default:
+		return false, true
+	}
+}
+
 func (o *imon) IsInstanceStartFailed(node string) (bool, bool) {
 	instMon, ok := o.GetInstanceMonitor(node)
 	if !ok {
@@ -642,6 +655,9 @@ func (o *imon) newIsHALeader() bool {
 	var candidates []string
 
 	for _, node := range o.scopeNodes {
+		if v, ok := o.IsInstanceStatusNotApplicable(node); !ok || v {
+			continue
+		}
 		if nodeStatus, ok := o.nodeStatus[node]; !ok || nodeStatus.IsFrozen() {
 			continue
 		}
@@ -673,6 +689,9 @@ func (o *imon) newIsHALeader() bool {
 func (o *imon) newIsLeader() bool {
 	var candidates []string
 	for _, node := range o.scopeNodes {
+		if v, ok := o.IsInstanceStatusNotApplicable(node); !ok || v {
+			continue
+		}
 		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
 			continue
 		}
@@ -693,9 +712,6 @@ func (o *imon) newIsLeader() bool {
 }
 
 func (o *imon) updateIsLeader() {
-	if instStatus, ok := o.instStatus[o.localhost]; !ok || instStatus.Avail == status.NotApplicable {
-		return
-	}
 	isLeader := o.newIsLeader()
 	if isLeader != o.state.IsLeader {
 		o.change = true
