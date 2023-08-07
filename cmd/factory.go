@@ -529,6 +529,7 @@ func newCmdNodeAbort() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
@@ -1405,6 +1406,7 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
