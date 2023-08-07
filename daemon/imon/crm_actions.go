@@ -79,7 +79,7 @@ func (o *imon) crmStart() error {
 }
 
 func (o *imon) crmStatus() error {
-	return o.crmAction("", o.path.String(), "status", "-r")
+	return o.crmAction("status", o.path.String(), "status", "-r")
 }
 
 func (o *imon) crmStop() error {
