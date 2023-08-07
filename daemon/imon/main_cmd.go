@@ -63,6 +63,11 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceSt
 
 func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
 	if srcCmd.Node == o.localhost {
+		defer func() {
+			if err := o.crmStatus(); err != nil {
+				o.log.Warn().Err(err).Msg("update instance status via crm")
+			}
+		}()
 		o.instConfig = srcCmd.Value
 		o.initResourceMonitor()
 		cfgNodes := make(map[string]any)
