@@ -134,12 +134,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) startMode(ctx context.Context) error {
-
 	if t.Tags.Has(tagDedicated) {
-		t.Log().Info().Msgf("mode %s (via resource tag)", tagDedicated)
 		return t.startDedicated(ctx)
 	}
-	t.Log().Info().Msgf("mode %s", t.Mode)
 	switch t.Mode {
 	case "bridge":
 		return t.startBridge(ctx)
@@ -366,10 +363,8 @@ func (t *T) startARP(netns ns.NetNS, guestDev string) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	if t.Tags.Has(tagDedicated) {
-		t.Log().Info().Msgf("mode %s (via resource tag)", tagDedicated)
 		return t.stopDedicated(ctx)
 	}
-	t.Log().Info().Msgf("mode %s", t.Mode)
 	switch t.Mode {
 	case "bridge":
 		return t.stopBridge(ctx)
