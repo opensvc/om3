@@ -63,16 +63,24 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 }
 
 func (t *CmdObjectCreate) parseSelector(selector, kind string) (path.T, error) {
-	if selector == "" {
+	var objectPath string
+	if selector != "" && t.ObjectSelector != "" {
+		return path.T{}, fmt.Errorf("use either 'om <path> create' or 'om <kind> create -s <path>', not 'om <path> create -s <path>'")
+	} else if selector == "" && t.ObjectSelector != "" {
+		objectPath = t.ObjectSelector
+	} else {
+		objectPath = selector
+	}
+	if objectPath == "" {
 		// allowed with multi-definitions fed via stdin
 		return path.T{}, nil
 	}
-	p, err := path.Parse(selector)
+	p, err := path.Parse(objectPath)
 	if err != nil {
 		return p, err
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
-	objectSelector := mergeSelector(selector, t.ObjectSelector, kind, "**")
+	objectSelector := mergeSelector(objectPath, "", kind, "**")
 	paths, err := objectselector.NewSelection(
 		objectSelector,
 		objectselector.SelectionWithLocal(t.Local),
