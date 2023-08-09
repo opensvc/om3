@@ -669,6 +669,9 @@ func (o *imon) newIsHALeader() bool {
 		if instStatus, ok := o.instStatus[node]; !ok || instStatus.IsFrozen() {
 			continue
 		}
+		if instStatus, ok := o.instStatus[node]; !ok || instStatus.Provisioned.IsOneOf(provisioned.Mixed, provisioned.False) {
+			continue
+		}
 		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
 			continue
 		}
