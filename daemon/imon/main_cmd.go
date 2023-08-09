@@ -79,7 +79,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		}
 		for node := range o.instStatus {
 			if _, ok := cfgNodes[node]; !ok {
-				o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
+				o.log.Debug().Msgf("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
 				delete(o.instStatus, node)
 			}
 		}
