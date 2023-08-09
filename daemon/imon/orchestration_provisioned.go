@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
 )
 
 func (o *imon) orchestrateProvisioned() {
@@ -51,12 +52,18 @@ func (o *imon) provisionedFromWaitLeader() {
 }
 
 func (o *imon) provisionedClearIfReached() bool {
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		o.log.Info().Msg("provisioned orchestration: instance state is provisioned -> set reached, clear local expect")
+	reached := func(msg string) bool {
+		o.log.Info().Msg(msg)
 		o.setReached()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()
 		return true
+	}
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		return reached("provisioned orchestration: instance is provisioned -> set reached, clear local expect")
+	}
+	if o.instStatus[o.localhost].Avail == status.NotApplicable {
+		return reached("provisioned orchestration: instance availability is n/a -> set reached, clear local expect")
 	}
 	return false
 }

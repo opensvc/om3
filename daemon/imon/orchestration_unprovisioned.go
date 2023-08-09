@@ -3,6 +3,7 @@ package imon
 import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
 )
 
 func (o *imon) orchestrateUnprovisioned() {
@@ -17,7 +18,7 @@ func (o *imon) orchestrateUnprovisioned() {
 }
 
 func (o *imon) UnprovisionedFromIdle() {
-	if o.UnprovisionedClearIfReached() {
+	if o.unprovisionedClearIfReached() {
 		return
 	}
 	if o.isUnprovisionLeader() {
@@ -33,7 +34,7 @@ func (o *imon) UnprovisionedFromIdle() {
 }
 
 func (o *imon) UnprovisionedFromWaitNonLeader() {
-	if o.UnprovisionedClearIfReached() {
+	if o.unprovisionedClearIfReached() {
 		o.transitionTo(instance.MonitorStateIdle)
 		return
 	}
@@ -65,12 +66,19 @@ func (o *imon) hasNonLeaderProvisioned() bool {
 	return false
 }
 
-func (o *imon) UnprovisionedClearIfReached() bool {
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
-		o.loggerWithState().Info().Msg("instance state is not provisioned -> set reached, clear local expect")
+func (o *imon) unprovisionedClearIfReached() bool {
+	reached := func(msg string) bool {
+		o.log.Info().Msg(msg)
 		o.setReached()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
+		o.updateIfChange()
 		return true
+	}
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
+		return reached("unprovisioned orchestration: instance is not provisioned -> set reached, clear local expect")
+	}
+	if o.instStatus[o.localhost].Avail == status.NotApplicable {
+		return reached("unprovisioned orchestration: instance availability is n/a -> set reached, clear local expect")
 	}
 	return false
 }
