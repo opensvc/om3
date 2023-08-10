@@ -100,7 +100,7 @@ func (o *imon) cancelReadyState() bool {
 		return true
 	}
 	if !o.state.IsHALeader {
-		o.loggerWithState().Info().Msg("leadership lost, leave ready state")
+		o.loggerWithState().Info().Msg("leadership lost, clear the ready state")
 		o.transitionTo(instance.MonitorStateIdle)
 		o.clearPending()
 		return true
@@ -139,18 +139,17 @@ func (o *imon) startedFromStarted() {
 
 func (o *imon) startedFromStartFailed() {
 	if o.isStarted() {
-		o.loggerWithState().Info().Msg("object is up -> set reached, clear start failed")
-		o.setReached()
-		o.state.State = instance.MonitorStateIdle
+		o.loggerWithState().Info().Msg("object is up -> set done and idle, clear start failed")
+		o.doneAndIdle()
 		return
 	}
 }
 
 func (o *imon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		if o.state.State != instance.MonitorStateReached {
-			o.loggerWithState().Info().Msg("instance is started -> set reached")
-			o.setReached()
+		if !o.state.OrchestrationIsDone {
+			o.loggerWithState().Info().Msg("instance is started -> set done and idle")
+			o.doneAndIdle()
 		}
 		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
 			o.loggerWithState().Info().Msg("instance is started, set local expect started")
@@ -161,9 +160,9 @@ func (o *imon) startedClearIfReached() bool {
 		return true
 	}
 	if o.isStarted() {
-		if o.state.State != instance.MonitorStateReached {
-			o.loggerWithState().Info().Msg("object is started -> set reached")
-			o.setReached()
+		if !o.state.OrchestrationIsDone {
+			o.loggerWithState().Info().Msg("object is started -> set done and idle")
+			o.doneAndIdle()
 		}
 		o.clearPending()
 		return true

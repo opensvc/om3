@@ -69,7 +69,7 @@ func (o *imon) hasNonLeaderProvisioned() bool {
 func (o *imon) unprovisionedClearIfReached() bool {
 	reached := func(msg string) bool {
 		o.log.Info().Msg(msg)
-		o.setReached()
+		o.doneAndIdle()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()
 		return true

@@ -57,7 +57,7 @@ func (o *imon) orchestrateFailoverPlacedStop() {
 	case instance.MonitorStateStopFailed:
 		o.clearStopFailedIfDown()
 	case instance.MonitorStateStopped:
-		o.clearStoppedIfObjectStatusAvailUp()
+		o.clearStopped()
 	case instance.MonitorStateReady:
 		o.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailed:
@@ -80,7 +80,7 @@ func (o *imon) orchestrateFlexPlacedStop() {
 	case instance.MonitorStateStopFailed:
 		o.clearStopFailedIfDown()
 	case instance.MonitorStateStopped:
-		o.clearStoppedIfObjectStatusAvailUp()
+		o.clearStopped()
 	case instance.MonitorStateReady:
 		o.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailed:
@@ -94,11 +94,17 @@ func (o *imon) orchestrateFlexPlacedStop() {
 	}
 }
 
+func (o *imon) getPlacedAtDestination() ([]string, bool) {
+	options, ok := o.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
+	if !ok {
+		return nil, ok
+	}
+	return options.Destination, true
+}
+
 func (o *imon) orchestratePlacedAt() {
-	var dstNodes []string
-	if options, ok := o.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); ok {
-		dstNodes = options.Destination
-	} else {
+	dstNodes, ok := o.getPlacedAtDestination()
+	if !ok {
 		o.log.Error().Msgf("missing placed@ destination")
 		return
 	}
@@ -178,13 +184,13 @@ func (o *imon) clearStopFailedIfDown() {
 func (o *imon) clearStoppedIfObjectStatusAvailUp() {
 	switch o.objStatus.Avail {
 	case status.Up:
+		o.loggerWithState().Info().Msg("object avail status is up -> set done and idle, reset local expect")
 		o.clearStopped()
 	}
 }
 
 func (o *imon) clearStopped() {
-	o.loggerWithState().Info().Msg("object avail status is up -> set reached, reset local expect")
-    o.setReached()
+	o.doneAndIdle()
 	o.state.LocalExpect = instance.MonitorLocalExpectNone
 	o.clearPending()
 }
@@ -224,11 +230,17 @@ func (o *imon) orchestrateFlexPlacedStartFromStarted() {
 
 func (o *imon) orchestratePlacedFromStartFailed() {
 	switch {
-	case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
-		o.loggerWithState().Info().Msg("all instances are start failed -> set reached")
-		o.setReached()
-		o.clearPending()
+	/*
+		case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
+			o.loggerWithState().Info().Msg("all instances are start failed -> set done")
+			o.done()
+			o.clearPending()
+	*/
 	case o.objStatus.Avail == status.Up:
 		o.startedClearIfReached()
+	default:
+		o.loggerWithState().Info().Msg("local instance is start failed -> set done")
+		o.done()
+		o.clearPending()
 	}
 }

@@ -36,7 +36,7 @@ func (o *imon) orchestrateHAStart() {
 		// to transition state: started -> idle
 		// It prevents unexpected transition state -> ready
 		if o.isLocalStarted() {
-			o.log.Info().Msg("local instance status is now started like, leave state started, set local expect started")
+			o.log.Info().Msg("instance is now started, enable resource restart")
 			o.state.LocalExpect = instance.MonitorLocalExpectStarted
 			o.transitionTo(instance.MonitorStateIdle)
 		}
@@ -44,7 +44,7 @@ func (o *imon) orchestrateHAStart() {
 	}
 	if v, reason := o.isStartable(); !v {
 		if o.pendingCancel != nil && o.state.State == instance.MonitorStateReady {
-			o.log.Info().Msgf("instance is not start able, leave ready state: %s", reason)
+			o.log.Info().Msgf("instance is not startable, clear the ready state: %s", reason)
 			o.clearPending()
 			o.transitionTo(instance.MonitorStateIdle)
 		}

@@ -39,11 +39,10 @@ func (o *imon) orchestrate() {
 		o.orchestrateAborted()
 	}
 
-	if o.state.State == instance.MonitorStateReached {
-		if !o.isConvergedOrchestrationReached() {
-			return
+	if o.state.OrchestrationId != uuid.Nil && o.state.OrchestrationIsDone {
+		if o.orchestrationIsAllDone() {
+			o.endOrchestration()
 		}
-		o.endOrchestration()
 		return
 	}
 	if o.isDone() {
@@ -87,11 +86,12 @@ func (o *imon) orchestrate() {
 
 // endOrchestration is called when orchestration has been reached on all nodes
 func (o *imon) endOrchestration() {
-	o.log.Info().Msgf("leave reached global expect: %s", o.state.GlobalExpect)
 	o.change = true
 	o.state.State = instance.MonitorStateIdle
 	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	o.state.GlobalExpectOptions = nil
+	o.state.OrchestrationIsDone = false
+	o.state.OrchestrationId = uuid.UUID{}
 	o.clearPending()
 	o.updateIfChange()
 	if o.acceptedOrchestrationId != uuid.Nil {
@@ -107,29 +107,38 @@ func (o *imon) endOrchestration() {
 	}
 }
 
-// setReached set state to reached and unset orchestration id, it is used to
+// doneAndIdle set state to reached and unset orchestration id, it is used to
 // set convergence for orchestration reached expectation on all instances.
-func (o *imon) setReached() {
+func (o *imon) doneAndIdle() {
 	o.change = true
-	o.state.State = instance.MonitorStateReached
-	o.state.OrchestrationId = uuid.UUID{}
+	o.state.State = instance.MonitorStateIdle
+	o.state.OrchestrationIsDone = true
 }
 
-// isConvergedOrchestrationReached returns true instance orchestration is reached
-// for all object instances (OrchestrationId == "" for all instance monitor cache).
-func (o *imon) isConvergedOrchestrationReached() bool {
+func (o *imon) done() {
+	o.change = true
+	o.state.OrchestrationIsDone = true
+}
+
+func (o *imon) orchestrationIsAllDone() bool {
 	for nodename, oImon := range o.instMonitor {
-		if oImon.OrchestrationId != uuid.Nil {
+		if !oImon.OrchestrationIsDone {
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
-				o.log.Info().Msgf("not yet converged orchestration (node: %s %s)", nodename, msg)
+				o.log.Info().Msgf("orchestration progress on node %s: %s", nodename, msg)
 				o.waitConvergedOrchestrationMsg[nodename] = msg
 			}
 			return false
+		} else {
+			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
+			if o.waitConvergedOrchestrationMsg[nodename] != msg {
+				o.log.Info().Msgf("orchestration done on node %s: %s", nodename, msg)
+				o.waitConvergedOrchestrationMsg[nodename] = msg
+			}
 		}
 	}
 	if len(o.waitConvergedOrchestrationMsg) > 0 {
-		o.log.Info().Msgf("converged orchestration")
+		o.log.Info().Msgf("orchestration is done on all nodes")
 		o.waitConvergedOrchestrationMsg = make(map[string]string)
 	}
 	return true
