@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -41,9 +42,28 @@ func (a *DaemonApi) PostObjectMonitor(ctx echo.Context) error {
 		update.State = &i
 	}
 	update.CandidateOrchestrationId = uuid.New()
-	a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: update},
-		pubsub.Label{"path", p.String()}, labelApi)
-	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
-		OrchestrationId: update.CandidateOrchestrationId,
-	})
+	msg := msgbus.SetInstanceMonitor{
+		Path:  p,
+		Node:  hostname.Hostname(),
+		Value: update,
+		Err:   make(chan error),
+	}
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	var errs error
+	for {
+		select {
+		case err := <-msg.Err:
+			if err != nil {
+				errs = errors.Join(errs, err)
+			} else if errs != nil {
+				return JSONProblemf(ctx, http.StatusBadRequest, "set monitor", "%s", errs)
+			} else {
+				return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
+					OrchestrationId: update.CandidateOrchestrationId,
+				})
+			}
+		case <-ctx.Request().Context().Done():
+			return JSONProblemf(ctx, http.StatusGone, "set monitor", "")
+		}
+	}
 }

@@ -410,9 +410,9 @@ func (t T) DoAsync() error {
 			case 400:
 				err = fmt.Errorf("%s", resp.JSON400)
 			case 401:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 403:
 				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
 			case 500:
 				err = fmt.Errorf("%s", resp.JSON500)
 			}
@@ -431,29 +431,32 @@ func (t T) DoAsync() error {
 			case 400:
 				err = fmt.Errorf("%s", resp.JSON400)
 			case 401:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 403:
 				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
 			case 500:
 				err = fmt.Errorf("%s", resp.JSON500)
 			}
 		}
-		if err != nil {
-			errs = errors.Join(errs, err)
-		} else {
-			toWait++
-		}
-		var monitorUpdateQueued api.MonitorUpdateQueued
 		var r result
-		if err := json.Unmarshal(b, &monitorUpdateQueued); err == nil {
-			r = result{
-				OrchestrationId: monitorUpdateQueued.OrchestrationId,
-				Path:            p.String(),
-			}
-		} else {
+		if err != nil {
 			r = result{
 				Error: err,
 				Path:  p.String(),
+			}
+		} else {
+			toWait++
+			var monitorUpdateQueued api.MonitorUpdateQueued
+			if err := json.Unmarshal(b, &monitorUpdateQueued); err == nil {
+				r = result{
+					OrchestrationId: monitorUpdateQueued.OrchestrationId,
+					Path:            p.String(),
+				}
+			} else {
+				r = result{
+					Error: err,
+					Path:  p.String(),
+				}
 			}
 		}
 		rs = append(rs, r)
@@ -461,7 +464,11 @@ func (t T) DoAsync() error {
 	human := func() string {
 		s := ""
 		for _, r := range rs {
-			s += fmt.Sprintf("%s: %s\n", r.Path, r.OrchestrationId)
+			if r.Error != nil {
+				s += fmt.Sprintf("%s %s %s\n", r.OrchestrationId, r.Path, rawconfig.Colorize.Error(r.Error))
+			} else {
+				s += fmt.Sprintf("%s %s\n", r.OrchestrationId, r.Path)
+			}
 		}
 		return s
 	}

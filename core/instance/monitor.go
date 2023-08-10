@@ -2,6 +2,7 @@ package instance
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -242,6 +243,13 @@ var (
 		"unprovisioned": MonitorGlobalExpectUnprovisioned,
 		"none":          MonitorGlobalExpectNone,
 	}
+
+	ErrInvalidGlobalExpect = errors.New("invalid instance monitor global expect")
+	ErrInvalidLocalExpect  = errors.New("invalid instance monitor local expect")
+	ErrInvalidState        = errors.New("invalid instance monitor state")
+	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
+	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
+	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 )
 
 func (t MonitorState) IsDoing() bool {
