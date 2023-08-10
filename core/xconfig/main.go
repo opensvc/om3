@@ -1205,6 +1205,7 @@ func (t T) DeleteSections(sections []string) error {
 		deleted++
 	}
 	if deleted > 0 {
+		t.changed = true
 		t.Commit()
 	}
 	return nil
