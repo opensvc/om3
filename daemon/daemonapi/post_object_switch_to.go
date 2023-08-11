@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -29,6 +30,9 @@ func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "Invalid path: %s", payload.Path)
 	}
+	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", payload.Path)
+	}
 	globalExpect := instance.MonitorGlobalExpectPlacedAt
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
 	options.Destination = append(options.Destination, payload.Destination...)
@@ -44,9 +48,13 @@ func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 		Err:   make(chan error),
 	}
 	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
 	var errs error
 	for {
 		select {
+		case <-ticker.C:
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout waiting for monitor commit")
 		case err := <-msg.Err:
 			if err != nil {
 				errs = errors.Join(errs, err)

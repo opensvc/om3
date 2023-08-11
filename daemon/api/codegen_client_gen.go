@@ -2922,6 +2922,7 @@ type PostNodeMonitorResponse struct {
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
+	JSON408      *Problem
 	JSON409      *Problem
 	JSON500      *Problem
 }
@@ -3121,6 +3122,7 @@ type PostObjectMonitorResponse struct {
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
+	JSON408      *Problem
 	JSON409      *Problem
 	JSON500      *Problem
 }
@@ -3197,6 +3199,7 @@ type PostObjectSwitchToResponse struct {
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
+	JSON408      *Problem
 	JSON409      *Problem
 	JSON500      *Problem
 }
@@ -4554,6 +4557,13 @@ func ParsePostNodeMonitorResponse(rsp *http.Response) (*PostNodeMonitorResponse,
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -4923,6 +4933,13 @@ func ParsePostObjectMonitorResponse(rsp *http.Response) (*PostObjectMonitorRespo
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -5070,6 +5087,13 @@ func ParsePostObjectSwitchToResponse(rsp *http.Response) (*PostObjectSwitchToRes
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Problem
