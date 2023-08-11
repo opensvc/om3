@@ -39,7 +39,7 @@ var (
 	bashCompletionFunction string
 
 	root = &cobra.Command{
-		Use:                    "om3",
+		Use:                    filepath.Base(os.Args[0]),
 		Short:                  "Manage the opensvc cluster infrastructure and its deployed services.",
 		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,

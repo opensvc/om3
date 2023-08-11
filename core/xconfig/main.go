@@ -1195,7 +1195,7 @@ func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error
 	return t.rawCommit(configData, configPath, false)
 }
 
-func (t T) DeleteSections(sections []string) error {
+func (t *T) DeleteSections(sections []string) error {
 	deleted := 0
 	for _, section := range sections {
 		if _, err := t.file.GetSection(section); err != nil {
@@ -1205,6 +1205,7 @@ func (t T) DeleteSections(sections []string) error {
 		deleted++
 	}
 	if deleted > 0 {
+		t.changed = true
 		t.Commit()
 	}
 	return nil

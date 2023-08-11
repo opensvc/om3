@@ -79,7 +79,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		}
 		for node := range o.instStatus {
 			if _, ok := cfgNodes[node]; !ok {
-				o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
+				o.log.Debug().Msgf("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
 				delete(o.instStatus, node)
 			}
 		}
@@ -180,19 +180,30 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 }
 
 func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
+	sendError := func(err error) {
+		if c.Err != nil {
+			c.Err <- err
+		}
+	}
 	doState := func() {
 		if c.Value.State == nil {
 			return
 		}
 		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
-			o.log.Warn().Msgf("invalid set instance monitor state: %s", *c.Value.State)
+			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+			sendError(err)
+			o.log.Warn().Msgf("%s", err)
 			return
 		}
 		if *c.Value.State == instance.MonitorStateZero {
+			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+			sendError(err)
 			return
 		}
 		if o.state.State == *c.Value.State {
-			o.log.Info().Msgf("instance monitor state is already %s", *c.Value.State)
+			err := fmt.Errorf("%w: %s", instance.ErrSameState, *c.Value.State)
+			sendError(err)
+			o.log.Info().Msgf("%s", err)
 			return
 		}
 		o.log.Info().Msgf("set instance monitor state %s -> %s", o.state.State, *c.Value.State)
@@ -213,13 +224,18 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value", *c.Value.GlobalExpect)
+			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+			sendError(err)
+			o.log.Warn().Msgf("%s", err)
 			globalExpectRefused()
 			return
 		}
-		switch *c.Value.GlobalExpect {
-		case instance.MonitorGlobalExpectZero:
+		if o.state.OrchestrationId != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
+			err := fmt.Errorf("%w: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, o.state.GlobalExpect, o.state.OrchestrationId)
+			sendError(err)
 			return
+		}
+		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			if !ok || len(options.Destination) == 0 {
@@ -227,7 +243,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := o.nextPlacedAtCandidate()
 				if dst == "" {
-					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from candidates", *c.Value.GlobalExpect)
+					err := fmt.Errorf("%w: %s: no destination node could be selected from candidates", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+					sendError(err)
+					o.log.Info().Msgf("%s", err)
 					globalExpectRefused()
 					return
 				}
@@ -237,12 +255,16 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				want := options.Destination
 				can, err := o.nextPlacedAtCandidates(want)
 				if err != nil {
-					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could ne selected from %s: %s", *c.Value.GlobalExpect, want, err)
+					err2 := fmt.Errorf("%w: %s: no destination node could ne selected from %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want, err)
+					sendError(err2)
+					o.log.Info().Msgf("%s", err)
 					globalExpectRefused()
 					return
 				}
 				if can == "" {
-					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from %s", *c.Value.GlobalExpect, want)
+					err := fmt.Errorf("%w: %s: no destination node could ne selected from %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want)
+					sendError(err)
+					o.log.Info().Msgf("%s", err)
 					globalExpectRefused()
 					return
 				} else if can != want[0] {
@@ -253,7 +275,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
-				o.log.Info().Msgf("refuse to set global expect '%s': %s", *c.Value.GlobalExpect, reason)
+				err := fmt.Errorf("%w: %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, reason)
+				sendError(err)
+				o.log.Info().Msgf("%s", err)
 				globalExpectRefused()
 				return
 			}
@@ -269,7 +293,10 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				continue
 			}
 			if instMon.GlobalExpectUpdatedAt.After(o.state.GlobalExpectUpdatedAt) {
-				o.log.Info().Msgf("refuse to set global expect '%s': node %s global expect is already '%s'", instMon.GlobalExpect, node, *c.Value.GlobalExpect)
+				err := fmt.Errorf("%w: %s: more recent value %s on node %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, instMon.GlobalExpect, node)
+				sendError(err)
+				o.log.Info().Msgf("%s", err)
+				globalExpectRefused()
 				return
 			}
 		}
@@ -295,12 +322,16 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorLocalExpectNone:
 		case instance.MonitorLocalExpectStarted:
 		default:
-			o.log.Warn().Msgf("invalid set instance monitor local expect: %s", *c.Value.LocalExpect)
+			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
+			sendError(err)
+			o.log.Warn().Msgf("%s", err)
 			return
 		}
 		target := *c.Value.LocalExpect
 		if o.state.LocalExpect == target {
-			o.log.Info().Msgf("local expect is already %s", *c.Value.LocalExpect)
+			err := fmt.Errorf("%w: %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
+			sendError(err)
+			o.log.Info().Msgf("%s", err)
 			return
 		}
 		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, target)
@@ -311,6 +342,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	doState()
 	doGlobalExpect()
 	doLocalExpect()
+
+	// inform the publisher we're done sending errors
+	sendError(nil)
 
 	if o.change {
 		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
@@ -667,6 +701,9 @@ func (o *imon) newIsHALeader() bool {
 			continue
 		}
 		if instStatus, ok := o.instStatus[node]; !ok || instStatus.IsFrozen() {
+			continue
+		}
+		if instStatus, ok := o.instStatus[node]; !ok || instStatus.Provisioned.IsOneOf(provisioned.Mixed, provisioned.False) {
 			continue
 		}
 		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {

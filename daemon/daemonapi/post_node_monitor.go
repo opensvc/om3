@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -40,8 +41,27 @@ func (a *DaemonApi) PostNodeMonitor(ctx echo.Context) error {
 	if !validRequest {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", "Need at least 'state', 'local_expect' or 'global_expect'")
 	}
-	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: update}, labelApi)
-	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
-		OrchestrationId: update.CandidateOrchestrationId,
-	})
+	msg := msgbus.SetNodeMonitor{
+		Node:  hostname.Hostname(),
+		Value: update,
+		Err:   make(chan error),
+	}
+	a.EventBus.Pub(&msg, labelApi)
+	var errs error
+	for {
+		select {
+		case err := <-msg.Err:
+			if err != nil {
+				errs = errors.Join(errs, err)
+			} else if errs != nil {
+				return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", errs)
+			} else {
+				return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
+					OrchestrationId: update.CandidateOrchestrationId,
+				})
+			}
+		case <-ctx.Request().Context().Done():
+			return JSONProblemf(ctx, http.StatusGone, "set monitor", "")
+		}
+	}
 }

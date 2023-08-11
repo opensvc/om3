@@ -275,11 +275,12 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 	ce := e.AsConcreteEvent(msg)
 	if t.templ != nil {
 		var i any
-		if err := json.Unmarshal(e.Data, &i); err != nil {
+		if b, err := json.Marshal(ce); err != nil {
+			return
+		} else if err := json.Unmarshal(b, &i); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "unmarshal event data in a any-typed variable: %s\n", err)
 			return
 		}
-		msg.GetLabels()
 		if err := t.templ.Execute(os.Stdout, i); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "template execute error %s\n", err)
 		}

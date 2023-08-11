@@ -665,6 +665,12 @@ type N401 = Problem
 // N403 defines model for 403.
 type N403 = Problem
 
+// N408 defines model for 408.
+type N408 = Problem
+
+// N409 defines model for 409.
+type N409 = Problem
+
 // N500 defines model for 500.
 type N500 = Problem
 

@@ -5,7 +5,7 @@ import (
 )
 
 func (o *imon) orchestratePlaced() {
-	if o.state.IsLeader {
+	if o.state.IsHALeader {
 		o.orchestratePlacedStart()
 	} else {
 		o.orchestratePlacedStop()

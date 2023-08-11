@@ -90,6 +90,9 @@ func (t *T) stopBridge(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if netns == nil {
+		return nil
+	}
 	defer netns.Close()
 
 	guestDev, err := t.curGuestDev(netns)

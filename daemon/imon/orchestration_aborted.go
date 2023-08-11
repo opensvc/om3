@@ -7,5 +7,6 @@ func (o *imon) orchestrateAborted() {
 	o.change = true
 	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	o.state.GlobalExpectOptions = nil
+	o.state.OrchestrationIsDone = true
 	o.updateIfChange()
 }

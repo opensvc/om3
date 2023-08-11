@@ -584,6 +584,7 @@ type (
 		Path       path.T                 `json:"path" yaml:"path"`
 		Node       string                 `json:"node" yaml:"node"`
 		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
+		Err        chan error             `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitorRefused struct {
@@ -597,6 +598,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string             `json:"node" yaml:"node"`
 		Value      node.MonitorUpdate `json:"node_monitor_update" yaml:"node_monitor_update"`
+		Err        chan error         `json:"-" yaml:"-"`
 	}
 
 	WatchDog struct {

@@ -134,6 +134,9 @@ func (t *T) stopIPVLAN(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if netns == nil {
+		return nil
+	}
 	defer netns.Close()
 
 	guestDev, err := t.curGuestDev(netns)

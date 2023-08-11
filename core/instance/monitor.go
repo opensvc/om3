@@ -2,6 +2,7 @@ package instance
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,14 +16,27 @@ type (
 		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
 		GlobalExpectOptions   any                 `json:"global_expect_options" yaml:"global_expect_options"`
-		IsLeader              bool                `json:"is_leader" yaml:"is_leader"`
-		IsHALeader            bool                `json:"is_ha_leader" yaml:"is_ha_leader"`
-		LocalExpect           MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
-		LocalExpectUpdatedAt  time.Time           `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
+
+		// IsLeader flags the instance as the one where to provision as leader.
+		// The provisioning leader is responsible for preparing the shared resources.
+		// There can be only one leader, whatever the topology.
+		IsLeader bool `json:"is_leader" yaml:"is_leader"`
+
+		// IsHALeader flags the instances to start automatically if orchestrate=ha
+		// or when the admin posted a start orchestration.
+		// There can be one leader on a failover object, or many leaders with a flex topology.
+		IsHALeader bool `json:"is_ha_leader" yaml:"is_ha_leader"`
+
+		LocalExpect          MonitorLocalExpect `json:"local_expect" yaml:"local_expect"`
+		LocalExpectUpdatedAt time.Time          `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
 
 		// OrchestrationId is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
 		OrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
+
+		// OrchestrationIsDone is set by the orchestration when it decides the instance state has reached its target.
+		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
+		OrchestrationIsDone bool `json:"orchestration_is_done" yaml:"orchestration_is_done"`
 
 		SessionId               uuid.UUID          `json:"session_id" yaml:"session_id"`
 		State                   MonitorState       `json:"state" yaml:"state"`
@@ -73,7 +87,6 @@ const (
 	MonitorStateBootFailed
 	MonitorStateBooting
 	MonitorStateIdle
-	MonitorStateReached
 	MonitorStateDeleted
 	MonitorStateDeleting
 	MonitorStateFreezeFailed
@@ -137,7 +150,6 @@ var (
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
-		MonitorStateReached:           "reached",
 		MonitorStateReady:             "ready",
 		MonitorStateShutting:          "shutting",
 		MonitorStateStarted:           "started",
@@ -172,7 +184,6 @@ var (
 		"provisioning":       MonitorStateProvisioning,
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
-		"reached":            MonitorStateReached,
 		"ready":              MonitorStateReady,
 		"shutting":           MonitorStateShutting,
 		"started":            MonitorStateStarted,
@@ -232,6 +243,13 @@ var (
 		"unprovisioned": MonitorGlobalExpectUnprovisioned,
 		"none":          MonitorGlobalExpectNone,
 	}
+
+	ErrInvalidGlobalExpect = errors.New("invalid instance monitor global expect")
+	ErrInvalidLocalExpect  = errors.New("invalid instance monitor local expect")
+	ErrInvalidState        = errors.New("invalid instance monitor state")
+	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
+	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
+	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 )
 
 func (t MonitorState) IsDoing() bool {

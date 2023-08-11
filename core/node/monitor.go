@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -138,6 +139,13 @@ var (
 		MonitorStateShutting:    nil,
 		MonitorStateRejoin:      nil,
 	}
+
+	ErrInvalidGlobalExpect = errors.New("invalid node monitor global expect")
+	ErrInvalidLocalExpect  = errors.New("invalid node monitor local expect")
+	ErrInvalidState        = errors.New("invalid node monitor state")
+	ErrSameGlobalExpect    = errors.New("node monitor global expect is already set to the same value")
+	ErrSameLocalExpect     = errors.New("node monitor local expect is already set to the same value")
+	ErrSameState           = errors.New("node monitor state is already set to the same value")
 )
 
 func (t MonitorState) IsDoing() bool {

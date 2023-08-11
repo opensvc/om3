@@ -34,8 +34,8 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Info().Msgf("# apply global expect change from remote %s -> %s %s",
-			mostRecentNode, strVal, mostRecentUpdated)
+		o.log.Info().Msgf("fetch global expect from node %s -> %s orchestration id %s updated at %s",
+			mostRecentNode, strVal, o.state.OrchestrationId, mostRecentUpdated)
 	}
 }
 

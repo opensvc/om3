@@ -363,11 +363,11 @@ func (o *T) updateStatus() {
 				o.status.PlacementState = placement.NotApplicable
 				break
 			}
-			if instMonitor.IsLeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
+			if instMonitor.IsHALeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
 				o.status.PlacementState = placement.NonOptimal
 				break
 			}
-			if !instMonitor.IsLeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
+			if !instMonitor.IsHALeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
 				o.status.PlacementState = placement.NonOptimal
 				break
 			}

@@ -39,8 +39,8 @@ var (
 	iconDownIssue      = red("X")
 	iconPlacementAlert = red("^")
 	iconProvisionAlert = red("P")
-	iconStandbyDown    = red("o")
-	iconStandbyUpIssue = red("x")
+	iconStandbyDown    = red("x")
+	iconStandbyUpIssue = red("o")
 	iconUndef          = red("?")
 	iconFrozen         = blue("*")
 	iconDown           = hiblack("X")
@@ -48,7 +48,7 @@ var (
 	iconLeader         = hiblack("^")
 	iconNotApplicable  = hiblack("/")
 	iconPreserved      = hiblack("?")
-	iconStandbyUp      = hiblack("x")
+	iconStandbyUp      = hiblack("o")
 )
 
 type (

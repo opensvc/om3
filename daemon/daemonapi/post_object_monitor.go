@@ -1,7 +1,9 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -28,6 +30,9 @@ func (a *DaemonApi) PostObjectMonitor(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path %s: %s", payload.Path, err)
 	}
+	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", payload.Path)
+	}
 	if payload.GlobalExpect != nil {
 		i := instance.MonitorGlobalExpectValues[*payload.GlobalExpect]
 		update.GlobalExpect = &i
@@ -41,9 +46,32 @@ func (a *DaemonApi) PostObjectMonitor(ctx echo.Context) error {
 		update.State = &i
 	}
 	update.CandidateOrchestrationId = uuid.New()
-	a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: update},
-		pubsub.Label{"path", p.String()}, labelApi)
-	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
-		OrchestrationId: update.CandidateOrchestrationId,
-	})
+	msg := msgbus.SetInstanceMonitor{
+		Path:  p,
+		Node:  hostname.Hostname(),
+		Value: update,
+		Err:   make(chan error),
+	}
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+	var errs error
+	for {
+		select {
+		case <-ticker.C:
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout waiting for monitor commit")
+		case err := <-msg.Err:
+			if err != nil {
+				errs = errors.Join(errs, err)
+			} else if errs != nil {
+				return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", errs)
+			} else {
+				return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
+					OrchestrationId: update.CandidateOrchestrationId,
+				})
+			}
+		case <-ctx.Request().Context().Done():
+			return JSONProblemf(ctx, http.StatusGone, "set monitor", "")
+		}
+	}
 }

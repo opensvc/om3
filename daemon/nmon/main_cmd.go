@@ -1,6 +1,7 @@
 package nmon
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -91,18 +92,27 @@ func (o *nmon) checkRejoinTicker() {
 }
 
 func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
+	sendError := func(err error) {
+		if c.Err != nil {
+			c.Err <- err
+		}
+	}
 	doState := func() {
 		if c.Value.State == nil {
 			return
 		}
 		// sanity check the state value
 		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
-			o.log.Warn().Msgf("invalid set node monitor state: %s", c.Value.State)
+			err := fmt.Errorf("%w: %s", node.ErrInvalidState, *c.Value.State)
+			sendError(err)
+			o.log.Warn().Msgf("%s", err)
 			return
 		}
 
 		if o.state.State == *c.Value.State {
-			o.log.Info().Msgf("state is already %s", *c.Value.State)
+			err := fmt.Errorf("%w: state is already %s", node.ErrSameState, *c.Value.State)
+			sendError(err)
+			o.log.Info().Msgf("%s", err)
 			return
 		}
 
@@ -117,12 +127,16 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		}
 		// sanity check the local expect value
 		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set node monitor local expect: %s", c.Value.LocalExpect)
+			err := fmt.Errorf("%w: %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
+			sendError(err)
+			o.log.Warn().Msgf("%s", err)
 			return
 		}
 
 		if o.state.LocalExpect == *c.Value.LocalExpect {
-			o.log.Info().Msgf("local expect is already %s", *c.Value.LocalExpect)
+			err := fmt.Errorf("%w: %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
+			sendError(err)
+			o.log.Info().Msgf("%s", err)
 			return
 		}
 
@@ -142,22 +156,28 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range o.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
-					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Value.GlobalExpect, nodename)
+					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
+					sendError(err)
+					o.log.Info().Msgf("%s", err)
 					return
 				}
 				if !data.State.IsRankable() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, nodename, data.State)
+					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
+					sendError(err)
+					o.log.Error().Msgf("%s", err)
 					return
 				}
 				if data.State.IsDoing() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, nodename, data.State)
+					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
+					sendError(err)
+					o.log.Error().Msgf("%s", err)
 					return
 				}
 			}
 		}
 
-		o.log.Info().Msgf("# set nmon: client request global expect to %s %+v", *c.Value.GlobalExpect, c.Value)
 		if *c.Value.GlobalExpect != o.state.GlobalExpect {
+			o.log.Info().Msgf("set global expect %s -> %s", o.state.GlobalExpect, *c.Value.GlobalExpect)
 			o.change = true
 			o.state.GlobalExpect = *c.Value.GlobalExpect
 			o.state.GlobalExpectUpdatedAt = time.Now()
@@ -167,6 +187,9 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 	doState()
 	doLocalExpect()
 	doGlobalExpect()
+
+	// inform the publisher we're done sending errors
+	sendError(nil)
 
 	if o.change {
 		o.updateIfChange()

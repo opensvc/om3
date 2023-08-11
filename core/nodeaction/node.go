@@ -276,9 +276,13 @@ func (t T) DoAsync() error {
 	case 400:
 		return fmt.Errorf("%s", resp.JSON400)
 	case 401:
-		return fmt.Errorf("%s", resp.JSON403)
-	case 403:
 		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 408:
+		return fmt.Errorf("%s", resp.JSON408)
+	case 409:
+		return fmt.Errorf("%s", resp.JSON409)
 	case 500:
 		return fmt.Errorf("%s", resp.JSON500)
 	default:
