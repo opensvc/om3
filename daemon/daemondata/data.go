@@ -43,7 +43,8 @@ type (
 		hbMessageType string        // latest created hb message type
 		localNode     string
 
-		// cluster nodes from local cluster config
+		// cluster nodes from local cluster config, it is updated from
+		// msgbus.ClusterConfigUpdated {NodesAdded, NodesRemoved}
 		clusterNodes map[string]struct{}
 
 		// statCount is a map[<stat id>] to track number of <id> calls
@@ -348,7 +349,9 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				d.statCount[idUndef]++
 			}
 		case i := <-d.sub.C:
-			d.onSubEvent(i)
+			if err := d.onSubEvent(i); err != nil {
+				d.log.Error().Err(err).Msgf("onSubEvent %s", reflect.TypeOf(i))
+			}
 		}
 	}
 }
@@ -370,6 +373,7 @@ func gensEqual(a, b gens) bool {
 	return true
 }
 
+// startSubscriptions subscribes to label local node messages that change the cluster data view
 func (d *data) startSubscriptions() {
 	sub := d.bus.Sub("daemondata")
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
@@ -414,14 +418,19 @@ func (d *data) appendEv(i event.Kinder) {
 	})
 }
 
-func (d *data) onSubEvent(i interface{}) {
+// onSubEvent is called label node localhost events. It updates clusterData
+// and updates pendingEvs when event has to be forwarded to other cluster nodes.
+// TODO: split responsibilities
+func (d *data) onSubEvent(i interface{}) error {
 	switch c := i.(type) {
 	case *msgbus.ClusterConfigUpdated:
 		for _, v := range c.NodesAdded {
 			d.clusterNodes[v] = struct{}{}
 		}
 		for _, v := range c.NodesRemoved {
+			d.log.Info().Msgf("removed cluster node => drop peer node %s data", v)
 			delete(d.clusterNodes, v)
+			d.dropPeer(v)
 		}
 	case *msgbus.ClusterStatusUpdated:
 	case *msgbus.InstanceConfigDeleted:
@@ -479,6 +488,7 @@ func (d *data) onSubEvent(i interface{}) {
 	case *msgbus.ObjectStatusUpdated:
 	}
 	if msg, ok := i.(pubsub.Messager); ok {
-		d.clusterData.ApplyMessage(msg)
+		return d.clusterData.ApplyMessage(msg)
 	}
+	return nil
 }

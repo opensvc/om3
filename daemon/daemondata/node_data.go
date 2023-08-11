@@ -22,7 +22,7 @@ type (
 	}
 )
 
-// DropPeerNode drops cluster.node.<peer>
+// DropPeerNode drop peer node
 func (t T) DropPeerNode(peerNode string) error {
 	err := make(chan error, 1)
 	op := opDropPeerNode{
@@ -35,21 +35,7 @@ func (t T) DropPeerNode(peerNode string) error {
 
 func (o opDropPeerNode) call(ctx context.Context, d *data) error {
 	d.statCount[idDropPeerNode]++
-	peerNode := o.node
-	// TODO publish event for b2.1 "forget_peer" hook
-	delete(d.clusterData.Cluster.Node[d.localNode].Status.Gen, peerNode)
-	hbcache.DropPeer(peerNode)
-	if _, ok := d.clusterData.Cluster.Node[peerNode]; ok {
-		d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
-		delete(d.clusterData.Cluster.Node, peerNode)
-		delete(d.hbGens, peerNode)
-		delete(d.hbGens[d.localNode], peerNode)
-		delete(d.hbPatchMsgUpdated, peerNode)
-		delete(d.hbMsgPatchLength, peerNode)
-		delete(d.hbMsgType, peerNode)
-	}
-	d.setDaemonHb()
-	d.bus.Pub(&msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})
+	d.dropPeer(o.node)
 	return nil
 }
 
@@ -76,4 +62,21 @@ func (o opGetClusterNodeData) call(ctx context.Context, d *data) error {
 		o.Data <- nil
 	}
 	return nil
+}
+
+func (d *data) dropPeer(peerNode string) {
+	// TODO publish event for b2.1 "forget_peer" hook
+	delete(d.clusterData.Cluster.Node[d.localNode].Status.Gen, peerNode)
+	hbcache.DropPeer(peerNode)
+	if _, ok := d.clusterData.Cluster.Node[peerNode]; ok {
+		d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
+		delete(d.clusterData.Cluster.Node, peerNode)
+		delete(d.hbGens, peerNode)
+		delete(d.hbGens[d.localNode], peerNode)
+		delete(d.hbPatchMsgUpdated, peerNode)
+		delete(d.hbMsgPatchLength, peerNode)
+		delete(d.hbMsgType, peerNode)
+	}
+	d.setDaemonHb()
+	d.bus.Pub(&msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})
 }
