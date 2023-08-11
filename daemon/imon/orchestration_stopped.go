@@ -134,6 +134,8 @@ func (o *imon) isLocalStopped() bool {
 		return true
 	case status.Down:
 		return true
+	case status.StandbyUp:
+		return true
 	case status.StandbyDown:
 		return true
 	default:
