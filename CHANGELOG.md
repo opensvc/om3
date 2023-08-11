@@ -116,6 +116,11 @@
 
 * **breaking change:** "om ... set|unset" no longer accept --param and --value. Use --kw instead, which was also supported in v2.
 
+* "om monitor" instance availability icons changes:
+
+	standby down: s => x
+	standby up:   S => o
+
 ### driver ip
 
 * **breaking change:** Drop the `dns_name_suffix`, `provisioner`, `dns_update` keywords. The zone management feature of the collector will be dropped in the collector too.
