@@ -230,11 +230,12 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			globalExpectRefused()
 			return
 		}
-		switch *c.Value.GlobalExpect {
-		case instance.MonitorGlobalExpectZero:
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+		if o.state.OrchestrationId != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
+			err := fmt.Errorf("%w: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, o.state.GlobalExpect, o.state.OrchestrationId)
 			sendError(err)
 			return
+		}
+		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			if !ok || len(options.Destination) == 0 {
