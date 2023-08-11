@@ -26,7 +26,11 @@ func (d *data) commitPendingOps() (changes bool) {
 		changes = true
 		d.gen++
 		d.hbGens[d.localNode][d.localNode] = d.gen
-		d.clusterData.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
+		if _, ok := d.clusterData.Cluster.Node[d.localNode]; !ok {
+			d.log.Warn().Msgf("commitPendingOps -> d.clusterData.Cluster.Node[%s] is absent", d.localNode)
+		} else {
+			d.clusterData.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
+		}
 	}
 	switch d.hbMessageType {
 	case "patch", "full":

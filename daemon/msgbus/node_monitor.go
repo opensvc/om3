@@ -1,8 +1,17 @@
 package msgbus
 
-// onNodeMonitorDeleted removes .cluster.node.<node>.monitor
+import (
+	"time"
+
+	"github.com/opensvc/om3/core/node"
+)
+
+// onNodeMonitorDeleted reset .cluster.node.<node>.monitor with state shutting
 func (data *ClusterData) onNodeMonitorDeleted(m *NodeMonitorDeleted) {
-	delete(data.Cluster.Node, m.Node)
+	if v, ok := data.Cluster.Node[m.Node]; ok {
+		v.Monitor = node.Monitor{State: node.MonitorStateShutting, StateUpdatedAt: time.Now()}
+		data.Cluster.Node[m.Node] = v
+	}
 }
 
 // onNodeMonitorUpdated updates .cluster.node.<node>.monitor
