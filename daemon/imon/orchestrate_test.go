@@ -221,7 +221,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 		},
 
 		{
-			name:    "if instance is not provisioned then is is leader",
+			name:    "if instance is not provisioned then it is leader",
 			srcFile: "./testdata/orchestrate-ha.conf",
 			obj:     "obj",
 			sideEffects: map[string]sideEffect{
@@ -235,7 +235,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
 			expectedIsLeader:     true,
-			expectedIsHALeader:   true,
+			expectedIsHALeader:   false,
 			expectedCrm: [][]string{
 				{"obj", "status", "-r"},
 			},
