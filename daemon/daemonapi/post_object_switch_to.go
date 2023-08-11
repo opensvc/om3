@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -32,13 +33,32 @@ func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
 	options.Destination = append(options.Destination, payload.Destination...)
 	value = instance.MonitorUpdate{
-		GlobalExpect:        &globalExpect,
-		GlobalExpectOptions: options,
+		GlobalExpect:             &globalExpect,
+		GlobalExpectOptions:      options,
+		CandidateOrchestrationId: uuid.New(),
 	}
-	value.CandidateOrchestrationId = uuid.New()
-	a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
-		pubsub.Label{"path", p.String()}, labelApi)
-	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
-		OrchestrationId: value.CandidateOrchestrationId,
-	})
+	msg := msgbus.SetInstanceMonitor{
+		Path:  p,
+		Node:  hostname.Hostname(),
+		Value: value,
+		Err:   make(chan error),
+	}
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	var errs error
+	for {
+		select {
+		case err := <-msg.Err:
+			if err != nil {
+				errs = errors.Join(errs, err)
+			} else if errs != nil {
+				return JSONProblemf(ctx, http.StatusBadRequest, "set monitor", "%s", errs)
+			} else {
+				return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
+					OrchestrationId: value.CandidateOrchestrationId,
+				})
+			}
+		case <-ctx.Request().Context().Done():
+			return JSONProblemf(ctx, http.StatusGone, "set monitor", "")
+		}
+	}
 }
