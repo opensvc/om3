@@ -156,7 +156,7 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range o.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
-					err := fmt.Errorf("%w: already targeting %s (on node %s)", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename)
+					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					sendError(err)
 					o.log.Info().Msgf("%s", err)
 					return

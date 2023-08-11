@@ -292,9 +292,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				continue
 			}
 			if instMon.GlobalExpectUpdatedAt.After(o.state.GlobalExpectUpdatedAt) {
-				err := fmt.Errorf("%w: %s: %s", instance.ErrSameGlobalExpect, *c.Value.GlobalExpect)
+				err := fmt.Errorf("%w: %s: more recent value %s on node %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, instMon.GlobalExpect, node)
 				sendError(err)
-				o.log.Info().Msgf("refuse to set global expect '%s': node %s global expect is already '%s'", instMon.GlobalExpect, node, *c.Value.GlobalExpect)
+				o.log.Info().Msgf("%s", err)
 				globalExpectRefused()
 				return
 			}
