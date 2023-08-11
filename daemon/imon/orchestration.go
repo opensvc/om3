@@ -107,14 +107,16 @@ func (o *imon) endOrchestration() {
 	}
 }
 
-// doneAndIdle set state to reached and unset orchestration id, it is used to
-// set convergence for orchestration reached expectation on all instances.
+// doneAndIdle marks the orchestration as done on the local instance and
+// sets the state to idle.
 func (o *imon) doneAndIdle() {
-	o.change = true
+	o.done()
 	o.state.State = instance.MonitorStateIdle
-	o.state.OrchestrationIsDone = true
 }
 
+// done() sets marks the orchestration as done on the local instance.
+// It can be used instead of doneAndIdle() when we want a state to linger
+// after the orchestration is ended.
 func (o *imon) done() {
 	o.change = true
 	o.state.OrchestrationIsDone = true
