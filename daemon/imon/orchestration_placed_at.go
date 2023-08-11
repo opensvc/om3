@@ -181,14 +181,6 @@ func (o *imon) clearStopFailedIfDown() {
 	}
 }
 
-func (o *imon) clearStoppedIfObjectStatusAvailUp() {
-	switch o.objStatus.Avail {
-	case status.Up:
-		o.loggerWithState().Info().Msg("object avail status is up -> set done and idle, reset local expect")
-		o.clearStopped()
-	}
-}
-
 func (o *imon) clearStopped() {
 	o.doneAndIdle()
 	o.state.LocalExpect = instance.MonitorLocalExpectNone
