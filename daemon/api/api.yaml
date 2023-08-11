@@ -489,6 +489,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
   /nodes/info:
@@ -696,6 +698,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
   /object/progress:
@@ -773,6 +777,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
   /pools:
@@ -1916,6 +1922,13 @@ components:
     '404':
       type: object
       description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    '409':
+      type: object
+      description: Conflict
       content:
         application/json:
           schema:

@@ -51,7 +51,7 @@ func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 			if err != nil {
 				errs = errors.Join(errs, err)
 			} else if errs != nil {
-				return JSONProblemf(ctx, http.StatusBadRequest, "set monitor", "%s", errs)
+				return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", errs)
 			} else {
 				return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
 					OrchestrationId: value.CandidateOrchestrationId,
