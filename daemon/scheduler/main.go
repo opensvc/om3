@@ -231,8 +231,10 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("scheduler")
 	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
-	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
 	sub.Start()
@@ -253,6 +255,8 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.InstanceConfigUpdated:
+				t.onInstConfigUpdated(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
 			case *msgbus.NodeMonitorUpdated:
@@ -297,10 +301,19 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
+func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+	switch {
+	case t.enabled:
+		t.log.Info().Stringer("path", c.Path).Msg("update instance schedules")
+		t.unschedule(c.Path)
+		t.scheduleObject(c.Path)
+	}
+}
+
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	switch {
 	case t.enabled:
-		t.log.Info().Msgf("update node schedules")
+		t.log.Info().Msg("update node schedules")
 		t.unschedule(path.T{})
 		t.scheduleNode()
 	}
