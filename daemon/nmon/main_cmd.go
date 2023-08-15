@@ -209,14 +209,17 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 	delete(o.cacheNodesInfo, c.Node)
 	o.saveNodesInfo()
 
+	var forgetType string
 	if !stringslice.Has(c.Node, clusternode.Get()) {
-		o.log.Info().Msgf("forget removed peer %s => new live peers: %v", c.Node, o.livePeers)
+		forgetType = "removed"
+		o.log.Info().Msgf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
 	} else {
-		o.log.Warn().Msgf("forget lost peer %s => new live peers: %v", c.Node, o.livePeers)
+		forgetType = "lost"
+		o.log.Warn().Msgf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
 	}
 
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Warn().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
+		o.log.Info().Msgf("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
 		return
 	}
 	if !o.clusterConfig.Quorum {
