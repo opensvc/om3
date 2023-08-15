@@ -132,9 +132,9 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 }
 
 // startSubscriptions starts the subscriptions for omon.
+// For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
 func (o *T) startSubscriptions() {
 	sub := o.bus.Sub(o.id + " omon")
-	sub.AddFilter(&msgbus.ForgetPeer{})
 
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, o.labelPath)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, o.labelPath)
@@ -143,7 +143,9 @@ func (o *T) startSubscriptions() {
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, o.labelPath)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, o.labelPath)
 
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, o.labelPath)
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, o.labelPath)
+
 	sub.Start()
 	o.sub = sub
 }
@@ -196,25 +198,6 @@ func (o *T) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case *msgbus.ForgetPeer:
-				if _, ok := o.instStatus[c.Node]; ok {
-					delete(o.instStatus, c.Node)
-					o.bus.Pub(&msgbus.InstanceStatusDeleted{Path: o.path, Node: c.Node},
-						pubsub.Label{"node", o.localhost},
-						pubsub.Label{"path", o.id},
-					)
-				}
-				if _, ok := o.instMonitor[c.Node]; ok {
-					delete(o.instStatus, c.Node)
-					o.bus.Pub(&msgbus.InstanceMonitorDeleted{Path: o.path, Node: c.Node},
-						pubsub.Label{"node", o.localhost},
-						pubsub.Label{"path", o.id},
-					)
-				}
-				delete(o.instMonitor, c.Node)
-				delete(o.instConfig, c.Node)
-				o.srcEvent = c
-				o.updateStatus()
 			case *msgbus.InstanceMonitorUpdated:
 				o.srcEvent = c
 				o.instMonitor[c.Node] = c.Value
@@ -223,6 +206,11 @@ func (o *T) worker() {
 			case *msgbus.InstanceMonitorDeleted:
 				o.srcEvent = c
 				delete(o.instMonitor, c.Node)
+				o.updateStatus()
+
+			case *msgbus.InstanceStatusDeleted:
+				o.srcEvent = c
+				delete(o.instStatus, c.Node)
 				o.updateStatus()
 
 			case *msgbus.InstanceStatusUpdated:
@@ -239,7 +227,9 @@ func (o *T) worker() {
 				o.status.PlacementPolicy = c.Value.PlacementPolicy
 				o.status.Priority = c.Value.Priority
 				o.status.Topology = c.Value.Topology
-				o.srcEvent = i
+				o.srcEvent = c
+
+				o.instConfig[c.Node] = c.Value
 
 				// update local cache for instance status & monitor from cfg node
 				// It will be updated on InstanceStatusUpdated, or InstanceMonitorUpdated
@@ -261,9 +251,7 @@ func (o *T) worker() {
 					o.imonCancel = nil
 				}
 				delete(o.instConfig, c.Node)
-				delete(o.instStatus, c.Node)
-				delete(o.instMonitor, c.Node)
-				o.srcEvent = i
+				o.srcEvent = c
 				o.updateStatus()
 			}
 		}
