@@ -3,6 +3,7 @@ package daemondata
 import (
 	"context"
 
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -22,7 +23,9 @@ type (
 	}
 )
 
-// DropPeerNode drop peer node
+// DropPeerNode is a public method to drop peer node from t. It uses private call
+// to func (d *data) dropPeer.
+// It is used by a node stale detector to call drop peer on stale <peer> detection.
 func (t T) DropPeerNode(peerNode string) error {
 	err := make(chan error, 1)
 	op := opDropPeerNode{
@@ -64,19 +67,54 @@ func (o opGetClusterNodeData) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (d *data) dropPeer(peerNode string) {
-	// TODO publish event for b2.1 "forget_peer" hook
-	delete(d.clusterData.Cluster.Node[d.localNode].Status.Gen, peerNode)
-	hbcache.DropPeer(peerNode)
-	if _, ok := d.clusterData.Cluster.Node[peerNode]; ok {
-		d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
-		delete(d.clusterData.Cluster.Node, peerNode)
-		delete(d.hbGens, peerNode)
-		delete(d.hbGens[d.localNode], peerNode)
-		delete(d.hbPatchMsgUpdated, peerNode)
-		delete(d.hbMsgPatchLength, peerNode)
-		delete(d.hbMsgType, peerNode)
+// dropPeer handle actions needed when <peer> node is dropped
+//
+// It drops <peer> from hbcache
+// It drops <peer> from instance data holders and publish associated msgbus.Instance<xxx>Deleted
+// It drops <peer> node data holder and publish associated msgbus.Node<xxx>Deleted
+// It delete <peer> d.clusterData.Cluster.Node
+// It calls setDaemonHb()
+// It publish ForgetPeer
+func (d *data) dropPeer(peer string) {
+	// TODO: document CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
+	d.log.Info().Msgf("drop peer node %s", peer)
+	peerLabels := []pubsub.Label{{"node", peer}, {"from", "peer"}}
+
+	hbcache.DropPeer(peer)
+
+	// unset and publish deleted <peer> components instance and node (found from
+	// instance and node data holders).
+	d.log.Info().Msgf("unset and publish deleted peer %s components", peer)
+	for p := range instance.ConfigData.GetByNode(peer) {
+		instance.ConfigData.Unset(p, peer)
+		d.bus.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
 	}
+	for p := range instance.StatusData.GetByNode(peer) {
+		instance.StatusData.Unset(p, peer)
+		d.bus.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
+	}
+	for p := range instance.MonitorData.GetByNode(peer) {
+		instance.MonitorData.Unset(p, peer)
+		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
+	}
+	if v := node.MonitorData.Get(peer); v != nil {
+		node.DropNode(peer)
+		d.bus.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)
+	}
+
+	// delete peer from internal caches
+	delete(d.hbGens, peer)
+	delete(d.hbGens[d.localNode], peer)
+	delete(d.hbPatchMsgUpdated, peer)
+	delete(d.hbMsgPatchLength, peer)
+	delete(d.hbMsgType, peer)
+
+	// delete peer d.clusterData.Cluster.Node...
+	if d.clusterData.Cluster.Node[d.localNode].Status.Gen != nil {
+		delete(d.clusterData.Cluster.Node[d.localNode].Status.Gen, peer)
+	}
+	delete(d.clusterData.Cluster.Node, peer)
+
 	d.setDaemonHb()
-	d.bus.Pub(&msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})
+	d.bus.Pub(&msgbus.ForgetPeer{Node: peer}, peerLabels...)
 }
