@@ -223,6 +223,10 @@ func (o *imon) worker(initialNodes []string) {
 		o.scopeNodes = append([]string{}, o.instConfig.Scope...)
 	}
 	for n, v := range instance.MonitorData.GetByPath(o.path) {
+		if n == o.localhost {
+			o.log.Warn().Msg("bug: on imon init, instance.MonitorData[localhost] should be empty")
+			continue
+		}
 		o.instMonitor[n] = *v
 	}
 	for n, v := range instance.StatusData.GetByPath(o.path) {
