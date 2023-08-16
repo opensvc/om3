@@ -123,7 +123,7 @@ func (o *imon) done() {
 }
 
 func (o *imon) orchestrationIsAllDone() bool {
-	for nodename, oImon := range o.instMonitor {
+	for nodename, oImon := range o.AllInstanceMonitors() {
 		if !oImon.OrchestrationIsDone {
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
