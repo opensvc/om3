@@ -453,6 +453,11 @@ func (o *imon) AllInstanceMonitors() map[string]instance.Monitor {
 	m := make(map[string]instance.Monitor)
 	m[o.localhost] = o.state
 	for node, instMon := range o.instMonitor {
+		if node == o.localhost {
+			err := fmt.Errorf("AllInstanceMonitors is not expected to have localhost in o.instMonitor keys")
+			o.log.Error().Err(err).Msg("AllInstanceMonitors")
+			panic(err)
+		}
 		m[node] = instMon
 	}
 	return m
