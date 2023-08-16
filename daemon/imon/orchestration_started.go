@@ -144,7 +144,7 @@ func (o *imon) startedFromStartFailed() {
 		return
 	}
 	if o.isAllStartFailed() {
-		o.loggerWithState().Info().Msg("all instances start failed -> set done and idle")
+		o.loggerWithState().Info().Msg("all instances start failed -> set done")
 		o.done()
 		return
 	}
