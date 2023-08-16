@@ -5,11 +5,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/toc"
 )
 
@@ -207,9 +209,17 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 	delete(o.cacheNodesInfo, c.Node)
 	o.saveNodesInfo()
 
-	o.log.Warn().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
+	var forgetType string
+	if !stringslice.Has(c.Node, clusternode.Get()) {
+		forgetType = "removed"
+		o.log.Info().Msgf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+	} else {
+		forgetType = "lost"
+		o.log.Warn().Msgf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+	}
+
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Warn().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
+		o.log.Info().Msgf("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
 		return
 	}
 	if !o.clusterConfig.Quorum {

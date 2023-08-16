@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
@@ -15,6 +14,9 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
+// peerDropWorker is responsible for dropping peer data on msgbus.HbNodePing{isAlive: false, Node: <peer>}.
+// If <peer> node is in MonitorStateMaintenance state, the drop is delayed until maintenanceGracePeriod is reached.
+// The delayed <peer> node drop is canceled on msgbus.HbNodePing{isAlive: true, Node: <peer>}.
 func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
 	log := daemonlogctx.Logger(ctx).With().Str("Name", "peer-drop").Logger()
@@ -47,11 +49,9 @@ func peerDropWorker(ctx context.Context) {
 	dropM := make(map[string]dropCall)
 
 	dropPeer := func(peer string) {
-		instance.DropNode(peer)
-		node.DropNode(peer)
 		err := databus.DropPeerNode(peer)
 		if err != nil {
-			log.Error().Err(err).Msgf("drop peer %s", peer)
+			log.Error().Err(err).Msgf("drop peer node %s data", peer)
 		}
 	}
 
@@ -67,16 +67,17 @@ func peerDropWorker(ctx context.Context) {
 			}
 			dropCtx, cancel := context.WithTimeout(ctx, delay)
 			dropM[peer] = dropCall{cancel: cancel, at: time.Now()}
+			log.Info().Msgf("all hb rx stale for %s in maintenance state => delay drop peer node %s data", peer, peer)
 			go func(ctx context.Context, peer string) {
 				<-ctx.Done()
 				if ctx.Err() == context.Canceled {
 					return
 				}
-				log.Info().Msgf("all hb rx stale for %s and maintenance grace period expired. drop peer data", peer)
+				log.Info().Msgf("all hb rx stale for %s and maintenance grace period expired => drop peer node %s data", peer, peer)
 				dropPeer(peer)
 			}(dropCtx, peer)
 		} else {
-			log.Info().Msgf("all hb rx stale for %s. drop peer data", peer)
+			log.Info().Msgf("all hb rx stale for %s => drop peer node %s data", peer, peer)
 			dropPeer(peer)
 		}
 	}

@@ -152,8 +152,9 @@ func (d *data) setNextMsgType() {
 				continue
 			}
 			if _, ok := d.clusterNodes[node]; !ok {
-				// unexpected hb gens from non cluster member, so it doesn't need full
-				d.log.Warn().Msgf("evict unexpected hb gens %s: not a cluster node", node)
+				err := fmt.Errorf("bug: d.hbGens[%s] exists without d.clusterNodes[%s]", node, node)
+				// TODO: replace with panic(err) ?
+				d.log.Error().Err(err).Msgf("setNextMsgType cleanup unexpected hb gens %s", node)
 				delete(d.hbGens, node)
 				continue
 			}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/placement"
@@ -88,9 +89,9 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onInstanceConfigDeletedFromNode(node string) {
+func (o *imon) onInstanceStatusDeleted(node string) {
 	if _, ok := o.instStatus[node]; ok {
-		o.log.Info().Msgf("drop deleted instance status from node %s", node)
+		o.log.Debug().Msgf("drop deleted instance status from node %s", node)
 		delete(o.instStatus, node)
 	}
 }
@@ -99,19 +100,24 @@ func (o *imon) onInstanceConfigDeletedFromNode(node string) {
 func (o *imon) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
-		case *msgbus.ForgetPeer:
-			o.onInstanceConfigDeletedFromNode(srcCmd.Node)
-			o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
+		case *msgbus.InstanceStatusDeleted:
+			o.onInstanceStatusDeleted(c.Node)
 		case *msgbus.InstanceStatusUpdated:
 			o.onInstanceStatusUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigUpdated:
 			o.onInstanceConfigUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigDeleted:
-			o.onInstanceConfigDeletedFromNode(srcCmd.Node)
+			// just a reminder here: no action on InstanceConfigDeleted because
+			// if our instance config is deleted our omon launcher will cancel us
+		case *msgbus.InstanceMonitorDeleted:
+			if srcCmd.Node == o.localhost {
+				// this is not expected
+				o.log.Warn().Msgf("unexpected received ObjectStatusUpdated from self InstanceMonitorDeleted")
+			} else {
+				o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
+			}
 		case *msgbus.InstanceMonitorUpdated:
 			o.onInstanceMonitorUpdated(srcCmd)
-		case *msgbus.InstanceMonitorDeleted:
-			o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
 		}
 	}
 	o.objStatus = c.Value
@@ -395,6 +401,7 @@ func (o *imon) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 }
 
 func (o *imon) onInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
+	// ignore self msgbus.InstanceMonitorUpdated
 	if c.Node != o.localhost {
 		o.onRemoteInstanceMonitorUpdated(c)
 	}
@@ -413,6 +420,8 @@ func (o *imon) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) 
 
 func (o *imon) onInstanceMonitorDeletedFromNode(node string) {
 	if node == o.localhost {
+		// this is not expected
+		o.log.Warn().Msgf("invalid onInstanceMonitorDeletedFromNode called from self")
 		return
 	}
 	o.log.Debug().Msgf("delete remote instance imon from node %s", node)

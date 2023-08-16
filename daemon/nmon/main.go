@@ -251,21 +251,19 @@ func (o *nmon) startSubscriptions() {
 	// We don't need to watch for ConfigFileUpdated on path cluster, instead
 	// we watch for ClusterConfigUpdated.
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
-
 	sub.AddFilter(&msgbus.ForgetPeer{})
-	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
-	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
-	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
-	sub.AddFilter(&msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"from", "peer"})
-	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.JoinRequest{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
+	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
+	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.Start()
 	o.sub = sub

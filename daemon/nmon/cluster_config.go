@@ -94,9 +94,5 @@ func (o *nmon) removeClusterNode(node string) error {
 	if err != nil {
 		return err
 	}
-	// remove peer node from daemon data
-	if err := o.databus.DropPeerNode(node); err != nil {
-		return err
-	}
 	return nil
 }
