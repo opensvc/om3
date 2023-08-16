@@ -87,7 +87,6 @@ func (o *imon) orchestrate() {
 // endOrchestration is called when orchestration has been reached on all nodes
 func (o *imon) endOrchestration() {
 	o.change = true
-	o.state.State = instance.MonitorStateIdle
 	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	o.state.GlobalExpectOptions = nil
 	o.state.OrchestrationIsDone = false
