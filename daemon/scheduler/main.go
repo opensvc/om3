@@ -230,9 +230,13 @@ func (t *T) MainStop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("scheduler")
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
-	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
-	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
 	sub.Start()
 	return sub
 }
@@ -251,10 +255,14 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.InstanceConfigUpdated:
+				t.onInstConfigUpdated(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
 			case *msgbus.NodeMonitorUpdated:
 				t.onNodeMonitorUpdated(c)
+			case *msgbus.NodeConfigUpdated:
+				t.onNodeConfigUpdated(c)
 			case *msgbus.ObjectStatusUpdated:
 				t.onMonObjectStatusUpdated(c)
 			}
@@ -276,10 +284,6 @@ func (t *T) loop() {
 }
 
 func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
-	if c.Node != hostname.Hostname() {
-		// discard peer node events
-		return
-	}
 	t.log.Info().Stringer("path", c.Path).Msgf("unschedule (instance deleted)")
 	t.unschedule(c.Path)
 }
@@ -297,11 +301,25 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
-func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	if c.Node != hostname.Hostname() {
-		// discard peer node events
-		return
+func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+	switch {
+	case t.enabled:
+		t.log.Info().Stringer("path", c.Path).Msg("update instance schedules")
+		t.unschedule(c.Path)
+		t.scheduleObject(c.Path)
 	}
+}
+
+func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
+	switch {
+	case t.enabled:
+		t.log.Info().Msg("update node schedules")
+		t.unschedule(path.T{})
+		t.scheduleNode()
+	}
+}
+
+func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	_, incompatible := incompatibleNodeMonitorStatus[c.Value.State]
 	switch {
 	case incompatible && t.enabled:
