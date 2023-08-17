@@ -3,10 +3,13 @@ package imon
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 var (
@@ -116,6 +119,7 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 		command.WithLogger(&o.log),
 		command.WithVarEnv(env.DaemonOriginSetenvArg()),
 	)
+	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}}
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
 			"crm action %s (instance state: %s) -> exec %s %s",
@@ -124,10 +128,16 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 	} else {
 		o.loggerWithState().Debug().Msgf("-> exec %s %s", cmdPath, cmdArgs)
 	}
+	o.pubsubBus.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
+	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
+		duration := time.Now().Sub(startTime)
+		o.pubsubBus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
 		o.loggerWithState().Error().Err(err).Msgf("failed %s %s", o.path, cmdArgs)
 		return err
 	}
+	duration := time.Now().Sub(startTime)
+	o.pubsubBus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "imon", Title: title}, labels...)
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
 			"crm action %s (instance state: %s) <- exec %s %s",
