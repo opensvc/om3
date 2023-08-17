@@ -89,10 +89,10 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onInstanceStatusDeleted(node string) {
-	if _, ok := o.instStatus[node]; ok {
-		o.log.Debug().Msgf("drop deleted instance status from node %s", node)
-		delete(o.instStatus, node)
+func (o *imon) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	if _, ok := o.instStatus[c.Node]; ok {
+		o.log.Debug().Msgf("drop deleted instance status from node %s", c.Node)
+		delete(o.instStatus, c.Node)
 	}
 }
 
@@ -101,7 +101,7 @@ func (o *imon) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case *msgbus.InstanceStatusDeleted:
-			o.onInstanceStatusDeleted(c.Node)
+			o.onInstanceStatusDeleted(srcCmd)
 		case *msgbus.InstanceStatusUpdated:
 			o.onInstanceStatusUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigUpdated:
