@@ -31,8 +31,10 @@ type (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		log          zerolog.Logger
+		localhost    string
 		routineTrace routineTracer
 		databus      *daemondata.T
+		pubsub       *pubsub.Bus
 
 		events      chan any
 		jobs        Jobs
@@ -74,6 +76,7 @@ var (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		log:           log.Logger.With().Str("name", "scheduler").Logger(),
+		localhost:     hostname.Hostname(),
 		events:        make(chan any),
 		jobs:          make(Jobs),
 		provisioned:   make(map[path.T]bool),
@@ -228,9 +231,9 @@ func (t *T) MainStop() error {
 }
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
-	bus := pubsub.BusFromContext(t.ctx)
-	sub := bus.Sub("scheduler")
-	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
+	t.pubsub = pubsub.BusFromContext(t.ctx)
+	sub := t.pubsub.Sub("scheduler")
+	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, labelLocalhost)

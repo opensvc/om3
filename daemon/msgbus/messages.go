@@ -42,6 +42,12 @@ var (
 
 		"DaemonStart": func() any { return &DaemonStart{} },
 
+		"Exec": func() any { return &Exec{} },
+
+		"ExecFailed": func() any { return &ExecFailed{} },
+
+		"ExecSuccess": func() any { return &ExecSuccess{} },
+
 		"Exit": func() any { return &Exit{} },
 
 		"ForgetPeer": func() any { return &ForgetPeer{} },
@@ -244,6 +250,42 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 		Version    string `json:"version" yaml:"version"`
+	}
+
+	// Exec message describes an exec call
+	Exec struct {
+		pubsub.Msg `yaml:",inline"`
+		Command string `json:"command" yaml:"command"`
+		// Node is the nodename that will call exec
+		Node string `json:"node" yaml:"node"`
+		// Origin describes the exec caller: example: imon, nmon, scheduler...
+		Origin string `json:"origin" yaml:"origin"`
+		Title  string `json:"title" yaml:"title"`
+	}
+
+	// ExecFailed message describes failed exec call
+	ExecFailed struct {
+		pubsub.Msg `yaml:",inline"`
+		Command  string        `json:"command" yaml:"command"`
+		Duration time.Duration `json:"duration" yaml:"duration"`
+		ErrS     string        `json:"error" yaml:"error"`
+		// Node is the nodename that called exec
+		Node string `json:"node" yaml:"node"`
+		// Origin describes the exec caller: example: imon, nmon, scheduler...
+		Origin string `json:"origin" yaml:"origin"`
+		Title  string `json:"title" yaml:"title"`
+	}
+
+	// ExecSuccess message describes successfully exec call
+	ExecSuccess struct {
+		pubsub.Msg `yaml:",inline"`
+		Command  string        `json:"command" yaml:"command"`
+		Duration time.Duration `json:"duration" yaml:"duration"`
+		// Node is the nodename that called exec
+		Node string `json:"node" yaml:"node"`
+		// Origin describes the exec caller: example: imon, nmon, scheduler...
+		Origin string `json:"origin" yaml:"origin"`
+		Title  string `json:"title" yaml:"title"`
 	}
 
 	Exit struct {
@@ -703,6 +745,18 @@ func (e *DaemonHb) Kind() string {
 
 func (e *DaemonStart) Kind() string {
 	return "DaemonStart"
+}
+
+func (e *Exec) Kind() string {
+	return "Exec"
+}
+
+func (e *ExecFailed) Kind() string {
+	return "ExecFailed"
+}
+
+func (e *ExecSuccess) Kind() string {
+	return "ExecSuccess"
 }
 
 func (e *Exit) Kind() string {
