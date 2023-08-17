@@ -250,6 +250,11 @@ var (
 	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
+
+	MonitorActionCrash      MonitorAction = "crash"
+	MonitorActionFreezeStop MonitorAction = "freeze_stop"
+	MonitorActionReboot     MonitorAction = "reboot"
+	MonitorActionSwitch     MonitorAction = "switch"
 )
 
 func (t MonitorState) IsDoing() bool {
