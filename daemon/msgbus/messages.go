@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
@@ -92,6 +93,8 @@ var (
 		"LeaveRequest": func() any { return &LeaveRequest{} },
 
 		"LeaveSuccess": func() any { return &LeaveSuccess{} },
+
+		"Log": func() any { return &Log{} },
 
 		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
 
@@ -417,6 +420,17 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully removed node from cluster config nodes
 		Node string `json:"node" yaml:"node"`
+	}
+
+	// Log is a log message.
+	//
+	// Usage example:
+	// labels := []pubsub.Label{{"subsystem", "imon"}, {"path", p.String()}}
+	// pubsubBus.Pub(&msgbus.Log{Message: "orchestrate", Level: "debug"}, labels...)
+	Log struct {
+		pubsub.Msg `yaml:",inline"`
+		Message    string `json:"message" yaml:"message"`
+		Level      string `json:"level" yaml:"level"`
 	}
 
 	NodeConfigUpdated struct {
@@ -811,6 +825,10 @@ func (e *LeaveRequest) Kind() string {
 
 func (e *LeaveSuccess) Kind() string {
 	return "LeaveSuccess"
+}
+
+func (e *Log) Kind() string {
+	return "Log"
 }
 
 func (e *NodeConfigUpdated) Kind() string {
