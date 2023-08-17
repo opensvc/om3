@@ -22,15 +22,19 @@ func (o *imon) isDone() bool {
 // orchestrate from omon vs global expect
 func (o *imon) orchestrate() {
 	if o.isDone() {
+		o.log.Debug().Msgf("orchestrate return on isDone()")
 		return
 	}
 	if _, ok := o.instStatus[o.localhost]; !ok {
+		o.log.Debug().Msgf("orchestrate return on no instStatus[o.localhost]")
 		return
 	}
 	if _, ok := o.nodeStatus[o.localhost]; !ok {
+		o.log.Debug().Msgf("orchestrate return on no nodeStatus[o.localhost]")
 		return
 	}
 	if !o.isConvergedGlobalExpect() {
+		o.log.Debug().Msgf("orchestrate return on not isConvergedGlobalExpect")
 		return
 	}
 
@@ -43,19 +47,24 @@ func (o *imon) orchestrate() {
 		if o.orchestrationIsAllDone() {
 			o.endOrchestration()
 		}
+		o.log.Debug().Msgf("orchestrate return on o.state.OrchestrationId != uuid.Nil && o.state.OrchestrationIsDone")
 		return
 	}
 	if o.isDone() {
+		o.log.Debug().Msgf("orchestrate return on isDone()")
 		return
 	}
 	if nodeMonitor, ok := o.nodeMonitor[o.localhost]; !ok {
+		o.log.Debug().Msgf("orchestrate return on no nodeMonitor localhost")
 		return
 	} else if nodeMonitor.State != node.MonitorStateIdle {
+		o.log.Debug().Msgf("orchestrate return on nodeMonitor.State != node.MonitorStateIdle")
 		return
 	}
 
 	o.orchestrateResourceRestart()
 	if o.isDone() {
+		o.log.Debug().Msgf("orchestrate return on isDone()")
 		return
 	}
 
@@ -123,7 +132,7 @@ func (o *imon) done() {
 
 func (o *imon) orchestrationIsAllDone() bool {
 	for nodename, oImon := range o.AllInstanceMonitors() {
-		if !oImon.OrchestrationIsDone {
+		if !oImon.OrchestrationIsDone && oImon.OrchestrationId != uuid.Nil {
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Info().Msgf("orchestration progress on node %s: %s", nodename, msg)
@@ -131,6 +140,7 @@ func (o *imon) orchestrationIsAllDone() bool {
 			}
 			return false
 		} else {
+			// OrchestrationIsDone or no OrchestrationId
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Info().Msgf("orchestration done on node %s: %s", nodename, msg)
