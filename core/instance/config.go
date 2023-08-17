@@ -15,6 +15,7 @@ type (
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
 		Checksum         string                    `json:"csum" yaml:"csum"`
+		Children         []path.Relation           `json:"children" yaml:"children"`
 		FlexMax          int                       `json:"flex_max,omitempty" yaml:"flex_max,omitempty"`
 		FlexMin          int                       `json:"flex_min,omitempty" yaml:"flex_min,omitempty"`
 		FlexTarget       int                       `json:"flex_target,omitempty" yaml:"flex_target,omitempty"`
@@ -23,6 +24,7 @@ type (
 		Nodename         string                    `json:"-" yaml:"-"`
 		Orchestrate      string                    `json:"orchestrate" yaml:"orchestrate"`
 		Path             path.T                    `json:"-" yaml:"-"`
+		Parents          []path.Relation           `json:"parents" yaml:"parents"`
 		PlacementPolicy  placement.Policy          `json:"placement_policy" yaml:"placement_policy"`
 		Priority         priority.T                `json:"priority,omitempty" yaml:"priority,omitempty"`
 		Resources        map[string]ResourceConfig `json:"resources" yaml:"resources"`
