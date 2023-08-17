@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/opensvc/om3/core/instance"
@@ -43,7 +44,9 @@ func (o *imon) isConvergedGlobalExpect() bool {
 	localUpdated := o.state.GlobalExpectUpdatedAt
 	for s, v := range o.instMonitor {
 		if s == o.localhost {
-			continue
+			err := fmt.Errorf("bug: isConvergedGlobalExpect detect unexpected localhost in internal instance monitor cache keys")
+			o.log.Error().Err(err).Msgf("isConvergedGlobalExpect")
+			panic(err)
 		}
 		if localUpdated.After(v.GlobalExpectUpdatedAt) {
 			o.log.Debug().Msgf("wait GlobalExpect propagation on %s", s)

@@ -7,11 +7,16 @@ import (
 )
 
 func (o *imon) orchestratePurged() {
+	o.log.Debug().Msgf("orchestratePurged starting from %s", o.state.State)
 	switch o.state.State {
 	case instance.MonitorStateDeleted:
 		o.purgedFromDeleted()
 	case instance.MonitorStateIdle:
 		o.purgedFromIdle()
+	case instance.MonitorStateStopped:
+		o.purgedFromStopped()
+	case instance.MonitorStateStopFailed:
+		o.done()
 	case instance.MonitorStateUnprovisioned:
 		o.purgedFromUnprovisioned()
 	case instance.MonitorStateWaitNonLeader:
@@ -37,6 +42,20 @@ func (o *imon) purgedFromIdle() {
 	return
 }
 
+func (o *imon) purgedFromStopped() {
+	if o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn) {
+		o.log.Debug().Msgf("purgedFromStopped return on o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn)")
+		return
+	}
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		o.log.Debug().Msgf("purgedFromStopped return on o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)")
+		o.purgedFromIdleProvisioned()
+		return
+	}
+	go o.orchestrateAfterAction(instance.MonitorStateStopped, instance.MonitorStateUnprovisioned)
+	return
+}
+
 func (o *imon) purgedFromDeleted() {
 	o.change = true
 	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
@@ -49,7 +68,7 @@ func (o *imon) purgedFromUnprovisioned() {
 }
 
 func (o *imon) purgedFromIdleUp() {
-	o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
+	o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
 func (o *imon) purgedFromIdleProvisioned() {
