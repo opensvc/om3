@@ -1943,9 +1943,10 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 func newCmdObjectDelete(kind string) *cobra.Command {
 	var options commands.CmdObjectDelete
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "delete objects, instances or configuration sections",
-		Long:  "Beware: not setting --local nor --rid deletes all object instances via orchestration, which leaves no local backup of the configuration.",
+		Use:     "delete",
+		Aliases: []string{"del"},
+		Short:   "delete objects, instances or configuration sections",
+		Long:    "Beware: not setting --local nor --rid deletes all object instances via orchestration, which leaves no local backup of the configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},

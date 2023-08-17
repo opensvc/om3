@@ -143,6 +143,20 @@ func (o *imon) startedFromStartFailed() {
 		o.doneAndIdle()
 		return
 	}
+	if o.isAllStartFailed() {
+		o.loggerWithState().Info().Msg("all instances start failed -> set done")
+		o.done()
+		return
+	}
+}
+
+func (o *imon) isAllStartFailed() bool {
+	for _, instMon := range o.AllInstanceMonitors() {
+		if instMon.State != instance.MonitorStateStartFailed {
+			return false
+		}
+	}
+	return true
 }
 
 func (o *imon) startedClearIfReached() bool {
