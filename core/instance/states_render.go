@@ -40,15 +40,21 @@ func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
 	head.AddColumn().AddText(t.descString())
 
+	resNode := head.AddNode()
+	resNode.AddColumn().AddText("resources")
+	resNode.AddColumn()
+	resNode.AddColumn()
+	resNode.AddColumn()
+
 	lastSubset := ""
-	subsetNode := head
+	subsetNode := resNode
 	for _, r := range t.Status.SortedResources() {
 		if lastSubset != r.Subset {
 			if r.Subset == "" {
-				subsetNode = head
+				subsetNode = resNode
 			} else {
 				resourceSetName := r.ResourceID.DriverGroup().String() + ":" + r.Subset
-				subsetNode = head.AddNode()
+				subsetNode = resNode.AddNode()
 				subsetNode.AddColumn().AddText(resourceSetName)
 				subsetNode.AddColumn()
 				subsetNode.AddColumn()
@@ -79,6 +85,8 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			}
 		}
 	}
+	t.loadTreeNodeParents(head)
+	t.loadTreeNodeChildren(head)
 }
 
 func (t States) descString() string {
@@ -151,4 +159,32 @@ func (t States) descString() string {
 	}
 
 	return strings.Join(l, " ")
+}
+
+func (t States) loadTreeNodeParents(head *tree.Node) {
+	if len(t.Monitor.Parents) == 0 {
+		return
+	}
+	n := head.AddNode()
+	n.AddColumn().AddText("parents")
+	for relation, availStatus := range t.Monitor.Parents {
+		pNode := n.AddNode()
+		pNode.AddColumn().AddText(relation).SetColor(rawconfig.Color.Bold)
+		pNode.AddColumn()
+		pNode.AddColumn().AddText(colorstatus.Sprint(availStatus, rawconfig.Colorize))
+	}
+}
+
+func (t States) loadTreeNodeChildren(head *tree.Node) {
+	if len(t.Monitor.Children) == 0 {
+		return
+	}
+	n := head.AddNode()
+	n.AddColumn().AddText("children")
+	for relation, availStatus := range t.Monitor.Children {
+		pNode := n.AddNode()
+		pNode.AddColumn().AddText(relation).SetColor(rawconfig.Color.Bold)
+		pNode.AddColumn()
+		pNode.AddColumn().AddText(colorstatus.Sprint(availStatus, rawconfig.Colorize))
+	}
 }

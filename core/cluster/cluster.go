@@ -163,14 +163,6 @@ func (s *Data) GetObjectStatus(p path.T) object.Digest {
 			instanceStates.Monitor = *inst.Monitor
 		}
 		data.Instances[nodename] = instanceStates
-		for _, relative := range instanceStates.Status.Parents {
-			ps := relative.String()
-			data.Parents[ps] = s.Cluster.Object[ps]
-		}
-		for _, relative := range instanceStates.Status.Children {
-			ps := relative.String()
-			data.Children[ps] = s.Cluster.Object[ps]
-		}
 		for _, relative := range instanceStates.Status.Slaves {
 			ps := relative.String()
 			data.Slaves[ps] = s.Cluster.Object[ps]

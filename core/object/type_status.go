@@ -23,12 +23,10 @@ type (
 	// Digest is a composite extract of different parts of
 	// the cluster status.
 	Digest struct {
-		Children  map[string]Status          `json:"children,omitempty" yaml:"children,omitempty"`
 		IsCompat  bool                       `json:"is_compat" yaml:"is_compat"`
 		Instances map[string]instance.States `json:"instances" yaml:"instances"`
 		Object    Status                     `json:"object" yaml:"object"`
 		Path      path.T                     `json:"path" yaml:"path"`
-		Parents   map[string]Status          `json:"parents,omitempty" yaml:"parents,omitempty"`
 		Slaves    map[string]Status          `json:"slaves,omitempty" yaml:"slaves,omitempty"`
 	}
 
@@ -101,37 +99,7 @@ func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 		n := instances.AddNode()
 		data.LoadTreeNode(n)
 	}
-	t.loadTreeNodeParents(head)
-	t.loadTreeNodeChildren(head)
 	t.loadTreeNodeSlaves(head)
-}
-
-func (t Digest) loadTreeNodeParents(head *tree.Node) {
-	if len(t.Parents) == 0 {
-		return
-	}
-	n := head.AddNode()
-	n.AddColumn().AddText("parents")
-	for p, data := range t.Parents {
-		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
-		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
-	}
-}
-
-func (t Digest) loadTreeNodeChildren(head *tree.Node) {
-	if len(t.Children) == 0 {
-		return
-	}
-	n := head.AddNode()
-	n.AddColumn().AddText("children")
-	for p, data := range t.Children {
-		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
-		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
-	}
 }
 
 func (t Digest) loadTreeNodeSlaves(head *tree.Node) {
@@ -175,8 +143,6 @@ func (t Digest) descString() string {
 func NewStatus() *Digest {
 	t := &Digest{}
 	t.Instances = make(map[string]instance.States)
-	t.Parents = make(map[string]Status)
-	t.Children = make(map[string]Status)
 	t.Slaves = make(map[string]Status)
 	return t
 }
