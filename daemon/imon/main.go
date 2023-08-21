@@ -67,10 +67,11 @@ type (
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
 		nodeStatus    map[string]node.Status
-		scopeNodes    []string
 		readyDuration time.Duration
+		scopeNodes    []string
 
-		objStatus   object.Status
+		objStatus object.Status
+
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
