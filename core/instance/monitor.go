@@ -114,8 +114,10 @@ const (
 	MonitorStateUnprovisioned
 	MonitorStateUnprovisionFailed
 	MonitorStateUnprovisioning
+	MonitorStateWaitChildren
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
+	MonitorStateWaitParents
 )
 
 const (
@@ -168,8 +170,10 @@ var (
 		MonitorStateUnprovisioned:     "unprovisioned",
 		MonitorStateUnprovisionFailed: "unprovision failed",
 		MonitorStateUnprovisioning:    "unprovisioning",
+		MonitorStateWaitChildren:      "wait children",
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
+		MonitorStateWaitParents:       "wait parents",
 		MonitorStateZero:              "",
 	}
 
@@ -202,8 +206,10 @@ var (
 		"unprovisioned":      MonitorStateUnprovisioned,
 		"unprovision failed": MonitorStateUnprovisionFailed,
 		"unprovisioning":     MonitorStateUnprovisioning,
+		"wait children":      MonitorStateWaitChildren,
 		"wait leader":        MonitorStateWaitLeader,
 		"wait non-leader":    MonitorStateWaitNonLeader,
+		"wait parents":       MonitorStateWaitParents,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
