@@ -61,8 +61,6 @@ func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.UpdatedAt = time.Now()
-	data.Parents = t.Parents()
-	data.Children = t.Children()
 	data.Running = runningRIDList(t)
 	data.Avail = status.NotApplicable
 	data.Overall = status.NotApplicable

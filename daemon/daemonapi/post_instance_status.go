@@ -60,12 +60,6 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 	if payloadStatus.App != nil {
 		instanceStatus.App = *payloadStatus.App
 	}
-	if payloadStatus.Children != nil {
-		relation := toPathRelationL(payloadStatus.Children)
-		if len(relation) > 0 {
-			instanceStatus.Children = relation
-		}
-	}
 	if payloadStatus.Constraints != nil {
 		instanceStatus.Constraints = *payloadStatus.Constraints
 	}
@@ -80,12 +74,6 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 	}
 	if payloadStatus.Optional != nil {
 		instanceStatus.Optional = status.Parse(string(*payloadStatus.Optional))
-	}
-	if payloadStatus.Parents != nil {
-		relation := toPathRelationL(payloadStatus.Parents)
-		if len(relation) > 0 {
-			instanceStatus.Parents = relation
-		}
 	}
 	if payloadStatus.Preserved != nil {
 		instanceStatus.Preserved = *payloadStatus.Preserved

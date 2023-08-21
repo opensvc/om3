@@ -1099,8 +1099,6 @@ components:
           type: string
         avail:
           $ref: '#/components/schemas/Status'
-        children:
-          $ref: '#/components/schemas/PathRelation'
         constraints:
           type: boolean
         csum:
@@ -1127,8 +1125,6 @@ components:
           $ref: '#/components/schemas/Orchestrate'
         overall:
           $ref: '#/components/schemas/Status'
-        parents:
-          $ref: '#/components/schemas/PathRelation'
         placement:
           $ref: '#/components/schemas/Placement'
         preserved:

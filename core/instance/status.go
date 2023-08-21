@@ -27,7 +27,6 @@ type (
 		LastStartedAt time.Time                `json:"last_started_at" yaml:"last_started_at"`
 		Optional      status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
 		Overall       status.T                 `json:"overall" yaml:"overall"`
-		Parents       []path.Relation          `json:"parents,omitempty" yaml:"parents,omitempty"`
 		Preserved     bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`
 		Provisioned   provisioned.T            `json:"provisioned" yaml:"provisioned"`
 		Resources     []resource.ExposedStatus `json:"resources,omitempty" yaml:"resources,omitempty"`
@@ -36,8 +35,7 @@ type (
 		Subsets       map[string]SubsetStatus  `json:"subsets,omitempty" yaml:"subsets,omitempty"`
 		UpdatedAt     time.Time                `json:"updated_at" yaml:"updated_at"`
 
-		Children []path.Relation `json:"children,omitempty" yaml:"children,omitempty"`
-		Slaves   []path.Relation `json:"slaves,omitempty" yaml:"slaves,omitempty"`
+		Slaves []path.Relation `json:"slaves,omitempty" yaml:"slaves,omitempty"`
 	}
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).
@@ -91,8 +89,6 @@ func (t Status) IsThawed() bool {
 
 func (t Status) DeepCopy() *Status {
 	t.Running = append(ResourceRunningSet{}, t.Running...)
-	t.Parents = append([]path.Relation{}, t.Parents...)
-	t.Children = append([]path.Relation{}, t.Children...)
 	t.Slaves = append([]path.Relation{}, t.Slaves...)
 
 	subSets := make(map[string]SubsetStatus)
