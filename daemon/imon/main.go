@@ -36,6 +36,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -131,6 +132,8 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		GlobalExpect:   instance.MonitorGlobalExpectNone,
 		State:          instance.MonitorStateIdle,
 		Resources:      make(map[string]instance.ResourceMonitor),
+		Children:       make(map[string]status.T),
+		Parents:        make(map[string]status.T),
 		StateUpdatedAt: time.Now(),
 	}
 	state := previousState
@@ -180,14 +183,14 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 func (o *imon) startSubscriptions() {
 	sub := o.pubsubBus.Sub(o.id + " imon")
-	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, o.labelPath)
-	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, o.labelPath)
-	sub.AddFilter(&msgbus.SetInstanceMonitor{}, o.labelPath)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeStatsUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(&msgbus.SetInstanceMonitor{}, o.labelPath)
 	sub.Start()
 	o.sub = sub
 }
@@ -234,6 +237,7 @@ func (o *imon) worker(initialNodes []string) {
 		o.instStatus[n] = *v
 	}
 
+	o.initRelationAvailStatus()
 	o.initResourceMonitor()
 	o.updateIsLeader()
 	o.updateIfChange()
@@ -282,6 +286,12 @@ func (o *imon) worker(initialNodes []string) {
 			default:
 			}
 			switch c := i.(type) {
+			case *msgbus.InstanceStatusDeleted:
+				o.onInstanceStatusDeleted(c)
+			case *msgbus.InstanceStatusUpdated:
+				o.onRelationInstanceStatusUpdated(c)
+			case *msgbus.ObjectStatusDeleted:
+				o.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:
 				o.onObjectStatusUpdated(c)
 			case *msgbus.ProgressInstanceMonitor:

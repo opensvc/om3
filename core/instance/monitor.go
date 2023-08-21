@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/status"
 )
 
 type (
@@ -44,6 +45,9 @@ type (
 		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
 		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
 		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
+
+		Parents  map[string]status.T `json:"parents" yaml:"parents"`
+		Children map[string]status.T `json:"children" yaml:"children"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor

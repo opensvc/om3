@@ -122,6 +122,13 @@ type (
 		resp     chan<- error
 	}
 
+	cmdSubDelFilter struct {
+		id       uuid.UUID
+		labels   Labels
+		dataType string
+		resp     chan<- error
+	}
+
 	cmdSub struct {
 		name      string
 		resp      chan<- *Subscription
@@ -293,6 +300,30 @@ func (t Labels) keys() []string {
 	return xmap.Keys(m)
 }
 
+func (t Labels) Is(labels Labels) bool {
+	m1 := make(map[string]any)
+	m2 := make(map[string]any)
+	for k, v := range t {
+		m1[fmt.Sprintf("%#v", []string{k, v})] = nil
+	}
+	for k, v := range labels {
+		m2[fmt.Sprintf("%#v", []string{k, v})] = nil
+	}
+	for l1, _ := range m1 {
+		if _, ok := m2[l1]; !ok {
+			return false
+		} else {
+			delete(m2, l1)
+		}
+	}
+	for l2, _ := range m2 {
+		if _, ok := m1[l2]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func newLabels(labels ...Label) Labels {
 	m := make(Labels)
 	for _, label := range labels {
@@ -356,6 +387,8 @@ func (b *Bus) Start(ctx context.Context) {
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
 					b.onSubAddFilter(c)
+				case cmdSubDelFilter:
+					b.onSubDelFilter(c)
 				case cmdSub:
 					b.onSubCmd(c)
 				case cmdUnsub:
@@ -459,6 +492,27 @@ func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 		dataType: c.dataType,
 		labels:   c.labels,
 	})
+	b.subs[c.id] = sub
+	b.subMap.Del(c.id, ":")
+	b.subMap.Add(c.id, sub.keys()...)
+	c.resp <- nil
+}
+
+func (b *Bus) onSubDelFilter(c cmdSubDelFilter) {
+	sub, ok := b.subs[c.id]
+	if !ok {
+		c.resp <- nil
+		return
+	}
+	filters := make(filters, 0)
+	for _, f := range sub.filters {
+		if f.dataType == c.dataType && f.labels.Is(c.labels) {
+			continue
+		} else {
+			filters = append(filters, f)
+		}
+	}
+	sub.filters = filters
 	b.subs[c.id] = sub
 	b.subMap.Del(c.id, ":")
 	b.subMap.Add(c.id, sub.keys()...)
@@ -770,6 +824,26 @@ func (sub *Subscription) String() string {
 		}
 	}
 	return s
+}
+
+func (sub *Subscription) DelFilter(v any, labels ...Label) {
+	respC := make(chan error)
+	op := cmdSubDelFilter{
+		id:     sub.id,
+		labels: newLabels(labels...),
+		resp:   respC,
+	}
+	dataType := reflect.TypeOf(v)
+	if dataType != nil {
+		op.dataType = dataType.String()
+	}
+	select {
+	case sub.bus.cmdC <- op:
+	case <-sub.bus.ctx.Done():
+		return
+	}
+	<-respC
+	subscriptionFilterTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
 }
 
 func (sub *Subscription) AddFilter(v any, labels ...Label) {
