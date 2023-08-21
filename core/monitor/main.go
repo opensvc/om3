@@ -213,7 +213,7 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		for d := range dataC {
 			m.doOneShot(*d, true, out)
 		}
-	}(data)
+	}(data.DeepCopy())
 
 	defer close(dataC)
 
