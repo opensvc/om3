@@ -31,6 +31,8 @@ func (o *imon) freezeStop() {
 		// avoid a retry-loop
 	case instance.MonitorStateStartFailed:
 		o.stoppedFromFailed()
+	case instance.MonitorStateWaitChildren:
+		o.setWaitChildren()
 	default:
 		o.log.Error().Msgf("don't know how to freeze and stop from %s", o.state.State)
 	}
@@ -86,6 +88,9 @@ func (o *imon) doFreeze() {
 
 func (o *imon) doStop() {
 	if o.stoppedClearIfReached() {
+		return
+	}
+	if o.setWaitChildren() {
 		return
 	}
 	o.createPendingWithDuration(stopDuration)
