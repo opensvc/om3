@@ -487,10 +487,14 @@ func (o *nmon) getStats() (node.Stats, error) {
 	if mem, err := fs.Meminfo(); err != nil {
 		return stats, err
 	} else {
-		stats.MemTotalMB = *mem.MemTotal / 1024
-		stats.MemAvailPct = 100 * *mem.MemAvailable / *mem.MemTotal
-		stats.SwapTotalMB = *mem.SwapTotal / 1024
-		stats.SwapAvailPct = 100 * *mem.SwapFree / *mem.SwapTotal
+		if *mem.MemTotal > 0 {
+			stats.MemTotalMB = *mem.MemTotal / 1024
+			stats.MemAvailPct = 100 * *mem.MemAvailable / *mem.MemTotal
+		}
+		if *mem.SwapTotal > 0 {
+			stats.SwapTotalMB = *mem.SwapTotal / 1024
+			stats.SwapAvailPct = 100 * *mem.SwapFree / *mem.SwapTotal
+		}
 		stats.Score += 100 + stats.MemAvailPct
 		stats.Score += 2 * (100 + stats.SwapAvailPct)
 	}
