@@ -128,6 +128,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	}()
 
 	bus := pubsub.NewBus("daemon")
+	bus.SetDefaultSubscriptionQueueSize(200)
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
 	bus.Start(t.ctx)
 	t.cancelFuncs = append(t.cancelFuncs, func() {
