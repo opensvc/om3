@@ -22,7 +22,7 @@ func (t *CmdNodeGet) Run() error {
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("get"),

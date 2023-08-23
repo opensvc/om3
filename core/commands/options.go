@@ -8,7 +8,7 @@ type (
 	// OptsGlobal contains options accepted by all actions
 	OptsGlobal struct {
 		Color          string
-		Format         string
+		Output         string
 		Local          bool
 		Log            string
 		NodeSelector   string

@@ -78,7 +78,7 @@ func (t *CmdNodeLogs) stream(node string) {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
 		}
-		rec.Render(t.Format)
+		rec.Render(t.Output)
 	}
 }
 
@@ -103,7 +103,7 @@ func (t *CmdNodeLogs) remote() error {
 		}
 	}
 	events.Sort()
-	events.Render(t.Format)
+	events.Render(t.Output)
 	if !t.Follow {
 		return nil
 	}
@@ -122,7 +122,7 @@ func (t *CmdNodeLogs) remote() error {
 func (t *CmdNodeLogs) local() error {
 	filters := filterMap(t.Filter)
 	if events, err := slog.GetEventsFromNode(filters); err == nil {
-		events.Render(t.Format)
+		events.Render(t.Output)
 	} else {
 		return err
 	}
@@ -132,7 +132,7 @@ func (t *CmdNodeLogs) local() error {
 			return err
 		}
 		for event := range stream.Events() {
-			event.Render(t.Format)
+			event.Render(t.Output)
 		}
 	}
 	return nil

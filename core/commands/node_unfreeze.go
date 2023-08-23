@@ -13,7 +13,7 @@ func (t *CmdNodeUnfreeze) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("unfreeze"),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocal(true),
 		nodeaction.WithLocalRun(func() (interface{}, error) {

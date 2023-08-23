@@ -27,7 +27,7 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("run"),

@@ -20,7 +20,7 @@ func (t *CmdObjectFreeze) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.WithLocal(t.Local),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithServer(t.Server),
 		objectaction.WithAsyncTarget("frozen"),

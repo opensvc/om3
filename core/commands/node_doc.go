@@ -15,7 +15,7 @@ type (
 
 func (t *CmdNodeDoc) Run() error {
 	return nodeaction.New(
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 

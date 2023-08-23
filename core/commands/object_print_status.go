@@ -159,7 +159,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	data, _ = t.extract(mergedSelector, c)
 
 	output.Renderer{
-		Format: t.Format,
+		Format: t.Output,
 		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {

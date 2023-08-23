@@ -38,7 +38,7 @@ func (t *CmdDaemonDNSDump) Run() error {
 		return err
 	}
 	renderer := output.Renderer{
-		Format:   t.Format,
+		Format:   t.Output,
 		Color:    t.Color,
 		Data:     parsed,
 		Colorize: rawconfig.Colorize,
