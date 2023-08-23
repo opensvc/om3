@@ -379,7 +379,7 @@ func (t *T) scheduleObject(p path.T) {
 		t.log.Debug().Msgf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
 	} else if !isProvisioned {
-		t.log.Error().Msgf("schedule object %s: not provisioned", p)
+		t.log.Info().Msgf("schedule object %s: not provisioned", p)
 		return
 	}
 	i, err := object.New(p, object.WithVolatile(true))
