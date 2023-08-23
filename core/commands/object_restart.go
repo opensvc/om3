@@ -18,7 +18,6 @@ type (
 		OptTo
 		Force           bool
 		DisableRollback bool
-		DryRun          bool
 	}
 )
 
@@ -51,7 +50,6 @@ func (t *CmdObjectRestart) Run(selector, kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.Restart(ctx)
 		}),
 	).Do()

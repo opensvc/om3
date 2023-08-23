@@ -15,7 +15,6 @@ type (
 		OptsLock
 		OptsResourceSelector
 		Force  bool
-		DryRun bool
 		Target []string
 	}
 )
@@ -45,7 +44,6 @@ func (t *CmdObjectSyncFull) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			ctx = actioncontext.WithTarget(ctx, t.Target)
 			return nil, o.SyncFull(ctx)
 		}),

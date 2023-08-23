@@ -14,7 +14,6 @@ type (
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		DryRun bool
 	}
 )
 
@@ -42,7 +41,6 @@ func (t *CmdObjectSetUnprovisioned) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.SetUnprovisioned(ctx)
 		}),
 	).Do()

@@ -16,7 +16,6 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		DryRun bool
 		Force  bool
 		Leader bool
 	}
@@ -52,7 +51,6 @@ func (t *CmdObjectPurge) Run(selector, kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			if err := o.Unprovision(ctx); err != nil {
 				return nil, err
 			}

@@ -15,8 +15,7 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		DryRun bool
-		Force  bool
+		Force bool
 	}
 )
 
@@ -45,7 +44,6 @@ func (t *CmdObjectPRStop) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.PRStop(ctx)
 		}),
 	).Do()

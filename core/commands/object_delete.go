@@ -13,8 +13,7 @@ type (
 	CmdObjectDelete struct {
 		OptsGlobal
 		OptsLock
-		DryRun bool
-		RID    string
+		RID string
 	}
 )
 

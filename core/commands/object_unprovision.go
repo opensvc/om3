@@ -18,7 +18,6 @@ type (
 		OptTo
 		Force  bool
 		Leader bool
-		DryRun bool
 	}
 )
 
@@ -53,7 +52,6 @@ func (t *CmdObjectUnprovision) Run(selector, kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.Unprovision(ctx)
 		}),
 	).Do()
