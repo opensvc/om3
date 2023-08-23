@@ -71,6 +71,9 @@ var (
 		node.MonitorStateShutting:    nil,
 		node.MonitorStateMaintenance: nil,
 	}
+
+	// SubscriptionQueueSize is size of "scheduler" subscription
+	SubscriptionQueueSize = 16000
 )
 
 func New(opts ...funcopt.O) *T {
@@ -232,7 +235,7 @@ func (t *T) MainStop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.pubsub = pubsub.BusFromContext(t.ctx)
-	sub := t.pubsub.Sub("scheduler")
+	sub := t.pubsub.Sub("scheduler", pubsub.WithQueueSize(SubscriptionQueueSize))
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)

@@ -8,11 +8,16 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
+var (
+	// SubscriptionQueueSizeOmon is size of "discover.omon" subscription
+	SubscriptionQueueSizeOmon = 16000
+)
+
 func (d *discover) omon(started chan<- bool) {
 	log := d.log.With().Str("func", "omon").Logger()
 	log.Info().Msg("started")
 	bus := pubsub.BusFromContext(d.ctx)
-	sub := bus.Sub("omon-from-cfg-create")
+	sub := bus.Sub("discover.omon", pubsub.WithQueueSize(SubscriptionQueueSizeOmon))
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true
