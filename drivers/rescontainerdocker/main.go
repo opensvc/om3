@@ -51,7 +51,7 @@ type (
 		ObjectID        uuid.UUID      `json:"object_id"`
 		SCSIReserv      bool           `json:"scsireserv"`
 		PromoteRW       bool           `json:"promote_rw"`
-		NoPreemptAbort  bool           `json:"NoPreemptAbort"`
+		NoPreemptAbort  bool           `json:"no_preempt_abort"`
 		OsvcRootPath    string         `json:"osvc_root_path"`
 		GuestOS         string         `json:"guest_os"`
 		Name            string         `json:"name"`
