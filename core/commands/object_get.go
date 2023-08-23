@@ -12,6 +12,7 @@ import (
 type (
 	CmdObjectGet struct {
 		OptsGlobal
+		Eval    bool
 		Keyword string
 	}
 )
@@ -34,7 +35,11 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return c.Get(key.Parse(t.Keyword))
+			if t.Eval {
+				return c.Eval(key.Parse(t.Keyword))
+			} else {
+				return c.Get(key.Parse(t.Keyword))
+			}
 		}),
 	).Do()
 }

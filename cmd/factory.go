@@ -1093,6 +1093,7 @@ func newCmdNodeGet() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
+	addFlagEval(flags, &options.Eval)
 	addFlagKeyword(flags, &options.Keyword)
 	return cmd
 }
@@ -2034,6 +2035,7 @@ func newCmdObjectGet(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagEval(flags, &options.Eval)
 	addFlagKeyword(flags, &options.Keyword)
 	return cmd
 }
