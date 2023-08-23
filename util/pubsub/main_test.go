@@ -187,7 +187,7 @@ func TestDropSlowSubscription(t *testing.T) {
 				assert.NoError(t, subAlert.Stop(), "%s stop error", subAlert)
 			}()
 
-			queueSize := QueueSize(2)
+			queueSize := WithQueueSize(2)
 			t.Log("subscribe with a short timeout, and small queue size")
 			slowSub := bus.Sub("listen with short timeout", Timeout(timeout), queueSize)
 			slowSub.AddFilter(&msgT{})

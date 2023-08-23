@@ -554,12 +554,12 @@ type (
 )
 
 type (
-	QueueSize uint64
-	Timeout   time.Duration
+	WithQueueSize uint64
+	Timeout       time.Duration
 )
 
-// queueSize implements QueueSizer for QueueSize
-func (t QueueSize) queueSize() uint64 {
+// queueSize implements QueueSizer for WithQueueSize
+func (t WithQueueSize) queueSize() uint64 {
 	return uint64(t)
 }
 
