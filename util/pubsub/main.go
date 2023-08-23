@@ -151,6 +151,9 @@ type (
 		// drainChanDuration is the max duration during draining private and exposed
 		// channel
 		drainChanDuration time.Duration
+
+		// default queue size for subscriptions
+		subQueueSize uint64
 	}
 
 	stringer interface {
@@ -205,8 +208,8 @@ func (p *Msg) AddLabels(l ...Label) {
 }
 
 var (
-	// DefaultSubscriptionQueueSize is default size of internal subscription queue
-	DefaultSubscriptionQueueSize uint64 = 4000
+	// defaultSubscriptionQueueSize is default size of internal subscription queue
+	defaultSubscriptionQueueSize uint64 = 4000
 
 	cmdDurationWarn    = time.Second
 	notifyDurationWarn = 5 * time.Second
@@ -314,6 +317,7 @@ func NewBus(name string) *Bus {
 	b.endNotify = make(chan uuid.UUID)
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	b.drainChanDuration = defaultDrainChanDuration
+	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
 }
 
@@ -381,6 +385,16 @@ func (b *Bus) SetDrainChanDuration(duration time.Duration) {
 		panic("can't set drain channel duration on started bus")
 	}
 	b.drainChanDuration = duration
+}
+
+// SetDefaultSubscriptionQueueSize overrides the default queue size of subscribers for not yet started bus.
+//
+// It panics if called on started bus.
+func (b *Bus) SetDefaultSubscriptionQueueSize(i uint64) {
+	if b.started {
+		panic("can't set default subscription queue size on started bus")
+	}
+	b.subQueueSize = i
 }
 
 func (b *Bus) onSubCmd(c cmdSub) {
@@ -581,13 +595,13 @@ func (t Timeout) timout() time.Duration {
 // defaults is no timeout
 //
 // when QueueSizer, it sets the subscriber queue size.
-// default value is DefaultSubscriptionQueueSize
+// default value is bus dependent (see SetDefaultSubscriptionQueueSize)
 func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
 		name:      name,
 		resp:      respC,
-		queueSize: DefaultSubscriptionQueueSize,
+		queueSize: b.subQueueSize,
 	}
 
 	for _, opt := range options {
