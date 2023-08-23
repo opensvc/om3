@@ -205,6 +205,9 @@ func (p *Msg) AddLabels(l ...Label) {
 }
 
 var (
+	// DefaultSubscriptionQueueSize is default size of internal subscription queue
+	DefaultSubscriptionQueueSize uint64 = 4000
+
 	cmdDurationWarn    = time.Second
 	notifyDurationWarn = 5 * time.Second
 
@@ -578,13 +581,13 @@ func (t Timeout) timout() time.Duration {
 // defaults is no timeout
 //
 // when QueueSizer, it sets the subscriber queue size.
-// default is 4000
+// default value is DefaultSubscriptionQueueSize
 func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
 		name:      name,
 		resp:      respC,
-		queueSize: 4000,
+		queueSize: DefaultSubscriptionQueueSize,
 	}
 
 	for _, opt := range options {
