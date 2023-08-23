@@ -224,7 +224,7 @@ func newCmdDaemonJoin() *cobra.Command {
 		panic(err)
 	}
 	flags.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
-		" (created from 'om daemon auth --role json')")
+		" (created from 'om daemon auth --role join')")
 	if err := cmd.MarkFlagRequired("token"); err != nil {
 		panic(err)
 	}
