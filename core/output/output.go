@@ -13,6 +13,8 @@ const (
 	Flat
 	// JSONLine is unindented json output format
 	JSONLine
+	// Tab is the customizable tabular output format
+	Tab
 	// Table is the simple tabular output format
 	Table
 	// CSV is the csv tabular output format
@@ -26,6 +28,7 @@ var toString = map[T]string{
 	JSON:     "json",
 	JSONLine: "jsonline",
 	Flat:     "flat",
+	Tab:      "tab",
 	Table:    "table",
 	CSV:      "csv",
 	YAML:     "yaml",
@@ -37,6 +40,7 @@ var toID = map[string]T{
 	"jsonline":  JSONLine,
 	"flat":      Flat,
 	"flat_json": Flat, // compat
+	"tab":       Tab,
 	"table":     Table,
 	"csv":       CSV,
 	"yaml":      YAML,
