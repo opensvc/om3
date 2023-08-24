@@ -103,9 +103,10 @@ type (
 		// drainChanDuration is the max duration during draining channels
 		drainChanDuration time.Duration
 
-		queuedMin uint64
-		queuedMax uint64
-		queued    atomic.Uint64
+		queuedMin  uint64
+		queuedMax  uint64
+		queuedSize uint64
+		queued     atomic.Uint64
 	}
 
 	cmdPub struct {
@@ -150,6 +151,9 @@ type (
 		// drainChanDuration is the max duration during draining private and exposed
 		// channel
 		drainChanDuration time.Duration
+
+		// default queue size for subscriptions
+		subQueueSize uint64
 	}
 
 	stringer interface {
@@ -204,6 +208,9 @@ func (p *Msg) AddLabels(l ...Label) {
 }
 
 var (
+	// defaultSubscriptionQueueSize is default size of internal subscription queue
+	defaultSubscriptionQueueSize uint64 = 4000
+
 	cmdDurationWarn    = time.Second
 	notifyDurationWarn = 5 * time.Second
 
@@ -310,6 +317,7 @@ func NewBus(name string) *Bus {
 	b.endNotify = make(chan uuid.UUID)
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	b.drainChanDuration = defaultDrainChanDuration
+	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
 }
 
@@ -379,6 +387,16 @@ func (b *Bus) SetDrainChanDuration(duration time.Duration) {
 	b.drainChanDuration = duration
 }
 
+// SetDefaultSubscriptionQueueSize overrides the default queue size of subscribers for not yet started bus.
+//
+// It panics if called on started bus.
+func (b *Bus) SetDefaultSubscriptionQueueSize(i uint64) {
+	if b.started {
+		panic("can't set default subscription queue size on started bus")
+	}
+	b.subQueueSize = i
+}
+
 func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
@@ -392,6 +410,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		drainChanDuration: b.drainChanDuration,
 		queuedMax:         c.queueSize / 32,
 		queuedMin:         c.queueSize / 32,
+		queuedSize:        c.queueSize,
 	}
 	b.subs[id] = sub
 	c.resp <- sub
@@ -433,13 +452,36 @@ func (b *Bus) onPubCmd(c cmdPub) {
 				sub.q <- c.data
 				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
 				if queueLen > sub.queuedMax {
-					sub.queuedMax *= 2
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
-					b.log.Debug().Msgf("subscription %s has reached %d queued increase next threshold %d", sub.name, queueLen, sub.queuedMax)
+					inc := sub.queuedSize / 4
+					previous := sub.queuedMax
+					sub.queuedMax += inc
+					left := sub.queuedSize - sub.queuedMax
+					level := "debug"
+					if left < inc {
+						// 3/4 full
+						level = "warn"
+						b.log.Error().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+					} else if left < sub.queuedSize/2 {
+						// 1/2 full
+						level = "info"
+						b.log.Warn().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+					} else {
+						b.log.Debug().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+					}
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
-					sub.queuedMax /= 2
-					b.log.Debug().Msgf("subscription %s has reached %d queued decrease next threshold %d", sub.name, queueLen, sub.queuedMax)
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
+					previous := sub.queuedMax
+					sub.queuedMax /= 8
+					left := sub.queuedSize - sub.queuedMax
+					level := "debug"
+					if left < sub.queuedSize/2 {
+						// 1/2 full
+						level = "info"
+						b.log.Info().Msgf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+					} else {
+						b.log.Debug().Msgf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+					}
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
 			}
 		}
@@ -529,12 +571,12 @@ type (
 )
 
 type (
-	QueueSize uint64
-	Timeout   time.Duration
+	WithQueueSize uint64
+	Timeout       time.Duration
 )
 
-// queueSize implements QueueSizer for QueueSize
-func (t QueueSize) queueSize() uint64 {
+// queueSize implements QueueSizer for WithQueueSize
+func (t WithQueueSize) queueSize() uint64 {
 	return uint64(t)
 }
 
@@ -553,13 +595,13 @@ func (t Timeout) timout() time.Duration {
 // defaults is no timeout
 //
 // when QueueSizer, it sets the subscriber queue size.
-// default is 4000
+// default value is bus dependent (see SetDefaultSubscriptionQueueSize)
 func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
 		name:      name,
 		resp:      respC,
-		queueSize: 4000,
+		queueSize: b.subQueueSize,
 	}
 
 	for _, opt := range options {
@@ -821,7 +863,7 @@ func (sub *Subscription) Start() {
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
-					go sub.bus.Pub(&SubscriptionError{Name: sub.name, Id: sub.id, Error: err})
+					go sub.bus.Pub(&SubscriptionError{Name: sub.name, Id: sub.id, ErrS: err.Error()})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {

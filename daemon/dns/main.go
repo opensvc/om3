@@ -77,6 +77,9 @@ type (
 
 var (
 	cmdC chan any
+
+	// SubscriptionQueueSize is size of "dns" subscription
+	SubscriptionQueueSize = 1000
 )
 
 func init() {
@@ -121,7 +124,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 }
 
 func (t *dns) startSubscriptions() {
-	sub := t.bus.Sub("dns")
+	sub := t.bus.Sub("dns", pubsub.WithQueueSize(SubscriptionQueueSize))
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})

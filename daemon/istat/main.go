@@ -48,6 +48,11 @@ type (
 	}
 )
 
+var (
+	// SubscriptionQueueSize is size of "istats" subscription
+	SubscriptionQueueSize = 1000
+)
+
 func Start(ctx context.Context) error {
 	localhost := hostname.Hostname()
 	t := T{
@@ -60,7 +65,7 @@ func Start(ctx context.Context) error {
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 
-	sub := t.bus.Sub("istats")
+	sub := t.bus.Sub("istats", pubsub.WithQueueSize(SubscriptionQueueSize))
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)

@@ -71,6 +71,9 @@ var (
 		node.MonitorStateShutting:    nil,
 		node.MonitorStateMaintenance: nil,
 	}
+
+	// SubscriptionQueueSize is size of "scheduler" subscription
+	SubscriptionQueueSize = 16000
 )
 
 func New(opts ...funcopt.O) *T {
@@ -232,7 +235,7 @@ func (t *T) MainStop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.pubsub = pubsub.BusFromContext(t.ctx)
-	sub := t.pubsub.Sub("scheduler")
+	sub := t.pubsub.Sub("scheduler", pubsub.WithQueueSize(SubscriptionQueueSize))
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
@@ -379,7 +382,7 @@ func (t *T) scheduleObject(p path.T) {
 		t.log.Debug().Msgf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
 	} else if !isProvisioned {
-		t.log.Error().Msgf("schedule object %s: not provisioned", p)
+		t.log.Info().Msgf("schedule object %s: not provisioned", p)
 		return
 	}
 	i, err := object.New(p, object.WithVolatile(true))
