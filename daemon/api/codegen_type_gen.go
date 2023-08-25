@@ -636,9 +636,6 @@ type ObjectSelector = string
 // Paths defines model for Paths.
 type Paths = []string
 
-// RelativesOptional defines model for RelativesOptional.
-type RelativesOptional = bool
-
 // RelayClusterId defines model for RelayClusterId.
 type RelayClusterId = string
 
@@ -712,9 +709,6 @@ type PostDaemonLeaveParams struct {
 type GetDaemonStatusParams struct {
 	// Namespace namespace
 	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
-
-	// Relatives relatives
-	Relatives *RelativesOptional `form:"relatives,omitempty" json:"relatives,omitempty"`
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
