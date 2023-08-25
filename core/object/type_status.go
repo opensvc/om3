@@ -23,11 +23,10 @@ type (
 	// Digest is a composite extract of different parts of
 	// the cluster status.
 	Digest struct {
-		IsCompat  bool                       `json:"is_compat" yaml:"is_compat"`
-		Instances map[string]instance.States `json:"instances" yaml:"instances"`
-		Object    Status                     `json:"object" yaml:"object"`
-		Path      path.T                     `json:"path" yaml:"path"`
-		Slaves    map[string]Status          `json:"slaves,omitempty" yaml:"slaves,omitempty"`
+		IsCompat  bool                `json:"is_compat" yaml:"is_compat"`
+		Instances instance.StatesList `json:"instances" yaml:"instances"`
+		Object    Status              `json:"object" yaml:"object"`
+		Path      path.T              `json:"path" yaml:"path"`
 	}
 
 	// Status contains the object states obtained via
@@ -75,12 +74,14 @@ func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	instances.AddColumn().AddText("instances")
 	openMap := make(map[string]any)
 	folded := make([]string, 0)
+	instMap := t.Instances.ByNode()
+
 	for _, nodename := range nodes {
-		if _, ok := t.Instances[nodename]; ok {
+		if _, ok := instMap[nodename]; ok {
 			openMap[nodename] = nil
 		}
 	}
-	for _, nodename := range xmap.Keys(t.Instances) {
+	for _, nodename := range xmap.Keys(instMap) {
 		if _, ok := openMap[nodename]; !ok {
 			folded = append(folded, nodename)
 		}
@@ -90,29 +91,14 @@ func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	sort.Sort(sort.StringSlice(folded))
 
 	for _, nodename := range folded {
-		data := t.Instances[nodename]
+		data := instMap[nodename]
 		n := instances.AddNode()
 		data.LoadTreeNodeFolded(n)
 	}
 	for _, nodename := range open {
-		data := t.Instances[nodename]
+		data := instMap[nodename]
 		n := instances.AddNode()
 		data.LoadTreeNode(n)
-	}
-	t.loadTreeNodeSlaves(head)
-}
-
-func (t Digest) loadTreeNodeSlaves(head *tree.Node) {
-	if len(t.Slaves) == 0 {
-		return
-	}
-	n := head.AddNode()
-	n.AddColumn().AddText("slaves")
-	for p, data := range t.Slaves {
-		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
-		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
 	}
 }
 
@@ -142,8 +128,7 @@ func (t Digest) descString() string {
 // NewStatus allocates and return a struct to host an objet full state dataset.
 func NewStatus() *Digest {
 	t := &Digest{}
-	t.Instances = make(map[string]instance.States)
-	t.Slaves = make(map[string]Status)
+	t.Instances = make([]instance.States, 0)
 	return t
 }
 

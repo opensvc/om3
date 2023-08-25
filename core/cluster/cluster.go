@@ -147,6 +147,7 @@ func (s *Data) GetObjectStatus(p path.T) object.Digest {
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
+		instanceStates.Path = p
 		instanceStates.Node.FrozenAt = ndata.Status.FrozenAt
 		instanceStates.Node.Name = nodename
 		inst, ok := ndata.Instance[ps]
@@ -162,11 +163,7 @@ func (s *Data) GetObjectStatus(p path.T) object.Digest {
 		if inst.Monitor != nil {
 			instanceStates.Monitor = *inst.Monitor
 		}
-		data.Instances[nodename] = instanceStates
-		for _, relative := range instanceStates.Status.Slaves {
-			ps := relative.String()
-			data.Slaves[ps] = s.Cluster.Object[ps]
-		}
+		data.Instances = append(data.Instances, instanceStates)
 	}
 	return *data
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -94,12 +95,13 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 			Path:     p,
 			IsCompat: true,
 			Object:   object.Status{},
-			Instances: map[string]instance.States{
-				h: {
+			Instances: []instance.States{
+				{
 					Node: instance.Node{
 						Name:     h,
 						FrozenAt: n.Frozen(),
 					},
+					Path:   p,
 					Status: status,
 				},
 			},
@@ -117,7 +119,6 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	)
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).
-		SetRelatives(true).
 		Get()
 	if err != nil {
 		return []object.Digest{}, err
@@ -154,11 +155,10 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {
-		return fmt.Errorf("expand selection: %w", err)
+		return fmt.Errorf("expand object selection: %w", err)
 	}
 	data, _ = t.extract(mergedSelector, c)
-
-	output.Renderer{
+	renderer := output.Renderer{
 		Format: t.Output,
 		Color:  t.Color,
 		Data:   data,
@@ -173,6 +173,28 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 			return s
 		},
 		Colorize: rawconfig.Colorize,
-	}.Print()
+	}
+	if t.NodeSelector != "" {
+		sel := nodeselector.New(
+			t.NodeSelector,
+			nodeselector.WithClient(c),
+		)
+		nodes, err := sel.Expand()
+		if err != nil {
+			return fmt.Errorf("expand node selection: %w", err)
+		}
+		l := make([]instance.States, 0)
+		for _, objData := range data {
+			instMap := objData.Instances.ByNode()
+			for _, node := range nodes {
+				if _, ok := instMap[node]; !ok {
+					return fmt.Errorf("instance of %s on node %s does not exist", objData.Path, node)
+				}
+				l = append(l, instMap[node])
+			}
+		}
+		renderer.Data = l
+	}
+	renderer.Print()
 	return nil
 }

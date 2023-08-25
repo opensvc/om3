@@ -1,10 +1,17 @@
 package instance
 
-import "time"
+import (
+	"time"
+
+	"github.com/opensvc/om3/core/path"
+)
 
 type (
+	StatesList []States
+
 	// States groups config and status of the object instance as seen by the daemon.
 	States struct {
+		Path    path.T  `json:"path" yaml:"path"`
 		Node    Node    `json:"node,omitempty" yaml:"node,omitempty"`
 		Config  Config  `json:"config,omitempty" yaml:"config,omitempty"`
 		Status  Status  `json:"status,omitempty" yaml:"status,omitempty"`
@@ -17,3 +24,11 @@ type (
 		FrozenAt time.Time `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
 	}
 )
+
+func (t StatesList) ByNode() map[string]States {
+	m := make(map[string]States)
+	for _, s := range t {
+		m[s.Node.Name] = s
+	}
+	return m
+}
