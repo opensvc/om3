@@ -46,6 +46,13 @@ const (
 	separator = ":"
 )
 
+func SubsetSectionToName(s string) string {
+	if !strings.HasPrefix(s, prefix) {
+		return ""
+	}
+	return s[len(prefix):]
+}
+
 func NewList() L {
 	return L(make([]*T, 0))
 }
