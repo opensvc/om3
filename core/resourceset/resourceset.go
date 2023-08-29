@@ -137,7 +137,7 @@ func (t T) Fullname() string {
 func (t T) String() string {
 	s := prefix + t.DriverGroup.String()
 	if t.Name != "" {
-		s = s + "." + t.Name
+		s = s + ":" + t.Name
 	}
 	return s
 }

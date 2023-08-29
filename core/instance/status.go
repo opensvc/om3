@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
@@ -17,34 +16,20 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		App           string                   `json:"app,omitempty" yaml:"app,omitempty"`
 		Avail         status.T                 `json:"avail" yaml:"avail"`
 		Constraints   bool                     `json:"constraints,omitempty" yaml:"constraints,omitempty"`
-		Csum          string                   `json:"csum,omitempty" yaml:"csum,omitempty"`
-		DRP           bool                     `json:"drp,omitempty" yaml:"drp,omitempty"`
-		Env           string                   `json:"env,omitempty" yaml:"env,omitempty"`
 		FrozenAt      time.Time                `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
 		LastStartedAt time.Time                `json:"last_started_at" yaml:"last_started_at"`
 		Optional      status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
 		Overall       status.T                 `json:"overall" yaml:"overall"`
-		Preserved     bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`
 		Provisioned   provisioned.T            `json:"provisioned" yaml:"provisioned"`
 		Resources     []resource.ExposedStatus `json:"resources,omitempty" yaml:"resources,omitempty"`
 		Running       ResourceRunningSet       `json:"running,omitempty" yaml:"running,omitempty"`
-		StatusGroup   map[string]string        `json:"status_group,omitempty" yaml:"status_group,omitempty"`
-		Subsets       map[string]SubsetStatus  `json:"subsets,omitempty" yaml:"subsets,omitempty"`
 		UpdatedAt     time.Time                `json:"updated_at" yaml:"updated_at"`
-
-		Slaves []path.Relation `json:"slaves,omitempty" yaml:"slaves,omitempty"`
 	}
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).
 	ResourceRunningSet []string
-
-	// SubsetStatus describes a resource subset properties.
-	SubsetStatus struct {
-		Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
-	}
 
 	// ResourceOrder is a sortable list representation of the
 	// instance status resources map.
@@ -89,26 +74,12 @@ func (t Status) IsThawed() bool {
 
 func (t Status) DeepCopy() *Status {
 	t.Running = append(ResourceRunningSet{}, t.Running...)
-	t.Slaves = append([]path.Relation{}, t.Slaves...)
-
-	subSets := make(map[string]SubsetStatus)
-
-	for id, v := range t.Subsets {
-		subSets[id] = v
-	}
-	t.Subsets = subSets
 
 	resources := make([]resource.ExposedStatus, 0)
 	for _, v := range t.Resources {
 		resources = append(resources, *v.DeepCopy())
 	}
 	t.Resources = resources
-
-	statusGroup := make(map[string]string)
-	for id, v := range t.StatusGroup {
-		statusGroup[id] = v
-	}
-	t.StatusGroup = statusGroup
 
 	return &t
 }

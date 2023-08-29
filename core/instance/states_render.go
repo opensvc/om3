@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/render/tree"
 )
@@ -53,13 +54,16 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			if r.Subset == "" {
 				subsetNode = resNode
 			} else {
-				resourceSetName := r.ResourceID.DriverGroup().String() + ":" + r.Subset
+				resourceSetName := resourceset.T{
+					Name:        r.Subset,
+					DriverGroup: r.ResourceID.DriverGroup(),
+				}.String()
 				subsetNode = resNode.AddNode()
 				subsetNode.AddColumn().AddText(resourceSetName)
 				subsetNode.AddColumn()
 				subsetNode.AddColumn()
 				parallel := ""
-				if subset, ok := t.Status.Subsets[resourceSetName]; ok {
+				if subset, ok := t.Config.Subsets[resourceSetName]; ok {
 					if subset.Parallel {
 						parallel = "//"
 					}

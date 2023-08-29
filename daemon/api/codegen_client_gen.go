@@ -123,6 +123,11 @@ type ClientInterface interface {
 
 	PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInstanceStatus request with any body
+	GetInstanceStatusWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GetInstanceStatus(ctx context.Context, body GetInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInstanceStatus request with any body
 	PostInstanceStatusWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -348,6 +353,30 @@ func (c *Client) PostDaemonSubActionWithBody(ctx context.Context, contentType st
 
 func (c *Client) PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonSubActionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceStatusWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceStatusRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceStatus(ctx context.Context, body GetInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceStatusRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1197,6 +1226,46 @@ func NewPostDaemonSubActionRequestWithBody(server string, contentType string, bo
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetInstanceStatusRequest calls the generic GetInstanceStatus builder with application/json body
+func NewGetInstanceStatusRequest(server string, body GetInstanceStatusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetInstanceStatusRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGetInstanceStatusRequestWithBody generates requests for GetInstanceStatus with any type of body
+func NewGetInstanceStatusRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/status")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -2364,6 +2433,11 @@ type ClientWithResponsesInterface interface {
 
 	PostDaemonSubActionWithResponse(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonSubActionResponse, error)
 
+	// GetInstanceStatus request with any body
+	GetInstanceStatusWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error)
+
+	GetInstanceStatusWithResponse(ctx context.Context, body GetInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error)
+
 	// PostInstanceStatus request with any body
 	PostInstanceStatusWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStatusResponse, error)
 
@@ -2694,6 +2768,31 @@ func (r PostDaemonSubActionResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonSubActionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetInstanceStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3410,6 +3509,23 @@ func (c *ClientWithResponses) PostDaemonSubActionWithResponse(ctx context.Contex
 	return ParsePostDaemonSubActionResponse(rsp)
 }
 
+// GetInstanceStatusWithBodyWithResponse request with arbitrary body returning *GetInstanceStatusResponse
+func (c *ClientWithResponses) GetInstanceStatusWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error) {
+	rsp, err := c.GetInstanceStatusWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceStatusResponse(rsp)
+}
+
+func (c *ClientWithResponses) GetInstanceStatusWithResponse(ctx context.Context, body GetInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error) {
+	rsp, err := c.GetInstanceStatus(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceStatusResponse(rsp)
+}
+
 // PostInstanceStatusWithBodyWithResponse request with arbitrary body returning *PostInstanceStatusResponse
 func (c *ClientWithResponses) PostInstanceStatusWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStatusResponse, error) {
 	rsp, err := c.PostInstanceStatusWithBody(ctx, contentType, body, reqEditors...)
@@ -4103,6 +4219,53 @@ func ParsePostDaemonSubActionResponse(rsp *http.Response) (*PostDaemonSubActionR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceStatusResponse parses an HTTP response from a GetInstanceStatusWithResponse call
+func ParseGetInstanceStatusResponse(rsp *http.Response) (*GetInstanceStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

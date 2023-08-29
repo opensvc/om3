@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -67,7 +68,9 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
+	keyApp              = key.New("DEFAULT", "app")
 	keyChildren         = key.New("DEFAULT", "children")
+	keyEnv              = key.New("DEFAULT", "env")
 	keyFlexMax          = key.New("DEFAULT", "flex_max")
 	keyFlexMin          = key.New("DEFAULT", "flex_min")
 	keyFlexTarget       = key.New("DEFAULT", "flex_target")
@@ -274,9 +277,12 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		return configFileCheckError
 	}
+
 	cfg := o.instanceConfig
+	cfg.App = cf.GetString(keyApp)
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Children = o.getChildren(cf)
+	cfg.Env = cf.GetString(keyEnv)
 	cfg.MonitorAction = o.getMonitorAction(cf)
 	cfg.Nodename = o.localhost
 	cfg.Orchestrate = o.getOrchestrate(cf)
@@ -288,6 +294,7 @@ func (o *T) configFileCheck() error {
 	cfg.Scope = scope
 	cfg.Topology = o.getTopology(cf)
 	cfg.UpdatedAt = mtime
+	cfg.Subsets = o.getSubsets(cf)
 
 	if cfg.Topology == topology.Flex {
 		cfg.FlexMin = o.getFlexMin(cf)
@@ -357,6 +364,20 @@ func (o *T) getTopology(cf *xconfig.T) topology.T {
 func (o *T) getOrchestrate(cf *xconfig.T) string {
 	s := cf.GetString(keyOrchestrate)
 	return s
+}
+
+func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
+	m := make(map[string]instance.SubsetConfig)
+	for _, s := range cf.SectionStrings() {
+		if name := resourceset.SubsetSectionToName(s); name == "" {
+			continue
+		}
+		k := key.New(s, "parallel")
+		m[s] = instance.SubsetConfig{
+			Parallel: cf.GetBool(k),
+		}
+	}
+	return m
 }
 
 func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {

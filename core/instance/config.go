@@ -14,8 +14,11 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
+		App              string                    `json:"app,omitempty" yaml:"app,omitempty"`
 		Checksum         string                    `json:"csum" yaml:"csum"`
 		Children         []path.Relation           `json:"children" yaml:"children"`
+		DRP              bool                      `json:"drp,omitempty" yaml:"drp,omitempty"`
+		Env              string                    `json:"env,omitempty" yaml:"env,omitempty"`
 		FlexMax          int                       `json:"flex_max,omitempty" yaml:"flex_max,omitempty"`
 		FlexMin          int                       `json:"flex_min,omitempty" yaml:"flex_min,omitempty"`
 		FlexTarget       int                       `json:"flex_target,omitempty" yaml:"flex_target,omitempty"`
@@ -29,6 +32,7 @@ type (
 		Priority         priority.T                `json:"priority,omitempty" yaml:"priority,omitempty"`
 		Resources        map[string]ResourceConfig `json:"resources" yaml:"resources"`
 		Scope            []string                  `json:"scope" yaml:"scope"`
+		Subsets          map[string]SubsetConfig   `json:"subsets" yaml:"subsets"`
 		Topology         topology.T                `json:"topology" yaml:"topology"`
 		UpdatedAt        time.Time                 `json:"updated_at" yaml:"updated_at"`
 	}
@@ -39,11 +43,27 @@ type (
 		Restart      int            `json:"restart" yaml:"restart"`
 		RestartDelay *time.Duration `json:"restart_delay" yaml:"restart_delay"`
 	}
+	SubsetConfig struct {
+		Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
+	}
 )
 
 func (cfg Config) DeepCopy() *Config {
+	resources := make(map[string]ResourceConfig)
+	subSets := make(map[string]SubsetConfig)
+
+	for id, v := range cfg.Resources {
+		resources[id] = v
+	}
+	for id, v := range cfg.Subsets {
+		subSets[id] = v
+	}
+
 	newCfg := cfg
 	newCfg.Scope = append([]string{}, cfg.Scope...)
+	newCfg.Subsets = subSets
+	newCfg.Resources = resources
+
 	return &newCfg
 }
 

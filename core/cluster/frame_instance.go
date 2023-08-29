@@ -18,10 +18,16 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 		} else {
 			instanceMonitor = instance.Monitor{}
 		}
+		var instanceConfig instance.Config
+		if inst.Config != nil {
+			instanceConfig = *inst.Config
+		} else {
+			instanceConfig = instance.Config{}
+		}
 		instanceStatus := *inst.Status
-		s += sObjectInstanceAvail(avail, instanceStatus)
+		s += sObjectInstanceAvail(avail, instanceStatus, instanceMonitor)
 		s += sObjectInstanceOverall(instanceStatus)
-		s += sObjectInstanceDRP(instanceStatus)
+		s += sObjectInstanceDRP(instanceConfig)
 		s += sObjectInstanceHALeader(instanceMonitor)
 		s += sObjectInstanceFrozen(instanceStatus)
 		s += sObjectInstanceUnprovisioned(instanceStatus)
@@ -33,8 +39,8 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 	return s + "\t"
 }
 
-func sObjectInstanceAvail(objectAvail status.T, instance instance.Status) string {
-	if instance.Preserved {
+func sObjectInstanceAvail(objectAvail status.T, instance instance.Status, mon instance.Monitor) string {
+	if mon.Preserved {
 		return iconPreserved
 	}
 	switch instance.Avail {
@@ -69,7 +75,7 @@ func sObjectInstanceOverall(instance instance.Status) string {
 	return ""
 }
 
-func sObjectInstanceDRP(instance instance.Status) string {
+func sObjectInstanceDRP(instance instance.Config) string {
 	if instance.DRP {
 		return iconDRP
 	}

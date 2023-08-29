@@ -3,17 +3,11 @@ package object
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"reflect"
-	"sort"
 	"time"
-
-	"github.com/ssrathi/go-attr"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
@@ -21,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *core) statusFile() string {
@@ -58,80 +51,13 @@ func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 }
 
 func (t *core) lockedStatusEval() (data instance.Status, err error) {
-	data.App = t.App()
-	data.Env = t.Env()
 	data.UpdatedAt = time.Now()
 	data.Running = runningRIDList(t)
 	data.Avail = status.NotApplicable
 	data.Overall = status.NotApplicable
 	data.Optional = status.NotApplicable
-	data.Csum = csumStatusData(data)
-	if v, err := t.config.IsInDRPNodes(hostname.Hostname()); err != nil {
-		return data, err
-	} else {
-		data.DRP = v
-	}
 	err = t.statusDump(data)
 	return
-}
-
-func csumStatusDataRecurse(w io.Writer, d interface{}) error {
-	names, err := attr.Names(d)
-	if err != nil {
-		return err
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		kind, err := attr.GetKind(d, name)
-		if err != nil {
-			return err
-		}
-		switch name {
-		case "StatusUpdated", "GlobalExpectUpdated", "Updated", "Mtime", "Csum":
-			continue
-		}
-		val, err := attr.GetValue(d, name)
-		if err != nil {
-			return err
-		}
-		switch kind {
-		case "struct":
-			if err := csumStatusDataRecurse(w, val); err != nil {
-				return err
-			}
-		case "slice":
-			rv := reflect.ValueOf(val)
-			for i := 0; i < rv.Len(); i++ {
-				v := rv.Index(i)
-				if err := csumStatusDataRecurse(w, v); err != nil {
-					return err
-				}
-			}
-		case "map":
-			iter := reflect.ValueOf(val).MapRange()
-			for iter.Next() {
-				// k := iter.Key()
-				v := iter.Value()
-				if err := csumStatusDataRecurse(w, v); err != nil {
-					return err
-				}
-			}
-		default:
-			fmt.Fprint(w, val)
-		}
-	}
-	return nil
-}
-
-// csumStatusData returns the string representation of the checksum of the
-// status.json content, adding recursively all data keys except
-// time and checksum fields.
-func csumStatusData(data instance.Status) string {
-	w := md5.New()
-	if err := csumStatusDataRecurse(w, data); err != nil {
-		fmt.Println(data, err) // TODO: remove me
-	}
-	return fmt.Sprintf("%x", w.Sum(nil))
 }
 
 func (t *core) statusDumpOutdated() bool {

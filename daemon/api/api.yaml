@@ -266,6 +266,31 @@ paths:
         500:
           $ref: '#/components/responses/500'
   /instance/status:
+    get:
+      operationId: GetInstanceStatus
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: get instance status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetInstanceStatusArray'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
     post:
       operationId: PostInstanceStatus
       tags:
@@ -1084,76 +1109,42 @@ components:
         expire_at:
           type: string
           format: date-time
-    InstanceStatus:
+    InstanceMeta:
       type: object
       required:
-        - avail
-        - frozen_at
-        - last_started_at
-        - overall
-        - provisioned
-        - updated_at
+        - object
+        - node
+      properties:
+        object:
+          type: string
+        node:
+          type: string
+    InstanceConfig:
+      type: object
+      required:
+        - app
+        - drp
+        - env
+        - orchestrate
+        - placement
+        - priority
+        - subsets
+        - topology
       properties:
         app:
-          type: string
-        avail:
-          $ref: '#/components/schemas/Status'
-        constraints:
-          type: boolean
-        csum:
           type: string
         drp:
           type: boolean
         env:
           type: string
-        flex_max:
-          type: integer
-        flex_min:
-          type: integer
-        flex_target:
-          type: integer
-        frozen_at:
-          type: string
-          format: date-time
-        last_started_at:
-          type: string
-          format: date-time
-        optional:
-          $ref: '#/components/schemas/Status'
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
-        overall:
-          $ref: '#/components/schemas/Status'
         placement:
           $ref: '#/components/schemas/Placement'
-        preserved:
-          type: boolean
-          description: |
-            preserve is true if this status has not been updated due to a 
-            heartbeat downtime covered by a maintenance period.
-            when the maintenance period ends, the status should be unchanged, 
-            and preserve will be set to false.
-          default: false
         priority:
           type: integer
           description: scheduling priority of an object instance on a its node
           default: 50
-        provisioned:
-          $ref: '#/components/schemas/Provisioned'
-        resources:
-          type: array
-          items:
-            $ref: '#/components/schemas/ResourceExposedStatus'
-        running:
-          type: array
-          items:
-            type: string
-        scale:
-          type: integer
-        slaves:
-          $ref: '#/components/schemas/PathRelation'
-        status_group:
-          type: string
         subsets:
           type: object
           description: subset properties
@@ -1167,6 +1158,60 @@ components:
                 default: false
         topology:
           $ref: '#/components/schemas/Topology'
+    InstanceStatus:
+      type: object
+      required:
+        - avail
+        - constraints
+        - csum
+        - frozen_at
+        - last_started_at
+        - optional
+        - overall
+        - preserved
+        - provisioned
+        - resources
+        - running
+        - updated_at
+        - scale
+        - updated_at
+      properties:
+        avail:
+          $ref: '#/components/schemas/Status'
+        constraints:
+          type: boolean
+        csum:
+          type: string
+        frozen_at:
+          type: string
+          format: date-time
+        last_started_at:
+          type: string
+          format: date-time
+        optional:
+          $ref: '#/components/schemas/Status'
+        overall:
+          $ref: '#/components/schemas/Status'
+        preserved:
+          type: boolean
+          description: |
+            preserve is true if this status has not been updated due to a 
+            heartbeat downtime covered by a maintenance period.
+            when the maintenance period ends, the status should be unchanged, 
+            and preserve will be set to false.
+          default: false
+        provisioned:
+          $ref: '#/components/schemas/Provisioned'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceExposedStatus'
+        running:
+          type: array
+          items:
+            type: string
+        scale:
+          type: integer
         updated_at:
           type: string
           format: date-time
@@ -1480,6 +1525,20 @@ components:
           type: string
         is_partial:
           type: boolean
+    GetInstanceStatusArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/GetInstanceStatusElement'
+    GetInstanceStatusElement:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/InstanceStatus'
     PostInstanceStatus:
       type: object
       required:
@@ -1588,9 +1647,21 @@ components:
     ResourceExposedStatus:
       type: object
       required:
+        - disable
+        - encap
+        - info
         - label
+        - log
+        - monitor
+        - optional
+        - provisioned
+        - restart
         - rid
+        - rid
+        - standby
         - status
+        - subset
+        - tags
         - type
       properties:
         disable:
@@ -1609,17 +1680,7 @@ components:
         label:
           type: string
         log:
-          type: array
-          items:
-            type: object
-            required:
-              - level
-              - message
-            properties:
-              level:
-                type: string
-              message:
-                type: string
+          $ref: '#/components/schemas/ResourceLog'
         monitor:
           type: boolean
           description: |
@@ -1653,10 +1714,25 @@ components:
           type: string
     ResourceId:
       type: string
+    ResourceLog:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceLogEntry'
+    ResourceLogEntry:
+      type: object
+      required:
+        - level
+        - message
+      properties:
+        level:
+          type: string
+        message:
+          type: string
     ResourceProvisionStatus:
       type: object
       required:
         - state
+        - mtime
       properties:
         mtime:
           type: string
