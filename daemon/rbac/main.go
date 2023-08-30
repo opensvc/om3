@@ -53,11 +53,15 @@ func (t *Role) String() string {
 	return string(*t)
 }
 
-func (t Grants) HasAnyGrant(grants ...Grant) bool {
+// HasGrant returns true if any grant of the variadic grants
+// is found.
+func (t Grants) HasGrant(grants ...Grant) bool {
 	return matchGrants(t, grants...)
 }
 
-func (t Grants) HasAnyRole(roles ...Role) bool {
+// HasRole returns true if any role of the variadic roles
+// is found.
+func (t Grants) HasRole(roles ...Role) bool {
 	return matchRoles(t, roles...)
 }
 

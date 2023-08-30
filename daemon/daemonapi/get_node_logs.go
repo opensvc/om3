@@ -11,12 +11,15 @@ import (
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 // GetNodeLogs feeds publications in rss format.
 func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) error {
-	if err := assertRoleRoot(ctx); err != nil {
+	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
 		return err
+	} else if !v {
+		return nil
 	}
 	var (
 		handlerName = "GetNodeLogs"
@@ -47,7 +50,7 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
 	defer func() {
-		if err :=stream.Stop(); err != nil {
+		if err := stream.Stop(); err != nil {
 			log.Debug().Err(err).Msgf("stream.Stop")
 		}
 	}()

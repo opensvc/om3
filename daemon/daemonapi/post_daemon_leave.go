@@ -13,9 +13,10 @@ import (
 // PostDaemonLeave publishes msgbus.LeaveRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
 func (a *DaemonApi) PostDaemonLeave(ctx echo.Context, params api.PostDaemonLeaveParams) error {
-	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleLeave}
-	if !hasAnyRole(ctx, neededRoles...) {
-		return JSONForbiddenMissingRole(ctx, neededRoles...)
+	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleLeave); err != nil {
+		return err
+	} else if !v {
+		return nil
 	}
 	log := LogHandler(ctx, "PostDaemonLeave")
 	node := params.Node

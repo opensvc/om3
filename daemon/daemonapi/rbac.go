@@ -2,19 +2,16 @@ package daemonapi
 
 import (
 	"github.com/labstack/echo/v4"
-
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func hasAnyRole(ctx echo.Context, roles ...rbac.Role) bool {
-	userGrants := grantsFromContext(ctx)
-	return userGrants.HasAnyRole(roles...)
-}
-
-func assertRoleRoot(ctx echo.Context) error {
-	neededRoles := []rbac.Role{rbac.RoleRoot}
-	if !hasAnyRole(ctx, neededRoles...) {
-		return JSONForbiddenMissingRole(ctx, neededRoles...)
+func assertRole(ctx echo.Context, roles ...rbac.Role) (bool, error) {
+	if !grantsFromContext(ctx).HasRole(roles...) {
+		if err := JSONForbiddenMissingRole(ctx, roles...); err != nil {
+			return false, err
+		} else {
+			return false, nil
+		}
 	}
-	return nil
+	return true, nil
 }

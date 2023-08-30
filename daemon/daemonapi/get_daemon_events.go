@@ -29,11 +29,11 @@ type (
 // GetDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
 func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
-	neededRoles := []rbac.Role{rbac.RoleRoot, rbac.RoleJoin}
-	if !hasAnyRole(ctx, neededRoles...) {
-		return JSONForbiddenMissingRole(ctx, neededRoles...)
+	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); err != nil {
+		return err
+	} else if !v {
+		return nil
 	}
-
 	var (
 		handlerName = "GetDaemonEvents"
 		limit       uint64
