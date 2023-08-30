@@ -1,4 +1,4 @@
-package rescontainerkvm
+package rescontainervbox
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/antchfx/xmlquery"
 	"github.com/go-ping/ping"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-version"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -42,6 +42,7 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		Path     path.T    `json:"path"`
 		ObjectID uuid.UUID `json:"object_id"`
 		Peers    []string  `json:"peers"`
@@ -50,7 +51,7 @@ type (
 
 		SCSIReserv     bool           `json:"scsireserv"`
 		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"NoPreemptAbort"`
+		NoPreemptAbort bool           `json:"no_preempt_abort"`
 		OsvcRootPath   string         `json:"osvc_root_path"`
 		GuestOS        string         `json:"guest_os"`
 		Name           string         `json:"name"`
@@ -58,9 +59,6 @@ type (
 		RCmd           []string       `json:"rcmd"`
 		StartTimeout   *time.Duration `json:"start_timeout"`
 		StopTimeout    *time.Duration `json:"stop_timeout"`
-		//Snap           string         `json:"snap"`
-		//SnapOf         string         `json:"snapof"`
-		VirtInst []string `json:"virtinst"`
 
 		cache map[string]interface{}
 	}
@@ -73,47 +71,6 @@ type (
 	}
 )
 
-func isPartitionsCapable() bool {
-	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("--version"),
-		command.WithBufferedStdout(),
-	)
-	b, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	vs := strings.TrimSpace(string(b))
-	v, err := version.NewVersion(vs)
-	if err != nil {
-		return false
-	}
-	constraints, err := version.NewConstraint(">= 1.0.1")
-	if err != nil {
-		return false
-	}
-	if constraints.Check(v) {
-		return true
-	}
-	return false
-}
-
-func isHVMCapable() bool {
-	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("capabilities"),
-		command.WithBufferedStdout(),
-	)
-	b, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	if bytes.Contains(b, []byte("hvm")) {
-		return true
-	}
-	return false
-}
-
 func New() resource.Driver {
 	t := &T{
 		cache: make(map[string]interface{}),
@@ -122,11 +79,7 @@ func New() resource.Driver {
 }
 
 func (t *T) configFile() string {
-	return filepath.Join("/etc/libvirt/qemu", t.Name+".xml")
-}
-
-func (t *T) autostartFile() string {
-	return filepath.Join("/etc/libvirt/qemu/autostart/", t.Name+".xml")
+	return filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")
 }
 
 func (t *T) configFiles() []string {
@@ -134,7 +87,8 @@ func (t *T) configFiles() []string {
 		// don't send the container cf to nodes that won't run it
 		return []string{}
 	}
-	cf := t.configFile()
+	//cf := t.configFile()
+	cf := filepath.Join("/root/VirtualBox VMs", t.Name)
 	if !file.Exists(cf) {
 		return []string{}
 	}
@@ -153,15 +107,15 @@ func (t T) checkCapabilities() bool {
 	return true
 }
 
-func (t T) IsOperational() (bool, error) {
+func (t T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
-		t.Log().Debug().Err(err).Msgf("IsOperational")
+		t.Log().Debug().Err(err).Msgf("isOperational")
 		return false, nil
 	}
 	return true, nil
 }
 
-func (t T) IsPinging() (bool, error) {
+func (t T) isPinging() (bool, error) {
 	pinger, err := ping.NewPinger(t.hostname())
 	if err != nil {
 		return false, err
@@ -175,18 +129,6 @@ func (t T) IsPinging() (bool, error) {
 		return true, nil
 	}
 	return false, nil
-}
-
-func (t *T) define() error {
-	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("define", t.configFile()),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	return cmd.Run()
 }
 
 func (t *T) undefine() error {
@@ -203,8 +145,8 @@ func (t *T) undefine() error {
 
 func (t *T) start() error {
 	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("start", t.Name),
+		command.WithName("VBoxManage"),
+		command.WithVarArgs("startvm", t.Name, "--type=headless"),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -216,8 +158,8 @@ func (t *T) start() error {
 
 func (t *T) stop() error {
 	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("shutdown", t.Name),
+		command.WithName("VBoxManage"),
+		command.WithVarArgs("controlvm", t.Name, "acpipowerbutton"),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -229,26 +171,21 @@ func (t *T) stop() error {
 
 func (t *T) destroy() error {
 	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("destroy", t.Name),
+		command.WithName("VBoxManage"),
+		command.WithVarArgs("controlvm", t.Name, "poweroff"),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithTimeout(*t.StopTimeout),
 	)
-	return cmd.Run()
+	_, err := cmd.Output()
+	return err
 }
 
 func (t *T) containerStart(ctx context.Context) error {
 	if !t.hasConfigFile() {
 		return fmt.Errorf("%s not found", t.configFile())
-	}
-	if err := t.doPartitions(); err != nil {
-		return err
-	}
-	if err := t.define(); err != nil {
-		return err
 	}
 	if err := t.start(); err != nil {
 		return err
@@ -256,20 +193,50 @@ func (t *T) containerStart(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) doPartitions() error {
-	if t.GetPG() != nil && !capabilities.Has("node.x.machinectl") && capabilities.Has(drvID.Cap()+".partitions") {
-		if err := t.setPartitions(); err != nil {
-			return err
-		}
-	} else {
-		if err := t.unsetPartitions(); err != nil {
-			return err
+func (t T) isVmInVboxCf() (bool, error) {
+	f, err := os.Open("/root/.config/VirtualBox/VirtualBox.xml")
+	defer f.Close()
+	if err != nil {
+		return false, err
+	}
+	doc, err := xmlquery.Parse(f)
+	if err != nil {
+		return false, err
+	}
+	machineEntries, err := xmlquery.QueryAll(doc, "//MachineEntry")
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range machineEntries {
+		src := entry.SelectAttr("src")
+		if src == filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox") {
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+func (t T) addVmToVboxCf() error {
+	cmd := command.New(
+		command.WithName("VBoxManage"),
+		command.WithVarArgs("registervm", filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+
+	return cmd.Run()
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if v, err := t.isVmInVboxCf(); err != nil {
+		return err
+	} else if !v {
+		if err := t.addVmToVboxCf(); err != nil {
+			return err
+		}
+	}
 	if err := t.ApplyPGChain(ctx); err != nil {
 		return err
 	}
@@ -288,11 +255,16 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.waitForUp(); err != nil {
 		return err
 	}
-	if err := t.waitForPing(); err != nil {
-		return err
-	}
-	if err := t.waitForOperational(); err != nil {
-		return err
+
+	if _, err := net.LookupIP(t.hostname()); err == nil {
+		if err := t.waitForPing(); err != nil {
+			return err
+		}
+		if err := t.waitForOperational(); err != nil {
+			return err
+		}
+	} else {
+		t.Log().Debug().Msgf("can not do dns resolution for : ", t.Name)
 	}
 	return nil
 }
@@ -311,7 +283,7 @@ func (t T) Stop(ctx context.Context) error {
 }
 
 func (t T) waitForDown() error {
-	t.Log().Info().Dur("timeout", *t.StopTimeout).Msgf("wait for %s shutdown", t.Name)
+	t.Log().Info().Dur("timeout", *t.StopTimeout).Msgf("wait for %s shutdown, max duration %s", t.Name, *t.StopTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isDown()
 		if err != nil {
@@ -336,7 +308,7 @@ func (t T) waitForUp() error {
 func (t T) waitForPing() error {
 	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s ping", t.Name)
 	return WaitFor(func() bool {
-		v, err := t.IsPinging()
+		v, err := t.isPinging()
 		if err != nil {
 			t.Log().Error().Err(err).Msgf("abort waiting for %s ping", t.Name)
 			return true
@@ -348,7 +320,7 @@ func (t T) waitForPing() error {
 func (t T) waitForOperational() error {
 	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s operational", t.Name)
 	return WaitFor(func() bool {
-		v, err := t.IsOperational()
+		v, err := t.isOperational()
 		if err != nil {
 			t.Log().Error().Err(err).Msgf("abort waiting for %s operational", t.Name)
 			return true
@@ -373,7 +345,7 @@ func (t T) containerStop(ctx context.Context) error {
 				return err
 			}
 		}
-	case "blocked", "paused", "crashed":
+	case "Stuck", "Paused", "Aborted":
 		if err := t.destroy(); err != nil {
 			return err
 		}
@@ -409,7 +381,7 @@ func (t T) isDown() (bool, error) {
 
 func isDownFromState(state string) bool {
 	switch state {
-	case "shut off", "no state":
+	case "poweroff":
 		return true
 	}
 	return false
@@ -417,8 +389,8 @@ func isDownFromState(state string) bool {
 
 func (t *T) domState() (string, error) {
 	cmd := command.New(
-		command.WithName("virsh"),
-		command.WithVarArgs("dominfo", t.Name),
+		command.WithName("VBoxManage"),
+		command.WithVarArgs("showvminfo", "--machinereadable", t.Name),
 		command.WithBufferedStdout(),
 	)
 	b, err := cmd.Output()
@@ -432,8 +404,8 @@ func domStateFromReader(r io.Reader) (string, error) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		s := scanner.Text()
-		if strings.HasPrefix(s, "State:") {
-			return strings.TrimSpace(s[len("State:"):]), nil
+		if strings.HasPrefix(s, "VMState=") {
+			return strings.Trim(s[len("VMState="):], "\""), nil
 		}
 	}
 	return "", fmt.Errorf("state not found")
@@ -441,11 +413,6 @@ func domStateFromReader(r io.Reader) (string, error) {
 
 func (t T) hasConfigFile() bool {
 	p := t.configFile()
-	return file.Exists(p)
-}
-
-func (t T) hasAutostartFile() bool {
-	p := t.autostartFile()
 	return file.Exists(p)
 }
 
@@ -469,86 +436,6 @@ func (t T) SubDevices() device.L {
 	return l
 }
 
-func (t T) setPartitions() error {
-	cf := t.configFile()
-	cgroupDir := t.cgroupDir()
-	f, err := os.Open(cf)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return err
-	}
-	root := xmlquery.FindOne(doc, "//domain")
-	if root == nil {
-		return fmt.Errorf("no <domain> node in %s", cf)
-	}
-	if n := root.SelectElement("//resource/partition"); n != nil {
-		p := n.InnerText()
-		if p != cgroupDir {
-			t.Log().Info().Msgf("set text of //domain/resource/partition: %s", cgroupDir)
-			partitionText := &xmlquery.Node{
-				Data: cgroupDir,
-				Type: xmlquery.TextNode,
-			}
-			n.FirstChild = partitionText
-		}
-	} else if resourceElem := root.SelectElement("//resource"); resourceElem != nil {
-		t.Log().Info().Msgf("add to //domain/resource: <partition>%s</partition>", cgroupDir)
-		partitionElem := &xmlquery.Node{
-			Data: "partition",
-			Type: xmlquery.ElementNode,
-		}
-		partitionText := &xmlquery.Node{
-			Data: cgroupDir,
-			Type: xmlquery.TextNode,
-		}
-		partitionElem.FirstChild = partitionText
-		xmlquery.AddChild(resourceElem, partitionElem)
-	} else {
-		t.Log().Info().Msgf("add to //domain: <resource><partition>%s</partition></resource>", cgroupDir)
-		resourceElem := &xmlquery.Node{
-			Data: "resource",
-			Type: xmlquery.ElementNode,
-		}
-		partitionElem := &xmlquery.Node{
-			Data: "partition",
-			Type: xmlquery.ElementNode,
-		}
-		partitionText := &xmlquery.Node{
-			Data: cgroupDir,
-			Type: xmlquery.TextNode,
-		}
-		partitionElem.FirstChild = partitionText
-		resourceElem.FirstChild = partitionElem
-		xmlquery.AddChild(root, resourceElem)
-
-	}
-	fmt.Println(doc.OutputXML(true))
-
-	return nil
-}
-
-func (t T) unsetPartitions() error {
-	cf := t.configFile()
-	f, err := os.Open(cf)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return err
-	}
-	if n := xmlquery.FindOne(doc, "//domain/resource/partition"); n != nil {
-		t.Log().Info().Msg("remove //domain/resource/partition")
-		xmlquery.RemoveFromTree(n)
-	}
-	return nil
-}
-
 func (t *T) Status(ctx context.Context) status.T {
 	/* TODO
 	if pg := t.GetPG(); pg != nil && pg.IsFrozen() {
@@ -556,11 +443,8 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	*/
-	if t.hasAutostartFile() {
-		t.StatusLog().Warn("container auto boot is on")
-	}
 	if !capabilities.Has(drvID.Cap()) {
-		t.StatusLog().Info("this node is not kvm capable")
+		t.StatusLog().Info("this node is not vbox capable")
 		return status.Undef
 	}
 	state, err := t.domState()
@@ -593,7 +477,7 @@ func (t T) provisioned() bool {
 
 func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	if !t.provisioned() {
-		t.Log().Info().Msgf("skip kvm unprovision: container is not provisioned")
+		t.Log().Info().Msgf("skip vbox unprovision: container is not provisioned")
 		return nil
 	}
 	if t.hasConfigFile() {
@@ -611,26 +495,27 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
-	if t.provisioned() {
-		t.Log().Info().Msgf("skip kvm provision: container is provisioned")
-		return nil
+/*
+	func (t T) ProvisionLeader(ctx context.Context) error {
+		if t.provisioned() {
+			t.Log().Info().Msgf("skip kvm provision: container is provisioned")
+			return nil
+		}
+		if len(t.VirtInst) == 0 {
+			return fmt.Errorf("the 'virtinst' parameter must be set")
+		}
+		cmd := command.New(
+			command.WithName("virtinst"),
+			command.WithArgs(t.VirtInst),
+			command.WithLogger(t.Log()),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			//command.WithTimeout(*t.StartTimeout),
+		)
+		return cmd.Run()
 	}
-	if len(t.VirtInst) == 0 {
-		return fmt.Errorf("the 'virtinst' parameter must be set")
-	}
-	cmd := command.New(
-		command.WithName("virtinst"),
-		command.WithArgs(t.VirtInst),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		//command.WithTimeout(*t.StartTimeout),
-	)
-	return cmd.Run()
-}
-
+*/
 func (t T) Unprovision(ctx context.Context) error {
 	return nil
 }
@@ -892,7 +777,7 @@ func (t T) upPeer() (string, error) {
 		defer session.Close()
 		var b bytes.Buffer
 		session.Stdout = &b
-		cmd := fmt.Sprintf("virsh dominfo %s", t.Name)
+		cmd := fmt.Sprintf("VBoxManage showvminfo --machinereadable %s", t.Name)
 		err = session.Run(cmd)
 		if err != nil {
 			ee := err.(*ssh.ExitError)
