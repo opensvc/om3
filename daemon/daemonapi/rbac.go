@@ -7,9 +7,8 @@ import (
 )
 
 func hasAnyRole(ctx echo.Context, roles ...rbac.Role) bool {
-	user := User(ctx)
-	userGrants := rbac.NewGrants(user.GetExtensions()["grant"]...)
-	return rbac.MatchRoles(userGrants, roles...)
+	userGrants := grantsFromContext(ctx)
+	return userGrants.HasAnyRole(roles...)
 }
 
 func assertRoleRoot(ctx echo.Context) error {
