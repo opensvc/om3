@@ -2,8 +2,8 @@ openapi: 3.0.0
 info:
   title: opensvc agent api
   version: 3.9.1
-servers:
-  - url: https://localhost:1215
+#servers:
+#  - url: https://localhost:1215
 paths:
   /auth/token:
     post:
@@ -273,16 +273,16 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: get instance status
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GetInstanceStatusArray'
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
       responses:
         200:
-          description: OK
+          description: get instance status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInstanceStatusArray'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -754,44 +754,384 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/selector:
+  /object/paths:
     get:
-      operationId: GetObjectSelector
+      operationId: GetObjectPaths
       tags:
         - object
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ObjectSelector'
+        - $ref: '#/components/parameters/Path'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectSelection'
+                $ref: '#/components/schemas/ObjectPaths'
         401:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/switchTo:
+  /object/action/abort:
     post:
-      operationId: PostObjectSwitchTo
+      operationId: PostObjectActionAbort
       tags:
         - object
       security:
         - basicAuth: []
         - bearerAuth: []
       requestBody:
-        description: monitor
+        description: Cancel the current orchestration.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectSwitchTo'
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/delete:
+    post:
+      operationId: PostObjectActionDelete
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance delete.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/freeze:
+    post:
+      operationId: PostObjectActionFreeze
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance freeze.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/giveback:
+    post:
+      operationId: PostObjectActionGiveback
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance giveback.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/provision:
+    post:
+      operationId: PostObjectActionProvision
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance provision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/purge:
+    post:
+      operationId: PostObjectActionPurge
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unprovision and delete.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/start:
+    post:
+      operationId: PostObjectActionStart
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance start.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/stop:
+    post:
+      operationId: PostObjectActionStop
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance stop.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/switch:
+    post:
+      operationId: PostObjectActionSwitch
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance switch.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionSwitch'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/unfreeze:
+    post:
+      operationId: PostObjectActionUnfreeze
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unfreeze.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/unprovision:
+    post:
+      operationId: PostObjectActionUnprovision
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unprovision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
       responses:
         200:
           description: OK
@@ -1329,7 +1669,7 @@ components:
         mtime:
           type: string
           format: date-time
-    ObjectSelection:
+    ObjectPaths:
       type: array
       items:
         type: string
@@ -1549,7 +1889,14 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/InstanceStatus'
-    PostObjectSwitchTo:
+    PostObjectAction:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    PostObjectActionSwitch:
       type: object
       required:
         - path
@@ -1926,13 +2273,51 @@ components:
       required: true
       schema:
         type: string
-    ObjectSelector:
-      name: selector
+    Path:
+      name: path
       in: query
-      description: object selector
+      description: object selector expression.
       required: true
       schema:
         type: string
+        example: db1,web*
+    PathOptional:
+      name: path
+      in: query
+      description: object selector expression.
+      schema:
+        type: string
+        example: db1,web*
+    Node:
+      name: node
+      in: query
+      description: node selector expression.
+      required: true
+      schema:
+        type: string
+        example: n2,az=eu1
+    NodeOptional:
+      name: node
+      in: query
+      description: object and instance selector expression.
+      schema:
+        type: string
+        example: n2,az=eu1
+    Resource:
+      name: resource
+      in: query
+      description: resource selector expression.
+      required: true
+      schema:
+        type: string
+        example: fs#1,ip
+    ResourceOptional:
+      name: resource
+      in: query
+      description: resource selector expression.
+      schema:
+        type: string
+        example: fs#1,ip
     RelayClusterId:
       name: cluster_id
       in: query

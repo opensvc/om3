@@ -396,11 +396,11 @@ func (t T) DoAsync() error {
 		}
 		switch t.Target {
 		case instance.MonitorGlobalExpectPlacedAt.String():
-			params := api.PostObjectSwitchTo{}
+			params := api.PostObjectActionSwitch{}
 			params.Path = p.String()
 			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			params.Destination = options.Destination
-			resp, e := c.PostObjectSwitchToWithResponse(ctx, params)
+			resp, e := c.PostObjectActionSwitchWithResponse(ctx, params)
 			if e != nil {
 				err = e
 			}

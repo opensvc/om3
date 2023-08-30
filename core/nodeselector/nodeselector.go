@@ -33,11 +33,18 @@ type (
 		info               nodesinfo.NodesInfo
 		log                zerolog.Logger
 	}
+
+	ResultMap map[string]any
 )
 
 var (
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 )
+
+func (m ResultMap) Has(s string) bool {
+	_, ok := m[s]
+	return ok
+}
 
 // New allocates a new node selector
 func New(selector string, opts ...funcopt.O) *T {
@@ -122,6 +129,18 @@ func (t *T) Expand() ([]string, error) {
 		return nil, err
 	}
 	return t.nodes, nil
+}
+
+func (t *T) ExpandMap() (ResultMap, error) {
+	l, err := t.Expand()
+	if err != nil {
+		return nil, err
+	}
+	m := make(ResultMap)
+	for _, s := range l {
+		m[s] = nil
+	}
+	return m, nil
 }
 
 func (t *T) add(node string) {

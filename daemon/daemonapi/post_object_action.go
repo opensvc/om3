@@ -16,9 +16,49 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
+func (a *DaemonApi) PostObjectActionAbort(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectAborted)
+}
+
+func (a *DaemonApi) PostObjectActionDelete(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectDeleted)
+}
+
+func (a *DaemonApi) PostObjectActionFreeze(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectFrozen)
+}
+
+func (a *DaemonApi) PostObjectActionGiveback(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectPlaced)
+}
+
+func (a *DaemonApi) PostObjectActionProvision(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectProvisioned)
+}
+
+func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectPurged)
+}
+
+func (a *DaemonApi) PostObjectActionStart(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectStarted)
+}
+
+func (a *DaemonApi) PostObjectActionStop(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectStopped)
+}
+
+func (a *DaemonApi) PostObjectActionUnfreeze(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectThawed)
+}
+
+func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context) error {
+	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectUnprovisioned)
+}
+
+func (a *DaemonApi) PostObjectAction(ctx echo.Context, globalExpect instance.MonitorGlobalExpect) error {
 	var (
-		payload = api.PostObjectSwitchTo{}
+		payload = api.PostObjectAction{}
 		value   = instance.MonitorUpdate{}
 		p       path.T
 		err     error
@@ -33,12 +73,8 @@ func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", payload.Path)
 	}
-	globalExpect := instance.MonitorGlobalExpectPlacedAt
-	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
-	options.Destination = append(options.Destination, payload.Destination...)
 	value = instance.MonitorUpdate{
 		GlobalExpect:             &globalExpect,
-		GlobalExpectOptions:      options,
 		CandidateOrchestrationId: uuid.New(),
 	}
 	msg := msgbus.SetInstanceMonitor{

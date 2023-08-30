@@ -130,6 +130,7 @@ const (
 const (
 	MonitorGlobalExpectZero MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
+	MonitorGlobalExpectDeleted
 	MonitorGlobalExpectFrozen
 	MonitorGlobalExpectNone
 	MonitorGlobalExpectPlaced
@@ -242,6 +243,7 @@ var (
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted":       MonitorGlobalExpectAborted,
+		"deleted":       MonitorGlobalExpectDeleted,
 		"":              MonitorGlobalExpectZero,
 		"frozen":        MonitorGlobalExpectFrozen,
 		"placed":        MonitorGlobalExpectPlaced,

@@ -329,8 +329,8 @@ type ObjectFile struct {
 	Mtime time.Time `json:"mtime"`
 }
 
-// ObjectSelection defines model for ObjectSelection.
-type ObjectSelection = []string
+// ObjectPaths defines model for ObjectPaths.
+type ObjectPaths = []string
 
 // PoolStatus defines model for PoolStatus.
 type PoolStatus struct {
@@ -409,6 +409,17 @@ type PostObjectAbort struct {
 	Path string `json:"path"`
 }
 
+// PostObjectAction defines model for PostObjectAction.
+type PostObjectAction struct {
+	Path string `json:"path"`
+}
+
+// PostObjectActionSwitch defines model for PostObjectActionSwitch.
+type PostObjectActionSwitch struct {
+	Destination []string `json:"destination"`
+	Path        string   `json:"path"`
+}
+
 // PostObjectClear defines model for PostObjectClear.
 type PostObjectClear struct {
 	Path string `json:"path"`
@@ -428,12 +439,6 @@ type PostObjectProgress struct {
 	Path      string             `json:"path"`
 	SessionId openapi_types.UUID `json:"session_id"`
 	State     string             `json:"state"`
-}
-
-// PostObjectSwitchTo defines model for PostObjectSwitchTo.
-type PostObjectSwitchTo struct {
-	Destination []string `json:"destination"`
-	Path        string   `json:"path"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -589,11 +594,17 @@ type LogFilter = []string
 // NamespaceOptional defines model for NamespaceOptional.
 type NamespaceOptional = string
 
+// NodeOptional defines model for NodeOptional.
+type NodeOptional = string
+
 // ObjectPath defines model for ObjectPath.
 type ObjectPath = string
 
-// ObjectSelector defines model for ObjectSelector.
-type ObjectSelector = string
+// Path defines model for Path.
+type Path = string
+
+// PathOptional defines model for PathOptional.
+type PathOptional = string
 
 // Paths defines model for Paths.
 type Paths = []string
@@ -676,6 +687,15 @@ type GetDaemonStatusParams struct {
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
+// GetInstanceStatusParams defines parameters for GetInstanceStatus.
+type GetInstanceStatusParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
 // GetNetworksParams defines parameters for GetNetworks.
 type GetNetworksParams struct {
 	// Name the name of a cluster backend network
@@ -748,10 +768,10 @@ type GetObjectLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
-// GetObjectSelectorParams defines parameters for GetObjectSelector.
-type GetObjectSelectorParams struct {
-	// Selector object selector
-	Selector ObjectSelector `form:"selector" json:"selector"`
+// GetObjectPathsParams defines parameters for GetObjectPaths.
+type GetObjectPathsParams struct {
+	// Path object selector expression.
+	Path Path `form:"path" json:"path"`
 }
 
 // GetPoolsParams defines parameters for GetPools.
@@ -775,9 +795,6 @@ type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControl
 // PostDaemonSubActionJSONRequestBody defines body for PostDaemonSubAction for application/json ContentType.
 type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 
-// GetInstanceStatusJSONRequestBody defines body for GetInstanceStatus for application/json ContentType.
-type GetInstanceStatusJSONRequestBody = GetInstanceStatusArray
-
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = PostInstanceStatus
 
@@ -790,6 +807,39 @@ type PostNodeMonitorJSONRequestBody = PostNodeMonitor
 // PostObjectAbortJSONRequestBody defines body for PostObjectAbort for application/json ContentType.
 type PostObjectAbortJSONRequestBody = PostObjectAbort
 
+// PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
+type PostObjectActionAbortJSONRequestBody = PostObjectAction
+
+// PostObjectActionDeleteJSONRequestBody defines body for PostObjectActionDelete for application/json ContentType.
+type PostObjectActionDeleteJSONRequestBody = PostObjectAction
+
+// PostObjectActionFreezeJSONRequestBody defines body for PostObjectActionFreeze for application/json ContentType.
+type PostObjectActionFreezeJSONRequestBody = PostObjectAction
+
+// PostObjectActionGivebackJSONRequestBody defines body for PostObjectActionGiveback for application/json ContentType.
+type PostObjectActionGivebackJSONRequestBody = PostObjectAction
+
+// PostObjectActionProvisionJSONRequestBody defines body for PostObjectActionProvision for application/json ContentType.
+type PostObjectActionProvisionJSONRequestBody = PostObjectAction
+
+// PostObjectActionPurgeJSONRequestBody defines body for PostObjectActionPurge for application/json ContentType.
+type PostObjectActionPurgeJSONRequestBody = PostObjectAction
+
+// PostObjectActionStartJSONRequestBody defines body for PostObjectActionStart for application/json ContentType.
+type PostObjectActionStartJSONRequestBody = PostObjectAction
+
+// PostObjectActionStopJSONRequestBody defines body for PostObjectActionStop for application/json ContentType.
+type PostObjectActionStopJSONRequestBody = PostObjectAction
+
+// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
+type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PostObjectActionUnfreezeJSONRequestBody defines body for PostObjectActionUnfreeze for application/json ContentType.
+type PostObjectActionUnfreezeJSONRequestBody = PostObjectAction
+
+// PostObjectActionUnprovisionJSONRequestBody defines body for PostObjectActionUnprovision for application/json ContentType.
+type PostObjectActionUnprovisionJSONRequestBody = PostObjectAction
+
 // PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
 type PostObjectClearJSONRequestBody = PostObjectClear
 
@@ -798,9 +848,6 @@ type PostObjectMonitorJSONRequestBody = PostObjectMonitor
 
 // PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
 type PostObjectProgressJSONRequestBody = PostObjectProgress
-
-// PostObjectSwitchToJSONRequestBody defines body for PostObjectSwitchTo for application/json ContentType.
-type PostObjectSwitchToJSONRequestBody = PostObjectSwitchTo
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
