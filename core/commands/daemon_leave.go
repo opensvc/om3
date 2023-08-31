@@ -67,7 +67,8 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		return err
 	}
 
-	if err := t.stopDaemon(); err != nil {
+	_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
+	if err := (&CmdDaemonStop{}).Run(); err != nil {
 		return err
 	}
 
@@ -79,7 +80,8 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		return err
 	}
 
-	if err := t.startDaemon(); err != nil {
+	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
+	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
 	return nil
