@@ -321,7 +321,7 @@ func (t *T) notifyWatchDog(ctx context.Context) {
 			} else if !ok {
 				t.log.Warn().Msg("notifyWatchDog not delivered")
 			} else {
-				t.log.Info().Msg("notifyWatchDog delivered")
+				t.log.Debug().Msg("notifyWatchDog delivered")
 			}
 		}
 	}
