@@ -51,6 +51,7 @@ type (
 		Activated(ctx context.Context) (bool, error)
 		CalledFromManager() bool
 		Close() error
+		Defined(ctx context.Context) (bool, error)
 		Start(ctx context.Context) error
 		Stop(context.Context) error
 	}
@@ -161,6 +162,10 @@ func (t *T) StartFromCmd(ctx context.Context, foreground bool, profile string) e
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon start (origin os, no unit defined)")
+		return t.startFromCmd(foreground, profile)
+	}
 	if t.daemonsys.CalledFromManager() {
 		if foreground {
 			log.Info().Msg("daemon start foreground (origin manager)")
@@ -203,6 +208,10 @@ func (t *T) StopFromCmd(ctx context.Context) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon stop (origin os, no unit defined)")
+		return t.Stop()
+	}
 	if t.daemonsys.CalledFromManager() {
 		log.Info().Msg("daemon stop (origin manager)")
 		return t.Stop()
