@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/status"
 )
 
 type (
@@ -42,8 +43,12 @@ type (
 		State                   MonitorState       `json:"state" yaml:"state"`
 		StateUpdatedAt          time.Time          `json:"state_updated_at" yaml:"state_updated_at"`
 		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
+		Preserved               bool               `json:"preserved" yaml:"preserved"`
 		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
 		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
+
+		Parents  map[string]status.T `json:"parents,omitempty" yaml:"parents,omitempty"`
+		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor
@@ -110,8 +115,10 @@ const (
 	MonitorStateUnprovisioned
 	MonitorStateUnprovisionFailed
 	MonitorStateUnprovisioning
+	MonitorStateWaitChildren
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
+	MonitorStateWaitParents
 )
 
 const (
@@ -123,6 +130,7 @@ const (
 const (
 	MonitorGlobalExpectZero MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
+	MonitorGlobalExpectDeleted
 	MonitorGlobalExpectFrozen
 	MonitorGlobalExpectNone
 	MonitorGlobalExpectPlaced
@@ -164,8 +172,10 @@ var (
 		MonitorStateUnprovisioned:     "unprovisioned",
 		MonitorStateUnprovisionFailed: "unprovision failed",
 		MonitorStateUnprovisioning:    "unprovisioning",
+		MonitorStateWaitChildren:      "wait children",
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
+		MonitorStateWaitParents:       "wait parents",
 		MonitorStateZero:              "",
 	}
 
@@ -198,8 +208,10 @@ var (
 		"unprovisioned":      MonitorStateUnprovisioned,
 		"unprovision failed": MonitorStateUnprovisionFailed,
 		"unprovisioning":     MonitorStateUnprovisioning,
+		"wait children":      MonitorStateWaitChildren,
 		"wait leader":        MonitorStateWaitLeader,
 		"wait non-leader":    MonitorStateWaitNonLeader,
+		"wait parents":       MonitorStateWaitParents,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
@@ -231,6 +243,7 @@ var (
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted":       MonitorGlobalExpectAborted,
+		"deleted":       MonitorGlobalExpectDeleted,
 		"":              MonitorGlobalExpectZero,
 		"frozen":        MonitorGlobalExpectFrozen,
 		"placed":        MonitorGlobalExpectPlaced,
@@ -250,6 +263,11 @@ var (
 	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
+
+	MonitorActionCrash      MonitorAction = "crash"
+	MonitorActionFreezeStop MonitorAction = "freeze_stop"
+	MonitorActionReboot     MonitorAction = "reboot"
+	MonitorActionSwitch     MonitorAction = "switch"
 )
 
 func (t MonitorState) IsDoing() bool {

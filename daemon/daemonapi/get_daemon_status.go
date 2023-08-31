@@ -47,9 +47,5 @@ func (a *DaemonApi) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatus
 	if params.Namespace != nil {
 		status = status.WithNamespace(*params.Namespace)
 	}
-	if params.Relatives != nil {
-		// TODO: WithRelatives()
-		//status = status.WithRelatives(*params.Relatives)
-	}
 	return ctx.JSON(http.StatusOK, status)
 }

@@ -13,14 +13,14 @@ type (
 
 func (t *CmdNodeCapabilitiesList) Run() error {
 	return nodeaction.New(
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("node print capabilities"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Format,
+			"format": t.Output,
 		}),
 
 		nodeaction.WithLocal(t.Local),

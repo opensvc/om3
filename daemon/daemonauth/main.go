@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	cache      libcache.Cache
+	cache libcache.Cache
 )
 
 type (
@@ -31,7 +31,7 @@ func authenticatedExtensions(strategy string, grants ...string) *auth.Extensions
 
 func initCache() error {
 	cache = libcache.FIFO.New(0)
-	cache.SetTTL(time.Minute * 5)
+	cache.SetTTL(time.Second * 5)
 	/*
 		q := make(chan libcache.Event)
 		cache.Notify(q, libcache.Remove)

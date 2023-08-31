@@ -18,7 +18,7 @@ type (
 func (t *CmdNodeCollectorTagAttach) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()

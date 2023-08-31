@@ -15,8 +15,7 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		Force  bool
-		DryRun bool
+		Force bool
 	}
 )
 
@@ -28,7 +27,7 @@ func (t *CmdObjectShutdown) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("shutdown"),
@@ -46,7 +45,6 @@ func (t *CmdObjectShutdown) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.Shutdown(ctx)
 		}),
 	).Do()

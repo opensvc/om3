@@ -17,12 +17,12 @@ func (t *CmdNodeComplianceEnv) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance env"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Format,
+			"format":    t.Output,
 			"moduleset": t.Moduleset,
 			"module":    t.Module,
 		}),

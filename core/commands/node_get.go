@@ -12,6 +12,7 @@ type (
 	CmdNodeGet struct {
 		OptsGlobal
 		OptsLock
+		Eval    bool
 		Keyword string
 	}
 )
@@ -21,7 +22,7 @@ func (t *CmdNodeGet) Run() error {
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("get"),
@@ -36,7 +37,11 @@ func (t *CmdNodeGet) Run() error {
 			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			return n.Get(ctx, t.Keyword)
+			if t.Eval {
+				return n.Eval(ctx, t.Keyword)
+			} else {
+				return n.Get(ctx, t.Keyword)
+			}
 
 		}),
 	).Do()

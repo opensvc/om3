@@ -156,9 +156,6 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		// no need to announce if the daemon started this action
 		return nil
 	}
-	if actioncontext.IsDryRun(ctx) {
-		return nil
-	}
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -438,10 +435,6 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 func (t *actor) mayFreeze(ctx context.Context) error {
 	action := actioncontext.Props(ctx)
 	if !action.Freeze {
-		return nil
-	}
-	if actioncontext.IsDryRun(ctx) {
-		t.log.Debug().Msg("Skip freeze: Dry run")
 		return nil
 	}
 	if !resourceselector.FromContext(ctx, nil).IsZero() {

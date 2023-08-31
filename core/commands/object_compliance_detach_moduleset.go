@@ -21,13 +21,13 @@ func (t *CmdObjectComplianceDetachModuleset) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithServer(t.Server),
 		objectaction.WithRemoteAction("compliance detach moduleset"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Format,
+			"format":    t.Output,
 			"moduleset": t.Moduleset,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {

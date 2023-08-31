@@ -21,7 +21,6 @@ const (
 	lockDisabledKey
 	propsKey
 	quietKey
-	dryRunKey
 	ridKey
 	rollbackDisabledKey
 	subsetKey
@@ -69,16 +68,6 @@ func Verbose(ctx context.Context) int {
 		return i.(int)
 	}
 	return 0
-}
-
-func WithDryRun(ctx context.Context, v bool) context.Context {
-	return context.WithValue(ctx, dryRunKey, v)
-}
-func IsDryRun(ctx context.Context) bool {
-	if i := ctx.Value(dryRunKey); i != nil {
-		return i.(bool)
-	}
-	return false
 }
 
 func WithLeader(ctx context.Context, v bool) context.Context {

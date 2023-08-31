@@ -94,7 +94,7 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 	data := t.extract(mergedSelector, c)
 
 	output.Renderer{
-		Format:   t.Format,
+		Format:   t.Output,
 		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,

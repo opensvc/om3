@@ -27,7 +27,7 @@ func (t *CmdArrayLs) Run() error {
 		data, err = t.extractDaemon()
 	}
 	output.Renderer{
-		Format: t.Format,
+		Format: t.Output,
 		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {

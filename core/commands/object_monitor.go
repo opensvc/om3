@@ -26,7 +26,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 
 	m := monitor.New()
 	m.SetColor(t.Color)
-	m.SetFormat(t.Format)
+	m.SetFormat(t.Output)
 	m.SetSectionsFromExpression(t.Sections)
 	m.SetSelector(mergedSelector)
 

@@ -17,7 +17,6 @@ type (
 		OptTo
 		Force           bool
 		DisableRollback bool
-		DryRun          bool
 	}
 )
 
@@ -29,7 +28,7 @@ func (t *CmdObjectStartStandby) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("startstandby"),
@@ -47,7 +46,6 @@ func (t *CmdObjectStartStandby) Run(selector, kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.StartStandby(ctx)
 		}),
 	).Do()

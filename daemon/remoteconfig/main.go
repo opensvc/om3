@@ -37,6 +37,8 @@ func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Tim
 		if tmpFile, err = os.CreateTemp(dstDir, p.Name+".conf.*.tmp"); err != nil {
 			return
 		}
+	} else if err != nil {
+		return
 	}
 	defer func() {
 		_ = tmpFile.Close()

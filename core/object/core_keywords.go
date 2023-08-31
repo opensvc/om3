@@ -336,7 +336,6 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "children",
-		Default:   "",
 		Inherit:   keywords.InheritHead,
 		Converter: converters.ListLowercase,
 		Text:      keywords.NewText(fs, "text/kw/core/children"),

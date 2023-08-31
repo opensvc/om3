@@ -92,7 +92,7 @@ func (t *CmdObjectPrintDevices) Run(selector, kind string) error {
 	}
 
 	output.Renderer{
-		Format:   t.Format,
+		Format:   t.Output,
 		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,

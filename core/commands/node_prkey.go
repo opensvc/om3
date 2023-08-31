@@ -13,13 +13,13 @@ type (
 
 func (t *CmdNodePRKey) Run() error {
 	return nodeaction.New(
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("node prkey"),
 		nodeaction.WithRemoteOptions(map[string]any{
-			"format": t.Format,
+			"format": t.Output,
 		}),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (any, error) {

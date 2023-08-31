@@ -12,15 +12,138 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
-func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
+func (o *imon) initRelationAvailStatus() {
+	config := instance.ConfigData.Get(o.path, o.localhost)
+	if config == nil {
+		o.log.Info().Msgf("skip relations avail status cache init: no config cached yet")
+		return
+	}
+	do := func(relation path.Relation, name string, cache map[string]status.T) {
+		relationS := relation.String()
+		if objectPath, node, err := relation.Split(); err != nil {
+			o.log.Warn().Err(err).Msgf("init %s status cache: split %s", name, relation)
+		} else if node == "" {
+			o.log.Info().Msgf("subscribe to %s %s object avail status updates and deletes", name, objectPath)
+			o.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
+			o.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+			if st := object.StatusData.Get(objectPath); st != nil {
+				o.log.Info().Msgf("%s %s avail status init to %s", name, relation, st.Avail)
+				cache[relationS] = st.Avail
+			} else {
+				o.log.Info().Msgf("%s %s avail status init to %s", name, relation, status.Undef)
+				cache[relationS] = status.Undef
+			}
+		} else {
+			o.log.Info().Msgf("subscribe to %s %s@%s instance avail status updates and deletes", name, objectPath, node)
+			o.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			o.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			if st := instance.StatusData.Get(objectPath, node); st != nil {
+				o.log.Info().Msgf("%s %s avail status init to %s", name, relation, st.Avail)
+				cache[relationS] = st.Avail
+			} else {
+				o.log.Info().Msgf("%s %s avail status init to %s", name, relation, status.Undef)
+				cache[relationS] = status.Undef
+			}
+		}
+	}
+	for _, relation := range config.Children {
+		do(relation, "children", o.state.Children)
+	}
+	for _, relation := range config.Parents {
+		do(relation, "parents", o.state.Parents)
+	}
+}
+
+func (o *imon) onRelationObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	if c.Path == o.path {
+		// Can't relate to self.
+		return
+	}
+	do := func(relation string, name string, cache map[string]status.T) {
+		if v, ok := cache[relation]; ok && v != status.Undef {
+			o.log.Info().Msgf("%s %s avail status change %s -> %s (deleted object)", name, relation, cache[relation], status.Undef)
+			cache[relation] = status.Undef
+			o.change = true
+		}
+	}
+	do(c.Path.String(), "children", o.state.Children)
+	do(c.Path.String(), "parents", o.state.Parents)
+}
+
+func (o *imon) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	if c.Path == o.path {
+		// Can't relate to self.
+		return
+	}
+	do := func(relation string, name string, cache map[string]status.T) {
+		if _, ok := cache[relation]; ok {
+			o.log.Info().Msgf("%s %s avail status change %s -> %s (deleted instance)", name, relation, cache[relation], status.Undef)
+			cache[relation] = status.Undef
+			o.change = true
+		}
+	}
+	do(c.Path.String()+"@"+c.Node, "children", o.state.Children)
+	do(c.Path.String()+"@"+c.Node, "parents", o.state.Parents)
+}
+
+func (o *imon) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	if c.Path == o.path {
+		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
+		return
+	}
+	relation := c.Path.String()
+	do := func(relation string, name string, cache map[string]status.T) {
+		if cache[relation] != c.Value.Avail {
+			o.log.Info().Msgf("%s %s avail status change %s -> %s", name, relation, cache[relation], c.Value.Avail)
+		} else {
+			o.log.Debug().Msgf("%s %s avail status unchanged", name, relation)
+		}
+		cache[relation] = c.Value.Avail
+		o.change = true
+	}
+	if _, ok := o.state.Children[relation]; ok {
+		do(relation, "children", o.state.Children)
+	}
+	if _, ok := o.state.Parents[relation]; ok {
+		do(relation, "parents", o.state.Parents)
+	}
+}
+
+func (o *imon) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	if c.Path == o.path {
+		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
+		return
+	}
+	relation := c.Path.String() + "@" + c.Node
+	do := func(relation string, name string, cache map[string]status.T) {
+		if cache[relation] != c.Value.Avail {
+			o.log.Info().Msgf("%s %s avail status change %s -> %s", name, relation, cache[relation], c.Value.Avail)
+		} else {
+			o.log.Debug().Msgf("%s %s avail status unchanged", name, relation)
+		}
+		cache[relation] = c.Value.Avail
+		o.change = true
+	}
+	if _, ok := o.state.Children[relation]; ok {
+		do(relation, "children", o.state.Children)
+	}
+	if _, ok := o.state.Parents[relation]; ok {
+		do(relation, "parents", o.state.Parents)
+	}
+}
+
+func (o *imon) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
 	updateInstStatusMap := func() {
 		instStatus, ok := o.instStatus[srcCmd.Node]
 		switch {
@@ -63,6 +186,81 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceSt
 }
 
 func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
+	janitorInstStatus := func(scope []string) {
+		cfgNodes := make(map[string]any)
+
+		// init a instance.Status for new peers not yet in the instStatus map
+		for _, node := range srcCmd.Value.Scope {
+			cfgNodes[node] = nil
+			if _, ok := o.instStatus[node]; !ok {
+				o.instStatus[node] = instance.Status{Avail: status.Undef}
+			}
+		}
+
+		// delete the instStatus key for peers gone out of scope
+		for node := range o.instStatus {
+			if _, ok := cfgNodes[node]; !ok {
+				o.log.Debug().Msgf("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
+				delete(o.instStatus, node)
+			}
+		}
+	}
+
+	janitorRelations := func(relations []path.Relation, name string, cache map[string]status.T) {
+		// m is a map representation of relations, used to determine
+		// if a relation in cache is still in the configured relations
+		m := make(map[string]any)
+
+		for _, relation := range relations {
+			relationS := relation.String()
+			m[relationS] = nil
+			if _, ok := cache[relationS]; ok {
+				continue
+			} else if objectPath, node, err := relation.Split(); err != nil {
+				o.log.Warn().Err(err).Msgf("janitor %s status cache: split %s", name, relation)
+				continue
+			} else {
+				o.log.Info().Msgf("subscribe to %s %s avail status updates and deletes", name, relationS)
+				if node == "" {
+					o.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
+					o.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+					if st := object.StatusData.Get(objectPath); st != nil {
+						o.log.Info().Msgf("%s %s avail status init to %s", name, relation, st.Avail)
+						cache[relationS] = st.Avail
+					} else {
+						o.log.Info().Msgf("%s %s avail status init to %s", name, relation, status.Undef)
+						cache[relationS] = status.Undef
+					}
+					o.change = true
+				} else {
+					o.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+					o.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+					if st := instance.StatusData.Get(objectPath, node); st != nil {
+						o.log.Info().Msgf("%s %s avail status init to %s", name, relation, st.Avail)
+						cache[relationS] = st.Avail
+					} else {
+						o.log.Info().Msgf("%s %s avail status init to %s", name, relation, status.Undef)
+						cache[relationS] = status.Undef
+					}
+					o.change = true
+				}
+			}
+		}
+		for relationS, _ := range cache {
+			if _, ok := m[relationS]; !ok {
+				o.log.Info().Msgf("unsubscribe from %s %s avail status updates and deletes", name, relationS)
+				objectPath, node, _ := path.Relation(relationS).Split()
+				if node == "" {
+					o.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
+					o.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+				} else {
+					o.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+					o.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+				}
+			}
+		}
+	}
+
 	if srcCmd.Node == o.localhost {
 		defer func() {
 			if err := o.crmStatus(); err != nil {
@@ -71,39 +269,48 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		}()
 		o.instConfig = srcCmd.Value
 		o.initResourceMonitor()
-		cfgNodes := make(map[string]any)
-		for _, node := range srcCmd.Value.Scope {
-			cfgNodes[node] = nil
-			if _, ok := o.instStatus[node]; !ok {
-				o.instStatus[node] = instance.Status{Avail: status.Undef}
-			}
-		}
-		for node := range o.instStatus {
-			if _, ok := cfgNodes[node]; !ok {
-				o.log.Debug().Msgf("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
-				delete(o.instStatus, node)
-			}
-		}
+		janitorInstStatus(srcCmd.Value.Scope)
+		janitorRelations(srcCmd.Value.Children, "children", o.state.Children)
+		janitorRelations(srcCmd.Value.Parents, "parents", o.state.Parents)
 	}
 	o.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
 	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+func (o *imon) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if _, ok := o.instStatus[c.Node]; ok {
 		o.log.Debug().Msgf("drop deleted instance status from node %s", c.Node)
 		delete(o.instStatus, c.Node)
 	}
 }
 
-// onObjectStatusUpdated updateIfChange state global expect from object status
+func (o *imon) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	if o.path != c.Path {
+		o.onRelationInstanceStatusDeleted(c)
+	}
+}
+
 func (o *imon) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	if o.path == c.Path {
+		o.onMyObjectStatusUpdated(c)
+	} else {
+		o.onRelationObjectStatusUpdated(c)
+	}
+}
+
+func (o *imon) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	if o.path != c.Path {
+		o.onRelationObjectStatusDeleted(c)
+	}
+}
+
+func (o *imon) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case *msgbus.InstanceStatusDeleted:
-			o.onInstanceStatusDeleted(srcCmd)
+			o.onMyInstanceStatusDeleted(srcCmd)
 		case *msgbus.InstanceStatusUpdated:
-			o.onInstanceStatusUpdated(c.Node, srcCmd)
+			o.onMyInstanceStatusUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigUpdated:
 			o.onInstanceConfigUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigDeleted:

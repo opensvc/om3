@@ -16,12 +16,12 @@ func (t *CmdNodeSysreport) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("sysreport"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Format,
+			"format": t.Output,
 			"force":  t.Force,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {

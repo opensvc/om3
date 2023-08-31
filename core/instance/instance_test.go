@@ -25,10 +25,8 @@ func Test_Status_Unmarshal(t *testing.T) {
 	require.Nil(t, err)
 
 	expected := Status{
-		App:         "default",
 		Avail:       status.Down,
 		Overall:     status.Down,
-		Csum:        "01e51d8e37b378e2281ccf72d09e5e1b",
 		Provisioned: provisioned.Mixed,
 		UpdatedAt:   time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
 		Resources: []resource.ExposedStatus{

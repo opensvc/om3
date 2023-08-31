@@ -28,7 +28,6 @@ var (
 	configFlag     string
 	colorFlag      string
 	logFlag        string
-	formatFlag     string
 	selectorFlag   string
 	serverFlag     string
 	nodeFlag       string
@@ -202,7 +201,6 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
-	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "Output format json|flat|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server. scheme raw|https.")
 	root.PersistentFlags().StringVar(&logFlag, "log", "", "Display logs on the console at the specified level.")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")

@@ -13,8 +13,7 @@ type (
 	CmdObjectDelete struct {
 		OptsGlobal
 		OptsLock
-		DryRun bool
-		RID    string
+		RID string
 	}
 )
 
@@ -23,7 +22,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("delete"),

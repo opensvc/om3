@@ -137,13 +137,17 @@ func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 		return f.Render()
 	}
 
-	s := output.Renderer{
+	s, err := output.Renderer{
 		Format:        m.format,
 		Color:         m.color,
 		Data:          data.WithSelector(m.selector),
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Sprint()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 
 	if clear {
 		screen.Clear()

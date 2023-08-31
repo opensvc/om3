@@ -21,7 +21,7 @@ func (t *CmdObjectCollectorTagList) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			n, err := object.NewNode()

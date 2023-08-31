@@ -16,12 +16,12 @@ func (t *CmdNodeComplianceDetachModuleset) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance detach moduleset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Format,
+			"format":    t.Output,
 			"moduleset": t.Moduleset,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {

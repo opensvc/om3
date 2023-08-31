@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 type (
@@ -74,6 +75,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			if isPublic(c) {
 				user := auth.NewUserInfo("nobody", "", nil, *newExtensions("public"))
 				c.Set("user", user)
+				c.Set("grants", rbac.Grants{})
 				return next(c)
 			}
 			log := LogHandler(c, "auth")
@@ -89,6 +91,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			}
 			log.Debug().Msgf("user %s authenticated", user.GetUserName())
 			c.Set("user", user)
+			c.Set("grants", rbac.NewGrants(user.GetExtensions()["grant"]...))
 			return next(c)
 		}
 	}
@@ -140,9 +143,13 @@ func GetLogger(c echo.Context) *zerolog.Logger {
 	return c.Get("logger").(*zerolog.Logger)
 }
 
-// User returns the logged-in user information stored in the request context.
-func User(ctx echo.Context) auth.Info {
+// userFromContext returns the logged-in userFromContext information stored in the request context.
+func userFromContext(ctx echo.Context) auth.Info {
 	return ctx.Get("user").(auth.Info)
+}
+
+func grantsFromContext(ctx echo.Context) rbac.Grants {
+	return ctx.Get("grants").(rbac.Grants)
 }
 
 func LogHandler(c echo.Context, name string) *zerolog.Logger {

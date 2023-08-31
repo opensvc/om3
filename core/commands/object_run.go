@@ -14,7 +14,6 @@ type (
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		DryRun  bool
 		Cron    bool
 		Confirm bool
 	}
@@ -28,7 +27,7 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("run"),
@@ -46,7 +45,6 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithCron(ctx, t.Cron)
 			ctx = actioncontext.WithConfirm(ctx, t.Confirm)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.Run(ctx)
 		}),
 	).Do()

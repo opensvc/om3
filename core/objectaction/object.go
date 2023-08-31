@@ -396,11 +396,11 @@ func (t T) DoAsync() error {
 		}
 		switch t.Target {
 		case instance.MonitorGlobalExpectPlacedAt.String():
-			params := api.PostObjectSwitchTo{}
+			params := api.PostObjectActionSwitch{}
 			params.Path = p.String()
 			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			params.Destination = options.Destination
-			resp, e := c.PostObjectSwitchToWithResponse(ctx, params)
+			resp, e := c.PostObjectActionSwitchWithResponse(ctx, params)
 			if e != nil {
 				err = e
 			}
@@ -428,22 +428,23 @@ func (t T) DoAsync() error {
 			resp, e := c.PostObjectMonitorWithResponse(ctx, params)
 			if e != nil {
 				err = e
-			}
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
 			}
 		}
 		var r result

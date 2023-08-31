@@ -39,7 +39,7 @@ func (t *CmdNodeLs) Run() error {
 		return err
 	}
 	output.Renderer{
-		Format: t.Format,
+		Format: t.Output,
 		Color:  t.Color,
 		Data:   nodes,
 		HumanRenderer: func() string {

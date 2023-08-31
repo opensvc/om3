@@ -1,6 +1,7 @@
 package rbac
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -10,7 +11,7 @@ type (
 	// Grants is a list of Grant
 	Grants []Grant
 
-	// Grant is <role>:<namespace pattern>
+	// Grant is <role>:<scope>
 	Grant string
 )
 
@@ -52,7 +53,49 @@ func (t *Role) String() string {
 	return string(*t)
 }
 
-func MatchRoles(userGrants Grants, roles ...Role) bool {
+// HasGrant returns true if any grant of the variadic grants
+// is found.
+func (t Grants) HasGrant(grants ...Grant) bool {
+	return matchGrants(t, grants...)
+}
+
+// HasRole returns true if any role of the variadic roles
+// is found.
+func (t Grants) HasRole(roles ...Role) bool {
+	return matchRoles(t, roles...)
+}
+
+func (t Grants) Has(role Role, scope string) bool {
+	return match(t, role, scope)
+}
+
+func formatGrant(role Role, scope string) Grant {
+	var s string
+	if scope == "" {
+		s = fmt.Sprintf("%s", role)
+	} else {
+		s = fmt.Sprintf("%s:%s", role, scope)
+	}
+	return Grant(s)
+}
+
+func match(userGrants Grants, role Role, scope string) bool {
+	grant := formatGrant(role, scope)
+	return matchGrants(userGrants, grant)
+}
+
+func matchGrants(userGrants Grants, grants ...Grant) bool {
+	for _, userGrant := range userGrants {
+		for _, grant := range grants {
+			if userGrant == grant {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func matchRoles(userGrants Grants, roles ...Role) bool {
 	for _, g := range userGrants {
 		userRole, _ := g.Split()
 		for _, r := range roles {
@@ -64,7 +107,7 @@ func MatchRoles(userGrants Grants, roles ...Role) bool {
 	return false
 }
 
-// SplitGrant extract role and namespace pattern from a grant
+// SplitGrant extract role and scope from a grant
 func SplitGrant(grant Grant) (r Role, ns string) {
 	l := strings.SplitN(string(grant), ":", 2)
 	r = toRole(l[0])

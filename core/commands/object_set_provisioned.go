@@ -14,7 +14,6 @@ type (
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		DryRun bool
 	}
 )
 
@@ -24,7 +23,7 @@ func (t *CmdObjectSetProvisioned) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("set provisioned"),
@@ -42,7 +41,6 @@ func (t *CmdObjectSetProvisioned) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.SetProvisioned(ctx)
 		}),
 	).Do()
