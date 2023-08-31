@@ -47,8 +47,8 @@ type (
 		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
 		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
 
-		Parents  map[string]status.T `json:"parents" yaml:"parents"`
-		Children map[string]status.T `json:"children" yaml:"children"`
+		Parents  map[string]status.T `json:"parents,omitempty" yaml:"parents,omitempty"`
+		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor
