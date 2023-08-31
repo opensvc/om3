@@ -44,6 +44,20 @@ func (t *T) Close() error {
 	return nil
 }
 
+// Defined verify if opensvc systemd unit exists
+func (t *T) Defined(ctx context.Context) (bool, error) {
+	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{name})
+	if err != nil {
+		return false, err
+	}
+	for _, v := range units {
+		if v.LoadState == "loaded" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // NotifyWatchdog sends watch dog notify to systemd
 func (t *T) NotifyWatchdog() (bool, error) {
 	if t.conn == nil {
