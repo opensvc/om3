@@ -45,14 +45,14 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 	for rid, c := range cases {
 		t.Logf("check rid %d, expected %v", rid, c)
 		for i, log := range c {
-			prefix := fmt.Sprintf("instances.node1.status.resources[%d].log[%d]", rid, i)
+			prefix := fmt.Sprintf("instances[0].status.resources[%d].log[%d]", rid, i)
 			searched := fmt.Sprintf("%s.message = %s%s%s", prefix, string('"'), log.Message, string('"'))
 			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, string(outS))
 
 			searched = fmt.Sprintf("%s.level = %s%s%s", prefix, string('"'), log.Level, string('"'))
 			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, string(outS))
 		}
-		mustNotExist := fmt.Sprintf("instances.node1.status.resources[%d].log[%d]", rid, len(c)+1)
+		mustNotExist := fmt.Sprintf("instances[0].status.resources[%d].log[%d]", rid, len(c)+1)
 		assert.NotContainsf(t, outS, mustNotExist, "extra log has been found: '%s' in \n'%s'", mustNotExist, outS)
 	}
 }
