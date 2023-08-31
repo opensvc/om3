@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"runtime/pprof"
 	"strings"
 	"syscall"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
+	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
@@ -37,11 +39,21 @@ var (
 
 type (
 	T struct {
-		client *client.T
-		node   string
+		client    *client.T
+		node      string
+		daemonsys Manager
 	}
 	waiter interface {
 		Wait()
+	}
+
+	Manager interface {
+		Activated(ctx context.Context) (bool, error)
+		CalledFromManager() bool
+		Close() error
+		Defined(ctx context.Context) (bool, error)
+		Start(ctx context.Context) error
+		Stop(context.Context) error
 	}
 )
 
@@ -99,6 +111,20 @@ func New(c *client.T) *T {
 	return &T{client: c}
 }
 
+func NewContext(ctx context.Context, c *client.T) *T {
+	t := &T{client: c}
+	var (
+		i   interface{}
+		err error
+	)
+	if i, err = daemonsys.New(ctx); err == nil {
+		if mgr, ok := i.(Manager); ok {
+			t.daemonsys = mgr
+		}
+	}
+	return t
+}
+
 func (t *T) SetNode(node string) {
 	t.node = node
 }
@@ -125,6 +151,75 @@ func (t *T) Start() error {
 	return nil
 }
 
+// StartFromCmd handle daemon start from command origin.
+//
+// It is used to forward start control to (systemd) manager (when the origin is not systemd)
+func (t *T) StartFromCmd(ctx context.Context, foreground bool, profile string) error {
+	if t.daemonsys == nil {
+		log.Info().Msg("daemon start (origin os)")
+		return t.startFromCmd(foreground, profile)
+	}
+	defer func() {
+		_ = t.daemonsys.Close()
+	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon start (origin os, no unit defined)")
+		return t.startFromCmd(foreground, profile)
+	}
+	if t.daemonsys.CalledFromManager() {
+		if foreground {
+			log.Info().Msg("daemon start foreground (origin manager)")
+			return t.startFromCmd(foreground, profile)
+		}
+		if t.Running() {
+			log.Info().Msg("daemon start is already running (origin manager)")
+			return nil
+		}
+		log.Info().Msg("daemon start run new cmd --foreground (origin manager)")
+		args := []string{"daemon", "start", "--foreground"}
+		cmd := command.New(
+			command.WithName(os.Args[0]),
+			command.WithArgs(args),
+		)
+		checker := func() error {
+			if err := t.WaitRunning(); err != nil {
+				return fmt.Errorf("start checker wait running failed: %w", err)
+			}
+			return nil
+		}
+		return lockCmdCheck(cmd, checker, "daemon start")
+	} else if foreground {
+		log.Info().Msg("daemon start foreground (origin os)")
+		return t.startFromCmd(foreground, profile)
+	} else {
+		log.Info().Msg("daemon start forward to manager (origin os)")
+		return t.managerStart(ctx)
+	}
+}
+
+// StopFromCmd handle daemon stop from command origin.
+//
+// It is used to forward stop control to (systemd) manager (when the origin is not systemd)
+func (t *T) StopFromCmd(ctx context.Context) error {
+	if t.daemonsys == nil {
+		log.Info().Msg("daemon stop (origin os)")
+		return t.Stop()
+	}
+	defer func() {
+		_ = t.daemonsys.Close()
+	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon stop (origin os, no unit defined)")
+		return t.Stop()
+	}
+	if t.daemonsys.CalledFromManager() {
+		log.Info().Msg("daemon stop (origin manager)")
+		return t.Stop()
+	}
+	log.Info().Msg("daemon stop forward to manager (origin os)")
+	return t.managerStop(ctx)
+}
+
 // Stop function will stop daemon with internal lock protection
 func (t *T) Stop() error {
 	release, err := getLock("Stop")
@@ -133,25 +228,6 @@ func (t *T) Stop() error {
 	}
 	defer release()
 	return t.stop()
-}
-
-// ReStart function will restart daemon with internal lock protection
-func (t *T) ReStart() error {
-	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
-		log.Error().Err(err).Msgf("cli-restart can't create mandatory directories")
-		return err
-	}
-	release, err := getLock("Restart")
-	if err != nil {
-		return err
-	}
-	d, err := t.restart()
-	release()
-	if err != nil {
-		return err
-	}
-	d.Wait()
-	return nil
 }
 
 // Running function detect daemon status using api
@@ -168,20 +244,15 @@ func (t *T) WaitRunning() error {
 	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, t.running)
 }
 
-// LockFuncExit calls f() with cli lock protection
+// getLock() manage internal lock for functions that will stop/start/restart daemon
 //
-// os.exit(1) when lock failed or f() returns error
-func LockFuncExit(desc string, f func() error) {
-	if err := lock.Func(lockPath+"-cli", 60*time.Second, desc, f); err != nil {
-		log.Logger.Error().Err(err).Msg(desc)
-		os.Exit(1)
-	}
+// It returns a release function to release lock
+func getLock(desc string) (func(), error) {
+	return lock.Lock(lockPath, lockTimeout, desc)
 }
 
-// LockCmdExit starts cmd, then call checker() with cli lock protection
-//
-// os.exit(1) when lock failed or cmd.Start() or checker() returns error
-func LockCmdExit(cmd *command.T, checker func() error, desc string) {
+// lockCmdCheck starts cmd, then call checker() with cli lock protection
+func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
 	f := func() error {
 		if err := cmd.Start(); err != nil {
 			log.Logger.Error().Err(err).Msg("failed command: " + desc)
@@ -197,15 +268,39 @@ func LockCmdExit(cmd *command.T, checker func() error, desc string) {
 	}
 	if err := lock.Func(lockPath+"-cli", 60*time.Second, desc, f); err != nil {
 		log.Logger.Error().Err(err).Msg(desc)
-		os.Exit(1)
+		return err
 	}
+	return nil
 }
 
-// getLock() manage internal lock for functions that will stop/start/restart daemon
-//
-// It returns a release function to release lock
-func getLock(desc string) (func(), error) {
-	return lock.Lock(lockPath, lockTimeout, desc)
+func (t *T) managerStart(ctx context.Context) error {
+	name := "forward start daemon to manager"
+	log.Info().Msgf("%s...", name)
+	if err := t.daemonsys.Start(ctx); err != nil {
+		return fmt.Errorf("%s failed: %w", name, err)
+	}
+	if err := t.WaitRunning(); err != nil {
+		return fmt.Errorf("%s failed during wait running: %w", name, err)
+	}
+	return nil
+}
+
+func (t *T) managerStop(ctx context.Context) error {
+	name := "forward stop daemon to manager"
+	log.Info().Msgf("%s...", name)
+	if ok, err := t.daemonsys.Activated(ctx); err != nil {
+		err := fmt.Errorf("%s can't detect activated state: %w", name, err)
+		return err
+	} else if !ok && t.Running() {
+		// recover inconsistent manager view not activated, but reality is running
+		if err := t.Stop(); err != nil {
+			return fmt.Errorf("%s failed during recover: %w", name, err)
+		}
+	}
+	if err := t.daemonsys.Stop(ctx); err != nil {
+		return fmt.Errorf("%s failed during stop: %w", name, err)
+	}
+	return nil
 }
 
 func (t *T) stop() error {
@@ -235,7 +330,7 @@ func (t *T) stop() error {
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		return fmt.Errorf("Unexpected status code: %s", resp.Status)
+		return fmt.Errorf("unexpected status code: %s", resp.Status)
 	}
 	return nil
 }
@@ -263,15 +358,44 @@ func (t *T) start() (waiter, error) {
 	return d, nil
 }
 
-func (t *T) restart() (waiter, error) {
-	if err := t.stop(); err != nil {
-		return nil, err
+func (t *T) startFromCmd(foreground bool, profile string) error {
+	if foreground {
+		if profile != "" {
+			f, err := os.Create(profile)
+			if err != nil {
+				return fmt.Errorf("create CPU profile: %w", err)
+			}
+			defer func() {
+				_ = f.Close()
+			}()
+			if err := pprof.StartCPUProfile(f); err != nil {
+				return fmt.Errorf("start CPU profile: %w", err)
+			}
+			defer pprof.StopCPUProfile()
+		}
+		if err := t.Start(); err != nil {
+			return fmt.Errorf("start daemon cli: %w", err)
+		}
+		return nil
+	} else {
+		checker := func() error {
+			if err := t.WaitRunning(); err != nil {
+				err := fmt.Errorf("start checker wait running failed: %w", err)
+				log.Error().Err(err).Msg("starting daemon")
+				return err
+			}
+			return nil
+		}
+		args := []string{"daemon", "start", "--foreground"}
+		if t.daemonsys == nil {
+			args = append(args, "--native")
+		}
+		cmd := command.New(
+			command.WithName(os.Args[0]),
+			command.WithArgs(args),
+		)
+		return lockCmdCheck(cmd, checker, "daemon start")
 	}
-	d, err := t.start()
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
 }
 
 func (t *T) running() bool {

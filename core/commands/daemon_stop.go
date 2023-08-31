@@ -1,6 +1,10 @@
 package commands
 
-import "github.com/opensvc/om3/daemon/daemoncli"
+import (
+	"context"
+
+	"github.com/opensvc/om3/daemon/daemoncli"
+)
 
 type (
 	CmdDaemonStop struct {
@@ -13,6 +17,6 @@ func (t *CmdDaemonStop) Run() error {
 	if err != nil {
 		return err
 	}
-	daemoncli.LockFuncExit("daemon stop", daemoncli.New(cli).Stop)
-	return nil
+	ctx := context.Background()
+	return daemoncli.NewContext(ctx, cli).StopFromCmd(ctx)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/daemon/discover"
 	"github.com/opensvc/om3/daemon/dns"
 	"github.com/opensvc/om3/daemon/enable"
@@ -36,6 +37,7 @@ import (
 	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/scheduler"
 	"github.com/opensvc/om3/daemon/subdaemon"
+	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -116,6 +118,8 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	signal.Ignore(syscall.SIGHUP)
 	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	go t.notifyWatchDog(ctx)
 
 	t.ctx = ctx
 	started := make(chan bool)
@@ -263,6 +267,64 @@ func (t *T) loop() {
 }
 
 func (t *T) aLoop() {
+}
+
+// notifyWatchDog is a notify watch dog loop that send notify watch dog
+//
+// It does nothing when:
+//   - env var WATCHDOG_USEC is empty, os is < 2s
+//   - if there is no daemon sysmanager (daemonsys.New retuns error)
+func (t *T) notifyWatchDog(ctx context.Context) {
+	var (
+		i   interface{}
+		err error
+	)
+	s := os.Getenv("WATCHDOG_USEC")
+	if s == "" {
+		return
+	}
+	i, err = converters.Duration.Convert(s + "us")
+	if err != nil {
+		t.log.Warn().Msgf("disable notify watchdog invalid WATCHDOG_USEC value: %s", s)
+		return
+	}
+	d := i.(*time.Duration)
+	sendInterval := *d / 2
+	if sendInterval < time.Second {
+		t.log.Warn().Msgf("disable notify watchdog %s < 1 second ", sendInterval)
+		return
+	}
+	i, err = daemonsys.New(ctx)
+	if err != nil {
+		return
+	}
+	type notifyWatchDogCloser interface {
+		NotifyWatchdog() (bool, error)
+		Close() error
+	}
+	o, ok := i.(notifyWatchDogCloser)
+	if !ok {
+		return
+	}
+	defer func() {
+		_ = o.Close()
+	}()
+	ticker := time.NewTicker(sendInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if ok, err := o.NotifyWatchdog(); err != nil {
+				t.log.Warn().Err(err).Msg("notifyWatchDog")
+			} else if !ok {
+				t.log.Warn().Msg("notifyWatchDog not delivered")
+			} else {
+				t.log.Debug().Msg("notifyWatchDog delivered")
+			}
+		}
+	}
 }
 
 func startProfiling() {

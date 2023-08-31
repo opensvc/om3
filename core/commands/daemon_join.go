@@ -218,7 +218,8 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 		if err := t.nodeDrain(); err != nil {
 			return err
 		}
-		if err := t.stopDaemon(); err != nil {
+		_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
+		if err := (&CmdDaemonStop{}).Run(); err != nil {
 			return err
 		}
 	}
@@ -239,7 +240,8 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 		}
 	}
 
-	if err := t.startDaemon(); err != nil {
+	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
+	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Joined\n")
