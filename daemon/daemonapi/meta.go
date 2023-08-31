@@ -66,7 +66,7 @@ func (m *Meta) expandPath() error {
 		)
 		matchedPaths, err := selection.Expand()
 		if err != nil {
-			return fmt.Errorf("expand path selection %s: %w", m.Path, err)
+			return fmt.Errorf("expand path selection %s: %w", *m.Path, err)
 		}
 		m.pathMap = matchedPaths.StrMap()
 	} else {
