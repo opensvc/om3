@@ -10,8 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-// GetNetworks returns network status list.
-func (a *DaemonApi) GetInstanceStatus(ctx echo.Context, params api.GetInstanceStatusParams) error {
+func (a *DaemonApi) GetInstanceConfig(ctx echo.Context, params api.GetInstanceConfigParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
@@ -21,8 +20,8 @@ func (a *DaemonApi) GetInstanceStatus(ctx echo.Context, params api.GetInstanceSt
 		log.Error().Err(err).Send()
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
-	data := instance.StatusData.GetAll()
-	l := make(api.GetInstanceStatusArray, 0)
+	data := instance.ConfigData.GetAll()
+	l := make(api.GetInstanceConfigArray, 0)
 	for _, e := range data {
 		if !meta.HasPath(e.Path.String()) {
 			continue
@@ -30,12 +29,12 @@ func (a *DaemonApi) GetInstanceStatus(ctx echo.Context, params api.GetInstanceSt
 		if !meta.HasNode(e.Node) {
 			continue
 		}
-		d := api.GetInstanceStatusElement{
+		d := api.GetInstanceConfigElement{
 			Meta: api.InstanceMeta{
 				Node:   e.Node,
 				Object: e.Path.String(),
 			},
-			Data: api.InstanceStatus(*e.Value),
+			Data: api.InstanceConfig(*e.Value),
 		}
 		l = append(l, d)
 	}
