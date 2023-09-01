@@ -232,35 +232,17 @@ type DaemonSubsystemStatus struct {
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
 
-// GetInstanceConfigArray defines model for GetInstanceConfigArray.
-type GetInstanceConfigArray = []GetInstanceConfigElement
+// InstanceConfig defines model for InstanceConfig.
+type InstanceConfig = instance.Config
 
-// GetInstanceConfigElement defines model for GetInstanceConfigElement.
-type GetInstanceConfigElement struct {
+// InstanceConfigArray defines model for InstanceConfigArray.
+type InstanceConfigArray = []InstanceConfigItem
+
+// InstanceConfigItem defines model for InstanceConfigItem.
+type InstanceConfigItem struct {
 	Data InstanceConfig `json:"data"`
 	Meta InstanceMeta   `json:"meta"`
 }
-
-// GetInstanceMonitorArray defines model for GetInstanceMonitorArray.
-type GetInstanceMonitorArray = []GetInstanceMonitorElement
-
-// GetInstanceMonitorElement defines model for GetInstanceMonitorElement.
-type GetInstanceMonitorElement struct {
-	Data InstanceMonitor `json:"data"`
-	Meta InstanceMeta    `json:"meta"`
-}
-
-// GetInstanceStatusArray defines model for GetInstanceStatusArray.
-type GetInstanceStatusArray = []GetInstanceStatusElement
-
-// GetInstanceStatusElement defines model for GetInstanceStatusElement.
-type GetInstanceStatusElement struct {
-	Data InstanceStatus `json:"data"`
-	Meta InstanceMeta   `json:"meta"`
-}
-
-// InstanceConfig defines model for InstanceConfig.
-type InstanceConfig = instance.Config
 
 // InstanceMeta defines model for InstanceMeta.
 type InstanceMeta struct {
@@ -271,8 +253,26 @@ type InstanceMeta struct {
 // InstanceMonitor defines model for InstanceMonitor.
 type InstanceMonitor = instance.Monitor
 
+// InstanceMonitorArray defines model for InstanceMonitorArray.
+type InstanceMonitorArray = []InstanceMonitorItem
+
+// InstanceMonitorItem defines model for InstanceMonitorItem.
+type InstanceMonitorItem struct {
+	Data InstanceMonitor `json:"data"`
+	Meta InstanceMeta    `json:"meta"`
+}
+
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
+
+// InstanceStatusArray defines model for InstanceStatusArray.
+type InstanceStatusArray = []InstanceStatusItem
+
+// InstanceStatusItem defines model for InstanceStatusItem.
+type InstanceStatusItem struct {
+	Data InstanceStatus `json:"data"`
+	Meta InstanceMeta   `json:"meta"`
+}
 
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
@@ -408,12 +408,6 @@ type PostDaemonSubAction struct {
 
 // PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
 type PostDaemonSubActionAction string
-
-// PostInstanceStatus defines model for PostInstanceStatus.
-type PostInstanceStatus struct {
-	Path   string         `json:"path"`
-	Status InstanceStatus `json:"status"`
-}
 
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
@@ -853,7 +847,7 @@ type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControl
 type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
-type PostInstanceStatusJSONRequestBody = PostInstanceStatus
+type PostInstanceStatusJSONRequestBody = InstanceStatusItem
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

@@ -282,7 +282,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetInstanceConfigArray'
+                $ref: '#/components/schemas/InstanceConfigArray'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -308,7 +308,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetInstanceMonitorArray'
+                $ref: '#/components/schemas/InstanceMonitorArray'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -334,7 +334,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetInstanceStatusArray'
+                $ref: '#/components/schemas/InstanceStatusArray'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -356,7 +356,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostInstanceStatus'
+              $ref: '#/components/schemas/InstanceStatusItem'
       responses:
         200:
           description: OK
@@ -2026,11 +2026,11 @@ components:
           type: string
         is_partial:
           type: boolean
-    GetInstanceConfigArray:
+    InstanceConfigArray:
       type: array
       items:
-        $ref: '#/components/schemas/GetInstanceConfigElement'
-    GetInstanceConfigElement:
+        $ref: '#/components/schemas/InstanceConfigItem'
+    InstanceConfigItem:
         type: object
         required:
           - meta
@@ -2040,11 +2040,11 @@ components:
             $ref: '#/components/schemas/InstanceMeta'
           data:
             $ref: '#/components/schemas/InstanceConfig'
-    GetInstanceMonitorArray:
+    InstanceMonitorArray:
       type: array
       items:
-        $ref: '#/components/schemas/GetInstanceMonitorElement'
-    GetInstanceMonitorElement:
+        $ref: '#/components/schemas/InstanceMonitorItem'
+    InstanceMonitorItem:
         type: object
         required:
           - meta
@@ -2054,11 +2054,11 @@ components:
             $ref: '#/components/schemas/InstanceMeta'
           data:
             $ref: '#/components/schemas/InstanceMonitor'
-    GetInstanceStatusArray:
+    InstanceStatusArray:
       type: array
       items:
-        $ref: '#/components/schemas/GetInstanceStatusElement'
-    GetInstanceStatusElement:
+        $ref: '#/components/schemas/InstanceStatusItem'
+    InstanceStatusItem:
         type: object
         required:
           - meta

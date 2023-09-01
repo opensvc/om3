@@ -21,7 +21,7 @@ func (a *DaemonApi) GetInstanceConfig(ctx echo.Context, params api.GetInstanceCo
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	data := instance.ConfigData.GetAll()
-	l := make(api.GetInstanceConfigArray, 0)
+	l := make(api.InstanceConfigArray, 0)
 	for _, e := range data {
 		if !meta.HasPath(e.Path.String()) {
 			continue
@@ -29,7 +29,7 @@ func (a *DaemonApi) GetInstanceConfig(ctx echo.Context, params api.GetInstanceCo
 		if !meta.HasNode(e.Node) {
 			continue
 		}
-		d := api.GetInstanceConfigElement{
+		d := api.InstanceConfigItem{
 			Meta: api.InstanceMeta{
 				Node:   e.Node,
 				Object: e.Path.String(),
