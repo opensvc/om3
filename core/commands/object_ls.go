@@ -37,7 +37,7 @@ func (t *CmdObjectLs) Run(selector, kind string) error {
 		return s
 	}
 	output.Renderer{
-		Format:        t.Format,
+		Format:        t.Output,
 		Color:         t.Color,
 		Data:          data,
 		HumanRenderer: human,

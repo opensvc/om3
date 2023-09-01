@@ -29,6 +29,8 @@ func (o *imon) orchestrateStarted() {
 	case instance.MonitorStateStopping:
 		o.startedFromAny()
 	case instance.MonitorStateThawing:
+	case instance.MonitorStateWaitParents:
+		o.setWaitParents()
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate started from %s", o.state.State)
 	}
@@ -110,6 +112,9 @@ func (o *imon) cancelReadyState() bool {
 
 func (o *imon) startedFromReady() {
 	if isCanceled := o.cancelReadyState(); isCanceled {
+		return
+	}
+	if o.setWaitParents() {
 		return
 	}
 	select {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/util/file"
@@ -27,11 +29,26 @@ func NewClient(n string) (*ssh.Client, error) {
 			ip = ips[0]
 		}
 	}
-	privKeyFile := os.ExpandEnv("$HOME/.ssh/id_rsa")
 	signers := make([]ssh.Signer, 0)
-	if key, err := os.ReadFile(privKeyFile); err == nil {
-		if signer, err := ssh.ParsePrivateKey(key); err == nil {
-			signers = append(signers, signer)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	privKeyFiles, err := filepath.Glob(filepath.Join(home, ".ssh/id_*"))
+	if err != nil {
+		return nil, err
+	}
+	if len(privKeyFiles) == 0 {
+		return nil, fmt.Errorf("no private key found in ~/.ssh/id_*")
+	}
+	for _, privKeyFile := range privKeyFiles {
+		if strings.Contains(filepath.Base(privKeyFile), ".") {
+			continue
+		}
+		if key, err := os.ReadFile(privKeyFile); err == nil {
+			if signer, err := ssh.ParsePrivateKey(key); err == nil {
+				signers = append(signers, signer)
+			}
 		}
 	}
 	config := &ssh.ClientConfig{

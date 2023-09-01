@@ -333,10 +333,10 @@ func (t *Selection) daemonExpand() error {
 	if env.HasDaemonOrigin() {
 		return fmt.Errorf("action origin is daemon")
 	}
-	params := api.GetObjectSelectorParams{
-		Selector: t.SelectorExpression,
+	params := api.GetObjectPathsParams{
+		Path: t.SelectorExpression,
 	}
-	if resp, err := t.client.GetObjectSelector(context.Background(), &params); err != nil {
+	if resp, err := t.client.GetObjectPaths(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected get objects selector status %s", resp.Status)

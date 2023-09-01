@@ -10,12 +10,15 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 // GetObjectLogs feeds publications in rss format.
 func (a *DaemonApi) GetObjectLogs(ctx echo.Context, params api.GetObjectLogsParams) error {
-	if err := assertRoleRoot(ctx); err != nil {
+	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
 		return err
+	} else if !v {
+		return nil
 	}
 	log := LogHandler(ctx, "GetObjectLogs")
 	log.Debug().Msg("starting")

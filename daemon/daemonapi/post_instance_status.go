@@ -53,143 +53,59 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 		Avail:         status.Parse(string(payloadStatus.Avail)),
 		FrozenAt:      payloadStatus.FrozenAt,
 		Overall:       status.Parse(string(payloadStatus.Overall)),
-		StatusGroup:   nil,
 		UpdatedAt:     payloadStatus.UpdatedAt,
 		LastStartedAt: payloadStatus.LastStartedAt,
 	}
-	if payloadStatus.App != nil {
-		instanceStatus.App = *payloadStatus.App
-	}
-	if payloadStatus.Children != nil {
-		relation := toPathRelationL(payloadStatus.Children)
-		if len(relation) > 0 {
-			instanceStatus.Children = relation
-		}
-	}
-	if payloadStatus.Constraints != nil {
-		instanceStatus.Constraints = *payloadStatus.Constraints
-	}
-	if payloadStatus.Csum != nil {
-		instanceStatus.Csum = *payloadStatus.Csum
-	}
-	if payloadStatus.Drp != nil {
-		instanceStatus.DRP = *payloadStatus.Drp
-	}
-	if payloadStatus.Env != nil {
-		instanceStatus.Env = *payloadStatus.Env
-	}
-	if payloadStatus.Optional != nil {
-		instanceStatus.Optional = status.Parse(string(*payloadStatus.Optional))
-	}
-	if payloadStatus.Parents != nil {
-		relation := toPathRelationL(payloadStatus.Parents)
-		if len(relation) > 0 {
-			instanceStatus.Parents = relation
-		}
-	}
-	if payloadStatus.Preserved != nil {
-		instanceStatus.Preserved = *payloadStatus.Preserved
-	}
+	instanceStatus.Constraints = payloadStatus.Constraints
+	instanceStatus.Optional = status.Parse(string(payloadStatus.Optional))
 	if prov, err := provisioned.NewFromString(string(payloadStatus.Provisioned)); err != nil {
 		return nil, err
 	} else {
 		instanceStatus.Provisioned = prov
 	}
-	if payloadStatus.Resources != nil {
-		resources := make([]resource.ExposedStatus, 0)
-		for _, v := range *payloadStatus.Resources {
-			exposed := resource.ExposedStatus{
-				Rid:    v.Rid,
-				Label:  v.Label,
-				Status: status.Parse(string(v.Status)),
-				Type:   v.Type,
-			}
-			if v.Disable != nil {
-				exposed.Disable = resource.DisableFlag(*v.Disable)
-			}
-			if v.Encap != nil {
-				exposed.Encap = resource.EncapFlag(*v.Encap)
-			}
-			if v.Info != nil {
-				info := make(map[string]interface{})
-				for n, value := range *v.Info {
-					info[n] = value
-				}
-				exposed.Info = info
-			}
-			if v.Log != nil {
-				l := make([]*resource.StatusLogEntry, 0)
-				for _, logEntry := range *v.Log {
-					l = append(l, &resource.StatusLogEntry{
-						Level:   resource.Level(logEntry.Level),
-						Message: logEntry.Message,
-					})
-				}
-				exposed.Log = l
-			}
-			if v.Monitor != nil {
-				exposed.Monitor = resource.MonitorFlag(*v.Monitor)
-			}
-			if v.Optional != nil {
-				exposed.Optional = resource.OptionalFlag(*v.Optional)
-			}
-			if v.Provisioned != nil {
-				resProv := resource.ProvisionStatus{}
-				if provState, err := provisioned.NewFromString(string(v.Provisioned.State)); err != nil {
-					return nil, err
-				} else {
-					resProv.State = provState
-				}
-				if v.Provisioned.Mtime != nil {
-					resProv.Mtime = *v.Provisioned.Mtime
-				}
-				exposed.Provisioned = resProv
-
-			}
-			if v.Restart != nil {
-				exposed.Restart = resource.RestartFlag(*v.Restart)
-			}
-			if rid, err := resourceid.Parse(v.Rid); err == nil {
-				exposed.ResourceID = rid
-			}
-			if v.Standby != nil {
-				exposed.Standby = resource.StandbyFlag(*v.Standby)
-			}
-			if v.Subset != nil {
-				exposed.Subset = *v.Subset
-			}
-			if v.Tags != nil {
-				exposed.Tags = *v.Tags
-			}
-			resources = append(resources, exposed)
+	resources := make([]resource.ExposedStatus, 0)
+	for _, v := range payloadStatus.Resources {
+		exposed := resource.ExposedStatus{
+			Rid:    v.Rid,
+			Label:  v.Label,
+			Status: status.Parse(string(v.Status)),
+			Type:   v.Type,
 		}
-		instanceStatus.Resources = resources
-	}
-	if payloadStatus.Running != nil {
-		instanceStatus.Running = append([]string{}, *payloadStatus.Running...)
-	}
-	if payloadStatus.Slaves != nil {
-		relation := toPathRelationL(payloadStatus.Slaves)
-		if len(relation) > 0 {
-			instanceStatus.Slaves = relation
+		exposed.Disable = resource.DisableFlag(v.Disable)
+		exposed.Encap = resource.EncapFlag(v.Encap)
+		info := make(map[string]interface{})
+		for n, value := range v.Info {
+			info[n] = value
 		}
-	}
-	if payloadStatus.Subsets != nil {
-		subSets := make(map[string]instance.SubsetStatus)
-		for rid, s := range *payloadStatus.Subsets {
-			subSets[rid] = instance.SubsetStatus{
-				Parallel: s.Parallel,
-			}
+		exposed.Info = info
+		l := make([]*resource.StatusLogEntry, 0)
+		for _, logEntry := range v.Log {
+			l = append(l, &resource.StatusLogEntry{
+				Level:   resource.Level(logEntry.Level),
+				Message: logEntry.Message,
+			})
 		}
-		instanceStatus.Subsets = subSets
+		exposed.Log = l
+		exposed.Monitor = resource.MonitorFlag(v.Monitor)
+		exposed.Optional = resource.OptionalFlag(v.Optional)
+		resProv := resource.ProvisionStatus{}
+		if provState, err := provisioned.NewFromString(string(v.Provisioned.State)); err != nil {
+			return nil, err
+		} else {
+			resProv.State = provState
+		}
+		resProv.Mtime = v.Provisioned.Mtime
+		exposed.Provisioned = resProv
+		exposed.Restart = resource.RestartFlag(v.Restart)
+		if rid, err := resourceid.Parse(v.Rid); err == nil {
+			exposed.ResourceID = rid
+		}
+		exposed.Standby = resource.StandbyFlag(v.Standby)
+		exposed.Subset = v.Subset
+		exposed.Tags = append([]string{}, v.Tags...)
+		resources = append(resources, exposed)
 	}
+	instanceStatus.Resources = resources
+	instanceStatus.Running = append([]string{}, payloadStatus.Running...)
 	return &instanceStatus, nil
-}
-
-func toPathRelationL(p *api.PathRelation) []path.Relation {
-	nv := make([]path.Relation, 0)
-	for _, v := range *p {
-		nv = append(nv, path.Relation(v))
-	}
-	return nv
 }

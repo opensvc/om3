@@ -17,7 +17,7 @@ type (
 func (t *CmdDaemonStatus) Run() error {
 	m := monitor.New()
 	m.SetColor(t.Color)
-	m.SetFormat(t.Format)
+	m.SetFormat(t.Output)
 	m.SetSectionsFromExpression(t.Sections)
 
 	cli, err := newClient(t.Server)

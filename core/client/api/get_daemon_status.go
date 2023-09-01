@@ -26,11 +26,6 @@ func (t *GetDaemonStatus) SetSelector(s string) *GetDaemonStatus {
 	return t
 }
 
-func (t *GetDaemonStatus) SetRelatives(s bool) *GetDaemonStatus {
-	t.relatives = &s
-	return t
-}
-
 func NewGetDaemonStatus(t api.ClientInterface) *GetDaemonStatus {
 	options := &GetDaemonStatus{
 		client: t,
@@ -43,7 +38,6 @@ func (t GetDaemonStatus) Get() ([]byte, error) {
 	params := api.GetDaemonStatusParams{
 		Namespace: t.namespace,
 		Selector:  t.selector,
-		Relatives: t.relatives,
 	}
 	resp, err := t.client.GetDaemonStatus(context.Background(), &params)
 	if err != nil {

@@ -44,7 +44,7 @@ func (t *CmdObjectAbort) Run(selector, kind string) error {
 	if t.Watch {
 		m := monitor.New()
 		m.SetColor(t.Color)
-		m.SetFormat(t.Format)
+		m.SetFormat(t.Output)
 		m.SetSelector(mergedSelector)
 		cli, e := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 		if e != nil {

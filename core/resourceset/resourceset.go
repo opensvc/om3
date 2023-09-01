@@ -46,6 +46,13 @@ const (
 	separator = ":"
 )
 
+func SubsetSectionToName(s string) string {
+	if !strings.HasPrefix(s, prefix) {
+		return ""
+	}
+	return s[len(prefix):]
+}
+
 func NewList() L {
 	return L(make([]*T, 0))
 }
@@ -130,7 +137,7 @@ func (t T) Fullname() string {
 func (t T) String() string {
 	s := prefix + t.DriverGroup.String()
 	if t.Name != "" {
-		s = s + "." + t.Name
+		s = s + ":" + t.Name
 	}
 	return s
 }

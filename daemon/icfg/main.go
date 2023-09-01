@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -67,16 +68,20 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
+	keyApp              = key.New("DEFAULT", "app")
+	keyChildren         = key.New("DEFAULT", "children")
+	keyEnv              = key.New("DEFAULT", "env")
 	keyFlexMax          = key.New("DEFAULT", "flex_max")
 	keyFlexMin          = key.New("DEFAULT", "flex_min")
 	keyFlexTarget       = key.New("DEFAULT", "flex_target")
 	keyMonitorAction    = key.New("DEFAULT", "monitor_action")
 	keyNodes            = key.New("DEFAULT", "nodes")
+	keyOrchestrate      = key.New("DEFAULT", "orchestrate")
+	keyParents          = key.New("DEFAULT", "parents")
 	keyPlacement        = key.New("DEFAULT", "placement")
 	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
 	keyPriority         = key.New("DEFAULT", "priority")
 	keyTopology         = key.New("DEFAULT", "topology")
-	keyOrchestrate      = key.New("DEFAULT", "orchestrate")
 )
 
 // Start launch goroutine instConfig worker for a local instance config
@@ -272,18 +277,24 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		return configFileCheckError
 	}
+
 	cfg := o.instanceConfig
-	cfg.Nodename = o.localhost
-	cfg.Topology = o.getTopology(cf)
-	cfg.Orchestrate = o.getOrchestrate(cf)
-	cfg.Priority = o.getPriority(cf)
-	cfg.Resources = o.getResources(cf)
+	cfg.App = cf.GetString(keyApp)
+	cfg.Checksum = fmt.Sprintf("%x", checksum)
+	cfg.Children = o.getChildren(cf)
+	cfg.Env = cf.GetString(keyEnv)
 	cfg.MonitorAction = o.getMonitorAction(cf)
+	cfg.Nodename = o.localhost
+	cfg.Orchestrate = o.getOrchestrate(cf)
+	cfg.Parents = o.getParents(cf)
 	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
 	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
+	cfg.Priority = o.getPriority(cf)
+	cfg.Resources = o.getResources(cf)
 	cfg.Scope = scope
-	cfg.Checksum = fmt.Sprintf("%x", checksum)
+	cfg.Topology = o.getTopology(cf)
 	cfg.UpdatedAt = mtime
+	cfg.Subsets = o.getSubsets(cf)
 
 	if cfg.Topology == topology.Flex {
 		cfg.FlexMin = o.getFlexMin(cf)
@@ -322,6 +333,24 @@ func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 	return instance.MonitorAction(s)
 }
 
+func (o *T) getChildren(cf *xconfig.T) []path.Relation {
+	l := cf.GetStrings(keyChildren)
+	relations := make([]path.Relation, len(l))
+	for i, s := range l {
+		relations[i] = path.Relation(s)
+	}
+	return relations
+}
+
+func (o *T) getParents(cf *xconfig.T) []path.Relation {
+	l := cf.GetStrings(keyParents)
+	relations := make([]path.Relation, len(l))
+	for i, s := range l {
+		relations[i] = path.Relation(s)
+	}
+	return relations
+}
+
 func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
 	s := cf.GetString(keyPlacement)
 	return placement.NewPolicy(s)
@@ -335,6 +364,20 @@ func (o *T) getTopology(cf *xconfig.T) topology.T {
 func (o *T) getOrchestrate(cf *xconfig.T) string {
 	s := cf.GetString(keyOrchestrate)
 	return s
+}
+
+func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
+	m := make(map[string]instance.SubsetConfig)
+	for _, s := range cf.SectionStrings() {
+		if name := resourceset.SubsetSectionToName(s); name == "" {
+			continue
+		}
+		k := key.New(s, "parallel")
+		m[s] = instance.SubsetConfig{
+			Parallel: cf.GetBool(k),
+		}
+	}
+	return m
 }
 
 func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {

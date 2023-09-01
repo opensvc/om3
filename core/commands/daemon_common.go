@@ -18,30 +18,6 @@ type (
 	CmdDaemonCommon struct{}
 )
 
-func (t *CmdDaemonCommon) startDaemon() (err error) {
-	cmd := command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs([]string{"daemon", "start"}),
-	)
-	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s: %w", cmd, err)
-	}
-	return nil
-}
-
-func (t *CmdDaemonCommon) stopDaemon() (err error) {
-	cmd := command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs([]string{"daemon", "stop"}),
-	)
-	_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s: %w", cmd, err)
-	}
-	return nil
-}
-
 // isRunning returns true if daemon is running
 func (t *CmdDaemonCommon) isRunning() bool {
 	cli, err := client.New()

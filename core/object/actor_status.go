@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -74,17 +73,9 @@ func (t *actor) setLastStartedAt(data *instance.Status) error {
 
 func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
 	t.setLastStartedAt(&data)
-	data.App = t.App()
-	data.Env = t.Env()
 	data.UpdatedAt = time.Now()
-	data.Parents = t.Parents()
-	data.Children = t.Children()
-	data.Subsets = t.subsetsStatus()
 	data.FrozenAt = t.Frozen()
 	data.Running = runningRIDList(t)
-	if data.DRP, err = t.config.IsInDRPNodes(hostname.Hostname()); err != nil {
-		return
-	}
 	if err = t.resourceStatusEval(ctx, &data); err != nil {
 		return
 	}
@@ -93,7 +84,6 @@ func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err
 		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
 	}
-	data.Csum = csumStatusData(data)
 	err = t.statusDump(data)
 	return
 }
@@ -109,19 +99,6 @@ func runningRIDList(t interface{}) []string {
 		l = append(l, r.RID())
 	}
 	return l
-}
-
-func (t *actor) subsetsStatus() map[string]instance.SubsetStatus {
-	data := make(map[string]instance.SubsetStatus)
-	for _, rs := range t.ResourceSets() {
-		if !rs.Parallel {
-			continue
-		}
-		data[rs.Fullname()] = instance.SubsetStatus{
-			Parallel: rs.Parallel,
-		}
-	}
-	return data
 }
 
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {

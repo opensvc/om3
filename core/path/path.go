@@ -302,7 +302,7 @@ func (t Relation) Split() (T, string, error) {
 func (t Relation) Node() string {
 	var s string
 	if strings.Contains(string(t), "@") {
-		s = strings.SplitN(string(t), "@", 1)[1]
+		s = strings.SplitN(string(t), "@", 2)[1]
 	}
 	return s
 }
@@ -310,9 +310,10 @@ func (t Relation) Node() string {
 func (t Relation) Path() (T, error) {
 	var s string
 	if strings.Contains(string(t), "@") {
-		s = strings.SplitN(string(t), "@", 1)[0]
+		s = strings.SplitN(string(t), "@", 2)[0]
+	} else {
+		s = string(t)
 	}
-	s = string(t)
 	return Parse(s)
 }
 

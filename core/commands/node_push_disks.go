@@ -15,12 +15,12 @@ func (t *CmdNodePushDisks) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("push_disks"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Format,
+			"format": t.Output,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()

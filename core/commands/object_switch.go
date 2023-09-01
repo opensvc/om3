@@ -28,7 +28,7 @@ func (t *CmdObjectSwitch) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithAsyncTarget(target),
 		objectaction.WithAsyncTargetOptions(options),

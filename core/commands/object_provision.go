@@ -16,7 +16,6 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		DryRun          bool
 		Force           bool
 		Leader          bool
 		DisableRollback bool
@@ -31,7 +30,7 @@ func (t *CmdObjectProvision) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("provision"),
@@ -55,7 +54,6 @@ func (t *CmdObjectProvision) Run(selector, kind string) error {
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			return nil, o.Provision(ctx)
 		}),
 	).Do()

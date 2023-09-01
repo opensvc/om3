@@ -17,7 +17,7 @@ func (t *CmdNodeDrain) Run() error {
 		nodeaction.WithAsyncTime(t.Time),
 		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
-		nodeaction.WithFormat(t.Format),
+		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocal(t.Local),
 	).Do()

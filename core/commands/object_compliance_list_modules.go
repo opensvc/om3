@@ -20,13 +20,13 @@ func (t *CmdObjectComplianceListModules) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithServer(t.Server),
 		objectaction.WithRemoteAction("compliance env"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Format,
+			"format": t.Output,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {

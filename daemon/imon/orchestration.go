@@ -7,6 +7,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
@@ -91,6 +92,44 @@ func (o *imon) orchestrate() {
 		o.orchestrateUnprovisioned()
 	}
 	o.updateIfChange()
+}
+
+func (o *imon) setWaitParents() bool {
+	for relation, availStatus := range o.state.Parents {
+		if !availStatus.Is(status.Up, status.Undef) {
+			if o.state.State != instance.MonitorStateWaitParents {
+				o.log.Info().Msgf("wait parents because %s avail status is %s", relation, availStatus)
+				o.state.State = instance.MonitorStateWaitParents
+				o.change = true
+			}
+			return true
+		}
+	}
+	if o.state.State == instance.MonitorStateWaitParents {
+		o.log.Info().Msgf("stop waiting parents")
+		o.state.State = instance.MonitorStateIdle
+		o.change = true
+	}
+	return false
+}
+
+func (o *imon) setWaitChildren() bool {
+	for relation, availStatus := range o.state.Children {
+		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef) {
+			if o.state.State != instance.MonitorStateWaitChildren {
+				o.log.Info().Msgf("wait children because %s avail status is %s", relation, availStatus)
+				o.state.State = instance.MonitorStateWaitChildren
+				o.change = true
+			}
+			return true
+		}
+	}
+	if o.state.State == instance.MonitorStateWaitChildren {
+		o.log.Info().Msgf("stop waiting children")
+		o.state.State = instance.MonitorStateIdle
+		o.change = true
+	}
+	return false
 }
 
 // endOrchestration is called when orchestration has been reached on all nodes

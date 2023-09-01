@@ -132,7 +132,7 @@ func (t *CmdNodeEvents) Run() error {
 		now        = time.Now()
 	)
 	if t.Template != "" {
-		t.Format = "json"
+		t.Output = "json"
 		evTemplate := template.New("ev")
 		t.helper = &templateHelper{PassedMap: make(map[string]struct{})}
 
@@ -286,11 +286,11 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 		}
 		return
 	}
-	if t.Format == output.JSON.String() {
-		t.Format = output.JSONLine.String()
+	if t.Output == output.JSON.String() {
+		t.Output = output.JSONLine.String()
 	}
 	output.Renderer{
-		Format:   t.Format,
+		Format:   t.Output,
 		Color:    t.Color,
 		Data:     ce,
 		Colorize: rawconfig.Colorize,

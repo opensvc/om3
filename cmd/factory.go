@@ -1093,6 +1093,7 @@ func newCmdNodeGet() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
+	addFlagEval(flags, &options.Eval)
 	addFlagKeyword(flags, &options.Keyword)
 	return cmd
 }
@@ -1954,7 +1955,6 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagRID(flags, &options.RID)
 	return cmd
 }
@@ -2034,6 +2034,7 @@ func newCmdObjectGet(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagEval(flags, &options.Eval)
 	addFlagKeyword(flags, &options.Keyword)
 	return cmd
 }
@@ -2217,7 +2218,6 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
 	addFlagDisableRollback(flags, &options.DisableRollback)
@@ -2238,7 +2238,6 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	return cmd
 }
@@ -2257,7 +2256,6 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	return cmd
 }
@@ -2277,7 +2275,6 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
 	return cmd
@@ -2316,7 +2313,6 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
 	return cmd
@@ -2336,7 +2332,6 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagTarget(flags, &options.Target)
 	return cmd
@@ -2356,7 +2351,6 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	return cmd
 }
@@ -2375,7 +2369,6 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagTarget(flags, &options.Target)
 	return cmd
@@ -2395,7 +2388,6 @@ func newCmdObjectRun(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagConfirm(flags, &options.Confirm)
 	addFlagCron(flags, &options.Cron)
 	return cmd
@@ -2432,7 +2424,6 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	return cmd
 }
 
@@ -2451,7 +2442,6 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
 	return cmd
 }
 
@@ -2469,7 +2459,6 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	return cmd
 }
@@ -2489,7 +2478,6 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
 	return cmd
@@ -2509,7 +2497,6 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
 	return cmd
@@ -2548,7 +2535,6 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	return cmd
 }
@@ -2635,7 +2621,6 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
-	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
 	return cmd

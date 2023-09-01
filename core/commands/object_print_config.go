@@ -135,7 +135,7 @@ func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 			return d.Render()
 		}
 		output.Renderer{
-			Format:        t.Format,
+			Format:        t.Output,
 			Color:         t.Color,
 			Data:          data[selector].Data,
 			HumanRenderer: render,
@@ -154,7 +154,7 @@ func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 			return s
 		}
 		output.Renderer{
-			Format:        t.Format,
+			Format:        t.Output,
 			Color:         t.Color,
 			Data:          data,
 			HumanRenderer: render,

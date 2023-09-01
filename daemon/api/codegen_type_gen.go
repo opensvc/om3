@@ -14,24 +14,6 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
-// Defines values for Orchestrate.
-const (
-	OrchestrateHa    Orchestrate = "ha"
-	OrchestrateNo    Orchestrate = "no"
-	OrchestrateStart Orchestrate = "start"
-)
-
-// Defines values for Placement.
-const (
-	PlacementLastStart  Placement = "last start"
-	PlacementLoadAvg    Placement = "load avg"
-	PlacementNodesOrder Placement = "nodes order"
-	PlacementNone       Placement = "none"
-	PlacementScore      Placement = "score"
-	PlacementShift      Placement = "shift"
-	PlacementSpread     Placement = "spread"
-)
-
 // Defines values for PostDaemonLogsControlLevel.
 const (
 	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
@@ -45,16 +27,16 @@ const (
 
 // Defines values for PostDaemonSubActionAction.
 const (
-	PostDaemonSubActionActionStart PostDaemonSubActionAction = "start"
-	PostDaemonSubActionActionStop  PostDaemonSubActionAction = "stop"
+	Start PostDaemonSubActionAction = "start"
+	Stop  PostDaemonSubActionAction = "stop"
 )
 
 // Defines values for Provisioned.
 const (
-	ProvisionedFalse Provisioned = "false"
-	ProvisionedMixed Provisioned = "mixed"
-	ProvisionedNa    Provisioned = "n/a"
-	ProvisionedTrue  Provisioned = "true"
+	False Provisioned = "false"
+	Mixed Provisioned = "mixed"
+	Na    Provisioned = "n/a"
+	True  Provisioned = "true"
 )
 
 // Defines values for Role.
@@ -78,12 +60,6 @@ const (
 	StatusUndef     Status = "undef"
 	StatusUp        Status = "up"
 	StatusWarn      Status = "warn"
-)
-
-// Defines values for Topology.
-const (
-	Failover Topology = "failover"
-	Flex     Topology = "flex"
 )
 
 // AuthToken defines model for AuthToken.
@@ -241,53 +217,43 @@ type DaemonSubsystemStatus struct {
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
 
+// GetInstanceStatusArray defines model for GetInstanceStatusArray.
+type GetInstanceStatusArray = []GetInstanceStatusElement
+
+// GetInstanceStatusElement defines model for GetInstanceStatusElement.
+type GetInstanceStatusElement struct {
+	Data InstanceStatus `json:"data"`
+	Meta InstanceMeta   `json:"meta"`
+}
+
+// InstanceMeta defines model for InstanceMeta.
+type InstanceMeta struct {
+	Node   string `json:"node"`
+	Object string `json:"object"`
+}
+
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus struct {
-	App           *string       `json:"app,omitempty"`
-	Avail         Status        `json:"avail"`
-	Children      *PathRelation `json:"children,omitempty"`
-	Constraints   *bool         `json:"constraints,omitempty"`
-	Csum          *string       `json:"csum,omitempty"`
-	Drp           *bool         `json:"drp,omitempty"`
-	Env           *string       `json:"env,omitempty"`
-	FlexMax       *int          `json:"flex_max,omitempty"`
-	FlexMin       *int          `json:"flex_min,omitempty"`
-	FlexTarget    *int          `json:"flex_target,omitempty"`
-	FrozenAt      time.Time     `json:"frozen_at"`
-	LastStartedAt time.Time     `json:"last_started_at"`
-	Optional      *Status       `json:"optional,omitempty"`
-	Orchestrate   *Orchestrate  `json:"orchestrate,omitempty"`
-	Overall       Status        `json:"overall"`
-	Parents       *PathRelation `json:"parents,omitempty"`
-
-	// Placement object placement policy
-	Placement *Placement `json:"placement,omitempty"`
+	Avail         Status    `json:"avail"`
+	Constraints   bool      `json:"constraints"`
+	Csum          string    `json:"csum"`
+	FrozenAt      time.Time `json:"frozen_at"`
+	LastStartedAt time.Time `json:"last_started_at"`
+	Optional      Status    `json:"optional"`
+	Overall       Status    `json:"overall"`
 
 	// Preserved preserve is true if this status has not been updated due to a
 	// heartbeat downtime covered by a maintenance period.
 	// when the maintenance period ends, the status should be unchanged,
 	// and preserve will be set to false.
-	Preserved *bool `json:"preserved,omitempty"`
-
-	// Priority scheduling priority of an object instance on a its node
-	Priority *int `json:"priority,omitempty"`
+	Preserved bool `json:"preserved"`
 
 	// Provisioned service, instance or resource provisioned state
-	Provisioned Provisioned              `json:"provisioned"`
-	Resources   *[]ResourceExposedStatus `json:"resources,omitempty"`
-	Running     *[]string                `json:"running,omitempty"`
-	Scale       *int                     `json:"scale,omitempty"`
-	Slaves      *PathRelation            `json:"slaves,omitempty"`
-	StatusGroup *string                  `json:"status_group,omitempty"`
-
-	// Subsets subset properties
-	Subsets *map[string]struct {
-		Parallel bool `json:"parallel"`
-	} `json:"subsets,omitempty"`
-
-	// Topology object topology
-	Topology  *Topology `json:"topology,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Provisioned Provisioned             `json:"provisioned"`
+	Resources   []ResourceExposedStatus `json:"resources"`
+	Running     []string                `json:"running"`
+	Scale       int                     `json:"scale"`
+	UpdatedAt   time.Time               `json:"updated_at"`
 }
 
 // LogList responseLogList is a list of sse
@@ -363,17 +329,8 @@ type ObjectFile struct {
 	Mtime time.Time `json:"mtime"`
 }
 
-// ObjectSelection defines model for ObjectSelection.
-type ObjectSelection = []string
-
-// Orchestrate defines model for Orchestrate.
-type Orchestrate string
-
-// PathRelation defines model for PathRelation.
-type PathRelation = []string
-
-// Placement object placement policy
-type Placement string
+// ObjectPaths defines model for ObjectPaths.
+type ObjectPaths = []string
 
 // PoolStatus defines model for PoolStatus.
 type PoolStatus struct {
@@ -452,6 +409,17 @@ type PostObjectAbort struct {
 	Path string `json:"path"`
 }
 
+// PostObjectAction defines model for PostObjectAction.
+type PostObjectAction struct {
+	Path string `json:"path"`
+}
+
+// PostObjectActionSwitch defines model for PostObjectActionSwitch.
+type PostObjectActionSwitch struct {
+	Destination []string `json:"destination"`
+	Path        string   `json:"path"`
+}
+
 // PostObjectClear defines model for PostObjectClear.
 type PostObjectClear struct {
 	Path string `json:"path"`
@@ -471,12 +439,6 @@ type PostObjectProgress struct {
 	Path      string             `json:"path"`
 	SessionId openapi_types.UUID `json:"session_id"`
 	State     string             `json:"state"`
-}
-
-// PostObjectSwitchTo defines model for PostObjectSwitchTo.
-type PostObjectSwitchTo struct {
-	Destination []string `json:"destination"`
-	Path        string   `json:"path"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -528,48 +490,54 @@ type RelayMessages struct {
 // ResourceExposedStatus defines model for ResourceExposedStatus.
 type ResourceExposedStatus struct {
 	// Disable hints the resource ignores all state transition actions
-	Disable *bool `json:"disable,omitempty"`
+	Disable bool `json:"disable"`
 
 	// Encap indicates that the resource is handled by the encapsulated agents,
 	// and ignored at the hypervisor level
-	Encap *bool `json:"encap,omitempty"`
+	Encap bool `json:"encap"`
 
 	// Info key-value pairs providing interesting information to collect
 	// site-wide about this resource
-	Info  *map[string]interface{} `json:"info,omitempty"`
-	Label string                  `json:"label"`
-	Log   *[]struct {
-		Level   string `json:"level"`
-		Message string `json:"message"`
-	} `json:"log,omitempty"`
+	Info  map[string]interface{} `json:"info"`
+	Label string                 `json:"label"`
+	Log   ResourceLog            `json:"log"`
 
 	// Monitor tells the daemon if it should trigger a monitor action when the
 	// resource is not up
-	Monitor *bool `json:"monitor,omitempty"`
+	Monitor bool `json:"monitor"`
 
 	// Optional is resource status aggregated into Overall instead of Avail instance status.
 	// Errors in optional resource don't stop a state transition action
-	Optional    *bool                    `json:"optional,omitempty"`
-	Provisioned *ResourceProvisionStatus `json:"provisioned,omitempty"`
-	Restart     *int                     `json:"restart,omitempty"`
-	Rid         ResourceId               `json:"rid"`
+	Optional    bool                    `json:"optional"`
+	Provisioned ResourceProvisionStatus `json:"provisioned"`
+	Restart     int                     `json:"restart"`
+	Rid         ResourceId              `json:"rid"`
 
 	// Standby resource should always be up, even after a stop state transition action
-	Standby *bool  `json:"standby,omitempty"`
+	Standby bool   `json:"standby"`
 	Status  Status `json:"status"`
 
 	// Subset the name of the subset this resource is assigned to
-	Subset *string   `json:"subset,omitempty"`
-	Tags   *[]string `json:"tags,omitempty"`
-	Type   string    `json:"type"`
+	Subset string   `json:"subset"`
+	Tags   []string `json:"tags"`
+	Type   string   `json:"type"`
 }
 
 // ResourceId defines model for ResourceId.
 type ResourceId = string
 
+// ResourceLog defines model for ResourceLog.
+type ResourceLog = []ResourceLogEntry
+
+// ResourceLogEntry defines model for ResourceLogEntry.
+type ResourceLogEntry struct {
+	Level   string `json:"level"`
+	Message string `json:"message"`
+}
+
 // ResourceProvisionStatus defines model for ResourceProvisionStatus.
 type ResourceProvisionStatus struct {
-	Mtime *time.Time `json:"mtime,omitempty"`
+	Mtime time.Time `json:"mtime"`
 
 	// State service, instance or resource provisioned state
 	State Provisioned `json:"state"`
@@ -608,9 +576,6 @@ type SANPathTarget struct {
 // Status defines model for Status.
 type Status string
 
-// Topology object topology
-type Topology string
-
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string
 
@@ -629,17 +594,20 @@ type LogFilter = []string
 // NamespaceOptional defines model for NamespaceOptional.
 type NamespaceOptional = string
 
+// NodeOptional defines model for NodeOptional.
+type NodeOptional = string
+
 // ObjectPath defines model for ObjectPath.
 type ObjectPath = string
 
-// ObjectSelector defines model for ObjectSelector.
-type ObjectSelector = string
+// Path defines model for Path.
+type Path = string
+
+// PathOptional defines model for PathOptional.
+type PathOptional = string
 
 // Paths defines model for Paths.
 type Paths = []string
-
-// RelativesOptional defines model for RelativesOptional.
-type RelativesOptional = bool
 
 // RelayClusterId defines model for RelayClusterId.
 type RelayClusterId = string
@@ -715,11 +683,17 @@ type GetDaemonStatusParams struct {
 	// Namespace namespace
 	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
 
-	// Relatives relatives
-	Relatives *RelativesOptional `form:"relatives,omitempty" json:"relatives,omitempty"`
-
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetInstanceStatusParams defines parameters for GetInstanceStatus.
+type GetInstanceStatusParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNetworksParams defines parameters for GetNetworks.
@@ -794,10 +768,10 @@ type GetObjectLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
-// GetObjectSelectorParams defines parameters for GetObjectSelector.
-type GetObjectSelectorParams struct {
-	// Selector object selector
-	Selector ObjectSelector `form:"selector" json:"selector"`
+// GetObjectPathsParams defines parameters for GetObjectPaths.
+type GetObjectPathsParams struct {
+	// Path object selector expression.
+	Path Path `form:"path" json:"path"`
 }
 
 // GetPoolsParams defines parameters for GetPools.
@@ -833,6 +807,39 @@ type PostNodeMonitorJSONRequestBody = PostNodeMonitor
 // PostObjectAbortJSONRequestBody defines body for PostObjectAbort for application/json ContentType.
 type PostObjectAbortJSONRequestBody = PostObjectAbort
 
+// PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
+type PostObjectActionAbortJSONRequestBody = PostObjectAction
+
+// PostObjectActionDeleteJSONRequestBody defines body for PostObjectActionDelete for application/json ContentType.
+type PostObjectActionDeleteJSONRequestBody = PostObjectAction
+
+// PostObjectActionFreezeJSONRequestBody defines body for PostObjectActionFreeze for application/json ContentType.
+type PostObjectActionFreezeJSONRequestBody = PostObjectAction
+
+// PostObjectActionGivebackJSONRequestBody defines body for PostObjectActionGiveback for application/json ContentType.
+type PostObjectActionGivebackJSONRequestBody = PostObjectAction
+
+// PostObjectActionProvisionJSONRequestBody defines body for PostObjectActionProvision for application/json ContentType.
+type PostObjectActionProvisionJSONRequestBody = PostObjectAction
+
+// PostObjectActionPurgeJSONRequestBody defines body for PostObjectActionPurge for application/json ContentType.
+type PostObjectActionPurgeJSONRequestBody = PostObjectAction
+
+// PostObjectActionStartJSONRequestBody defines body for PostObjectActionStart for application/json ContentType.
+type PostObjectActionStartJSONRequestBody = PostObjectAction
+
+// PostObjectActionStopJSONRequestBody defines body for PostObjectActionStop for application/json ContentType.
+type PostObjectActionStopJSONRequestBody = PostObjectAction
+
+// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
+type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PostObjectActionUnfreezeJSONRequestBody defines body for PostObjectActionUnfreeze for application/json ContentType.
+type PostObjectActionUnfreezeJSONRequestBody = PostObjectAction
+
+// PostObjectActionUnprovisionJSONRequestBody defines body for PostObjectActionUnprovision for application/json ContentType.
+type PostObjectActionUnprovisionJSONRequestBody = PostObjectAction
+
 // PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
 type PostObjectClearJSONRequestBody = PostObjectClear
 
@@ -841,9 +848,6 @@ type PostObjectMonitorJSONRequestBody = PostObjectMonitor
 
 // PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
 type PostObjectProgressJSONRequestBody = PostObjectProgress
-
-// PostObjectSwitchToJSONRequestBody defines body for PostObjectSwitchTo for application/json ContentType.
-type PostObjectSwitchToJSONRequestBody = PostObjectSwitchTo
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

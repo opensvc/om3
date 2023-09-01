@@ -16,7 +16,6 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		DryRun bool
 		Force  bool
 		Leader bool
 	}
@@ -30,7 +29,7 @@ func (t *CmdObjectPurge) Run(selector, kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Format),
+		objectaction.WithFormat(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("purge"),
@@ -52,7 +51,6 @@ func (t *CmdObjectPurge) Run(selector, kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
-			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
 			if err := o.Unprovision(ctx); err != nil {
 				return nil, err
 			}

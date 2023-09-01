@@ -2,8 +2,8 @@ openapi: 3.0.0
 info:
   title: opensvc agent api
   version: 3.9.1
-servers:
-  - url: https://localhost:1215
+#servers:
+#  - url: https://localhost:1215
 paths:
   /auth/token:
     post:
@@ -210,7 +210,6 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/RelativesOptional'
         - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
@@ -267,6 +266,31 @@ paths:
         500:
           $ref: '#/components/responses/500'
   /instance/status:
+    get:
+      operationId: GetInstanceStatus
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get instance status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInstanceStatusArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
     post:
       operationId: PostInstanceStatus
       tags:
@@ -730,44 +754,384 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/selector:
+  /object/paths:
     get:
-      operationId: GetObjectSelector
+      operationId: GetObjectPaths
       tags:
         - object
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ObjectSelector'
+        - $ref: '#/components/parameters/Path'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectSelection'
+                $ref: '#/components/schemas/ObjectPaths'
         401:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/switchTo:
+  /object/action/abort:
     post:
-      operationId: PostObjectSwitchTo
+      operationId: PostObjectActionAbort
       tags:
         - object
       security:
         - basicAuth: []
         - bearerAuth: []
       requestBody:
-        description: monitor
+        description: Cancel the current orchestration.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectSwitchTo'
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/delete:
+    post:
+      operationId: PostObjectActionDelete
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance delete.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/freeze:
+    post:
+      operationId: PostObjectActionFreeze
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance freeze.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/giveback:
+    post:
+      operationId: PostObjectActionGiveback
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance giveback.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/provision:
+    post:
+      operationId: PostObjectActionProvision
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance provision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/purge:
+    post:
+      operationId: PostObjectActionPurge
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unprovision and delete.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/start:
+    post:
+      operationId: PostObjectActionStart
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance start.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/stop:
+    post:
+      operationId: PostObjectActionStop
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance stop.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/switch:
+    post:
+      operationId: PostObjectActionSwitch
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance switch.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionSwitch'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/unfreeze:
+    post:
+      operationId: PostObjectActionUnfreeze
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unfreeze.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /object/action/unprovision:
+    post:
+      operationId: PostObjectActionUnprovision
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Orchestrate the object instance unprovision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAction'
       responses:
         200:
           description: OK
@@ -1085,80 +1449,42 @@ components:
         expire_at:
           type: string
           format: date-time
-    InstanceStatus:
+    InstanceMeta:
       type: object
       required:
-        - avail
-        - frozen_at
-        - last_started_at
-        - overall
-        - provisioned
-        - updated_at
+        - object
+        - node
+      properties:
+        object:
+          type: string
+        node:
+          type: string
+    InstanceConfig:
+      type: object
+      required:
+        - app
+        - drp
+        - env
+        - orchestrate
+        - placement
+        - priority
+        - subsets
+        - topology
       properties:
         app:
-          type: string
-        avail:
-          $ref: '#/components/schemas/Status'
-        children:
-          $ref: '#/components/schemas/PathRelation'
-        constraints:
-          type: boolean
-        csum:
           type: string
         drp:
           type: boolean
         env:
           type: string
-        flex_max:
-          type: integer
-        flex_min:
-          type: integer
-        flex_target:
-          type: integer
-        frozen_at:
-          type: string
-          format: date-time
-        last_started_at:
-          type: string
-          format: date-time
-        optional:
-          $ref: '#/components/schemas/Status'
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
-        overall:
-          $ref: '#/components/schemas/Status'
-        parents:
-          $ref: '#/components/schemas/PathRelation'
         placement:
           $ref: '#/components/schemas/Placement'
-        preserved:
-          type: boolean
-          description: |
-            preserve is true if this status has not been updated due to a 
-            heartbeat downtime covered by a maintenance period.
-            when the maintenance period ends, the status should be unchanged, 
-            and preserve will be set to false.
-          default: false
         priority:
           type: integer
           description: scheduling priority of an object instance on a its node
           default: 50
-        provisioned:
-          $ref: '#/components/schemas/Provisioned'
-        resources:
-          type: array
-          items:
-            $ref: '#/components/schemas/ResourceExposedStatus'
-        running:
-          type: array
-          items:
-            type: string
-        scale:
-          type: integer
-        slaves:
-          $ref: '#/components/schemas/PathRelation'
-        status_group:
-          type: string
         subsets:
           type: object
           description: subset properties
@@ -1172,6 +1498,60 @@ components:
                 default: false
         topology:
           $ref: '#/components/schemas/Topology'
+    InstanceStatus:
+      type: object
+      required:
+        - avail
+        - constraints
+        - csum
+        - frozen_at
+        - last_started_at
+        - optional
+        - overall
+        - preserved
+        - provisioned
+        - resources
+        - running
+        - updated_at
+        - scale
+        - updated_at
+      properties:
+        avail:
+          $ref: '#/components/schemas/Status'
+        constraints:
+          type: boolean
+        csum:
+          type: string
+        frozen_at:
+          type: string
+          format: date-time
+        last_started_at:
+          type: string
+          format: date-time
+        optional:
+          $ref: '#/components/schemas/Status'
+        overall:
+          $ref: '#/components/schemas/Status'
+        preserved:
+          type: boolean
+          description: |
+            preserve is true if this status has not been updated due to a 
+            heartbeat downtime covered by a maintenance period.
+            when the maintenance period ends, the status should be unchanged, 
+            and preserve will be set to false.
+          default: false
+        provisioned:
+          $ref: '#/components/schemas/Provisioned'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceExposedStatus'
+        running:
+          type: array
+          items:
+            type: string
+        scale:
+          type: integer
         updated_at:
           type: string
           format: date-time
@@ -1289,7 +1669,7 @@ components:
         mtime:
           type: string
           format: date-time
-    ObjectSelection:
+    ObjectPaths:
       type: array
       items:
         type: string
@@ -1485,6 +1865,20 @@ components:
           type: string
         is_partial:
           type: boolean
+    GetInstanceStatusArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/GetInstanceStatusElement'
+    GetInstanceStatusElement:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/InstanceStatus'
     PostInstanceStatus:
       type: object
       required:
@@ -1495,7 +1889,14 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/InstanceStatus'
-    PostObjectSwitchTo:
+    PostObjectAction:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    PostObjectActionSwitch:
       type: object
       required:
         - path
@@ -1593,9 +1994,21 @@ components:
     ResourceExposedStatus:
       type: object
       required:
+        - disable
+        - encap
+        - info
         - label
+        - log
+        - monitor
+        - optional
+        - provisioned
+        - restart
         - rid
+        - rid
+        - standby
         - status
+        - subset
+        - tags
         - type
       properties:
         disable:
@@ -1614,17 +2027,7 @@ components:
         label:
           type: string
         log:
-          type: array
-          items:
-            type: object
-            required:
-              - level
-              - message
-            properties:
-              level:
-                type: string
-              message:
-                type: string
+          $ref: '#/components/schemas/ResourceLog'
         monitor:
           type: boolean
           description: |
@@ -1658,10 +2061,25 @@ components:
           type: string
     ResourceId:
       type: string
+    ResourceLog:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceLogEntry'
+    ResourceLogEntry:
+      type: object
+      required:
+        - level
+        - message
+      properties:
+        level:
+          type: string
+        message:
+          type: string
     ResourceProvisionStatus:
       type: object
       required:
         - state
+        - mtime
       properties:
         mtime:
           type: string
@@ -1855,19 +2273,51 @@ components:
       required: true
       schema:
         type: string
-    ObjectSelector:
-      name: selector
+    Path:
+      name: path
       in: query
-      description: object selector
+      description: object selector expression.
       required: true
       schema:
         type: string
-    RelativesOptional:
-      name: relatives
+        example: db1,web*
+    PathOptional:
+      name: path
       in: query
-      description: relatives
+      description: object selector expression.
       schema:
-        type: boolean
+        type: string
+        example: db1,web*
+    Node:
+      name: node
+      in: query
+      description: node selector expression.
+      required: true
+      schema:
+        type: string
+        example: n2,az=eu1
+    NodeOptional:
+      name: node
+      in: query
+      description: object and instance selector expression.
+      schema:
+        type: string
+        example: n2,az=eu1
+    Resource:
+      name: resource
+      in: query
+      description: resource selector expression.
+      required: true
+      schema:
+        type: string
+        example: fs#1,ip
+    ResourceOptional:
+      name: resource
+      in: query
+      description: resource selector expression.
+      schema:
+        type: string
+        example: fs#1,ip
     RelayClusterId:
       name: cluster_id
       in: query

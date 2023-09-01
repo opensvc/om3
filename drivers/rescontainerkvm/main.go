@@ -50,7 +50,7 @@ type (
 
 		SCSIReserv     bool           `json:"scsireserv"`
 		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"NoPreemptAbort"`
+		NoPreemptAbort bool           `json:"no_preempt_abort"`
 		OsvcRootPath   string         `json:"osvc_root_path"`
 		GuestOS        string         `json:"guest_os"`
 		Name           string         `json:"name"`
@@ -153,15 +153,15 @@ func (t T) checkCapabilities() bool {
 	return true
 }
 
-func (t T) IsOperational() (bool, error) {
+func (t T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
-		t.Log().Debug().Err(err).Msgf("IsOperational")
+		t.Log().Debug().Err(err).Msgf("isOperational")
 		return false, nil
 	}
 	return true, nil
 }
 
-func (t T) IsPinging() (bool, error) {
+func (t T) isPinging() (bool, error) {
 	pinger, err := ping.NewPinger(t.hostname())
 	if err != nil {
 		return false, err
@@ -336,7 +336,7 @@ func (t T) waitForUp() error {
 func (t T) waitForPing() error {
 	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s ping", t.Name)
 	return WaitFor(func() bool {
-		v, err := t.IsPinging()
+		v, err := t.isPinging()
 		if err != nil {
 			t.Log().Error().Err(err).Msgf("abort waiting for %s ping", t.Name)
 			return true
@@ -348,7 +348,7 @@ func (t T) waitForPing() error {
 func (t T) waitForOperational() error {
 	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s operational", t.Name)
 	return WaitFor(func() bool {
-		v, err := t.IsOperational()
+		v, err := t.isOperational()
 		if err != nil {
 			t.Log().Error().Err(err).Msgf("abort waiting for %s operational", t.Name)
 			return true
