@@ -43,7 +43,7 @@ type (
 		State                   MonitorState       `json:"state" yaml:"state"`
 		StateUpdatedAt          time.Time          `json:"state_updated_at" yaml:"state_updated_at"`
 		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
-		Preserved               bool               `json:"preserved" yaml:"preserved"`
+		IsPreserved             bool               `json:"preserved" yaml:"preserved"`
 		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
 		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
 
