@@ -1,12 +1,18 @@
 package cmd
 
 import (
+	_ "embed"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/commands"
 	"github.com/opensvc/om3/core/monitor"
+)
+
+var (
+	//go:embed text/node-events/event-kind
+	eventKindTemplate string
 )
 
 func newCmdAll() *cobra.Command {
@@ -1052,6 +1058,7 @@ func newCmdNodeEvents() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "events",
 		Short:   "print the node event stream",
+		Long:    "print the node event stream\n\nAvailable kinds: \n" + eventKindTemplate,
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
