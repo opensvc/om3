@@ -22,7 +22,7 @@ func (a *DaemonApi) GetInstanceStatus(ctx echo.Context, params api.GetInstanceSt
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	data := instance.StatusData.GetAll()
-	l := make(api.GetInstanceStatusArray, 0)
+	l := make(api.InstanceStatusArray, 0)
 	for _, e := range data {
 		if !meta.HasPath(e.Path.String()) {
 			continue
@@ -30,7 +30,7 @@ func (a *DaemonApi) GetInstanceStatus(ctx echo.Context, params api.GetInstanceSt
 		if !meta.HasNode(e.Node) {
 			continue
 		}
-		d := api.GetInstanceStatusElement{
+		d := api.InstanceStatusItem{
 			Meta: api.InstanceMeta{
 				Node:   e.Node,
 				Object: e.Path.String(),
