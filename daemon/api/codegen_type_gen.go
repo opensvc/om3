@@ -7,11 +7,30 @@ import (
 	"time"
 
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
+	"github.com/opensvc/om3/core/instance"
 )
 
 const (
 	BasicAuthScopes  = "basicAuth.Scopes"
 	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
+// Defines values for Orchestrate.
+const (
+	OrchestrateHa    Orchestrate = "ha"
+	OrchestrateNo    Orchestrate = "no"
+	OrchestrateStart Orchestrate = "start"
+)
+
+// Defines values for Placement.
+const (
+	PlacementLastStart  Placement = "last start"
+	PlacementLoadAvg    Placement = "load avg"
+	PlacementNodesOrder Placement = "nodes order"
+	PlacementNone       Placement = "none"
+	PlacementScore      Placement = "score"
+	PlacementShift      Placement = "shift"
+	PlacementSpread     Placement = "spread"
 )
 
 // Defines values for PostDaemonLogsControlLevel.
@@ -27,16 +46,16 @@ const (
 
 // Defines values for PostDaemonSubActionAction.
 const (
-	Start PostDaemonSubActionAction = "start"
-	Stop  PostDaemonSubActionAction = "stop"
+	PostDaemonSubActionActionStart PostDaemonSubActionAction = "start"
+	PostDaemonSubActionActionStop  PostDaemonSubActionAction = "stop"
 )
 
 // Defines values for Provisioned.
 const (
-	False Provisioned = "false"
-	Mixed Provisioned = "mixed"
-	Na    Provisioned = "n/a"
-	True  Provisioned = "true"
+	ProvisionedFalse Provisioned = "false"
+	ProvisionedMixed Provisioned = "mixed"
+	ProvisionedNa    Provisioned = "n/a"
+	ProvisionedTrue  Provisioned = "true"
 )
 
 // Defines values for Role.
@@ -60,6 +79,12 @@ const (
 	StatusUndef     Status = "undef"
 	StatusUp        Status = "up"
 	StatusWarn      Status = "warn"
+)
+
+// Defines values for Topology.
+const (
+	Failover Topology = "failover"
+	Flex     Topology = "flex"
 )
 
 // AuthToken defines model for AuthToken.
@@ -207,6 +232,24 @@ type DaemonSubsystemStatus struct {
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
 
+// GetInstanceConfigArray defines model for GetInstanceConfigArray.
+type GetInstanceConfigArray = []GetInstanceConfigElement
+
+// GetInstanceConfigElement defines model for GetInstanceConfigElement.
+type GetInstanceConfigElement struct {
+	Data InstanceConfig `json:"data"`
+	Meta InstanceMeta   `json:"meta"`
+}
+
+// GetInstanceMonitorArray defines model for GetInstanceMonitorArray.
+type GetInstanceMonitorArray = []GetInstanceMonitorElement
+
+// GetInstanceMonitorElement defines model for GetInstanceMonitorElement.
+type GetInstanceMonitorElement struct {
+	Data InstanceMonitor `json:"data"`
+	Meta InstanceMeta    `json:"meta"`
+}
+
 // GetInstanceStatusArray defines model for GetInstanceStatusArray.
 type GetInstanceStatusArray = []GetInstanceStatusElement
 
@@ -216,35 +259,20 @@ type GetInstanceStatusElement struct {
 	Meta InstanceMeta   `json:"meta"`
 }
 
+// InstanceConfig defines model for InstanceConfig.
+type InstanceConfig = instance.Config
+
 // InstanceMeta defines model for InstanceMeta.
 type InstanceMeta struct {
 	Node   string `json:"node"`
 	Object string `json:"object"`
 }
 
+// InstanceMonitor defines model for InstanceMonitor.
+type InstanceMonitor = instance.Monitor
+
 // InstanceStatus defines model for InstanceStatus.
-type InstanceStatus struct {
-	Avail         Status    `json:"avail"`
-	Constraints   bool      `json:"constraints"`
-	Csum          string    `json:"csum"`
-	FrozenAt      time.Time `json:"frozen_at"`
-	LastStartedAt time.Time `json:"last_started_at"`
-	Optional      Status    `json:"optional"`
-	Overall       Status    `json:"overall"`
-
-	// Preserved preserve is true if this status has not been updated due to a
-	// heartbeat downtime covered by a maintenance period.
-	// when the maintenance period ends, the status should be unchanged,
-	// and preserve will be set to false.
-	Preserved bool `json:"preserved"`
-
-	// Provisioned service, instance or resource provisioned state
-	Provisioned Provisioned             `json:"provisioned"`
-	Resources   []ResourceExposedStatus `json:"resources"`
-	Running     []string                `json:"running"`
-	Scale       int                     `json:"scale"`
-	UpdatedAt   time.Time               `json:"updated_at"`
-}
+type InstanceStatus = instance.Status
 
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
@@ -321,6 +349,12 @@ type ObjectFile struct {
 
 // ObjectPaths defines model for ObjectPaths.
 type ObjectPaths = []string
+
+// Orchestrate defines model for Orchestrate.
+type Orchestrate string
+
+// Placement object placement policy
+type Placement string
 
 // PoolStatus defines model for PoolStatus.
 type PoolStatus struct {
@@ -477,6 +511,9 @@ type RelayMessages struct {
 	Messages RelayMessageList `json:"messages"`
 }
 
+// ResourceConfig defines model for ResourceConfig.
+type ResourceConfig = instance.ResourceConfig
+
 // ResourceExposedStatus defines model for ResourceExposedStatus.
 type ResourceExposedStatus struct {
 	// Disable hints the resource ignores all state transition actions
@@ -533,6 +570,9 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
+// ResourcesConfig defines model for ResourcesConfig.
+type ResourcesConfig = []ResourceConfig
+
 // Role defines model for Role.
 type Role string
 
@@ -565,6 +605,15 @@ type SANPathTarget struct {
 
 // Status defines model for Status.
 type Status string
+
+// SubsetConfig defines model for SubsetConfig.
+type SubsetConfig = instance.SubsetConfig
+
+// SubsetsConfig defines model for SubsetsConfig.
+type SubsetsConfig = []SubsetConfig
+
+// Topology object topology
+type Topology string
 
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string
@@ -675,6 +724,24 @@ type GetDaemonStatusParams struct {
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetInstanceConfigParams defines parameters for GetInstanceConfig.
+type GetInstanceConfigParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
+// GetInstanceMonitorParams defines parameters for GetInstanceMonitor.
+type GetInstanceMonitorParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetInstanceStatusParams defines parameters for GetInstanceStatus.

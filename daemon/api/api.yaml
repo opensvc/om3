@@ -265,11 +265,63 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /instance/config:
+    get:
+      operationId: GetInstanceConfig
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get instance config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInstanceConfigArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /instance/monitor:
+    get:
+      operationId: GetInstanceMonitor
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get instance monitor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInstanceMonitorArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /instance/status:
     get:
       operationId: GetInstanceStatus
       tags:
-        - object
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -294,7 +346,7 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - object
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1460,45 +1512,154 @@ components:
         node:
           type: string
     InstanceConfig:
+      x-go-type: instance.Config
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/config
       type: object
       required:
         - app
+        - checksum
+        - children
         - drp
         - env
+        - flex_max
+        - flex_min
+        - flex_target
+        - monitor_action
+        - pre_monitor_action
+        - nodename
         - orchestrate
-        - placement
+        - path
+        - parents
+        - placement_policy
         - priority
+        - resources
+        - scope
         - subsets
         - topology
+        - updated_at
       properties:
         app:
           type: string
+        checksum:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
         drp:
           type: boolean
         env:
           type: string
+        flex_max:
+          type: integer
+        flex_min:
+          type: integer
+        flex_target:
+          type: integer
+        monitor_action:
+          type: string
+        pre_monitor_action:
+          type: string
+        nodename:
+          type: string
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
-        placement:
+        path:
+          type: string
+        parents:
+          type: array
+          items:
+            type: string
+        placement_policy:
           $ref: '#/components/schemas/Placement'
         priority:
           type: integer
-          description: scheduling priority of an object instance on a its node
-          default: 50
+        resources:
+          $ref: '#/components/schemas/ResourcesConfig'
+        scope:
+          type: array
+          items:
+            type: string
         subsets:
-          type: object
-          description: subset properties
-          additionalProperties:
-            type: object
-            required:
-              - parallel
-            properties:
-              parallel:
-                type: boolean
-                default: false
+          $ref: '#/components/schemas/SubsetsConfig'
         topology:
           $ref: '#/components/schemas/Topology'
+        updated_at:
+          type: string
+          format: date-time
+    InstanceMonitor:
+      x-go-type: instance.Monitor
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/instance
+      type: object
+      required:
+        - global_expect
+        - global_expect_updated_at
+        - global_expect_options
+        - is_leader
+        - is_ha_leader
+        - local_expect
+        - local_expect_updated_at
+        - orchestration_id
+        - orchestration_is_done
+        - session_id
+        - state
+        - state_updated_at
+        - monitor_action_executed_at
+        - preserved
+        - resources
+        - updated_at
+        - parents
+        - children
+      properties:
+        global_expect:
+          type: string
+        global_expect_updated_at:
+          type: string
+          format: date-time
+        global_expect_options:
+          type: object
+        is_leader:
+          type: boolean
+        is_ha_leader:
+          type: boolean
+        local_expect:
+          type: string
+        local_expect_updated_at:
+          type: string
+          format: date-time
+        orchestration_id:
+          type: string
+        orchestration_is_done:
+          type: boolean
+        session_id:
+          type: string
+        state:
+          type: string
+        state_updated_at:
+          type: string
+          format: date-time
+        monitor_action_executed_at:
+          type: string
+          format: date-time
+        preserved:
+          type: boolean
+        resources:
+          type: array
+          items:
+            type: object
+        updated_at:
+          type: string
+          format: date-time
+        parents:
+          type: object
+        children:
+          type: object
     InstanceStatus:
+      x-go-type: instance.Status
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/status
       type: object
       required:
         - avail
@@ -1865,6 +2026,34 @@ components:
           type: string
         is_partial:
           type: boolean
+    GetInstanceConfigArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/GetInstanceConfigElement'
+    GetInstanceConfigElement:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/InstanceConfig'
+    GetInstanceMonitorArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/GetInstanceMonitorElement'
+    GetInstanceMonitorElement:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/InstanceMonitor'
     GetInstanceStatusArray:
       type: array
       items:
@@ -1991,6 +2180,33 @@ components:
       properties:
         messages:
           $ref: '#/components/schemas/RelayMessageList'
+    ResourcesConfig:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceConfig'
+    ResourceConfig:
+      x-go-type: instance.ResourceConfig
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/instance
+      type: object
+      required:
+        - is_disabled
+        - is_monitored
+        - is_standby
+        - restart
+        - restart_delay
+      properties:
+        is_disabled:
+          type: boolean
+        is_monitored:
+          type: boolean
+        is_standby:
+          type: boolean
+        restart:
+          type: integer
+        restart_delay:
+          type: string
+          format: duration
     ResourceExposedStatus:
       type: object
       required:
@@ -2167,6 +2383,20 @@ components:
         - undef
         - stdby up
         - stdby down
+    SubsetsConfig:
+      type: array
+      items:
+        $ref: '#/components/schemas/SubsetConfig'
+    SubsetConfig:
+      x-go-type: instance.SubsetConfig
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/instance
+      type: object
+      required:
+        - parallel
+      properties:
+        parallel:
+          type: boolean
     Topology:
       type: string
       description: "object topology"

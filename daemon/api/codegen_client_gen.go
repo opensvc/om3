@@ -123,6 +123,12 @@ type ClientInterface interface {
 
 	PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInstanceConfig request
+	GetInstanceConfig(ctx context.Context, params *GetInstanceConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetInstanceMonitor request
+	GetInstanceMonitor(ctx context.Context, params *GetInstanceMonitorParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInstanceStatus request
 	GetInstanceStatus(ctx context.Context, params *GetInstanceStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -401,6 +407,30 @@ func (c *Client) PostDaemonSubActionWithBody(ctx context.Context, contentType st
 
 func (c *Client) PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonSubActionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceConfig(ctx context.Context, params *GetInstanceConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceMonitor(ctx context.Context, params *GetInstanceMonitorParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceMonitorRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1507,6 +1537,132 @@ func NewPostDaemonSubActionRequestWithBody(server string, contentType string, bo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetInstanceConfigRequest generates requests for GetInstanceConfig
+func NewGetInstanceConfigRequest(server string, params *GetInstanceConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Path != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "path", runtime.ParamLocationQuery, *params.Path); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Node != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, *params.Node); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetInstanceMonitorRequest generates requests for GetInstanceMonitor
+func NewGetInstanceMonitorRequest(server string, params *GetInstanceMonitorParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/monitor")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Path != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "path", runtime.ParamLocationQuery, *params.Path); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Node != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, *params.Node); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -3132,6 +3288,12 @@ type ClientWithResponsesInterface interface {
 
 	PostDaemonSubActionWithResponse(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonSubActionResponse, error)
 
+	// GetInstanceConfig request
+	GetInstanceConfigWithResponse(ctx context.Context, params *GetInstanceConfigParams, reqEditors ...RequestEditorFn) (*GetInstanceConfigResponse, error)
+
+	// GetInstanceMonitor request
+	GetInstanceMonitorWithResponse(ctx context.Context, params *GetInstanceMonitorParams, reqEditors ...RequestEditorFn) (*GetInstanceMonitorResponse, error)
+
 	// GetInstanceStatus request
 	GetInstanceStatusWithResponse(ctx context.Context, params *GetInstanceStatusParams, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error)
 
@@ -3515,6 +3677,58 @@ func (r PostDaemonSubActionResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonSubActionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetInstanceConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetInstanceConfigArray
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetInstanceMonitorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetInstanceMonitorArray
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceMonitorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceMonitorResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -4537,6 +4751,24 @@ func (c *ClientWithResponses) PostDaemonSubActionWithResponse(ctx context.Contex
 	return ParsePostDaemonSubActionResponse(rsp)
 }
 
+// GetInstanceConfigWithResponse request returning *GetInstanceConfigResponse
+func (c *ClientWithResponses) GetInstanceConfigWithResponse(ctx context.Context, params *GetInstanceConfigParams, reqEditors ...RequestEditorFn) (*GetInstanceConfigResponse, error) {
+	rsp, err := c.GetInstanceConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceConfigResponse(rsp)
+}
+
+// GetInstanceMonitorWithResponse request returning *GetInstanceMonitorResponse
+func (c *ClientWithResponses) GetInstanceMonitorWithResponse(ctx context.Context, params *GetInstanceMonitorParams, reqEditors ...RequestEditorFn) (*GetInstanceMonitorResponse, error) {
+	rsp, err := c.GetInstanceMonitor(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceMonitorResponse(rsp)
+}
+
 // GetInstanceStatusWithResponse request returning *GetInstanceStatusResponse
 func (c *ClientWithResponses) GetInstanceStatusWithResponse(ctx context.Context, params *GetInstanceStatusParams, reqEditors ...RequestEditorFn) (*GetInstanceStatusResponse, error) {
 	rsp, err := c.GetInstanceStatus(ctx, params, reqEditors...)
@@ -5409,6 +5641,114 @@ func ParsePostDaemonSubActionResponse(rsp *http.Response) (*PostDaemonSubActionR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceConfigResponse parses an HTTP response from a GetInstanceConfigWithResponse call
+func ParseGetInstanceConfigResponse(rsp *http.Response) (*GetInstanceConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetInstanceConfigArray
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceMonitorResponse parses an HTTP response from a GetInstanceMonitorWithResponse call
+func ParseGetInstanceMonitorResponse(rsp *http.Response) (*GetInstanceMonitorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceMonitorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetInstanceMonitorArray
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
