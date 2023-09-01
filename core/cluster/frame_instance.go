@@ -40,7 +40,7 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 }
 
 func sObjectInstanceAvail(objectAvail status.T, instance instance.Status, mon instance.Monitor) string {
-	if mon.Preserved {
+	if mon.IsPreserved {
 		return iconPreserved
 	}
 	switch instance.Avail {
