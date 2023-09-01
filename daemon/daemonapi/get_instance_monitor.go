@@ -22,7 +22,7 @@ func (a *DaemonApi) GetInstanceMonitor(ctx echo.Context, params api.GetInstanceM
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	data := instance.MonitorData.GetAll()
-	l := make(api.GetInstanceMonitorArray, 0)
+	l := make(api.InstanceMonitorArray, 0)
 	for _, e := range data {
 		if !meta.HasPath(e.Path.String()) {
 			continue
@@ -30,7 +30,7 @@ func (a *DaemonApi) GetInstanceMonitor(ctx echo.Context, params api.GetInstanceM
 		if !meta.HasNode(e.Node) {
 			continue
 		}
-		d := api.GetInstanceMonitorElement{
+		d := api.InstanceMonitorItem{
 			Meta: api.InstanceMeta{
 				Node:   e.Node,
 				Object: e.Path.String(),

@@ -3686,7 +3686,7 @@ func (r PostDaemonSubActionResponse) StatusCode() int {
 type GetInstanceConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetInstanceConfigArray
+	JSON200      *InstanceConfigArray
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -3712,7 +3712,7 @@ func (r GetInstanceConfigResponse) StatusCode() int {
 type GetInstanceMonitorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetInstanceMonitorArray
+	JSON200      *InstanceMonitorArray
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -3738,7 +3738,7 @@ func (r GetInstanceMonitorResponse) StatusCode() int {
 type GetInstanceStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetInstanceStatusArray
+	JSON200      *InstanceStatusArray
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -5683,7 +5683,7 @@ func ParseGetInstanceConfigResponse(rsp *http.Response) (*GetInstanceConfigRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetInstanceConfigArray
+		var dest InstanceConfigArray
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -5737,7 +5737,7 @@ func ParseGetInstanceMonitorResponse(rsp *http.Response) (*GetInstanceMonitorRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetInstanceMonitorArray
+		var dest InstanceMonitorArray
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -5791,7 +5791,7 @@ func ParseGetInstanceStatusResponse(rsp *http.Response) (*GetInstanceStatusRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetInstanceStatusArray
+		var dest InstanceStatusArray
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
