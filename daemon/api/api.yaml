@@ -265,6 +265,32 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /instance:
+    get:
+      operationId: GetInstance
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get instance config, monitor and status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /instance/config:
     get:
       operationId: GetInstanceConfig
@@ -2026,6 +2052,29 @@ components:
           type: string
         is_partial:
           type: boolean
+    Instance:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/InstanceConfig'
+        monitor:
+          $ref: '#/components/schemas/InstanceMonitor'
+        status:
+          $ref: '#/components/schemas/InstanceStatus'
+    InstanceArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/InstanceItem'
+    InstanceItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/Instance'
     InstanceConfigArray:
       type: array
       items:
