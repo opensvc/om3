@@ -232,6 +232,16 @@ type DaemonSubsystemStatus struct {
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
 
+// Instance defines model for Instance.
+type Instance struct {
+	Config  *InstanceConfig  `json:"config,omitempty"`
+	Monitor *InstanceMonitor `json:"monitor,omitempty"`
+	Status  *InstanceStatus  `json:"status,omitempty"`
+}
+
+// InstanceArray defines model for InstanceArray.
+type InstanceArray = []InstanceItem
+
 // InstanceConfig defines model for InstanceConfig.
 type InstanceConfig = instance.Config
 
@@ -242,6 +252,12 @@ type InstanceConfigArray = []InstanceConfigItem
 type InstanceConfigItem struct {
 	Data InstanceConfig `json:"data"`
 	Meta InstanceMeta   `json:"meta"`
+}
+
+// InstanceItem defines model for InstanceItem.
+type InstanceItem struct {
+	Data Instance     `json:"data"`
+	Meta InstanceMeta `json:"meta"`
 }
 
 // InstanceMeta defines model for InstanceMeta.
@@ -718,6 +734,15 @@ type GetDaemonStatusParams struct {
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetInstanceParams defines parameters for GetInstance.
+type GetInstanceParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetInstanceConfigParams defines parameters for GetInstanceConfig.
