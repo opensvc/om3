@@ -750,40 +750,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/monitor:
-    post:
-      operationId: PostObjectMonitor
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: monitor
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectMonitor'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
   /object/progress:
     post:
       operationId: PostObjectProgress
@@ -1991,19 +1957,6 @@ components:
         - path
       properties:
         path:
-          type: string
-    PostObjectMonitor:
-      type: object
-      required:
-        - path
-      properties:
-        local_expect:
-          type: string
-        global_expect:
-          type: string
-        path:
-          type: string
-        state:
           type: string
     PostObjectProgress:
       type: object

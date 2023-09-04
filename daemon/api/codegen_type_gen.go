@@ -454,14 +454,6 @@ type PostObjectClear struct {
 	Path string `json:"path"`
 }
 
-// PostObjectMonitor defines model for PostObjectMonitor.
-type PostObjectMonitor struct {
-	GlobalExpect *string `json:"global_expect,omitempty"`
-	LocalExpect  *string `json:"local_expect,omitempty"`
-	Path         string  `json:"path"`
-	State        *string `json:"state,omitempty"`
-}
-
 // PostObjectProgress defines model for PostObjectProgress.
 type PostObjectProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
@@ -910,9 +902,6 @@ type PostObjectActionUnprovisionJSONRequestBody = PostObjectAction
 
 // PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
 type PostObjectClearJSONRequestBody = PostObjectClear
-
-// PostObjectMonitorJSONRequestBody defines body for PostObjectMonitor for application/json ContentType.
-type PostObjectMonitorJSONRequestBody = PostObjectMonitor
 
 // PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
 type PostObjectProgressJSONRequestBody = PostObjectProgress
