@@ -438,11 +438,6 @@ type PostNodeMonitor struct {
 	State        *string `json:"state,omitempty"`
 }
 
-// PostObjectAbort defines model for PostObjectAbort.
-type PostObjectAbort struct {
-	Path string `json:"path"`
-}
-
 // PostObjectAction defines model for PostObjectAction.
 type PostObjectAction struct {
 	Path string `json:"path"`
@@ -879,9 +874,6 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitor
-
-// PostObjectAbortJSONRequestBody defines body for PostObjectAbort for application/json ContentType.
-type PostObjectAbortJSONRequestBody = PostObjectAbort
 
 // PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
 type PostObjectActionAbortJSONRequestBody = PostObjectAction

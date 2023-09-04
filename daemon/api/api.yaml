@@ -618,30 +618,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/abort:
-    post:
-      operationId: PostObjectAbort
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: Abort orchestration currently running on a selection of objects.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAbort'
-      responses:
-        200:
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
   /object/backlogs:
     get:
       operationId: GetObjectBacklogs
@@ -2008,13 +1984,6 @@ components:
         global_expect:
           type: string
         state:
-          type: string
-    PostObjectAbort:
-      type: object
-      required:
-        - path
-      properties:
-        path:
           type: string
     PostObjectClear:
       type: object
