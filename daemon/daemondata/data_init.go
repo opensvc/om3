@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -88,7 +87,7 @@ func newNodeData(localNode string) node.Node {
 			Compat:          12,
 			FrozenAt:        frozen,
 			Gen:             map[string]uint64{localNode: 1},
-			Labels:          nodesinfo.Labels{},
+			Labels:          node.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
 			IsSpeaker:       false,

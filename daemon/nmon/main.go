@@ -101,12 +101,12 @@ type (
 
 		labelLocalhost pubsub.Label
 
-		// cacheNodesInfo is a map of nodes to nodesinfo.NodeInfo, it is used to
+		// cacheNodesInfo is a map of nodes to node.NodeInfo, it is used to
 		// maintain the nodesinfo.json file.
 		// local values are computed by nmon.
 		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
 		// and ForgetPeer.
-		cacheNodesInfo map[string]nodesinfo.NodeInfo
+		cacheNodesInfo map[string]node.NodeInfo
 
 		// nodeStatus is the node.Status for localhost that is the source of publication of msgbus.NodeStatusUpdated for
 		// localhost.
@@ -173,7 +173,7 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
 
-		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: {}},
+		cacheNodesInfo: map[string]node.NodeInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 

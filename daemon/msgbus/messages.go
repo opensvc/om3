@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/pubsub"
@@ -255,7 +254,7 @@ type (
 	// Exec message describes an exec call
 	Exec struct {
 		pubsub.Msg `yaml:",inline"`
-		Command string `json:"command" yaml:"command"`
+		Command    string `json:"command" yaml:"command"`
 		// Node is the nodename that will call exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
@@ -266,9 +265,9 @@ type (
 	// ExecFailed message describes failed exec call
 	ExecFailed struct {
 		pubsub.Msg `yaml:",inline"`
-		Command  string        `json:"command" yaml:"command"`
-		Duration time.Duration `json:"duration" yaml:"duration"`
-		ErrS     string        `json:"error" yaml:"error"`
+		Command    string        `json:"command" yaml:"command"`
+		Duration   time.Duration `json:"duration" yaml:"duration"`
+		ErrS       string        `json:"error" yaml:"error"`
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
@@ -279,8 +278,8 @@ type (
 	// ExecSuccess message describes successfully exec call
 	ExecSuccess struct {
 		pubsub.Msg `yaml:",inline"`
-		Command  string        `json:"command" yaml:"command"`
-		Duration time.Duration `json:"duration" yaml:"duration"`
+		Command    string        `json:"command" yaml:"command"`
+		Duration   time.Duration `json:"duration" yaml:"duration"`
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
@@ -563,8 +562,8 @@ type (
 
 	NodeStatusLabelsUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string           `json:"node" yaml:"node"`
-		Value      nodesinfo.Labels `json:"node_labels" yaml:"node_labels"`
+		Node       string      `json:"node" yaml:"node"`
+		Value      node.Labels `json:"node_labels" yaml:"node_labels"`
 	}
 
 	// NodeStatusUpdated is the message that nmon publish when node status is modified.
