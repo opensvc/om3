@@ -348,6 +348,10 @@ func (t T) DoLocal() error {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t T) DoAsync() error {
+	target, ok := instance.MonitorGlobalExpectValues[t.Target]
+	if !ok {
+		return fmt.Errorf("unexpected action: %s", t.Target)
+	}
 	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
@@ -386,6 +390,7 @@ func (t T) DoAsync() error {
 	if t.Wait {
 		waitC = make(chan error, len(paths))
 	}
+
 	for _, p := range paths {
 		var (
 			err error
@@ -394,39 +399,235 @@ func (t T) DoAsync() error {
 		if t.Wait {
 			t.waitExpectation(ctx, c, t.Target, p, waitC)
 		}
-		switch t.Target {
-		case instance.MonitorGlobalExpectPlacedAt.String():
-			params := api.PostObjectActionSwitch{}
-			params.Path = p.String()
-			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
-			params.Destination = options.Destination
-			resp, e := c.PostObjectActionSwitchWithResponse(ctx, params)
-			if e != nil {
+		switch target {
+		case instance.MonitorGlobalExpectAborted:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionAbortWithResponse(ctx, params); e != nil {
 				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
 			}
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
+		case instance.MonitorGlobalExpectDeleted:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
 			}
-
-		default:
-			params := api.PostObjectMonitor{}
-			params.Path = p.String()
-			params.GlobalExpect = &t.Target
-			resp, e := c.PostObjectMonitorWithResponse(ctx, params)
-			if e != nil {
+		case instance.MonitorGlobalExpectFrozen:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectProvisioned:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectPurged:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectStarted:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionStartWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectStopped:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionStopWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectThawed:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectUnprovisioned:
+			params := api.PostObjectAction{Path: p.String()}
+			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectPlaced:
+			params := api.PostObjectActionSwitch{Path: p.String()}
+			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case instance.MonitorGlobalExpectPlacedAt:
+			params := api.PostObjectActionSwitch{Path: p.String()}
+			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
+				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
+			} else {
+				params.Destination = options.Destination
+			}
+			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, params); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
