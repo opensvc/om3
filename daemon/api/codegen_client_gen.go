@@ -171,11 +171,6 @@ type ClientInterface interface {
 	// GetNodesInfo request
 	GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostObjectAbort request with any body
-	PostObjectAbortWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostObjectAbort(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// PostObjectActionAbort request with any body
 	PostObjectActionAbortWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -614,30 +609,6 @@ func (c *Client) PostNodeMonitor(ctx context.Context, body PostNodeMonitorJSONRe
 
 func (c *Client) GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodesInfoRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectAbortWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectAbortRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectAbort(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectAbortRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2233,46 +2204,6 @@ func NewGetNodesInfoRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewPostObjectAbortRequest calls the generic PostObjectAbort builder with application/json body
-func NewPostObjectAbortRequest(server string, body PostObjectAbortJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostObjectAbortRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostObjectAbortRequestWithBody generates requests for PostObjectAbort with any type of body
-func NewPostObjectAbortRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/abort")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewPostObjectActionAbortRequest calls the generic PostObjectActionAbort builder with application/json body
 func NewPostObjectActionAbortRequest(server string, body PostObjectActionAbortJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3414,11 +3345,6 @@ type ClientWithResponsesInterface interface {
 	// GetNodesInfo request
 	GetNodesInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesInfoResponse, error)
 
-	// PostObjectAbort request with any body
-	PostObjectAbortWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectAbortResponse, error)
-
-	PostObjectAbortWithResponse(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectAbortResponse, error)
-
 	// PostObjectActionAbort request with any body
 	PostObjectActionAbortWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error)
 
@@ -4114,30 +4040,6 @@ func (r GetNodesInfoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodesInfoResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostObjectAbortResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostObjectAbortResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectAbortResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5006,23 +4908,6 @@ func (c *ClientWithResponses) GetNodesInfoWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseGetNodesInfoResponse(rsp)
-}
-
-// PostObjectAbortWithBodyWithResponse request with arbitrary body returning *PostObjectAbortResponse
-func (c *ClientWithResponses) PostObjectAbortWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectAbortResponse, error) {
-	rsp, err := c.PostObjectAbortWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectAbortResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostObjectAbortWithResponse(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectAbortResponse, error) {
-	rsp, err := c.PostObjectAbort(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectAbortResponse(rsp)
 }
 
 // PostObjectActionAbortWithBodyWithResponse request with arbitrary body returning *PostObjectActionAbortResponse
@@ -6458,46 +6343,6 @@ func ParseGetNodesInfoResponse(rsp *http.Response) (*GetNodesInfoResponse, error
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostObjectAbortResponse parses an HTTP response from a PostObjectAbortWithResponse call
-func ParsePostObjectAbortResponse(rsp *http.Response) (*PostObjectAbortResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostObjectAbortResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
