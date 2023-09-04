@@ -243,11 +243,6 @@ type ClientInterface interface {
 	// GetObjectLogs request
 	GetObjectLogs(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostObjectMonitor request with any body
-	PostObjectMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostObjectMonitor(ctx context.Context, body PostObjectMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetObjectPaths request
 	GetObjectPaths(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -945,30 +940,6 @@ func (c *Client) GetObjectFile(ctx context.Context, params *GetObjectFileParams,
 
 func (c *Client) GetObjectLogs(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectLogsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectMonitorRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectMonitor(ctx context.Context, body PostObjectMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectMonitorRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2920,46 +2891,6 @@ func NewGetObjectLogsRequest(server string, params *GetObjectLogsParams) (*http.
 	return req, nil
 }
 
-// NewPostObjectMonitorRequest calls the generic PostObjectMonitor builder with application/json body
-func NewPostObjectMonitorRequest(server string, body PostObjectMonitorJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostObjectMonitorRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostObjectMonitorRequestWithBody generates requests for PostObjectMonitor with any type of body
-func NewPostObjectMonitorRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/monitor")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewGetObjectPathsRequest generates requests for GetObjectPaths
 func NewGetObjectPathsRequest(server string, params *GetObjectPathsParams) (*http.Request, error) {
 	var err error
@@ -3416,11 +3347,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectLogs request
 	GetObjectLogsWithResponse(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*GetObjectLogsResponse, error)
-
-	// PostObjectMonitor request with any body
-	PostObjectMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectMonitorResponse, error)
-
-	PostObjectMonitorWithResponse(ctx context.Context, body PostObjectMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectMonitorResponse, error)
 
 	// GetObjectPaths request
 	GetObjectPathsWithResponse(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*GetObjectPathsResponse, error)
@@ -4477,34 +4403,6 @@ func (r GetObjectLogsResponse) StatusCode() int {
 	return 0
 }
 
-type PostObjectMonitorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
-	JSON400      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON408      *Problem
-	JSON409      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostObjectMonitorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectMonitorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetObjectPathsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5148,23 +5046,6 @@ func (c *ClientWithResponses) GetObjectLogsWithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParseGetObjectLogsResponse(rsp)
-}
-
-// PostObjectMonitorWithBodyWithResponse request with arbitrary body returning *PostObjectMonitorResponse
-func (c *ClientWithResponses) PostObjectMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectMonitorResponse, error) {
-	rsp, err := c.PostObjectMonitorWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectMonitorResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostObjectMonitorWithResponse(ctx context.Context, body PostObjectMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectMonitorResponse, error) {
-	rsp, err := c.PostObjectMonitor(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectMonitorResponse(rsp)
 }
 
 // GetObjectPathsWithResponse request returning *GetObjectPathsResponse
@@ -7325,74 +7206,6 @@ func ParseGetObjectLogsResponse(rsp *http.Response) (*GetObjectLogsResponse, err
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostObjectMonitorResponse parses an HTTP response from a PostObjectMonitorWithResponse call
-func ParsePostObjectMonitorResponse(rsp *http.Response) (*PostObjectMonitorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostObjectMonitorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON408 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Problem
