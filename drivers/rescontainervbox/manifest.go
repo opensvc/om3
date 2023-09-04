@@ -39,11 +39,12 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 		keywords.Keyword{
-			Option:    "headless",
-			Attr:      "Headless",
-			Converter: converters.Bool,
-			Default:   "false",
-			Text:      keywords.NewText(fs, "text/kw/headless"),
+			Option:     "headless",
+			Attr:       "Headless",
+			Converter:  converters.Bool,
+			Default:    "false",
+			Text:       keywords.NewText(fs, "text/kw/headless"),
+			Deprecated: "3.0",
 		},
 	)
 	return m
