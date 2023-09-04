@@ -88,7 +88,7 @@ func (t *T) configFiles() []string {
 		return []string{}
 	}
 	//cf := t.configFile()
-	cf := filepath.Join("/root/VirtualBox VMs", t.Name)
+	cf := filepath.Join("/root/VirtualBox VMs", t.Name, t.Name, ".vbox")
 	if !file.Exists(cf) {
 		return []string{}
 	}
@@ -96,7 +96,10 @@ func (t *T) configFiles() []string {
 }
 
 func (t T) ToSync() []string {
-	return t.configFiles()
+	if t.Topology == topology.Failover && !t.IsShared() {
+		return t.configFiles()
+	}
+	return make([]string, 0)
 }
 
 func (t T) checkCapabilities() bool {
@@ -122,6 +125,7 @@ func (t T) isPinging() (bool, error) {
 	}
 	pinger.Timeout = time.Second * 1
 	pinger.Count = 1
+	pinger.SetPrivileged(true)
 	if err := pinger.Run(); err != nil {
 		return false, err
 	}
@@ -176,7 +180,7 @@ func (t *T) destroy() error {
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		//command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithTimeout(*t.StopTimeout),
 	)
 	_, err := cmd.Output()
@@ -264,7 +268,7 @@ func (t *T) Start(ctx context.Context) error {
 			return err
 		}
 	} else {
-		t.Log().Debug().Msgf("can not do dns resolution for : ", t.Name)
+		t.Log().Debug().Msgf("can not do dns resolution for : %s", t.Name)
 	}
 	return nil
 }
@@ -388,6 +392,7 @@ func isDownFromState(state string) bool {
 }
 
 func (t *T) domState() (string, error) {
+
 	cmd := command.New(
 		command.WithName("VBoxManage"),
 		command.WithVarArgs("showvminfo", "--machinereadable", t.Name),
@@ -447,6 +452,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("this node is not vbox capable")
 		return status.Undef
 	}
+
+	if v, err := t.isVmInVboxCf(); !v && err == nil {
+		return status.Down
+	}
+
 	state, err := t.domState()
 	if err != nil {
 		t.StatusLog().Error("%s", err)
@@ -466,98 +476,6 @@ func (t *T) Status(ctx context.Context) status.T {
 func (t T) Label() string {
 	return t.Name
 }
-
-func (t T) provisioned() bool {
-	if _, err := t.domState(); err != nil {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
-	if !t.provisioned() {
-		t.Log().Info().Msgf("skip vbox unprovision: container is not provisioned")
-		return nil
-	}
-	if t.hasConfigFile() {
-		if err := t.undefine(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *T) UnprovisionLeader(ctx context.Context) error {
-	if err := t.UnprovisionLeaded(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-/*
-	func (t T) ProvisionLeader(ctx context.Context) error {
-		if t.provisioned() {
-			t.Log().Info().Msgf("skip kvm provision: container is provisioned")
-			return nil
-		}
-		if len(t.VirtInst) == 0 {
-			return fmt.Errorf("the 'virtinst' parameter must be set")
-		}
-		cmd := command.New(
-			command.WithName("virtinst"),
-			command.WithArgs(t.VirtInst),
-			command.WithLogger(t.Log()),
-			command.WithCommandLogLevel(zerolog.InfoLevel),
-			command.WithStdoutLogLevel(zerolog.InfoLevel),
-			command.WithStderrLogLevel(zerolog.ErrorLevel),
-			//command.WithTimeout(*t.StartTimeout),
-		)
-		return cmd.Run()
-	}
-*/
-func (t T) Unprovision(ctx context.Context) error {
-	return nil
-}
-
-func (t T) Provisioned() (provisioned.T, error) {
-	if t.hasConfigFile() {
-		return provisioned.True, nil
-	}
-	return provisioned.False, nil
-}
-
-/*
-func (t *T) copyFrom(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	src = filepath.Join(rootDir, src)
-	return file.Copy(src, dst)
-}
-
-func (t *T) copyTo(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	dst = filepath.Join(rootDir, dst)
-	return file.Copy(src, dst)
-}
-
-// SetEncapFileOwnership sets the ownership of the file to be the
-// same ownership than the container root dir, which may be not root
-// for unprivileged containers.
-func (t *T) SetEncapFileOwnership(p string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	return file.CopyOwnership(rootDir, p)
-}
-
-*/
 
 func (t T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
@@ -706,22 +624,23 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 	return nil, nil
 }
 
-/*
-func (t *T) ContainerHead() (string, error) {
-	return t.rootDir()
-}
-*/
-
 // cgroupDir returns the container resource cgroup path, relative to a controler head.
 func (t T) cgroupDir() string {
 	return t.GetPGID()
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	if v, err := t.isUp(); err != nil {
-		t.Log().Warn().Msgf("no-abort: %s", err)
+	vUp := false
+	var errUp error = nil
+
+	if v, err := t.isVmInVboxCf(); v && err == nil {
+		vUp, errUp = t.isUp()
+	}
+
+	if errUp != nil {
+		t.Log().Warn().Msgf("no-abort: %s", errUp)
 		return false
-	} else if v {
+	} else if vUp {
 		// the local instance is already up.
 		// let the local start report the unecessary start steps
 		// but skip further abort tests
@@ -736,6 +655,7 @@ func (t *T) abortPing() bool {
 	t.Log().Info().Msgf("abort test: ping %s", hn)
 
 	if pinger, err := ping.NewPinger(hn); err == nil {
+		pinger.SetPrivileged(true)
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {
