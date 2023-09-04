@@ -265,6 +265,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  # ========================================================================
+  # instance paths
+  # ========================================================================
+ 
   /instance:
     get:
       operationId: GetInstance
@@ -422,6 +427,144 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  # ========================================================================
+  # node paths
+  # ========================================================================
+ 
+  /node:
+    get:
+      operationId: GetNode
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get node config, monitor and status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /node/config:
+    get:
+      operationId: GetNodeConfig
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get node config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeConfigArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /node/monitor:
+    get:
+      operationId: GetNodeMonitor
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get node monitor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMonitorArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    post:
+      operationId: PostNodeMonitor
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: monitor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNodeMonitor'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /node/status:
+    get:
+      operationId: GetNodeStatus
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NodeOptional'
+      responses:
+        200:
+          description: get node status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeStatusArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/drbd/allocation:
     get:
       operationId: GetNodeDRBDAllocation
@@ -561,40 +704,6 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /node/monitor:
-    post:
-      operationId: PostNodeMonitor
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: monitor
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostNodeMonitor'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
   /nodes/info:
@@ -1266,6 +1375,16 @@ paths:
           $ref: '#/components/responses/500'
 components:
   schemas:
+    ArbitratorStatus:
+      type: object
+      required:
+        - url
+        - status
+      properties:
+        url:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
     AuthToken:
       type: object
       required:
@@ -1482,7 +1601,7 @@ components:
     InstanceConfig:
       x-go-type: instance.Config
       x-go-type-import:
-          path: github.com/opensvc/om3/core/config
+          path: github.com/opensvc/om3/core/instance
       type: object
       required:
         - app
@@ -1627,7 +1746,7 @@ components:
     InstanceStatus:
       x-go-type: instance.Status
       x-go-type-import:
-          path: github.com/opensvc/om3/core/status
+          path: github.com/opensvc/om3/core/instance
       type: object
       required:
         - avail
@@ -1739,6 +1858,183 @@ components:
           type: integer
         pct:
           type: number
+
+    # ========================================================================
+    # node schemas
+    # ========================================================================
+
+    Node:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/NodeConfig'
+        monitor:
+          $ref: '#/components/schemas/NodeMonitor'
+        status:
+          $ref: '#/components/schemas/NodeStatus'
+    NodeArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NodeItem'
+    NodeItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/NodeMeta'
+          data:
+            $ref: '#/components/schemas/Node'
+    NodeConfig:
+      x-go-type: node.Config
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
+      type: object
+      required:
+        - env
+        - maintenance_grace_period
+        - ready_period
+        - rejoin_grace_period
+        - split_action
+      properties:
+        env:
+          type: string
+        maintenance_grace_period:
+          type: string
+          format: duration
+        ready_period:
+          type: string
+          format: duration
+        rejoin_grace_period:
+          type: string
+          format: duration
+        split_action:
+          type: string
+    NodeConfigArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NodeConfigItem'
+    NodeConfigItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/NodeMeta'
+          data:
+            $ref: '#/components/schemas/NodeConfig'
+    NodeMonitor:
+      x-go-type: node.Monitor
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
+      type: object
+      required:
+        - global_expect
+        - global_expect_updated_at
+        - local_expect
+        - local_expect_updated_at
+        - orchestration_id
+        - orchestration_is_done
+        - session_id
+        - state
+        - state_updated_at
+        - updated_at
+      properties:
+        global_expect:
+          type: string
+        global_expect_updated_at:
+          type: string
+          format: date-time
+        local_expect:
+          type: string
+        local_expect_updated_at:
+          type: string
+          format: date-time
+        orchestration_id:
+          type: string
+        orchestration_is_done:
+          type: boolean
+        session_id:
+          type: string
+        state:
+          type: string
+        state_updated_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    NodeMonitorArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NodeMonitorItem'
+    NodeMonitorItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/NodeMeta'
+          data:
+            $ref: '#/components/schemas/NodeMonitor'
+    NodeStatus:
+      x-go-type: node.Status
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
+      type: object
+      required:
+        - agent
+        - api
+        - arbitrators
+        - compat
+        - frozen_at
+        - gen
+        - min_avail_mem
+        - min_avail_swap
+        - is_speaker
+        - labels
+      properties:
+        agent:
+          type: string
+        api:
+          type: string
+        arbitrators:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ArbitratorStatus'
+        compat:
+          type: boolean
+        frozen_at:
+          type: string
+          format: date-time
+        gen:
+          additionalProperties:
+            type: integer
+        min_avail_mem:
+          type: integer
+        min_avail_swap:
+          type: integer
+        is_speaker:
+          type: boolean
+        labels:
+          type: object
+    NodeStatusArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NodeStatusItem'
+    NodeStatusItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/NodeMeta'
+          data:
+            $ref: '#/components/schemas/NodeStatus'
     NodeInfo:
       type: object
       required:
@@ -1771,10 +2067,19 @@ components:
         value:
           type: string
           description: value is the label value.
+    NodeMeta:
+      type: object
+      required:
+        - node
+      properties:
+        node:
+          type: string
     NodesInfo:
       type: array
       items:
         $ref: '#/components/schemas/NodeInfo'
+
+
     ObjectConfig:
       type: object
       required:
@@ -1974,6 +2279,11 @@ components:
           type: string
         is_partial:
           type: boolean
+
+    # ========================================================================
+    # instance schemas
+    # ========================================================================
+ 
     Instance:
       type: object
       properties:

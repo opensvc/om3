@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -30,7 +31,7 @@ type (
 		server             string
 		knownNodes         []string
 		knownNodesSet      *orderedset.OrderedSet
-		info               nodesinfo.NodesInfo
+		info               node.NodesInfo
 		log                zerolog.Logger
 	}
 
@@ -88,7 +89,7 @@ func WithLocal(v bool) funcopt.O {
 
 // WithNodesInfo allow in-daemon callers to bypass nodesinfo.Load and nodesinfo.Req
 // as they can access the NodesInfo faster from the data bus.
-func WithNodesInfo(v nodesinfo.NodesInfo) funcopt.O {
+func WithNodesInfo(v node.NodesInfo) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.info = v
@@ -309,7 +310,7 @@ func (t T) daemonKnownNodes() ([]string, error) {
 	}
 }
 
-func (t *T) getNodesInfo() (nodesinfo.NodesInfo, error) {
+func (t *T) getNodesInfo() (node.NodesInfo, error) {
 	var err error
 	if t.info != nil {
 		return t.info, nil

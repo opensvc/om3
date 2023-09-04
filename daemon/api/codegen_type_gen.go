@@ -8,6 +8,7 @@ import (
 
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
 )
 
 const (
@@ -86,6 +87,12 @@ const (
 	Failover Topology = "failover"
 	Flex     Topology = "flex"
 )
+
+// ArbitratorStatus defines model for ArbitratorStatus.
+type ArbitratorStatus struct {
+	Status Status `json:"status"`
+	Url    string `json:"url"`
+}
 
 // AuthToken defines model for AuthToken.
 type AuthToken struct {
@@ -327,6 +334,28 @@ type NetworkStatusUsage struct {
 	Used int     `json:"used"`
 }
 
+// Node defines model for Node.
+type Node struct {
+	Config  *NodeConfig  `json:"config,omitempty"`
+	Monitor *NodeMonitor `json:"monitor,omitempty"`
+	Status  *NodeStatus  `json:"status,omitempty"`
+}
+
+// NodeArray defines model for NodeArray.
+type NodeArray = []NodeItem
+
+// NodeConfig defines model for NodeConfig.
+type NodeConfig = node.Config
+
+// NodeConfigArray defines model for NodeConfigArray.
+type NodeConfigArray = []NodeConfigItem
+
+// NodeConfigItem defines model for NodeConfigItem.
+type NodeConfigItem struct {
+	Data NodeConfig `json:"data"`
+	Meta NodeMeta   `json:"meta"`
+}
+
 // NodeInfo defines model for NodeInfo.
 type NodeInfo struct {
 	// Labels labels is the list of node labels.
@@ -339,6 +368,12 @@ type NodeInfo struct {
 	Paths []SANPath `json:"paths"`
 }
 
+// NodeItem defines model for NodeItem.
+type NodeItem struct {
+	Data Node     `json:"data"`
+	Meta NodeMeta `json:"meta"`
+}
+
 // NodeLabel defines model for NodeLabel.
 type NodeLabel struct {
 	// Name name is the label name.
@@ -346,6 +381,35 @@ type NodeLabel struct {
 
 	// Value value is the label value.
 	Value string `json:"value"`
+}
+
+// NodeMeta defines model for NodeMeta.
+type NodeMeta struct {
+	Node string `json:"node"`
+}
+
+// NodeMonitor defines model for NodeMonitor.
+type NodeMonitor = node.Monitor
+
+// NodeMonitorArray defines model for NodeMonitorArray.
+type NodeMonitorArray = []NodeMonitorItem
+
+// NodeMonitorItem defines model for NodeMonitorItem.
+type NodeMonitorItem struct {
+	Data NodeMonitor `json:"data"`
+	Meta NodeMeta    `json:"meta"`
+}
+
+// NodeStatus defines model for NodeStatus.
+type NodeStatus = node.Status
+
+// NodeStatusArray defines model for NodeStatusArray.
+type NodeStatusArray = []NodeStatusItem
+
+// NodeStatusItem defines model for NodeStatusItem.
+type NodeStatusItem struct {
+	Data NodeStatus `json:"data"`
+	Meta NodeMeta   `json:"meta"`
 }
 
 // NodesInfo defines model for NodesInfo.
@@ -765,6 +829,12 @@ type GetNetworksParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
+// GetNodeParams defines parameters for GetNode.
+type GetNodeParams struct {
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
 // GetNodeBacklogsParams defines parameters for GetNodeBacklogs.
 type GetNodeBacklogsParams struct {
 	// Filter list of log filter
@@ -772,6 +842,12 @@ type GetNodeBacklogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetNodeConfigParams defines parameters for GetNodeConfig.
+type GetNodeConfigParams struct {
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -793,6 +869,18 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetNodeMonitorParams defines parameters for GetNodeMonitor.
+type GetNodeMonitorParams struct {
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
+// GetNodeStatusParams defines parameters for GetNodeStatus.
+type GetNodeStatusParams struct {
+	// Node object and instance selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetObjectBacklogsParams defines parameters for GetObjectBacklogs.
