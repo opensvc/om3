@@ -2,6 +2,8 @@ package rescontainervbox
 
 import (
 	"embed"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/util/converters"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
@@ -10,8 +12,7 @@ import (
 
 var (
 	//go:embed text
-	fs embed.FS
-
+	fs    embed.FS
 	drvID = driver.NewID(driver.GroupContainer, "vbox")
 )
 
@@ -37,6 +38,13 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWPromoteRW,
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
+		keywords.Keyword{
+			Option:    "headless",
+			Attr:      "Headless",
+			Converter: converters.Bool,
+			Default:   "false",
+			Text:      keywords.NewText(fs, "text/kw/headless"),
+		},
 	)
 	return m
 }

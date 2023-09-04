@@ -49,16 +49,18 @@ type (
 		DNS      []string  `json:"dns"`
 		Topology topology.T
 
-		SCSIReserv     bool           `json:"scsireserv"`
-		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"no_preempt_abort"`
-		OsvcRootPath   string         `json:"osvc_root_path"`
-		GuestOS        string         `json:"guest_os"`
-		Name           string         `json:"name"`
-		Hostname       string         `json:"hostname"`
-		RCmd           []string       `json:"rcmd"`
-		StartTimeout   *time.Duration `json:"start_timeout"`
-		StopTimeout    *time.Duration `json:"stop_timeout"`
+		Headless       bool `json:"headless"`
+		SCSIReserv     bool `json:"scsireserv"`
+		PromoteRW      bool `json:"promote_rw"`
+		NoPreemptAbort bool `json:"no_preempt_abort"`
+
+		OsvcRootPath string         `json:"osvc_root_path"`
+		GuestOS      string         `json:"guest_os"`
+		Name         string         `json:"name"`
+		Hostname     string         `json:"hostname"`
+		RCmd         []string       `json:"rcmd"`
+		StartTimeout *time.Duration `json:"start_timeout"`
+		StopTimeout  *time.Duration `json:"stop_timeout"`
 
 		cache map[string]interface{}
 	}
@@ -148,9 +150,13 @@ func (t *T) undefine() error {
 }
 
 func (t *T) start() error {
+	var args = []string{"VBoxManage", "startvm", t.Name}
+	if t.Headless {
+		args = append(args, "--type headless")
+	}
 	cmd := command.New(
 		command.WithName("VBoxManage"),
-		command.WithVarArgs("startvm", t.Name, "--type=headless"),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -630,24 +636,21 @@ func (t T) cgroupDir() string {
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	vUp := false
-	var errUp error = nil
-
-	if v, err := t.isVmInVboxCf(); v && err == nil {
-		vUp, errUp = t.isUp()
+	if v, err := t.isVmInVboxCf(); err != nil {
+		t.Log().Err(err).Send()
+		return true
+	} else if v {
+		if isLocalUp, err := t.isUp(); err != nil {
+			t.Log().Err(err).Send()
+			return true
+		} else if isLocalUp {
+			// the local instance is already up.
+			// let the local start report the unecessary start steps
+			// but skip further abort tests
+			return false
+		}
 	}
-
-	if errUp != nil {
-		t.Log().Warn().Msgf("no-abort: %s", errUp)
-		return false
-	} else if vUp {
-		// the local instance is already up.
-		// let the local start report the unecessary start steps
-		// but skip further abort tests
-		return false
-	} else {
-		return t.abortPing() || t.abortPeerUp()
-	}
+	return t.abortPing() || t.abortPeerUp()
 }
 
 func (t *T) abortPing() bool {
