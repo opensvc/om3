@@ -35,10 +35,6 @@ import (
 	"github.com/opensvc/om3/util/sshnode"
 )
 
-const (
-	cpusetDir = "/sys/fs/cgroup/cpuset"
-)
-
 type (
 	T struct {
 		resource.T
@@ -163,7 +159,10 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 
-	if v, err := t.isVmInVboxCf(); !v && err == nil {
+	if v, err := t.isVmInVboxCf(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if !v {
 		return status.Down
 	}
 
@@ -341,19 +340,19 @@ func (t T) containerStop(ctx context.Context) error {
 		}
 		if err := t.waitForExpectation(ctx, "shutdown", false, t.isDown); err != nil {
 			t.Log().Warn().Msg("waited too long for shutdown")
-			if err := t.destroy(); err != nil {
-				return err
-			}
+			return t.destroy()
 		}
-	case "Stuck", "Paused", "Aborted":
-		if err := t.destroy(); err != nil {
-			return err
-		}
-	default:
+		return nil
+	case "stuck", "paused", "aborted":
+		return t.destroy()
+	case "poweroff":
 		t.Log().Info().Msgf("skip stop, container state=%s", state)
 		return nil
+	default:
+		err := fmt.Errorf("container stop found unexpected state %s", state)
+		t.Log().Error().Err(err).Msgf("don't know how to stop vm")
+		return err
 	}
-	return nil
 }
 
 func (t T) isVmInVboxCf() (bool, error) {
