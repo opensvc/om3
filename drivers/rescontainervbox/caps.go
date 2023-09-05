@@ -12,9 +12,8 @@ func init() {
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	drvCap := drvID.Cap()
 	if _, err := exec.LookPath("VBoxManage"); err == nil {
-		l = append(l, drvCap)
+		l = append(l, drvID.Cap())
 	}
 	return l, nil
 }
