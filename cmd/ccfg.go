@@ -18,6 +18,7 @@ func init() {
 		cmdObjectSet,
 		cmdObjectPrint,
 		cmdObjectValidate,
+		newCmdClusterAbort(),
 		newCmdClusterFreeze(),
 		newCmdClusterThaw(),
 		newCmdClusterUnfreeze(),
