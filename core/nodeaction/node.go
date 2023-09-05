@@ -225,6 +225,7 @@ func (t T) DoAsync() error {
 		cancel      context.CancelFunc
 		expectation any
 		waitC       = make(chan error)
+		b           []byte
 	)
 	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
@@ -237,59 +238,103 @@ func (t T) DoAsync() error {
 		ctx, cancel = context.WithCancel(context.Background())
 		defer cancel()
 	}
-	params := api.PostNodeMonitor{}
 	switch t.Target {
-	case "":
 	case node.MonitorStateDrained.String():
-		s := t.Target
-		params.LocalExpect = &s
-		expectation = node.MonitorStateDrained
-	default:
-		if globalExpect, ok := node.MonitorGlobalExpectValues[t.Target]; ok {
-			s := t.Target
-			params.GlobalExpect = &s
-			expectation = globalExpect
+		if resp, e := c.PostNodeActionDrainWithResponse(ctx); e != nil {
+			err = e
 		} else {
-			return fmt.Errorf("unexpected global expect value %s", t.Target)
+			switch resp.StatusCode() {
+			case http.StatusOK:
+				b = resp.Body
+			case 400:
+				err = fmt.Errorf("%s", resp.JSON400)
+			case 401:
+				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
+			case 408:
+				err = fmt.Errorf("%s", resp.JSON408)
+			case 409:
+				err = fmt.Errorf("%s", resp.JSON409)
+			case 500:
+				err = fmt.Errorf("%s", resp.JSON500)
+			}
 		}
-	}
-	if t.Wait {
-		go t.waitExpectation(ctx, c, expectation, waitC)
-	}
-	resp, err := c.PostNodeMonitorWithResponse(ctx, params)
-	if err != nil {
-		return err
-	}
-	switch resp.StatusCode() {
-	case http.StatusOK:
-		human := func() string {
-			s := fmt.Sprintln(resp.JSON200)
-			return s
+	case node.MonitorGlobalExpectAborted.String():
+		if resp, e := c.PostClusterActionAbortWithResponse(ctx); e != nil {
+			err = e
+		} else {
+			switch resp.StatusCode() {
+			case http.StatusOK:
+				b = resp.Body
+			case 400:
+				err = fmt.Errorf("%s", resp.JSON400)
+			case 401:
+				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
+			case 408:
+				err = fmt.Errorf("%s", resp.JSON408)
+			case 409:
+				err = fmt.Errorf("%s", resp.JSON409)
+			case 500:
+				err = fmt.Errorf("%s", resp.JSON500)
+			}
 		}
-		output.Renderer{
-			Format:        t.Format,
-			Color:         t.Color,
-			Data:          resp.JSON200,
-			HumanRenderer: human,
-			Colorize:      rawconfig.Colorize,
-		}.Print()
-	case 400:
-		return fmt.Errorf("%s", resp.JSON400)
-	case 401:
-		return fmt.Errorf("%s", resp.JSON401)
-	case 403:
-		return fmt.Errorf("%s", resp.JSON403)
-	case 408:
-		return fmt.Errorf("%s", resp.JSON408)
-	case 409:
-		return fmt.Errorf("%s", resp.JSON409)
-	case 500:
-		return fmt.Errorf("%s", resp.JSON500)
+	case node.MonitorGlobalExpectFrozen.String():
+		if resp, e := c.PostClusterActionFreezeWithResponse(ctx); e != nil {
+			err = e
+		} else {
+			switch resp.StatusCode() {
+			case http.StatusOK:
+				b = resp.Body
+			case 400:
+				err = fmt.Errorf("%s", resp.JSON400)
+			case 401:
+				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
+			case 408:
+				err = fmt.Errorf("%s", resp.JSON408)
+			case 409:
+				err = fmt.Errorf("%s", resp.JSON409)
+			case 500:
+				err = fmt.Errorf("%s", resp.JSON500)
+			}
+		}
+	case node.MonitorGlobalExpectThawed.String():
+		if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
+			err = e
+		} else {
+			switch resp.StatusCode() {
+			case http.StatusOK:
+				b = resp.Body
+			case 400:
+				err = fmt.Errorf("%s", resp.JSON400)
+			case 401:
+				err = fmt.Errorf("%s", resp.JSON401)
+			case 403:
+				err = fmt.Errorf("%s", resp.JSON403)
+			case 408:
+				err = fmt.Errorf("%s", resp.JSON408)
+			case 409:
+				err = fmt.Errorf("%s", resp.JSON409)
+			case 500:
+				err = fmt.Errorf("%s", resp.JSON500)
+			}
+		}
 	default:
-		return fmt.Errorf("unexpected status code %s", resp.Status())
+		return fmt.Errorf("unexpected target: %s", t.Target)
+	}
+	var orchestrationQueued api.OrchestrationQueued
+	if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
+		fmt.Println(orchestrationQueued.OrchestrationId)
+	} else {
+		fmt.Fprintln(os.Stderr, err)
 	}
 
 	if t.Wait {
+		go t.waitExpectation(ctx, c, expectation, waitC)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

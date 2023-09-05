@@ -495,13 +495,6 @@ type PostNodeDRBDConfigRequest struct {
 	Data         []byte             `json:"data"`
 }
 
-// PostNodeMonitor defines model for PostNodeMonitor.
-type PostNodeMonitor struct {
-	GlobalExpect *string `json:"global_expect,omitempty"`
-	LocalExpect  *string `json:"local_expect,omitempty"`
-	State        *string `json:"state,omitempty"`
-}
-
 // PostObjectAction defines model for PostObjectAction.
 type PostObjectAction struct {
 	Path string `json:"path"`
@@ -951,9 +944,6 @@ type PostInstanceStatusJSONRequestBody = InstanceStatusItem
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
-
-// PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
-type PostNodeMonitorJSONRequestBody = PostNodeMonitor
 
 // PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
 type PostObjectActionAbortJSONRequestBody = PostObjectAction
