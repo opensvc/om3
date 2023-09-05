@@ -563,6 +563,33 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /node/action/drain:
+    post:
+      operationId: PostNodeActionDrain
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
   /node/monitor:
     get:
       operationId: GetNodeMonitor
@@ -586,39 +613,6 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-    post:
-      operationId: PostNodeMonitor
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: monitor
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostNodeMonitor'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
   /node/status:
@@ -2328,15 +2322,6 @@ components:
         data:
           type: string
           format: byte
-    PostNodeMonitor:
-      type: object
-      properties:
-        local_expect:
-          type: string
-        global_expect:
-          type: string
-        state:
-          type: string
     PostObjectClear:
       type: object
       required:
