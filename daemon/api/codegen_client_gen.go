@@ -92,6 +92,15 @@ type ClientInterface interface {
 	// PostAuthToken request
 	PostAuthToken(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterActionAbort request
+	PostClusterActionAbort(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostClusterActionFreeze request
+	PostClusterActionFreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostClusterActionUnfreeze request
+	PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetDaemonDNSDump request
 	GetDaemonDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -280,6 +289,42 @@ type ClientInterface interface {
 
 func (c *Client) PostAuthToken(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostAuthTokenRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterActionAbort(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterActionAbortRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterActionFreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterActionFreezeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterActionUnfreezeRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1160,6 +1205,87 @@ func NewPostAuthTokenRequest(server string, params *PostAuthTokenParams) (*http.
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterActionAbortRequest generates requests for PostClusterActionAbort
+func NewPostClusterActionAbortRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/action/abort")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterActionFreezeRequest generates requests for PostClusterActionFreeze
+func NewPostClusterActionFreezeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/action/freeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterActionUnfreezeRequest generates requests for PostClusterActionUnfreeze
+func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/action/unfreeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
@@ -3445,6 +3571,15 @@ type ClientWithResponsesInterface interface {
 	// PostAuthToken request
 	PostAuthTokenWithResponse(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*PostAuthTokenResponse, error)
 
+	// PostClusterActionAbort request
+	PostClusterActionAbortWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionAbortResponse, error)
+
+	// PostClusterActionFreeze request
+	PostClusterActionFreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionFreezeResponse, error)
+
+	// PostClusterActionUnfreeze request
+	PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error)
+
 	// GetDaemonDNSDump request
 	GetDaemonDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error)
 
@@ -3651,6 +3786,90 @@ func (r PostAuthTokenResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostAuthTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostClusterActionAbortResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON408      *Problem
+	JSON409      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterActionAbortResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterActionAbortResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostClusterActionFreezeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON408      *Problem
+	JSON409      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterActionFreezeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterActionFreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostClusterActionUnfreezeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON408      *Problem
+	JSON409      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterActionUnfreezeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterActionUnfreezeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -4260,7 +4479,7 @@ func (r GetNodeMonitorResponse) StatusCode() int {
 type PostNodeMonitorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4339,7 +4558,7 @@ func (r GetNodesInfoResponse) StatusCode() int {
 type PostObjectActionAbortResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4367,7 +4586,7 @@ func (r PostObjectActionAbortResponse) StatusCode() int {
 type PostObjectActionDeleteResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4395,7 +4614,7 @@ func (r PostObjectActionDeleteResponse) StatusCode() int {
 type PostObjectActionFreezeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4423,7 +4642,7 @@ func (r PostObjectActionFreezeResponse) StatusCode() int {
 type PostObjectActionGivebackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4451,7 +4670,7 @@ func (r PostObjectActionGivebackResponse) StatusCode() int {
 type PostObjectActionProvisionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4479,7 +4698,7 @@ func (r PostObjectActionProvisionResponse) StatusCode() int {
 type PostObjectActionPurgeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4507,7 +4726,7 @@ func (r PostObjectActionPurgeResponse) StatusCode() int {
 type PostObjectActionStartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4535,7 +4754,7 @@ func (r PostObjectActionStartResponse) StatusCode() int {
 type PostObjectActionStopResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4563,7 +4782,7 @@ func (r PostObjectActionStopResponse) StatusCode() int {
 type PostObjectActionSwitchResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4591,7 +4810,7 @@ func (r PostObjectActionSwitchResponse) StatusCode() int {
 type PostObjectActionUnfreezeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4619,7 +4838,7 @@ func (r PostObjectActionUnfreezeResponse) StatusCode() int {
 type PostObjectActionUnprovisionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorUpdateQueued
+	JSON200      *OrchestrationQueued
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -4923,6 +5142,33 @@ func (c *ClientWithResponses) PostAuthTokenWithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParsePostAuthTokenResponse(rsp)
+}
+
+// PostClusterActionAbortWithResponse request returning *PostClusterActionAbortResponse
+func (c *ClientWithResponses) PostClusterActionAbortWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionAbortResponse, error) {
+	rsp, err := c.PostClusterActionAbort(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterActionAbortResponse(rsp)
+}
+
+// PostClusterActionFreezeWithResponse request returning *PostClusterActionFreezeResponse
+func (c *ClientWithResponses) PostClusterActionFreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionFreezeResponse, error) {
+	rsp, err := c.PostClusterActionFreeze(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterActionFreezeResponse(rsp)
+}
+
+// PostClusterActionUnfreezeWithResponse request returning *PostClusterActionUnfreezeResponse
+func (c *ClientWithResponses) PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error) {
+	rsp, err := c.PostClusterActionUnfreeze(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterActionUnfreezeResponse(rsp)
 }
 
 // GetDaemonDNSDumpWithResponse request returning *GetDaemonDNSDumpResponse
@@ -5566,6 +5812,210 @@ func ParsePostAuthTokenResponse(rsp *http.Response) (*PostAuthTokenResponse, err
 			return nil, err
 		}
 		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterActionAbortResponse parses an HTTP response from a PostClusterActionAbortWithResponse call
+func ParsePostClusterActionAbortResponse(rsp *http.Response) (*PostClusterActionAbortResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterActionAbortResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterActionFreezeResponse parses an HTTP response from a PostClusterActionFreezeWithResponse call
+func ParsePostClusterActionFreezeResponse(rsp *http.Response) (*PostClusterActionFreezeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterActionFreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterActionUnfreezeResponse parses an HTTP response from a PostClusterActionUnfreezeWithResponse call
+func ParsePostClusterActionUnfreezeResponse(rsp *http.Response) (*PostClusterActionUnfreezeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterActionUnfreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -6712,7 +7162,7 @@ func ParsePostNodeMonitorResponse(rsp *http.Response) (*PostNodeMonitorResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -6881,7 +7331,7 @@ func ParsePostObjectActionAbortResponse(rsp *http.Response) (*PostObjectActionAb
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -6949,7 +7399,7 @@ func ParsePostObjectActionDeleteResponse(rsp *http.Response) (*PostObjectActionD
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7017,7 +7467,7 @@ func ParsePostObjectActionFreezeResponse(rsp *http.Response) (*PostObjectActionF
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7085,7 +7535,7 @@ func ParsePostObjectActionGivebackResponse(rsp *http.Response) (*PostObjectActio
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7153,7 +7603,7 @@ func ParsePostObjectActionProvisionResponse(rsp *http.Response) (*PostObjectActi
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7221,7 +7671,7 @@ func ParsePostObjectActionPurgeResponse(rsp *http.Response) (*PostObjectActionPu
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7289,7 +7739,7 @@ func ParsePostObjectActionStartResponse(rsp *http.Response) (*PostObjectActionSt
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7357,7 +7807,7 @@ func ParsePostObjectActionStopResponse(rsp *http.Response) (*PostObjectActionSto
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7425,7 +7875,7 @@ func ParsePostObjectActionSwitchResponse(rsp *http.Response) (*PostObjectActionS
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7493,7 +7943,7 @@ func ParsePostObjectActionUnfreezeResponse(rsp *http.Response) (*PostObjectActio
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7561,7 +8011,7 @@ func ParsePostObjectActionUnprovisionResponse(rsp *http.Response) (*PostObjectAc
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorUpdateQueued
+		var dest OrchestrationQueued
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
