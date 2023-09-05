@@ -25,7 +25,8 @@ type (
 	// Renderer hosts the renderer options and data, and exposes the rendering
 	// method.
 	Renderer struct {
-		Format        string
+		DefaultOutput string
+		Output        string
 		Color         string
 		Data          interface{}
 		HumanRenderer RenderFunc
@@ -57,11 +58,19 @@ func (t Renderer) Sprint() (string, error) {
 	var (
 		options, format string
 	)
-	if i := strings.Index(t.Format, "="); i > 0 {
-		options = t.Format[i+1:]
-		format = t.Format[:i]
+	if t.DefaultOutput != "" {
+		if t.Output == "auto" {
+			t.Output = t.DefaultOutput
+		}
+		if strings.HasPrefix(t.Output, "+") {
+			t.Output = t.DefaultOutput + "," + t.Output[1:]
+		}
+	}
+	if i := strings.Index(t.Output, "="); i > 0 {
+		options = t.Output[i+1:]
+		format = t.Output[:i]
 	} else {
-		format = t.Format
+		format = t.Output
 	}
 	formatID := toID[format]
 

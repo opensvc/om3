@@ -37,7 +37,7 @@ func (t *CmdPoolStatus) Run() error {
 		return err
 	}
 	output.Renderer{
-		Format:   t.Output,
+		Output:   t.Output,
 		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,

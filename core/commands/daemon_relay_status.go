@@ -43,7 +43,7 @@ func (t *CmdDaemonRelayStatus) Run() error {
 		})
 	}
 	output.Renderer{
-		Format:   t.Output,
+		Output:   t.Output,
 		Color:    t.Color,
 		Data:     messages,
 		Colorize: rawconfig.Colorize,

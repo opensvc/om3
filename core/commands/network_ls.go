@@ -28,7 +28,7 @@ func (t *CmdNetworkLs) Run() error {
 		data, err = t.extractDaemon()
 	}
 	output.Renderer{
-		Format: t.Output,
+		Output: t.Output,
 		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {

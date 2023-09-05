@@ -1632,6 +1632,14 @@ func newCmdObjectComplianceList(kind string) *cobra.Command {
 	}
 }
 
+func newCmdObjectInstance(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "instance",
+		Short:   "config, status, monitor, ls",
+		Aliases: []string{"inst", "in"},
+	}
+}
+
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "show",
@@ -2170,6 +2178,21 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 		Use:     "schedule",
 		Short:   "print the objects scheduling table",
 		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectInstanceLs(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceLs
+	cmd := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "object instances list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
