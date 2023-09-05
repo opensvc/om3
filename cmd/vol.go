@@ -7,6 +7,7 @@ func init() {
 	cmdObjectCollector := newCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
+	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -20,6 +21,7 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectCollector,
 		cmdObjectEdit,
+		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectPush,
 		cmdObjectSet,
@@ -69,6 +71,9 @@ func init() {
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
+	)
+	cmdObjectInstance.AddCommand(
+		newCmdObjectInstanceLs(kind),
 	)
 	cmdObjectSet.AddCommand(
 		newCmdObjectSetProvisioned(kind),
