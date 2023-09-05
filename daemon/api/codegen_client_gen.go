@@ -155,6 +155,9 @@ type ClientInterface interface {
 	// GetNode request
 	GetNode(ctx context.Context, params *GetNodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionDrain request
+	PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeBacklogs request
 	GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -180,11 +183,6 @@ type ClientInterface interface {
 
 	// GetNodeMonitor request
 	GetNodeMonitor(ctx context.Context, params *GetNodeMonitorParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeMonitor request with any body
-	PostNodeMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostNodeMonitor(ctx context.Context, body PostNodeMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeStatus request
 	GetNodeStatus(ctx context.Context, params *GetNodeStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -563,6 +561,18 @@ func (c *Client) GetNode(ctx context.Context, params *GetNodeParams, reqEditors 
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionDrainRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeBacklogsRequest(c.Server, params)
 	if err != nil {
@@ -661,30 +671,6 @@ func (c *Client) GetNodeLogs(ctx context.Context, params *GetNodeLogsParams, req
 
 func (c *Client) GetNodeMonitor(ctx context.Context, params *GetNodeMonitorParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeMonitorRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeMonitorRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeMonitor(ctx context.Context, body PostNodeMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeMonitorRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2070,6 +2056,33 @@ func NewGetNodeRequest(server string, params *GetNodeParams) (*http.Request, err
 	return req, nil
 }
 
+// NewPostNodeActionDrainRequest generates requests for PostNodeActionDrain
+func NewPostNodeActionDrainRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/action/drain")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeBacklogsRequest generates requests for GetNodeBacklogs
 func NewGetNodeBacklogsRequest(server string, params *GetNodeBacklogsParams) (*http.Request, error) {
 	var err error
@@ -2431,46 +2444,6 @@ func NewGetNodeMonitorRequest(server string, params *GetNodeMonitorParams) (*htt
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewPostNodeMonitorRequest calls the generic PostNodeMonitor builder with application/json body
-func NewPostNodeMonitorRequest(server string, body PostNodeMonitorJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostNodeMonitorRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostNodeMonitorRequestWithBody generates requests for PostNodeMonitor with any type of body
-func NewPostNodeMonitorRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/monitor")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -3634,6 +3607,9 @@ type ClientWithResponsesInterface interface {
 	// GetNode request
 	GetNodeWithResponse(ctx context.Context, params *GetNodeParams, reqEditors ...RequestEditorFn) (*GetNodeResponse, error)
 
+	// PostNodeActionDrain request
+	PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error)
+
 	// GetNodeBacklogs request
 	GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error)
 
@@ -3659,11 +3635,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeMonitor request
 	GetNodeMonitorWithResponse(ctx context.Context, params *GetNodeMonitorParams, reqEditors ...RequestEditorFn) (*GetNodeMonitorResponse, error)
-
-	// PostNodeMonitor request with any body
-	PostNodeMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeMonitorResponse, error)
-
-	PostNodeMonitorWithResponse(ctx context.Context, body PostNodeMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeMonitorResponse, error)
 
 	// GetNodeStatus request
 	GetNodeStatusWithResponse(ctx context.Context, params *GetNodeStatusParams, reqEditors ...RequestEditorFn) (*GetNodeStatusResponse, error)
@@ -4275,6 +4246,34 @@ func (r GetNodeResponse) StatusCode() int {
 	return 0
 }
 
+type PostNodeActionDrainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON408      *Problem
+	JSON409      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionDrainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionDrainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeBacklogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4470,34 +4469,6 @@ func (r GetNodeMonitorResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeMonitorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodeMonitorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *OrchestrationQueued
-	JSON400      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON408      *Problem
-	JSON409      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeMonitorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeMonitorResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5339,6 +5310,15 @@ func (c *ClientWithResponses) GetNodeWithResponse(ctx context.Context, params *G
 	return ParseGetNodeResponse(rsp)
 }
 
+// PostNodeActionDrainWithResponse request returning *PostNodeActionDrainResponse
+func (c *ClientWithResponses) PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error) {
+	rsp, err := c.PostNodeActionDrain(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionDrainResponse(rsp)
+}
+
 // GetNodeBacklogsWithResponse request returning *GetNodeBacklogsResponse
 func (c *ClientWithResponses) GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error) {
 	rsp, err := c.GetNodeBacklogs(ctx, params, reqEditors...)
@@ -5417,23 +5397,6 @@ func (c *ClientWithResponses) GetNodeMonitorWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseGetNodeMonitorResponse(rsp)
-}
-
-// PostNodeMonitorWithBodyWithResponse request with arbitrary body returning *PostNodeMonitorResponse
-func (c *ClientWithResponses) PostNodeMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeMonitorResponse, error) {
-	rsp, err := c.PostNodeMonitorWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeMonitorResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostNodeMonitorWithResponse(ctx context.Context, body PostNodeMonitorJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeMonitorResponse, error) {
-	rsp, err := c.PostNodeMonitor(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeMonitorResponse(rsp)
 }
 
 // GetNodeStatusWithResponse request returning *GetNodeStatusResponse
@@ -6764,6 +6727,74 @@ func ParseGetNodeResponse(rsp *http.Response) (*GetNodeResponse, error) {
 	return response, nil
 }
 
+// ParsePostNodeActionDrainResponse parses an HTTP response from a PostNodeActionDrainWithResponse call
+func ParsePostNodeActionDrainResponse(rsp *http.Response) (*PostNodeActionDrainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionDrainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodeBacklogsResponse parses an HTTP response from a GetNodeBacklogsWithResponse call
 func ParseGetNodeBacklogsResponse(rsp *http.Response) (*GetNodeBacklogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -7134,74 +7165,6 @@ func ParseGetNodeMonitorResponse(rsp *http.Response) (*GetNodeMonitorResponse, e
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeMonitorResponse parses an HTTP response from a PostNodeMonitorWithResponse call
-func ParsePostNodeMonitorResponse(rsp *http.Response) (*PostNodeMonitorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeMonitorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OrchestrationQueued
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON408 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Problem
