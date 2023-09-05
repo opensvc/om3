@@ -71,7 +71,7 @@ func (t *CmdNodePrintSchedule) Run() error {
 	data := t.extract(c)
 
 	output.Renderer{
-		Format:   t.Output,
+		Output:   t.Output,
 		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,
