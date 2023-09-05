@@ -49,16 +49,18 @@ type (
 		DNS      []string  `json:"dns"`
 		Topology topology.T
 
-		SCSIReserv     bool           `json:"scsireserv"`
-		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"no_preempt_abort"`
-		OsvcRootPath   string         `json:"osvc_root_path"`
-		GuestOS        string         `json:"guest_os"`
-		Name           string         `json:"name"`
-		Hostname       string         `json:"hostname"`
-		RCmd           []string       `json:"rcmd"`
-		StartTimeout   *time.Duration `json:"start_timeout"`
-		StopTimeout    *time.Duration `json:"stop_timeout"`
+		Headless       bool `json:"headless"`
+		SCSIReserv     bool `json:"scsireserv"`
+		PromoteRW      bool `json:"promote_rw"`
+		NoPreemptAbort bool `json:"no_preempt_abort"`
+
+		OsvcRootPath string         `json:"osvc_root_path"`
+		GuestOS      string         `json:"guest_os"`
+		Name         string         `json:"name"`
+		Hostname     string         `json:"hostname"`
+		RCmd         []string       `json:"rcmd"`
+		StartTimeout *time.Duration `json:"start_timeout"`
+		StopTimeout  *time.Duration `json:"stop_timeout"`
 
 		cache map[string]interface{}
 	}
@@ -391,6 +393,14 @@ func isDownFromState(state string) bool {
 	return false
 }
 
+func isAbortedFromState(state string) bool {
+	switch state {
+	case "aborted":
+		return true
+	}
+	return false
+}
+
 func (t *T) domState() (string, error) {
 
 	cmd := command.New(
@@ -466,6 +476,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	case isUpFromState(state):
 		return status.Up
 	case isDownFromState(state):
+		return status.Down
+	case isAbortedFromState(state):
+		t.StatusLog().Warn("dom state is aborted")
 		return status.Down
 	default:
 		t.StatusLog().Warn("dom state is %s", state)
