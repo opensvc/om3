@@ -80,20 +80,6 @@ func New() resource.Driver {
 	return t
 }
 
-func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) error {
-	limit := time.Now().Add(timeout)
-	for {
-		if v := fn(); v {
-			return nil
-		}
-		if time.Now().After(limit) {
-			return fmt.Errorf("timeout")
-		}
-		time.Sleep(interval)
-	}
-	panic("")
-}
-
 func (t *T) Abort(ctx context.Context) bool {
 	if v, err := t.isVmInVboxCf(); err != nil {
 		t.Log().Err(err).Send()
@@ -124,6 +110,8 @@ func (t T) Label() string {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, *t.StartTimeout)
+	defer cancel()
 	if v, err := t.isVmInVboxCf(); err != nil {
 		return err
 	} else if !v {
@@ -146,19 +134,19 @@ func (t *T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return t.Stop(ctx)
 	})
-	if err := t.waitForUp(); err != nil {
+	if err := t.waitForExpectation(ctx, "up", true, t.isUp); err != nil {
 		return err
 	}
 
-	if _, err := net.LookupIP(t.hostname()); err == nil {
-		if err := t.waitForPing(); err != nil {
-			return err
-		}
-		if err := t.waitForOperational(); err != nil {
-			return err
-		}
-	} else {
+	if _, err := net.LookupIP(t.hostname()); err != nil {
 		t.Log().Debug().Msgf("can not do dns resolution for : %s", t.Name)
+		return nil
+	}
+	if err := t.waitForExpectation(ctx, "ping", true, t.isPinging); err != nil {
+		return err
+	}
+	if err := t.waitForExpectation(ctx, "operational", true, t.isOperational); err != nil {
+		return err
 	}
 	return nil
 }
@@ -205,10 +193,7 @@ func (t T) Stop(ctx context.Context) error {
 		t.Log().Info().Msgf("container %s is already down", t.Name)
 		return nil
 	}
-	if err := t.containerStop(ctx); err != nil {
-		return err
-	}
-	return nil
+	return t.containerStop(ctx)
 }
 
 func (t T) SubDevices() device.L {
@@ -243,12 +228,7 @@ func (t *T) configFile() string {
 }
 
 func (t *T) configFiles() []string {
-	if !t.IsShared() && t.Topology != topology.Failover {
-		// don't send the container cf to nodes that won't run it
-		return []string{}
-	}
-	//cf := t.configFile()
-	cf := filepath.Join("/root/VirtualBox VMs", t.Name, t.Name, ".vbox")
+	cf := t.configFile()
 	if !file.Exists(cf) {
 		return []string{}
 	}
@@ -344,18 +324,48 @@ func (t *T) containerStart(ctx context.Context) error {
 	if !t.hasConfigFile() {
 		return fmt.Errorf("%s not found", t.configFile())
 	}
-	if err := t.start(); err != nil {
+	return t.start()
+}
+
+func (t T) containerStop(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, *t.StopTimeout)
+	defer cancel()
+	state, err := t.domState()
+	if err != nil {
 		return err
+	}
+	switch state {
+	case "running":
+		if err := t.stop(); err != nil {
+			return err
+		}
+		if err := t.waitForExpectation(ctx, "shutdown", false, t.isDown); err != nil {
+			t.Log().Warn().Msg("waited too long for shutdown")
+			if err := t.destroy(); err != nil {
+				return err
+			}
+		}
+	case "Stuck", "Paused", "Aborted":
+		if err := t.destroy(); err != nil {
+			return err
+		}
+	default:
+		t.Log().Info().Msgf("skip stop, container state=%s", state)
+		return nil
 	}
 	return nil
 }
 
 func (t T) isVmInVboxCf() (bool, error) {
 	f, err := os.Open("/root/.config/VirtualBox/VirtualBox.xml")
-	defer f.Close()
 	if err != nil {
 		return false, err
 	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Log().Error().Err(err).Msgf("isVmInVboxCf defer close")
+		}
+	}()
 	doc, err := xmlquery.Parse(f)
 	if err != nil {
 		return false, err
@@ -386,78 +396,25 @@ func (t T) addVmToVboxCf() error {
 	return cmd.Run()
 }
 
-func (t T) waitForDown() error {
-	t.Log().Info().Dur("timeout", *t.StopTimeout).Msgf("wait for %s shutdown, max duration %s", t.Name, *t.StopTimeout)
-	return WaitFor(func() bool {
-		v, err := t.isDown()
-		if err != nil {
-			return true
-		}
-		return v
-	}, time.Second*2, *t.StopTimeout)
-}
-
-func (t T) waitForUp() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s up", t.Name)
-	return WaitFor(func() bool {
-		v, err := t.isUp()
-		if err != nil {
-			t.Log().Error().Err(err).Msgf("abort waiting for %s up", t.Name)
-			return true
-		}
-		return v
-	}, time.Second*2, *t.StopTimeout)
-}
-
-func (t T) waitForPing() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s ping", t.Name)
-	return WaitFor(func() bool {
-		v, err := t.isPinging()
-		if err != nil {
-			t.Log().Error().Err(err).Msgf("abort waiting for %s ping", t.Name)
-			return true
-		}
-		return v
-	}, time.Second*2, *t.StopTimeout)
-}
-
-func (t T) waitForOperational() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msgf("wait for %s operational", t.Name)
-	return WaitFor(func() bool {
-		v, err := t.isOperational()
-		if err != nil {
-			t.Log().Error().Err(err).Msgf("abort waiting for %s operational", t.Name)
-			return true
-		}
-		return v
-	}, time.Second*2, *t.StopTimeout)
-}
-
-func (t T) containerStop(ctx context.Context) error {
-	state, err := t.domState()
-	if err != nil {
-		return err
-	}
-	switch state {
-	case "running":
-		if err := t.stop(); err != nil {
-			return err
-		}
-		if err := t.waitForDown(); err != nil {
-			t.Log().Warn().Msg("waited too long for shutdown")
-			if err := t.destroy(); err != nil {
-				return err
+func (t T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
+	t.Log().Info().Msgf("wait for %s %s", s, t.Name)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if ok, err := fn(); err != nil {
+				if logError {
+					t.Log().Error().Err(err).Msgf("abort waiting for %s %s", t.Name, s)
+				}
+				return nil
+			} else if ok {
+				return nil
 			}
 		}
-	case "Stuck", "Paused", "Aborted":
-		if err := t.destroy(); err != nil {
-			return err
-		}
-	default:
-		t.Log().Info().Msgf("skip stop, container state=%s", state)
-		return nil
 	}
-	return nil
 }
 
 func (t T) isUp() (bool, error) {
