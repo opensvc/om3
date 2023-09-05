@@ -36,6 +36,87 @@ paths:
           $ref: '#/components/responses/500'
         503:
           $ref: '#/components/responses/503'
+  /cluster/action/abort:
+    post:
+      operationId: PostClusterActionAbort
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /cluster/action/freeze:
+    post:
+      operationId: PostClusterActionFreeze
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /cluster/action/unfreeze:
+    post:
+      operationId: PostClusterActionUnfreeze
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/dns/dump:
     get:
       operationId: GetDaemonDNSDump
@@ -527,7 +608,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -927,7 +1008,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -961,7 +1042,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -995,7 +1076,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1029,7 +1110,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1063,7 +1144,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1097,7 +1178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1131,7 +1212,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1165,7 +1246,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1199,7 +1280,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1233,7 +1314,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1267,7 +1348,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MonitorUpdateQueued'
+                $ref: '#/components/schemas/OrchestrationQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -2114,7 +2195,7 @@ components:
         - no
         - start
       default: no
-    MonitorUpdateQueued:
+    OrchestrationQueued:
       type: object
       properties:
         orchestration_id:

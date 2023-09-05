@@ -300,11 +300,6 @@ type InstanceStatusItem struct {
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
 
-// MonitorUpdateQueued defines model for MonitorUpdateQueued.
-type MonitorUpdateQueued struct {
-	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
-}
-
 // NetworkStatus defines model for NetworkStatus.
 type NetworkStatus struct {
 	Errors  *[]string           `json:"errors,omitempty"`
@@ -432,6 +427,11 @@ type ObjectPaths = []string
 
 // Orchestrate defines model for Orchestrate.
 type Orchestrate string
+
+// OrchestrationQueued defines model for OrchestrationQueued.
+type OrchestrationQueued struct {
+	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
+}
 
 // Placement object placement policy
 type Placement string
