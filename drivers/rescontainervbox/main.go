@@ -94,14 +94,14 @@ func (t *T) Abort(ctx context.Context) bool {
 	return t.abortPing() || t.abortPeerUp()
 }
 
-func (t T) Enter() error {
+func (t *T) Enter() error {
 	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
 	return t.enterViaInternalSSH()
 }
 
-func (t T) Label() string {
+func (t *T) Label() string {
 	return t.Name
 }
 
@@ -185,7 +185,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isDown(); err != nil {
 		return err
 	} else if v {
@@ -195,7 +195,7 @@ func (t T) Stop(ctx context.Context) error {
 	return t.containerStop(ctx)
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
@@ -215,7 +215,7 @@ func (t T) SubDevices() device.L {
 	return l
 }
 
-func (t T) ToSync() []string {
+func (t *T) ToSync() []string {
 	if t.Topology == topology.Failover && !t.IsShared() {
 		return t.configFiles()
 	}
@@ -234,7 +234,7 @@ func (t *T) configFiles() []string {
 	return []string{cf}
 }
 
-func (t T) checkCapabilities() bool {
+func (t *T) checkCapabilities() bool {
 	if !capabilities.Has(drvID.Cap() + ".hvm") {
 		t.StatusLog().Warn("hvm not supported by host")
 		return false
@@ -242,7 +242,7 @@ func (t T) checkCapabilities() bool {
 	return true
 }
 
-func (t T) isOperational() (bool, error) {
+func (t *T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
 		t.Log().Debug().Err(err).Msgf("isOperational")
 		return false, nil
@@ -250,7 +250,7 @@ func (t T) isOperational() (bool, error) {
 	return true, nil
 }
 
-func (t T) isPinging() (bool, error) {
+func (t *T) isPinging() (bool, error) {
 	pinger, err := ping.NewPinger(t.hostname())
 	if err != nil {
 		return false, err
@@ -326,7 +326,7 @@ func (t *T) containerStart(ctx context.Context) error {
 	return t.start()
 }
 
-func (t T) containerStop(ctx context.Context) error {
+func (t *T) containerStop(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, *t.StopTimeout)
 	defer cancel()
 	state, err := t.domState()
@@ -355,7 +355,7 @@ func (t T) containerStop(ctx context.Context) error {
 	}
 }
 
-func (t T) isVmInVboxCf() (bool, error) {
+func (t *T) isVmInVboxCf() (bool, error) {
 	f, err := os.Open("/root/.config/VirtualBox/VirtualBox.xml")
 	if err != nil {
 		return false, err
@@ -382,7 +382,7 @@ func (t T) isVmInVboxCf() (bool, error) {
 	return false, nil
 }
 
-func (t T) addVmToVboxCf() error {
+func (t *T) addVmToVboxCf() error {
 	cmd := command.New(
 		command.WithName("VBoxManage"),
 		command.WithVarArgs("registervm", filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")),
@@ -395,7 +395,7 @@ func (t T) addVmToVboxCf() error {
 	return cmd.Run()
 }
 
-func (t T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
+func (t *T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
 	t.Log().Info().Msgf("wait for %s %s", s, t.Name)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -416,7 +416,7 @@ func (t T) waitForExpectation(ctx context.Context, s string, logError bool, fn f
 	}
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	state, err := t.domState()
 	if err != nil {
 		return false, err
@@ -431,7 +431,7 @@ func isUpFromState(state string) bool {
 	return false
 }
 
-func (t T) isDown() (bool, error) {
+func (t *T) isDown() (bool, error) {
 	state, err := t.domState()
 	if err != nil {
 		return false, err
@@ -480,19 +480,19 @@ func domStateFromReader(r io.Reader) (string, error) {
 	return "", fmt.Errorf("state not found")
 }
 
-func (t T) hasConfigFile() bool {
+func (t *T) hasConfigFile() bool {
 	p := t.configFile()
 	return file.Exists(p)
 }
 
-func (t T) rcmd() ([]string, error) {
+func (t *T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
 	}
 	return nil, fmt.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
 }
 
-func (t T) rexec(cmd string) error {
+func (t *T) rexec(cmd string) error {
 	if rcmd, err := t.rcmd(); err == nil {
 		rcmd = append(rcmd, cmd)
 		return t.execViaRCmd(rcmd)
@@ -500,7 +500,7 @@ func (t T) rexec(cmd string) error {
 	return t.execViaInternalSSH(cmd)
 }
 
-func (t T) execViaInternalSSH(cmd string) error {
+func (t *T) execViaInternalSSH(cmd string) error {
 	hn := t.hostname()
 	client, err := sshnode.NewClient(hn)
 	if err != nil {
@@ -528,7 +528,7 @@ func (t T) execViaInternalSSH(cmd string) error {
 	return nil
 }
 
-func (t T) execViaRCmd(args []string) error {
+func (t *T) execViaRCmd(args []string) error {
 	cmd := command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
@@ -540,7 +540,7 @@ func (t T) execViaRCmd(args []string) error {
 	return cmd.Run()
 }
 
-func (t T) enterViaInternalSSH() error {
+func (t *T) enterViaInternalSSH() error {
 	client, err := sshnode.NewClient(t.hostname())
 	if err != nil {
 		return err
@@ -574,7 +574,7 @@ func (t T) enterViaInternalSSH() error {
 	return nil
 }
 
-func (t T) enterViaRCmd(rcmd []string) error {
+func (t *T) enterViaRCmd(rcmd []string) error {
 	sh := "/bin/bash"
 	args := append(rcmd, sh)
 	cmd := exec.Command(args[0], args[1:]...)
@@ -588,7 +588,7 @@ func (t T) enterViaRCmd(rcmd []string) error {
 	return syscall.Exec(args[0], args, os.Environ())
 }
 
-func (t T) hostname() string {
+func (t *T) hostname() string {
 	if t.Hostname != "" {
 		return t.Hostname
 	}
@@ -626,7 +626,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 }
 
 // cgroupDir returns the container resource cgroup path, relative to a controler head.
-func (t T) cgroupDir() string {
+func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
 
@@ -663,7 +663,7 @@ func (t *T) abortPeerUp() bool {
 	return false
 }
 
-func (t T) upPeer() (string, error) {
+func (t *T) upPeer() (string, error) {
 	isPeerUp := func(n string) (bool, error) {
 		client, err := sshnode.NewClient(n)
 		if err != nil {
