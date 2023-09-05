@@ -20,9 +20,9 @@ func (a *DaemonApi) PostNodeActionDrain(ctx echo.Context) error {
 	if mon := node.MonitorData.Get(hostname.Hostname()); mon == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "node monitor not found: %s", hostname.Hostname())
 	}
-	state := node.MonitorStateDrained
+	localExpect := node.MonitorLocalExpectDrained
 	value = node.MonitorUpdate{
-		State:                    &state,
+		LocalExpect:              &localExpect,
 		CandidateOrchestrationId: uuid.New(),
 	}
 	msg := msgbus.SetNodeMonitor{
