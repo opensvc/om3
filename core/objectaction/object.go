@@ -327,7 +327,7 @@ func (t T) DoLocal() error {
 		return s
 	}
 	output.Renderer{
-		Format:        t.Format,
+		Output:        t.Format,
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,
@@ -683,7 +683,7 @@ func (t T) DoAsync() error {
 		return s
 	}
 	output.Renderer{
-		Format:        t.Format,
+		Output:        t.Format,
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,

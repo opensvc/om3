@@ -201,7 +201,7 @@ func (t T) DoLocal() error {
 		return s
 	}
 	output.Renderer{
-		Format:        t.Format,
+		Output:        t.Format,
 		Color:         t.Color,
 		Data:          []actionrouter.Result{r},
 		HumanRenderer: human,
