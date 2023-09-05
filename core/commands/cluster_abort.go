@@ -4,12 +4,12 @@ import (
 	"github.com/opensvc/om3/core/nodeaction"
 )
 
-type CmdNodeAbort struct {
+type CmdClusterAbort struct {
 	OptsGlobal
 	OptsAsync
 }
 
-func (t *CmdNodeAbort) Run() error {
+func (t *CmdClusterAbort) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("abort"),

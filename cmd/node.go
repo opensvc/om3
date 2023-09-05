@@ -120,7 +120,6 @@ func init() {
 		cmdNodePush,
 		cmdNodeRelay,
 		cmdNodeValidate,
-		newCmdNodeAbort(),
 		newCmdNodeChecks(),
 		newCmdNodeClear(),
 		newCmdNodeDoc(),
