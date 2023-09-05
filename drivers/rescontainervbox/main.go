@@ -80,6 +80,164 @@ func New() resource.Driver {
 	return t
 }
 
+func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) error {
+	limit := time.Now().Add(timeout)
+	for {
+		if v := fn(); v {
+			return nil
+		}
+		if time.Now().After(limit) {
+			return fmt.Errorf("timeout")
+		}
+		time.Sleep(interval)
+	}
+	panic("")
+}
+
+func (t *T) Abort(ctx context.Context) bool {
+	if v, err := t.isVmInVboxCf(); err != nil {
+		t.Log().Err(err).Send()
+		return true
+	} else if v {
+		if isLocalUp, err := t.isUp(); err != nil {
+			t.Log().Err(err).Send()
+			return true
+		} else if isLocalUp {
+			// the local instance is already up.
+			// let the local start report the unecessary start steps
+			// but skip further abort tests
+			return false
+		}
+	}
+	return t.abortPing() || t.abortPeerUp()
+}
+
+func (t T) Enter() error {
+	if rcmd, err := t.rcmd(); err == nil {
+		return t.enterViaRCmd(rcmd)
+	}
+	return t.enterViaInternalSSH()
+}
+
+func (t T) Label() string {
+	return t.Name
+}
+
+func (t *T) Start(ctx context.Context) error {
+	if v, err := t.isVmInVboxCf(); err != nil {
+		return err
+	} else if !v {
+		if err := t.addVmToVboxCf(); err != nil {
+			return err
+		}
+	}
+	if err := t.ApplyPGChain(ctx); err != nil {
+		return err
+	}
+	if v, err := t.isUp(); err != nil {
+		return err
+	} else if v {
+		t.Log().Info().Msgf("container %s is already up", t.Name)
+		return nil
+	}
+	if err := t.containerStart(ctx); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.Stop(ctx)
+	})
+	if err := t.waitForUp(); err != nil {
+		return err
+	}
+
+	if _, err := net.LookupIP(t.hostname()); err == nil {
+		if err := t.waitForPing(); err != nil {
+			return err
+		}
+		if err := t.waitForOperational(); err != nil {
+			return err
+		}
+	} else {
+		t.Log().Debug().Msgf("can not do dns resolution for : %s", t.Name)
+	}
+	return nil
+}
+
+func (t *T) Status(ctx context.Context) status.T {
+	/* TODO
+	if pg := t.GetPG(); pg != nil && pg.IsFrozen() {
+		t.StatusLog().Info("pg %s is frozen", pg)
+		return status.NotApplicable
+	}
+	*/
+	if !capabilities.Has(drvID.Cap()) {
+		t.StatusLog().Info("this node is not vbox capable")
+		return status.Undef
+	}
+
+	if v, err := t.isVmInVboxCf(); !v && err == nil {
+		return status.Down
+	}
+
+	state, err := t.domState()
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	switch {
+	case isUpFromState(state):
+		return status.Up
+	case isDownFromState(state):
+		return status.Down
+	case isAbortedFromState(state):
+		t.StatusLog().Warn("dom state is aborted")
+		return status.Down
+	default:
+		t.StatusLog().Warn("dom state is %s", state)
+		return status.Warn
+	}
+}
+
+func (t T) Stop(ctx context.Context) error {
+	if v, err := t.isDown(); err != nil {
+		return err
+	} else if v {
+		t.Log().Info().Msgf("container %s is already down", t.Name)
+		return nil
+	}
+	if err := t.containerStop(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) SubDevices() device.L {
+	l := make(device.L, 0)
+	cf := t.configFile()
+	f, err := os.Open(cf)
+	if err != nil {
+		return l
+	}
+	defer f.Close()
+	doc, err := xmlquery.Parse(f)
+	if err != nil {
+		return l
+	}
+	for _, e := range xmlquery.Find(doc, "//domain/devices/disk") {
+		if dev := e.SelectAttr("dev"); dev != "" {
+			l = append(l, device.New(dev))
+		}
+	}
+	return l
+}
+
+func (t T) ToSync() []string {
+	if t.Topology == topology.Failover && !t.IsShared() {
+		return t.configFiles()
+	}
+	return make([]string, 0)
+}
+
 func (t *T) configFile() string {
 	return filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")
 }
@@ -95,13 +253,6 @@ func (t *T) configFiles() []string {
 		return []string{}
 	}
 	return []string{cf}
-}
-
-func (t T) ToSync() []string {
-	if t.Topology == topology.Failover && !t.IsShared() {
-		return t.configFiles()
-	}
-	return make([]string, 0)
 }
 
 func (t T) checkCapabilities() bool {
@@ -233,59 +384,6 @@ func (t T) addVmToVboxCf() error {
 	)
 
 	return cmd.Run()
-}
-
-func (t *T) Start(ctx context.Context) error {
-	if v, err := t.isVmInVboxCf(); err != nil {
-		return err
-	} else if !v {
-		if err := t.addVmToVboxCf(); err != nil {
-			return err
-		}
-	}
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
-	if v, err := t.isUp(); err != nil {
-		return err
-	} else if v {
-		t.Log().Info().Msgf("container %s is already up", t.Name)
-		return nil
-	}
-	if err := t.containerStart(ctx); err != nil {
-		return err
-	}
-	actionrollback.Register(ctx, func() error {
-		return t.Stop(ctx)
-	})
-	if err := t.waitForUp(); err != nil {
-		return err
-	}
-
-	if _, err := net.LookupIP(t.hostname()); err == nil {
-		if err := t.waitForPing(); err != nil {
-			return err
-		}
-		if err := t.waitForOperational(); err != nil {
-			return err
-		}
-	} else {
-		t.Log().Debug().Msgf("can not do dns resolution for : %s", t.Name)
-	}
-	return nil
-}
-
-func (t T) Stop(ctx context.Context) error {
-	if v, err := t.isDown(); err != nil {
-		return err
-	} else if v {
-		t.Log().Info().Msgf("container %s is already down", t.Name)
-		return nil
-	}
-	if err := t.containerStop(ctx); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (t T) waitForDown() error {
@@ -431,65 +529,6 @@ func (t T) hasConfigFile() bool {
 	return file.Exists(p)
 }
 
-func (t T) SubDevices() device.L {
-	l := make(device.L, 0)
-	cf := t.configFile()
-	f, err := os.Open(cf)
-	if err != nil {
-		return l
-	}
-	defer f.Close()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return l
-	}
-	for _, e := range xmlquery.Find(doc, "//domain/devices/disk") {
-		if dev := e.SelectAttr("dev"); dev != "" {
-			l = append(l, device.New(dev))
-		}
-	}
-	return l
-}
-
-func (t *T) Status(ctx context.Context) status.T {
-	/* TODO
-	if pg := t.GetPG(); pg != nil && pg.IsFrozen() {
-		t.StatusLog().Info("pg %s is frozen", pg)
-		return status.NotApplicable
-	}
-	*/
-	if !capabilities.Has(drvID.Cap()) {
-		t.StatusLog().Info("this node is not vbox capable")
-		return status.Undef
-	}
-
-	if v, err := t.isVmInVboxCf(); !v && err == nil {
-		return status.Down
-	}
-
-	state, err := t.domState()
-	if err != nil {
-		t.StatusLog().Error("%s", err)
-		return status.Undef
-	}
-	switch {
-	case isUpFromState(state):
-		return status.Up
-	case isDownFromState(state):
-		return status.Down
-	case isAbortedFromState(state):
-		t.StatusLog().Warn("dom state is aborted")
-		return status.Down
-	default:
-		t.StatusLog().Warn("dom state is %s", state)
-		return status.Warn
-	}
-}
-
-func (t T) Label() string {
-	return t.Name
-}
-
 func (t T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
@@ -503,13 +542,6 @@ func (t T) rexec(cmd string) error {
 		return t.execViaRCmd(rcmd)
 	}
 	return t.execViaInternalSSH(cmd)
-}
-
-func (t T) Enter() error {
-	if rcmd, err := t.rcmd(); err == nil {
-		return t.enterViaRCmd(rcmd)
-	}
-	return t.enterViaInternalSSH()
 }
 
 func (t T) execViaInternalSSH(cmd string) error {
@@ -642,24 +674,6 @@ func (t T) cgroupDir() string {
 	return t.GetPGID()
 }
 
-func (t *T) Abort(ctx context.Context) bool {
-	if v, err := t.isVmInVboxCf(); err != nil {
-		t.Log().Err(err).Send()
-		return true
-	} else if v {
-		if isLocalUp, err := t.isUp(); err != nil {
-			t.Log().Err(err).Send()
-			return true
-		} else if isLocalUp {
-			// the local instance is already up.
-			// let the local start report the unecessary start steps
-			// but skip further abort tests
-			return false
-		}
-	}
-	return t.abortPing() || t.abortPeerUp()
-}
-
 func (t *T) abortPing() bool {
 	hn := t.hostname()
 	t.Log().Info().Msgf("abort test: ping %s", hn)
@@ -732,18 +746,4 @@ func (t T) upPeer() (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) error {
-	limit := time.Now().Add(timeout)
-	for {
-		if v := fn(); v {
-			return nil
-		}
-		if time.Now().After(limit) {
-			return fmt.Errorf("timeout")
-		}
-		time.Sleep(interval)
-	}
-	panic("")
 }
