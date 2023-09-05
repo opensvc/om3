@@ -643,24 +643,21 @@ func (t T) cgroupDir() string {
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	vUp := false
-	var errUp error = nil
-
-	if v, err := t.isVmInVboxCf(); v && err == nil {
-		vUp, errUp = t.isUp()
+	if v, err := t.isVmInVboxCf(); err != nil {
+		t.Log().Err(err).Send()
+		return true
+	} else if v {
+		if isLocalUp, err := t.isUp(); err != nil {
+			t.Log().Err(err).Send()
+			return true
+		} else if isLocalUp {
+			// the local instance is already up.
+			// let the local start report the unecessary start steps
+			// but skip further abort tests
+			return false
+		}
 	}
-
-	if errUp != nil {
-		t.Log().Warn().Msgf("no-abort: %s", errUp)
-		return false
-	} else if vUp {
-		// the local instance is already up.
-		// let the local start report the unecessary start steps
-		// but skip further abort tests
-		return false
-	} else {
-		return t.abortPing() || t.abortPeerUp()
-	}
+	return t.abortPing() || t.abortPeerUp()
 }
 
 func (t *T) abortPing() bool {
