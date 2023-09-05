@@ -656,10 +656,10 @@ func (t T) DoAsync() error {
 			}
 		} else {
 			toWait++
-			var monitorUpdateQueued api.MonitorUpdateQueued
-			if err := json.Unmarshal(b, &monitorUpdateQueued); err == nil {
+			var orchestrationQueued api.OrchestrationQueued
+			if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
 				r = result{
-					OrchestrationId: monitorUpdateQueued.OrchestrationId,
+					OrchestrationId: orchestrationQueued.OrchestrationId,
 					Path:            p.String(),
 				}
 			} else {
@@ -708,31 +708,6 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	/*
-		c, err := client.New(client.WithURL(t.Server))
-		if err != nil {
-			return err
-		}
-		req := c.NewPostObjectAction()
-		req.ObjectSelector = t.ObjectSelector
-		req.NodeSelector = t.NodeSelector
-		req.Action = t.Action
-		req.Options = t.PostFlags
-		b, err := req.Do()
-		if err != nil {
-			return err
-		}
-		human := func() string {
-			s := fmt.Sprintln(string(b))
-			return s
-		}
-		output.Renderer{
-			Format:        t.Format,
-			Color:         t.Color,
-			Data:          b,
-			HumanRenderer: human,
-		}.Print()
-	*/
 	return fmt.Errorf("todo")
 }
 

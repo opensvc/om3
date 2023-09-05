@@ -6,7 +6,7 @@ package api
 
 import "fmt"
 
-func (t MonitorUpdateQueued) String() (out string) {
+func (t OrchestrationQueued) String() (out string) {
 	return fmt.Sprint(t.OrchestrationId)
 }
 
