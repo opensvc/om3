@@ -1640,6 +1640,27 @@ func newCmdObjectInstance(kind string) *cobra.Command {
 	}
 }
 
+func newCmdObjectInstanceConfig(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "config",
+		Aliases: []string{"conf", "cf"},
+	}
+}
+
+func newCmdObjectInstanceMonitor(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "monitor",
+		Aliases: []string{"mon"},
+	}
+}
+
+func newCmdObjectInstanceStatus(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "status",
+		Aliases: []string{"stat", "st"},
+	}
+}
+
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "show",
@@ -2193,6 +2214,51 @@ func newCmdObjectInstanceLs(kind string) *cobra.Command {
 		Use:     "ls",
 		Aliases: []string{"list"},
 		Short:   "object instances list",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectInstanceConfigLs(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceConfigLs
+	cmd := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "object instance configs list",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectInstanceStatusLs(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStatusLs
+	cmd := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "object instance statuses list",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectInstanceMonitorLs(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceMonitorLs
+	cmd := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "object instances monitors list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
