@@ -131,7 +131,7 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		LocalExpect:    instance.MonitorLocalExpectNone,
 		GlobalExpect:   instance.MonitorGlobalExpectNone,
 		State:          instance.MonitorStateIdle,
-		Resources:      make(map[string]instance.ResourceMonitor),
+		Resources:      make(instance.ResourceMonitors, 0),
 		Children:       make(map[string]status.T),
 		Parents:        make(map[string]status.T),
 		StateUpdatedAt: time.Now(),

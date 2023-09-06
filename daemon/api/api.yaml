@@ -1810,7 +1810,7 @@ components:
         resources:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/ResourceMonitor'
         updated_at:
           type: string
           format: date-time
@@ -2537,12 +2537,15 @@ components:
           path: github.com/opensvc/om3/core/instance
       type: object
       required:
+        - rid
         - is_disabled
         - is_monitored
         - is_standby
         - restart
         - restart_delay
       properties:
+        rid:
+          type: string
         is_disabled:
           type: boolean
         is_monitored:
@@ -2622,6 +2625,30 @@ components:
             type: string
         type:
           type: string
+    ResourceMonitor:
+      x-go-type: instance.ResourceMonitor
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/instance
+      type: object
+      required:
+        - rid
+        - restart
+      properties:
+        rid:
+          type: string
+        restart:
+          $ref: '#/components/schemas/ResourceMonitorRestart'
+    ResourceMonitorRestart:
+      type: object
+      required:
+        - remaining
+        - last_at
+      properties:
+        remaining:
+          type: integer
+        last_at:
+          type: string
+          format: date-time
     ResourceId:
       type: string
     ResourceLog:
