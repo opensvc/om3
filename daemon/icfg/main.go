@@ -380,20 +380,21 @@ func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 	return m
 }
 
-func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {
-	m := make(map[string]instance.ResourceConfig)
+func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
+	m := make(instance.ResourceConfigs, 0)
 	for _, section := range cf.SectionStrings() {
 		switch section {
 		case "env", "DEFAULT":
 			continue
 		}
-		m[section] = instance.ResourceConfig{
+		m = append(m, instance.ResourceConfig{
+			Rid:          section,
 			RestartDelay: cf.GetDuration(key.New(section, "restart_delay")),
 			Restart:      cf.GetInt(key.New(section, "restart")),
 			IsDisabled:   cf.GetBool(key.New(section, "disable")),
 			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
 			IsStandby:    cf.GetBool(key.New(section, "standby")),
-		}
+		})
 	}
 	return m
 }

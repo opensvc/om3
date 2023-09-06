@@ -84,8 +84,11 @@ func (o *imon) orchestrateResourceRestart() {
 		case instance.MonitorActionFreezeStop:
 		case instance.MonitorActionReboot:
 		case instance.MonitorActionSwitch:
+		case instance.MonitorActionNone:
+			o.log.Error().Msgf("skip monitor action: not configured")
+			return
 		default:
-			o.log.Error().Msgf("skip monitor action: unsupported: %s", o.instConfig.MonitorAction)
+			o.log.Error().Msgf("skip monitor action: not supported: %s", o.instConfig.MonitorAction)
 			return
 		}
 
@@ -114,77 +117,73 @@ func (o *imon) orchestrateResourceRestart() {
 		}
 	}
 
-	resetTimer := func(rid string) {
-		todoRestart.Del(rid)
-		todoStandby.Del(rid)
-		if timer, ok := o.state.Resources.GetRestartTimer(rid); ok && timer != nil {
-			o.log.Info().Msgf("resource %s is up, reset delayed restart", rid)
-			timer.Stop()
-			o.state.Resources.SetRestartTimer(rid, nil)
-			o.change = true
+	resetTimer := func(rmon *instance.ResourceMonitor) {
+		todoRestart.Del(rmon.Rid)
+		todoStandby.Del(rmon.Rid)
+		if rmon.Restart.Timer != nil {
+			o.log.Info().Msgf("resource %s is up, reset delayed restart", rmon.Rid)
+			o.change = rmon.StopRestartTimer()
+			o.state.Resources.Set(*rmon)
 		}
 	}
 
-	resetRemaining := func(rid string) {
-		rcfg, ok := o.instConfig.Resources[rid]
-		if !ok {
-			return
-		}
-		if remaining, ok := o.state.Resources.GetRestartRemaining(rid); ok && remaining != rcfg.Restart {
-			o.log.Info().Msgf("resource %s is up, reset restart count to the max (%d -> %d)", rid, remaining, rcfg.Restart)
+	resetRemaining := func(rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
+		if rmon.Restart.Remaining != rcfg.Restart {
+			o.log.Info().Msgf("resource %s is up, reset restart count to the max (%d -> %d)", rcfg.Rid, rmon.Restart.Remaining, rcfg.Restart)
 			o.state.MonitorActionExecutedAt = time.Time{}
-			o.state.Resources.SetRestartRemaining(rid, rcfg.Restart)
+			rmon.Restart.Remaining = rcfg.Restart
+			o.state.Resources.Set(*rmon)
 			o.change = true
 		}
 	}
 
-	resetRemainingAndTimer := func(rid string) {
-		resetRemaining(rid)
-		resetTimer(rid)
+	resetRemainingAndTimer := func(rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
+		resetRemaining(rcfg, rmon)
+		resetTimer(rmon)
 	}
 
 	resetTimers := func() {
-		for _, res := range o.instStatus[o.localhost].Resources {
-			resetTimer(res.Rid)
+		for _, rmon := range o.state.Resources {
+			resetTimer(&rmon)
 		}
 	}
 
 	planFor := func(rid string, resStatus status.T, started bool) {
-		rcfg, ok := o.instConfig.Resources[rid]
+		rcfg := o.instConfig.Resources.Get(rid)
+		rmon := o.state.Resources.Get(rid)
 		switch {
-		case !ok:
+		case rcfg == nil:
+			return
+		case rmon == nil:
 			return
 		case rcfg.IsDisabled:
 			o.log.Debug().Msgf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
-			resetRemainingAndTimer(rid)
+			resetRemainingAndTimer(rcfg, rmon)
 		case resStatus.Is(status.NotApplicable, status.Undef):
 			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rid)
+			resetRemainingAndTimer(rcfg, rmon)
 		case resStatus.Is(status.Up, status.StandbyUp):
 			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rid)
-		case o.state.Resources.HasRestartTimer(rid):
+			resetRemainingAndTimer(rcfg, rmon)
+		case rmon.Restart.Timer != nil:
 			o.log.Debug().Msgf("resource %s restart skip: already has a delay timer", rid)
 		case !o.state.MonitorActionExecutedAt.IsZero():
 			o.log.Debug().Msgf("resource %s restart skip: already ran the monitor action", rid)
-		default:
-			rmon := o.state.Resources[rid]
-			if started {
-				o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-				if rmon.Restart.Remaining == 0 {
-					o.state.MonitorActionExecutedAt = time.Now()
-					o.change = true
-					doMonitorAction(rid)
-				} else {
-					todoRestart.Add(rid)
-				}
-			} else if rcfg.IsStandby {
-				o.log.Info().Msgf("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-				todoStandby.Add(rid)
+		case started:
+			o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+			if rmon.Restart.Remaining == 0 {
+				o.state.MonitorActionExecutedAt = time.Now()
+				o.change = true
+				doMonitorAction(rid)
 			} else {
-				o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
-				resetTimer(rid)
+				todoRestart.Add(rid)
 			}
+		case rcfg.IsStandby:
+			o.log.Info().Msgf("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+			todoStandby.Add(rid)
+		default:
+			o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
+			resetTimer(rmon)
 		}
 	}
 
@@ -193,8 +192,14 @@ func (o *imon) orchestrateResourceRestart() {
 		rids := make([]string, 0)
 		now := time.Now()
 		for rid, _ := range todo {
-			rcfg := o.instConfig.Resources[rid]
-			rmon := o.state.Resources[rid]
+			rcfg := o.instConfig.Resources.Get(rid)
+			if rcfg == nil {
+				continue
+			}
+			rmon := o.state.Resources.Get(rid)
+			if rmon == nil {
+				continue
+			}
 			if rcfg.RestartDelay != nil {
 				notBefore := rmon.Restart.LastAt.Add(*rcfg.RestartDelay)
 				if now.Before(notBefore) {
@@ -217,8 +222,13 @@ func (o *imon) orchestrateResourceRestart() {
 		timer := time.AfterFunc(delay, func() {
 			now := time.Now()
 			for _, rid := range rids {
-				o.state.Resources.SetRestartLastAt(rid, now)
-				o.state.Resources.SetRestartTimer(rid, nil)
+				rmon := o.state.Resources.Get(rid)
+				if rmon == nil {
+					continue
+				}
+				rmon.Restart.LastAt = now
+				rmon.Restart.Timer = nil
+				o.state.Resources.Set(*rmon)
 				o.change = true
 			}
 			action := func() error {
@@ -227,8 +237,13 @@ func (o *imon) orchestrateResourceRestart() {
 			o.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		})
 		for _, rid := range rids {
-			o.state.Resources.DecRestartRemaining(rid)
-			o.state.Resources.SetRestartTimer(rid, timer)
+			rmon := o.state.Resources.Get(rid)
+			if rmon == nil {
+				continue
+			}
+			rmon.DecRestartRemaining()
+			rmon.Restart.Timer = timer
+			o.state.Resources.Set(*rmon)
 			o.change = true
 		}
 	}
@@ -241,8 +256,13 @@ func (o *imon) orchestrateResourceRestart() {
 		timer := time.AfterFunc(delay, func() {
 			now := time.Now()
 			for _, rid := range rids {
-				o.state.Resources.SetRestartLastAt(rid, now)
-				o.state.Resources.SetRestartTimer(rid, nil)
+				rmon := o.state.Resources.Get(rid)
+				if rmon == nil {
+					continue
+				}
+				rmon.Restart.LastAt = now
+				rmon.Restart.Timer = nil
+				o.state.Resources.Set(*rmon)
 				o.change = true
 			}
 			action := func() error {
@@ -251,8 +271,13 @@ func (o *imon) orchestrateResourceRestart() {
 			o.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		})
 		for _, rid := range rids {
-			o.state.Resources.DecRestartRemaining(rid)
-			o.state.Resources.SetRestartTimer(rid, timer)
+			rmon := o.state.Resources.Get(rid)
+			if rmon == nil {
+				continue
+			}
+			rmon.DecRestartRemaining()
+			rmon.Restart.Timer = timer
+			o.state.Resources.Set(*rmon)
 			o.change = true
 		}
 	}
@@ -319,8 +344,8 @@ func (o *imon) orchestrateResourceRestart() {
 
 	started := instMonitor.LocalExpect == instance.MonitorLocalExpectStarted
 
-	for _, res := range o.instStatus[o.localhost].Resources {
-		planFor(res.Rid, res.Status, started)
+	for _, rstat := range o.instStatus[o.localhost].Resources {
+		planFor(rstat.Rid, rstat.Status, started)
 	}
 	doStandby()
 	doRestart()
