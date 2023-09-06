@@ -39,18 +39,19 @@ type (
 		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done" yaml:"orchestration_is_done"`
 
-		SessionId               uuid.UUID          `json:"session_id" yaml:"session_id"`
-		State                   MonitorState       `json:"state" yaml:"state"`
-		StateUpdatedAt          time.Time          `json:"state_updated_at" yaml:"state_updated_at"`
-		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
-		IsPreserved             bool               `json:"preserved" yaml:"preserved"`
-		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
-		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
+		SessionId               uuid.UUID        `json:"session_id" yaml:"session_id"`
+		State                   MonitorState     `json:"state" yaml:"state"`
+		StateUpdatedAt          time.Time        `json:"state_updated_at" yaml:"state_updated_at"`
+		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
+		IsPreserved             bool             `json:"preserved" yaml:"preserved"`
+		Resources               ResourceMonitors `json:"resources,omitempty" yaml:"resources,omitempty"`
+		UpdatedAt               time.Time        `json:"updated_at" yaml:"updated_at"`
 
 		Parents  map[string]status.T `json:"parents,omitempty" yaml:"parents,omitempty"`
 		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
 	}
 
+	ResourceMonitors   []ResourceMonitor
 	ResourceMonitorMap map[string]ResourceMonitor
 
 	// MonitorUpdate is embedded in the SetInstanceMonitor message to
@@ -69,6 +70,7 @@ type (
 	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
 	ResourceMonitor struct {
+		Rid     string                 `json:"rid,omitempty" yaml:"rid,omitempty"`
 		Restart ResourceMonitorRestart `json:"restart" yaml:"restart"`
 	}
 	ResourceMonitorRestart struct {
@@ -264,6 +266,7 @@ var (
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 
+	MonitorActionNone       MonitorAction = ""
 	MonitorActionCrash      MonitorAction = "crash"
 	MonitorActionFreezeStop MonitorAction = "freeze_stop"
 	MonitorActionReboot     MonitorAction = "reboot"
@@ -361,33 +364,33 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (m ResourceMonitorMap) DecRestartRemaining(rid string) {
-	if rmon, ok := m[rid]; ok && rmon.Restart.Remaining > 0 {
+func (t ResourceMonitors) AsMap() ResourceMonitorMap {
+	m := make(ResourceMonitorMap)
+	for _, d := range t {
+		m[d.Rid] = d
+	}
+	return m
+}
+
+func (t ResourceMonitorMap) AsList() []ResourceMonitor {
+	l := make([]ResourceMonitor, len(t))
+	i := 0
+	for rid, d := range t {
+		d.Rid = rid
+		l[i] = d
+		i += 1
+	}
+	return l
+}
+
+func (rmon *ResourceMonitor) DecRestartRemaining() {
+	if rmon.Restart.Remaining > 0 {
 		rmon.Restart.Remaining -= 1
-		m[rid] = rmon
 	}
 }
 
-func (m ResourceMonitorMap) GetRestartRemaining(rid string) (int, bool) {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Remaining, true
-	} else {
-		return 0, false
-	}
-}
-
-func (m ResourceMonitorMap) GetRestart(rid string) (ResourceMonitorRestart, bool) {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart, true
-	} else {
-		return ResourceMonitorRestart{}, false
-	}
-}
-
-func (m ResourceMonitorMap) StopRestartTimer(rid string) bool {
-	if rmon, ok := m[rid]; !ok {
-		return false
-	} else if rmon.Restart.Timer == nil {
+func (rmon *ResourceMonitor) StopRestartTimer() bool {
+	if rmon.Restart.Timer == nil {
 		return false
 	} else {
 		rmon.Restart.Timer.Stop()
@@ -396,39 +399,22 @@ func (m ResourceMonitorMap) StopRestartTimer(rid string) bool {
 	}
 }
 
-func (m ResourceMonitorMap) GetRestartTimer(rid string) (*time.Timer, bool) {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Timer, true
-	} else {
-		return nil, false
+func (l ResourceMonitors) Set(m ResourceMonitor) {
+	for i, rmon := range l {
+		if m.Rid == rmon.Rid {
+			l[i] = m
+			return
+		}
 	}
+	l = append(l, m)
 }
 
-func (m ResourceMonitorMap) HasRestartTimer(rid string) bool {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Timer != nil
-	} else {
-		return false
+func (l ResourceMonitors) Get(rid string) *ResourceMonitor {
+	for _, rmon := range l {
+		if rmon.Rid != rid {
+			continue
+		}
+		return &rmon
 	}
-}
-
-func (m ResourceMonitorMap) SetRestartLastAt(rid string, v time.Time) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.LastAt = v
-		m[rid] = rmon
-	}
-}
-
-func (m ResourceMonitorMap) SetRestartRemaining(rid string, v int) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.Remaining = v
-		m[rid] = rmon
-	}
-}
-
-func (m ResourceMonitorMap) SetRestartTimer(rid string, v *time.Timer) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.Timer = v
-		m[rid] = rmon
-	}
+	return nil
 }

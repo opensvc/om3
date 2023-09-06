@@ -616,6 +616,15 @@ type ResourceLogEntry struct {
 	Message string `json:"message"`
 }
 
+// ResourceMonitor defines model for ResourceMonitor.
+type ResourceMonitor = instance.ResourceMonitor
+
+// ResourceMonitorRestart defines model for ResourceMonitorRestart.
+type ResourceMonitorRestart struct {
+	LastAt    time.Time `json:"last_at"`
+	Remaining int       `json:"remaining"`
+}
+
 // ResourceProvisionStatus defines model for ResourceProvisionStatus.
 type ResourceProvisionStatus struct {
 	Mtime time.Time `json:"mtime"`

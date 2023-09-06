@@ -134,7 +134,7 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
 	// Restart and retries
 	retries := 0
-	if rmon, ok := mon.Resources[rid.Name]; ok {
+	if rmon, ok := mon.Resources.AsMap()[rid.Name]; ok {
 		retries = rmon.Restart.Remaining
 	}
 	return r.Restart.FlagString(retries)
@@ -142,11 +142,7 @@ func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.Expose
 
 func (mon Monitor) DeepCopy() *Monitor {
 	v := mon
-	restart := make(map[string]ResourceMonitor)
-	for s, val := range v.Resources {
-		restart[s] = val
-	}
-	v.Resources = restart
+	v.Resources = append(ResourceMonitors{}, v.Resources...)
 	if mon.GlobalExpectOptions != nil {
 		switch mon.GlobalExpect {
 		case MonitorGlobalExpectPlacedAt:
