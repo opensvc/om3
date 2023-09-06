@@ -11,12 +11,12 @@ import (
 )
 
 type (
-	CmdObjectInstanceLs struct {
+	CmdObjectInstanceMonitorLs struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
+func (t *CmdObjectInstanceMonitorLs) Run(selector, kind string) error {
 	var (
 		data any
 		err  error
@@ -27,11 +27,11 @@ func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	params := api.GetInstanceParams{Path: &mergedSelector}
+	params := api.GetInstanceMonitorParams{Path: &mergedSelector}
 	if t.NodeSelector != "" {
 		params.Node = &t.NodeSelector
 	}
-	resp, err := c.GetInstanceWithResponse(context.Background(), &params)
+	resp, err := c.GetInstanceMonitorWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
@@ -48,7 +48,7 @@ func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
 		data = *resp.JSON500
 	}
 	renderer := output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
+		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,STATE:data.state",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
