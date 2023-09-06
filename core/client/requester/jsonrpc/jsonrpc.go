@@ -136,23 +136,6 @@ func (t T) GetReader(req request.T) (reader io.ReadCloser, err error) {
 	return
 }
 
-// GetStream returns a chan of raw json messages
-func (t T) GetStream(req request.T) (chan []byte, error) {
-	q := make(chan []byte, 1000)
-	rc, err := t.doReq("GET", req)
-	if err != nil {
-		return q, err
-	}
-	go GetMessages(q, rc)
-	if t.Inet {
-		clearChan := make(chan []byte, 1000)
-		go decryptChan(q, clearChan)
-		return clearChan, nil
-	} else {
-		return q, nil
-	}
-}
-
 func New(url string) (*T, error) {
 	var inet bool
 	if url == "" {
