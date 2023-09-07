@@ -9,7 +9,7 @@ import (
 	"io"
 	"net"
 
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -54,7 +54,7 @@ func New(encConn net.Conn) *T {
 // Write encrypted d to T.Conn
 func (t *T) Write(b []byte) (n int, err error) {
 	cluster := ccfg.Get()
-	msg := &reqjsonrpc.Message{
+	msg := &omcrypto.Message{
 		NodeName:    hostname.Hostname(),
 		ClusterName: cluster.Name,
 		Key:         cluster.Secret(),
@@ -84,7 +84,7 @@ func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 	if encBytes, err = getMessage(t.Conn); err != nil {
 		return
 	}
-	encMsg := reqjsonrpc.NewMessage(encBytes)
+	encMsg := omcrypto.NewMessage(encBytes)
 	if clearBytes, nodename, err = encMsg.DecryptWithNode(); err != nil {
 		return
 	}

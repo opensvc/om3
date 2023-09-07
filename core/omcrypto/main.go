@@ -1,4 +1,5 @@
-package reqjsonrpc
+// Package omcrypto is responsible for Message Encrypt, Decrypt, DecryptWithNode
+package omcrypto
 
 import (
 	"bytes"
@@ -16,13 +17,14 @@ import (
 )
 
 type (
-	// Message is the message to encrypt for send via a JSONRPC inet requester.
+	// Message is the message to encrypt
 	Message struct {
 		ClusterName string
 		NodeName    string
 		Key         string
 		Data        []byte
 	}
+
 	encryptedMessage struct {
 		ClusterName string `json:"clustername" yaml:"clustername"`
 		NodeName    string `json:"nodename" yaml:"nodename"`
@@ -45,7 +47,7 @@ func NewMessage(b []byte) *Message {
 
 // DecryptWithNode Decrypt the message
 //
-// returns decodedMsg []byte, nodename string, error
+// returns decodedMsg []byte, encryptorNodename string, error
 func (m *Message) DecryptWithNode() ([]byte, string, error) {
 	if len(m.Data) == 0 {
 		// fast return, Unmarshal will fail

@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
@@ -107,7 +107,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 
 func (t *tx) encryptMessage(b []byte) ([]byte, error) {
 	cluster := ccfg.Get()
-	msg := &reqjsonrpc.Message{
+	msg := &omcrypto.Message{
 		NodeName:    hostname.Hostname(),
 		ClusterName: cluster.Name,
 		Key:         cluster.Secret(),

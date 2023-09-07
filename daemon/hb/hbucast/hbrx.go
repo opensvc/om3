@@ -142,7 +142,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				}
 				continue
 			}
-			if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+			if err := conn.SetDeadline(time.Now().Add(100*time.Millisecond)); err != nil {
 				t.log.Info().Err(err).Msg("SetReadDeadline")
 				continue
 			}

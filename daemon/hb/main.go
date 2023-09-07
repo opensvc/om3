@@ -12,10 +12,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -305,12 +305,12 @@ func (t *T) msgToTx(ctx context.Context) error {
 				t.log.Debug().Msgf("remove %s from hb transmitters", txId)
 				delete(registeredTxMsgQueue, txId)
 			case msg := <-msgC:
-				var rMsg *reqjsonrpc.Message
+				var rMsg *omcrypto.Message
 				if b, err := json.Marshal(msg); err != nil {
 					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
 					continue
 				} else {
-					rMsg = reqjsonrpc.NewMessage(b)
+					rMsg = omcrypto.NewMessage(b)
 				}
 				b, err := rMsg.Encrypt()
 				if err != nil {
