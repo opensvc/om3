@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render/palette"
@@ -106,6 +107,11 @@ func init() {
 	}()
 	<-running
 	Load(nil)
+
+	// TODO: move this outside, to remove omcrypto deps. keep this here for
+	// cmds that needs omcrypto
+	omcrypto.SetClusterName(sectionCluster.Name)
+	omcrypto.SetClusterSecret(sectionCluster.Secret)
 }
 
 func ClusterSection() clusterSection {
