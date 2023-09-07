@@ -141,8 +141,8 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			}
 		}
 	}
-	for _, r := range c.Value.Resources {
-		i, ok := r.Info[ipAddrInfoKey]
+	for rid, rstat := range c.Value.Resources {
+		i, ok := rstat.Info[ipAddrInfoKey]
 		if !ok {
 			continue
 		}
@@ -197,9 +197,9 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			Content:  nameOnNode,
 		})
 
-		if rid, err := resourceid.Parse(r.Rid); err == nil {
-			nameWithResourceName := rid.Index() + "." + name
-			nameOnNodeWithResourceName := rid.Index() + "." + nameOnNode
+		if id, err := resourceid.Parse(rid); err == nil {
+			nameWithResourceName := id.Index() + "." + name
+			nameOnNodeWithResourceName := id.Index() + "." + nameOnNode
 
 			// Add a resource direct record (node agnostic)
 			stage(Record{
@@ -237,7 +237,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 				Content:  nameOnNodeWithResourceName,
 			})
 		}
-		stageSRVs(r)
+		stageSRVs(rstat)
 	}
 
 	for key, record := range existingRecords {

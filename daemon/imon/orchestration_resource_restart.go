@@ -117,34 +117,34 @@ func (o *imon) orchestrateResourceRestart() {
 		}
 	}
 
-	resetTimer := func(rmon *instance.ResourceMonitor) {
-		todoRestart.Del(rmon.Rid)
-		todoStandby.Del(rmon.Rid)
+	resetTimer := func(rid string, rmon *instance.ResourceMonitor) {
+		todoRestart.Del(rid)
+		todoStandby.Del(rid)
 		if rmon.Restart.Timer != nil {
-			o.log.Info().Msgf("resource %s is up, reset delayed restart", rmon.Rid)
+			o.log.Info().Msgf("resource %s is up, reset delayed restart", rid)
 			o.change = rmon.StopRestartTimer()
-			o.state.Resources.Set(*rmon)
+			o.state.Resources.Set(rid, *rmon)
 		}
 	}
 
-	resetRemaining := func(rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
+	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
 		if rmon.Restart.Remaining != rcfg.Restart {
-			o.log.Info().Msgf("resource %s is up, reset restart count to the max (%d -> %d)", rcfg.Rid, rmon.Restart.Remaining, rcfg.Restart)
+			o.log.Info().Msgf("resource %s is up, reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
 			o.state.MonitorActionExecutedAt = time.Time{}
 			rmon.Restart.Remaining = rcfg.Restart
-			o.state.Resources.Set(*rmon)
+			o.state.Resources.Set(rid, *rmon)
 			o.change = true
 		}
 	}
 
-	resetRemainingAndTimer := func(rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
-		resetRemaining(rcfg, rmon)
-		resetTimer(rmon)
+	resetRemainingAndTimer := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
+		resetRemaining(rid, rcfg, rmon)
+		resetTimer(rid, rmon)
 	}
 
 	resetTimers := func() {
-		for _, rmon := range o.state.Resources {
-			resetTimer(&rmon)
+		for rid, rmon := range o.state.Resources {
+			resetTimer(rid, &rmon)
 		}
 	}
 
@@ -158,13 +158,13 @@ func (o *imon) orchestrateResourceRestart() {
 			return
 		case rcfg.IsDisabled:
 			o.log.Debug().Msgf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
-			resetRemainingAndTimer(rcfg, rmon)
+			resetRemainingAndTimer(rid, rcfg, rmon)
 		case resStatus.Is(status.NotApplicable, status.Undef):
 			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rcfg, rmon)
+			resetRemainingAndTimer(rid, rcfg, rmon)
 		case resStatus.Is(status.Up, status.StandbyUp):
 			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rcfg, rmon)
+			resetRemainingAndTimer(rid, rcfg, rmon)
 		case rmon.Restart.Timer != nil:
 			o.log.Debug().Msgf("resource %s restart skip: already has a delay timer", rid)
 		case !o.state.MonitorActionExecutedAt.IsZero():
@@ -183,7 +183,7 @@ func (o *imon) orchestrateResourceRestart() {
 			todoStandby.Add(rid)
 		default:
 			o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
-			resetTimer(rmon)
+			resetTimer(rid, rmon)
 		}
 	}
 
@@ -228,7 +228,7 @@ func (o *imon) orchestrateResourceRestart() {
 				}
 				rmon.Restart.LastAt = now
 				rmon.Restart.Timer = nil
-				o.state.Resources.Set(*rmon)
+				o.state.Resources.Set(rid, *rmon)
 				o.change = true
 			}
 			action := func() error {
@@ -243,7 +243,7 @@ func (o *imon) orchestrateResourceRestart() {
 			}
 			rmon.DecRestartRemaining()
 			rmon.Restart.Timer = timer
-			o.state.Resources.Set(*rmon)
+			o.state.Resources.Set(rid, *rmon)
 			o.change = true
 		}
 	}
@@ -262,7 +262,7 @@ func (o *imon) orchestrateResourceRestart() {
 				}
 				rmon.Restart.LastAt = now
 				rmon.Restart.Timer = nil
-				o.state.Resources.Set(*rmon)
+				o.state.Resources.Set(rid, *rmon)
 				o.change = true
 			}
 			action := func() error {
@@ -277,7 +277,7 @@ func (o *imon) orchestrateResourceRestart() {
 			}
 			rmon.DecRestartRemaining()
 			rmon.Restart.Timer = timer
-			o.state.Resources.Set(*rmon)
+			o.state.Resources.Set(rid, *rmon)
 			o.change = true
 		}
 	}
@@ -344,8 +344,8 @@ func (o *imon) orchestrateResourceRestart() {
 
 	started := instMonitor.LocalExpect == instance.MonitorLocalExpectStarted
 
-	for _, rstat := range o.instStatus[o.localhost].Resources {
-		planFor(rstat.Rid, rstat.Status, started)
+	for rid, rstat := range o.instStatus[o.localhost].Resources {
+		planFor(rid, rstat.Status, started)
 	}
 	doStandby()
 	doRestart()

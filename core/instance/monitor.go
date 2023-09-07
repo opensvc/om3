@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (
@@ -51,8 +54,7 @@ type (
 		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
 	}
 
-	ResourceMonitors   []ResourceMonitor
-	ResourceMonitorMap map[string]ResourceMonitor
+	ResourceMonitors map[string]ResourceMonitor
 
 	// MonitorUpdate is embedded in the SetInstanceMonitor message to
 	// change some Monitor values. A nil value does not change the
@@ -70,7 +72,6 @@ type (
 	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
 	ResourceMonitor struct {
-		Rid     string                 `json:"rid,omitempty" yaml:"rid,omitempty"`
 		Restart ResourceMonitorRestart `json:"restart" yaml:"restart"`
 	}
 	ResourceMonitorRestart struct {
@@ -364,25 +365,6 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (t ResourceMonitors) AsMap() ResourceMonitorMap {
-	m := make(ResourceMonitorMap)
-	for _, d := range t {
-		m[d.Rid] = d
-	}
-	return m
-}
-
-func (t ResourceMonitorMap) AsList() []ResourceMonitor {
-	l := make([]ResourceMonitor, len(t))
-	i := 0
-	for rid, d := range t {
-		d.Rid = rid
-		l[i] = d
-		i += 1
-	}
-	return l
-}
-
 func (rmon *ResourceMonitor) DecRestartRemaining() {
 	if rmon.Restart.Remaining > 0 {
 		rmon.Restart.Remaining -= 1
@@ -399,22 +381,48 @@ func (rmon *ResourceMonitor) StopRestartTimer() bool {
 	}
 }
 
-func (l ResourceMonitors) Set(m ResourceMonitor) {
-	for i, rmon := range l {
-		if m.Rid == rmon.Rid {
-			l[i] = m
-			return
-		}
-	}
-	l = append(l, m)
+func (m ResourceMonitors) Set(rid string, rmon ResourceMonitor) {
+	m[rid] = rmon
 }
 
-func (l ResourceMonitors) Get(rid string) *ResourceMonitor {
-	for _, rmon := range l {
-		if rmon.Rid != rid {
-			continue
-		}
+func (m ResourceMonitors) Get(rid string) *ResourceMonitor {
+	if rmon, ok := m[rid]; ok {
 		return &rmon
+	} else {
+		return nil
 	}
-	return nil
+}
+
+func (m ResourceMonitors) DeepCopy() ResourceMonitors {
+	return xmap.Copy(m)
+}
+
+func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
+	// Restart and retries
+	retries := 0
+	if rmon := mon.Resources.Get(rid.Name); rmon != nil {
+		retries = rmon.Restart.Remaining
+	}
+	return r.Restart.FlagString(retries)
+}
+
+func (mon Monitor) DeepCopy() *Monitor {
+	v := mon
+	v.Resources = v.Resources.DeepCopy()
+	if mon.GlobalExpectOptions != nil {
+		switch mon.GlobalExpect {
+		case MonitorGlobalExpectPlacedAt:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			var placedAt MonitorGlobalExpectOptionsPlacedAt
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &placedAt)
+			v.GlobalExpectOptions = placedAt
+		// TODO add other cases for globalExpect values that requires GlobalExpectOptions
+		default:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+		}
+	}
+	return &v
 }
