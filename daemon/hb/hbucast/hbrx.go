@@ -13,8 +13,8 @@ import (
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/encryptconn"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
-	"github.com/opensvc/om3/daemon/listener/encryptconn"
 )
 
 type (
