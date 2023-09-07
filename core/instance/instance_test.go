@@ -29,7 +29,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 		Overall:     status.Down,
 		Provisioned: provisioned.Mixed,
 		UpdatedAt:   time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
-		Resources: []resource.ExposedStatus{
+		Resources: []resource.Status{
 			{
 				ResourceID: (*resourceid.T)(nil),
 				Rid:        "volume#1",

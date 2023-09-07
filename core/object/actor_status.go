@@ -105,7 +105,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) e
 	data.Resources = make(instance.ResourceStatuses)
 	var mu sync.Mutex
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
-		xd := resource.GetExposedStatus(ctx, r)
+		xd := resource.GetStatus(ctx, r)
 
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.

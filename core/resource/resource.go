@@ -203,9 +203,9 @@ type (
 	// TagSet is the list of unique tag names found in the resource definition.
 	TagSet []string
 
-	// ExposedStatus is the structure representing the resource status,
+	// Status is the structure representing the resource status,
 	// which is embedded in the instance status.
-	ExposedStatus struct {
+	Status struct {
 		ResourceID  *resourceid.T     `json:"-" yaml:"-"`
 		Label       string            `json:"label" yaml:"label"`
 		Log         []*StatusLogEntry `json:"log,omitempty" yaml:"log,omitempty"`
@@ -234,7 +234,7 @@ type (
 
 	Hook int
 
-	ExposedStatusInfoSchedAction struct {
+	StatusInfoSchedAction struct {
 		Last time.Time `json:"last" yaml:"last"`
 	}
 
@@ -866,7 +866,7 @@ func Start(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Resync execute the resource Resync function, if exposed.
+// Resync execute the resource Resync function, if implemented by the driver.
 func Resync(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(resyncer)
@@ -885,7 +885,7 @@ func Resync(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Full execute the resource Update function, if exposed.
+// Full execute the resource Update function, if implemented by the driver.
 func Full(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(fuller)
@@ -904,7 +904,7 @@ func Full(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Update execute the resource Update function, if exposed.
+// Update execute the resource Update function, if implemented by the driver.
 func Update(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(updater)
@@ -1134,9 +1134,9 @@ func SCSIPersistentReservationStatus(r Driver) status.T {
 	}
 }
 
-// GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
-func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
-	return ExposedStatus{
+// GetStatus returns the resource Status for embedding into the instance.Status.
+func GetStatus(ctx context.Context, r Driver) Status {
+	return Status{
 		Label:       formatResourceLabel(r),
 		Type:        r.Manifest().DriverID.String(),
 		Status:      EvalStatus(ctx, r),
@@ -1144,7 +1144,7 @@ func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
-		Info:        exposedStatusInfo(r),
+		Info:        getStatusInfo(r),
 		Restart:     RestartFlag(r.RestartCount()),
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
@@ -1154,7 +1154,7 @@ func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 }
 
 func printStatus(ctx context.Context, r Driver) error {
-	data := GetExposedStatus(ctx, r)
+	data := GetStatus(ctx, r)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(data)
@@ -1214,22 +1214,22 @@ func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f fun
 	return f()
 }
 
-func exposedStatusInfo(t Driver) (data map[string]any) {
+func getStatusInfo(t Driver) (data map[string]any) {
 	if i, ok := t.(StatusInfoer); ok {
 		data = i.StatusInfo()
 	} else {
 		data = make(map[string]any)
 	}
 	if i, ok := t.(Scheduler); ok {
-		data["sched"] = exposedStatusInfoSched(i)
+		data["sched"] = getStatusInfoSched(i)
 	}
 	return data
 }
 
-func exposedStatusInfoSched(t Scheduler) map[string]ExposedStatusInfoSchedAction {
-	data := make(map[string]ExposedStatusInfoSchedAction)
+func getStatusInfoSched(t Scheduler) map[string]StatusInfoSchedAction {
+	data := make(map[string]StatusInfoSchedAction)
 	for _, e := range t.Schedules() {
-		ad := ExposedStatusInfoSchedAction{
+		ad := StatusInfoSchedAction{
 			Last: e.LastRunAt,
 		}
 		data[e.Action] = ad
@@ -1237,14 +1237,14 @@ func exposedStatusInfoSched(t Scheduler) map[string]ExposedStatusInfoSchedAction
 	return data
 }
 
-func (exposedStatus ExposedStatus) DeepCopy() *ExposedStatus {
-	newValue := ExposedStatus{}
-	if b, err := json.Marshal(exposedStatus); err != nil {
-		return &ExposedStatus{}
+func (rstat Status) DeepCopy() *Status {
+	newValue := Status{}
+	if b, err := json.Marshal(rstat); err != nil {
+		return &Status{}
 	} else if err := json.Unmarshal(b, &newValue); err == nil {
 		return &newValue
 	}
-	return &ExposedStatus{}
+	return &Status{}
 }
 
 func (t SCSIPersistentReservation) IsSCSIPersistentReservationPreemptAbortDisabled() bool {

@@ -127,7 +127,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		})
 
 	}
-	stageSRVs := func(r resource.ExposedStatus) {
+	stageSRVs := func(r resource.Status) {
 		i, ok := r.Info[exposeInfoKey]
 		if !ok {
 			return
