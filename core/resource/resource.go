@@ -714,7 +714,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 
 // Boot deactivates a resource when the node is rebooted
 func Boot(ctx context.Context, r Driver) error {
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	return boot(ctx, r)
 }
 
@@ -724,7 +724,7 @@ func Run(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -753,7 +753,7 @@ func Run(ctx context.Context, r Driver) error {
 
 // PRStop deactivates a resource interfacer S3GPR
 func PRStop(ctx context.Context, r Driver) error {
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -769,7 +769,7 @@ func PRStop(ctx context.Context, r Driver) error {
 
 // PRStart activates a resource interfacer S3GPR
 func PRStart(ctx context.Context, r Driver) error {
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -799,7 +799,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 	if !r.IsStandby() {
 		return nil
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -836,7 +836,7 @@ func Start(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -873,7 +873,7 @@ func Resync(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -892,7 +892,7 @@ func Full(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -911,7 +911,7 @@ func Update(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
@@ -925,13 +925,13 @@ func Update(ctx context.Context, r Driver) error {
 
 // Shutdown deactivates a resource even if standby is true
 func Shutdown(ctx context.Context, r Driver) error {
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	return shutdown(ctx, r)
 }
 
 // Stop deactivates a resource
 func Stop(ctx context.Context, r Driver) error {
-	defer Status(ctx, r)
+	defer EvalStatus(ctx, r)
 	return stop(ctx, r)
 }
 
@@ -1058,8 +1058,8 @@ func stop(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Status evaluates the status of a resource interfacer
-func Status(ctx context.Context, r Driver) status.T {
+// EvalStatus evaluates the status of a resource interfacer
+func EvalStatus(ctx context.Context, r Driver) status.T {
 	r.StatusLog().Reset()
 	if r.IsStatusDisabled() {
 		r.StatusLog().Info("nostatus")
@@ -1139,7 +1139,7 @@ func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 	return ExposedStatus{
 		Label:       formatResourceLabel(r),
 		Type:        r.Manifest().DriverID.String(),
-		Status:      Status(ctx, r),
+		Status:      EvalStatus(ctx, r),
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),

@@ -384,7 +384,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		sb := statusbus.FromContext(ctx)
-		sb.Post(r.RID(), resource.Status(ctx, r), false)
+		sb.Post(r.RID(), resource.EvalStatus(ctx, r), false)
 		return nil
 	})
 	if err := t.abortStart(ctx, l); err != nil {
