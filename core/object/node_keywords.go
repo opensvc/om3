@@ -443,21 +443,8 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section: "listener",
-		Option:  "tls_addr",
-		Default: "",
-		Example: "1.2.3.4",
-		Text:    keywords.NewText(fs, "text/kw/node/listener.tls_addr"),
-	},
-	{
-		Section:   "listener",
-		Option:    "tls_port",
-		Converter: converters.Int,
-		Default:   "1215",
-		Text:      keywords.NewText(fs, "text/kw/node/listener.tls_port"),
-	},
-	{
-		Section: "listener",
 		Option:  "addr",
+		Aliases: []string{"tls_addr"},
 		Default: "",
 		Example: "1.2.3.4",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.addr"),
@@ -465,6 +452,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section:   "listener",
 		Option:    "port",
+		Aliases:   []string{"tls_port"},
 		Converter: converters.Int,
 		Default:   "1214",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
