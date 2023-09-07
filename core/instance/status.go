@@ -27,14 +27,14 @@ type (
 		UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
 	}
 
-	ResourceStatuses map[string]resource.ExposedStatus
+	ResourceStatuses map[string]resource.Status
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).
 	ResourceRunningSet []string
 
 	// ResourceOrder is a sortable list representation of the
 	// instance status resources map.
-	ResourceOrder []resource.ExposedStatus
+	ResourceOrder []resource.Status
 )
 
 func (m ResourceStatuses) DeepCopy() ResourceStatuses {
@@ -59,8 +59,8 @@ func (t ResourceRunningSet) Has(rid string) bool {
 // 1/ driver group
 // 2/ subset
 // 3/ resource name
-func (t *Status) SortedResources() []resource.ExposedStatus {
-	l := make([]resource.ExposedStatus, 0)
+func (t *Status) SortedResources() []resource.Status {
+	l := make([]resource.Status, 0)
 	for rid, rstat := range t.Resources {
 		id, err := resourceid.Parse(rid)
 		if err != nil {
@@ -116,7 +116,7 @@ func (a ResourceOrder) Less(i, j int) bool {
 //	E  Encap
 //	P  Provisioned
 //	S  Standby
-func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) string {
+func (t Status) ResourceFlagsString(rid resourceid.T, r resource.Status) string {
 	flags := ""
 
 	// Running task or sync

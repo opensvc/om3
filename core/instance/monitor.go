@@ -397,7 +397,7 @@ func (m ResourceMonitors) DeepCopy() ResourceMonitors {
 	return xmap.Copy(m)
 }
 
-func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
+func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.Status) string {
 	// Restart and retries
 	retries := 0
 	if rmon := mon.Resources.Get(rid.Name); rmon != nil {
