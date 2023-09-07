@@ -133,7 +133,7 @@ func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	d := net.Dialer{}
 	addr := a.Uri
 	if !strings.Contains(addr, ":") {
-		addr += ":" + fmt.Sprint(daemonenv.RawPort)
+		addr += ":" + fmt.Sprint(daemonenv.HttpPort)
 	}
 	dialContext, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
