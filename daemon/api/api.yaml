@@ -193,7 +193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DaemonRunning'
+                type: boolean
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2112,29 +2112,6 @@ components:
         data:
           type: string
           format: byte
-    DaemonRunning:
-      type: object
-      required:
-        - data
-        - entrypoint
-        - status
-      properties:
-        entrypoint:
-          type: string
-        status:
-          type: integer
-        data:
-          type: array
-          items:
-            type: object
-            required:
-              - data
-              - endpoint
-            properties:
-              data:
-                type: boolean
-              endpoint:
-                type: string
     Role:
       type: string
       enum:
