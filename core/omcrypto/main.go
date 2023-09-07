@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -33,13 +32,28 @@ type (
 	}
 )
 
+var (
+	clusterName   string
+	clusterSecret string
+)
+
+func SetClusterName(s string) {
+	clusterName = s
+}
+
+func SetClusterSecret(s string) {
+	clusterSecret = s
+}
+
 // NewMessage allocates a new Message configured for the local node and cluster context
 func NewMessage(b []byte) *Message {
-	cluster := rawconfig.ClusterSection()
+	if clusterName == "" || clusterSecret == "" {
+		panic("NewMessage: unexpected empty cluster name or cluster secret")
+	}
 	m := &Message{
 		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
+		ClusterName: clusterName,
+		Key:         clusterSecret,
 		Data:        b,
 	}
 	return m
