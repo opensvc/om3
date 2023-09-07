@@ -568,45 +568,6 @@ type RelayMessages struct {
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
 
-// ResourceExposedStatus defines model for ResourceExposedStatus.
-type ResourceExposedStatus struct {
-	// Disable hints the resource ignores all state transition actions
-	Disable bool `json:"disable"`
-
-	// Encap indicates that the resource is handled by the encapsulated agents,
-	// and ignored at the hypervisor level
-	Encap bool `json:"encap"`
-
-	// Info key-value pairs providing interesting information to collect
-	// site-wide about this resource
-	Info  map[string]interface{} `json:"info"`
-	Label string                 `json:"label"`
-	Log   ResourceLog            `json:"log"`
-
-	// Monitor tells the daemon if it should trigger a monitor action when the
-	// resource is not up
-	Monitor bool `json:"monitor"`
-
-	// Optional is resource status aggregated into Overall instead of Avail instance status.
-	// Errors in optional resource don't stop a state transition action
-	Optional    bool                    `json:"optional"`
-	Provisioned ResourceProvisionStatus `json:"provisioned"`
-	Restart     int                     `json:"restart"`
-	Rid         ResourceId              `json:"rid"`
-
-	// Standby resource should always be up, even after a stop state transition action
-	Standby bool   `json:"standby"`
-	Status  Status `json:"status"`
-
-	// Subset the name of the subset this resource is assigned to
-	Subset string   `json:"subset"`
-	Tags   []string `json:"tags"`
-	Type   string   `json:"type"`
-}
-
-// ResourceId defines model for ResourceId.
-type ResourceId = string
-
 // ResourceLog defines model for ResourceLog.
 type ResourceLog = []ResourceLogEntry
 
@@ -633,8 +594,40 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
-// ResourcesConfig defines model for ResourcesConfig.
-type ResourcesConfig = []ResourceConfig
+// ResourceStatus defines model for ResourceStatus.
+type ResourceStatus struct {
+	// Disable hints the resource ignores all state transition actions
+	Disable bool `json:"disable"`
+
+	// Encap indicates that the resource is handled by the encapsulated agents,
+	// and ignored at the hypervisor level
+	Encap bool `json:"encap"`
+
+	// Info key-value pairs providing interesting information to collect
+	// site-wide about this resource
+	Info  map[string]interface{} `json:"info"`
+	Label string                 `json:"label"`
+	Log   ResourceLog            `json:"log"`
+
+	// Monitor tells the daemon if it should trigger a monitor action when the
+	// resource is not up
+	Monitor bool `json:"monitor"`
+
+	// Optional is resource status aggregated into Overall instead of Avail instance status.
+	// Errors in optional resource don't stop a state transition action
+	Optional    bool                    `json:"optional"`
+	Provisioned ResourceProvisionStatus `json:"provisioned"`
+	Restart     int                     `json:"restart"`
+
+	// Standby resource should always be up, even after a stop state transition action
+	Standby bool   `json:"standby"`
+	Status  Status `json:"status"`
+
+	// Subset the name of the subset this resource is assigned to
+	Subset string   `json:"subset"`
+	Tags   []string `json:"tags"`
+	Type   string   `json:"type"`
+}
 
 // Role defines model for Role.
 type Role string

@@ -207,7 +207,6 @@ type (
 	// which is embedded in the instance status.
 	ExposedStatus struct {
 		ResourceID  *resourceid.T     `json:"-" yaml:"-"`
-		Rid         string            `json:"rid" yaml:"rid"`
 		Label       string            `json:"label" yaml:"label"`
 		Log         []*StatusLogEntry `json:"log,omitempty" yaml:"log,omitempty"`
 		Status      status.T          `json:"status" yaml:"status"`
@@ -1138,7 +1137,6 @@ func SCSIPersistentReservationStatus(r Driver) status.T {
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
 func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 	return ExposedStatus{
-		Rid:         r.RID(),
 		Label:       formatResourceLabel(r),
 		Type:        r.Manifest().DriverID.String(),
 		Status:      Status(ctx, r),
