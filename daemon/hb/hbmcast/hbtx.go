@@ -12,10 +12,8 @@ import (
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -106,13 +104,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 }
 
 func (t *tx) encryptMessage(b []byte) ([]byte, error) {
-	cluster := ccfg.Get()
-	msg := &omcrypto.Message{
-		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret(),
-		Data:        b,
-	}
+	msg := omcrypto.NewMessage(b)
 	return msg.Encrypt()
 }
 

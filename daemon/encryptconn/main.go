@@ -10,8 +10,6 @@ import (
 	"net"
 
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/daemon/ccfg"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -53,13 +51,7 @@ func New(encConn net.Conn) *T {
 //
 // Write encrypted d to T.Conn
 func (t *T) Write(b []byte) (n int, err error) {
-	cluster := ccfg.Get()
-	msg := &omcrypto.Message{
-		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret(),
-		Data:        b,
-	}
+	msg := omcrypto.NewMessage(b)
 	encBytes, err := msg.Encrypt()
 	if err != nil {
 		return 0, err
