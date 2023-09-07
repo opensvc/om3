@@ -387,14 +387,13 @@ func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
 		case "env", "DEFAULT":
 			continue
 		}
-		m = append(m, instance.ResourceConfig{
-			Rid:          section,
+		m[section] = instance.ResourceConfig{
 			RestartDelay: cf.GetDuration(key.New(section, "restart_delay")),
 			Restart:      cf.GetInt(key.New(section, "restart")),
 			IsDisabled:   cf.GetBool(key.New(section, "disable")),
 			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
 			IsStandby:    cf.GetBool(key.New(section, "standby")),
-		})
+		}
 	}
 	return m
 }

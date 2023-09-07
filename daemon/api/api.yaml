@@ -1738,7 +1738,9 @@ components:
         priority:
           type: integer
         resources:
-          $ref: '#/components/schemas/ResourcesConfig'
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ResourceConfig'
         scope:
           type: array
           items:
@@ -1808,8 +1810,8 @@ components:
         is_preserved:
           type: boolean
         resources:
-          type: array
-          items:
+          type: object
+          additionalProperties:
             $ref: '#/components/schemas/ResourceMonitor'
         updated_at:
           type: string
@@ -1866,9 +1868,9 @@ components:
         provisioned:
           $ref: '#/components/schemas/Provisioned'
         resources:
-          type: array
-          items:
-            $ref: '#/components/schemas/ResourceExposedStatus'
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ResourceStatus'
         running:
           type: array
           items:
@@ -2527,25 +2529,18 @@ components:
       properties:
         messages:
           $ref: '#/components/schemas/RelayMessageList'
-    ResourcesConfig:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceConfig'
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
           path: github.com/opensvc/om3/core/instance
       type: object
       required:
-        - rid
         - is_disabled
         - is_monitored
         - is_standby
         - restart
         - restart_delay
       properties:
-        rid:
-          type: string
         is_disabled:
           type: boolean
         is_monitored:
@@ -2557,7 +2552,7 @@ components:
         restart_delay:
           type: string
           format: duration
-    ResourceExposedStatus:
+    ResourceStatus:
       type: object
       required:
         - disable
@@ -2569,8 +2564,6 @@ components:
         - optional
         - provisioned
         - restart
-        - rid
-        - rid
         - standby
         - status
         - subset
@@ -2608,8 +2601,6 @@ components:
           $ref: '#/components/schemas/ResourceProvisionStatus'
         restart:
           type: integer
-        rid:
-          $ref: '#/components/schemas/ResourceId'
         standby:
           type: boolean
           description: |
@@ -2631,11 +2622,8 @@ components:
           path: github.com/opensvc/om3/core/instance
       type: object
       required:
-        - rid
         - restart
       properties:
-        rid:
-          type: string
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
     ResourceMonitorRestart:
