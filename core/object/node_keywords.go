@@ -1,9 +1,12 @@
 package object
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 )
@@ -454,7 +457,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "port",
 		Aliases:   []string{"tls_port"},
 		Converter: converters.Int,
-		Default:   "1214",
+		Default:   fmt.Sprintf("%d", daemonenv.HttpPort),
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	},
 	{
