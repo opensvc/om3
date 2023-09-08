@@ -446,7 +446,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 		if !ok {
 			return ConfRes{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
 		}
-		if time.Now().After(allocation.ExpireAt) {
+		if time.Now().After(allocation.ExpiredAt) {
 			return ConfRes{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
 		}
 		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)

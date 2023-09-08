@@ -190,6 +190,9 @@ type ClientInterface interface {
 	// GetNodesInfo request
 	GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetObject request
+	GetObject(ctx context.Context, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostObjectActionAbort request with any body
 	PostObjectActionAbortWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -695,6 +698,18 @@ func (c *Client) GetNodeStatus(ctx context.Context, params *GetNodeStatusParams,
 
 func (c *Client) GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodesInfoRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetObject(ctx context.Context, params *GetObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2522,6 +2537,53 @@ func NewGetNodesInfoRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetObjectRequest generates requests for GetObject
+func NewGetObjectRequest(server string, params *GetObjectParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Path != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "path", runtime.ParamLocationQuery, *params.Path); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostObjectActionAbortRequest calls the generic PostObjectActionAbort builder with application/json body
 func NewPostObjectActionAbortRequest(server string, body PostObjectActionAbortJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3642,6 +3704,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodesInfo request
 	GetNodesInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesInfoResponse, error)
 
+	// GetObject request
+	GetObjectWithResponse(ctx context.Context, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
+
 	// PostObjectActionAbort request with any body
 	PostObjectActionAbortWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error)
 
@@ -4520,6 +4585,32 @@ func (r GetNodesInfoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodesInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetObjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ObjectArray
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetObjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetObjectResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5415,6 +5506,15 @@ func (c *ClientWithResponses) GetNodesInfoWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseGetNodesInfoResponse(rsp)
+}
+
+// GetObjectWithResponse request returning *GetObjectResponse
+func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, params *GetObjectParams, reqEditors ...RequestEditorFn) (*GetObjectResponse, error) {
+	rsp, err := c.GetObject(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetObjectResponse(rsp)
 }
 
 // PostObjectActionAbortWithBodyWithResponse request with arbitrary body returning *PostObjectActionAbortResponse
@@ -7252,6 +7352,60 @@ func ParseGetNodesInfoResponse(rsp *http.Response) (*GetNodesInfoResponse, error
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetObjectResponse parses an HTTP response from a GetObjectWithResponse call
+func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetObjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ObjectArray
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

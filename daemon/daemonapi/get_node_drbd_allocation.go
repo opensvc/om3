@@ -58,7 +58,7 @@ func (t *pendingDRBDAllocationsMap) ports() []int {
 func (t *pendingDRBDAllocationsMap) expire() {
 	now := time.Now()
 	for id, a := range t.m {
-		if a.ExpireAt.After(now) {
+		if a.ExpiredAt.After(now) {
 			delete(t.m, id)
 		}
 	}
@@ -81,8 +81,8 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
 	pendingDRBDAllocations.expire()
 
 	resp := api.DRBDAllocation{
-		Id:       uuid.New(),
-		ExpireAt: time.Now().Add(5 * time.Second),
+		Id:        uuid.New(),
+		ExpiredAt: time.Now().Add(5 * time.Second),
 	}
 
 	digest, err := drbd.GetDigest()
