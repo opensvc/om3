@@ -10,7 +10,7 @@ import (
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
 )
@@ -133,7 +133,8 @@ func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	d := net.Dialer{}
 	addr := a.Uri
 	if !strings.Contains(addr, ":") {
-		addr += ":" + fmt.Sprint(daemonenv.HttpPort)
+		port := ccfg.Get().Listener.Port
+		addr += fmt.Sprintf("addr:%d", port)
 	}
 	dialContext, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
