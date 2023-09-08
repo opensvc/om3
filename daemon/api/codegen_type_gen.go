@@ -9,6 +9,7 @@ import (
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/resource"
 )
 
 const (
@@ -618,8 +619,33 @@ type RelayMessages struct {
 	Messages RelayMessageList `json:"messages"`
 }
 
+// Resource defines model for Resource.
+type Resource struct {
+	Config  *ResourceConfig  `json:"config,omitempty"`
+	Monitor *ResourceMonitor `json:"monitor,omitempty"`
+	Status  *ResourceStatus  `json:"status,omitempty"`
+}
+
+// ResourceArray defines model for ResourceArray.
+type ResourceArray = []ResourceItem
+
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
+
+// ResourceConfigArray defines model for ResourceConfigArray.
+type ResourceConfigArray = []ResourceConfigItem
+
+// ResourceConfigItem defines model for ResourceConfigItem.
+type ResourceConfigItem struct {
+	Data ResourceConfig `json:"data"`
+	Meta ResourceMeta   `json:"meta"`
+}
+
+// ResourceItem defines model for ResourceItem.
+type ResourceItem struct {
+	Data Resource     `json:"data"`
+	Meta ResourceMeta `json:"meta"`
+}
 
 // ResourceLog defines model for ResourceLog.
 type ResourceLog = []ResourceLogEntry
@@ -630,8 +656,24 @@ type ResourceLogEntry struct {
 	Message string `json:"message"`
 }
 
+// ResourceMeta defines model for ResourceMeta.
+type ResourceMeta struct {
+	Node   string `json:"node"`
+	Object string `json:"object"`
+	Rid    string `json:"rid"`
+}
+
 // ResourceMonitor defines model for ResourceMonitor.
 type ResourceMonitor = instance.ResourceMonitor
+
+// ResourceMonitorArray defines model for ResourceMonitorArray.
+type ResourceMonitorArray = []ResourceMonitorItem
+
+// ResourceMonitorItem defines model for ResourceMonitorItem.
+type ResourceMonitorItem struct {
+	Data ResourceMonitor `json:"data"`
+	Meta ResourceMeta    `json:"meta"`
+}
 
 // ResourceMonitorRestart defines model for ResourceMonitorRestart.
 type ResourceMonitorRestart struct {
@@ -648,38 +690,15 @@ type ResourceProvisionStatus struct {
 }
 
 // ResourceStatus defines model for ResourceStatus.
-type ResourceStatus struct {
-	// Disable hints the resource ignores all state transition actions
-	Disable bool `json:"disable"`
+type ResourceStatus = resource.Status
 
-	// Encap indicates that the resource is handled by the encapsulated agents,
-	// and ignored at the hypervisor level
-	Encap bool `json:"encap"`
+// ResourceStatusArray defines model for ResourceStatusArray.
+type ResourceStatusArray = []ResourceStatusItem
 
-	// Info key-value pairs providing interesting information to collect
-	// site-wide about this resource
-	Info  map[string]interface{} `json:"info"`
-	Label string                 `json:"label"`
-	Log   ResourceLog            `json:"log"`
-
-	// Monitor tells the daemon if it should trigger a monitor action when the
-	// resource is not up
-	Monitor bool `json:"monitor"`
-
-	// Optional is resource status aggregated into Overall instead of Avail instance status.
-	// Errors in optional resource don't stop a state transition action
-	Optional    bool                    `json:"optional"`
-	Provisioned ResourceProvisionStatus `json:"provisioned"`
-	Restart     int                     `json:"restart"`
-
-	// Standby resource should always be up, even after a stop state transition action
-	Standby bool   `json:"standby"`
-	Status  Status `json:"status"`
-
-	// Subset the name of the subset this resource is assigned to
-	Subset string   `json:"subset"`
-	Tags   []string `json:"tags"`
-	Type   string   `json:"type"`
+// ResourceStatusItem defines model for ResourceStatusItem.
+type ResourceStatusItem struct {
+	Data ResourceStatus `json:"data"`
+	Meta ResourceMeta   `json:"meta"`
 }
 
 // Role defines model for Role.
@@ -763,6 +782,9 @@ type RelayClusterId = string
 // RelayNodename defines model for RelayNodename.
 type RelayNodename = string
 
+// RidOptional defines model for RidOptional.
+type RidOptional = string
+
 // Roles defines model for Roles.
 type Roles = []Role
 
@@ -840,7 +862,7 @@ type GetInstanceParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -849,7 +871,7 @@ type GetInstanceConfigParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -858,7 +880,7 @@ type GetInstanceMonitorParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -867,7 +889,7 @@ type GetInstanceStatusParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -879,7 +901,7 @@ type GetNetworksParams struct {
 
 // GetNodeParams defines parameters for GetNode.
 type GetNodeParams struct {
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -894,7 +916,7 @@ type GetNodeBacklogsParams struct {
 
 // GetNodeConfigParams defines parameters for GetNodeConfig.
 type GetNodeConfigParams struct {
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -921,13 +943,13 @@ type GetNodeLogsParams struct {
 
 // GetNodeMonitorParams defines parameters for GetNodeMonitor.
 type GetNodeMonitorParams struct {
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNodeStatusParams defines parameters for GetNodeStatus.
 type GetNodeStatusParams struct {
-	// Node object and instance selector expression.
+	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
@@ -992,6 +1014,54 @@ type GetRelayMessageParams struct {
 
 	// ClusterId the cluster id component of the slot id on the relay
 	ClusterId *RelayClusterId `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
+}
+
+// GetResourceParams defines parameters for GetResource.
+type GetResourceParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+
+	// Resource resource selector expression.
+	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
+}
+
+// GetResourceConfigParams defines parameters for GetResourceConfig.
+type GetResourceConfigParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+
+	// Resource resource selector expression.
+	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
+}
+
+// GetResourceMonitorParams defines parameters for GetResourceMonitor.
+type GetResourceMonitorParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+
+	// Resource resource selector expression.
+	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
+}
+
+// GetResourceStatusParams defines parameters for GetResourceStatus.
+type GetResourceStatusParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+
+	// Resource resource selector expression.
+	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
 
 // PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
