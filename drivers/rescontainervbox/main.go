@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -69,6 +70,10 @@ type (
 	}
 )
 
+var (
+	ErrNotRegistered = errors.New("vm is not registered")
+)
+
 func New() resource.Driver {
 	t := &T{
 		cache: make(map[string]interface{}),
@@ -77,19 +82,15 @@ func New() resource.Driver {
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	if v, err := t.isVmInVboxCf(); err != nil {
-		t.Log().Err(err).Send()
-		return true
-	} else if v {
-		if isLocalUp, err := t.isUp(); err != nil {
-			t.Log().Err(err).Send()
-			return true
-		} else if isLocalUp {
-			// the local instance is already up.
-			// let the local start report the unecessary start steps
-			// but skip further abort tests
-			return false
-		}
+	if isLocalUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
+		t.Log().Debug().Err(err).Send()
+	} else if err != nil {
+		t.Log().Error().Err(err).Send()
+	} else if isLocalUp {
+		// the local instance is already up.
+		// let the local start report the unecessary start steps
+		// but skip further abort tests
+		return false
 	}
 	return t.abortPing() || t.abortPeerUp()
 }
@@ -108,22 +109,21 @@ func (t *T) Label() string {
 func (t *T) Start(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, *t.StartTimeout)
 	defer cancel()
-	if v, err := t.isVmInVboxCf(); err != nil {
-		return err
-	} else if !v {
-		if err := t.addVmToVboxCf(); err != nil {
-			return err
-		}
-	}
 	if err := t.ApplyPGChain(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isUp(); err != nil {
+
+	if isContainerUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
+		if err := t.registerVm(); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
-	} else if v {
+	} else if isContainerUp {
 		t.Log().Info().Msgf("container %s is already up", t.Name)
 		return nil
 	}
+
 	if err := t.containerStart(ctx); err != nil {
 		return err
 	}
@@ -159,15 +159,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 
-	if v, err := t.isVmInVboxCf(); err != nil {
-		t.StatusLog().Error("%s", err)
-		return status.Undef
-	} else if !v {
-		return status.Down
-	}
-
 	state, err := t.domState()
 	if err != nil {
+		if errors.Is(err, ErrNotRegistered) {
+			return status.Down
+		}
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
@@ -186,9 +182,12 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isDown(); err != nil {
+	if isContainerDown, err := t.isDown(); errors.Is(err, ErrNotRegistered) {
+		t.Log().Info().Msgf("container %s is already down (not registered)", t.Name)
+		return nil
+	} else if err != nil {
 		return err
-	} else if v {
+	} else if isContainerDown {
 		t.Log().Info().Msgf("container %s is already down", t.Name)
 		return nil
 	}
@@ -198,6 +197,7 @@ func (t *T) Stop(ctx context.Context) error {
 func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
 	cf := t.configFile()
+
 	f, err := os.Open(cf)
 	if err != nil {
 		return l
@@ -215,15 +215,79 @@ func (t *T) SubDevices() device.L {
 	return l
 }
 
+func (t *T) Presync() error {
+	vboxCfgFilePath := t.getVBoxCfgFile()
+	f, err := os.Create(vboxCfgFilePath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Log().Error().Err(err).Msgf(vboxCfgFilePath+" %s", "defer close")
+		}
+	}()
+	_, err = f.WriteString(t.configFile())
+	return err
+}
+
 func (t *T) ToSync() []string {
 	if t.Topology == topology.Failover && !t.IsShared() {
 		return t.configFiles()
 	}
-	return make([]string, 0)
+	return []string{}
+}
+
+func (t *T) VBoxManageCommand(args ...string) (string, error) {
+	cmd := command.New(
+		command.WithName("VBoxManage"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+	err := cmd.Run()
+
+	if strings.Contains(string(cmd.Stderr()), "0x80bb0001") {
+		return string(cmd.Stdout()), fmt.Errorf("%w:%w", err, ErrNotRegistered)
+	}
+	return string(cmd.Stdout()), err
+}
+
+func (t *T) getVBoxCfgFile() string {
+	return filepath.Join(t.VarDir(), "vboxcfgfile")
+}
+func (t *T) readConfigFileFromVarDir() (string, error) {
+	f, err := os.ReadFile(t.getVBoxCfgFile())
+	if err != nil {
+		return "", fmt.Errorf("can't find config file: %w", err)
+	}
+	return string(f), nil
 }
 
 func (t *T) configFile() string {
-	return filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")
+	t.Log().Info().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
+	b, err := t.VBoxManageCommand("showvminfo", "--machinereadable", t.Name)
+	if err != nil {
+		t.Log().Error().Msgf("can't find config file: %s", err)
+		return ""
+	}
+	if cfgFile, err := configFileFromReader(strings.NewReader(b)); err != nil {
+		t.Log().Error().Msgf("can't find cfgfile in showvminfo command: %s", err)
+		return ""
+	} else {
+		return cfgFile
+	}
+}
+
+func configFileFromReader(r io.Reader) (string, error) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s := scanner.Text()
+		if strings.HasPrefix(s, "CfgFile=") {
+			return strings.Trim(s[len("CfgFile="):], "\""), nil
+		}
+	}
+
+	return "", fmt.Errorf("config file not found")
 }
 
 func (t *T) configFiles() []string {
@@ -280,42 +344,20 @@ func (t *T) undefine() error {
 }
 
 func (t *T) start() error {
-	cmd := command.New(
-		command.WithName("VBoxManage"),
-		command.WithVarArgs("startvm", t.Name, "--type=headless"),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StartTimeout),
-	)
-	return cmd.Run()
+	t.Log().Info().Msgf("VBoxManage startvm %s --type=headless", t.Name)
+	_, err := t.VBoxManageCommand("startvm", t.Name, "--type=headless")
+	return err
 }
 
 func (t *T) stop() error {
-	cmd := command.New(
-		command.WithName("VBoxManage"),
-		command.WithVarArgs("controlvm", t.Name, "acpipowerbutton"),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StopTimeout),
-	)
-	return cmd.Run()
+	t.Log().Info().Msgf("VBoxManage controlvm %s acpipowerbutton", t.Name)
+	_, err := t.VBoxManageCommand("controlvm", t.Name, "acpipowerbutton")
+	return err
 }
 
 func (t *T) destroy() error {
-	cmd := command.New(
-		command.WithName("VBoxManage"),
-		command.WithVarArgs("controlvm", t.Name, "poweroff"),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		//command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StopTimeout),
-	)
-	_, err := cmd.Output()
+	t.Log().Info().Msgf("VBoxManage controlvm %s poweroff", t.Name)
+	_, err := t.VBoxManageCommand("controlvm", t.Name, "poweroff")
 	return err
 }
 
@@ -355,44 +397,14 @@ func (t *T) containerStop(ctx context.Context) error {
 	}
 }
 
-func (t *T) isVmInVboxCf() (bool, error) {
-	f, err := os.Open("/root/.config/VirtualBox/VirtualBox.xml")
+func (t *T) registerVm() error {
+	configFilePath, err := t.readConfigFileFromVarDir()
 	if err != nil {
-		return false, err
+		return err
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			t.Log().Error().Err(err).Msgf("isVmInVboxCf defer close")
-		}
-	}()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return false, err
-	}
-	machineEntries, err := xmlquery.QueryAll(doc, "//MachineEntry")
-	if err != nil {
-		return false, err
-	}
-	for _, entry := range machineEntries {
-		src := entry.SelectAttr("src")
-		if src == filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox") {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (t *T) addVmToVboxCf() error {
-	cmd := command.New(
-		command.WithName("VBoxManage"),
-		command.WithVarArgs("registervm", filepath.Join("/root/VirtualBox VMs", t.Name, t.Name+".vbox")),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-
-	return cmd.Run()
+	t.Log().Info().Msgf("VBoxManage registervm %s", configFilePath)
+	_, err = t.VBoxManageCommand("registervm", configFilePath)
+	return err
 }
 
 func (t *T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
@@ -456,17 +468,12 @@ func isAbortedFromState(state string) bool {
 }
 
 func (t *T) domState() (string, error) {
-
-	cmd := command.New(
-		command.WithName("VBoxManage"),
-		command.WithVarArgs("showvminfo", "--machinereadable", t.Name),
-		command.WithBufferedStdout(),
-	)
-	b, err := cmd.Output()
+	t.Log().Debug().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
+	s, err := t.VBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
 		return "", err
 	}
-	return domStateFromReader(bytes.NewReader(b))
+	return domStateFromReader(strings.NewReader(s))
 }
 
 func domStateFromReader(r io.Reader) (string, error) {
