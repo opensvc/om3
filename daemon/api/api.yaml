@@ -1475,6 +1475,114 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /resource:
+    get:
+      operationId: GetResource
+      tags:
+        - resource
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+        - $ref: '#/components/parameters/RidOptional'
+      responses:
+        200:
+          description: get resource config, monitor and status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /resource/config:
+    get:
+      operationId: GetResourceConfig
+      tags:
+        - resource
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+        - $ref: '#/components/parameters/RidOptional'
+      responses:
+        200:
+          description: get resource config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceConfigArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /resource/monitor:
+    get:
+      operationId: GetResourceMonitor
+      tags:
+        - resource
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+        - $ref: '#/components/parameters/RidOptional'
+      responses:
+        200:
+          description: get resource monitor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceMonitorArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /resource/status:
+    get:
+      operationId: GetResourceStatus
+      tags:
+        - resource
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
+        - $ref: '#/components/parameters/RidOptional'
+      responses:
+        200:
+          description: get resource status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceStatusArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 components:
   schemas:
     ArbitratorStatus:
@@ -1874,7 +1982,6 @@ components:
         - provisioned
         - resources
         - running
-        - updated_at
         - scale
         - updated_at
       properties:
@@ -2686,6 +2793,34 @@ components:
       properties:
         messages:
           $ref: '#/components/schemas/RelayMessageList'
+
+    # ========================================================================
+    # resource schemas
+    # ========================================================================
+
+    Resource:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/ResourceConfig'
+        monitor:
+          $ref: '#/components/schemas/ResourceMonitor'
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+    ResourceArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceItem'
+    ResourceItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/ResourceMeta'
+          data:
+            $ref: '#/components/schemas/Resource'
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
@@ -2709,7 +2844,101 @@ components:
         restart_delay:
           type: string
           format: duration
+    ResourceConfigArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceConfigItem'
+    ResourceConfigItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/ResourceMeta'
+          data:
+            $ref: '#/components/schemas/ResourceConfig'
+    ResourceId:
+      type: string
+    ResourceLog:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceLogEntry'
+    ResourceLogEntry:
+      type: object
+      required:
+        - level
+        - message
+      properties:
+        level:
+          type: string
+        message:
+          type: string
+    ResourceProvisionStatus:
+      type: object
+      required:
+        - state
+        - mtime
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/Provisioned'
+    ResourceMeta:
+      type: object
+      required:
+        - node
+        - object
+        - rid
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        rid:
+          type: string
+    ResourceMonitor:
+      x-go-type: instance.ResourceMonitor
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/instance
+      type: object
+      required:
+        - restart
+      properties:
+        restart:
+          $ref: '#/components/schemas/ResourceMonitorRestart'
+    ResourceMonitorArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceMonitorItem'
+    ResourceMonitorItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/ResourceMeta'
+          data:
+            $ref: '#/components/schemas/ResourceMonitor'
+    ResourceMonitorRestart:
+      type: object
+      required:
+        - remaining
+        - last_at
+      properties:
+        remaining:
+          type: integer
+        last_at:
+          x-oapi-codegen-extra-tags:
+            yaml: last_at
+          type: string
+          format: date-time
     ResourceStatus:
+      x-go-type: resource.Status
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/resource
       type: object
       required:
         - disable
@@ -2773,56 +3002,20 @@ components:
             type: string
         type:
           type: string
-    ResourceMonitor:
-      x-go-type: instance.ResourceMonitor
-      x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
-      type: object
-      required:
-        - restart
-      properties:
-        restart:
-          $ref: '#/components/schemas/ResourceMonitorRestart'
-    ResourceMonitorRestart:
-      type: object
-      required:
-        - remaining
-        - last_at
-      properties:
-        remaining:
-          type: integer
-        last_at:
-          x-oapi-codegen-extra-tags:
-            yaml: last_at
-          type: string
-          format: date-time
-    ResourceId:
-      type: string
-    ResourceLog:
+    ResourceStatusArray:
       type: array
       items:
-        $ref: '#/components/schemas/ResourceLogEntry'
-    ResourceLogEntry:
-      type: object
-      required:
-        - level
-        - message
-      properties:
-        level:
-          type: string
-        message:
-          type: string
-    ResourceProvisionStatus:
-      type: object
-      required:
-        - state
-        - mtime
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        state:
-          $ref: '#/components/schemas/Provisioned'
+        $ref: '#/components/schemas/ResourceStatusItem'
+    ResourceStatusItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/ResourceMeta'
+          data:
+            $ref: '#/components/schemas/ResourceStatus'
     DaemonStatus:
       type: object
       required:
@@ -3027,19 +3220,11 @@ components:
     NodeOptional:
       name: node
       in: query
-      description: object and instance selector expression.
+      description: node selector expression.
       schema:
         type: string
         example: n2,az=eu1
-    Resource:
-      name: resource
-      in: query
-      description: resource selector expression.
-      required: true
-      schema:
-        type: string
-        example: fs#1,ip
-    ResourceOptional:
+    RidOptional:
       name: resource
       in: query
       description: resource selector expression.
@@ -3074,7 +3259,6 @@ components:
       bearerFormat: JWT
   responses:
     '200':
-      type: object
       description: OK
       content:
         application/json:
@@ -3083,56 +3267,48 @@ components:
     '204':
       description: No Content
     '400':
-      type: object
       description: Bad Request
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '401':
-      type: object
       description: Unauthorized
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '403':
-      type: object
       description: Bad Request
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '404':
-      type: object
       description: Not Found
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '408':
-      type: object
       description: Request Timeout
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '409':
-      type: object
       description: Conflict
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '500':
-      type: object
       description: Internal Server Error
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
     '503':
-      type: object
       description: Service Unavailable
       content:
         application/json:
