@@ -802,6 +802,33 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /object:
+    get:
+      operationId: GetObject
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        List all objects in the cluster.
+      parameters:
+        - $ref: '#/components/parameters/PathOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectArray'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/backlogs:
     get:
       operationId: GetObjectBacklogs
@@ -1467,6 +1494,8 @@ components:
         - token
       properties:
         expired_at:
+          x-oapi-codegen-extra-tags:
+            yaml: expired_at
           type: string
           format: date-time
         token:
@@ -1576,8 +1605,12 @@ components:
         - last_at
       properties:
         is_beating:
+          x-oapi-codegen-extra-tags:
+            yaml: is_beating
           type: boolean
         last_at:
+          x-oapi-codegen-extra-tags:
+            yaml: last_at
           type: string
           format: date-time
     DaemonListener:
@@ -1616,6 +1649,8 @@ components:
           type: string
           format: date-time
         created_at:
+          x-oapi-codegen-extra-tags:
+            yaml: created_at
           type: string
           format: date-time
         id:
@@ -1650,7 +1685,7 @@ components:
       required:
         - port
         - minor
-        - expire_at
+        - expired_at
         - id
       properties:
         id:
@@ -1660,7 +1695,9 @@ components:
           type: integer
         minor:
           type: integer
-        expire_at:
+        expired_at:
+          x-oapi-codegen-extra-tags:
+            yaml: expired_at
           type: string
           format: date-time
     InstanceMeta:
@@ -1734,7 +1771,7 @@ components:
           items:
             type: string
         placement_policy:
-          $ref: '#/components/schemas/Placement'
+          $ref: '#/components/schemas/PlacementPolicy'
         priority:
           type: integer
         resources:
@@ -2156,7 +2193,24 @@ components:
       items:
         $ref: '#/components/schemas/NodeInfo'
 
+    # ========================================================================
+    # object schemas
+    # ========================================================================
 
+    ObjectArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/ObjectItem'
+    ObjectItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/ObjectMeta'
+          data:
+            $ref: '#/components/schemas/ObjectData'
     ObjectConfig:
       type: object
       required:
@@ -2180,10 +2234,83 @@ components:
         mtime:
           type: string
           format: date-time
+    ObjectMeta:
+      type: object
+      required:
+        - object
+      properties:
+        object:
+          type: string
     ObjectPaths:
       type: array
       items:
         type: string
+    ObjectData:
+      type: object
+      required:
+        - avail
+        - flex_max
+        - flex_min
+        - flex_target
+        - frozen
+        - instances
+        - orchestrate
+        - overall
+        - placement_policy
+        - placement_state
+        - priority
+        - provisioned
+        - scope
+        - topology
+        - up_instances_count
+        - updated_at
+      properties:
+        avail:
+          $ref: '#/components/schemas/Status'
+        flex_max:
+          x-oapi-codegen-extra-tags:
+            yaml: flex_max
+          type: integer
+        flex_min:
+          x-oapi-codegen-extra-tags:
+            yaml: flex_min
+          type: integer
+        flex_target:
+          x-oapi-codegen-extra-tags:
+            yaml: flex_target
+          type: integer
+        frozen:
+          type: string
+        instances:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Instance'
+        orchestrate:
+          $ref: '#/components/schemas/Orchestrate'
+        overall:
+          $ref: '#/components/schemas/Status'
+        placement_policy:
+          $ref: '#/components/schemas/PlacementPolicy'
+        placement_state:
+          $ref: '#/components/schemas/PlacementState'
+        priority:
+          type: integer
+        provisioned:
+          $ref: '#/components/schemas/Provisioned'
+        scope:
+          type: array
+          items:
+            type: string
+        topology:
+          $ref: '#/components/schemas/Topology'
+        up_instances_count:
+          x-oapi-codegen-extra-tags:
+            yaml: up_instances_count
+          type: integer
+        updated_at:
+          x-oapi-codegen-extra-tags:
+            yaml: updated_at
+          type: string
     Orchestrate:
       type: string
       enum:
@@ -2195,6 +2322,8 @@ components:
       type: object
       properties:
         orchestration_id:
+          x-oapi-codegen-extra-tags:
+            yaml: orchestration_id
           type: string
           format: uuid
       required:
@@ -2267,7 +2396,9 @@ components:
         size:
           description: volume size in bytes
           type: number
-    Placement:
+    PlacementPolicy:
+      x-oapi-codegen-extra-tags:
+        yaml: placement_policy
       type: string
       default: none
       description: object placement policy
@@ -2279,6 +2410,16 @@ components:
         - score
         - spread
         - shift
+    PlacementState:
+      x-oapi-codegen-extra-tags:
+        yaml: placement_state
+      type: string
+      description: object placement state
+      enum:
+        - optimal
+        - non-optimal
+        - n/a
+        - undef
     PostDaemonLogsControl:
       type: object
       required:
@@ -2319,6 +2460,8 @@ components:
         - data
       properties:
         allocation_id:
+          x-oapi-codegen-extra-tags:
+            yaml: allocation_id
           type: string
           format: uuid
         data:
@@ -2341,11 +2484,15 @@ components:
         path:
           type: string
         session_id:
+          x-oapi-codegen-extra-tags:
+            yaml: session_id
           type: string
           format: uuid
         state:
           type: string
         is_partial:
+          x-oapi-codegen-extra-tags:
+            yaml: is_partial
           type: boolean
 
     # ========================================================================
@@ -2456,8 +2603,12 @@ components:
         - nodename
       properties:
         cluster_id:
+          x-oapi-codegen-extra-tags:
+            yaml: cluster_id
           type: string
         cluster_name:
+          x-oapi-codegen-extra-tags:
+            yaml: cluster_name
           type: string
         nodename:
           type: string
@@ -2508,14 +2659,20 @@ components:
         addr:
           type: string
         cluster_id:
+          x-oapi-codegen-extra-tags:
+            yaml: cluster_id
           type: string
         cluster_name:
+          x-oapi-codegen-extra-tags:
+            yaml: cluster_name
           type: string
         msg:
           type: string
         nodename:
           type: string
         updated_at:
+          x-oapi-codegen-extra-tags:
+            yaml: updated_at
           type: string
           format: date-time
     RelayMessageList:
@@ -2635,6 +2792,8 @@ components:
         remaining:
           type: integer
         last_at:
+          x-oapi-codegen-extra-tags:
+            yaml: last_at
           type: string
           format: date-time
     ResourceId:

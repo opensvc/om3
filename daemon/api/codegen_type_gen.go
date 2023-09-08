@@ -23,15 +23,23 @@ const (
 	OrchestrateStart Orchestrate = "start"
 )
 
-// Defines values for Placement.
+// Defines values for PlacementPolicy.
 const (
-	PlacementLastStart  Placement = "last start"
-	PlacementLoadAvg    Placement = "load avg"
-	PlacementNodesOrder Placement = "nodes order"
-	PlacementNone       Placement = "none"
-	PlacementScore      Placement = "score"
-	PlacementShift      Placement = "shift"
-	PlacementSpread     Placement = "spread"
+	PlacementPolicyLastStart  PlacementPolicy = "last start"
+	PlacementPolicyLoadAvg    PlacementPolicy = "load avg"
+	PlacementPolicyNodesOrder PlacementPolicy = "nodes order"
+	PlacementPolicyNone       PlacementPolicy = "none"
+	PlacementPolicyScore      PlacementPolicy = "score"
+	PlacementPolicyShift      PlacementPolicy = "shift"
+	PlacementPolicySpread     PlacementPolicy = "spread"
+)
+
+// Defines values for PlacementState.
+const (
+	PlacementStateNa         PlacementState = "n/a"
+	PlacementStateNonOptimal PlacementState = "non-optimal"
+	PlacementStateOptimal    PlacementState = "optimal"
+	PlacementStateUndef      PlacementState = "undef"
 )
 
 // Defines values for PostDaemonLogsControlLevel.
@@ -73,13 +81,13 @@ const (
 
 // Defines values for Status.
 const (
-	StatusDown      Status = "down"
-	StatusNa        Status = "n/a"
-	StatusStdbyDown Status = "stdby down"
-	StatusStdbyUp   Status = "stdby up"
-	StatusUndef     Status = "undef"
-	StatusUp        Status = "up"
-	StatusWarn      Status = "warn"
+	Down      Status = "down"
+	Na        Status = "n/a"
+	StdbyDown Status = "stdby down"
+	StdbyUp   Status = "stdby up"
+	Undef     Status = "undef"
+	Up        Status = "up"
+	Warn      Status = "warn"
 )
 
 // Defines values for Topology.
@@ -96,7 +104,7 @@ type ArbitratorStatus struct {
 
 // AuthToken defines model for AuthToken.
 type AuthToken struct {
-	ExpiredAt time.Time `json:"expired_at"`
+	ExpiredAt time.Time `json:"expired_at" yaml:"expired_at"`
 	Token     string    `json:"token"`
 }
 
@@ -134,10 +142,10 @@ type DNSZone = []DNSRecord
 
 // DRBDAllocation defines model for DRBDAllocation.
 type DRBDAllocation struct {
-	ExpireAt time.Time          `json:"expire_at"`
-	Id       openapi_types.UUID `json:"id"`
-	Minor    int                `json:"minor"`
-	Port     int                `json:"port"`
+	ExpiredAt time.Time          `json:"expired_at" yaml:"expired_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Minor     int                `json:"minor"`
+	Port      int                `json:"port"`
 }
 
 // DRBDConfig defines model for DRBDConfig.
@@ -184,10 +192,10 @@ type DaemonHbMode struct {
 type DaemonHbStream struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
 	Configured time.Time              `json:"configured"`
-	CreatedAt  time.Time              `json:"created_at"`
+	CreatedAt  time.Time              `json:"created_at" yaml:"created_at"`
 	Id         string                 `json:"id"`
-	IsBeating  bool                   `json:"is_beating"`
-	LastAt     time.Time              `json:"last_at"`
+	IsBeating  bool                   `json:"is_beating" yaml:"is_beating"`
+	LastAt     time.Time              `json:"last_at" yaml:"last_at"`
 	State      string                 `json:"state"`
 
 	// Type hb stream type
@@ -196,8 +204,8 @@ type DaemonHbStream struct {
 
 // DaemonHbStreamPeer defines model for DaemonHbStreamPeer.
 type DaemonHbStreamPeer struct {
-	IsBeating bool      `json:"is_beating"`
-	LastAt    time.Time `json:"last_at"`
+	IsBeating bool      `json:"is_beating" yaml:"is_beating"`
+	LastAt    time.Time `json:"last_at" yaml:"last_at"`
 }
 
 // DaemonHbStreamType defines model for DaemonHbStreamType.
@@ -231,7 +239,7 @@ type DaemonSubsystemAlert struct {
 type DaemonSubsystemStatus struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
 	Configured time.Time              `json:"configured"`
-	CreatedAt  time.Time              `json:"created_at"`
+	CreatedAt  time.Time              `json:"created_at" yaml:"created_at"`
 	Id         string                 `json:"id"`
 	State      string                 `json:"state"`
 }
@@ -410,16 +418,58 @@ type NodeStatusItem struct {
 // NodesInfo defines model for NodesInfo.
 type NodesInfo = []NodeInfo
 
+// ObjectArray defines model for ObjectArray.
+type ObjectArray = []ObjectItem
+
 // ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {
 	Data  map[string]interface{} `json:"data"`
 	Mtime time.Time              `json:"mtime"`
 }
 
+// ObjectData defines model for ObjectData.
+type ObjectData struct {
+	Avail       Status              `json:"avail"`
+	FlexMax     int                 `json:"flex_max" yaml:"flex_max"`
+	FlexMin     int                 `json:"flex_min" yaml:"flex_min"`
+	FlexTarget  int                 `json:"flex_target" yaml:"flex_target"`
+	Frozen      string              `json:"frozen"`
+	Instances   map[string]Instance `json:"instances"`
+	Orchestrate Orchestrate         `json:"orchestrate"`
+	Overall     Status              `json:"overall"`
+
+	// PlacementPolicy object placement policy
+	PlacementPolicy PlacementPolicy `json:"placement_policy" yaml:"placement_policy"`
+
+	// PlacementState object placement state
+	PlacementState PlacementState `json:"placement_state" yaml:"placement_state"`
+	Priority       int            `json:"priority"`
+
+	// Provisioned service, instance or resource provisioned state
+	Provisioned Provisioned `json:"provisioned"`
+	Scope       []string    `json:"scope"`
+
+	// Topology object topology
+	Topology         Topology `json:"topology"`
+	UpInstancesCount int      `json:"up_instances_count" yaml:"up_instances_count"`
+	UpdatedAt        string   `json:"updated_at" yaml:"updated_at"`
+}
+
 // ObjectFile defines model for ObjectFile.
 type ObjectFile struct {
 	Data  []byte    `json:"data"`
 	Mtime time.Time `json:"mtime"`
+}
+
+// ObjectItem defines model for ObjectItem.
+type ObjectItem struct {
+	Data ObjectData `json:"data"`
+	Meta ObjectMeta `json:"meta"`
+}
+
+// ObjectMeta defines model for ObjectMeta.
+type ObjectMeta struct {
+	Object string `json:"object"`
 }
 
 // ObjectPaths defines model for ObjectPaths.
@@ -430,11 +480,14 @@ type Orchestrate string
 
 // OrchestrationQueued defines model for OrchestrationQueued.
 type OrchestrationQueued struct {
-	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
+	OrchestrationId openapi_types.UUID `json:"orchestration_id" yaml:"orchestration_id"`
 }
 
-// Placement object placement policy
-type Placement string
+// PlacementPolicy object placement policy
+type PlacementPolicy string
+
+// PlacementState object placement state
+type PlacementState string
 
 // PoolStatus defines model for PoolStatus.
 type PoolStatus struct {
@@ -491,7 +544,7 @@ type PostDaemonSubActionAction string
 
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
-	AllocationId openapi_types.UUID `json:"allocation_id"`
+	AllocationId openapi_types.UUID `json:"allocation_id" yaml:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
 
@@ -513,16 +566,16 @@ type PostObjectClear struct {
 
 // PostObjectProgress defines model for PostObjectProgress.
 type PostObjectProgress struct {
-	IsPartial *bool              `json:"is_partial,omitempty"`
+	IsPartial *bool              `json:"is_partial,omitempty" yaml:"is_partial"`
 	Path      string             `json:"path"`
-	SessionId openapi_types.UUID `json:"session_id"`
+	SessionId openapi_types.UUID `json:"session_id" yaml:"session_id"`
 	State     string             `json:"state"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
 type PostRelayMessage struct {
-	ClusterId   string `json:"cluster_id"`
-	ClusterName string `json:"cluster_name"`
+	ClusterId   string `json:"cluster_id" yaml:"cluster_id"`
+	ClusterName string `json:"cluster_name" yaml:"cluster_name"`
 	Msg         string `json:"msg"`
 	Nodename    string `json:"nodename"`
 }
@@ -550,11 +603,11 @@ type Provisioned string
 // RelayMessage defines model for RelayMessage.
 type RelayMessage struct {
 	Addr        string    `json:"addr"`
-	ClusterId   string    `json:"cluster_id"`
-	ClusterName string    `json:"cluster_name"`
+	ClusterId   string    `json:"cluster_id" yaml:"cluster_id"`
+	ClusterName string    `json:"cluster_name" yaml:"cluster_name"`
 	Msg         string    `json:"msg"`
 	Nodename    string    `json:"nodename"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	UpdatedAt   time.Time `json:"updated_at" yaml:"updated_at"`
 }
 
 // RelayMessageList defines model for RelayMessageList.
@@ -582,7 +635,7 @@ type ResourceMonitor = instance.ResourceMonitor
 
 // ResourceMonitorRestart defines model for ResourceMonitorRestart.
 type ResourceMonitorRestart struct {
-	LastAt    time.Time `json:"last_at"`
+	LastAt    time.Time `json:"last_at" yaml:"last_at"`
 	Remaining int       `json:"remaining"`
 }
 
@@ -876,6 +929,12 @@ type GetNodeMonitorParams struct {
 type GetNodeStatusParams struct {
 	// Node object and instance selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
+// GetObjectParams defines parameters for GetObject.
+type GetObjectParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 }
 
 // GetObjectBacklogsParams defines parameters for GetObjectBacklogs.

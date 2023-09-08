@@ -1,11 +1,13 @@
 package commands
 
 import (
-	"sort"
+	"context"
+	"fmt"
 
-	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -15,33 +17,40 @@ type (
 )
 
 func (t *CmdObjectLs) Run(selector, kind string) error {
-	selection := objectselector.NewSelection(
-		mergeSelector(selector, t.ObjectSelector, kind, "**"),
-		objectselector.SelectionWithLocal(t.Local),
-		objectselector.SelectionWithServer(t.Server),
+	var (
+		data any
+		err  error
 	)
-	data := make([]string, 0)
-	paths, err := selection.Expand()
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	for _, path := range paths {
-		data = append(data, path.String())
+	params := api.GetObjectParams{Path: &mergedSelector}
+	resp, err := c.GetObjectWithResponse(context.Background(), &params)
+	if err != nil {
+		return fmt.Errorf("api: %w", err)
 	}
-	sort.Strings(data)
-	human := func() string {
-		s := ""
-		for _, r := range data {
-			s += r + "\n"
-		}
-		return s
+	switch resp.StatusCode() {
+	case 200:
+		data = *resp.JSON200
+	case 400:
+		data = *resp.JSON400
+	case 401:
+		data = *resp.JSON401
+	case 403:
+		data = *resp.JSON403
+	case 500:
+		data = *resp.JSON500
 	}
-	output.Renderer{
+	renderer := output.Renderer{
+		DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
-		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}
+	renderer.Print()
 	return nil
 }
