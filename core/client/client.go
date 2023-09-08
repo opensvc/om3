@@ -53,9 +53,6 @@ func New(opts ...funcopt.O) (*T, error) {
 //
 // Supported schemes:
 //
-//   - raw
-//     json rpc, AES-256-CBC encrypted payload if transported by AF_INET,
-//     cleartext on unix domain socket.
 //   - https
 //     http/2 with TLS
 //   - tls
@@ -69,10 +66,8 @@ func New(opts ...funcopt.O) (*T, error) {
 // If scheme is omitted, select the http/2 protocol.
 //
 // Examples:
-// * /opt/opensvc/var/lsnr/lsnr.sock
-// * /opt/opensvc/var/lsnr/h2.sock
+// * /var/lib/opensvc/lsnr/http.sock
 // * https://acme.com:1215
-// * raw://acme.com:1214
 func WithURL(url string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -194,7 +189,7 @@ func (t *T) newRequester() (err error) {
 			URL:     t.url,
 			Timeout: t.timeout,
 		})
-	case strings.HasSuffix(t.url, "h2.sock"):
+	case strings.HasSuffix(t.url, daemonenv.BaseHttpSock):
 		t.ClientWithResponses, err = reqh2.NewUDS(reqh2.Config{
 			URL:     t.url,
 			Timeout: t.timeout,

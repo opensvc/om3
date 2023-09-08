@@ -24,6 +24,9 @@ var (
 
 	// Groupname is the current group name from user.Current, or "root" if user.LookupGroupId has error
 	Groupname string
+
+	// BaseHttpSock is the basename of http listener unix socket
+	BaseHttpSock = "http.sock"
 )
 
 func CAKeyFile() string {
@@ -67,7 +70,7 @@ func PathUxProfile() string {
 }
 
 func PathUxHttp() string {
-	return filepath.Join(rawconfig.Paths.Lsnr, "h2.sock")
+	return filepath.Join(rawconfig.Paths.Lsnr, BaseHttpSock)
 }
 
 func init() {
