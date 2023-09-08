@@ -134,7 +134,7 @@ func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	addr := a.Uri
 	if !strings.Contains(addr, ":") {
 		port := ccfg.Get().Listener.Port
-		addr += fmt.Sprintf("addr:%d", port)
+		addr = fmt.Sprintf("%s:%d", addr, port)
 	}
 	dialContext, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
