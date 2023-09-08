@@ -21,7 +21,6 @@ import (
 	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/key"
 )
 
 type (
@@ -123,10 +122,6 @@ func New(opts ...funcopt.O) *T {
 }
 
 func (t *T) MainStart(ctx context.Context) error {
-	node, err := object.NewNode()
-	if err != nil {
-		return err
-	}
 	if err := startCertFS(); err != nil {
 		t.log.Err(err).Msgf("start certificates volatile fs")
 	}
@@ -136,8 +131,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)
 		ctx = context.WithValue(ctx, "JWTCreator", &daemonauth.JWTCreator{})
 	}
-	// TODO: This is not the correct place to update daemonenv.HttpPort
-	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "port"))
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name() + "-loop")()

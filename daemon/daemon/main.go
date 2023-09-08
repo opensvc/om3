@@ -198,6 +198,12 @@ func (t *T) MainStart(ctx context.Context) error {
 	omcrypto.SetClusterName(initialCcfg.Name)
 	omcrypto.SetClusterSecret(initialCcfg.Secret())
 
+	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HttpPort {
+		// update daemonenv.HttpPort from live config value. Discover will need
+		// connect to peers to fetch config...
+		daemonenv.HttpPort = initialCcfg.Listener.Port
+	}
+
 	lsnr := listener.New(listener.WithRoutineTracer(&t.TT))
 	if err := t.Register(lsnr); err != nil {
 		return err
