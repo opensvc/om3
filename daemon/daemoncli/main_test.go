@@ -21,12 +21,16 @@ import (
 
 func newClient(serverUrl string) (*client.T, error) {
 	return client.New(client.WithURL(serverUrl))
+	//return client.New(client.WithURL(serverUrl), client.WithInsecureSkipVerify(true))
 }
 
 func setup(t *testing.T, withConfig bool) testhelper.Env {
 	env := testhelper.Setup(t)
 	if withConfig {
 		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
+		b, err := os.ReadFile("./testdata/cluster.conf")
+		require.NoError(t, err)
+		t.Logf("cluster.conf:\n%s\n", b)
 		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	}
@@ -72,6 +76,7 @@ func TestDaemonBootstrap(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			startError := make(chan error)
 
+			t.Logf("check daemonCli.Start")
 			t.Run("check daemonCli.Start", func(t *testing.T) {
 				t.Logf("daemonCli.Start...")
 				go func() {
@@ -86,16 +91,19 @@ func TestDaemonBootstrap(t *testing.T) {
 			})
 			require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
 
+			t.Logf("daemonCli.WaitRunning")
 			t.Run("daemonCli.WaitRunning", func(t *testing.T) {
 				t.Logf("daemonCli.WaitRunning")
 				require.NoError(t, daemonCli.WaitRunning())
 			})
 
+			t.Logf("check running")
 			t.Run("check running", func(t *testing.T) {
 				t.Logf("daemonCli.Running")
 				require.True(t, daemonCli.Running())
 			})
 
+			t.Logf("check events")
 			t.Run("check events", func(t *testing.T) {
 				// TODO move test get node events to other location asap
 				//time.Sleep(150 * time.Millisecond)
@@ -122,6 +130,7 @@ func TestDaemonBootstrap(t *testing.T) {
 				require.Greaterf(t, len(events), 0, "no events returned !")
 			})
 
+			t.Logf("check daemon status with url %s", cli.URL())
 			t.Run("check daemon status", func(t *testing.T) {
 				t.Logf("get daemon status")
 				t.Logf("give extra time for objects get pushed to daemon")
@@ -152,6 +161,7 @@ func TestDaemonBootstrap(t *testing.T) {
 			})
 
 			for name, url := range getClientUrl(hasConfig) {
+				t.Logf("check daemon status %s with url %s", name, url)
 				t.Run("check running with client "+name, func(t *testing.T) {
 					cli, err := newClient(url)
 					require.NoError(t, err)
@@ -159,9 +169,15 @@ func TestDaemonBootstrap(t *testing.T) {
 				})
 			}
 
+			t.Logf("stopping")
 			t.Run("stopping", func(t *testing.T) {
 				t.Run("daemoncli stop", func(t *testing.T) {
 					t.Logf("daemonCli.Stop...")
+					// Use UrlInetHttp to avoid failed stop because of still running handler
+					// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
+					cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
+					require.NoError(t, err)
+					daemonCli = daemoncli.New(cli)
 					require.NoError(t, daemonCli.Stop())
 				})
 				require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
