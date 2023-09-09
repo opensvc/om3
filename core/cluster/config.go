@@ -23,8 +23,6 @@ type (
 		CRL             string `json:"crl" yaml:"crl"`
 		Addr            string `json:"addr" yaml:"addr"`
 		Port            int    `json:"port" yaml:"port"`
-		TLSAddr         string `json:"tls_addr" yaml:"tls_addr"`
-		TLSPort         int    `json:"tls_port" yaml:"tls_port"`
 		OpenIdWellKnown string `json:"openid_well_known" yaml:"openid_well_known"`
 		DNSSockGID      string `json:"dns_sock_gid" yaml:"dns_sock_gid"`
 		DNSSockUID      string `json:"dns_sock_uid" yaml:"dns_sock_uid"`

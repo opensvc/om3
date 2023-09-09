@@ -17,13 +17,10 @@ import (
 	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpux"
-	"github.com/opensvc/om3/daemon/listener/lsnrrawinet"
-	"github.com/opensvc/om3/daemon/listener/lsnrrawux"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/key"
 )
 
 type (
@@ -78,14 +75,6 @@ func (a *authOption) VerifyKeyFile() string {
 func getMandatorySub() map[string]sub {
 	clusterConfig := ccfg.Get()
 	subs := make(map[string]sub)
-	subs["listenerRaw"] = sub{
-		new: func(t *T) subdaemon.Manager {
-			return lsnrrawux.New(
-				lsnrrawux.WithRoutineTracer(&t.TT),
-				lsnrrawux.WithAddr(daemonenv.PathUxRaw()),
-			)
-		},
-	}
 	subs["listenerHttpUx"] = sub{
 		new: func(t *T) subdaemon.Manager {
 			return lsnrhttpux.New(
@@ -97,21 +86,11 @@ func getMandatorySub() map[string]sub {
 		},
 	}
 	if clusterConfig.Listener.Port > 0 {
-		subs["listenerRawInet"] = sub{
-			new: func(t *T) subdaemon.Manager {
-				return lsnrrawinet.New(
-					lsnrrawinet.WithRoutineTracer(&t.TT),
-					lsnrrawinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
-				)
-			},
-		}
-	}
-	if clusterConfig.Listener.TLSPort > 0 {
 		subs["listenerHttpInet"] = sub{
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpinet.New(
 					lsnrhttpinet.WithRoutineTracer(&t.TT),
-					lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.TLSAddr, clusterConfig.Listener.TLSPort)),
+					lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
 					lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
 				)
@@ -143,10 +122,6 @@ func New(opts ...funcopt.O) *T {
 }
 
 func (t *T) MainStart(ctx context.Context) error {
-	node, err := object.NewNode()
-	if err != nil {
-		return err
-	}
 	if err := startCertFS(); err != nil {
 		t.log.Err(err).Msgf("start certificates volatile fs")
 	}
@@ -156,8 +131,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)
 		ctx = context.WithValue(ctx, "JWTCreator", &daemonauth.JWTCreator{})
 	}
-	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))
-	daemonenv.RawPort = node.Config().GetInt(key.New("listener", "port"))
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name() + "-loop")()

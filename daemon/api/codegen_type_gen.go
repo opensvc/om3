@@ -180,16 +180,6 @@ type DaemonListener = DaemonSubsystemStatus
 // DaemonMonitor defines model for DaemonMonitor.
 type DaemonMonitor = DaemonSubsystemStatus
 
-// DaemonRunning defines model for DaemonRunning.
-type DaemonRunning struct {
-	Data []struct {
-		Data     bool   `json:"data"`
-		Endpoint string `json:"endpoint"`
-	} `json:"data"`
-	Entrypoint string `json:"entrypoint"`
-	Status     int    `json:"status"`
-}
-
 // DaemonScheduler defines model for DaemonScheduler.
 type DaemonScheduler = DaemonSubsystemStatus
 

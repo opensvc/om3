@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/client"
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
@@ -151,7 +151,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debug().Msgf("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
 	}
-	encMsg := reqjsonrpc.NewMessage([]byte(c.Msg))
+	encMsg := omcrypto.NewMessage([]byte(c.Msg))
 	b, msgNodename, err := encMsg.DecryptWithNode()
 	if err != nil {
 		t.log.Debug().Err(err).Msgf("recv: decrypting node %s", nodename)

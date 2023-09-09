@@ -3424,7 +3424,7 @@ func (r PostDaemonLogsControlResponse) StatusCode() int {
 type GetDaemonRunningResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DaemonRunning
+	JSON200      *bool
 	JSON401      *Problem
 	JSON403      *Problem
 	JSON500      *Problem
@@ -5263,7 +5263,7 @@ func ParseGetDaemonRunningResponse(rsp *http.Response) (*GetDaemonRunningRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DaemonRunning
+		var dest bool
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

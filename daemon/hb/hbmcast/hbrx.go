@@ -12,8 +12,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
@@ -181,7 +181,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		delete(msg, f.MsgID)
 		t.assembly[s] = msg
 	}()
-	var encMsg *reqjsonrpc.Message
+	var encMsg *omcrypto.Message
 	if f.Total > 1 {
 		var message []byte
 		for i := 1; i <= f.Total; i += 1 {
@@ -192,9 +192,9 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 			}
 			message = append(message, chunk...)
 		}
-		encMsg = reqjsonrpc.NewMessage(message)
+		encMsg = omcrypto.NewMessage(message)
 	} else {
-		encMsg = reqjsonrpc.NewMessage(chunks[1])
+		encMsg = omcrypto.NewMessage(chunks[1])
 	}
 	b, _, err := encMsg.DecryptWithNode()
 	if err != nil {

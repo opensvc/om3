@@ -407,19 +407,8 @@ func (t *T) running() bool {
 		log.Warn().Msgf("unexpected get daemon running status code %s", resp.Status())
 		return false
 	}
-	nodename := t.node
-	if nodename == "" {
-		nodename = hostname.Hostname()
-	}
-	for _, item := range resp.JSON200.Data {
-		if item.Endpoint == nodename {
-			val := item.Data
-			log.Debug().Msgf("daemon running is %v", val)
-			return val
-		}
-	}
-	log.Debug().Msgf("daemon is not running")
-	return false
+	log.Debug().Msgf("daemon running is %v", *resp.JSON200)
+	return *resp.JSON200
 }
 
 func (t *T) notRunning() bool {

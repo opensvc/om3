@@ -1,4 +1,5 @@
-package reqjsonrpc
+// Package omcrypto is responsible for Message Encrypt, Decrypt, DecryptWithNode
+package omcrypto
 
 import (
 	"bytes"
@@ -11,18 +12,18 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
-	// Message is the message to encrypt for send via a JSONRPC inet requester.
+	// Message is the message to encrypt
 	Message struct {
 		ClusterName string
 		NodeName    string
 		Key         string
 		Data        []byte
 	}
+
 	encryptedMessage struct {
 		ClusterName string `json:"clustername" yaml:"clustername"`
 		NodeName    string `json:"nodename" yaml:"nodename"`
@@ -31,13 +32,28 @@ type (
 	}
 )
 
+var (
+	clusterName   string
+	clusterSecret string
+)
+
+func SetClusterName(s string) {
+	clusterName = s
+}
+
+func SetClusterSecret(s string) {
+	clusterSecret = s
+}
+
 // NewMessage allocates a new Message configured for the local node and cluster context
 func NewMessage(b []byte) *Message {
-	cluster := rawconfig.ClusterSection()
+	if clusterName == "" || clusterSecret == "" {
+		panic("NewMessage: unexpected empty cluster name or cluster secret")
+	}
 	m := &Message{
 		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
+		ClusterName: clusterName,
+		Key:         clusterSecret,
 		Data:        b,
 	}
 	return m
@@ -45,7 +61,7 @@ func NewMessage(b []byte) *Message {
 
 // DecryptWithNode Decrypt the message
 //
-// returns decodedMsg []byte, nodename string, error
+// returns decodedMsg []byte, encryptorNodename string, error
 func (m *Message) DecryptWithNode() ([]byte, string, error) {
 	if len(m.Data) == 0 {
 		// fast return, Unmarshal will fail
@@ -56,14 +72,12 @@ func (m *Message) DecryptWithNode() ([]byte, string, error) {
 	msg := &encryptedMessage{}
 	err := json.Unmarshal(m.Data, msg)
 	if err != nil {
-		retErr := fmt.Errorf("analyse message unmarshal failure: " + err.Error())
-		return nil, "", retErr
+		return nil, "", fmt.Errorf("analyse message unmarshal failure: %w", err)
 	}
 	// TODO: test nodename and clustername, plug blacklist
 	b, err = decode(msg.Data, msg.IV, key)
 	if err != nil {
-		retErr := fmt.Errorf("analyse message decode failure: " + err.Error())
-		return b, "", retErr
+		return b, "", fmt.Errorf("analyse message decode failure: %w", err)
 	}
 	return b, msg.NodeName, err
 }
