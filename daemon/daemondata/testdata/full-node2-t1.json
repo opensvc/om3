@@ -33,9 +33,8 @@
         "kind": "svc",
         "provisioned": "true",
         "updated_at": "2022-12-29T13:45:06.978675685+01:00",
-        "resources": [
-          {
-            "rid": "fs#1",
+        "resources": {
+          "fs#1": {
             "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
             "status": "down",
             "type": "fs.flag",
@@ -44,8 +43,7 @@
               "state": "true"
             }
           },
-          {
-            "rid": "fs#2",
+          "fs#2": {
             "label": "flag /dev/shm/opensvc/svc/foo/fs#2.flag",
             "status": "down",
             "type": "fs.flag",
@@ -55,8 +53,7 @@
             },
             "optional": true
           },
-          {
-            "rid": "fs#3",
+          "fs#3": {
             "label": "flag /dev/shm/opensvc/svc/foo/fs#3.flag",
             "status": "down",
             "type": "fs.flag",
@@ -65,8 +62,7 @@
               "state": "true"
             }
           },
-          {
-            "rid": "fs#4",
+          "fs#4": {
             "label": "flag /dev/shm/opensvc/svc/foo/fs#4.flag",
             "status": "down",
             "type": "fs.flag",
@@ -75,7 +71,7 @@
               "state": "true"
             }
           }
-        ]
+        }
       }
     }
   },
