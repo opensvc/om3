@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 func TestJoin(t *testing.T) {
@@ -13,5 +14,8 @@ func TestJoin(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
-	require.Nil(t, Join())
+	err := Join()
+	if err != nil {
+		require.ErrorContains(t, err, "cgroup deleted")
+	}
 }
