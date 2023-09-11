@@ -21,8 +21,8 @@
   "overall": "warn",
   "placement": "nodes order",
   "provisioned": "true",
-  "resources": [
-    {"rid": "fs#1",
+  "resources": {
+    "fs#1": {
       "label": "fs.flag",
       "provisioned": {
         "mtime": "2020-03-04T16:33:23.16700383+01:00",
@@ -31,7 +31,7 @@
       "status": "up",
       "type": "fs.flag"
     },
-    { "rid": "fs#2",
+    "fs#2": {
       "label": "fs.flag",
       "log": [
         "info: info msg",
@@ -45,8 +45,7 @@
       "status": "up",
       "type": "fs.flag"
     },
-    {
-    "rid": "sync#i0",
+    "sync#i0": {
       "label": "rsync svc config to nodes",
       "log": [
         "warn: need update"
@@ -55,24 +54,6 @@
       "status": "down",
       "type": "sync.rsync"
     }
-  ],
-  "status_group": {
-    "DEFAULT": "n/a",
-    "app": "n/a",
-    "certificate": "n/a",
-    "container": "n/a",
-    "disk": "n/a",
-    "expose": "n/a",
-    "fs": "up",
-    "hashpolicy": "n/a",
-    "ip": "n/a",
-    "route": "n/a",
-    "share": "n/a",
-    "subset": "n/a",
-    "sync": "warn",
-    "task": "n/a",
-    "vhost": "n/a",
-    "volume": "n/a"
   },
   "subsets": {},
   "topology": "failover",
