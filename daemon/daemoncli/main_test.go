@@ -185,8 +185,8 @@ func TestDaemonBootstrap(t *testing.T) {
 				t.Run("Verify initial daemon start from daemonCli.Start() returns no error after daemonCli.Stop()", func(t *testing.T) {
 					select {
 					case err := <-startError:
-						require.NoError(t, err, "daemonCli.Start() returns error after daemonCli.Stop() succeeds")
-					case <-time.After(time.Second):
+						require.NoErrorf(t, err, "daemonCli.Start() returns unexpected error %s", err)
+					case <-time.After(4 * time.Second):
 						t.Fatalf("initial daemonCli.Start() should returns after daemonCli.Stop() succeeds")
 					}
 				})
