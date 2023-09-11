@@ -2470,6 +2470,95 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectResource(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "resource",
+		Short:   "config, status, monitor, ls",
+		Aliases: []string{"res"},
+	}
+}
+
+func newCmdObjectResourceConfig(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "config",
+		Aliases: []string{"conf", "cf"},
+	}
+}
+
+func newCmdObjectResourceMonitor(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "monitor",
+		Aliases: []string{"mon"},
+	}
+}
+
+func newCmdObjectResourceStatus(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "status",
+		Aliases: []string{"stat", "st"},
+	}
+}
+
+func newCmdObjectResourceLs(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceLs
+	cmd := &cobra.Command{
+		Use:   "ls",
+		Short: "list the selected resource (config, monitor, status)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagRID(flags, &options.RID)
+	return cmd
+}
+
+func newCmdObjectResourceConfigLs(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceConfigLs
+	cmd := &cobra.Command{
+		Use:   "ls",
+		Short: "list the selected resource config",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagRID(flags, &options.RID)
+	return cmd
+}
+
+func newCmdObjectResourceMonitorLs(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceMonitorLs
+	cmd := &cobra.Command{
+		Use:   "ls",
+		Short: "list the selected resource monitor",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagRID(flags, &options.RID)
+	return cmd
+}
+
+func newCmdObjectResourceStatusLs(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceStatusLs
+	cmd := &cobra.Command{
+		Use:   "ls",
+		Short: "list the selected resource status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagRID(flags, &options.RID)
+	return cmd
+}
+
 func newCmdObjectRun(kind string) *cobra.Command {
 	var options commands.CmdObjectRun
 	cmd := &cobra.Command{
