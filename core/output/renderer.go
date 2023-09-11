@@ -251,11 +251,13 @@ func (t Renderer) renderTab(options string) (string, error) {
 		for _, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
 			if err != nil {
-				return "", err
+				fmt.Fprintf(w, "<%s>\t", err)
+				continue
 			}
 			valueStrings := []string{}
 			if len(values) == 0 || len(values[0]) == 0 {
-				valueStrings = append(valueStrings, "<none>")
+				fmt.Fprintf(w, "<none>\t", err)
+				continue
 			}
 			for arrIx := range values {
 				for valIx := range values[arrIx] {
