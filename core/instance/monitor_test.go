@@ -34,7 +34,7 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 			LocalExpectUpdatedAt: t0,
 			State:                MonitorStateIdle,
 			StateUpdatedAt:       t0,
-			Resources: ResourceMonitorMap{
+			Resources: ResourceMonitors{
 				"fs#1": ResourceMonitor{
 					Restart: ResourceMonitorRestart{
 						Remaining: 1,
@@ -61,7 +61,7 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 	mon1 := Monitor{
 		LocalExpectUpdatedAt:  time.Now(),
 		GlobalExpectUpdatedAt: time.Now(),
-		Resources: ResourceMonitorMap{
+		Resources: ResourceMonitors{
 			"a": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 1, LastAt: time.Now()}},
 			"b": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 8, LastAt: time.Now()}},
 		},
