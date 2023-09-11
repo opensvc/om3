@@ -53,7 +53,7 @@ func (t *CmdObjectResourceMonitorLs) Run(selector, kind string) error {
 		data = *resp.JSON500
 	}
 	renderer := output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,RESTART_REMAINING:data.restart.remaining,RESTART_LAST_AT:restart.last_at",
+		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,RESTART_REMAINING:data.restart.remaining,RESTART_LAST_AT:data.restart.last_at",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
