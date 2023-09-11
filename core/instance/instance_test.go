@@ -29,10 +29,9 @@ func Test_Status_Unmarshal(t *testing.T) {
 		Overall:     status.Down,
 		Provisioned: provisioned.Mixed,
 		UpdatedAt:   time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
-		Resources: []resource.Status{
-			{
+		Resources: ResourceStatuses{
+			"volume#1": {
 				ResourceID: (*resourceid.T)(nil),
-				Rid:        "volume#1",
 				Label:      "data2",
 				Log: []*resource.StatusLogEntry{
 					{
@@ -47,9 +46,8 @@ func Test_Status_Unmarshal(t *testing.T) {
 					State: provisioned.True,
 				},
 			},
-			{
+			"fs#1": {
 				ResourceID: (*resourceid.T)(nil),
-				Rid:        "fs#1",
 				Label:      "flag /dev/shm/opensvc/svc/svc2/fs#1.flag",
 				Status:     status.Down,
 				Type:       "fs.flag",
@@ -58,9 +56,8 @@ func Test_Status_Unmarshal(t *testing.T) {
 					State: provisioned.False,
 				},
 			},
-			{
+			"app#1": {
 				ResourceID: (*resourceid.T)(nil),
-				Rid:        "app#1",
 				Label:      "forking app.forking",
 				Log: []*resource.StatusLogEntry{
 					{

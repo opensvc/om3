@@ -7,9 +7,8 @@
   "kind": "svc",
   "provisioned": "mixed",
   "updated_at": "2022-12-28T11:21:45.800780633Z",
-  "resources": [
-    {
-      "rid": "volume#1",
+  "resources": {
+    "volume#1": {
       "label": "data2",
       "log": [
         {
@@ -24,8 +23,7 @@
         "state": "true"
       }
     },
-    {
-      "rid": "fs#1",
+    "fs#1": {
       "label": "flag /dev/shm/opensvc/svc/svc2/fs#1.flag",
       "status": "down",
       "type": "fs.flag",
@@ -34,8 +32,7 @@
         "state": "false"
       }
     },
-    {
-      "rid": "app#1",
+    "app#1": {
       "label": "forking app.forking",
       "log": [
         {
@@ -51,5 +48,5 @@
       },
       "restart": 2
     }
-  ]
+  }
 }
