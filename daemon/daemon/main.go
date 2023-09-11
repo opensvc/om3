@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/soellman/pidfile"
 
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
@@ -189,9 +190,20 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 
-	if ccfg.Get().Name == "" {
+	initialCcfg := ccfg.Get()
+	if initialCcfg.Name == "" {
 		panic("cluster name read from ccfg is empty")
 	}
+	// Before any icfg, hb, or listener: ensure omcrypto has cluster name and secret
+	omcrypto.SetClusterName(initialCcfg.Name)
+	omcrypto.SetClusterSecret(initialCcfg.Secret())
+
+	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HttpPort {
+		// update daemonenv.HttpPort from live config value. Discover will need
+		// connect to peers to fetch config...
+		daemonenv.HttpPort = initialCcfg.Listener.Port
+	}
+
 	lsnr := listener.New(listener.WithRoutineTracer(&t.TT))
 	if err := t.Register(lsnr); err != nil {
 		return err

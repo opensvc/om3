@@ -1,9 +1,12 @@
 package object
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 )
@@ -443,21 +446,8 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section: "listener",
-		Option:  "tls_addr",
-		Default: "",
-		Example: "1.2.3.4",
-		Text:    keywords.NewText(fs, "text/kw/node/listener.tls_addr"),
-	},
-	{
-		Section:   "listener",
-		Option:    "tls_port",
-		Converter: converters.Int,
-		Default:   "1215",
-		Text:      keywords.NewText(fs, "text/kw/node/listener.tls_port"),
-	},
-	{
-		Section: "listener",
 		Option:  "addr",
+		Aliases: []string{"tls_addr"},
 		Default: "",
 		Example: "1.2.3.4",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.addr"),
@@ -465,8 +455,9 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section:   "listener",
 		Option:    "port",
+		Aliases:   []string{"tls_port"},
 		Converter: converters.Int,
-		Default:   "1214",
+		Default:   fmt.Sprintf("%d", daemonenv.HttpPort),
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	},
 	{

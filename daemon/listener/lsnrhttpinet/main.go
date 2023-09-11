@@ -111,9 +111,9 @@ func (t *T) start(ctx context.Context) error {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
 		if err == http.ErrServerClosed || errors.Is(err, net.ErrClosed) {
-			t.log.Debug().Err(err).Msg("listener ends with expected error ")
+			t.log.Debug().Msg("listener ends with expected error")
 		} else {
-			t.log.Error().Err(err).Msg("listener ends with unexpected error ")
+			t.log.Error().Err(err).Msg("listener ends with unexpected error")
 		}
 		if t.listener != nil {
 			if err := t.listener.Close(); err != nil {

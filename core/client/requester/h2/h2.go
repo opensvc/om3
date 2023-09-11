@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
-	"github.com/opensvc/om3/core/rawconfig"
+
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/httpclientcache"
@@ -51,13 +50,9 @@ func (t Config) String() string {
 	return "H2" + string(b)
 }
 
-func defaultUDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", rawconfig.Paths.Var))
-}
-
 func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 	if config.URL == "" {
-		config.URL = defaultUDSPath()
+		config.URL = daemonenv.PathUxHttp()
 	}
 	tp := &http2.Transport{
 		AllowHTTP: true,

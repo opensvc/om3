@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/encryptconn"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
-	"github.com/opensvc/om3/daemon/listener/encryptconn"
 )
 
 type (
@@ -71,6 +72,9 @@ func (t *rx) Stop() error {
 }
 
 // Start implements the Start function of the Receiver interface for rx
+//
+// message from unexpected source addr connection are dropped (we only take care
+// about messages from other cluster node)
 func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
@@ -82,17 +86,28 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
 	}
-	t.log.Info().Msgf("listen on %s", t.addr+":"+t.port)
 	started := make(chan bool)
 	t.Add(1)
 	go func() {
 		defer t.Done()
+		otherNodeIpM := make(map[string]struct{})
+		otherNodeIpL := make([]string, 0)
+		resolver := net.Resolver{}
+
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
+			}
+			addrs, err := resolver.LookupHost(ctx, node)
+			if err != nil {
+				continue
+			}
+			for _, addr := range addrs {
+				otherNodeIpM[addr] = struct{}{}
+				otherNodeIpL = append(otherNodeIpL, addr)
 			}
 		}
 		t.Add(1)
@@ -107,6 +122,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				return
 			}
 		}()
+		t.log.Info().Msgf("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIpL)
 		started <- true
 		for {
 			conn, err := listener.Accept()
@@ -118,7 +134,15 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 					continue
 				}
 			}
-			if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+			connAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
+			if _, ok := otherNodeIpM[connAddr]; !ok {
+				t.log.Warn().Msgf("drop message from unexpected connection from %s", connAddr)
+				if err := conn.Close(); err != nil {
+					t.log.Warn().Err(err).Msgf("close unexpected connection from %s", connAddr)
+				}
+				continue
+			}
+			if err := conn.SetDeadline(time.Now().Add(100*time.Millisecond)); err != nil {
 				t.log.Info().Err(err).Msg("SetReadDeadline")
 				continue
 			}
@@ -136,21 +160,23 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 func (t *rx) handle(conn encryptconn.ConnNoder) {
 	defer t.Done()
 	defer func() {
-		_ = conn.Close()
+		if err := conn.Close(); err != nil {
+			t.log.Warn().Err(err).Msgf("unexpected error while closing connection from %s", conn.RemoteAddr())
+		}
 	}()
 	data := <-msgBufferChan
 	defer func() { msgBufferChan <- data }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
-		t.log.Error().Err(err).Msg("ReadWithNode failure")
+		t.log.Warn().Err(err).Msgf("read failed from %s", conn.RemoteAddr())
 		return
 	}
 	if i >= (msgMaxSize - 10000) {
-		t.log.Warn().Msgf("ReadWithNode huge message from %s: %d", nodename, i)
+		t.log.Warn().Msgf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
 	}
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(data[:i], &msg); err != nil {
-		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
+		t.log.Warn().Err(err).Msgf("unmarshal message failed from node %s:%s", nodename, conn.RemoteAddr())
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{

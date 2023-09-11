@@ -1,0 +1,24 @@
+ cluster:
+    - ClusterConfigUpdated, ClusterStatusUpdated
+    - JoinError, JoinIgnored, JoinRequest, JoinSuccess, LeaveError, LeaveIgnored, LeaveRequest, LeaveSuccess
+    - ArbitratorError, ForgetPeer
+ config file updates: ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
+ daemon: DaemonCtl, DaemonHb, DaemonStart
+ dns: ZoneRecordDeleted, ZoneRecordUpdated
+ execs: Exec, ExecFailed, ExecSuccess
+ heartbeat: HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated
+ instance:
+   - InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
+   - InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
+   - InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated
+   - InstanceStatusDeleted, InstanceStatusPost, InstanceStatusUpdated
+   - ProgressInstanceMonitor, SetInstanceMonitor, SetInstanceMonitorRefused, SetNodeMonitor
+ node:
+    - NodeConfigUpdated, NodeDataUpdated, NodeFrozen, NodeFrozenFileRemoved, NodeFrozenFileUpdated
+    - NodeMonitorDeleted, NodeMonitorUpdated
+    - NodeOsPathsUpdated
+    - NodeRejoin, NodeSplitAction
+    - NodeStatsUpdated, NodeStatusArbitratorsUpdated, NodeStatusGenUpdates, NodeStatusLabelsUpdated, NodeStatusUpdated
+ object: ObjectOrchestrationEnd, ObjectOrchestrationRefused, ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
+ pubsub client: ClientSubscribed, ClientUnsubscribed, SubscriptionError, SubscriptionQueueThreshold
+ dummy: Exit, Log, WatchDog

@@ -198,13 +198,14 @@
 
 * The new keyword **uri** replaces **name**.
 
-* When the uri scheme is http or https, the vote checker is based on a GET request, else it is based on a TCP connect. For backward compatibility, when the port is not specified in a TCP connect uri, the 1214 port is implied.
+* When the uri scheme is http or https, the vote checker is based on a GET request, else it is based on a TCP connect.
+  When the port is not specified in a TCP connect uri, the 1215 port is implied.
 
   Examples:
 
       uri = https://arbitrator.opensvc.com/check
       uri = arbitrator1.opensvc.com:1215
-      uri = arbitrator1.opensvc.com               # implicitly port 1214
+      uri = arbitrator1.opensvc.com               # implicitly port 1215
 
 * The new keyword **insecure** disables the server certificate validation when the uri scheme is https, the default is false.
 

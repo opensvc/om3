@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 )
@@ -53,7 +53,7 @@ func (t sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 }
 
 func secEncode(b []byte) (string, error) {
-	m := reqjsonrpc.NewMessage(b)
+	m := omcrypto.NewMessage(b)
 	b, err := m.Encrypt()
 	if err != nil {
 		return "", err
@@ -79,7 +79,7 @@ func secDecode(s string) ([]byte, error) {
 	}
 
 	// decrypt AES
-	m := reqjsonrpc.NewMessage(b)
+	m := omcrypto.NewMessage(b)
 	b, err = m.Decrypt()
 	if err != nil {
 		return []byte{}, err
