@@ -256,7 +256,7 @@ func (t Renderer) renderTab(options string) (string, error) {
 			}
 			valueStrings := []string{}
 			if len(values) == 0 || len(values[0]) == 0 {
-				fmt.Fprintf(w, "<none>\t", err)
+				fmt.Fprintf(w, "<none>\t")
 				continue
 			}
 			for arrIx := range values {
