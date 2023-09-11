@@ -290,7 +290,7 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 		t.Output = output.JSONLine.String()
 	}
 	output.Renderer{
-		Format:   t.Output,
+		Output:   t.Output,
 		Color:    t.Color,
 		Data:     ce,
 		Colorize: rawconfig.Colorize,

@@ -138,7 +138,7 @@ func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 	}
 
 	s, err := output.Renderer{
-		Format:        m.format,
+		Output:        m.format,
 		Color:         m.color,
 		Data:          data.WithSelector(m.selector),
 		HumanRenderer: human,

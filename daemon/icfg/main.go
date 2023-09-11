@@ -380,8 +380,8 @@ func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 	return m
 }
 
-func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {
-	m := make(map[string]instance.ResourceConfig)
+func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
+	m := make(instance.ResourceConfigs, 0)
 	for _, section := range cf.SectionStrings() {
 		switch section {
 		case "env", "DEFAULT":

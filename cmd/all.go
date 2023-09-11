@@ -11,9 +11,17 @@ func init() {
 	cmdObjectComplianceShow := newCmdObjectComplianceShow(kind)
 	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
+	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectInstanceConfig := newCmdObjectInstanceConfig(kind)
+	cmdObjectInstanceMonitor := newCmdObjectInstanceMonitor(kind)
+	cmdObjectInstanceStatus := newCmdObjectInstanceStatus(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
+	cmdObjectResource := newCmdObjectResource(kind)
+	cmdObjectResourceConfig := newCmdObjectResourceConfig(kind)
+	cmdObjectResourceMonitor := newCmdObjectResourceMonitor(kind)
+	cmdObjectResourceStatus := newCmdObjectResourceStatus(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
 	cmdObjectSync := newCmdObjectSync(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
@@ -25,8 +33,10 @@ func init() {
 		cmdObjectCollector,
 		cmdObjectCompliance,
 		cmdObjectEdit,
+		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectPush,
+		cmdObjectResource,
 		cmdObjectSet,
 		cmdObjectSync,
 		cmdObjectValidate,
@@ -59,6 +69,36 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
+	)
+	cmdObjectInstanceConfig.AddCommand(
+		newCmdObjectInstanceConfigLs(kind),
+	)
+	cmdObjectInstanceMonitor.AddCommand(
+		newCmdObjectInstanceMonitorLs(kind),
+	)
+	cmdObjectInstanceStatus.AddCommand(
+		newCmdObjectInstanceStatusLs(kind),
+	)
+	cmdObjectInstance.AddCommand(
+		cmdObjectInstanceConfig,
+		cmdObjectInstanceMonitor,
+		cmdObjectInstanceStatus,
+		newCmdObjectInstanceLs(kind),
+	)
+	cmdObjectResourceConfig.AddCommand(
+		newCmdObjectResourceConfigLs(kind),
+	)
+	cmdObjectResourceMonitor.AddCommand(
+		newCmdObjectResourceMonitorLs(kind),
+	)
+	cmdObjectResourceStatus.AddCommand(
+		newCmdObjectResourceStatusLs(kind),
+	)
+	cmdObjectResource.AddCommand(
+		cmdObjectResourceConfig,
+		cmdObjectResourceMonitor,
+		cmdObjectResourceStatus,
+		newCmdObjectResourceLs(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

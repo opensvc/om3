@@ -1014,11 +1014,11 @@ func (o *imon) doAction(action func() error, newState, successState, errorState 
 }
 
 func (o *imon) initResourceMonitor() {
-	m := make(map[string]instance.ResourceMonitor)
-	for rid, res := range o.instConfig.Resources {
+	m := make(instance.ResourceMonitors, 0)
+	for rid, rcfg := range o.instConfig.Resources {
 		m[rid] = instance.ResourceMonitor{
 			Restart: instance.ResourceMonitorRestart{
-				Remaining: res.Restart,
+				Remaining: rcfg.Restart,
 			},
 		}
 	}

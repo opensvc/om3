@@ -8,35 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/san"
 )
-
-type (
-	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
-	// used by nodes to:
-	// * expand node selector expressions based on labels
-	// * setup clusterwide lun mapping from pools backed by san arrays
-	NodesInfo map[string]NodeInfo
-
-	NodeInfo struct {
-		Env    string    `json:"env" yaml:"env"`
-		Labels Labels    `json:"labels" yaml:"labels"`
-		Paths  san.Paths `json:"paths" yaml:"paths"`
-	}
-
-	// Labels holds the key/value pairs defined in the labels section of the node.conf
-	Labels map[string]string
-)
-
-func (t Labels) DeepCopy() Labels {
-	labels := make(Labels)
-	for k, v := range t {
-		labels[k] = v
-	}
-	return labels
-}
 
 func cacheFile() string {
 	return filepath.Join(rawconfig.Paths.Var, "nodes_info.json")
@@ -48,7 +23,7 @@ func cacheFilePair() (final, tmp string) {
 	return
 }
 
-func Save(data NodesInfo) error {
+func Save(data node.NodesInfo) error {
 	p, tmp := cacheFilePair()
 	jsonFile, err := os.Create(tmp)
 	if err != nil {
@@ -67,8 +42,8 @@ func Save(data NodesInfo) error {
 	return nil
 }
 
-func Load() (NodesInfo, error) {
-	data := NodesInfo{}
+func Load() (node.NodesInfo, error) {
+	data := node.NodesInfo{}
 	p := cacheFile()
 	jsonFile, err := os.Open(p)
 	if err != nil {
@@ -80,7 +55,7 @@ func Load() (NodesInfo, error) {
 	return data, err
 }
 
-func ReqWithClient(c api.ClientInterface) (NodesInfo, error) {
+func ReqWithClient(c api.ClientInterface) (node.NodesInfo, error) {
 	if c == nil {
 		panic("nodesinfo.ReqWithClient(nil): no client")
 	}
@@ -90,19 +65,8 @@ func ReqWithClient(c api.ClientInterface) (NodesInfo, error) {
 	} else if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected get nodes info status code %s", resp.Status)
 	}
-	var data NodesInfo
+	var data node.NodesInfo
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	return data, err
-}
-
-// GetNodesWithAnyPaths return the list of nodes having any of the given paths.
-func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
-	l := make([]string, 0)
-	for nodename, node := range t {
-		if paths.HasAnyOf(node.Paths) {
-			l = append(l, nodename)
-		}
-	}
-	return l
 }

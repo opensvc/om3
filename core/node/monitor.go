@@ -12,12 +12,18 @@ import (
 type (
 	// Monitor describes the in-daemon states of a node
 	Monitor struct {
-		State                 MonitorState        `json:"state" yaml:"state"`
-		LocalExpect           MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
-		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
-		StateUpdatedAt        time.Time           `json:"state_updated_at" yaml:"state_updated_at"`
-		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
-		LocalExpectUpdatedAt  time.Time           `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
+		GlobalExpect MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		LocalExpect  MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
+		State        MonitorState        `json:"state" yaml:"state"`
+
+		GlobalExpectUpdatedAt time.Time `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		LocalExpectUpdatedAt  time.Time `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
+		StateUpdatedAt        time.Time `json:"state_updated_at" yaml:"state_updated_at"`
+		UpdatedAt             time.Time `json:"updated_at" yaml:"updated_at"`
+
+		OrchestrationId     uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
+		OrchestrationIsDone bool      `json:"orchestration_is_done" yaml:"orchestration_is_done"`
+		SessionId           uuid.UUID `json:"session_id" yaml:"session_id"`
 	}
 
 	// MonitorUpdate is embedded in the SetNodeMonitor message to

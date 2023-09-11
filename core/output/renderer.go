@@ -25,7 +25,8 @@ type (
 	// Renderer hosts the renderer options and data, and exposes the rendering
 	// method.
 	Renderer struct {
-		Format        string
+		DefaultOutput string
+		Output        string
 		Color         string
 		Data          interface{}
 		HumanRenderer RenderFunc
@@ -57,11 +58,19 @@ func (t Renderer) Sprint() (string, error) {
 	var (
 		options, format string
 	)
-	if i := strings.Index(t.Format, "="); i > 0 {
-		options = t.Format[i+1:]
-		format = t.Format[:i]
+	if t.DefaultOutput != "" {
+		if t.Output == "auto" {
+			t.Output = t.DefaultOutput
+		}
+		if strings.HasPrefix(t.Output, "+") {
+			t.Output = t.DefaultOutput + "," + t.Output[1:]
+		}
+	}
+	if i := strings.Index(t.Output, "="); i > 0 {
+		options = t.Output[i+1:]
+		format = t.Output[:i]
 	} else {
-		format = t.Format
+		format = t.Output
 	}
 	formatID := toID[format]
 
@@ -242,11 +251,13 @@ func (t Renderer) renderTab(options string) (string, error) {
 		for _, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
 			if err != nil {
-				return "", err
+				fmt.Fprintf(w, "<%s>\t", err)
+				continue
 			}
 			valueStrings := []string{}
 			if len(values) == 0 || len(values[0]) == 0 {
-				valueStrings = append(valueStrings, "<none>")
+				fmt.Fprintf(w, "<none>\t")
+				continue
 			}
 			for arrIx := range values {
 				for valIx := range values[arrIx] {

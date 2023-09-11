@@ -17,7 +17,7 @@ func (a *DaemonApi) PostNodeDRBDConfig(ctx echo.Context, params api.PostNodeDRBD
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
-	if a, ok := pendingDRBDAllocations.get(payload.AllocationId); !ok || time.Now().After(a.ExpireAt) {
+	if a, ok := pendingDRBDAllocations.get(payload.AllocationId); !ok || time.Now().After(a.ExpiredAt) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "drbd allocation expired: %#v", a)
 	}
 	if strings.Contains(params.Name, "..") || strings.HasPrefix(params.Name, "/") {

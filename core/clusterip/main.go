@@ -86,9 +86,8 @@ func (t L) Load(clusterStatus cluster.Data) L {
 			if inst.Status == nil {
 				continue
 			}
-			for _, resourceData := range inst.Status.Resources {
-				rid := resourceData.Rid
-				if ipIntf, ok := resourceData.Info["ipaddr"]; ok {
+			for rid, rstat := range inst.Status.Resources {
+				if ipIntf, ok := rstat.Info["ipaddr"]; ok {
 					p, err := path.Parse(ps)
 					if err != nil {
 						log.Debug().Err(err).Str("path", ps).Send()

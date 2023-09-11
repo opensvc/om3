@@ -116,6 +116,8 @@
 
 * **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
 
+* **breaking change:** "om cluster abort" replaces "om node abort" to abort the pending cluster action orchestration.
+
 * **breaking change:** "om ... set|unset" no longer accept --param and --value. Use --kw instead, which was also supported in v2.
 
 * "om monitor" instance availability icons changes:

@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (
@@ -39,19 +42,19 @@ type (
 		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done" yaml:"orchestration_is_done"`
 
-		SessionId               uuid.UUID          `json:"session_id" yaml:"session_id"`
-		State                   MonitorState       `json:"state" yaml:"state"`
-		StateUpdatedAt          time.Time          `json:"state_updated_at" yaml:"state_updated_at"`
-		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
-		Preserved               bool               `json:"preserved" yaml:"preserved"`
-		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
-		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
+		SessionId               uuid.UUID        `json:"session_id" yaml:"session_id"`
+		State                   MonitorState     `json:"state" yaml:"state"`
+		StateUpdatedAt          time.Time        `json:"state_updated_at" yaml:"state_updated_at"`
+		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
+		IsPreserved             bool             `json:"preserved" yaml:"preserved"`
+		Resources               ResourceMonitors `json:"resources,omitempty" yaml:"resources,omitempty"`
+		UpdatedAt               time.Time        `json:"updated_at" yaml:"updated_at"`
 
 		Parents  map[string]status.T `json:"parents,omitempty" yaml:"parents,omitempty"`
 		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
 	}
 
-	ResourceMonitorMap map[string]ResourceMonitor
+	ResourceMonitors map[string]ResourceMonitor
 
 	// MonitorUpdate is embedded in the SetInstanceMonitor message to
 	// change some Monitor values. A nil value does not change the
@@ -264,6 +267,7 @@ var (
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 
+	MonitorActionNone       MonitorAction = ""
 	MonitorActionCrash      MonitorAction = "crash"
 	MonitorActionFreezeStop MonitorAction = "freeze_stop"
 	MonitorActionReboot     MonitorAction = "reboot"
@@ -361,33 +365,14 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (m ResourceMonitorMap) DecRestartRemaining(rid string) {
-	if rmon, ok := m[rid]; ok && rmon.Restart.Remaining > 0 {
+func (rmon *ResourceMonitor) DecRestartRemaining() {
+	if rmon.Restart.Remaining > 0 {
 		rmon.Restart.Remaining -= 1
-		m[rid] = rmon
 	}
 }
 
-func (m ResourceMonitorMap) GetRestartRemaining(rid string) (int, bool) {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Remaining, true
-	} else {
-		return 0, false
-	}
-}
-
-func (m ResourceMonitorMap) GetRestart(rid string) (ResourceMonitorRestart, bool) {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart, true
-	} else {
-		return ResourceMonitorRestart{}, false
-	}
-}
-
-func (m ResourceMonitorMap) StopRestartTimer(rid string) bool {
-	if rmon, ok := m[rid]; !ok {
-		return false
-	} else if rmon.Restart.Timer == nil {
+func (rmon *ResourceMonitor) StopRestartTimer() bool {
+	if rmon.Restart.Timer == nil {
 		return false
 	} else {
 		rmon.Restart.Timer.Stop()
@@ -396,39 +381,48 @@ func (m ResourceMonitorMap) StopRestartTimer(rid string) bool {
 	}
 }
 
-func (m ResourceMonitorMap) GetRestartTimer(rid string) (*time.Timer, bool) {
+func (m ResourceMonitors) Set(rid string, rmon ResourceMonitor) {
+	m[rid] = rmon
+}
+
+func (m ResourceMonitors) Get(rid string) *ResourceMonitor {
 	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Timer, true
+		return &rmon
 	} else {
-		return nil, false
+		return nil
 	}
 }
 
-func (m ResourceMonitorMap) HasRestartTimer(rid string) bool {
-	if rmon, ok := m[rid]; ok {
-		return rmon.Restart.Timer != nil
-	} else {
-		return false
-	}
+func (m ResourceMonitors) DeepCopy() ResourceMonitors {
+	return xmap.Copy(m)
 }
 
-func (m ResourceMonitorMap) SetRestartLastAt(rid string, v time.Time) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.LastAt = v
-		m[rid] = rmon
+func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.Status) string {
+	// Restart and retries
+	retries := 0
+	if rmon := mon.Resources.Get(rid.Name); rmon != nil {
+		retries = rmon.Restart.Remaining
 	}
+	return r.Restart.FlagString(retries)
 }
 
-func (m ResourceMonitorMap) SetRestartRemaining(rid string, v int) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.Remaining = v
-		m[rid] = rmon
+func (mon Monitor) DeepCopy() *Monitor {
+	v := mon
+	v.Resources = v.Resources.DeepCopy()
+	if mon.GlobalExpectOptions != nil {
+		switch mon.GlobalExpect {
+		case MonitorGlobalExpectPlacedAt:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			var placedAt MonitorGlobalExpectOptionsPlacedAt
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &placedAt)
+			v.GlobalExpectOptions = placedAt
+		// TODO add other cases for globalExpect values that requires GlobalExpectOptions
+		default:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+		}
 	}
-}
-
-func (m ResourceMonitorMap) SetRestartTimer(rid string, v *time.Timer) {
-	if rmon, ok := m[rid]; ok {
-		rmon.Restart.Timer = v
-		m[rid] = rmon
-	}
+	return &v
 }

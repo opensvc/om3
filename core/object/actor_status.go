@@ -102,10 +102,10 @@ func runningRIDList(t interface{}) []string {
 }
 
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {
-	resources := make([]resource.ExposedStatus, 0)
+	data.Resources = make(instance.ResourceStatuses)
 	var mu sync.Mutex
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
-		xd := resource.GetExposedStatus(ctx, r)
+		xd := resource.GetStatus(ctx, r)
 
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.
@@ -118,8 +118,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) e
 		}
 
 		mu.Lock()
-		resources = append(resources, xd)
-		data.Resources = resources
+		data.Resources[r.RID()] = xd
 		data.Overall.Add(xd.Status)
 		if !xd.Optional {
 			data.Avail.Add(xd.Status)
