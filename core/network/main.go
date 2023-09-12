@@ -86,9 +86,6 @@ type (
 		// Type return the driver name.
 		Type() string
 
-		// Usage returns the usage metrics of the network.
-		Usage() (Usage, error)
-
 		FilterIPs(clusterip.L) clusterip.L
 
 		AllowEmptyNetwork() bool

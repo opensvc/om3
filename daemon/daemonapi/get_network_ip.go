@@ -14,12 +14,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-// GetNetworks returns network status list.
-func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams) error {
-	n, err := object.NewNode(object.WithVolatile(true))
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
-	}
+func GetClusterIps() clusterip.L {
 	cips := make(clusterip.L, 0)
 	for _, instStatusData := range instance.StatusData.GetAll() {
 		for rid, resStatus := range instStatusData.Value.Resources {
@@ -40,6 +35,16 @@ func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams
 			cips = append(cips, cip)
 		}
 	}
+	return cips
+}
+
+// GetNetworks returns network status list.
+func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams) error {
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
+	}
+	cips := GetClusterIps()
 	var networkStatusList network.StatusList
 	if params.Name != nil {
 		networkStatusList = network.ShowNetworksByName(n, *params.Name, cips)

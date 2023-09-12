@@ -35,7 +35,7 @@ func (t *CmdNetworkLs) Run() error {
 	case 200:
 		data := *resp.JSON200
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,FREE:usage.free,USED:usage.used,SIZE:usage.size,PCT:usage.pct",
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:usage.size,USED:usage.used,FREE:usage.free,USE_PCT:usage.pct",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          data,

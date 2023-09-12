@@ -17,11 +17,12 @@ func (a *DaemonApi) GetNetwork(ctx echo.Context, params api.GetNetworkParams) er
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
 	}
+	cips := GetClusterIps()
 	var l network.StatusList
 	if params.Name != nil {
-		l = network.ShowNetworksByName(n, *params.Name, nil)
+		l = network.ShowNetworksByName(n, *params.Name, cips)
 	} else {
-		l = network.ShowNetworks(n, nil)
+		l = network.ShowNetworks(n, cips)
 	}
 	return ctx.JSON(http.StatusOK, l)
 }

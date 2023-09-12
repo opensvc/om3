@@ -30,11 +30,6 @@ func New() *T {
 	return &t
 }
 
-func (t T) Usage() (network.Usage, error) {
-	usage := network.Usage{}
-	return usage, nil
-}
-
 func (t T) brName() string {
 	return "obr_" + t.Name()
 }
