@@ -906,6 +906,9 @@ func (t T) upPeer() (string, error) {
 		return isUpFromState(state), err
 	}
 	for _, n := range t.Peers {
+		if n == t.Hostname {
+			continue
+		}
 		if v, err := isPeerUp(n); err != nil {
 			t.Log().Debug().Msgf("ssh abort check on %s: %s", n, err)
 			continue
