@@ -43,8 +43,8 @@ func New() *T {
 	return &t
 }
 
-func (t T) Usage() (network.StatusUsage, error) {
-	usage := network.StatusUsage{}
+func (t T) Usage() (network.Usage, error) {
+	usage := network.Usage{}
 	return usage, nil
 }
 

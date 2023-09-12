@@ -309,29 +309,39 @@ type InstanceStatusItem struct {
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
 
-// NetworkStatus defines model for NetworkStatus.
-type NetworkStatus struct {
-	Errors  *[]string           `json:"errors,omitempty"`
-	Ips     *[]NetworkStatusIp  `json:"ips,omitempty"`
-	Name    *string             `json:"name,omitempty"`
-	Network *string             `json:"network,omitempty"`
-	Type    *string             `json:"type,omitempty"`
-	Usage   *NetworkStatusUsage `json:"usage,omitempty"`
+// Network defines model for Network.
+type Network struct {
+	Errors  []string     `json:"errors"`
+	Name    string       `json:"name"`
+	Network string       `json:"network"`
+	Type    string       `json:"type"`
+	Usage   NetworkUsage `json:"usage"`
 }
 
-// NetworkStatusIp defines model for NetworkStatusIp.
-type NetworkStatusIp struct {
-	Ip   string `json:"ip"`
-	Node string `json:"node"`
-	Path string `json:"path"`
-	Rid  string `json:"rid"`
+// NetworkArray defines model for NetworkArray.
+type NetworkArray = []Network
+
+// NetworkIp defines model for NetworkIp.
+type NetworkIp struct {
+	Ip      string           `json:"ip"`
+	Network NetworkIpNetwork `json:"network"`
+	Node    string           `json:"node"`
+	Path    string           `json:"path"`
+	Rid     string           `json:"rid"`
 }
 
-// NetworkStatusList defines model for NetworkStatusList.
-type NetworkStatusList = []NetworkStatus
+// NetworkIpArray defines model for NetworkIpArray.
+type NetworkIpArray = []NetworkIp
 
-// NetworkStatusUsage defines model for NetworkStatusUsage.
-type NetworkStatusUsage struct {
+// NetworkIpNetwork defines model for NetworkIpNetwork.
+type NetworkIpNetwork struct {
+	Name    string `json:"name"`
+	Network string `json:"network"`
+	Type    string `json:"type"`
+}
+
+// NetworkUsage defines model for NetworkUsage.
+type NetworkUsage struct {
 	Free int     `json:"free"`
 	Pct  float32 `json:"pct"`
 	Size int     `json:"size"`
@@ -893,8 +903,14 @@ type GetInstanceStatusParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// GetNetworksParams defines parameters for GetNetworks.
-type GetNetworksParams struct {
+// GetNetworkParams defines parameters for GetNetwork.
+type GetNetworkParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNetworkIpParams defines parameters for GetNetworkIp.
+type GetNetworkIpParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }

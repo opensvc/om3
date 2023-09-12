@@ -87,7 +87,7 @@ type (
 		Type() string
 
 		// Usage returns the usage metrics of the network.
-		Usage() (StatusUsage, error)
+		Usage() (Usage, error)
 
 		FilterIPs(clusterip.L) clusterip.L
 
@@ -420,7 +420,7 @@ func Networks(noder Noder) []Networker {
 		if p == nil {
 			continue
 		}
-		if p.Type() == "shm" {
+		if p.Type() == "lo" {
 			hasLO = true
 		}
 		if p.Name() == "default" {

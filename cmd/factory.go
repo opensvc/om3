@@ -523,12 +523,11 @@ func newCmdNetworkSetup() *cobra.Command {
 	return cmd
 }
 
-func newCmdNetworkStatus() *cobra.Command {
-	var options commands.CmdNetworkStatus
+func newCmdNetworkIpLs() *cobra.Command {
+	var options commands.CmdNetworkIpLs
 	cmd := &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster networks usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
+		Use:   "ls",
+		Short: "list the ip in the cluster networks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -536,7 +535,6 @@ func newCmdNetworkStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagNetworkStatusName(flags, &options.Name)
-	addFlagNetworkStatusExtended(flags, &options.Verbose)
 	return cmd
 }
 

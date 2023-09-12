@@ -498,9 +498,14 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /networks:
+
+  # ========================================================================
+  # network paths
+  # ========================================================================
+
+  /network:
     get:
-      operationId: GetNetworks
+      operationId: GetNetwork
       tags:
         - network
       security:
@@ -519,7 +524,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NetworkStatusList'
+                $ref: '#/components/schemas/NetworkArray'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /network/ip:
+    get:
+      operationId: GetNetworkIp
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a cluster backend network
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkIpArray'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2042,8 +2076,14 @@ components:
         updated_at:
           type: string
           format: date-time
-    NetworkStatus:
+    Network:
       type: object
+      required:
+        - name
+        - type
+        - network
+        - errors
+        - usage
       properties:
         name:
           type: string
@@ -2051,23 +2091,37 @@ components:
           type: string
         network:
           type: string
-        ips:
-          type: array
-          items:
-            $ref: '#/components/schemas/NetworkStatusIp'
         errors:
           type: array
           items:
             type: string
         usage:
-          $ref: '#/components/schemas/NetworkStatusUsage'
-    NetworkStatusIp:
+          $ref: '#/components/schemas/NetworkUsage'
+    NetworkIpNetwork:
+      type: object
+      required:
+        - name
+        - type
+        - network
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+    NetworkArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/Network'
+    NetworkIp:
       type: object
       required:
         - ip
         - node
         - path
         - rid
+        - network
       properties:
         ip:
           type: string
@@ -2077,11 +2131,13 @@ components:
           type: string
         rid:
           type: string
-    NetworkStatusList:
+        network:
+          $ref: '#/components/schemas/NetworkIpNetwork'
+    NetworkIpArray:
       type: array
       items:
-        $ref: '#/components/schemas/NetworkStatus'
-    NetworkStatusUsage:
+        $ref: '#/components/schemas/NetworkIp'
+    NetworkUsage:
       type: object
       required:
         - free

@@ -1,18 +1,14 @@
 package network
 
 import (
-	"fmt"
 	"math"
 	"net"
-	"sort"
 
 	"github.com/opensvc/om3/core/clusterip"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (
-	StatusUsage struct {
+	Usage struct {
 		Free int     `json:"free" yaml:"free"`
 		Used int     `json:"used" yaml:"used"`
 		Size int     `json:"size" yaml:"size"`
@@ -20,12 +16,12 @@ type (
 	}
 
 	Status struct {
-		Name        string      `json:"name" yaml:"name"`
-		Type        string      `json:"type" yaml:"type"`
-		Network     string      `json:"network" yaml:"network"`
-		IPs         clusterip.L `json:"ips" yaml:"ips"`
-		Errors      []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
-		StatusUsage `yaml:",inline"`
+		Name    string      `json:"name" yaml:"name"`
+		Type    string      `json:"type" yaml:"type"`
+		Network string      `json:"network" yaml:"network"`
+		IPs     clusterip.L `json:"ips" yaml:"ips"`
+		Errors  []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
+		Usage   `yaml:",inline"`
 	}
 	StatusList []Status
 )
@@ -37,7 +33,7 @@ func NewStatus() Status {
 	return t
 }
 
-func GetStatus(t Networker, withUsage bool) Status {
+func GetStatus(t Networker, withUsage bool, ips clusterip.L) Status {
 	data := NewStatus()
 	data.Type = t.Type()
 	data.Name = t.Name()
@@ -59,6 +55,9 @@ func GetStatus(t Networker, withUsage bool) Status {
 			data.Pct = float64(usage.Used) / float64(usage.Size) * 100.0
 		}
 	}
+	if ips != nil {
+		data.IPs = t.FilterIPs(ips)
+	}
 	return data
 }
 
@@ -79,79 +78,24 @@ func (t StatusList) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
 
-func (t StatusList) Add(p Networker, withUsage bool) StatusList {
-	s := GetStatus(p, withUsage)
+func (t StatusList) Add(p Networker, withUsage bool, ips clusterip.L) StatusList {
+	s := GetStatus(p, withUsage, ips)
 	l := []Status(t)
 	l = append(l, s)
 	return StatusList(l)
 }
 
-func (t StatusList) Render(verbose bool) string {
-	nt := t
-	if !verbose {
-		for i, _ := range nt {
-			nt[i].IPs = nil
-		}
-	}
-	return nt.Tree().Render()
-}
-
-// Tree returns a tree loaded with the type instance.
-func (t StatusList) Tree() *tree.Tree {
-	tree := tree.New()
-	t.LoadTreeNode(tree.Head())
-	return tree
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t StatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("name").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("type").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("network").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("size").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("used").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("free").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("pct").SetColor(rawconfig.Color.Bold)
-	sort.Sort(t)
-	for _, data := range t {
-		n := head.AddNode()
-		data.LoadTreeNode(n)
-	}
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t Status) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Color.Primary)
-	head.AddColumn().AddText(t.Type)
-	head.AddColumn().AddText(t.Network)
-	if t.Size == 0 {
-		head.AddColumn().AddText("-")
-		head.AddColumn().AddText("-")
-		head.AddColumn().AddText("-")
-		head.AddColumn().AddText("-")
-	} else {
-		head.AddColumn().AddText(fmt.Sprint(t.Size))
-		head.AddColumn().AddText(fmt.Sprint(t.Used))
-		head.AddColumn().AddText(fmt.Sprint(t.Free))
-		head.AddColumn().AddText(fmt.Sprintf("%.2f%%", t.Pct))
-	}
-	if len(t.IPs) > 0 {
-		n := head.AddNode()
-		t.IPs.LoadTreeNode(n)
-	}
-}
-
-func ShowNetworksByName(noder Noder, name string) StatusList {
+func ShowNetworksByName(noder Noder, name string, ips clusterip.L) StatusList {
 	l := NewStatusList()
 	for _, p := range Networks(noder) {
 		if name != "" && name != p.Name() {
 			continue
 		}
-		l = l.Add(p, true)
+		l = l.Add(p, true, ips)
 	}
 	return l
 }
 
-func ShowNetworks(noder Noder) StatusList {
-	return ShowNetworksByName(noder, "")
+func ShowNetworks(noder Noder, ips clusterip.L) StatusList {
+	return ShowNetworksByName(noder, "", ips)
 }

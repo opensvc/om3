@@ -11,31 +11,31 @@ import (
 )
 
 type (
-	CmdNetworkLs struct {
+	CmdNetworkIpLs struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdNetworkLs) Run() error {
+func (t *CmdNetworkIpLs) Run() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetNetworkParams{}
+	params := api.GetNetworkIpParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetNetworkWithResponse(context.Background(), &params)
+	resp, err := c.GetNetworkIpWithResponse(context.Background(), &params)
 	if err != nil {
-		return err
+		return fmt.Errorf("api: %w", err)
 	}
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
 		data := *resp.JSON200
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,FREE:usage.free,USED:usage.used,SIZE:usage.size,PCT:usage.pct",
+			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          data,

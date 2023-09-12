@@ -152,8 +152,11 @@ type ClientInterface interface {
 
 	PostInstanceStatus(ctx context.Context, body PostInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNetworks request
-	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetNetwork request
+	GetNetwork(ctx context.Context, params *GetNetworkParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNetworkIp request
+	GetNetworkIp(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNode request
 	GetNode(ctx context.Context, params *GetNodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -567,8 +570,20 @@ func (c *Client) PostInstanceStatus(ctx context.Context, body PostInstanceStatus
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNetworksRequest(c.Server, params)
+func (c *Client) GetNetwork(ctx context.Context, params *GetNetworkParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNetworkRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNetworkIp(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNetworkIpRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2079,8 +2094,8 @@ func NewPostInstanceStatusRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
-// NewGetNetworksRequest generates requests for GetNetworks
-func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Request, error) {
+// NewGetNetworkRequest generates requests for GetNetwork
+func NewGetNetworkRequest(server string, params *GetNetworkParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2088,7 +2103,54 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/networks")
+	operationPath := fmt.Sprintf("/network")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Name != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, *params.Name); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNetworkIpRequest generates requests for GetNetworkIp
+func NewGetNetworkIpRequest(server string, params *GetNetworkIpParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/network/ip")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4084,8 +4146,11 @@ type ClientWithResponsesInterface interface {
 
 	PostInstanceStatusWithResponse(ctx context.Context, body PostInstanceStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceStatusResponse, error)
 
-	// GetNetworks request
-	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
+	// GetNetwork request
+	GetNetworkWithResponse(ctx context.Context, params *GetNetworkParams, reqEditors ...RequestEditorFn) (*GetNetworkResponse, error)
+
+	// GetNetworkIp request
+	GetNetworkIpWithResponse(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*GetNetworkIpResponse, error)
 
 	// GetNode request
 	GetNodeWithResponse(ctx context.Context, params *GetNodeParams, reqEditors ...RequestEditorFn) (*GetNodeResponse, error)
@@ -4718,17 +4783,17 @@ func (r PostInstanceStatusResponse) StatusCode() int {
 	return 0
 }
 
-type GetNetworksResponse struct {
+type GetNetworkResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *NetworkStatusList
+	JSON200      *NetworkArray
 	JSON401      *Problem
 	JSON403      *Problem
 	JSON500      *Problem
 }
 
 // Status returns HTTPResponse.Status
-func (r GetNetworksResponse) Status() string {
+func (r GetNetworkResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -4736,7 +4801,32 @@ func (r GetNetworksResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetNetworksResponse) StatusCode() int {
+func (r GetNetworkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNetworkIpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NetworkIpArray
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNetworkIpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNetworkIpResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5954,13 +6044,22 @@ func (c *ClientWithResponses) PostInstanceStatusWithResponse(ctx context.Context
 	return ParsePostInstanceStatusResponse(rsp)
 }
 
-// GetNetworksWithResponse request returning *GetNetworksResponse
-func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error) {
-	rsp, err := c.GetNetworks(ctx, params, reqEditors...)
+// GetNetworkWithResponse request returning *GetNetworkResponse
+func (c *ClientWithResponses) GetNetworkWithResponse(ctx context.Context, params *GetNetworkParams, reqEditors ...RequestEditorFn) (*GetNetworkResponse, error) {
+	rsp, err := c.GetNetwork(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetNetworksResponse(rsp)
+	return ParseGetNetworkResponse(rsp)
+}
+
+// GetNetworkIpWithResponse request returning *GetNetworkIpResponse
+func (c *ClientWithResponses) GetNetworkIpWithResponse(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*GetNetworkIpResponse, error) {
+	rsp, err := c.GetNetworkIp(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNetworkIpResponse(rsp)
 }
 
 // GetNodeWithResponse request returning *GetNodeResponse
@@ -7380,22 +7479,69 @@ func ParsePostInstanceStatusResponse(rsp *http.Response) (*PostInstanceStatusRes
 	return response, nil
 }
 
-// ParseGetNetworksResponse parses an HTTP response from a GetNetworksWithResponse call
-func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) {
+// ParseGetNetworkResponse parses an HTTP response from a GetNetworkWithResponse call
+func ParseGetNetworkResponse(rsp *http.Response) (*GetNetworkResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetNetworksResponse{
+	response := &GetNetworkResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest NetworkStatusList
+		var dest NetworkArray
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNetworkIpResponse parses an HTTP response from a GetNetworkIpWithResponse call
+func ParseGetNetworkIpResponse(rsp *http.Response) (*GetNetworkIpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNetworkIpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NetworkIpArray
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
