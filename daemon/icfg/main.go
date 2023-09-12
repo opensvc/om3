@@ -387,6 +387,9 @@ func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
 		case "env", "DEFAULT":
 			continue
 		}
+		if resourceset.IsSubsetSection(section) {
+			continue
+		}
 		m[section] = instance.ResourceConfig{
 			RestartDelay: cf.GetDuration(key.New(section, "restart_delay")),
 			Restart:      cf.GetInt(key.New(section, "restart")),
