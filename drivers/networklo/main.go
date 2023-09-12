@@ -33,7 +33,7 @@ func New() *T {
 
 func (t *T) Network() string {
 	if t.IsImplicit() {
-		return ""
+		return t.T.Network()
 	}
 	return t.GetString("network")
 }
