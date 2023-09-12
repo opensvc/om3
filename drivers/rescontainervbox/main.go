@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/antchfx/xmlquery"
 	"io"
 	"net"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/antchfx/xmlquery"
 	"github.com/go-ping/ping"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -196,22 +196,26 @@ func (t *T) Stop(ctx context.Context) error {
 
 func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
-	cf := t.configFile()
-
-	f, err := os.Open(cf)
+	f, err := os.Open(t.configFile())
 	if err != nil {
+		t.Log().Error().Err(err).Send()
 		return l
 	}
 	defer f.Close()
 	doc, err := xmlquery.Parse(f)
 	if err != nil {
+		t.Log().Error().Err(err).Send()
 		return l
 	}
-	for _, e := range xmlquery.Find(doc, "//domain/devices/disk") {
-		if dev := e.SelectAttr("dev"); dev != "" {
-			l = append(l, device.New(dev))
-		}
+	nodes, err := xmlquery.QueryAll(doc, "//VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk/Property")
+	if err != nil {
+		t.Log().Error().Err(err).Send()
+		return l
 	}
+	for _, v := range nodes {
+		l = append(l, device.New(v.SelectAttr("value")))
+	}
+
 	return l
 }
 
