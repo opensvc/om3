@@ -237,7 +237,7 @@ func (t *T) ToSync() []string {
 	return []string{}
 }
 
-func (t *T) VBoxManageCommand(args ...string) (string, error) {
+func (t *T) vBoxManageCommand(args ...string) (string, error) {
 	cmd := command.New(
 		command.WithName("VBoxManage"),
 		command.WithArgs(args),
@@ -265,7 +265,7 @@ func (t *T) readConfigFileFromVarDir() (string, error) {
 
 func (t *T) configFile() string {
 	t.Log().Info().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
-	b, err := t.VBoxManageCommand("showvminfo", "--machinereadable", t.Name)
+	b, err := t.vBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
 		t.Log().Error().Msgf("can't find config file: %s", err)
 		return ""
@@ -345,19 +345,19 @@ func (t *T) undefine() error {
 
 func (t *T) start() error {
 	t.Log().Info().Msgf("VBoxManage startvm %s --type=headless", t.Name)
-	_, err := t.VBoxManageCommand("startvm", t.Name, "--type=headless")
+	_, err := t.vBoxManageCommand("startvm", t.Name, "--type=headless")
 	return err
 }
 
 func (t *T) stop() error {
 	t.Log().Info().Msgf("VBoxManage controlvm %s acpipowerbutton", t.Name)
-	_, err := t.VBoxManageCommand("controlvm", t.Name, "acpipowerbutton")
+	_, err := t.vBoxManageCommand("controlvm", t.Name, "acpipowerbutton")
 	return err
 }
 
 func (t *T) destroy() error {
 	t.Log().Info().Msgf("VBoxManage controlvm %s poweroff", t.Name)
-	_, err := t.VBoxManageCommand("controlvm", t.Name, "poweroff")
+	_, err := t.vBoxManageCommand("controlvm", t.Name, "poweroff")
 	return err
 }
 
@@ -402,8 +402,11 @@ func (t *T) registerVm() error {
 	if err != nil {
 		return err
 	}
+	if configFilePath == "" {
+		return fmt.Errorf("can't register: vm unknown config file path")
+	}
 	t.Log().Info().Msgf("VBoxManage registervm %s", configFilePath)
-	_, err = t.VBoxManageCommand("registervm", configFilePath)
+	_, err = t.vBoxManageCommand("registervm", configFilePath)
 	return err
 }
 
@@ -469,7 +472,7 @@ func isAbortedFromState(state string) bool {
 
 func (t *T) domState() (string, error) {
 	t.Log().Debug().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
-	s, err := t.VBoxManageCommand("showvminfo", "--machinereadable", t.Name)
+	s, err := t.vBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
 		return "", err
 	}
