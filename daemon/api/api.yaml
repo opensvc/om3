@@ -260,6 +260,24 @@ paths:
       responses:
         200:
           description: OK
+  /daemon/restart:
+    post:
+      description: restart the daemon
+      operationId: PostDaemonRestart
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
