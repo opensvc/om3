@@ -53,6 +53,7 @@ type (
 		Close() error
 		Defined(ctx context.Context) (bool, error)
 		Start(ctx context.Context) error
+		Restart() error
 		Stop(context.Context) error
 	}
 )
@@ -123,6 +124,27 @@ func NewContext(ctx context.Context, c *client.T) *T {
 		}
 	}
 	return t
+}
+
+// RestartFromCmd handle daemon restart from command origin.
+//
+// It is used to forward restart control to (systemd) manager (when the origin is not systemd)
+func (t *T) RestartFromCmd(ctx context.Context, foreground bool, profile string) error {
+	if t.daemonsys == nil {
+		log.Info().Msg("daemon restart (origin os)")
+		return t.restartFromCmd(foreground, profile)
+	}
+	defer func() {
+		_ = t.daemonsys.Close()
+	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon restart (origin os, no unit defined)")
+		return t.restartFromCmd(foreground, profile)
+	}
+	// note: always ask manager for restart (during POST /daemon/restart handler
+	// the server api is probably CalledFromManager). And systemd unit doesn't define
+	// restart command.
+	return t.managerRestart()
 }
 
 func (t *T) SetNode(node string) {
@@ -273,6 +295,15 @@ func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
 	return nil
 }
 
+func (t *T) managerRestart() error {
+	name := "forward restart daemon to manager"
+	log.Info().Msgf("%s...", name)
+	if err := t.daemonsys.Restart(); err != nil {
+		return fmt.Errorf("%s failed: %w", name, err)
+	}
+	return nil
+}
+
 func (t *T) managerStart(ctx context.Context) error {
 	name := "forward start daemon to manager"
 	log.Info().Msgf("%s...", name)
@@ -301,6 +332,13 @@ func (t *T) managerStop(ctx context.Context) error {
 		return fmt.Errorf("%s failed during stop: %w", name, err)
 	}
 	return nil
+}
+
+func (t *T) restartFromCmd(foreground bool, profile string) error {
+	if err := t.Stop(); err != nil {
+		return err
+	}
+	return t.startFromCmd(foreground, profile)
 }
 
 func (t *T) stop() error {

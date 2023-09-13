@@ -1,18 +1,25 @@
 package commands
 
+import (
+	"context"
+
+	"github.com/opensvc/om3/daemon/daemoncli"
+)
+
 type (
 	CmdDaemonRestart struct {
-		CmdDaemonStart
+		OptsGlobal
+		Debug      bool
+		Foreground bool
+		CpuProfile string
 	}
 )
 
 func (t *CmdDaemonRestart) Run() error {
-	stop := CmdDaemonStop{OptsGlobal: t.OptsGlobal}
-	if err := stop.Run(); err != nil {
+	cli, err := newClient(t.Server)
+	if err != nil {
 		return err
 	}
-	if err := t.CmdDaemonStart.Run(); err != nil {
-		return err
-	}
-	return nil
+	ctx := context.Background()
+	return daemoncli.NewContext(ctx, cli).RestartFromCmd(ctx, t.Foreground, t.CpuProfile)
 }
