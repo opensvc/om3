@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -30,7 +31,7 @@ func (a *DaemonApi) GetResourceConfig(ctx echo.Context, params api.GetResourceCo
 			continue
 		}
 		for rid, resourceConfig := range config.Value.Resources {
-			if params.Resource != nil && rid != *params.Resource {
+			if params.Resource != nil && !resourceid.Match(rid, *params.Resource) {
 				continue
 			}
 			d := api.ResourceConfigItem{

@@ -504,19 +504,7 @@ func (t *T) Log() *zerolog.Logger {
 //     pattern.
 //     ex: fs#1 matches fs#1
 func (t T) MatchRID(s string) bool {
-	rid, err := resourceid.Parse(s)
-	if err != nil {
-		return false
-	}
-	if !rid.DriverGroup().IsValid() {
-		return false
-	}
-	if rid.Index() == "" {
-		// ex: fs#1 matches fs
-		return t.ResourceID.DriverGroup().String() == rid.DriverGroup().String()
-	}
-	// ex: fs#1 matches fs#1
-	return t.ResourceID.String() == s
+	return t.ResourceID.Match(s)
 
 }
 
