@@ -23,7 +23,7 @@ func (t *CmdObjectStatus) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Output),
+		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("status"),

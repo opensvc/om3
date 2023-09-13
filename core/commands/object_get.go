@@ -23,7 +23,7 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
-		objectaction.WithFormat(t.Output),
+		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("get"),

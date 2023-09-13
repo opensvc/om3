@@ -17,7 +17,7 @@ func (t *CmdObjectGiveback) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Output),
+		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithAsyncTarget("placed"),
 		objectaction.WithAsyncTime(t.Time),

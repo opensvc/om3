@@ -139,7 +139,7 @@ func WithAsyncWatch(v bool) funcopt.O {
 func WithFormat(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Format = s
+		t.Output = s
 		return nil
 	})
 }
@@ -201,7 +201,7 @@ func (t T) DoLocal() error {
 		return s
 	}
 	output.Renderer{
-		Output:        t.Format,
+		Output:        t.Output,
 		Color:         t.Color,
 		Data:          []actionrouter.Result{r},
 		HumanRenderer: human,

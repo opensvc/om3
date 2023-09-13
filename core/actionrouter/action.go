@@ -89,13 +89,19 @@ type (
 		Watch bool
 
 		//
-		// Format controls the output data format.
+		// Output controls the output data format.
 		// <empty>   => human readable format
+		// tab=...   => tubular customizable format
+		// yaml      => yaml machine readable format
 		// json      => json machine readable format
 		// flat      => flattened json (<k>=<v>) machine readable format
 		// flat_json => same as flat (backward compat)
 		//
-		Format string
+		Output string
+
+		// DefaultOutput defines a default output to use when Output is
+		// not specified.
+		DefaultOutput string
 
 		//
 		// Color activates the colorization of outputs
@@ -164,7 +170,7 @@ func Do(t Actioner) error {
 	if o.Watch {
 		m := monitor.New()
 		m.SetColor(o.Color)
-		m.SetFormat(o.Format)
+		m.SetFormat(o.Output)
 		m.SetSelector(o.ObjectSelector)
 		cli, e := client.New(client.WithURL(o.Server), client.WithTimeout(0))
 		if e != nil {

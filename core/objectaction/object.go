@@ -200,15 +200,23 @@ func WithAsyncWatch(v bool) funcopt.O {
 	})
 }
 
-// WithFormat controls the output data format.
+// WithOutput controls the output data format.
 // <empty>   => human readable format
 // json      => json machine readable format
 // flat      => flattened json (<k>=<v>) machine readable format
 // flat_json => same as flat (backward compat)
-func WithFormat(s string) funcopt.O {
+func WithOutput(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Format = s
+		t.Output = s
+		return nil
+	})
+}
+
+func WithDefaultOutput(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.DefaultOutput = s
 		return nil
 	})
 }
@@ -250,7 +258,7 @@ func (t T) Options() actionrouter.T {
 
 func (t T) DoLocal() error {
 	log.Debug().
-		Str("format", t.Format).
+		Str("format", t.Output).
 		Str("selector", t.ObjectSelector).
 		Msg("do local object selection action")
 	sel := objectselector.NewSelection(
@@ -327,7 +335,8 @@ func (t T) DoLocal() error {
 		return s
 	}
 	output.Renderer{
-		Output:        t.Format,
+		DefaultOutput: t.DefaultOutput,
+		Output:        t.Output,
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,
@@ -683,7 +692,7 @@ func (t T) DoAsync() error {
 		return s
 	}
 	output.Renderer{
-		Output:        t.Format,
+		Output:        t.Output,
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,

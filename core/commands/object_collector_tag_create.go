@@ -24,7 +24,7 @@ func (t *CmdObjectCollectorTagCreate) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Output),
+		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			n, err := object.NewNode()
