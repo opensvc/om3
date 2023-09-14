@@ -12,14 +12,14 @@ import (
 func TestSort(t *testing.T) {
 	sortedList := func() L {
 		return L{
-			{IP: net.IP{10, 8, 0, 8}, Node: "test", Path: path.T{Name: "a", Namespace: "A", Kind: kind.T(64)}, RID: "ip#10"},
-			{IP: net.IP{10, 200, 3, 1}, Node: "test", Path: path.T{Name: "b", Namespace: "A", Kind: kind.T(2)}, RID: "ip#3"},
-			{IP: net.IP{10, 6, 6, 9}, Node: "a", Path: path.T{Name: "z", Namespace: "C", Kind: kind.T(4)}, RID: "ip#99"},
-			{IP: net.IP{10, 0, 0, 0}, Node: "b", Path: path.T{Name: "z", Namespace: "C", Kind: kind.T(4)}, RID: "ip#70"},
-			{IP: net.IP{10, 20, 1, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.T(2)}, RID: "ip#10"},
-			{IP: net.IP{10, 0, 0, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.T(2)}, RID: "ip#10"},
-			{IP: net.IP{10, 99, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.T(32)}, RID: "ip#10"},
-			{IP: net.IP{10, 0, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.T(32)}, RID: "ip#8"},
+			{IP: net.IP{10, 8, 0, 8}, Node: "test", Path: path.T{Name: "a", Namespace: "A", Kind: kind.Ccfg}, RID: "ip#10"},
+			{IP: net.IP{10, 200, 3, 1}, Node: "test", Path: path.T{Name: "b", Namespace: "A", Kind: kind.Svc}, RID: "ip#3"},
+			{IP: net.IP{10, 6, 6, 9}, Node: "a", Path: path.T{Name: "z", Namespace: "C", Kind: kind.Vol}, RID: "ip#99"},
+			{IP: net.IP{10, 0, 0, 0}, Node: "b", Path: path.T{Name: "z", Namespace: "C", Kind: kind.Vol}, RID: "ip#70"},
+			{IP: net.IP{10, 20, 1, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.Svc}, RID: "ip#10"},
+			{IP: net.IP{10, 30, 0, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.Svc}, RID: "ip#10"},
+			{IP: net.IP{10, 99, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.Usr}, RID: "ip#10"},
+			{IP: net.IP{10, 0, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: kind.Usr}, RID: "ip#8"},
 		}
 	}
 	unsortedList := func(order []int) L {
