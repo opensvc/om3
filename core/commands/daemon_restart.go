@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/daemoncli"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -23,35 +22,19 @@ type (
 
 // Run functions restart daemon.
 //
-// The daemon restart is asynchronous when node selector is used,
-// or synchronous when --local is used or node selector is empty
+// The daemon restart is asynchronous when node selector is used
 func (t *CmdDaemonRestart) Run() error {
-	var (
-		errs      error
-		localhost = hostname.Hostname()
-		nodes     []string
-	)
-
-	if t.Local || t.NodeSelector == "" {
-		if err := t.restartLocal(); err != nil {
-			return fmt.Errorf("can't restart daemon on %s: %w", localhost, err)
+	if t.NodeSelector == "" {
+		return t.restartLocal()
+	} else {
+		nodes, err := nodeselector.New(t.NodeSelector).Expand()
+		if err != nil {
+			return fmt.Errorf("can't retrieve nodes: %w", err)
+		} else if len(nodes) == 0 {
+			return fmt.Errorf("empty nodes")
 		}
-		return nil
+		return t.restartRemotes(nodes)
 	}
-	if t.Foreground {
-		return fmt.Errorf("can't restart daemon on remote with foreground option")
-	}
-	if nodes, errs = nodeselector.New(t.NodeSelector).Expand(); errs != nil {
-		return fmt.Errorf("daemon restart unable retrieve target nodes: %w", errs)
-	} else if len(nodes) == 0 {
-		return fmt.Errorf("daemon restart failed: empty nodes")
-	}
-	for _, s := range nodes {
-		if err := t.restartRemote(s); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("can't restart daemon on %s: %w", s, err))
-		}
-	}
-	return errs
 }
 
 func (t *CmdDaemonRestart) restartLocal() error {
@@ -62,6 +45,16 @@ func (t *CmdDaemonRestart) restartLocal() error {
 	}
 	ctx := context.Background()
 	return daemoncli.NewContext(ctx, cli).RestartFromCmd(ctx, t.Foreground)
+}
+
+func (t *CmdDaemonRestart) restartRemotes(nodes []string) error {
+	var errs error
+	for _, s := range nodes {
+		if err := t.restartRemote(s); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("restart daemon failed on %s: %w", s, err))
+		}
+	}
+	return errs
 }
 
 func (t *CmdDaemonRestart) restartRemote(s string) error {

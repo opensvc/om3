@@ -287,7 +287,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "restart",
 		Short:   "restart the daemon",
-		Long:    "restart the daemon. The restart is synchronous when --local or asynchronous when --node xxx is used",
+		Long:    "restart the daemon. Operation is asynchronous when node selector is used",
 		Aliases: []string{"restart"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -296,6 +296,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForeground(flags, &options.Foreground)
+	cmd.MarkFlagsMutuallyExclusive("node", "foreground")
 	return cmd
 }
 
