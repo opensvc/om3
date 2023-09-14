@@ -129,17 +129,20 @@ func NewContext(ctx context.Context, c *client.T) *T {
 // RestartFromCmd handle daemon restart from command origin.
 //
 // It is used to forward restart control to (systemd) manager (when the origin is not systemd)
-func (t *T) RestartFromCmd(ctx context.Context, foreground bool, profile string) error {
+func (t *T) RestartFromCmd(ctx context.Context, foreground bool) error {
 	if t.daemonsys == nil {
 		log.Info().Msg("daemon restart (origin os)")
-		return t.restartFromCmd(foreground, profile)
+		return t.restartFromCmd(foreground)
+	}
+	if foreground {
+		return t.restartFromCmd(foreground)
 	}
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
 	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		log.Info().Msg("daemon restart (origin os, no unit defined)")
-		return t.restartFromCmd(foreground, profile)
+		return t.restartFromCmd(foreground)
 	}
 	// note: always ask manager for restart (during POST /daemon/restart handler
 	// the server api is probably CalledFromManager). And systemd unit doesn't define
@@ -334,11 +337,11 @@ func (t *T) managerStop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) restartFromCmd(foreground bool, profile string) error {
+func (t *T) restartFromCmd(foreground bool) error {
 	if err := t.Stop(); err != nil {
 		return err
 	}
-	return t.startFromCmd(foreground, profile)
+	return t.startFromCmd(foreground, "")
 }
 
 func (t *T) stop() error {
@@ -347,7 +350,6 @@ func (t *T) stop() error {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
-	// TODO check status code ?
 	resp, err := t.client.PostDaemonStop(context.Background())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&

@@ -286,7 +286,8 @@ func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{
 		Use:     "restart",
-		Short:   "restart the daemon or a daemon subsystem",
+		Short:   "restart the daemon",
+		Long:    "restart the daemon. The restart is synchronous when --local or asynchronous when --node xxx is used",
 		Aliases: []string{"restart"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
