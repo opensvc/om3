@@ -15,8 +15,7 @@ import (
 type (
 	CmdDaemonRestart struct {
 		OptsGlobal
-		Debug      bool
-		Foreground bool
+		Debug bool
 	}
 )
 
@@ -44,7 +43,7 @@ func (t *CmdDaemonRestart) restartLocal() error {
 		return err
 	}
 	ctx := context.Background()
-	return daemoncli.NewContext(ctx, cli).RestartFromCmd(ctx, t.Foreground)
+	return daemoncli.NewContext(ctx, cli).RestartFromCmd(ctx)
 }
 
 func (t *CmdDaemonRestart) restartRemotes(nodes []string) error {

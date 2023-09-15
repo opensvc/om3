@@ -295,8 +295,6 @@ func newCmdDaemonRestart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagForeground(flags, &options.Foreground)
-	cmd.MarkFlagsMutuallyExclusive("node", "foreground")
 	return cmd
 }
 

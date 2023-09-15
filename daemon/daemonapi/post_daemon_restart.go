@@ -20,7 +20,7 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
 
 	cmd := command.New(
 		command.WithName(execname),
-		command.WithArgs([]string{"daemon", "restart", "--local"}),
+		command.WithArgs([]string{"daemon", "restart"}),
 	)
 
 	err = cmd.Start()
