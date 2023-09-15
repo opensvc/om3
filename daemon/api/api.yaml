@@ -1654,8 +1654,6 @@ components:
         - token
       properties:
         expired_at:
-          x-oapi-codegen-extra-tags:
-            yaml: expired_at
           type: string
           format: date-time
         token:
@@ -1765,12 +1763,8 @@ components:
         - last_at
       properties:
         is_beating:
-          x-oapi-codegen-extra-tags:
-            yaml: is_beating
           type: boolean
         last_at:
-          x-oapi-codegen-extra-tags:
-            yaml: last_at
           type: string
           format: date-time
     DaemonListener:
@@ -1809,8 +1803,6 @@ components:
           type: string
           format: date-time
         created_at:
-          x-oapi-codegen-extra-tags:
-            yaml: created_at
           type: string
           format: date-time
         id:
@@ -1856,8 +1848,6 @@ components:
         minor:
           type: integer
         expired_at:
-          x-oapi-codegen-extra-tags:
-            yaml: expired_at
           type: string
           format: date-time
     InstanceMeta:
@@ -2449,16 +2439,10 @@ components:
         avail:
           $ref: '#/components/schemas/Status'
         flex_max:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_max
           type: integer
         flex_min:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_min
           type: integer
         flex_target:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_target
           type: integer
         frozen:
           type: string
@@ -2485,12 +2469,8 @@ components:
         topology:
           $ref: '#/components/schemas/Topology'
         up_instances_count:
-          x-oapi-codegen-extra-tags:
-            yaml: up_instances_count
           type: integer
         updated_at:
-          x-oapi-codegen-extra-tags:
-            yaml: updated_at
           type: string
     Orchestrate:
       type: string
@@ -2503,8 +2483,6 @@ components:
       type: object
       properties:
         orchestration_id:
-          x-oapi-codegen-extra-tags:
-            yaml: orchestration_id
           type: string
           format: uuid
       required:
@@ -2578,8 +2556,6 @@ components:
           description: volume size in bytes
           type: number
     PlacementPolicy:
-      x-oapi-codegen-extra-tags:
-        yaml: placement_policy
       type: string
       default: none
       description: object placement policy
@@ -2592,8 +2568,6 @@ components:
         - spread
         - shift
     PlacementState:
-      x-oapi-codegen-extra-tags:
-        yaml: placement_state
       type: string
       description: object placement state
       enum:
@@ -2641,8 +2615,6 @@ components:
         - data
       properties:
         allocation_id:
-          x-oapi-codegen-extra-tags:
-            yaml: allocation_id
           type: string
           format: uuid
         data:
@@ -2665,15 +2637,11 @@ components:
         path:
           type: string
         session_id:
-          x-oapi-codegen-extra-tags:
-            yaml: session_id
           type: string
           format: uuid
         state:
           type: string
         is_partial:
-          x-oapi-codegen-extra-tags:
-            yaml: is_partial
           type: boolean
 
     # ========================================================================
@@ -2784,12 +2752,8 @@ components:
         - nodename
       properties:
         cluster_id:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_id
           type: string
         cluster_name:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_name
           type: string
         nodename:
           type: string
@@ -2840,20 +2804,14 @@ components:
         addr:
           type: string
         cluster_id:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_id
           type: string
         cluster_name:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_name
           type: string
         msg:
           type: string
         nodename:
           type: string
         updated_at:
-          x-oapi-codegen-extra-tags:
-            yaml: updated_at
           type: string
           format: date-time
     RelayMessageList:
@@ -3005,8 +2963,6 @@ components:
         remaining:
           type: integer
         last_at:
-          x-oapi-codegen-extra-tags:
-            yaml: last_at
           type: string
           format: date-time
     ResourceStatus:

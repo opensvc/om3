@@ -15,16 +15,16 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		Avail         status.T           `json:"avail" yaml:"avail"`
-		Constraints   bool               `json:"constraints,omitempty" yaml:"constraints,omitempty"`
-		FrozenAt      time.Time          `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
-		LastStartedAt time.Time          `json:"last_started_at" yaml:"last_started_at"`
-		Optional      status.T           `json:"optional,omitempty" yaml:"optional,omitempty"`
-		Overall       status.T           `json:"overall" yaml:"overall"`
-		Provisioned   provisioned.T      `json:"provisioned" yaml:"provisioned"`
-		Resources     ResourceStatuses   `json:"resources,omitempty" yaml:"resources,omitempty"`
-		Running       ResourceRunningSet `json:"running,omitempty" yaml:"running,omitempty"`
-		UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
+		Avail         status.T           `json:"avail"`
+		Constraints   bool               `json:"constraints,omitempty"`
+		FrozenAt      time.Time          `json:"frozen_at,omitempty"`
+		LastStartedAt time.Time          `json:"last_started_at"`
+		Optional      status.T           `json:"optional,omitempty"`
+		Overall       status.T           `json:"overall"`
+		Provisioned   provisioned.T      `json:"provisioned"`
+		Resources     ResourceStatuses   `json:"resources,omitempty"`
+		Running       ResourceRunningSet `json:"running,omitempty"`
+		UpdatedAt     time.Time          `json:"updated_at"`
 	}
 
 	ResourceStatuses map[string]resource.Status

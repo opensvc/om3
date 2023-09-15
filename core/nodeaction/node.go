@@ -379,9 +379,9 @@ func (t T) DoRemote() error {
 			return err
 		}
 		data := &struct {
-			Err    string `json:"err" yaml:"err"`
-			Out    string `json:"out" yaml:"out"`
-			Status int    `json:"status" yaml:"status"`
+			Err    string `json:"err"`
+			Out    string `json:"out"`
+			Status int    `json:"status"`
 		}{}
 		if err := json.Unmarshal(b, data); err != nil {
 			return err

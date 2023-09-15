@@ -25,7 +25,7 @@ type (
 	}
 	relayMessage struct {
 		api.RelayMessage
-		Relay string `json:"relay" yaml:"relay"`
+		Relay string `json:"relay"`
 	}
 	relayMessages []relayMessage
 )

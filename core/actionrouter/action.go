@@ -135,12 +135,12 @@ type (
 
 	// Result is a predictible type of actions return value, for reflect.
 	Result struct {
-		Nodename      string        `json:"nodename" yaml:"nodename"`
-		Path          path.T        `json:"path,omitempty" yaml:"path,omitempty`
-		Data          interface{}   `json:"data" yaml:"data"`
-		Error         error         `json:"error,omitempty" yaml:"error,omitempty"`
-		Panic         interface{}   `json:"panic,omitempty" yaml:"panic,omitempty"`
-		HumanRenderer func() string `json:"-" yaml:"-"`
+		Nodename      string        `json:"nodename"`
+		Path          path.T        `json:"path,omitempty"`
+		Data          interface{}   `json:"data"`
+		Error         error         `json:"error,omitempty"`
+		Panic         interface{}   `json:"panic,omitempty"`
+		HumanRenderer func() string `json:"-"`
 	}
 
 	// renderer is implemented by data type stored in ActionResults.Data.

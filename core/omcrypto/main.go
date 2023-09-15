@@ -25,10 +25,10 @@ type (
 	}
 
 	encryptedMessage struct {
-		ClusterName string `json:"clustername" yaml:"clustername"`
-		NodeName    string `json:"nodename" yaml:"nodename"`
-		IV          string `json:"iv" yaml:"iv"`
-		Data        string `json:"data" yaml:"data"`
+		ClusterName string `json:"clustername"`
+		NodeName    string `json:"nodename"`
+		IV          string `json:"iv"`
+		Data        string `json:"data"`
 	}
 )
 

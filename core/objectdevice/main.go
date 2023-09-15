@@ -12,11 +12,11 @@ import (
 
 type (
 	T struct {
-		Device     device.T  `json:"device" yaml:"device"`
-		Role       Role      `json:"role" yaml:"role"`
-		RID        string    `json:"rid" yaml:"rid"`
-		DriverID   driver.ID `json:"driver" yaml:"driver"`
-		ObjectPath path.T    `json:"path" yaml:"path"`
+		Device     device.T  `json:"device"`
+		Role       Role      `json:"role"`
+		RID        string    `json:"rid"`
+		DriverID   driver.ID `json:"driver"`
+		ObjectPath path.T    `json:"path"`
 	}
 	L    []T
 	Role int

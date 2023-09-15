@@ -40,9 +40,9 @@ type (
 
 	// Metadata is the parsed representation of a path, used by api handlers to ease dumb clients access to individual path fields.
 	Metadata struct {
-		Name      string `json:"name" yaml:"name"`
-		Namespace string `json:"namespace" yaml:"namespace"`
-		Kind      kind.T `json:"kind" yaml:"kind"`
+		Name      string `json:"name"`
+		Namespace string `json:"namespace"`
+		Kind      kind.T `json:"kind"`
 	}
 
 	pather interface {

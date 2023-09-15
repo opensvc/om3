@@ -23,31 +23,31 @@ type (
 	// Digest is a composite extract of different parts of
 	// the cluster status.
 	Digest struct {
-		IsCompat  bool                `json:"is_compat" yaml:"is_compat"`
-		Instances instance.StatesList `json:"instances" yaml:"instances"`
-		Object    Status              `json:"object" yaml:"object"`
-		Path      path.T              `json:"path" yaml:"path"`
+		IsCompat  bool                `json:"is_compat"`
+		Instances instance.StatesList `json:"instances"`
+		Object    Status              `json:"object"`
+		Path      path.T              `json:"path"`
 	}
 
 	// Status contains the object states obtained via
 	// aggregation of all instances states. It exists when an instance config exists somewhere
 	Status struct {
-		Avail            status.T         `json:"avail" yaml:"avail"`
-		FlexTarget       int              `json:"flex_target,omitempty" yaml:"flex_target,omitempty"`
-		FlexMin          int              `json:"flex_min,omitempty" yaml:"flex_min,omitempty"`
-		FlexMax          int              `json:"flex_max,omitempty" yaml:"flex_max,omitempty"`
-		Frozen           string           `json:"frozen" yaml:"frozen"`
-		Orchestrate      string           `json:"orchestrate" yaml:"orchestrate"`
-		Overall          status.T         `json:"overall" yaml:"overall"`
-		PlacementPolicy  placement.Policy `json:"placement_policy" yaml:"placement_policy"`
-		PlacementState   placement.State  `json:"placement_state" yaml:"placement_state"`
-		Priority         priority.T       `json:"priority" yaml:"priority"`
-		Provisioned      provisioned.T    `json:"provisioned" yaml:"provisioned"`
-		Scope            []string         `json:"scope" yaml:"scope"`
-		Topology         topology.T       `json:"topology" yaml:"topology"`
-		UpInstancesCount int              `json:"up_instances_count" yaml:"up_instances_count"`
+		Avail            status.T         `json:"avail"`
+		FlexTarget       int              `json:"flex_target,omitempty"`
+		FlexMin          int              `json:"flex_min,omitempty"`
+		FlexMax          int              `json:"flex_max,omitempty"`
+		Frozen           string           `json:"frozen"`
+		Orchestrate      string           `json:"orchestrate"`
+		Overall          status.T         `json:"overall"`
+		PlacementPolicy  placement.Policy `json:"placement_policy"`
+		PlacementState   placement.State  `json:"placement_state"`
+		Priority         priority.T       `json:"priority"`
+		Provisioned      provisioned.T    `json:"provisioned"`
+		Scope            []string         `json:"scope"`
+		Topology         topology.T       `json:"topology"`
+		UpInstancesCount int              `json:"up_instances_count"`
 
-		UpdatedAt time.Time `json:"updated_at" yaml:"updated_at"`
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 )
 

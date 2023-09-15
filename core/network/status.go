@@ -8,19 +8,19 @@ import (
 
 type (
 	Usage struct {
-		Free int     `json:"free" yaml:"free"`
-		Used int     `json:"used" yaml:"used"`
-		Size int     `json:"size" yaml:"size"`
-		Pct  float64 `json:"pct" yaml:"pct"`
+		Free int     `json:"free"`
+		Used int     `json:"used"`
+		Size int     `json:"size"`
+		Pct  float64 `json:"pct"`
 	}
 
 	Status struct {
-		Name    string      `json:"name" yaml:"name"`
-		Type    string      `json:"type" yaml:"type"`
-		Network string      `json:"network" yaml:"network"`
-		IPs     clusterip.L `json:"ips" yaml:"ips"`
-		Errors  []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
-		Usage   Usage       `json:"usage" yaml:"usage"`
+		Name    string      `json:"name"`
+		Type    string      `json:"type"`
+		Network string      `json:"network"`
+		IPs     clusterip.L `json:"ips"`
+		Errors  []string    `json:"errors,omitempty"`
+		Usage   Usage       `json:"usage"`
 	}
 	StatusList []Status
 )

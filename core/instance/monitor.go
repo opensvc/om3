@@ -17,41 +17,41 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
-		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
-		GlobalExpectOptions   any                 `json:"global_expect_options" yaml:"global_expect_options"`
+		GlobalExpect          MonitorGlobalExpect `json:"global_expect"`
+		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at"`
+		GlobalExpectOptions   any                 `json:"global_expect_options"`
 
 		// IsLeader flags the instance as the one where to provision as leader.
 		// The provisioning leader is responsible for preparing the shared resources.
 		// There can be only one leader, whatever the topology.
-		IsLeader bool `json:"is_leader" yaml:"is_leader"`
+		IsLeader bool `json:"is_leader"`
 
 		// IsHALeader flags the instances to start automatically if orchestrate=ha
 		// or when the admin posted a start orchestration.
 		// There can be one leader on a failover object, or many leaders with a flex topology.
-		IsHALeader bool `json:"is_ha_leader" yaml:"is_ha_leader"`
+		IsHALeader bool `json:"is_ha_leader"`
 
-		LocalExpect          MonitorLocalExpect `json:"local_expect" yaml:"local_expect"`
-		LocalExpectUpdatedAt time.Time          `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
+		LocalExpect          MonitorLocalExpect `json:"local_expect"`
+		LocalExpectUpdatedAt time.Time          `json:"local_expect_updated_at"`
 
 		// OrchestrationId is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
-		OrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
+		OrchestrationId uuid.UUID `json:"orchestration_id"`
 
 		// OrchestrationIsDone is set by the orchestration when it decides the instance state has reached its target.
 		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
-		OrchestrationIsDone bool `json:"orchestration_is_done" yaml:"orchestration_is_done"`
+		OrchestrationIsDone bool `json:"orchestration_is_done"`
 
-		SessionId               uuid.UUID        `json:"session_id" yaml:"session_id"`
-		State                   MonitorState     `json:"state" yaml:"state"`
-		StateUpdatedAt          time.Time        `json:"state_updated_at" yaml:"state_updated_at"`
-		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
-		IsPreserved             bool             `json:"preserved" yaml:"preserved"`
-		Resources               ResourceMonitors `json:"resources,omitempty" yaml:"resources,omitempty"`
-		UpdatedAt               time.Time        `json:"updated_at" yaml:"updated_at"`
+		SessionId               uuid.UUID        `json:"session_id"`
+		State                   MonitorState     `json:"state"`
+		StateUpdatedAt          time.Time        `json:"state_updated_at"`
+		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at"`
+		IsPreserved             bool             `json:"preserved"`
+		Resources               ResourceMonitors `json:"resources,omitempty"`
+		UpdatedAt               time.Time        `json:"updated_at"`
 
-		Parents  map[string]status.T `json:"parents,omitempty" yaml:"parents,omitempty"`
-		Children map[string]status.T `json:"children,omitempty" yaml:"children,omitempty"`
+		Parents  map[string]status.T `json:"parents,omitempty"`
+		Children map[string]status.T `json:"children,omitempty"`
 	}
 
 	ResourceMonitors map[string]ResourceMonitor
@@ -60,24 +60,24 @@ type (
 	// change some Monitor values. A nil value does not change the
 	// current value.
 	MonitorUpdate struct {
-		GlobalExpect        *MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
-		GlobalExpectOptions any                  `json:"global_expect_options" yaml:"global_expect_options"`
-		LocalExpect         *MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
-		State               *MonitorState        `json:"state" yaml:"state"`
+		GlobalExpect        *MonitorGlobalExpect `json:"global_expect"`
+		GlobalExpectOptions any                  `json:"global_expect_options"`
+		LocalExpect         *MonitorLocalExpect  `json:"local_expect"`
+		State               *MonitorState        `json:"state"`
 
 		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
 	}
 
 	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
 	ResourceMonitor struct {
-		Restart ResourceMonitorRestart `json:"restart" yaml:"restart"`
+		Restart ResourceMonitorRestart `json:"restart"`
 	}
 	ResourceMonitorRestart struct {
-		Remaining int         `json:"remaining" yaml:"remaining"`
-		LastAt    time.Time   `json:"last_at" yaml:"last_at"`
-		Timer     *time.Timer `json:"-" yaml:"-"`
+		Remaining int         `json:"remaining"`
+		LastAt    time.Time   `json:"last_at"`
+		Timer     *time.Timer `json:"-"`
 	}
 
 	MonitorState        int
@@ -85,7 +85,7 @@ type (
 	MonitorGlobalExpect int
 
 	MonitorGlobalExpectOptionsPlacedAt struct {
-		Destination []string `json:"destination" yaml:"destination"`
+		Destination []string `json:"destination"`
 	}
 )
 

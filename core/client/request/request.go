@@ -8,11 +8,11 @@ import (
 type (
 	// T is a api request abstracting the protocol differences
 	T struct {
-		Method  string                 `json:"method,omitempty" yaml:"method,omitempty"`
-		Action  string                 `json:"action,omitempty" yaml:"action,omitempty"`
-		Node    string                 `json:"node,omitempty" yaml:"node,omitempty"`
-		Options map[string]interface{} `json:"options,omitempty" yaml:"options,omitempty"`
-		Values  url.Values             `json:"query_args,omitempty" yaml:"query_args,omitempty"`
+		Method  string                 `json:"method,omitempty"`
+		Action  string                 `json:"action,omitempty"`
+		Node    string                 `json:"node,omitempty"`
+		Options map[string]interface{} `json:"options,omitempty"`
+		Values  url.Values             `json:"query_args,omitempty"`
 	}
 )
 

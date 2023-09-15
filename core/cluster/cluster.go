@@ -13,47 +13,47 @@ import (
 type (
 	// Data describes the full Cluster state.
 	Data struct {
-		Cluster Cluster `json:"cluster" yaml:"cluster"`
-		Daemon  Deamon  `json:"daemon" yaml:"daemon"`
+		Cluster Cluster `json:"cluster"`
+		Daemon  Deamon  `json:"daemon"`
 	}
 
 	Cluster struct {
-		Config Config                   `json:"config" yaml:"config"`
-		Status Status                   `json:"status" yaml:"status"`
-		Object map[string]object.Status `json:"object" yaml:"object"`
+		Config Config                   `json:"config"`
+		Status Status                   `json:"status"`
+		Object map[string]object.Status `json:"object"`
 
-		Node map[string]node.Node `json:"node" yaml:"node"`
+		Node map[string]node.Node `json:"node"`
 	}
 
 	Status struct {
-		IsCompat bool `json:"is_compat" yaml:"is_compat"`
-		IsFrozen bool `json:"is_frozen" yaml:"is_frozen"`
+		IsCompat bool `json:"is_compat"`
+		IsFrozen bool `json:"is_frozen"`
 	}
 
 	Deamon struct {
-		Collector DaemonCollector `json:"collector" yaml:"collector"`
-		DNS       DaemonDNS       `json:"dns" yaml:"dns"`
-		Hb        DaemonHb        `json:"hb" yaml:"hb"`
-		Listener  DaemonListener  `json:"listener" yaml:"listener"`
-		Monitor   DaemonMonitor   `json:"monitor" yaml:"monitor"`
-		Nodename  string          `json:"nodename" yaml:"nodename"`
-		Routines  int             `json:"routines" yaml:"routines"`
-		Scheduler DaemonScheduler `json:"scheduler" yaml:"scheduler"`
+		Collector DaemonCollector `json:"collector"`
+		DNS       DaemonDNS       `json:"dns"`
+		Hb        DaemonHb        `json:"hb"`
+		Listener  DaemonListener  `json:"listener"`
+		Monitor   DaemonMonitor   `json:"monitor"`
+		Nodename  string          `json:"nodename"`
+		Routines  int             `json:"routines"`
+		Scheduler DaemonScheduler `json:"scheduler"`
 	}
 
 	DaemonHb struct {
-		Streams      []HeartbeatStream `json:"streams" yaml:"streams"`
-		LastMessages []HbLastMessage   `json:"last_messages" yaml:"last_messages"`
+		Streams      []HeartbeatStream `json:"streams"`
+		LastMessages []HbLastMessage   `json:"last_messages"`
 	}
 
 	HbLastMessage struct {
-		From string `json:"from" yaml:"from"`
+		From string `json:"from"`
 
 		// PatchLength is the type of hb message except when Type is patch where it is the patch queue length
-		PatchLength int `json:"patch_length" yaml:"patch_length"`
+		PatchLength int `json:"patch_length"`
 
 		// Type is the hb message type (unset/ping/full/patch)
-		Type string `json:"type" yaml:"type"`
+		Type string `json:"type"`
 	}
 )
 

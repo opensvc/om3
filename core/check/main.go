@@ -22,12 +22,12 @@ type (
 
 	// Result is the structure eventually collected for aggregation.
 	Result struct {
-		DriverGroup string `json:"type" yaml:"type"`
-		DriverName  string `json:"driver" yaml:"driver"`
-		Path        string `json:"path" yaml:"path"`
-		Instance    string `json:"instance" yaml:"instance"`
-		Unit        string `json:"unit" yaml:"unit"`
-		Value       int64  `json:"value" yaml:"value"`
+		DriverGroup string `json:"type"`
+		DriverName  string `json:"driver"`
+		Path        string `json:"path"`
+		Instance    string `json:"instance"`
+		Unit        string `json:"unit"`
+		Value       int64  `json:"value"`
 	}
 
 	header interface {

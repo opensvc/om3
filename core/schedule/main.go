@@ -13,17 +13,17 @@ type (
 	Table []Entry
 
 	Entry struct {
-		Action             string    `json:"action" yaml:"action"`
-		Definition         string    `json:"schedule_definition" yaml:"schedule_definition"`
-		Key                string    `json:"config_parameter" yaml:"config_parameter"`
-		LastRunAt          time.Time `json:"last_run_at" yaml:"last_run_at"`
-		LastRunFile        string    `json:"last_run_file" yaml:"last_run_file"`
-		LastSuccessFile    string    `json:"last_success_file" yaml:"last_success_file"`
-		NextRunAt          time.Time `json:"next_run_at" yaml:"next_run_at"`
-		Node               string    `json:"node" yaml:"node"`
-		Path               path.T    `json:"path" yaml:"path"`
-		RequireCollector   bool      `json:"require_collector" yaml:"require_collector"`
-		RequireProvisioned bool      `json:"require_provisioned" yaml:"require_provisioned"`
+		Action             string    `json:"action"`
+		Definition         string    `json:"schedule_definition"`
+		Key                string    `json:"config_parameter"`
+		LastRunAt          time.Time `json:"last_run_at"`
+		LastRunFile        string    `json:"last_run_file"`
+		LastSuccessFile    string    `json:"last_success_file"`
+		NextRunAt          time.Time `json:"next_run_at"`
+		Node               string    `json:"node"`
+		Path               path.T    `json:"path"`
+		RequireCollector   bool      `json:"require_collector"`
+		RequireProvisioned bool      `json:"require_provisioned"`
 	}
 )
 

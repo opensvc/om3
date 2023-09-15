@@ -10,30 +10,30 @@ import (
 
 type (
 	Status struct {
-		Agent           string                      `json:"agent" yaml:"agent"`
-		API             uint64                      `json:"api" yaml:"api"`
-		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators" yaml:"arbitrators"`
-		Compat          uint64                      `json:"compat" yaml:"compat"`
-		FrozenAt        time.Time                   `json:"frozen_at" yaml:"frozen_at"`
-		Gen             map[string]uint64           `json:"gen" yaml:"gen"`
-		MinAvailMemPct  uint64                      `json:"min_avail_mem" yaml:"min_avail_mem"`
-		MinAvailSwapPct uint64                      `json:"min_avail_swap" yaml:"min_avail_swap"`
-		IsSpeaker       bool                        `json:"is_speaker" yaml:"is_speaker"`
-		Labels          Labels                      `json:"labels" yaml:"labels"`
+		Agent           string                      `json:"agent"`
+		API             uint64                      `json:"api"`
+		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
+		Compat          uint64                      `json:"compat"`
+		FrozenAt        time.Time                   `json:"frozen_at"`
+		Gen             map[string]uint64           `json:"gen"`
+		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
+		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
+		IsSpeaker       bool                        `json:"is_speaker"`
+		Labels          Labels                      `json:"labels"`
 	}
 
 	// Instances groups instances configuration digest and status
 	Instances struct {
-		Config  map[string]instance.Config  `json:"config" yaml:"config"`
-		Status  map[string]instance.Status  `json:"status" yaml:"status"`
-		Monitor map[string]instance.Monitor `json:"monitor" yaml:"monitor"`
+		Config  map[string]instance.Config  `json:"config"`
+		Status  map[string]instance.Status  `json:"status"`
+		Monitor map[string]instance.Monitor `json:"monitor"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
 	// if it is join-able.
 	ArbitratorStatus struct {
-		Url    string   `json:"url" yaml:"url"`
-		Status status.T `json:"status" yaml:"status"`
+		Url    string   `json:"url"`
+		Status status.T `json:"status"`
 	}
 
 	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
@@ -43,9 +43,9 @@ type (
 	NodesInfo map[string]NodeInfo
 
 	NodeInfo struct {
-		Env    string    `json:"env" yaml:"env"`
-		Labels Labels    `json:"labels" yaml:"labels"`
-		Paths  san.Paths `json:"paths" yaml:"paths"`
+		Env    string    `json:"env"`
+		Labels Labels    `json:"labels"`
+		Paths  san.Paths `json:"paths"`
 	}
 )
 

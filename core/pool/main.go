@@ -29,30 +29,30 @@ type (
 
 	StatusUsage struct {
 		// Free unit is KiB
-		Free float64 `json:"free" yaml:"free"`
+		Free float64 `json:"free"`
 		// Used unit is KiB
-		Used float64 `json:"used" yaml:"used"`
+		Used float64 `json:"used"`
 		// Size unit is KiB
-		Size float64 `json:"size" yaml:"size"`
+		Size float64 `json:"size"`
 	}
 
 	Status struct {
-		Type         string         `json:"type" yaml:"type"`
-		Name         string         `json:"name" yaml:"name"`
-		Capabilities []string       `json:"capabilities" yaml:"capabilities"`
-		Head         string         `json:"head" yaml:"head"`
-		Errors       []string       `json:"errors" yaml:"errors"`
-		Volumes      []VolumeStatus `json:"volumes" yaml:"volumes"`
-		StatusUsage  `yaml:",inline"`
+		Type         string         `json:"type"`
+		Name         string         `json:"name"`
+		Capabilities []string       `json:"capabilities"`
+		Head         string         `json:"head"`
+		Errors       []string       `json:"errors"`
+		Volumes      []VolumeStatus `json:"volumes"`
+		StatusUsage
 	}
 	StatusList   []Status
 	Capabilities []string
 
 	VolumeStatus struct {
-		Path     path.T   `json:"path" yaml:"path"`
-		Children []path.T `json:"children" yaml:"children"`
-		IsOrphan bool     `json:"is_orphan" yaml:"is_orphan"`
-		Bytes    float64  `json:"bytes" yaml:"bytes"`
+		Path     path.T   `json:"path"`
+		Children []path.T `json:"children"`
+		IsOrphan bool     `json:"is_orphan"`
+		Bytes    float64  `json:"bytes"`
 	}
 	VolumeStatusList []VolumeStatus
 
