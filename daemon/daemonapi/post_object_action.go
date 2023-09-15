@@ -84,7 +84,7 @@ func (a *DaemonApi) PostObjectAction(ctx echo.Context, globalExpect instance.Mon
 		Err:   make(chan error),
 	}
 	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
-	ticker := time.NewTicker(300 * time.Millisecond)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	var errs error
 	for {
