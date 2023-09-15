@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime/pprof"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -23,6 +25,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/lock"
@@ -161,7 +164,17 @@ func (t *T) Start() error {
 	if err != nil {
 		return err
 	}
-
+	pidFile := daemonPidFile()
+	log.Debug().Msgf("create pid file %s", pidFile)
+	if err := pidfile.WriteControl(pidFile, os.Getpid(), true); err != nil {
+		return nil
+	}
+	defer func() {
+		log.Debug().Msgf("remove pid file %s", pidFile)
+		if err := os.Remove(pidFile); err != nil {
+			log.Error().Err(err).Msgf("remove pid file %s", pidFile)
+		}
+	}()
 	d, err := t.start()
 	release()
 	if err != nil {
@@ -369,7 +382,11 @@ func (t *T) stop() error {
 	default:
 		return fmt.Errorf("unexpected status code: %s", resp.Status)
 	}
-	return nil
+	pidFile := daemonPidFile()
+	log.Debug().Msgf("waiting for daemon pidfile removed (%s)", pidFile)
+	b := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, false, func() bool { return file.Exists(pidFile) })
+	log.Debug().Msg("daemon pidfile removed")
+	return b
 }
 
 func (t *T) start() (waiter, error) {
@@ -450,6 +467,10 @@ func (t *T) running() bool {
 
 func (t *T) notRunning() bool {
 	return !t.running()
+}
+
+func daemonPidFile() string {
+	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }
 
 func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {
