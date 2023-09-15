@@ -286,7 +286,8 @@ func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{
 		Use:     "restart",
-		Short:   "restart the daemon or a daemon subsystem",
+		Short:   "restart the daemon",
+		Long:    "restart the daemon. Operation is asynchronous when node selector is used",
 		Aliases: []string{"restart"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -294,7 +295,6 @@ func newCmdDaemonRestart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagForeground(flags, &options.Foreground)
 	return cmd
 }
 

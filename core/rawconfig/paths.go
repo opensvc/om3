@@ -73,6 +73,7 @@ func ClusterConfigFile() string {
 func CreateMandatoryDirectories() error {
 	mandatoryDirs := []string{
 		NodeVarDir(),
+		DNSUDSDir(),
 		Paths.Certs,
 		Paths.Etc,
 		Paths.Lsnr,

@@ -238,6 +238,21 @@ func (t T) DoAsync() error {
 		ctx, cancel = context.WithCancel(context.Background())
 		defer cancel()
 	}
+	if t.Wait {
+		switch t.Target {
+		case node.MonitorStateDrained.String():
+			expectation = node.MonitorStateDrained
+		case node.MonitorGlobalExpectAborted.String():
+			expectation = node.MonitorGlobalExpectAborted
+		case node.MonitorGlobalExpectFrozen.String():
+			expectation = node.MonitorGlobalExpectFrozen
+		case node.MonitorGlobalExpectThawed.String():
+			expectation = node.MonitorGlobalExpectThawed
+		default:
+			return fmt.Errorf("unexpected target: %s", t.Target)
+		}
+		go t.waitExpectation(ctx, c, expectation, waitC)
+	}
 	switch t.Target {
 	case node.MonitorStateDrained.String():
 		if resp, e := c.PostNodeActionDrainWithResponse(ctx); e != nil {
@@ -261,6 +276,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectAborted.String():
+		expectation = node.MonitorGlobalExpectAborted
 		if resp, e := c.PostClusterActionAbortWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -282,6 +298,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectFrozen.String():
+		expectation = node.MonitorGlobalExpectFrozen
 		if resp, e := c.PostClusterActionFreezeWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -303,6 +320,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectThawed.String():
+		expectation = node.MonitorGlobalExpectThawed
 		if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -334,7 +352,6 @@ func (t T) DoAsync() error {
 	}
 
 	if t.Wait {
-		go t.waitExpectation(ctx, c, expectation, waitC)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

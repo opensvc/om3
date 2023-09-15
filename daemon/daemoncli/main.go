@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime/pprof"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -23,6 +25,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/lock"
@@ -53,6 +56,7 @@ type (
 		Close() error
 		Defined(ctx context.Context) (bool, error)
 		Start(ctx context.Context) error
+		Restart() error
 		Stop(context.Context) error
 	}
 )
@@ -125,6 +129,27 @@ func NewContext(ctx context.Context, c *client.T) *T {
 	return t
 }
 
+// RestartFromCmd handle daemon restart from command origin.
+//
+// It is used to forward restart control to (systemd) manager (when the origin is not systemd)
+func (t *T) RestartFromCmd(ctx context.Context) error {
+	if t.daemonsys == nil {
+		log.Info().Msg("daemon restart (origin os)")
+		return t.restartFromCmd()
+	}
+	defer func() {
+		_ = t.daemonsys.Close()
+	}()
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+		log.Info().Msg("daemon restart (origin os, no unit defined)")
+		return t.restartFromCmd()
+	}
+	// note: always ask manager for restart (during POST /daemon/restart handler
+	// the server api is probably CalledFromManager). And systemd unit doesn't define
+	// restart command.
+	return t.managerRestart()
+}
+
 func (t *T) SetNode(node string) {
 	t.node = node
 }
@@ -139,7 +164,17 @@ func (t *T) Start() error {
 	if err != nil {
 		return err
 	}
-
+	pidFile := daemonPidFile()
+	log.Debug().Msgf("create pid file %s", pidFile)
+	if err := pidfile.WriteControl(pidFile, os.Getpid(), true); err != nil {
+		return nil
+	}
+	defer func() {
+		log.Debug().Msgf("remove pid file %s", pidFile)
+		if err := os.Remove(pidFile); err != nil {
+			log.Error().Err(err).Msgf("remove pid file %s", pidFile)
+		}
+	}()
 	d, err := t.start()
 	release()
 	if err != nil {
@@ -273,6 +308,15 @@ func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
 	return nil
 }
 
+func (t *T) managerRestart() error {
+	name := "forward restart daemon to manager"
+	log.Info().Msgf("%s...", name)
+	if err := t.daemonsys.Restart(); err != nil {
+		return fmt.Errorf("%s failed: %w", name, err)
+	}
+	return nil
+}
+
 func (t *T) managerStart(ctx context.Context) error {
 	name := "forward start daemon to manager"
 	log.Info().Msgf("%s...", name)
@@ -303,13 +347,19 @@ func (t *T) managerStop(ctx context.Context) error {
 	return nil
 }
 
+func (t *T) restartFromCmd() error {
+	if err := t.Stop(); err != nil {
+		return err
+	}
+	return t.startFromCmd(false, "")
+}
+
 func (t *T) stop() error {
 	log.Debug().Msg("cli-stop check running")
 	if !t.running() {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
-	// TODO check status code ?
 	resp, err := t.client.PostDaemonStop(context.Background())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
@@ -332,7 +382,11 @@ func (t *T) stop() error {
 	default:
 		return fmt.Errorf("unexpected status code: %s", resp.Status)
 	}
-	return nil
+	pidFile := daemonPidFile()
+	log.Debug().Msgf("waiting for daemon pidfile removed (%s)", pidFile)
+	b := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, false, func() bool { return file.Exists(pidFile) })
+	log.Debug().Msg("daemon pidfile removed")
+	return b
 }
 
 func (t *T) start() (waiter, error) {
@@ -413,6 +467,10 @@ func (t *T) running() bool {
 
 func (t *T) notRunning() bool {
 	return !t.running()
+}
+
+func daemonPidFile() string {
+	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }
 
 func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {

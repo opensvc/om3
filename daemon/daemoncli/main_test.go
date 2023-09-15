@@ -2,6 +2,7 @@ package daemoncli_test
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -88,6 +89,7 @@ func TestDaemonBootstrap(t *testing.T) {
 				case <-time.After(100 * time.Millisecond):
 					t.Logf("daemonCli.Start() doesn't return error yet, it must be running...")
 				}
+				require.FileExists(t, filepath.Join(rawconfig.Paths.Var, "osvcd.pid"))
 			})
 			require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
 
@@ -179,6 +181,7 @@ func TestDaemonBootstrap(t *testing.T) {
 					require.NoError(t, err)
 					daemonCli = daemoncli.New(cli)
 					require.NoError(t, daemonCli.Stop())
+					require.NoFileExists(t, filepath.Join(rawconfig.Paths.Var, "osvcd.pid"))
 				})
 				require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
 

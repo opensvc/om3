@@ -16,7 +16,6 @@ import (
 	"github.com/retailnext/cannula"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -107,16 +106,6 @@ func RunDaemon(opts ...funcopt.O) (*T, error) {
 
 // MainStart starts loop, mandatory subdaemons
 func (t *T) MainStart(ctx context.Context) error {
-	daemonPidFile := DaemonPidFile()
-	if err := pidfile.WriteControl(daemonPidFile, os.Getpid(), true); err != nil {
-		return nil
-	}
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		if err := os.Remove(DaemonPidFile()); err != nil {
-			t.log.Error().Err(err).Msg("remove pid file")
-		}
-	})
-
 	signal.Ignore(syscall.SIGHUP)
 	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 

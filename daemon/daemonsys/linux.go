@@ -8,6 +8,8 @@ import (
 
 	sddaemon "github.com/coreos/go-systemd/daemon"
 	"github.com/coreos/go-systemd/v22/dbus"
+
+	"github.com/opensvc/om3/util/command"
 )
 
 type (
@@ -66,6 +68,28 @@ func (t *T) NotifyWatchdog() (bool, error) {
 		return false, nil
 	}
 	return sddaemon.SdNotify(false, sddaemon.SdNotifyWatchdog)
+}
+
+// Restart restarts the opensvc systemd unit
+//
+// restart calls systemd-run systemctl restart opensvc-agent. This allows
+// the command to be attached on another control group and prevent systemd
+// warnings during 'om daemon restart' such as:
+//
+//	systemd[1]: Stopping OpenSVC agent...
+//	systemd[1]: opensvc-agent.service: Succeeded.
+//	systemd[1]: Stopped OpenSVC agent.
+//	systemd[1]: opensvc-agent.service: Found left-over process 2899690 (om) in control group while starting unit. Ignoring.
+//	systemd[1]: This usually indicates unclean termination of a previous run, or service implementation deficiencies.
+//	systemd[1]: opensvc-agent.service: Found left-over process 2899697 (systemctl) in control group while starting unit. Ignoring.
+//	systemd[1]: This usually indicates unclean termination of a previous run, or service implementation deficiencies.
+//	systemd[1]: Starting OpenSVC agent...
+//	systemd[1]: Started OpenSVC agent.
+func (t *T) Restart() error {
+	return command.New(
+		command.WithName("systemd-run"),
+		command.WithVarArgs("systemctl", "restart", name),
+	).Run()
 }
 
 // Start starts the opensvc systemd unit
