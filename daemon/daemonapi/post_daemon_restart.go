@@ -15,7 +15,7 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
 
 	execname, err := os.Executable()
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "can't detect om execname: %w", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "can't detect om execname: %s", err)
 	}
 
 	cmd := command.New(
@@ -26,7 +26,7 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
 	err = cmd.Start()
 	if err != nil {
 		log.Error().Err(err).Msgf("called StartProcess")
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "daemon restart failed: %w", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "daemon restart failed: %s", err)
 	}
 	log.Info().Msgf("called daemon restart")
 	return JSONProblem(ctx, http.StatusOK, "background daemon restart has been called", "")
