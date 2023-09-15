@@ -38,7 +38,8 @@ type (
 		Description    string      `json:"description"`
 		FormDefinition string      `json:"form_definition"`
 	}
-	ExitCode int
+	ExitCode     int
+	exitCodePair [2]ExitCode
 )
 
 var (
@@ -59,18 +60,19 @@ func (t ExitCode) Exit() {
 }
 
 func (t ExitCode) Merge(o ExitCode) ExitCode {
+	pair := exitCodePair{t, o}
 	switch {
-	case t == ExitOk && o == ExitOk:
+	case pair.is(ExitOk, ExitOk):
 		return ExitOk
-	case t == ExitOk && o == ExitNok:
+	case pair.is(ExitOk, ExitNok):
 		return ExitNok
-	case t == ExitOk && o == ExitNotApplicable:
+	case pair.is(ExitOk, ExitNotApplicable):
 		return ExitOk
-	case t == ExitNok && o == ExitOk:
+	case pair.is(ExitNok, ExitNotApplicable):
 		return ExitNok
-	case t == ExitNok && o == ExitNotApplicable:
+	case pair.is(ExitNok, ExitNok):
 		return ExitNok
-	case t == ExitNotApplicable && o == ExitNotApplicable:
+	case pair.is(ExitNotApplicable, ExitNotApplicable):
 		return ExitNotApplicable
 	default:
 		return ExitCode(-1)
@@ -160,6 +162,9 @@ func links() {
 	for k, _ := range m {
 		fmt.Printf("  %s\n", k)
 	}
+}
+func (t exitCodePair) is(e0 ExitCode, e1 ExitCode) bool {
+	return (t[0] == e0 && t[1] == e1) || (t[1] == e0 && t[0] == e1)
 }
 
 func main() {
