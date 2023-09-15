@@ -240,6 +240,7 @@ func (t T) DoAsync() error {
 	}
 	switch t.Target {
 	case node.MonitorStateDrained.String():
+		expectation = node.MonitorStateDrained
 		if resp, e := c.PostNodeActionDrainWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -261,6 +262,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectAborted.String():
+		expectation = node.MonitorGlobalExpectAborted
 		if resp, e := c.PostClusterActionAbortWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -282,6 +284,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectFrozen.String():
+		expectation = node.MonitorGlobalExpectFrozen
 		if resp, e := c.PostClusterActionFreezeWithResponse(ctx); e != nil {
 			err = e
 		} else {
@@ -303,6 +306,7 @@ func (t T) DoAsync() error {
 			}
 		}
 	case node.MonitorGlobalExpectThawed.String():
+		expectation = node.MonitorGlobalExpectThawed
 		if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
 			err = e
 		} else {
