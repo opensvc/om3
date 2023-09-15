@@ -14,8 +14,8 @@ import (
 	tabwriter "github.com/juju/ansiterm"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/render/palette"
-	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/util/jsonpath"
+	"sigs.k8s.io/yaml"
 )
 
 type (
@@ -121,20 +121,15 @@ func (t Renderer) Sprint() (string, error) {
 		if t.Stream {
 			sep = "---\n"
 		}
+		b, err := yaml.Marshal(t.Data)
+		if err != nil {
+			return "", err
+		}
 		if color.NoColor {
-			b, err := yaml.Marshal(t.Data)
-			if err != nil {
-				return "", err
-			}
 			return string(b) + sep, nil
 		} else {
-			b := bytes.NewBuffer(nil)
-			enc := yaml.NewEncoder(b)
-			err := enc.Encode(t.Data)
-			if err != nil {
-				return "", err
-			}
-			s, err := highlight.Highlight(b)
+			buf := bytes.NewBuffer(b)
+			s, err := highlight.Highlight(buf)
 			if err != nil {
 				return "", err
 			}
