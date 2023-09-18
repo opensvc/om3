@@ -46,35 +46,35 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "snap", "blk"}
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
+func (t T) Usage() (pool.Usage, error) {
 	poolName := t.poolName()
 	zpool := zfs.Pool{Name: poolName}
 	e, err := zpool.Usage()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	var size, free, used int64
 	if e.Size > 0 {
-		size = e.Size / 1024
-		free = e.Free / 1024
-		used = e.Alloc / 1024
+		size = e.Size
+		free = e.Free
+		used = e.Alloc
 	}
-	usage := pool.StatusUsage{
-		Size: float64(size),
-		Free: float64(free),
-		Used: float64(used),
+	usage := pool.Usage{
+		Size: size,
+		Free: free,
+		Used: used,
 	}
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	poolName := t.poolName()
 	mnt := pool.MountPointFromName(name)
 	data := []string{
 		"fs#0.type=zfs",
 		"fs#0.dev=" + poolName + "/" + name,
 		"fs#0.mnt=" + mnt,
-		"fs#0.size=" + sizeconv.ExactBSizeCompact(size),
+		"fs#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 	}
 	if mkfsOpt := t.GetString("mkfs_opt"); mkfsOpt != "" {
 		data = append(data, "fs#0.mkfs_opt="+mkfsOpt)
@@ -85,12 +85,12 @@ func (t *T) Translate(name string, size float64, shared bool) ([]string, error) 
 	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	poolName := t.poolName()
 	data := []string{
 		"disk#0.type=zvol",
 		"disk#0.dev=" + poolName + "/" + name,
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 	}
 	if mkblkOpt := t.GetString("create_options"); mkblkOpt != "" {
 		data = append(data, "disk#0.create_options="+mkblkOpt)

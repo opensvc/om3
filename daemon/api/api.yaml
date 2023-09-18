@@ -1434,9 +1434,9 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /pools:
+  /pool:
     get:
-      operationId: GetPools
+      operationId: GetPool
       tags:
         - storage
       security:
@@ -1455,7 +1455,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PoolStatusList'
+                $ref: '#/components/schemas/PoolArray'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /pool/volume:
+    get:
+      operationId: GetPoolVolume
+      tags:
+        - storage
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a backend storage pool
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolVolumeArray'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1920,6 +1948,8 @@ components:
           type: array
           items:
             type: string
+        pool:
+          type: string
         placement_policy:
           $ref: '#/components/schemas/PlacementPolicy'
         priority:
@@ -1932,6 +1962,9 @@ components:
           type: array
           items:
             type: string
+        size:
+          type: integer
+          format: int64
         subsets:
           $ref: '#/components/schemas/SubsetsConfig'
         topology:
@@ -2458,6 +2491,8 @@ components:
           $ref: '#/components/schemas/PlacementPolicy'
         placement_state:
           $ref: '#/components/schemas/PlacementState'
+        pool:
+          type: string
         priority:
           type: integer
         provisioned:
@@ -2466,6 +2501,9 @@ components:
           type: array
           items:
             type: string
+        size:
+          type: integer
+          format: int64
         topology:
           $ref: '#/components/schemas/Topology'
         up_instances_count:
@@ -2492,69 +2530,6 @@ components:
       items:
         type: string
         description: object path or an instance path (path@node)
-    PoolStatus:
-      type: object
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-        head:
-          type: string
-        capabilities:
-          type: array
-          items:
-            type: string
-        errors:
-          type: array
-          items:
-            type: string
-        usage:
-          $ref: '#/components/schemas/PoolStatusUsage'
-        volumes:
-          type: array
-          items:
-            $ref: '#/components/schemas/PoolStatusVolume'
-    PoolStatusVolume:
-      type: object
-      required:
-        - ip
-        - node
-        - path
-        - rid
-      properties:
-        ip:
-          type: string
-        node:
-          type: string
-        path:
-          type: string
-        rid:
-          type: string
-    PoolStatusList:
-      type: array
-      items:
-        $ref: '#/components/schemas/PoolStatus'
-    PoolStatusUsage:
-      type: object
-      required:
-        - children
-        - orphan
-        - path
-        - size
-      properties:
-        children:
-          type: array
-          items:
-            type: string
-        orphan:
-          description: an orphan is a volume driven by no svc resource
-          type: boolean
-        path:
-          type: string
-        size:
-          description: volume size in bytes
-          type: number
     PlacementPolicy:
       type: string
       default: none
@@ -2713,6 +2688,80 @@ components:
             $ref: '#/components/schemas/InstanceMeta'
           data:
             $ref: '#/components/schemas/InstanceStatus'
+
+    # ========================================================================
+    # pool schemas
+    # ========================================================================
+ 
+    PoolArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pool'
+    Pool:
+      type: object
+      required:
+        - name
+        - type
+        - head
+        - capabilities
+        - volume_count
+        - free 
+        - used 
+        - size 
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        head:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+        free:
+          type: integer
+          format: int64
+        used:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int64
+        volume_count:
+          type: integer
+    PoolVolumeArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/PoolVolume'
+    PoolVolume:
+      type: object
+      required:
+        - pool
+        - path
+        - children
+        - is_orphan
+        - size
+        - size_bytes
+      properties:
+        pool:
+          type: string
+        path:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
+        is_orphan:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+
     PostInstanceStatus:
       type: object
       required:

@@ -47,6 +47,10 @@ type (
 		Topology         topology.T       `json:"topology"`
 		UpInstancesCount int              `json:"up_instances_count"`
 
+		// Volume specific
+		Pool *string `json:"pool,omitempty"`
+		Size *int64  `json:"size,omitempty"`
+
 		UpdatedAt time.Time `json:"updated_at"`
 	}
 )
@@ -140,6 +144,7 @@ func (s *Status) DeepCopy() *Status {
 		Orchestrate:      s.Orchestrate,
 		PlacementState:   s.PlacementState,
 		PlacementPolicy:  s.PlacementPolicy,
+		Pool:             s.Pool,
 		Provisioned:      s.Provisioned,
 		Priority:         s.Priority,
 		Topology:         s.Topology,
@@ -147,6 +152,7 @@ func (s *Status) DeepCopy() *Status {
 		FlexMin:          s.FlexMin,
 		FlexMax:          s.FlexMax,
 		UpInstancesCount: s.UpInstancesCount,
+		Size:             s.Size,
 		Scope:            append([]string{}, s.Scope...),
 		UpdatedAt:        s.UpdatedAt,
 	}

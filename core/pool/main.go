@@ -27,32 +27,32 @@ type (
 		config Config
 	}
 
-	StatusUsage struct {
+	Usage struct {
 		// Free unit is KiB
-		Free float64 `json:"free"`
+		Free int64 `json:"free"`
 		// Used unit is KiB
-		Used float64 `json:"used"`
+		Used int64 `json:"used"`
 		// Size unit is KiB
-		Size float64 `json:"size"`
+		Size int64 `json:"size"`
 	}
 
 	Status struct {
-		Type         string         `json:"type"`
-		Name         string         `json:"name"`
-		Capabilities []string       `json:"capabilities"`
-		Head         string         `json:"head"`
-		Errors       []string       `json:"errors"`
-		Volumes      []VolumeStatus `json:"volumes"`
-		StatusUsage
+		Type         string   `json:"type"`
+		Name         string   `json:"name"`
+		Capabilities []string `json:"capabilities"`
+		Head         string   `json:"head"`
+		Errors       []string `json:"errors"`
+		VolumeCount  int      `json:"volume_count"`
+		Usage
 	}
 	StatusList   []Status
 	Capabilities []string
 
 	VolumeStatus struct {
-		Path     path.T   `json:"path"`
-		Children []path.T `json:"children"`
-		IsOrphan bool     `json:"is_orphan"`
-		Bytes    float64  `json:"bytes"`
+		Path     path.T `json:"path"`
+		Children path.L `json:"children"`
+		IsOrphan bool   `json:"is_orphan"`
+		Size     int64  `json:"size"`
 	}
 	VolumeStatusList []VolumeStatus
 
@@ -62,6 +62,7 @@ type (
 		GetStrings(key.T) []string
 		GetBool(k key.T) bool
 		GetSize(k key.T) *int64
+		HasSectionString(s string) bool
 	}
 	Pooler interface {
 		SetName(string)
@@ -71,7 +72,7 @@ type (
 		Head() string
 		Mappings() map[string]string
 		Capabilities() []string
-		Usage() (StatusUsage, error)
+		Usage() (Usage, error)
 		SetConfig(Config)
 		Config() Config
 		Separator() string
@@ -79,14 +80,14 @@ type (
 	ArrayPooler interface {
 		Pooler
 		GetTargets() (san.Targets, error)
-		CreateDisk(name string, size float64, paths san.Paths) ([]Disk, error)
+		CreateDisk(name string, size int64, paths san.Paths) ([]Disk, error)
 		DeleteDisk(name string) ([]Disk, error)
 	}
 	Translater interface {
-		Translate(name string, size float64, shared bool) ([]string, error)
+		Translate(name string, size int64, shared bool) ([]string, error)
 	}
 	BlkTranslater interface {
-		BlkTranslate(name string, size float64, shared bool) ([]string, error)
+		BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	}
 	volumer interface {
 		FQDN() string
@@ -107,7 +108,6 @@ type (
 
 func NewStatus() Status {
 	t := Status{}
-	t.Volumes = make([]VolumeStatus, 0)
 	t.Errors = make([]string, 0)
 	return t
 }
@@ -127,6 +127,9 @@ func cString(config Config, poolName string, option string) string {
 }
 
 func New(name string, config Config) Pooler {
+	if !config.HasSectionString(sectionName(name)) {
+		return nil
+	}
 	poolType := cString(config, name, "type")
 	fn := Driver(poolType)
 	if fn == nil {
@@ -206,9 +209,9 @@ func GetStatus(t Pooler, withUsage bool) Status {
 		if usage, err := t.Usage(); err != nil {
 			data.Errors = append(data.Errors, err.Error())
 		} else {
-			data.Free = usage.Free
-			data.Used = usage.Used
-			data.Size = usage.Size
+			data.Usage.Free = usage.Free
+			data.Usage.Used = usage.Used
+			data.Usage.Size = usage.Size
 		}
 	}
 	return data
@@ -296,10 +299,10 @@ func MountPointFromName(name string) string {
 	return filepath.Join(filepath.FromSlash("/srv"), name)
 }
 
-func baseKeywords(p Pooler, size float64, acs volaccess.T) []string {
+func baseKeywords(p Pooler, size int64, acs volaccess.T) []string {
 	return []string{
 		fmt.Sprintf("pool=%s", p.Name()),
-		fmt.Sprintf("size=%s", sizeconv.ExactBSizeCompact(size)),
+		fmt.Sprintf("size=%s", sizeconv.ExactBSizeCompact(float64(size))),
 		fmt.Sprintf("access=%s", acs),
 	}
 }
@@ -342,7 +345,7 @@ func syncKeywords() []string {
 	}
 }
 
-func ConfigureVolume(p Pooler, vol volumer, size float64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
+func ConfigureVolume(p Pooler, vol volumer, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
 	name := vol.FQDN()
 	kws, err := translate(p, name, size, format, shared)
 	if err != nil {
@@ -360,7 +363,7 @@ func ConfigureVolume(p Pooler, vol volumer, size float64, format bool, acs volac
 	return nil
 }
 
-func translate(p Pooler, name string, size float64, format bool, shared bool) ([]string, error) {
+func translate(p Pooler, name string, size int64, format bool, shared bool) ([]string, error) {
 	var kws []string
 	var err error
 	switch format {
@@ -409,12 +412,6 @@ func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
 }
 
 func (t StatusList) Render(verbose bool) string {
-	nt := t
-	if !verbose {
-		for i, _ := range nt {
-			nt[i].Volumes = []VolumeStatus{}
-		}
-	}
 	return t.Tree().Render()
 }
 
@@ -448,19 +445,15 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Type)
 	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
 	head.AddColumn().AddText(t.Head)
-	head.AddColumn().AddText(fmt.Sprint(len(t.Volumes)))
-	if t.Size == 0 {
+	head.AddColumn().AddText(fmt.Sprint(t.VolumeCount))
+	if t.Usage.Size == 0 {
 		head.AddColumn().AddText("-")
 		head.AddColumn().AddText("-")
 		head.AddColumn().AddText("-")
 	} else {
-		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Size * sizeconv.KiB))
-		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Used * sizeconv.KiB))
-		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Free * sizeconv.KiB))
-	}
-	if len(t.Volumes) > 0 {
-		n := head.AddNode()
-		VolumeStatusList(t.Volumes).LoadTreeNode(n)
+		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Size)))
+		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Used)))
+		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Free)))
 	}
 }
 
@@ -500,7 +493,7 @@ func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(path.L(t.Children).String())
 	head.AddColumn().AddText(strconv.FormatBool(t.IsOrphan))
 	head.AddColumn().AddText("")
-	head.AddColumn().AddText(sizeconv.BSizeCompact(t.Bytes))
+	head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Size)))
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText("")
 }

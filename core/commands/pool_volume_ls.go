@@ -11,29 +11,29 @@ import (
 )
 
 type (
-	CmdPoolLs struct {
+	CmdPoolVolumeLs struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdPoolLs) Run() error {
+func (t *CmdPoolVolumeLs) Run() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetPoolParams{}
+	params := api.GetPoolVolumeParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetPoolWithResponse(context.Background(), &params)
+	resp, err := c.GetPoolVolumeWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,SIZE:size,USED:used,FREE:free",
+			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          *resp.JSON200,

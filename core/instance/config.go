@@ -17,7 +17,7 @@ type (
 	Config struct {
 		App              string           `json:"app,omitempty"`
 		Checksum         string           `json:"csum"`
-		Children         []path.Relation  `json:"children,omitempty"`
+		Children         path.Relations   `json:"children,omitempty"`
 		DRP              bool             `json:"drp,omitempty"`
 		Env              string           `json:"env,omitempty"`
 		FlexMax          int              `json:"flex_max,omitempty"`
@@ -28,7 +28,7 @@ type (
 		Nodename         string           `json:"-"`
 		Orchestrate      string           `json:"orchestrate"`
 		Path             path.T           `json:"-"`
-		Parents          []path.Relation  `json:"parents,omitempty"`
+		Parents          path.Relations   `json:"parents,omitempty"`
 		PlacementPolicy  placement.Policy `json:"placement_policy"`
 		Priority         priority.T       `json:"priority,omitempty"`
 		Resources        ResourceConfigs  `json:"resources"`
@@ -36,6 +36,10 @@ type (
 		Subsets          SubsetConfigs    `json:"subsets"`
 		Topology         topology.T       `json:"topology"`
 		UpdatedAt        time.Time        `json:"updated_at"`
+
+		// Volume specific
+		Pool *string `json:"pool,omitempty"`
+		Size *int64  `json:"size,omitempty"`
 	}
 	ResourceConfigs map[string]ResourceConfig
 	ResourceConfig  struct {

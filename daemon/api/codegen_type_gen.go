@@ -454,11 +454,13 @@ type ObjectData struct {
 
 	// PlacementState object placement state
 	PlacementState PlacementState `json:"placement_state"`
+	Pool           *string        `json:"pool,omitempty"`
 	Priority       int            `json:"priority"`
 
 	// Provisioned service, instance or resource provisioned state
 	Provisioned Provisioned `json:"provisioned"`
 	Scope       []string    `json:"scope"`
+	Size        *int64      `json:"size,omitempty"`
 
 	// Topology object topology
 	Topology         Topology `json:"topology"`
@@ -500,39 +502,33 @@ type PlacementPolicy string
 // PlacementState object placement state
 type PlacementState string
 
-// PoolStatus defines model for PoolStatus.
-type PoolStatus struct {
-	Capabilities *[]string           `json:"capabilities,omitempty"`
-	Errors       *[]string           `json:"errors,omitempty"`
-	Head         *string             `json:"head,omitempty"`
-	Name         *string             `json:"name,omitempty"`
-	Type         *string             `json:"type,omitempty"`
-	Usage        *PoolStatusUsage    `json:"usage,omitempty"`
-	Volumes      *[]PoolStatusVolume `json:"volumes,omitempty"`
+// Pool defines model for Pool.
+type Pool struct {
+	Capabilities []string  `json:"capabilities"`
+	Errors       *[]string `json:"errors,omitempty"`
+	Free         int64     `json:"free"`
+	Head         string    `json:"head"`
+	Name         string    `json:"name"`
+	Size         int64     `json:"size"`
+	Type         string    `json:"type"`
+	Used         int64     `json:"used"`
+	VolumeCount  int       `json:"volume_count"`
 }
 
-// PoolStatusList defines model for PoolStatusList.
-type PoolStatusList = []PoolStatus
+// PoolArray defines model for PoolArray.
+type PoolArray = []Pool
 
-// PoolStatusUsage defines model for PoolStatusUsage.
-type PoolStatusUsage struct {
+// PoolVolume defines model for PoolVolume.
+type PoolVolume struct {
 	Children []string `json:"children"`
-
-	// Orphan an orphan is a volume driven by no svc resource
-	Orphan bool   `json:"orphan"`
-	Path   string `json:"path"`
-
-	// Size volume size in bytes
-	Size float32 `json:"size"`
+	IsOrphan bool     `json:"is_orphan"`
+	Path     string   `json:"path"`
+	Pool     string   `json:"pool"`
+	Size     int64    `json:"size"`
 }
 
-// PoolStatusVolume defines model for PoolStatusVolume.
-type PoolStatusVolume struct {
-	Ip   string `json:"ip"`
-	Node string `json:"node"`
-	Path string `json:"path"`
-	Rid  string `json:"rid"`
-}
+// PoolVolumeArray defines model for PoolVolumeArray.
+type PoolVolumeArray = []PoolVolume
 
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
@@ -1017,8 +1013,14 @@ type GetObjectPathsParams struct {
 	Path Path `form:"path" json:"path"`
 }
 
-// GetPoolsParams defines parameters for GetPools.
-type GetPoolsParams struct {
+// GetPoolParams defines parameters for GetPool.
+type GetPoolParams struct {
+	// Name the name of a backend storage pool
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetPoolVolumeParams defines parameters for GetPoolVolume.
+type GetPoolVolumeParams struct {
 	// Name the name of a backend storage pool
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }

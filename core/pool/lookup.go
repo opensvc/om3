@@ -19,7 +19,7 @@ type (
 		Name   string
 		Type   string
 		Access volaccess.T
-		Size   float64
+		Size   int64
 		Format bool
 		Shared bool
 		Usage  bool
@@ -96,9 +96,9 @@ func (t Lookup) Do() (Pooler, error) {
 				cause = append(cause, fmt.Sprintf("[%s] no usage data: %s", p.Name(), err))
 				continue
 			}
-			if usage.Size > 0 && (usage.Free*1024 < t.Size) {
+			if usage.Size > 0 && (usage.Free < t.Size) {
 				cause = append(cause, fmt.Sprintf("[%s] not enough free space: %s free, %s requested",
-					p.Name(), sizeconv.BSize(float64(usage.Free*1024)), sizeconv.BSize(t.Size)))
+					p.Name(), sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(t.Size))))
 				continue
 			}
 		}
@@ -125,7 +125,7 @@ func (t Lookup) Do() (Pooler, error) {
 				return false
 			}
 		}
-		if p1.Free < p2.Free {
+		if p1.Usage.Free < p2.Usage.Free {
 			return true
 		}
 		return p1.Name < p2.Name

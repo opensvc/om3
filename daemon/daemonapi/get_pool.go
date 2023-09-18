@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
+func (a *DaemonApi) GetPool(ctx echo.Context, params api.GetPoolParams) error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "Failed to allocate a new object.Node: %s", err)

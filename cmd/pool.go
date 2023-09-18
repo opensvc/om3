@@ -10,10 +10,9 @@ var (
 		Short: "Manage storage pools",
 		Long:  ` A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.`,
 	}
-	cmdPoolCreate = &cobra.Command{
-		Use:     "create",
-		Short:   "create a pool object",
-		Aliases: []string{"creat", "crea", "cre", "cr"},
+	cmdPoolVolume = &cobra.Command{
+		Use:   "volume",
+		Short: "Manage storage pool volumes",
 	}
 )
 
@@ -22,8 +21,10 @@ func init() {
 		cmdPool,
 	)
 	cmdPool.AddCommand(
-		cmdPoolCreate,
+		cmdPoolVolume,
 		newCmdPoolLs(),
-		newCmdPoolStatus(),
+	)
+	cmdPoolVolume.AddCommand(
+		newCmdPoolVolumeLs(),
 	)
 }

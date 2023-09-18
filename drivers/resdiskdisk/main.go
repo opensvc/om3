@@ -190,13 +190,12 @@ func (t T) createDisk() ([]pool.Disk, error) {
 		return []pool.Disk{}, fmt.Errorf("the size keyword is required for disk provisioning")
 	}
 	diskName := t.diskName(p)
-	size := float64(*t.Size)
 	nodes := t.diskMapToNodes()
 	paths, err := pool.GetMapping(p, nodes)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
-	disks, err := p.CreateDisk(diskName, size, paths)
+	disks, err := p.CreateDisk(diskName, *t.Size, paths)
 	if err != nil {
 		t.Log().Error().Err(err).Str("name", diskName).Interface("disks", disks).Msg("create disk")
 	} else {

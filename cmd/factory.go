@@ -2852,23 +2852,22 @@ func newCmdPoolLs() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagPoolName(flags, &options.Name)
 	return cmd
 }
 
-func newCmdPoolStatus() *cobra.Command {
-	var options commands.CmdPoolStatus
+func newCmdPoolVolumeLs() *cobra.Command {
+	var options commands.CmdPoolVolumeLs
 	cmd := &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster pools usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
+		Use:   "ls",
+		Short: "list the pool volumes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagPoolStatusName(flags, &options.Name)
-	addFlagPoolStatusExtended(flags, &options.Verbose)
+	addFlagPoolName(flags, &options.Name)
 	return cmd
 }
 
