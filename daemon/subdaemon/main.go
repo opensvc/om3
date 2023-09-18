@@ -1,11 +1,11 @@
 /*
-    Package subDaemon provides main and sub daemon management features
+	    Package subDaemon provides main and sub daemon management features
 
-	Start, Stop, Restart
+		Start, Stop, Restart
 
-	1 go routines is used to serialize Start/Stop/Restart
+		1 go routines is used to serialize Start/Stop/Restart
 
-	A subdaemon can have subdaemons
+		A subdaemon can have subdaemons
 */
 package subdaemon
 
@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/daemon/enable"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -25,7 +24,6 @@ import (
 type (
 	T struct {
 		sync.WaitGroup
-		routinehelper.TT
 		ctx         context.Context
 		cancel      context.CancelFunc
 		name        string
@@ -77,7 +75,6 @@ func New(opts ...funcopt.O) *T {
 		controlChan: make(chan controlAction),
 		children:    make([]Manager, 0),
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("subdaemon funcopt.Apply")
 		return nil

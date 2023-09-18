@@ -15,7 +15,6 @@ import (
 
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 )
@@ -23,24 +22,16 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
-		listener     *net.Listener
-		log          zerolog.Logger
-		routineTrace routineTracer
-		addr         string
-		certFile     string
-		keyFile      string
-	}
-
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
+		listener *net.Listener
+		log      zerolog.Logger
+		addr     string
+		certFile string
+		keyFile  string
 	}
 )
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
@@ -50,7 +41,6 @@ func New(opts ...funcopt.O) *T {
 	t.T = subdaemon.New(
 		subdaemon.WithName(name),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	return t
 }
@@ -59,7 +49,6 @@ func (t *T) MainStart(ctx context.Context) error {
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 	started := make(chan bool)
 	go func() {
-		defer t.Trace(t.Name())()
 		if err := t.start(ctx); err != nil {
 			t.log.Error().Err(err).Msg("mgr start failure")
 		}
@@ -98,7 +87,7 @@ func (t *T) start(ctx context.Context) error {
 	started := make(chan bool)
 	s := &http2.Server{}
 	server := http.Server{
-		Handler: h2c.NewHandler(routehttp.New(ctx, false), s),
+		Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
 		ErrorLog: golog.New(t.log, "", 0),
 	}
 	listener, err := net.Listen("unix", t.addr)

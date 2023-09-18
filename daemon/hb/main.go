@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -32,12 +31,10 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
-		log          zerolog.Logger
-		routineTrace routineTracer
-		rootDaemon   subdaemon.RootManager
-		txs          map[string]hbtype.Transmitter
-		rxs          map[string]hbtype.Receiver
+		log        zerolog.Logger
+		rootDaemon subdaemon.RootManager
+		txs        map[string]hbtype.Transmitter
+		rxs        map[string]hbtype.Receiver
 
 		ctrlC        chan<- any
 		readMsgQueue chan *hbtype.Msg
@@ -55,17 +52,11 @@ type (
 		// msgToSendQueue is the queue on which a tx fetch messages to send
 		msgToSendQueue chan []byte
 	}
-
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
-	}
 )
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	t.log = log.Logger.With().Str("sub", "hb").Logger()
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
 		return nil
@@ -73,7 +64,6 @@ func New(opts ...funcopt.O) *T {
 	t.T = subdaemon.New(
 		subdaemon.WithName("hb"),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
