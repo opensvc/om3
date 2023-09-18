@@ -7,20 +7,22 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/kind"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/api"
 )
 
 func (a *DaemonApi) GetPoolVolume(ctx echo.Context, params api.GetPoolVolumeParams) error {
-	n, err := object.NewNode(object.WithVolatile(true))
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "Failed to allocate a new object.Node: %s", err)
-	}
+	l := getPoolVolumes(params.Name)
+	return ctx.JSON(http.StatusOK, l)
+}
+
+func getPoolVolumes(name *string) api.PoolVolumeArray {
 	volNames := make(map[string]any)
 	poolNames := make(map[string]any)
-	for _, name := range n.ListPools() {
-		poolNames[name] = nil
+	for _, e := range pool.StatusData.GetAll() {
+		poolNames[e.Name] = nil
 	}
+
 	l := make(api.PoolVolumeArray, 0)
 	for _, instConfig := range instance.ConfigData.GetAll() {
 		var (
@@ -41,7 +43,7 @@ func (a *DaemonApi) GetPoolVolume(ctx echo.Context, params api.GetPoolVolumePara
 			poolName = *instConfig.Value.Pool
 			_, poolOk = poolNames[poolName]
 		}
-		if params.Name != nil && *params.Name != poolName {
+		if name != nil && *name != poolName {
 			continue
 		}
 		if instConfig.Value.Size != nil {
@@ -55,5 +57,5 @@ func (a *DaemonApi) GetPoolVolume(ctx echo.Context, params api.GetPoolVolumePara
 			Size:     size,
 		})
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return l
 }

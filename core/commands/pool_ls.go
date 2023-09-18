@@ -33,7 +33,7 @@ func (t *CmdPoolLs) Run() error {
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,SIZE:size,USED:used,FREE:free",
+			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,VOLUME_COUNT:volume_count,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          *resp.JSON200,

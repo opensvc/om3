@@ -38,6 +38,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -69,6 +70,7 @@ type (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		cmdC         chan any
+		poolC        chan any
 		databus      *daemondata.T
 		bus          *pubsub.Bus
 		log          zerolog.Logger
@@ -160,6 +162,7 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		ctx:         ctx,
 		cancel:      cancelCtx,
 		cmdC:        make(chan any),
+		poolC:       make(chan any, 1),
 		databus:     daemondata.FromContext(ctx),
 		bus:         pubsub.BusFromContext(ctx),
 		log:         log.Logger.With().Str("func", "nmon").Logger(),
@@ -176,6 +179,9 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		cacheNodesInfo: map[string]node.NodeInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
+
+	// trigger an initial pool status eval
+	o.poolC <- nil
 
 	cancel := func() {
 		cancelCtx()
@@ -238,6 +244,25 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		}()
 		o.worker()
 	}()
+
+	// pool status janitor
+	o.Add(1)
+	go func() {
+		defer o.Done()
+		defer func() {
+			go func() {
+				tC := time.After(drainDuration)
+				for {
+					select {
+					case <-tC:
+						return
+					case <-o.poolC:
+					}
+				}
+			}()
+		}()
+		o.poolWorker()
+	}()
 	return cancel, nil
 }
 
@@ -294,6 +319,21 @@ func (o *nmon) touchLastShutdown() {
 		o.log.Error().Err(err).Msgf("touch %s", rawconfig.Paths.LastShutdown)
 	} else {
 		o.log.Info().Msgf("touch %s", rawconfig.Paths.LastShutdown)
+	}
+}
+
+func (o *nmon) poolWorker() {
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-o.ctx.Done():
+			return
+		case <-o.poolC:
+			o.loadPools()
+		case <-ticker.C:
+			o.loadPools()
+		}
 	}
 }
 
@@ -593,5 +633,28 @@ func (o *nmon) loadAndPublishConfig() error {
 	paths := localNodeInfo.Paths.DeepCopy()
 	node.OsPathsData.Set(o.localhost, &paths)
 	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
+	select {
+	case o.poolC <- nil:
+	default:
+	}
 	return nil
+}
+
+func (o *nmon) loadPools() {
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		o.log.Warn().Err(err).Msg("load pools status")
+		return
+	}
+	renewed := make(map[string]any)
+	for _, p := range n.Pools() {
+		data := pool.GetStatus(p, true)
+		renewed[data.Name] = nil
+		pool.StatusData.Set(data.Name, &data)
+	}
+	for _, e := range pool.StatusData.GetAll() {
+		if _, ok := renewed[e.Name]; !ok {
+			pool.StatusData.Unset(e.Name)
+		}
+	}
 }

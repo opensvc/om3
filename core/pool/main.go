@@ -28,11 +28,11 @@ type (
 	}
 
 	Usage struct {
-		// Free unit is KiB
+		// Free unit is Bytes
 		Free int64 `json:"free"`
-		// Used unit is KiB
+		// Used unit is Bytes
 		Used int64 `json:"used"`
-		// Size unit is KiB
+		// Size unit is Bytes
 		Size int64 `json:"size"`
 	}
 
