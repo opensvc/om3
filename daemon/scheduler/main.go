@@ -17,7 +17,6 @@ import (
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -27,14 +26,12 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
-		log          zerolog.Logger
-		localhost    string
-		routineTrace routineTracer
-		databus      *daemondata.T
-		pubsub       *pubsub.Bus
+		ctx       context.Context
+		cancel    context.CancelFunc
+		log       zerolog.Logger
+		localhost string
+		databus   *daemondata.T
+		pubsub    *pubsub.Bus
 
 		events      chan any
 		jobs        Jobs
@@ -51,11 +48,6 @@ type (
 		schedule schedule.Entry
 		cancel   func()
 	}
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
-	}
-
 	eventJobDone struct {
 		schedule schedule.Entry
 		begin    time.Time
@@ -85,7 +77,6 @@ func New(opts ...funcopt.O) *T {
 		provisioned:   make(map[path.T]bool),
 		selfWaitGroup: sync.WaitGroup{},
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("scheduler funcopt.Apply")
 		return nil
@@ -93,7 +84,6 @@ func New(opts ...funcopt.O) *T {
 	t.T = subdaemon.New(
 		subdaemon.WithName("scheduler"),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	return t
 }
@@ -219,7 +209,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		t.selfWaitGroup.Add(1)
 		defer t.selfWaitGroup.Done()
 		defer t.Done()
-		defer t.Trace(t.Name() + "-loop")()
 		started <- nil
 		t.loop()
 	}()

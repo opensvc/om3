@@ -9,7 +9,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -34,7 +32,6 @@ import (
 	"github.com/opensvc/om3/daemon/listener"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/nmon"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/scheduler"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/converters"
@@ -47,7 +44,6 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
 		ctx    context.Context
 		cancel context.CancelFunc
 		log    zerolog.Logger
@@ -75,14 +71,12 @@ func New(opts ...funcopt.O) *T {
 		loopEnabled: enable.New(),
 		log:         log.Logger,
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return nil
 	}
 	t.T = subdaemon.New(
 		subdaemon.WithName("root"),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	t.cancelFuncs = make([]context.CancelFunc, 0)
 	t.loopC = make(chan action)
@@ -115,7 +109,6 @@ func (t *T) MainStart(ctx context.Context) error {
 	started := make(chan bool)
 	t.Add(1)
 	go func() {
-		defer t.Trace(t.Name() + "-loop")()
 		defer t.Done()
 		started <- true
 		t.loop()
@@ -193,7 +186,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		daemonenv.HttpPort = initialCcfg.Listener.Port
 	}
 
-	lsnr := listener.New(listener.WithRoutineTracer(&t.TT))
+	lsnr := listener.New()
 	if err := t.Register(lsnr); err != nil {
 		return err
 	}
@@ -226,8 +219,8 @@ func (t *T) MainStart(ctx context.Context) error {
 	})
 
 	for _, sub := range []subdaemon.Manager{
-		hb.New(hb.WithRoutineTracer(&t.TT), hb.WithRootDaemon(t)),
-		scheduler.New(scheduler.WithRoutineTracer(&t.TT)),
+		hb.New(hb.WithRootDaemon(t)),
+		scheduler.New(),
 	} {
 		if err := t.Register(sub); err != nil {
 			return err
@@ -340,8 +333,4 @@ func startProfiling() {
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
 	cannula.Start(daemonenv.PathUxProfile())
-}
-
-func DaemonPidFile() string {
-	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }

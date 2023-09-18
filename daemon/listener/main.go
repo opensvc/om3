@@ -18,7 +18,6 @@ import (
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpux"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 )
@@ -26,22 +25,16 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
-		log          zerolog.Logger
-		loopC        chan action
-		loopDelay    time.Duration
-		loopEnabled  *enable.T
-		routineTrace routineTracer
-		rootDaemon   subdaemon.RootManager
-		httpHandler  http.Handler
+		log         zerolog.Logger
+		loopC       chan action
+		loopDelay   time.Duration
+		loopEnabled *enable.T
+		rootDaemon  subdaemon.RootManager
+		httpHandler http.Handler
 	}
 	action struct {
 		do   string
 		done chan string
-	}
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
 	}
 
 	sub struct {
@@ -78,7 +71,6 @@ func getMandatorySub() map[string]sub {
 	subs["listenerHttpUx"] = sub{
 		new: func(t *T) subdaemon.Manager {
 			return lsnrhttpux.New(
-				lsnrhttpux.WithRoutineTracer(&t.TT),
 				lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
 				lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
 				lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
@@ -89,7 +81,6 @@ func getMandatorySub() map[string]sub {
 		subs["listenerHttpInet"] = sub{
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpinet.New(
-					lsnrhttpinet.WithRoutineTracer(&t.TT),
 					lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
 					lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
@@ -106,7 +97,6 @@ func New(opts ...funcopt.O) *T {
 		loopEnabled: enable.New(),
 		log:         log.Logger.With().Str("name", "listener").Logger(),
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
@@ -114,7 +104,6 @@ func New(opts ...funcopt.O) *T {
 	t.T = subdaemon.New(
 		subdaemon.WithName("listener"),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	t.log = t.Log()
 	t.loopC = make(chan action)
@@ -133,7 +122,6 @@ func (t *T) MainStart(ctx context.Context) error {
 	}
 	started := make(chan bool)
 	go func() {
-		defer t.Trace(t.Name() + "-loop")()
 		defer func() {
 			_ = stopCertFS()
 		}()

@@ -12,7 +12,6 @@ import (
 	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -37,13 +36,10 @@ func TestDaemon(t *testing.T) {
 	env := setup(t)
 
 	t.Logf("New with root %s", env.Root)
-	main = daemon.New(
-		daemon.WithRoutineTracer(routinehelper.NewTracer()),
-	)
+	main = daemon.New()
 	require.NotNil(t, main)
 	require.False(t, main.Enabled(), "The daemon should not be Enabled after New")
 	require.False(t, main.Running(), "The daemon should not be Running after New")
-	require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 
 	t.Log("Start")
 	require.NoError(t, main.Start(context.Background()))
@@ -59,7 +55,6 @@ func TestDaemon(t *testing.T) {
 	require.NoError(t, main.Stop())
 	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
 	require.False(t, main.Running(), "The daemon should not be Running after Stop")
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
 
 	t.Log("Stop")
 	require.NoError(t, main.Stop())
@@ -83,7 +78,6 @@ func TestDaemon(t *testing.T) {
 
 	main.Wait()
 	main.Wait() // verify we don't block on calling WaitDone() multiple times
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
 
 	t.Log("RunDaemon")
 	main, err := daemon.RunDaemon()
@@ -97,7 +91,6 @@ func TestDaemon(t *testing.T) {
 	require.NoError(t, main.Stop())
 	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
 	require.False(t, main.Running(), "The daemon should not be Running after Stop")
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
 
 	lastShutdownFile := filepath.Join(env.Root, "var", "last_shutdown")
 	stat, err := os.Stat(lastShutdownFile)

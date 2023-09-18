@@ -14,7 +14,6 @@ import (
 
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
@@ -23,24 +22,16 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		routinehelper.TT
-		listener     *http.Server
-		log          zerolog.Logger
-		routineTrace routineTracer
-		addr         string
-		certFile     string
-		keyFile      string
-	}
-
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
+		listener *http.Server
+		log      zerolog.Logger
+		addr     string
+		certFile string
+		keyFile  string
 	}
 )
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
@@ -50,7 +41,6 @@ func New(opts ...funcopt.O) *T {
 	t.T = subdaemon.New(
 		subdaemon.WithName("lsnr-http-inet"),
 		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	return t
 }
@@ -59,7 +49,6 @@ func (t *T) MainStart(ctx context.Context) error {
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 	started := make(chan error)
 	go func() {
-		defer t.Trace(t.Name())()
 		if err := t.start(ctx); err != nil {
 			started <- err
 			return
@@ -110,10 +99,12 @@ func (t *T) start(ctx context.Context) error {
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
-		if err == http.ErrServerClosed || errors.Is(err, net.ErrClosed) {
-			t.log.Debug().Msg("listener ends with expected error")
-		} else {
-			t.log.Error().Err(err).Msg("listener ends with unexpected error")
+		if err != nil {
+			if errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) {
+				t.log.Debug().Msg("listener ends with expected error")
+			} else {
+				t.log.Error().Err(err).Msg("listener ends with unexpected error")
+			}
 		}
 		if t.listener != nil {
 			if err := t.listener.Close(); err != nil {

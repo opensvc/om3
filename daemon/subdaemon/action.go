@@ -53,7 +53,6 @@ func (t *T) startControl() error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		defer t.Trace(t.Name() + "-control")()
 		running <- true
 		t.controlLoop()
 	}()
