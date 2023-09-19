@@ -1,7 +1,10 @@
 package nodeselector
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -310,6 +313,22 @@ func (t T) daemonKnownNodes() ([]string, error) {
 	}
 }
 
+func ReqWithClient(c *client.T) (node.NodesInfo, error) {
+	if c == nil {
+		panic("nodesinfo.ReqWithClient(nil): no client")
+	}
+	resp, err := c.GetNodesInfo(context.Background())
+	if err != nil {
+		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected get nodes info status code %s", resp.Status)
+	}
+	var data node.NodesInfo
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	return data, err
+}
+
 func (t *T) getNodesInfo() (node.NodesInfo, error) {
 	var err error
 	if t.info != nil {
@@ -323,12 +342,12 @@ func (t *T) getNodesInfo() (node.NodesInfo, error) {
 			// no fallback possible
 			return nil, err
 		}
-		if t.info, err = nodesinfo.ReqWithClient(t.client); err == nil {
+		if t.info, err = ReqWithClient(t.client); err == nil {
 			return t.info, nil
 		}
 		return nil, err
 	}
-	if t.info, err = nodesinfo.ReqWithClient(t.client); err == nil {
+	if t.info, err = ReqWithClient(t.client); err == nil {
 		return t.info, nil
 	} else if clientcontext.IsSet() {
 		return nil, err
