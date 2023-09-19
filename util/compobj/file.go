@@ -22,25 +22,27 @@ type (
 	}
 	CompFile struct {
 		Path string      `json:"path"`
-		Mode int         `json:"mode"`
+		Mode *int        `json:"mode"`
 		UID  interface{} `json:"uid"`
 		GID  interface{} `json:"gid"`
-		Fmt  string      `json:"fmt"`
+		Fmt  *string     `json:"fmt"`
 		Ref  string      `json:"ref"`
 	}
 )
 
+var stringFmt = "root@corp.com     %%HOSTNAME%%@corp.com"
 var compFilesInfo = ObjInfo{
 	DefaultPrefix: "OSVC_COMP_FILE_",
 	ExampleValue: CompFile{
 		Path: "/some/path/to/file",
-		Fmt:  "root@corp.com     %%HOSTNAME%%@corp.com",
+		Fmt:  &stringFmt,
 		UID:  500,
 		GID:  500,
 	},
 	Description: `* Verify and install file content.
 * Verify and set file or directory ownership and permission
 * Directory mode is triggered if the path ends with /
+* Only for the fmt field : if the newline character is not present at the end of the text, one is automatically added
 
 Special wildcards::
 
@@ -137,7 +139,7 @@ func (t *CompFiles) Add(s string) error {
 
 func (t CompFile) Content() ([]byte, error) {
 	if t.Ref == "" {
-		b := []byte(t.Fmt)
+		b := []byte(*t.Fmt)
 		if !bytes.HasSuffix(b, []byte("\n")) {
 			b = append(b, []byte("\n")...)
 		}
@@ -173,7 +175,7 @@ func (t CompFile) ParseGID() int {
 }
 
 func (t CompFile) FileMode() (os.FileMode, error) {
-	s := fmt.Sprintf("0%d", t.Mode)
+	s := fmt.Sprintf("0%d", *t.Mode)
 	i, err := strconv.ParseInt(s, 8, 32)
 	if err != nil {
 		return os.FileMode(0), err
@@ -181,7 +183,25 @@ func (t CompFile) FileMode() (os.FileMode, error) {
 	return os.FileMode(i), nil
 }
 
+func (t CompFiles) checkPathExistance(rule CompFile) ExitCode {
+	_, err := os.Lstat(rule.Path)
+	m, _ := file.Mode(rule.Path)
+	t.VerboseErrorf(m.String())
+	if err != nil {
+		if os.IsNotExist(err) {
+			t.VerboseErrorf("the file %s does not exist\n", rule.Path)
+			return ExitNok
+		}
+		t.VerboseErrorf("can't check if the file %s exist: %s", rule.Path, err)
+		return ExitNok
+	}
+	return ExitOk
+}
+
 func (t CompFiles) checkMode(rule CompFile) ExitCode {
+	if rule.Mode == nil {
+		return ExitNotApplicable
+	}
 	target, err := rule.FileMode()
 	if err != nil {
 		t.VerboseErrorf("file %s parse target mode: %s\n", rule.Path, err)
@@ -288,6 +308,9 @@ func (t CompFiles) checkSafeRef(rule CompFile) ExitCode {
 }
 
 func (t CompFiles) checkContent(rule CompFile) ExitCode {
+	if rule.Ref == "" && rule.Fmt == nil {
+		return ExitNotApplicable
+	}
 	if rule.isSafeRef() {
 		return t.checkSafeRef(rule)
 	}
@@ -342,8 +365,33 @@ func (t CompFiles) fixContent(rule CompFile) ExitCode {
 	t.Infof("file %s rewritten\n", rule.Path)
 	return ExitOk
 }
+func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
+	if strings.HasPrefix(rule.Path, "/") {
+		err := os.Mkdir(rule.Path, 0666)
+		if err != nil {
+			t.VerboseErrorf("can't create the file :%s", rule.Path)
+			return ExitNok
+		}
+		return ExitOk
+	}
+	f, err := os.Create(rule.Path)
+	if err != nil {
+		t.VerboseErrorf("can't create the file :%s", rule.Path)
+		return ExitNok
+	}
+	if err = f.Close(); err != nil {
+		t.VerboseErrorf("can't close the file :%s", rule.Path)
+		return ExitNok
+	}
+	return ExitOk
+}
 
 func (t CompFiles) FixRule(rule CompFile) ExitCode {
+	if e := t.checkPathExistance(rule); e == ExitNok {
+		if e := t.fixPathExistance(rule); e == ExitNok {
+			return ExitNok
+		}
+	}
 	if e := t.checkContent(rule); e == ExitNok {
 		if e := t.fixContent(rule); e == ExitNok {
 			return e
@@ -364,6 +412,10 @@ func (t CompFiles) FixRule(rule CompFile) ExitCode {
 
 func (t CompFiles) CheckRule(rule CompFile) ExitCode {
 	var e, o ExitCode
+	if o = t.checkPathExistance(rule); o == ExitNok {
+		return ExitNok
+	}
+	e = e.Merge(o)
 	o = t.checkContent(rule)
 	e = e.Merge(o)
 	o = t.checkOwnership(rule)
