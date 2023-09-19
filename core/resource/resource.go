@@ -1273,3 +1273,31 @@ func (t *T) Progress(ctx context.Context, cols ...any) {
 		view.Info(key, cols)
 	}
 }
+
+func (t Status) Unstructured() map[string]any {
+	m := map[string]any{
+		"label":       t.Label,
+		"status":      t.Status,
+		"type":        t.Type,
+		"provisioned": t.Provisioned,
+		"monitor":     t.Monitor,
+		"disable":     t.Disable,
+		"optional":    t.Optional,
+		"encap":       t.Encap,
+		"restart":     t.Restart,
+		"standby":     t.Standby,
+	}
+	if len(t.Log) > 0 {
+		m["log"] = t.Log
+	}
+	if t.Subset != "" {
+		m["subset"] = t.Subset
+	}
+	if len(t.Tags) > 0 {
+		m["tags"] = t.Tags
+	}
+	if len(t.Info) > 0 {
+		m["info"] = t.Info
+	}
+	return m
+}

@@ -2480,9 +2480,7 @@ components:
         frozen:
           type: string
         instances:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/Instance'
+          $ref: '#/components/schemas/InstanceMap'
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
         overall:
@@ -2660,6 +2658,10 @@ components:
             $ref: '#/components/schemas/InstanceMeta'
           data:
             $ref: '#/components/schemas/InstanceConfig'
+    InstanceMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Instance'
     InstanceMonitorArray:
       type: array
       items:
@@ -2746,7 +2748,6 @@ components:
         - children
         - is_orphan
         - size
-        - size_bytes
       properties:
         pool:
           type: string

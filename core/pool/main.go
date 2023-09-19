@@ -49,6 +49,7 @@ type (
 	Capabilities []string
 
 	VolumeStatus struct {
+		Pool     string `json:"pool"`
 		Path     path.T `json:"path"`
 		Children path.L `json:"children"`
 		IsOrphan bool   `json:"is_orphan"`
@@ -57,6 +58,7 @@ type (
 	VolumeStatusList []VolumeStatus
 
 	Config interface {
+		Eval(key.T) (any, error)
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string

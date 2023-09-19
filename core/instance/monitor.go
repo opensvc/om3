@@ -426,3 +426,54 @@ func (mon Monitor) DeepCopy() *Monitor {
 	}
 	return &v
 }
+
+func (t ResourceMonitor) Unstructured() map[string]any {
+	return map[string]any{
+		"restart": t.Restart.Unstructured(),
+	}
+}
+
+func (t ResourceMonitorRestart) Unstructured() map[string]any {
+	return map[string]any{
+		"remaining": t.Remaining,
+		"last_at":   t.LastAt,
+	}
+}
+
+func (t Monitor) Unstructured() map[string]any {
+	m := map[string]any{
+		"global_expect":              t.GlobalExpect,
+		"global_expect_updated_at":   t.GlobalExpectUpdatedAt,
+		"global_expect_options":      t.GlobalExpectOptions,
+		"is_leader":                  t.IsLeader,
+		"is_ha_leader":               t.IsHALeader,
+		"local_expect":               t.LocalExpect,
+		"local_expect_updated_at":    t.LocalExpectUpdatedAt,
+		"orchestration_id":           t.OrchestrationId,
+		"orchestration_is_done":      t.OrchestrationIsDone,
+		"session_id":                 t.SessionId,
+		"state":                      t.State,
+		"state_updated_at":           t.StateUpdatedAt,
+		"monitor_action_executed_at": t.MonitorActionExecutedAt,
+		"preserved":                  t.IsPreserved,
+		"updated_at":                 t.UpdatedAt,
+	}
+	if len(t.Resources) > 0 {
+		m["resources"] = t.Resources.Unstructured()
+	}
+	if len(t.Parents) > 0 {
+		m["parents"] = t.Parents
+	}
+	if len(t.Children) > 0 {
+		m["children"] = t.Children
+	}
+	return m
+}
+
+func (t ResourceMonitors) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}

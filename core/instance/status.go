@@ -134,3 +134,31 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.Status) string 
 	flags += r.Standby.FlagString()
 	return flags
 }
+
+func (t ResourceStatuses) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t Status) Unstructured() map[string]any {
+	m := map[string]any{
+		"avail":           t.Avail,
+		"constraints":     t.Constraints,
+		"last_started_at": t.LastStartedAt,
+		"optional":        t.Optional,
+		"overall":         t.Overall,
+		"provisioned":     t.Provisioned,
+		"running":         t.Running,
+		"updated_at":      t.UpdatedAt,
+	}
+	if len(t.Resources) > 0 {
+		m["resources"] = t.Resources.Unstructured()
+	}
+	if !t.FrozenAt.IsZero() {
+		m["frozen_at"] = t.FrozenAt
+	}
+	return m
+}

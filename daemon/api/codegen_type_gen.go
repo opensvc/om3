@@ -276,6 +276,9 @@ type InstanceItem struct {
 	Meta InstanceMeta `json:"meta"`
 }
 
+// InstanceMap defines model for InstanceMap.
+type InstanceMap map[string]Instance
+
 // InstanceMeta defines model for InstanceMeta.
 type InstanceMeta struct {
 	Node   string `json:"node"`
@@ -440,14 +443,14 @@ type ObjectConfig struct {
 
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
-	Avail       Status              `json:"avail"`
-	FlexMax     int                 `json:"flex_max"`
-	FlexMin     int                 `json:"flex_min"`
-	FlexTarget  int                 `json:"flex_target"`
-	Frozen      string              `json:"frozen"`
-	Instances   map[string]Instance `json:"instances"`
-	Orchestrate Orchestrate         `json:"orchestrate"`
-	Overall     Status              `json:"overall"`
+	Avail       Status      `json:"avail"`
+	FlexMax     int         `json:"flex_max"`
+	FlexMin     int         `json:"flex_min"`
+	FlexTarget  int         `json:"flex_target"`
+	Frozen      string      `json:"frozen"`
+	Instances   InstanceMap `json:"instances"`
+	Orchestrate Orchestrate `json:"orchestrate"`
+	Overall     Status      `json:"overall"`
 
 	// PlacementPolicy object placement policy
 	PlacementPolicy PlacementPolicy `json:"placement_policy"`

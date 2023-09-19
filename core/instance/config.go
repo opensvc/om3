@@ -95,3 +95,67 @@ func (rcfgs ResourceConfigs) Get(rid string) *ResourceConfig {
 	}
 	return nil
 }
+
+func (t Config) Unstructured() map[string]any {
+	m := map[string]any{
+		"app":                t.App,
+		"csum":               t.Checksum,
+		"children":           t.Children,
+		"drp":                t.DRP,
+		"env":                t.Env,
+		"flex_max":           t.FlexMax,
+		"flex_min":           t.FlexMin,
+		"flex_target":        t.FlexTarget,
+		"monitor_action":     t.MonitorAction,
+		"pre_monitor_action": t.PreMonitorAction,
+		"orchestrate":        t.Orchestrate,
+		"parents":            t.Parents,
+		"placement_policy":   t.PlacementPolicy,
+		"priority":           t.Priority,
+		"resources":          t.Resources.Unstructured(),
+		"scope":              t.Scope,
+		"subsets":            t.Subsets.Unstructured(),
+		"topology":           t.Topology,
+		"updated_at":         t.UpdatedAt,
+	}
+	if t.Pool != nil {
+		m["pool"] = t.Pool
+	}
+	if t.Size != nil {
+		m["size"] = t.Size
+	}
+	return m
+}
+
+func (t ResourceConfig) Unstructured() map[string]any {
+	m := map[string]any{
+		"is_disabled":   t.IsDisabled,
+		"is_monitored":  t.IsMonitored,
+		"is_standby":    t.IsStandby,
+		"restart":       t.Restart,
+		"restart_delay": t.RestartDelay,
+	}
+	return m
+}
+
+func (t ResourceConfigs) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t SubsetConfigs) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t SubsetConfig) Unstructured() map[string]any {
+	return map[string]any{
+		"parallel": t.Parallel,
+	}
+}
