@@ -11,8 +11,9 @@ var (
 		Long:  ` A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.`,
 	}
 	cmdPoolVolume = &cobra.Command{
-		Use:   "volume",
-		Short: "Manage storage pool volumes",
+		Use:     "volume",
+		Short:   "Manage storage pool volumes",
+		Aliases: []string{"vol"},
 	}
 )
 
