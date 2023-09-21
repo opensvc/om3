@@ -30,16 +30,20 @@ type (
 	}
 )
 
-var stringFmt = "root@corp.com     %%HOSTNAME%%@corp.com"
-var compFilesInfo = ObjInfo{
-	DefaultPrefix: "OSVC_COMP_FILE_",
-	ExampleValue: CompFile{
-		Path: "/some/path/to/file",
-		Fmt:  &stringFmt,
-		UID:  500,
-		GID:  500,
-	},
-	Description: `* Verify and install file content.
+var (
+	collectorSafeGetMetaFunc = collectorSafeGetMeta
+
+	stringFmt = "root@corp.com     %%HOSTNAME%%@corp.com"
+
+	compFilesInfo = ObjInfo{
+		DefaultPrefix: "OSVC_COMP_FILE_",
+		ExampleValue: CompFile{
+			Path: "/some/path/to/file",
+			Fmt:  &stringFmt,
+			UID:  500,
+			GID:  500,
+		},
+		Description: `* Verify and install file content.
 * Verify and set file or directory ownership and permission
 * Directory mode is triggered if the path ends with /
 * Only for the fmt field : if the newline character is not present at the end of the text, one is automatically added
@@ -50,7 +54,7 @@ Special wildcards::
   %%HOSTNAME%%      Hostname
   %%SHORT_HOSTNAME%%    Short hostname
 `,
-	FormDefinition: `Desc: |
+		FormDefinition: `Desc: |
   A file rule, fed to the 'files' compliance object to create a directory or a file and set its ownership and permissions. For files, a reference content can be specified or pointed through an URL.
 Css: comp48
 
@@ -203,6 +207,9 @@ func (t CompFiles) checkMode(rule CompFile) ExitCode {
 		return ExitNotApplicable
 	}
 	target, err := rule.FileMode()
+	if strings.HasSuffix(rule.Path, "/") {
+		target = target | os.ModeDir
+	}
 	if err != nil {
 		t.VerboseErrorf("file %s parse target mode: %s\n", rule.Path, err)
 		return ExitNok
@@ -222,6 +229,9 @@ func (t CompFiles) checkMode(rule CompFile) ExitCode {
 
 func (t CompFiles) fixMode(rule CompFile) ExitCode {
 	target, err := rule.FileMode()
+	if strings.HasSuffix(rule.Path, "/") {
+		target = target | os.ModeDir
+	}
 	if err != nil {
 		t.Errorf("file %s parse target mode: %s\n", rule.Path, err)
 		return ExitNok
@@ -293,7 +303,7 @@ func (t CompFile) isSafeRef() bool {
 }
 
 func (t CompFiles) checkSafeRef(rule CompFile) ExitCode {
-	meta, err := collectorSafeGetMeta(rule.Ref)
+	meta, err := collectorSafeGetMetaFunc(rule.Ref)
 	currentMD5, err := file.MD5(rule.Path)
 	if err != nil {
 		t.VerboseErrorf("file %s md5sum: %s\n", rule.Path, err)
