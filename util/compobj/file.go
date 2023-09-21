@@ -120,7 +120,8 @@ Inputs:
     Help: A reference content for the file. The text can embed substitution variables specified with %%ENV:VAR%%.
     Type: text
 `,
-}
+	}
+)
 
 func init() {
 	m["file"] = NewCompFiles
