@@ -225,7 +225,10 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if hasHeader {
 		fmt.Fprintf(w, strings.Join(headers, "")+"\n")
 	}
-	unstructuredData := unstructured.NewListWithData(t.Data)
+	unstructuredData, err := unstructured.NewListWithData(t.Data)
+	if err != nil {
+		return "", err
+	}
 	for _, line := range unstructuredData {
 		for _, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
