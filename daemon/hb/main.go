@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -30,9 +29,7 @@ import (
 
 type (
 	T struct {
-		*subdaemon.T
 		log        zerolog.Logger
-		rootDaemon subdaemon.RootManager
 		txs        map[string]hbtype.Transmitter
 		rxs        map[string]hbtype.Receiver
 
@@ -61,10 +58,6 @@ func New(opts ...funcopt.O) *T {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
 		return nil
 	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("hb"),
-		subdaemon.WithMainManager(t),
-	)
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
 	t.readMsgQueue = make(chan *hbtype.Msg)
@@ -79,7 +72,8 @@ func New(opts ...funcopt.O) *T {
 // - the dispatcher of messages to send to hb tx components
 // - the dispatcher of read messages from hb rx components to daemon data
 // - the launcher of tx, rx components found in configuration
-func (t *T) MainStart(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
+	t.log.Info().Msg("starting hb")
 	t.ctrlC = hbctrl.Start(ctx)
 
 	err := t.msgToTx(ctx)
@@ -90,10 +84,13 @@ func (t *T) MainStart(ctx context.Context) error {
 	go t.msgFromRx(ctx)
 
 	t.startJanitorHb(ctx)
+	t.log.Info().Msg("started hb")
 	return nil
 }
 
-func (t *T) MainStop() error {
+func (t *T) Stop() error {
+	t.log.Info().Msg("stopping hb")
+	defer t.log.Info().Msg("stopped hb")
 	hbToStop := make([]hbtype.IdStopper, 0)
 	var failedIds []string
 	for _, hb := range t.txs {
