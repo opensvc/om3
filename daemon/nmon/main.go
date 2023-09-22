@@ -55,10 +55,10 @@ import (
 
 type (
 	nmon struct {
-		sync.WaitGroup
-
 		// config is the node merged config
 		config *xconfig.T
+
+		drainDuration time.Duration
 
 		// nodeConfig is the published node.Config. It is refreshed when config is
 		// created or reloaded.
@@ -113,6 +113,8 @@ type (
 		// nodeStatus is the node.Status for localhost that is the source of publication of msgbus.NodeStatusUpdated for
 		// localhost.
 		nodeStatus node.Status
+
+		wg sync.WaitGroup
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -144,11 +146,10 @@ var (
 	unexpectedDelay = 500 * time.Millisecond
 )
 
-// Start launches the nmon worker goroutine
-func Start(parent context.Context, drainDuration time.Duration) (context.CancelFunc, error) {
-	ctx, cancelCtx := context.WithCancel(parent)
+func New(drainDuration time.Duration) *nmon {
 	localhost := hostname.Hostname()
-	o := &nmon{
+	return &nmon{
+		drainDuration: drainDuration,
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
@@ -159,12 +160,8 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 			GlobalExpect: node.MonitorGlobalExpectNone,
 			State:        node.MonitorStateZero,
 		},
-		ctx:         ctx,
-		cancel:      cancelCtx,
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),
-		databus:     daemondata.FromContext(ctx),
-		bus:         pubsub.BusFromContext(ctx),
 		log:         log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:   localhost,
 		change:      true,
@@ -179,19 +176,22 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		cacheNodesInfo: map[string]node.NodeInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
+}
+
+// Start launches the nmon worker goroutine
+func (o *nmon) Start(parent context.Context) error {
+	o.log.Info().Msg("omon starting")
+	o.ctx, o.cancel = context.WithCancel(parent)
+	o.databus = daemondata.FromContext(o.ctx)
+	o.bus = pubsub.BusFromContext(o.ctx)
 
 	// trigger an initial pool status eval
 	o.poolC <- nil
 
-	cancel := func() {
-		cancelCtx()
-		o.Wait()
-	}
-
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
 	if err := o.loadAndPublishConfig(); err != nil {
-		return cancel, err
+		return err
 	}
 
 	bootID := bootid.Get()
@@ -209,7 +209,7 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 					err := o.crmFreeze()
 					if err != nil {
 						o.log.Error().Err(err).Msgf("freeze node due to kernel cmdline flag")
-						return cancel, err
+						return err
 					}
 				}
 			}
@@ -224,12 +224,12 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 	o.setArbitratorConfig()
 
 	o.startSubscriptions()
-	o.Add(1)
+	o.wg.Add(1)
 	go func() {
-		defer o.Done()
+		defer o.wg.Done()
 		defer func() {
 			go func() {
-				tC := time.After(drainDuration)
+				tC := time.After(o.drainDuration)
 				for {
 					select {
 					case <-tC:
@@ -246,12 +246,12 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 	}()
 
 	// pool status janitor
-	o.Add(1)
+	o.wg.Add(1)
 	go func() {
-		defer o.Done()
+		defer o.wg.Done()
 		defer func() {
 			go func() {
-				tC := time.After(drainDuration)
+				tC := time.After(o.drainDuration)
 				for {
 					select {
 					case <-tC:
@@ -263,7 +263,16 @@ func Start(parent context.Context, drainDuration time.Duration) (context.CancelF
 		}()
 		o.poolWorker()
 	}()
-	return cancel, nil
+	o.log.Info().Msg("omon started")
+	return nil
+}
+
+func (o *nmon) Stop() error {
+	o.log.Info().Msg("nmon stopping")
+	defer o.log.Info().Msg("nmon stopped")
+	o.cancel()
+	o.wg.Wait()
+	return nil
 }
 
 func (o *nmon) startSubscriptions() {
