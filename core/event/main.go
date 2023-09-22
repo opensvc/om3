@@ -17,23 +17,23 @@ type (
 		// installing a full dataset with received full dataset
 		// or
 		// patching a full dataset with received patch events
-		Kind string `json:"kind" yaml:"kind"`
+		Kind string `json:"kind"`
 
 		// ID is a unique event id
-		ID uint64 `json:"id" yaml:"id"`
+		ID uint64 `json:"id"`
 
 		// At is the time the event was published
-		At time.Time `json:"at" yaml:"at"`
+		At time.Time `json:"at"`
 
 		// Data is the free-format dataset of the event
-		Data json.RawMessage `json:"data" yaml:"data"`
+		Data json.RawMessage `json:"data"`
 	}
 
 	ConcreteEvent struct {
-		Kind string    `json:"kind" yaml:"kind"`
-		ID   uint64    `json:"id" yaml:"id"`
-		At   time.Time `json:"at" yaml:"at"`
-		Data any       `json:"data" yaml:"data"`
+		Kind string    `json:"kind"`
+		ID   uint64    `json:"id"`
+		At   time.Time `json:"at"`
+		Data any       `json:"data"`
 	}
 
 	Reader interface {

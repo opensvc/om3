@@ -78,9 +78,11 @@ var (
 	keyNodes            = key.New("DEFAULT", "nodes")
 	keyOrchestrate      = key.New("DEFAULT", "orchestrate")
 	keyParents          = key.New("DEFAULT", "parents")
+	keyPool             = key.New("DEFAULT", "pool")
 	keyPlacement        = key.New("DEFAULT", "placement")
 	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
 	keyPriority         = key.New("DEFAULT", "priority")
+	keySize             = key.New("DEFAULT", "size")
 	keyTopology         = key.New("DEFAULT", "topology")
 )
 
@@ -296,6 +298,12 @@ func (o *T) configFileCheck() error {
 	cfg.UpdatedAt = mtime
 	cfg.Subsets = o.getSubsets(cf)
 
+	if pool := cf.GetString(keyPool); pool != "" {
+		cfg.Pool = &pool
+	}
+	if sz := cf.GetSize(keySize); sz != nil {
+		cfg.Size = sz
+	}
 	if cfg.Topology == topology.Flex {
 		cfg.FlexMin = o.getFlexMin(cf)
 		cfg.FlexMax = o.getFlexMax(cf)
@@ -333,22 +341,14 @@ func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 	return instance.MonitorAction(s)
 }
 
-func (o *T) getChildren(cf *xconfig.T) []path.Relation {
+func (o *T) getChildren(cf *xconfig.T) path.Relations {
 	l := cf.GetStrings(keyChildren)
-	relations := make([]path.Relation, len(l))
-	for i, s := range l {
-		relations[i] = path.Relation(s)
-	}
-	return relations
+	return path.NewRelationsFromStringSlice(l)
 }
 
-func (o *T) getParents(cf *xconfig.T) []path.Relation {
+func (o *T) getParents(cf *xconfig.T) path.Relations {
 	l := cf.GetStrings(keyParents)
-	relations := make([]path.Relation, len(l))
-	for i, s := range l {
-		relations[i] = path.Relation(s)
-	}
-	return relations
+	return path.NewRelationsFromStringSlice(l)
 }
 
 func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
@@ -385,6 +385,9 @@ func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
 	for _, section := range cf.SectionStrings() {
 		switch section {
 		case "env", "DEFAULT":
+			continue
+		}
+		if resourceset.IsSubsetSection(section) {
 			continue
 		}
 		m[section] = instance.ResourceConfig{

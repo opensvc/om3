@@ -57,12 +57,12 @@ func (t T) Capabilities() []string {
 	return t.GetStrings("capabilities")
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
-	usage := pool.StatusUsage{}
+func (t T) Usage() (pool.Usage, error) {
+	usage := pool.Usage{}
 	return usage, nil
 }
 
-func (t *T) translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	template, err := t.template()
 	if err != nil {
 		return nil, fmt.Errorf("unexpected template: %w", err)
@@ -82,9 +82,9 @@ func (t *T) translate(name string, size float64, shared bool) ([]string, error) 
 	return config.Ops(), nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	return t.translate(name, size, shared)
 }
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	return t.translate(name, size, shared)
 }

@@ -198,7 +198,7 @@ paths:
       description: |
         Register a join request to add a new cluster node member.
         The authenticated client requires at least grant 'root' or 'Join'.
-        
+
         Processing of the join request is done asynchronously by daemon, http response is sent
         when the join request has been published with label: node=<apinode>
 
@@ -235,7 +235,7 @@ paths:
       description: |
         Register a leave request to remove a cluster node member.
         The authenticated client requires at least grant 'root' or 'Leave'.
-        
+
         Processing of the leave request is done asynchronously by daemon, http response is sent
         when the leave request has been published with label: node=<apinode>
 
@@ -368,10 +368,10 @@ paths:
   # ========================================================================
   # instance paths
   # ========================================================================
- 
-  /instance:
+
+  /instances:
     get:
-      operationId: GetInstance
+      operationId: GetInstances
       tags:
         - instance
       security:
@@ -386,85 +386,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InstanceArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /instance/config:
-    get:
-      operationId: GetInstanceConfig
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get instance config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceConfigArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /instance/monitor:
-    get:
-      operationId: GetInstanceMonitor
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get instance monitor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceMonitorArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /instance/status:
-    get:
-      operationId: GetInstanceStatus
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get instance status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceStatusArray'
+                $ref: '#/components/schemas/InstanceList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -498,6 +420,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  # ========================================================================
+  # network paths
+  # ========================================================================
+
   /networks:
     get:
       operationId: GetNetworks
@@ -519,7 +446,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NetworkStatusList'
+                $ref: '#/components/schemas/NetworkList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /network/ip:
+    get:
+      operationId: GetNetworkIp
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a cluster backend network
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkIpList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -530,10 +486,10 @@ paths:
   # ========================================================================
   # node paths
   # ========================================================================
- 
-  /node:
+
+  /nodes:
     get:
-      operationId: GetNode
+      operationId: GetNodes
       tags:
         - node
       security:
@@ -547,32 +503,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NodeArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /node/config:
-    get:
-      operationId: GetNodeConfig
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get node config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodeConfigArray'
+                $ref: '#/components/schemas/NodeList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -606,56 +537,6 @@ paths:
           $ref: '#/components/responses/408'
         409:
           $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /node/monitor:
-    get:
-      operationId: GetNodeMonitor
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get node monitor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodeMonitorArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /node/status:
-    get:
-      operationId: GetNodeStatus
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get node status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodeStatusArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
   /node/drbd/allocation:
@@ -820,9 +701,9 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object:
+  /objects:
     get:
-      operationId: GetObject
+      operationId: GetObjects
       tags:
         - object
       security:
@@ -838,7 +719,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectArray'
+                $ref: '#/components/schemas/ObjectList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1421,7 +1302,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PoolStatusList'
+                $ref: '#/components/schemas/PoolList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /pool/volumes:
+    get:
+      operationId: GetPoolVolumes
+      tags:
+        - storage
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a backend storage pool
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolVolumeList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1493,9 +1402,9 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /resource:
+  /resources:
     get:
-      operationId: GetResource
+      operationId: GetResources
       tags:
         - resource
       security:
@@ -1511,88 +1420,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResourceArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /resource/config:
-    get:
-      operationId: GetResourceConfig
-      tags:
-        - resource
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-        - $ref: '#/components/parameters/RidOptional'
-      responses:
-        200:
-          description: get resource config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceConfigArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /resource/monitor:
-    get:
-      operationId: GetResourceMonitor
-      tags:
-        - resource
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-        - $ref: '#/components/parameters/RidOptional'
-      responses:
-        200:
-          description: get resource monitor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceMonitorArray'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /resource/status:
-    get:
-      operationId: GetResourceStatus
-      tags:
-        - resource
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-        - $ref: '#/components/parameters/RidOptional'
-      responses:
-        200:
-          description: get resource status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceStatusArray'
+                $ref: '#/components/schemas/ResourceList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1620,8 +1448,6 @@ components:
         - token
       properties:
         expired_at:
-          x-oapi-codegen-extra-tags:
-            yaml: expired_at
           type: string
           format: date-time
         token:
@@ -1731,12 +1557,8 @@ components:
         - last_at
       properties:
         is_beating:
-          x-oapi-codegen-extra-tags:
-            yaml: is_beating
           type: boolean
         last_at:
-          x-oapi-codegen-extra-tags:
-            yaml: last_at
           type: string
           format: date-time
     DaemonListener:
@@ -1775,8 +1597,6 @@ components:
           type: string
           format: date-time
         created_at:
-          x-oapi-codegen-extra-tags:
-            yaml: created_at
           type: string
           format: date-time
         id:
@@ -1822,10 +1642,9 @@ components:
         minor:
           type: integer
         expired_at:
-          x-oapi-codegen-extra-tags:
-            yaml: expired_at
           type: string
           format: date-time
+
     InstanceMeta:
       type: object
       required:
@@ -1896,6 +1715,8 @@ components:
           type: array
           items:
             type: string
+        pool:
+          type: string
         placement_policy:
           $ref: '#/components/schemas/PlacementPolicy'
         priority:
@@ -1908,6 +1729,9 @@ components:
           type: array
           items:
             type: string
+        size:
+          type: integer
+          format: int64
         subsets:
           $ref: '#/components/schemas/SubsetsConfig'
         topology:
@@ -1983,6 +1807,16 @@ components:
           type: object
         children:
           type: object
+    InstanceStatusItem:
+        type: object
+        required:
+          - meta
+          - data
+        properties:
+          meta:
+            $ref: '#/components/schemas/InstanceMeta'
+          data:
+            $ref: '#/components/schemas/InstanceStatus'
     InstanceStatus:
       x-go-type: instance.Status
       x-go-type-import:
@@ -2022,9 +1856,9 @@ components:
         is_preserved:
           type: boolean
           description: |
-            preserve is true if this status has not been updated due to a 
+            preserve is true if this status has not been updated due to a
             heartbeat downtime covered by a maintenance period.
-            when the maintenance period ends, the status should be unchanged, 
+            when the maintenance period ends, the status should be unchanged,
             and preserve will be set to false.
           default: false
         provisioned:
@@ -2042,8 +1876,16 @@ components:
         updated_at:
           type: string
           format: date-time
-    NetworkStatus:
+    Network:
       type: object
+      required:
+        - name
+        - type
+        - network
+        - usage
+        - free
+        - used
+        - size
       properties:
         name:
           type: string
@@ -2051,23 +1893,51 @@ components:
           type: string
         network:
           type: string
-        ips:
-          type: array
-          items:
-            $ref: '#/components/schemas/NetworkStatusIp'
         errors:
           type: array
           items:
             type: string
-        usage:
-          $ref: '#/components/schemas/NetworkStatusUsage'
-    NetworkStatusIp:
+        free:
+          type: integer
+        used:
+          type: integer
+        size:
+          type: integer
+    NetworkIpNetwork:
+      type: object
+      required:
+        - name
+        - type
+        - network
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+    NetworkList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/NetworkItems'
+    NetworkItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/Network'
+    NetworkIp:
       type: object
       required:
         - ip
         - node
         - path
         - rid
+        - network
       properties:
         ip:
           type: string
@@ -2077,31 +1947,37 @@ components:
           type: string
         rid:
           type: string
-    NetworkStatusList:
-      type: array
-      items:
-        $ref: '#/components/schemas/NetworkStatus'
-    NetworkStatusUsage:
+        network:
+          $ref: '#/components/schemas/NetworkIpNetwork'
+    NetworkIpList:
       type: object
       required:
-        - free
-        - used
-        - size
-        - pct
+        - items
+        - kind
       properties:
-        free:
-          type: integer
-        used:
-          type: integer
-        size:
-          type: integer
-        pct:
-          type: number
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/NetworkIpItems'
+    NetworkIpItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/NetworkIp'
 
     # ========================================================================
     # node schemas
     # ========================================================================
 
+    NodeList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/NodeItems'
     Node:
       type: object
       properties:
@@ -2111,16 +1987,19 @@ components:
           $ref: '#/components/schemas/NodeMonitor'
         status:
           $ref: '#/components/schemas/NodeStatus'
-    NodeArray:
+    NodeItems:
       type: array
       items:
         $ref: '#/components/schemas/NodeItem'
     NodeItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/NodeMeta'
           data:
@@ -2150,20 +2029,6 @@ components:
           format: duration
         split_action:
           type: string
-    NodeConfigArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/NodeConfigItem'
-    NodeConfigItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/NodeMeta'
-          data:
-            $ref: '#/components/schemas/NodeConfig'
     NodeMonitor:
       x-go-type: node.Monitor
       x-go-type-import:
@@ -2205,20 +2070,6 @@ components:
         updated_at:
           type: string
           format: date-time
-    NodeMonitorArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/NodeMonitorItem'
-    NodeMonitorItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/NodeMeta'
-          data:
-            $ref: '#/components/schemas/NodeMonitor'
     NodeStatus:
       x-go-type: node.Status
       x-go-type-import:
@@ -2260,20 +2111,6 @@ components:
           type: boolean
         labels:
           type: object
-    NodeStatusArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/NodeStatusItem'
-    NodeStatusItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/NodeMeta'
-          data:
-            $ref: '#/components/schemas/NodeStatus'
     NodeInfo:
       type: object
       required:
@@ -2322,16 +2159,29 @@ components:
     # object schemas
     # ========================================================================
 
-    ObjectArray:
+    ObjectList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/ObjectItems'
+    ObjectItems:
       type: array
       items:
         $ref: '#/components/schemas/ObjectItem'
     ObjectItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/ObjectMeta'
           data:
@@ -2393,23 +2243,15 @@ components:
         avail:
           $ref: '#/components/schemas/Status'
         flex_max:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_max
           type: integer
         flex_min:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_min
           type: integer
         flex_target:
-          x-oapi-codegen-extra-tags:
-            yaml: flex_target
           type: integer
         frozen:
           type: string
         instances:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/Instance'
+          $ref: '#/components/schemas/InstanceMap'
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
         overall:
@@ -2418,6 +2260,8 @@ components:
           $ref: '#/components/schemas/PlacementPolicy'
         placement_state:
           $ref: '#/components/schemas/PlacementState'
+        pool:
+          type: string
         priority:
           type: integer
         provisioned:
@@ -2426,15 +2270,14 @@ components:
           type: array
           items:
             type: string
+        size:
+          type: integer
+          format: int64
         topology:
           $ref: '#/components/schemas/Topology'
         up_instances_count:
-          x-oapi-codegen-extra-tags:
-            yaml: up_instances_count
           type: integer
         updated_at:
-          x-oapi-codegen-extra-tags:
-            yaml: updated_at
           type: string
     Orchestrate:
       type: string
@@ -2447,8 +2290,6 @@ components:
       type: object
       properties:
         orchestration_id:
-          x-oapi-codegen-extra-tags:
-            yaml: orchestration_id
           type: string
           format: uuid
       required:
@@ -2458,72 +2299,7 @@ components:
       items:
         type: string
         description: object path or an instance path (path@node)
-    PoolStatus:
-      type: object
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-        head:
-          type: string
-        capabilities:
-          type: array
-          items:
-            type: string
-        errors:
-          type: array
-          items:
-            type: string
-        usage:
-          $ref: '#/components/schemas/PoolStatusUsage'
-        volumes:
-          type: array
-          items:
-            $ref: '#/components/schemas/PoolStatusVolume'
-    PoolStatusVolume:
-      type: object
-      required:
-        - ip
-        - node
-        - path
-        - rid
-      properties:
-        ip:
-          type: string
-        node:
-          type: string
-        path:
-          type: string
-        rid:
-          type: string
-    PoolStatusList:
-      type: array
-      items:
-        $ref: '#/components/schemas/PoolStatus'
-    PoolStatusUsage:
-      type: object
-      required:
-        - children
-        - orphan
-        - path
-        - size
-      properties:
-        children:
-          type: array
-          items:
-            type: string
-        orphan:
-          description: an orphan is a volume driven by no svc resource
-          type: boolean
-        path:
-          type: string
-        size:
-          description: volume size in bytes
-          type: number
     PlacementPolicy:
-      x-oapi-codegen-extra-tags:
-        yaml: placement_policy
       type: string
       default: none
       description: object placement policy
@@ -2536,8 +2312,6 @@ components:
         - spread
         - shift
     PlacementState:
-      x-oapi-codegen-extra-tags:
-        yaml: placement_state
       type: string
       description: object placement state
       enum:
@@ -2585,8 +2359,6 @@ components:
         - data
       properties:
         allocation_id:
-          x-oapi-codegen-extra-tags:
-            yaml: allocation_id
           type: string
           format: uuid
         data:
@@ -2609,21 +2381,27 @@ components:
         path:
           type: string
         session_id:
-          x-oapi-codegen-extra-tags:
-            yaml: session_id
           type: string
           format: uuid
         state:
           type: string
         is_partial:
-          x-oapi-codegen-extra-tags:
-            yaml: is_partial
           type: boolean
 
     # ========================================================================
     # instance schemas
     # ========================================================================
- 
+
+    InstanceList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/InstanceItems'
     Instance:
       type: object
       properties:
@@ -2633,72 +2411,124 @@ components:
           $ref: '#/components/schemas/InstanceMonitor'
         status:
           $ref: '#/components/schemas/InstanceStatus'
-    InstanceArray:
+    InstanceItems:
       type: array
       items:
         $ref: '#/components/schemas/InstanceItem'
     InstanceItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/InstanceMeta'
           data:
             $ref: '#/components/schemas/Instance'
-    InstanceConfigArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/InstanceConfigItem'
-    InstanceConfigItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/InstanceMeta'
-          data:
-            $ref: '#/components/schemas/InstanceConfig'
-    InstanceMonitorArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/InstanceMonitorItem'
-    InstanceMonitorItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/InstanceMeta'
-          data:
-            $ref: '#/components/schemas/InstanceMonitor'
-    InstanceStatusArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/InstanceStatusItem'
-    InstanceStatusItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/InstanceMeta'
-          data:
-            $ref: '#/components/schemas/InstanceStatus'
-    PostInstanceStatus:
+    InstanceMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Instance'
+
+    # ========================================================================
+    # pool schemas
+    # ========================================================================
+
+    PoolList:
       type: object
       required:
-        - path
-        - status
+        - items
+        - kind
       properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/PoolItems'
+    PoolItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pool'
+    Pool:
+      type: object
+      required:
+        - name
+        - type
+        - head
+        - capabilities
+        - volume_count
+        - free
+        - used
+        - size
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        head:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+        free:
+          type: integer
+          format: int64
+        used:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int64
+        volume_count:
+          type: integer
+
+    # ========================================================================
+    # pool volume schemas
+    # ========================================================================
+
+    PoolVolumeList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/PoolVolumeItems'
+    PoolVolumeItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PoolVolume'
+    PoolVolume:
+      type: object
+      required:
+        - pool
+        - path
+        - children
+        - is_orphan
+        - size
+      properties:
+        pool:
+          type: string
         path:
           type: string
-        status:
-          $ref: '#/components/schemas/InstanceStatus'
+        children:
+          type: array
+          items:
+            type: string
+        is_orphan:
+          type: boolean
+        size:
+          type: integer
+          format: int64
     PostObjectAction:
       type: object
       required:
@@ -2728,12 +2558,8 @@ components:
         - nodename
       properties:
         cluster_id:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_id
           type: string
         cluster_name:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_name
           type: string
         nodename:
           type: string
@@ -2784,20 +2610,14 @@ components:
         addr:
           type: string
         cluster_id:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_id
           type: string
         cluster_name:
-          x-oapi-codegen-extra-tags:
-            yaml: cluster_name
           type: string
         msg:
           type: string
         nodename:
           type: string
         updated_at:
-          x-oapi-codegen-extra-tags:
-            yaml: updated_at
           type: string
           format: date-time
     RelayMessageList:
@@ -2816,6 +2636,16 @@ components:
     # resource schemas
     # ========================================================================
 
+    ResourceList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+        items:
+          $ref: '#/components/schemas/ResourceItems'
     Resource:
       type: object
       properties:
@@ -2825,16 +2655,19 @@ components:
           $ref: '#/components/schemas/ResourceMonitor'
         status:
           $ref: '#/components/schemas/ResourceStatus'
-    ResourceArray:
+    ResourceItems:
       type: array
       items:
         $ref: '#/components/schemas/ResourceItem'
     ResourceItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/ResourceMeta'
           data:
@@ -2862,20 +2695,6 @@ components:
         restart_delay:
           type: string
           format: duration
-    ResourceConfigArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceConfigItem'
-    ResourceConfigItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/ResourceMeta'
-          data:
-            $ref: '#/components/schemas/ResourceConfig'
     ResourceId:
       type: string
     ResourceLog:
@@ -2926,20 +2745,6 @@ components:
       properties:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
-    ResourceMonitorArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceMonitorItem'
-    ResourceMonitorItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/ResourceMeta'
-          data:
-            $ref: '#/components/schemas/ResourceMonitor'
     ResourceMonitorRestart:
       type: object
       required:
@@ -2949,8 +2754,6 @@ components:
         remaining:
           type: integer
         last_at:
-          x-oapi-codegen-extra-tags:
-            yaml: last_at
           type: string
           format: date-time
     ResourceStatus:
@@ -2980,12 +2783,12 @@ components:
         encap:
           type: boolean
           description: |
-            indicates that the resource is handled by the encapsulated agents, 
+            indicates that the resource is handled by the encapsulated agents,
             and ignored at the hypervisor level
         info:
           type: object
           description: |
-            key-value pairs providing interesting information to collect 
+            key-value pairs providing interesting information to collect
             site-wide about this resource
         label:
           type: string
@@ -2994,7 +2797,7 @@ components:
         monitor:
           type: boolean
           description: |
-            tells the daemon if it should trigger a monitor action when the 
+            tells the daemon if it should trigger a monitor action when the
             resource is not up
         optional:
           type: boolean
@@ -3020,20 +2823,6 @@ components:
             type: string
         type:
           type: string
-    ResourceStatusArray:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceStatusItem'
-    ResourceStatusItem:
-        type: object
-        required:
-          - meta
-          - data
-        properties:
-          meta:
-            $ref: '#/components/schemas/ResourceMeta'
-          data:
-            $ref: '#/components/schemas/ResourceStatus'
     DaemonStatus:
       type: object
       required:
@@ -3136,6 +2925,7 @@ components:
         - failover
         - flex
       default: failover
+
   parameters:
     Duration:
       name: duration

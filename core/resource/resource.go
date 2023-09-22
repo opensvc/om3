@@ -172,8 +172,8 @@ type (
 
 	// ProvisionStatus define if and when the resource became provisioned.
 	ProvisionStatus struct {
-		Mtime time.Time     `json:"mtime,omitempty" yaml:"mtime,omitempty"`
-		State provisioned.T `json:"state" yaml:"state"`
+		Mtime time.Time     `json:"mtime,omitempty"`
+		State provisioned.T `json:"state"`
 	}
 
 	// MonitorFlag tells the daemon if it should trigger a monitor action
@@ -206,36 +206,36 @@ type (
 	// Status is the structure representing the resource status,
 	// which is embedded in the instance status.
 	Status struct {
-		ResourceID  *resourceid.T     `json:"-" yaml:"-"`
-		Label       string            `json:"label" yaml:"label"`
-		Log         []*StatusLogEntry `json:"log,omitempty" yaml:"log,omitempty"`
-		Status      status.T          `json:"status" yaml:"status"`
-		Type        string            `json:"type" yaml:"type"`
-		Provisioned ProvisionStatus   `json:"provisioned,omitempty" yaml:"provisioned,omitempty"`
-		Monitor     MonitorFlag       `json:"monitor,omitempty" yaml:"monitor,omitempty"`
-		Disable     DisableFlag       `json:"disable,omitempty" yaml:"disable,omitempty"`
-		Optional    OptionalFlag      `json:"optional,omitempty" yaml:"optional,omitempty"`
-		Encap       EncapFlag         `json:"encap,omitempty" yaml:"encap,omitempty"`
-		Standby     StandbyFlag       `json:"standby,omitempty" yaml:"standby,omitempty"`
+		ResourceID  *resourceid.T     `json:"-"`
+		Label       string            `json:"label"`
+		Log         []*StatusLogEntry `json:"log,omitempty"`
+		Status      status.T          `json:"status"`
+		Type        string            `json:"type"`
+		Provisioned ProvisionStatus   `json:"provisioned,omitempty"`
+		Monitor     MonitorFlag       `json:"monitor,omitempty"`
+		Disable     DisableFlag       `json:"disable,omitempty"`
+		Optional    OptionalFlag      `json:"optional,omitempty"`
+		Encap       EncapFlag         `json:"encap,omitempty"`
+		Standby     StandbyFlag       `json:"standby,omitempty"`
 
 		// Subset is the name of the subset this resource is assigned to.
-		Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
+		Subset string `json:"subset,omitempty"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
-		Info map[string]any `json:"info,omitempty" yaml:"info,omitempty"`
+		Info map[string]any `json:"info,omitempty"`
 
 		// Restart is the number of restart to be tried before giving up.
-		Restart RestartFlag `json:"restart,omitempty" yaml:"restart,omitempty"`
+		Restart RestartFlag `json:"restart,omitempty"`
 
 		// Tags is a set of words attached to the resource.
-		Tags TagSet `json:"tags,omitempty" yaml:"tags,omitempty"`
+		Tags TagSet `json:"tags,omitempty"`
 	}
 
 	Hook int
 
 	StatusInfoSchedAction struct {
-		Last time.Time `json:"last" yaml:"last"`
+		Last time.Time `json:"last"`
 	}
 
 	// ScheduleOptions contains the information needed by the object to create a
@@ -504,19 +504,7 @@ func (t *T) Log() *zerolog.Logger {
 //     pattern.
 //     ex: fs#1 matches fs#1
 func (t T) MatchRID(s string) bool {
-	rid, err := resourceid.Parse(s)
-	if err != nil {
-		return false
-	}
-	if !rid.DriverGroup().IsValid() {
-		return false
-	}
-	if rid.Index() == "" {
-		// ex: fs#1 matches fs
-		return t.ResourceID.DriverGroup().String() == rid.DriverGroup().String()
-	}
-	// ex: fs#1 matches fs#1
-	return t.ResourceID.String() == s
+	return t.ResourceID.Match(s)
 
 }
 
@@ -1284,4 +1272,32 @@ func (t *T) Progress(ctx context.Context, cols ...any) {
 		key := t.ProgressKey()
 		view.Info(key, cols)
 	}
+}
+
+func (t Status) Unstructured() map[string]any {
+	m := map[string]any{
+		"label":       t.Label,
+		"status":      t.Status,
+		"type":        t.Type,
+		"provisioned": t.Provisioned,
+		"monitor":     t.Monitor,
+		"disable":     t.Disable,
+		"optional":    t.Optional,
+		"encap":       t.Encap,
+		"restart":     t.Restart,
+		"standby":     t.Standby,
+	}
+	if len(t.Log) > 0 {
+		m["log"] = t.Log
+	}
+	if t.Subset != "" {
+		m["subset"] = t.Subset
+	}
+	if len(t.Tags) > 0 {
+		m["tags"] = t.Tags
+	}
+	if len(t.Info) > 0 {
+		m["info"] = t.Info
+	}
+	return m
 }

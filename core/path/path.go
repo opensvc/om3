@@ -32,6 +32,9 @@ type (
 	// Relation is an object path or an instance path (path@node).
 	Relation string
 
+	// Relations is a slice of Relation
+	Relations []Relation
+
 	// L is a list of object paths.
 	L []T
 
@@ -40,9 +43,9 @@ type (
 
 	// Metadata is the parsed representation of a path, used by api handlers to ease dumb clients access to individual path fields.
 	Metadata struct {
-		Name      string `json:"name" yaml:"name"`
-		Namespace string `json:"namespace" yaml:"namespace"`
-		Kind      kind.T `json:"kind" yaml:"kind"`
+		Name      string `json:"name"`
+		Namespace string `json:"namespace"`
+		Kind      kind.T `json:"kind"`
 	}
 
 	pather interface {
@@ -497,4 +500,20 @@ func PathOf(o any) T {
 		return p.Path()
 	}
 	return T{}
+}
+
+func (relations Relations) StringSlice() []string {
+	l := make([]string, len(relations))
+	for i, relation := range relations {
+		l[i] = string(relation)
+	}
+	return l
+}
+
+func NewRelationsFromStringSlice(l []string) Relations {
+	relations := make(Relations, len(l))
+	for i, s := range l {
+		relations[i] = Relation(s)
+	}
+	return relations
 }

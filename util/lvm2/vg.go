@@ -21,7 +21,7 @@ import (
 
 type (
 	VG struct {
-		driver `yaml:",inline"`
+		driver
 		VGName string
 		log    *zerolog.Logger
 	}

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
@@ -139,7 +139,7 @@ func WithAsyncWatch(v bool) funcopt.O {
 func WithFormat(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Format = s
+		t.Output = s
 		return nil
 	})
 }
@@ -201,7 +201,7 @@ func (t T) DoLocal() error {
 		return s
 	}
 	output.Renderer{
-		Output:        t.Format,
+		Output:        t.Output,
 		Color:         t.Color,
 		Data:          []actionrouter.Result{r},
 		HumanRenderer: human,
@@ -379,9 +379,9 @@ func (t T) DoRemote() error {
 			return err
 		}
 		data := &struct {
-			Err    string `json:"err" yaml:"err"`
-			Out    string `json:"out" yaml:"out"`
-			Status int    `json:"status" yaml:"status"`
+			Err    string `json:"err"`
+			Out    string `json:"out"`
+			Status int    `json:"status"`
 		}{}
 		if err := json.Unmarshal(b, data); err != nil {
 			return err

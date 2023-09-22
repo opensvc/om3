@@ -93,8 +93,10 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 			FlexMin:         cfg.FlexMin,
 			FlexMax:         cfg.FlexMax,
 			Orchestrate:     cfg.Orchestrate,
+			Pool:            cfg.Pool,
 			PlacementPolicy: cfg.PlacementPolicy,
 			Priority:        cfg.Priority,
+			Size:            cfg.Size,
 			Topology:        cfg.Topology,
 		},
 		path:         p,
@@ -224,8 +226,10 @@ func (o *T) worker() {
 				o.status.FlexMin = c.Value.FlexMin
 				o.status.FlexMax = c.Value.FlexMax
 				o.status.Orchestrate = c.Value.Orchestrate
+				o.status.Pool = c.Value.Pool
 				o.status.PlacementPolicy = c.Value.PlacementPolicy
 				o.status.Priority = c.Value.Priority
+				o.status.Size = c.Value.Size
 				o.status.Topology = c.Value.Topology
 				o.srcEvent = c
 

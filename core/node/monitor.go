@@ -12,30 +12,30 @@ import (
 type (
 	// Monitor describes the in-daemon states of a node
 	Monitor struct {
-		GlobalExpect MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
-		LocalExpect  MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
-		State        MonitorState        `json:"state" yaml:"state"`
+		GlobalExpect MonitorGlobalExpect `json:"global_expect"`
+		LocalExpect  MonitorLocalExpect  `json:"local_expect"`
+		State        MonitorState        `json:"state"`
 
-		GlobalExpectUpdatedAt time.Time `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
-		LocalExpectUpdatedAt  time.Time `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
-		StateUpdatedAt        time.Time `json:"state_updated_at" yaml:"state_updated_at"`
-		UpdatedAt             time.Time `json:"updated_at" yaml:"updated_at"`
+		GlobalExpectUpdatedAt time.Time `json:"global_expect_updated_at"`
+		LocalExpectUpdatedAt  time.Time `json:"local_expect_updated_at"`
+		StateUpdatedAt        time.Time `json:"state_updated_at"`
+		UpdatedAt             time.Time `json:"updated_at"`
 
-		OrchestrationId     uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
-		OrchestrationIsDone bool      `json:"orchestration_is_done" yaml:"orchestration_is_done"`
-		SessionId           uuid.UUID `json:"session_id" yaml:"session_id"`
+		OrchestrationId     uuid.UUID `json:"orchestration_id"`
+		OrchestrationIsDone bool      `json:"orchestration_is_done"`
+		SessionId           uuid.UUID `json:"session_id"`
 	}
 
 	// MonitorUpdate is embedded in the SetNodeMonitor message to
 	// change some Monitor values. A nil value does not change the
 	// current value.
 	MonitorUpdate struct {
-		State        *MonitorState        `json:"state" yaml:"state"`
-		LocalExpect  *MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
-		GlobalExpect *MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		State        *MonitorState        `json:"state"`
+		LocalExpect  *MonitorLocalExpect  `json:"local_expect"`
+		GlobalExpect *MonitorGlobalExpect `json:"global_expect"`
 
 		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
 	}
 
 	MonitorState        int

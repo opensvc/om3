@@ -9,13 +9,13 @@ import (
 type (
 	// Node holds a node DataSet.
 	Node struct {
-		Instance map[string]instance.Instance `json:"instance" yaml:"instance"`
-		Monitor  Monitor                      `json:"monitor" yaml:"monitor"`
-		Stats    Stats                        `json:"stats" yaml:"stats"`
-		Status   Status                       `json:"status" yaml:"status"`
-		Os       Os                           `json:"os" yaml:"os"`
-		Config   Config                       `json:"config" yaml:"config"`
-		//Locks map[string]Lock `json:"locks" yaml:"locks"`
+		Instance map[string]instance.Instance `json:"instance"`
+		Monitor  Monitor                      `json:"monitor"`
+		Stats    Stats                        `json:"stats"`
+		Status   Status                       `json:"status"`
+		Os       Os                           `json:"os"`
+		Config   Config                       `json:"config"`
+		//Locks map[string]Lock `json:"locks"`
 	}
 )
 

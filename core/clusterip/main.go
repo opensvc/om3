@@ -14,10 +14,10 @@ import (
 
 type (
 	T struct {
-		IP   net.IP `json:"ip" yaml:"ip"`
-		Node string `json:"node" yaml:"node"`
-		Path path.T `json:"path" yaml:"path"`
-		RID  string `json:"rid" yaml:"rid"`
+		IP   net.IP `json:"ip"`
+		Node string `json:"node"`
+		Path path.T `json:"path"`
+		RID  string `json:"rid"`
 	}
 	L []T
 )

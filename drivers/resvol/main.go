@@ -305,7 +305,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 		// avoid stacking in this situation.
 		l.Size = 0.0
 	} else {
-		l.Size = float64(*t.Size)
+		l.Size = *t.Size
 	}
 	l.Format = t.Format
 	l.Shared = t.Shared

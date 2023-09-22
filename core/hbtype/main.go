@@ -11,14 +11,14 @@ import (
 type (
 	// Msg struct holds all kinds of hb message
 	Msg struct {
-		Kind      string                   `json:"kind" yaml:"kind"`
-		Compat    uint64                   `json:"compat" yaml:"compat"`
-		Gen       map[string]uint64        `json:"gen" yaml:"gen"`
-		UpdatedAt time.Time                `json:"updated_at" yaml:"updated_at"`
-		Ping      node.Monitor             `json:"monitor,omitempty" yaml:"monitor,omitempty"`
-		Events    map[string][]event.Event `json:"events,omitempty" yaml:"events,omitempty"`
-		NodeData  node.Node                `json:"node_data,omitempty" yaml:"node_data,omitempty"`
-		Nodename  string                   `json:"nodename" yaml:"nodename"`
+		Kind      string                   `json:"kind"`
+		Compat    uint64                   `json:"compat"`
+		Gen       map[string]uint64        `json:"gen"`
+		UpdatedAt time.Time                `json:"updated_at"`
+		Ping      node.Monitor             `json:"monitor,omitempty"`
+		Events    map[string][]event.Event `json:"events,omitempty"`
+		NodeData  node.Node                `json:"node_data,omitempty"`
+		Nodename  string                   `json:"nodename"`
 	}
 
 	// IdStopper

@@ -523,12 +523,11 @@ func newCmdNetworkSetup() *cobra.Command {
 	return cmd
 }
 
-func newCmdNetworkStatus() *cobra.Command {
-	var options commands.CmdNetworkStatus
+func newCmdNetworkIpLs() *cobra.Command {
+	var options commands.CmdNetworkIpLs
 	cmd := &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster networks usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
+		Use:   "ls",
+		Short: "list the ip in the cluster networks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -536,7 +535,6 @@ func newCmdNetworkStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagNetworkStatusName(flags, &options.Name)
-	addFlagNetworkStatusExtended(flags, &options.Verbose)
 	return cmd
 }
 
@@ -1640,27 +1638,6 @@ func newCmdObjectInstance(kind string) *cobra.Command {
 	}
 }
 
-func newCmdObjectInstanceConfig(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "config",
-		Aliases: []string{"conf", "cf"},
-	}
-}
-
-func newCmdObjectInstanceMonitor(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "monitor",
-		Aliases: []string{"mon"},
-	}
-}
-
-func newCmdObjectInstanceStatus(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "status",
-		Aliases: []string{"stat", "st"},
-	}
-}
-
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "show",
@@ -2223,51 +2200,6 @@ func newCmdObjectInstanceLs(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceConfigLs(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceConfigLs
-	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
-		Short:   "object instance configs list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdObjectInstanceStatusLs(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceStatusLs
-	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
-		Short:   "object instance statuses list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdObjectInstanceMonitorLs(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceMonitorLs
-	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
-		Short:   "object instances monitors list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintStatus
 	cmd := &cobra.Command{
@@ -2478,77 +2410,11 @@ func newCmdObjectResource(kind string) *cobra.Command {
 	}
 }
 
-func newCmdObjectResourceConfig(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "config",
-		Aliases: []string{"conf", "cf"},
-	}
-}
-
-func newCmdObjectResourceMonitor(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "monitor",
-		Aliases: []string{"mon"},
-	}
-}
-
-func newCmdObjectResourceStatus(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "status",
-		Aliases: []string{"stat", "st"},
-	}
-}
-
 func newCmdObjectResourceLs(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceLs
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "list the selected resource (config, monitor, status)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagRID(flags, &options.RID)
-	return cmd
-}
-
-func newCmdObjectResourceConfigLs(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceConfigLs
-	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "list the selected resource config",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagRID(flags, &options.RID)
-	return cmd
-}
-
-func newCmdObjectResourceMonitorLs(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceMonitorLs
-	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "list the selected resource monitor",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagRID(flags, &options.RID)
-	return cmd
-}
-
-func newCmdObjectResourceStatusLs(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceStatusLs
-	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "list the selected resource status",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2854,23 +2720,22 @@ func newCmdPoolLs() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagPoolName(flags, &options.Name)
 	return cmd
 }
 
-func newCmdPoolStatus() *cobra.Command {
-	var options commands.CmdPoolStatus
+func newCmdPoolVolumeLs() *cobra.Command {
+	var options commands.CmdPoolVolumeLs
 	cmd := &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster pools usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
+		Use:   "ls",
+		Short: "list the pool volumes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagPoolStatusName(flags, &options.Name)
-	addFlagPoolStatusExtended(flags, &options.Verbose)
+	addFlagPoolName(flags, &options.Name)
 	return cmd
 }
 

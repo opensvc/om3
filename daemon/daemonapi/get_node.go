@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetNode(ctx echo.Context, params api.GetNodeParams) error {
+func (a *DaemonApi) GetNodes(ctx echo.Context, params api.GetNodesParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
@@ -20,7 +20,7 @@ func (a *DaemonApi) GetNode(ctx echo.Context, params api.GetNodeParams) error {
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := node.ConfigData.GetAll()
-	l := make(api.NodeArray, 0)
+	l := make(api.NodeItems, 0)
 	for _, config := range configs {
 		if !meta.HasNode(config.Node) {
 			continue
@@ -28,6 +28,7 @@ func (a *DaemonApi) GetNode(ctx echo.Context, params api.GetNodeParams) error {
 		monitor := node.MonitorData.Get(config.Node)
 		status := node.StatusData.Get(config.Node)
 		d := api.NodeItem{
+			Kind: "Node",
 			Meta: api.NodeMeta{
 				Node: config.Node,
 			},
@@ -39,5 +40,5 @@ func (a *DaemonApi) GetNode(ctx echo.Context, params api.GetNodeParams) error {
 		}
 		l = append(l, d)
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.NodeList{Kind: "NodeList", Items: l})
 }

@@ -43,11 +43,6 @@ func New() *T {
 	return &t
 }
 
-func (t T) Usage() (network.StatusUsage, error) {
-	usage := network.StatusUsage{}
-	return usage, nil
-}
-
 // CNIConfigData returns a cni network configuration, like
 //
 //	{

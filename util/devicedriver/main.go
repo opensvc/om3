@@ -23,10 +23,10 @@ type (
 		log *zerolog.Logger
 	}
 	Loop struct {
-		logT `yaml:",inline"`
+		logT
 	}
 	DeviceMapper struct {
-		logT `yaml:",inline"`
+		logT
 	}
 )
 

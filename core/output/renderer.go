@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -14,8 +13,9 @@ import (
 	tabwriter "github.com/juju/ansiterm"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/render/palette"
-	"gopkg.in/yaml.v3"
+	"github.com/opensvc/om3/util/unstructured"
 	"k8s.io/client-go/util/jsonpath"
+	"sigs.k8s.io/yaml"
 )
 
 type (
@@ -121,20 +121,15 @@ func (t Renderer) Sprint() (string, error) {
 		if t.Stream {
 			sep = "---\n"
 		}
+		b, err := yaml.Marshal(t.Data)
+		if err != nil {
+			return "", err
+		}
 		if color.NoColor {
-			b, err := yaml.Marshal(t.Data)
-			if err != nil {
-				return "", err
-			}
 			return string(b) + sep, nil
 		} else {
-			b := bytes.NewBuffer(nil)
-			enc := yaml.NewEncoder(b)
-			err := enc.Encode(t.Data)
-			if err != nil {
-				return "", err
-			}
-			s, err := highlight.Highlight(b)
+			buf := bytes.NewBuffer(b)
+			s, err := highlight.Highlight(buf)
 			if err != nil {
 				return "", err
 			}
@@ -230,24 +225,11 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if hasHeader {
 		fmt.Fprintf(w, strings.Join(headers, "")+"\n")
 	}
-	b, err := json.Marshal(t.Data)
+	unstructuredData, err := unstructured.NewListWithData(t.Data)
 	if err != nil {
 		return "", err
 	}
-	var lines []any
-	switch reflect.TypeOf(t.Data).Kind() {
-	case reflect.Slice, reflect.Array:
-		if err := json.Unmarshal(b, &lines); err != nil {
-			return "", err
-		}
-	default:
-		var i any
-		if err := json.Unmarshal(b, &i); err != nil {
-			return "", err
-		}
-		lines = []any{i}
-	}
-	for _, line := range lines {
+	for _, line := range unstructuredData {
 		for _, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
 			if err != nil {

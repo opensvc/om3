@@ -33,22 +33,18 @@ func New() *T {
 
 func (t *T) Network() string {
 	if t.IsImplicit() {
-		return ""
+		return t.T.Network()
 	}
 	return t.GetString("network")
 }
 
-func (t T) Usage() (network.StatusUsage, error) {
-	usage := network.StatusUsage{}
-	return usage, nil
-}
-
 // CNIConfigData returns a cni network configuration, like
-// {
-//    "cniVersion": "0.3.0",
-//    "name": "lo",
-//    "type": "loopback"
-// }
+//
+//	{
+//	   "cniVersion": "0.3.0",
+//	   "name": "lo",
+//	   "type": "loopback"
+//	}
 func (t T) CNIConfigData() (interface{}, error) {
 	m := map[string]interface{}{
 		"cniVersion": network.CNIVersion,

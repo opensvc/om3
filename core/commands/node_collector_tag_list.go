@@ -30,9 +30,9 @@ func (t *CmdNodeCollectorTagList) Run() error {
 			options := make(map[string]any)
 			//options["svcname"] =
 			type respType struct {
-				Ret  int      `json:"ret" yaml:"ret"`
-				Msg  string   `json:"msg" yaml:"msg"`
-				Data []string `json:"data" yaml:"data"`
+				Ret  int      `json:"ret"`
+				Msg  string   `json:"msg"`
+				Data []string `json:"data"`
 			}
 			var resp respType
 			if err := cli.CallFor(&resp, "collector_list_tags", options); err != nil {

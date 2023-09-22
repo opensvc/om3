@@ -18,17 +18,13 @@ type (
 )
 
 func (t *CmdObjectResourceLs) Run(selector, kind string) error {
-	var (
-		data any
-		err  error
-	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetResourceParams{Path: &mergedSelector}
+	params := api.GetResourcesParams{Path: &mergedSelector}
 	if t.NodeSelector != "" {
 		params.Node = &t.NodeSelector
 	}
@@ -36,29 +32,29 @@ func (t *CmdObjectResourceLs) Run(selector, kind string) error {
 		params.Resource = &t.RID
 	}
 	// TODO: add subset and tag params
-	resp, err := c.GetResourceWithResponse(context.Background(), &params)
+	resp, err := c.GetResourcesWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
+	var pb *api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		data = *resp.JSON200
+		output.Renderer{
+			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          resp.JSON200.Items,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+		return nil
 	case 400:
-		data = *resp.JSON400
+		pb = resp.JSON400
 	case 401:
-		data = *resp.JSON401
+		pb = resp.JSON401
 	case 403:
-		data = *resp.JSON403
+		pb = resp.JSON403
 	case 500:
-		data = *resp.JSON500
+		pb = resp.JSON500
 	}
-	renderer := output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
-		Output:        t.Output,
-		Color:         t.Color,
-		Data:          data,
-		Colorize:      rawconfig.Colorize,
-	}
-	renderer.Print()
-	return nil
+	return fmt.Errorf("%s", pb)
 }

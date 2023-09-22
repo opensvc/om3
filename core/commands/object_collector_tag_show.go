@@ -23,7 +23,7 @@ func (t *CmdObjectCollectorTagShow) Run(selector, kind string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
-		objectaction.WithFormat(t.Output),
+		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			n, err := object.NewNode()
@@ -37,14 +37,14 @@ func (t *CmdObjectCollectorTagShow) Run(selector, kind string) error {
 			options := make(map[string]any)
 			options["svcname"] = p.String()
 			type respType struct {
-				Ret  int      `json:"ret" yaml:"ret"`
-				Msg  string   `json:"msg" yaml:"msg"`
-				Data []string `json:"data" yaml:"data"`
+				Ret  int      `json:"ret"`
+				Msg  string   `json:"msg"`
+				Data []string `json:"data"`
 			}
 			type respTypeFull struct {
-				Ret  int                         `json:"ret" yaml:"ret"`
-				Msg  string                      `json:"msg" yaml:"msg"`
-				Data collector.TagAttachmentList `json:"data" yaml:"data"`
+				Ret  int                         `json:"ret"`
+				Msg  string                      `json:"msg"`
+				Data collector.TagAttachmentList `json:"data"`
 			}
 			if t.Verbose {
 				var resp respTypeFull

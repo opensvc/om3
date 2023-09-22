@@ -77,7 +77,7 @@ func (t T) Head() string {
 	}
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
+func (t T) Usage() (pool.Usage, error) {
 	if t.vg() != "" {
 		return t.usageVG()
 	} else if t.zpool() != "" {
@@ -87,80 +87,80 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	}
 }
 
-func (t T) usageVG() (pool.StatusUsage, error) {
+func (t T) usageVG() (pool.Usage, error) {
 	vg := lvm2.NewVG(t.vg())
 	info, err := vg.Show("vg_name,vg_free,vg_size")
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	size, err := info.Size()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	free, err := info.Free()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	var used int64
 	if size > 0 {
-		size = size / 1024
-		free = free / 1024
+		size = size
+		free = free
 		used = size - free
 	} else {
 		size = 0
 		free = 0
 	}
-	usage := pool.StatusUsage{
-		Size: float64(size),
-		Free: float64(free),
-		Used: float64(used),
+	usage := pool.Usage{
+		Size: size,
+		Free: free,
+		Used: used,
 	}
 	return usage, nil
 }
 
-func (t T) usageZpool() (pool.StatusUsage, error) {
+func (t T) usageZpool() (pool.Usage, error) {
 	poolName := t.zpool()
 	zpool := zfs.Pool{Name: poolName}
 	e, err := zpool.Usage()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	var size, free, used int64
 	if e.Size > 0 {
-		size = e.Size / 1024
-		free = e.Free / 1024
-		used = e.Alloc / 1024
+		size = e.Size
+		free = e.Free
+		used = e.Alloc
 	}
-	usage := pool.StatusUsage{
-		Size: float64(size),
-		Free: float64(free),
-		Used: float64(used),
+	usage := pool.Usage{
+		Size: size,
+		Free: free,
+		Used: used,
 	}
 	return usage, nil
 }
 
-func (t T) usageFile() (pool.StatusUsage, error) {
+func (t T) usageFile() (pool.Usage, error) {
 	entries, err := df.ContainingMountUsage(t.path())
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	if len(entries) == 0 {
-		return pool.StatusUsage{}, fmt.Errorf("not mounted")
+		return pool.Usage{}, fmt.Errorf("not mounted")
 	}
-	usage := pool.StatusUsage{
-		Size: float64(entries[0].Total),
-		Free: float64(entries[0].Free),
-		Used: float64(entries[0].Used),
+	usage := pool.Usage{
+		Size: entries[0].Total * 1024,
+		Free: entries[0].Free * 1024,
+		Used: entries[0].Used * 1024,
 	}
 	return usage, nil
 }
 
-func (t *T) blkTranslateFile(name string, size float64, shared bool) (string, []string, error) {
+func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []string, error) {
 	p := fmt.Sprintf("%s/%s.img", t.path(), name)
 	data := []string{
 		"disk#1.type=loop",
 		"disk#1.name=" + name,
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#1.file=" + p,
 		"disk#1.standby=true",
 		"disk#2.type=vg",
@@ -184,12 +184,12 @@ func (t *T) blkTranslateFile(name string, size float64, shared bool) (string, []
 	return "disk#4", data, nil
 }
 
-func (t *T) blkTranslateVG(name string, size float64, shared bool) (string, []string, error) {
+func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
 		"disk#1.type=lv",
 		"disk#1.name=" + name,
 		"disk#1.vg=" + t.vg(),
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
@@ -203,11 +203,11 @@ func (t *T) blkTranslateVG(name string, size float64, shared bool) (string, []st
 	return "disk#2", data, nil
 }
 
-func (t *T) blkTranslateZpool(name string, size float64, shared bool) (string, []string, error) {
+func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
 		"disk#1.type=zvol",
 		"disk#1.dev=" + t.zpool() + "/" + name,
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
@@ -233,7 +233,7 @@ func (t *T) commonDrbdKeywords(rid string) (l []string) {
 	return
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	if t.vg() != "" {
 		_, kws, err := t.blkTranslateVG(name, size, shared)
 		return kws, err
@@ -246,7 +246,7 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, erro
 	}
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	var (
 		rid string
 		kws []string

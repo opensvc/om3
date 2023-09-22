@@ -7,10 +7,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetResource(ctx echo.Context, params api.GetResourceParams) error {
+func (a *DaemonApi) GetResources(ctx echo.Context, params api.GetResourcesParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
@@ -21,7 +22,7 @@ func (a *DaemonApi) GetResource(ctx echo.Context, params api.GetResourceParams) 
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := instance.ConfigData.GetAll()
-	l := make(api.ResourceArray, 0)
+	items := make(api.ResourceItems, 0)
 	for _, config := range configs {
 		if !meta.HasPath(config.Path.String()) {
 			continue
@@ -32,10 +33,11 @@ func (a *DaemonApi) GetResource(ctx echo.Context, params api.GetResourceParams) 
 		monitor := instance.MonitorData.Get(config.Path, config.Node)
 		status := instance.StatusData.Get(config.Path, config.Node)
 		for rid, resourceConfig := range config.Value.Resources {
-			if params.Resource != nil && rid != *params.Resource {
+			if params.Resource != nil && !resourceid.Match(rid, *params.Resource) {
 				continue
 			}
-			d := api.ResourceItem{
+			item := api.ResourceItem{
+				Kind: "Resource",
 				Meta: api.ResourceMeta{
 					Node:   config.Node,
 					Object: config.Path.String(),
@@ -46,13 +48,13 @@ func (a *DaemonApi) GetResource(ctx echo.Context, params api.GetResourceParams) 
 				},
 			}
 			if e, ok := monitor.Resources[rid]; ok {
-				d.Data.Monitor = &e
+				item.Data.Monitor = &e
 			}
 			if e, ok := status.Resources[rid]; ok {
-				d.Data.Status = &e
+				item.Data.Status = &e
 			}
-			l = append(l, d)
+			items = append(items, item)
 		}
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.ResourceList{Kind: "ResourceList", Items: items})
 }

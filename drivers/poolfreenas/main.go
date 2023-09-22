@@ -71,8 +71,8 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi", "shared"}
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
-	usage := pool.StatusUsage{}
+func (t T) Usage() (pool.Usage, error) {
+	usage := pool.Usage{}
 	a := t.array()
 	data, err := a.GetDataset(t.diskgroup())
 	if err != nil {
@@ -81,12 +81,12 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	if i, err := sizeconv.FromSize(data.Used.Rawvalue); err != nil {
 		return usage, err
 	} else {
-		usage.Used = float64(i / 1024)
+		usage.Used = i
 	}
 	if i, err := sizeconv.FromSize(data.Available.Rawvalue); err != nil {
 		return usage, err
 	} else {
-		usage.Free = float64(i / 1024)
+		usage.Free = i
 	}
 	usage.Size = usage.Used + usage.Free
 	return usage, nil
@@ -99,7 +99,7 @@ func (t T) array() *arrayfreenas.Array {
 	return a
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	data, err := t.BlkTranslate(name, size, shared)
 	if err != nil {
 		return nil, err
@@ -108,13 +108,13 @@ func (t *T) Translate(name string, size float64, shared bool) ([]string, error) 
 	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	data := []string{
 		"disk#0.type=disk",
 		"disk#0.name=" + name,
 		"disk#0.scsireserv=true",
 		"shared=" + fmt.Sprint(shared),
-		"size=" + sizeconv.ExactBSizeCompact(size),
+		"size=" + sizeconv.ExactBSizeCompact(float64(size)),
 	}
 	return data, nil
 }
@@ -153,7 +153,7 @@ func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
 	return []pool.Disk{disk}, nil
 }
 
-func (t *T) CreateDisk(name string, size float64, paths san.Paths) ([]pool.Disk, error) {
+func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, error) {
 	disk := pool.Disk{}
 	if len(paths) == 0 {
 		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
@@ -162,7 +162,7 @@ func (t *T) CreateDisk(name string, size float64, paths san.Paths) ([]pool.Disk,
 	blocksize := fmt.Sprint(*t.blocksize())
 	sparse := t.sparse()
 	insecureTPC := t.insecureTPC()
-	drvSize := sizeconv.ExactBSizeCompact(size)
+	drvSize := sizeconv.ExactBSizeCompact(float64(size))
 	drvName := t.diskgroup() + "/" + name
 	mapping := paths.Mapping()
 

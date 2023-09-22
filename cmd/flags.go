@@ -207,7 +207,7 @@ func addFlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVarP(p, "service", "s", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
 }
 
-func addFlagPoolStatusName(flagSet *pflag.FlagSet, p *string) {
+func addFlagPoolName(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "name", "", "Filter on a pool name.")
 }
 

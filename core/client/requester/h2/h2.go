@@ -24,9 +24,9 @@ type (
 		Certificate        string
 		Key                string
 		Username           string
-		Password           string `json:"-" yaml:"-"`
-		URL                string `json:"url" yaml:"url"`
-		Bearer             string `json:"-" yaml:"-"`
+		Password           string `json:"-"`
+		URL                string `json:"url"`
+		Bearer             string `json:"-"`
 		Timeout            time.Duration
 		InsecureSkipVerify bool
 		RootCA             string

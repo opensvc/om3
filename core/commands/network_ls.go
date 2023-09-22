@@ -1,63 +1,52 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/network"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
 	CmdNetworkLs struct {
 		OptsGlobal
+		Name string
 	}
 )
 
 func (t *CmdNetworkLs) Run() error {
-	var (
-		data []string
-		err  error
-	)
-	if t.Local || !clientcontext.IsSet() {
-		data, err = t.extractLocal()
-	} else {
-		data, err = t.extractDaemon()
-	}
-	output.Renderer{
-		Output: t.Output,
-		Color:  t.Color,
-		Data:   data,
-		HumanRenderer: func() string {
-			s := ""
-			for _, e := range data {
-				s += e + "\n"
-			}
-			return s
-		},
-		Colorize: rawconfig.Colorize,
-	}.Print()
-	return err
-}
-
-func (t *CmdNetworkLs) extractLocal() ([]string, error) {
-	n, err := object.NewNode()
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		return []string{}, err
+		return err
 	}
-	return network.List(n), nil
-}
-
-func (t *CmdNetworkLs) extractDaemon() ([]string, error) {
-	var (
-		c   *client.T
-		err error
-	)
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		return []string{}, err
+	params := api.GetNetworksParams{}
+	if t.Name != "" {
+		params.Name = &t.Name
 	}
-	return []string{}, fmt.Errorf("todo %v", c)
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
+	if err != nil {
+		return err
+	}
+	var pb api.Problem
+	switch resp.StatusCode() {
+	case 200:
+		output.Renderer{
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          resp.JSON200.Items,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+		return nil
+	case 401:
+		pb = *resp.JSON401
+	case 403:
+		pb = *resp.JSON403
+	case 500:
+		pb = *resp.JSON500
+	}
+	return fmt.Errorf("%s", pb)
 }

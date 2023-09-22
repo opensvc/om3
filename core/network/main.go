@@ -86,9 +86,6 @@ type (
 		// Type return the driver name.
 		Type() string
 
-		// Usage returns the usage metrics of the network.
-		Usage() (StatusUsage, error)
-
 		FilterIPs(clusterip.L) clusterip.L
 
 		AllowEmptyNetwork() bool
@@ -420,7 +417,7 @@ func Networks(noder Noder) []Networker {
 		if p == nil {
 			continue
 		}
-		if p.Type() == "shm" {
+		if p.Type() == "lo" {
 			hasLO = true
 		}
 		if p.Name() == "default" {

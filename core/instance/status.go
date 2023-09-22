@@ -15,16 +15,16 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		Avail         status.T           `json:"avail" yaml:"avail"`
-		Constraints   bool               `json:"constraints,omitempty" yaml:"constraints,omitempty"`
-		FrozenAt      time.Time          `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
-		LastStartedAt time.Time          `json:"last_started_at" yaml:"last_started_at"`
-		Optional      status.T           `json:"optional,omitempty" yaml:"optional,omitempty"`
-		Overall       status.T           `json:"overall" yaml:"overall"`
-		Provisioned   provisioned.T      `json:"provisioned" yaml:"provisioned"`
-		Resources     ResourceStatuses   `json:"resources,omitempty" yaml:"resources,omitempty"`
-		Running       ResourceRunningSet `json:"running,omitempty" yaml:"running,omitempty"`
-		UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
+		Avail         status.T           `json:"avail"`
+		Constraints   bool               `json:"constraints,omitempty"`
+		FrozenAt      time.Time          `json:"frozen_at,omitempty"`
+		LastStartedAt time.Time          `json:"last_started_at"`
+		Optional      status.T           `json:"optional,omitempty"`
+		Overall       status.T           `json:"overall"`
+		Provisioned   provisioned.T      `json:"provisioned"`
+		Resources     ResourceStatuses   `json:"resources,omitempty"`
+		Running       ResourceRunningSet `json:"running,omitempty"`
+		UpdatedAt     time.Time          `json:"updated_at"`
 	}
 
 	ResourceStatuses map[string]resource.Status
@@ -133,4 +133,32 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.Status) string 
 	flags += r.Provisioned.State.FlagString()
 	flags += r.Standby.FlagString()
 	return flags
+}
+
+func (t ResourceStatuses) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t Status) Unstructured() map[string]any {
+	m := map[string]any{
+		"avail":           t.Avail,
+		"constraints":     t.Constraints,
+		"last_started_at": t.LastStartedAt,
+		"optional":        t.Optional,
+		"overall":         t.Overall,
+		"provisioned":     t.Provisioned,
+		"running":         t.Running,
+		"updated_at":      t.UpdatedAt,
+	}
+	if len(t.Resources) > 0 {
+		m["resources"] = t.Resources.Unstructured()
+	}
+	if !t.FrozenAt.IsZero() {
+		m["frozen_at"] = t.FrozenAt
+	}
+	return m
 }

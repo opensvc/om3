@@ -15,38 +15,42 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		App              string           `json:"app,omitempty" yaml:"app,omitempty"`
-		Checksum         string           `json:"csum" yaml:"csum"`
-		Children         []path.Relation  `json:"children,omitempty" yaml:"children,omitempty"`
-		DRP              bool             `json:"drp,omitempty" yaml:"drp,omitempty"`
-		Env              string           `json:"env,omitempty" yaml:"env,omitempty"`
-		FlexMax          int              `json:"flex_max,omitempty" yaml:"flex_max,omitempty"`
-		FlexMin          int              `json:"flex_min,omitempty" yaml:"flex_min,omitempty"`
-		FlexTarget       int              `json:"flex_target,omitempty" yaml:"flex_target,omitempty"`
-		MonitorAction    MonitorAction    `json:"monitor_action,omitempty" yaml:"monitor_action,omitempty"`
-		PreMonitorAction string           `json:"pre_monitor_action,omitempty" yaml:"pre_monitor_action,omitempty"`
-		Nodename         string           `json:"-" yaml:"-"`
-		Orchestrate      string           `json:"orchestrate" yaml:"orchestrate"`
-		Path             path.T           `json:"-" yaml:"-"`
-		Parents          []path.Relation  `json:"parents,omitempty" yaml:"parents,omitempty"`
-		PlacementPolicy  placement.Policy `json:"placement_policy" yaml:"placement_policy"`
-		Priority         priority.T       `json:"priority,omitempty" yaml:"priority,omitempty"`
-		Resources        ResourceConfigs  `json:"resources" yaml:"resources"`
-		Scope            []string         `json:"scope" yaml:"scope"`
-		Subsets          SubsetConfigs    `json:"subsets" yaml:"subsets"`
-		Topology         topology.T       `json:"topology" yaml:"topology"`
-		UpdatedAt        time.Time        `json:"updated_at" yaml:"updated_at"`
+		App              string           `json:"app,omitempty"`
+		Checksum         string           `json:"csum"`
+		Children         path.Relations   `json:"children,omitempty"`
+		DRP              bool             `json:"drp,omitempty"`
+		Env              string           `json:"env,omitempty"`
+		FlexMax          int              `json:"flex_max,omitempty"`
+		FlexMin          int              `json:"flex_min,omitempty"`
+		FlexTarget       int              `json:"flex_target,omitempty"`
+		MonitorAction    MonitorAction    `json:"monitor_action,omitempty"`
+		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
+		Nodename         string           `json:"-"`
+		Orchestrate      string           `json:"orchestrate"`
+		Path             path.T           `json:"-"`
+		Parents          path.Relations   `json:"parents,omitempty"`
+		PlacementPolicy  placement.Policy `json:"placement_policy"`
+		Priority         priority.T       `json:"priority,omitempty"`
+		Resources        ResourceConfigs  `json:"resources"`
+		Scope            []string         `json:"scope"`
+		Subsets          SubsetConfigs    `json:"subsets"`
+		Topology         topology.T       `json:"topology"`
+		UpdatedAt        time.Time        `json:"updated_at"`
+
+		// Volume specific
+		Pool *string `json:"pool,omitempty"`
+		Size *int64  `json:"size,omitempty"`
 	}
 	ResourceConfigs map[string]ResourceConfig
 	ResourceConfig  struct {
-		IsDisabled   bool           `json:"is_disabled" yaml:"is_disabled"`
-		IsMonitored  bool           `json:"is_monitored" yaml:"is_monitored"`
-		IsStandby    bool           `json:"is_standby" yaml:"is_standby"`
-		Restart      int            `json:"restart" yaml:"restart"`
-		RestartDelay *time.Duration `json:"restart_delay" yaml:"restart_delay"`
+		IsDisabled   bool           `json:"is_disabled"`
+		IsMonitored  bool           `json:"is_monitored"`
+		IsStandby    bool           `json:"is_standby"`
+		Restart      int            `json:"restart"`
+		RestartDelay *time.Duration `json:"restart_delay"`
 	}
 	SubsetConfig struct {
-		Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
+		Parallel bool `json:"parallel,omitempty"`
 	}
 	SubsetConfigs map[string]SubsetConfig
 )
@@ -90,4 +94,68 @@ func (rcfgs ResourceConfigs) Get(rid string) *ResourceConfig {
 		}
 	}
 	return nil
+}
+
+func (t Config) Unstructured() map[string]any {
+	m := map[string]any{
+		"app":                t.App,
+		"csum":               t.Checksum,
+		"children":           t.Children,
+		"drp":                t.DRP,
+		"env":                t.Env,
+		"flex_max":           t.FlexMax,
+		"flex_min":           t.FlexMin,
+		"flex_target":        t.FlexTarget,
+		"monitor_action":     t.MonitorAction,
+		"pre_monitor_action": t.PreMonitorAction,
+		"orchestrate":        t.Orchestrate,
+		"parents":            t.Parents,
+		"placement_policy":   t.PlacementPolicy,
+		"priority":           t.Priority,
+		"resources":          t.Resources.Unstructured(),
+		"scope":              t.Scope,
+		"subsets":            t.Subsets.Unstructured(),
+		"topology":           t.Topology,
+		"updated_at":         t.UpdatedAt,
+	}
+	if t.Pool != nil {
+		m["pool"] = t.Pool
+	}
+	if t.Size != nil {
+		m["size"] = t.Size
+	}
+	return m
+}
+
+func (t ResourceConfig) Unstructured() map[string]any {
+	m := map[string]any{
+		"is_disabled":   t.IsDisabled,
+		"is_monitored":  t.IsMonitored,
+		"is_standby":    t.IsStandby,
+		"restart":       t.Restart,
+		"restart_delay": t.RestartDelay,
+	}
+	return m
+}
+
+func (t ResourceConfigs) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t SubsetConfigs) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
+func (t SubsetConfig) Unstructured() map[string]any {
+	return map[string]any{
+		"parallel": t.Parallel,
+	}
 }

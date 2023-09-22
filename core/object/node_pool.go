@@ -65,11 +65,24 @@ func (t *Node) Pools() []pool.Pooler {
 
 func (t *Node) ListPools() []string {
 	l := make([]string, 0)
+	var hasSHM, hasDefault bool
 	for _, s := range t.MergedConfig().SectionStrings() {
 		if !strings.HasPrefix(s, "pool#") {
 			continue
 		}
+		name := s[5:]
+		if name == "shm" {
+			hasSHM = true
+		} else if name == "default" {
+			hasDefault = true
+		}
 		l = append(l, s[5:])
+	}
+	if !hasSHM {
+		l = append(l, "shm")
+	}
+	if !hasDefault {
+		l = append(l, "default")
 	}
 	return l
 }

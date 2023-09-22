@@ -8,9 +8,9 @@ import (
 type (
 	TagAttachmentList []TagAttachment
 	TagAttachment     struct {
-		TagName       string `json:"tag_name" yaml:"tag_name"`
-		TagData       string `json:"tag_data" yaml:"tag_data"`
-		TagAttachData string `json:"tag_attach_data" yaml:"tag_attach_data"`
+		TagName       string `json:"tag_name"`
+		TagData       string `json:"tag_data"`
+		TagAttachData string `json:"tag_attach_data"`
 	}
 )
 

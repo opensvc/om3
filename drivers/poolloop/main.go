@@ -44,31 +44,31 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk"}
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
+func (t T) Usage() (pool.Usage, error) {
 	head := t.Head()
 	entries, err := df.ContainingMountUsage(head)
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	if len(entries) == 0 {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	e := entries[0]
 	var size, free, used int64
 	if e.Total > 0 {
-		size = e.Total / 1024
-		free = e.Free / 1024
-		used = e.Used / 1024
+		size = e.Total
+		free = e.Free
+		used = e.Used
 	}
-	usage := pool.StatusUsage{
-		Size: float64(size),
-		Free: float64(free),
-		Used: float64(used),
+	usage := pool.Usage{
+		Size: size,
+		Free: free,
+		Used: used,
 	}
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	data, err := t.BlkTranslate(name, size, shared)
 	if err != nil {
 		return nil, err
@@ -77,12 +77,12 @@ func (t *T) Translate(name string, size float64, shared bool) ([]string, error) 
 	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	p := fmt.Sprintf("%s/%s.img", t.Head(), name)
 	data := []string{
 		"disk#0.type=loop",
 		"disk#0.name=" + name,
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#0.file=" + p,
 	}
 	return data, nil

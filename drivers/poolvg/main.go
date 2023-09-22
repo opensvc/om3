@@ -46,38 +46,38 @@ func (t T) VGName() string {
 	return t.GetString("name")
 }
 
-func (t T) Usage() (pool.StatusUsage, error) {
+func (t T) Usage() (pool.Usage, error) {
 	vg := lvm2.NewVG(t.VGName())
 	info, err := vg.Show("vg_name,vg_free,vg_size")
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	size, err := info.Size()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	free, err := info.Free()
 	if err != nil {
-		return pool.StatusUsage{}, err
+		return pool.Usage{}, err
 	}
 	var used int64
 	if size > 0 {
-		size = size / 1024
-		free = free / 1024
+		size = size
+		free = free
 		used = size - free
 	} else {
 		size = 0
 		free = 0
 	}
-	usage := pool.StatusUsage{
-		Size: float64(size),
-		Free: float64(free),
-		Used: float64(used),
+	usage := pool.Usage{
+		Size: size,
+		Free: free,
+		Used: used,
 	}
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	data, err := t.BlkTranslate(name, size, shared)
 	if err != nil {
 		return nil, err
@@ -86,12 +86,12 @@ func (t *T) Translate(name string, size float64, shared bool) ([]string, error) 
 	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
 	data := []string{
 		"disk#0.type=lv",
 		"disk#0.name=" + name,
 		"disk#0.vg=" + t.VGName(),
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 	}
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#0.create_options="+opts)

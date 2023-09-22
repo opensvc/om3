@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/danwakefield/fnmatch"
 	"github.com/opensvc/om3/core/driver"
 )
 
@@ -73,4 +74,22 @@ func (t *T) UnmarshalJSON(b []byte) error {
 	}
 	t.Name = temp
 	return nil
+}
+
+func Match(s1, s2 string) bool {
+	if rid1, err := Parse(s1); err != nil {
+		return false
+	} else {
+		return rid1.Match(s2)
+	}
+}
+
+func (t T) Match(s string) bool {
+	if rid, err := Parse(s); err == nil && rid.DriverGroup().IsValid() && rid.Index() == "" {
+		// ex: fs#1 matches fs
+		return t.DriverGroup().String() == rid.DriverGroup().String()
+	}
+	// ex: fs#1 matches fs#1, f*
+	return fnmatch.Match(s, t.Name, 0)
+
 }

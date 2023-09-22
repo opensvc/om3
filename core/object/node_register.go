@@ -18,18 +18,18 @@ import (
 type (
 	// registerReq structures the POST /register request body
 	registerReq struct {
-		Nodename string `json:"nodename" yaml:"nodename"`
-		App      string `json:"app,omitempty" yaml:"app,omitempty"`
+		Nodename string `json:"nodename"`
+		App      string `json:"app,omitempty"`
 	}
 
 	// registerRes structures the POST /register response body
 	registerRes struct {
-		Data  registerResData `json:"data" yaml:"data"`
-		Info  string          `json:"info" yaml:"info"`
-		Error string          `json:"error" yaml:"error"`
+		Data  registerResData `json:"data"`
+		Info  string          `json:"info"`
+		Error string          `json:"error"`
 	}
 	registerResData struct {
-		UUID string `json:"uuid" yaml:"uuid"`
+		UUID string `json:"uuid"`
 	}
 )
 

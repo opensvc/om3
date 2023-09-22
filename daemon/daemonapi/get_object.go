@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) error {
+func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
 	meta := Meta{
 		Context: ctx,
 		Path:    params.Path,
@@ -21,13 +21,14 @@ func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) erro
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	ostats := object.StatusData.GetAll()
-	l := make(api.ObjectArray, 0)
+	l := make(api.ObjectItems, 0)
 	for _, ostat := range ostats {
 		if !meta.HasPath(ostat.Path.String()) {
 			continue
 		}
 
 		d := api.ObjectItem{
+			Kind: "Object",
 			Meta: api.ObjectMeta{
 				Object: ostat.Path.String(),
 			},
@@ -42,9 +43,11 @@ func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) erro
 				Overall:          api.Status(ostat.Value.Overall.String()),
 				PlacementPolicy:  api.PlacementPolicy(ostat.Value.PlacementPolicy.String()),
 				PlacementState:   api.PlacementState(ostat.Value.PlacementState.String()),
+				Pool:             ostat.Value.Pool,
 				Priority:         int(ostat.Value.Priority),
 				Provisioned:      api.Provisioned(ostat.Value.Provisioned.String()),
 				Scope:            append([]string{}, ostat.Value.Scope...),
+				Size:             ostat.Value.Size,
 				Topology:         api.Topology(ostat.Value.Topology.String()),
 				UpInstancesCount: ostat.Value.UpInstancesCount,
 				UpdatedAt:        ostat.Value.UpdatedAt.String(),
@@ -61,5 +64,5 @@ func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) erro
 		}
 		l = append(l, d)
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
 }

@@ -46,8 +46,12 @@ const (
 	separator = ":"
 )
 
+func IsSubsetSection(s string) bool {
+	return strings.HasPrefix(s, prefix)
+}
+
 func SubsetSectionToName(s string) string {
-	if !strings.HasPrefix(s, prefix) {
+	if !IsSubsetSection(s) {
 		return ""
 	}
 	return s[len(prefix):]
