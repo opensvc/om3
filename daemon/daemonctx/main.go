@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/daemon/subdaemon"
 )
 
 type (
@@ -14,7 +13,6 @@ type (
 )
 
 var (
-	contextDaemon         = contextKey("daemon")
 	contextHBRecvMsgQueue = contextKey("hb-recv-msg-queue")
 	contextUuid           = contextKey("uuid")
 	contextListenAddr     = contextKey("listen-addr")
@@ -39,20 +37,6 @@ func HBRecvMsgQ(ctx context.Context) (hbRecvQ chan<- *hbtype.Msg) {
 // the queue used by daemondata to retrieve hb rx decoded messages
 func WithHBRecvMsgQ(parent context.Context, hbRecvQ chan<- *hbtype.Msg) context.Context {
 	return context.WithValue(parent, contextHBRecvMsgQueue, hbRecvQ)
-}
-
-// WithDaemon function returns copy of parent with daemon.
-func WithDaemon(parent context.Context, daemon subdaemon.RootManager) context.Context {
-	return context.WithValue(parent, contextDaemon, daemon)
-}
-
-// Daemon function returns daemon from context
-func Daemon(ctx context.Context) subdaemon.RootManager {
-	daemon, ok := ctx.Value(contextDaemon).(subdaemon.RootManager)
-	if ok {
-		return daemon
-	}
-	panic("unable to retrieve context daemon")
 }
 
 // WithUuid function returns copy of parent with uuid.
