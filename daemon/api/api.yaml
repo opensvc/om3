@@ -1994,9 +1994,12 @@ components:
     NodeItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/NodeMeta'
           data:
@@ -2173,9 +2176,12 @@ components:
     ObjectItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/ObjectMeta'
           data:
@@ -2412,9 +2418,12 @@ components:
     InstanceItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/InstanceMeta'
           data:
@@ -2653,9 +2662,12 @@ components:
     ResourceItem:
         type: object
         required:
+          - kind
           - meta
           - data
         properties:
+          kind:
+            type: string
           meta:
             $ref: '#/components/schemas/ResourceMeta'
           data:

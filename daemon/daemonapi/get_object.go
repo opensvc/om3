@@ -28,6 +28,7 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 		}
 
 		d := api.ObjectItem{
+			Kind: "Object",
 			Meta: api.ObjectMeta{
 				Object: ostat.Path.String(),
 			},

@@ -261,6 +261,7 @@ type InstanceConfig = instance.Config
 // InstanceItem defines model for InstanceItem.
 type InstanceItem struct {
 	Data Instance     `json:"data"`
+	Kind string       `json:"kind"`
 	Meta InstanceMeta `json:"meta"`
 }
 
@@ -367,6 +368,7 @@ type NodeInfo struct {
 // NodeItem defines model for NodeItem.
 type NodeItem struct {
 	Data Node     `json:"data"`
+	Kind string   `json:"kind"`
 	Meta NodeMeta `json:"meta"`
 }
 
@@ -447,6 +449,7 @@ type ObjectFile struct {
 // ObjectItem defines model for ObjectItem.
 type ObjectItem struct {
 	Data ObjectData `json:"data"`
+	Kind string     `json:"kind"`
 	Meta ObjectMeta `json:"meta"`
 }
 
@@ -629,6 +632,7 @@ type ResourceConfig = instance.ResourceConfig
 // ResourceItem defines model for ResourceItem.
 type ResourceItem struct {
 	Data Resource     `json:"data"`
+	Kind string       `json:"kind"`
 	Meta ResourceMeta `json:"meta"`
 }
 

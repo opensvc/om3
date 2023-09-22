@@ -32,6 +32,7 @@ func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		monitor := instance.MonitorData.Get(config.Path, config.Node)
 		status := instance.StatusData.Get(config.Path, config.Node)
 		d := api.InstanceItem{
+			Kind: "Instance",
 			Meta: api.InstanceMeta{
 				Node:   config.Node,
 				Object: config.Path.String(),
