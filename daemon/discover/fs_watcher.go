@@ -68,7 +68,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(d.ctx)
 	stop := func() {
-		log.Debug().Msg("stop")
+		log.Info().Msg("stopping")
 		cancel()
 		wg.Wait()
 	}
@@ -121,6 +121,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		defer wg.Done()
 		defer cleanup()
 		log.Info().Msg("started")
+		defer log.Info().Msg("stopped")
 		const createDeleteMask = fsnotify.Create | fsnotify.Remove
 		const needReAddMask = fsnotify.Remove | fsnotify.Rename
 		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
@@ -154,7 +155,6 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("stopped")
 				return
 			case e := <-watcher.Errors:
 				log.Error().Err(e).Send()

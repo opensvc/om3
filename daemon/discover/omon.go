@@ -15,18 +15,20 @@ var (
 
 func (d *discover) omon(started chan<- bool) {
 	log := d.log.With().Str("func", "omon").Logger()
-	log.Info().Msg("started")
+	log.Info().Msg("discover.omon started")
+	defer log.Info().Msg("discover.omon stopped")
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("discover.omon", pubsub.WithQueueSize(SubscriptionQueueSizeOmon))
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true
 	defer func() {
-		defer log.Info().Msg("stopped")
+		log.Debug().Msg("flushing queue")
+		defer log.Debug().Msg("flushed queue")
 		if err := sub.Stop(); err != nil {
 			d.log.Error().Err(err).Msg("subscription stop")
 		}
-		tC := time.After(d.dropCmdDuration)
+		tC := time.After(d.drainDuration)
 		for {
 			select {
 			case <-tC:

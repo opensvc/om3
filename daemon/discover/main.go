@@ -37,6 +37,7 @@ type (
 		cfgCmdC           chan any
 		objectMonitorCmdC chan any
 		ctx               context.Context
+		cancel            context.CancelFunc
 		log               zerolog.Logger
 		databus           *daemondata.T
 
@@ -65,8 +66,9 @@ type (
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
 
-		fsWatcher *fsnotify.Watcher
-		localhost string
+		fsWatcher     *fsnotify.Watcher
+		fsWatcherStop func()
+		localhost     string
 
 		nodeList   *objectList
 		objectList *objectList
@@ -75,83 +77,96 @@ type (
 		subCfgDeleted     pubsub.Subscription
 		subCfgFileUpdated pubsub.Subscription
 
-		// dropCmdDuration is the max duration to wait while dropping commands
-		dropCmdDuration time.Duration
+		// drainDuration is the max duration to wait while dropping commands and
+		// is the drain duration created imon.
+		drainDuration time.Duration
 
 		imonStarter omon.IMonStarter
+
+		wg sync.WaitGroup
 	}
 )
 
-// Start function starts file system watcher on config directory
-// then listen for config file creation to create. drainDuration is the maximum duration to wait
-// while dropping discover commands
-func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), err error) {
-	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(ctx)
-	d := discover{
-		databus:           daemondata.FromContext(ctx),
+// New prepares Discover with drainDuration.
+func New(drainDuration time.Duration) *discover {
+	return &discover{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
 		cfgMTime:          make(map[string]time.Time),
-		ctx:               ctx,
-		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
 		objectMonitor: make(map[string]map[string]struct{}),
-		nodeList:      newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes")),
-		objectList:    newObjectList(ctx, filepath.Join(rawconfig.Paths.Var, "list.objects")),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
-		dropCmdDuration:   drainDuration,
+		drainDuration:     drainDuration,
 		imonStarter:       imon.Factory{DrainDuration: drainDuration},
 	}
-	wg.Add(1)
+}
+
+// Start function starts file system watcher on config directory
+// then listen for config file creation to create.
+func (d *discover) Start(ctx context.Context) (err error) {
+	d.log = daemonlogctx.Logger(d.ctx).With().Str("name", "daemon.Discover").Logger()
+	d.log.Info().Msg("discover starting")
+
+	d.ctx, d.cancel = context.WithCancel(ctx)
+	d.databus = daemondata.FromContext(d.ctx)
+	d.nodeList = newObjectList(d.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
+	d.objectList = newObjectList(d.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
+
+	d.wg.Add(1)
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
-		defer wg.Done()
+		defer d.wg.Done()
+		defer d.log.Info().Msg("stopped discover.cfg")
 		d.cfg(c)
 	}(cfgStarted)
 	<-cfgStarted
 
 	omonStarted := make(chan bool)
-	wg.Add(1)
+	d.wg.Add(1)
 	go func(c chan<- bool) {
-		defer wg.Done()
+		defer d.wg.Done()
 		d.omon(c)
 	}(omonStarted)
 	<-omonStarted
 
-	wg.Add(1)
+	d.wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer d.wg.Done()
+		defer d.log.Info().Msg("stopped discover.nodelist")
 		d.nodeList.Add(clusternode.Get()...)
 		d.nodeList.Loop()
 	}()
 
-	wg.Add(1)
+	d.wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer d.wg.Done()
+		defer d.log.Info().Msg("stopped discover.objectList")
 		d.nodeList.Add(object.StatusData.GetPaths().StrSlice()...)
 		d.objectList.Loop()
 	}()
 
-	stopFSWatcher, err := d.fsWatcherStart()
-	if err != nil {
-		d.log.Error().Err(err).Msg("start")
-		stopFunc = func() {
-			cancel()
-			stopFSWatcher()
-		}
-		return
+	if stopFSWatcher, err := d.fsWatcherStart(); err != nil {
+		d.log.Error().Err(err).Msg("start fs watcher")
+		return err
+	} else {
+		d.fsWatcherStop = stopFSWatcher
 	}
+	d.log.Info().Msg("discover started")
+	return nil
+}
 
-	stopFunc = func() {
-		stopFSWatcher()
-		cancel() // stop cfg and omon via context cancel
-		wg.Wait()
+func (d *discover) Stop() error {
+	d.log.Info().Msg("discover stopping")
+	defer d.log.Info().Msg("discover stopped")
+	if d.fsWatcherStop != nil {
+		d.fsWatcherStop()
 	}
-	return
+	d.cancel() // stop cfg and omon via context cancel
+	d.wg.Wait()
+	return nil
 }
