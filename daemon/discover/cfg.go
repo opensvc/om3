@@ -41,9 +41,12 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 }
 
 func (d *discover) cfg(started chan<- bool) {
-	d.log.Info().Msg("cfg started")
+	d.log.Info().Msg("discover.cfg started")
+	defer d.log.Info().Msg("discover.cfg stopped")
 	defer func() {
-		t := time.NewTicker(d.dropCmdDuration)
+		d.log.Debug().Msg("flushing queue")
+		defer d.log.Debug().Msg("flushed queue")
+		t := time.NewTicker(d.drainDuration)
 		defer t.Stop()
 		for {
 			select {
@@ -69,7 +72,6 @@ func (d *discover) cfg(started chan<- bool) {
 	for {
 		select {
 		case <-d.ctx.Done():
-			d.log.Info().Msg("cfg stopped")
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
