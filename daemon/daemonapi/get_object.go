@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) error {
+func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
 	meta := Meta{
 		Context: ctx,
 		Path:    params.Path,
@@ -21,7 +21,7 @@ func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) erro
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	ostats := object.StatusData.GetAll()
-	l := make(api.ObjectArray, 0)
+	l := make(api.ObjectItems, 0)
 	for _, ostat := range ostats {
 		if !meta.HasPath(ostat.Path.String()) {
 			continue
@@ -63,5 +63,5 @@ func (a *DaemonApi) GetObject(ctx echo.Context, params api.GetObjectParams) erro
 		}
 		l = append(l, d)
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
 }

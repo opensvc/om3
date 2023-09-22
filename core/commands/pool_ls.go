@@ -22,11 +22,11 @@ func (t *CmdPoolLs) Run() error {
 	if err != nil {
 		return err
 	}
-	params := api.GetPoolParams{}
+	params := api.GetPoolsParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetPoolWithResponse(context.Background(), &params)
+	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
@@ -36,10 +36,9 @@ func (t *CmdPoolLs) Run() error {
 			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,VOLUME_COUNT:volume_count,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          *resp.JSON200,
+			Data:          resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 401:
 		return fmt.Errorf("%s", resp.JSON401)
 	case 403:

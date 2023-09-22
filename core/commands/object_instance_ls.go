@@ -17,43 +17,39 @@ type (
 )
 
 func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
-	var (
-		data any
-		err  error
-	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetInstanceParams{Path: &mergedSelector}
+	params := api.GetInstancesParams{Path: &mergedSelector}
 	if t.NodeSelector != "" {
 		params.Node = &t.NodeSelector
 	}
-	resp, err := c.GetInstanceWithResponse(context.Background(), &params)
+	resp, err := c.GetInstancesWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
+	var pb *api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		data = *resp.JSON200
+		output.Renderer{
+			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          resp.JSON200.Items,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+		return nil
 	case 400:
-		data = *resp.JSON400
+		pb = resp.JSON400
 	case 401:
-		data = *resp.JSON401
+		pb = resp.JSON401
 	case 403:
-		data = *resp.JSON403
+		pb = resp.JSON403
 	case 500:
-		data = *resp.JSON500
+		pb = resp.JSON500
 	}
-	renderer := output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
-		Output:        t.Output,
-		Color:         t.Color,
-		Data:          data,
-		Colorize:      rawconfig.Colorize,
-	}
-	renderer.Print()
-	return nil
+	return fmt.Errorf("%s", pb)
 }

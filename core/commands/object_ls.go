@@ -17,40 +17,36 @@ type (
 )
 
 func (t *CmdObjectLs) Run(selector, kind string) error {
-	var (
-		data any
-		err  error
-	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetObjectParams{Path: &mergedSelector}
-	resp, err := c.GetObjectWithResponse(context.Background(), &params)
+	params := api.GetObjectsParams{Path: &mergedSelector}
+	resp, err := c.GetObjectsWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
 	switch resp.StatusCode() {
 	case 200:
-		data = *resp.JSON200
+		output.Renderer{
+			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          resp.JSON200.Items,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
 	case 400:
-		data = *resp.JSON400
+		return fmt.Errorf("%s", resp.JSON400)
 	case 401:
-		data = *resp.JSON401
+		return fmt.Errorf("%s", resp.JSON401)
 	case 403:
-		data = *resp.JSON403
+		return fmt.Errorf("%s", resp.JSON403)
 	case 500:
-		data = *resp.JSON500
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	renderer := output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
-		Output:        t.Output,
-		Color:         t.Color,
-		Data:          data,
-		Colorize:      rawconfig.Colorize,
-	}
-	renderer.Print()
 	return nil
 }

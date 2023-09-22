@@ -33,12 +33,11 @@ func (t *CmdNetworkIpLs) Run() error {
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		data := *resp.JSON200
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          data,
+			Data:          resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

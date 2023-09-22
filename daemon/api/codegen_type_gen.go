@@ -255,25 +255,22 @@ type Instance struct {
 	Status  *InstanceStatus  `json:"status,omitempty"`
 }
 
-// InstanceArray defines model for InstanceArray.
-type InstanceArray = []InstanceItem
-
 // InstanceConfig defines model for InstanceConfig.
 type InstanceConfig = instance.Config
-
-// InstanceConfigArray defines model for InstanceConfigArray.
-type InstanceConfigArray = []InstanceConfigItem
-
-// InstanceConfigItem defines model for InstanceConfigItem.
-type InstanceConfigItem struct {
-	Data InstanceConfig `json:"data"`
-	Meta InstanceMeta   `json:"meta"`
-}
 
 // InstanceItem defines model for InstanceItem.
 type InstanceItem struct {
 	Data Instance     `json:"data"`
 	Meta InstanceMeta `json:"meta"`
+}
+
+// InstanceItems defines model for InstanceItems.
+type InstanceItems = []InstanceItem
+
+// InstanceList defines model for InstanceList.
+type InstanceList struct {
+	Items InstanceItems `json:"items"`
+	Kind  string        `json:"kind"`
 }
 
 // InstanceMap defines model for InstanceMap.
@@ -288,20 +285,8 @@ type InstanceMeta struct {
 // InstanceMonitor defines model for InstanceMonitor.
 type InstanceMonitor = instance.Monitor
 
-// InstanceMonitorArray defines model for InstanceMonitorArray.
-type InstanceMonitorArray = []InstanceMonitorItem
-
-// InstanceMonitorItem defines model for InstanceMonitorItem.
-type InstanceMonitorItem struct {
-	Data InstanceMonitor `json:"data"`
-	Meta InstanceMeta    `json:"meta"`
-}
-
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
-
-// InstanceStatusArray defines model for InstanceStatusArray.
-type InstanceStatusArray = []InstanceStatusItem
 
 // InstanceStatusItem defines model for InstanceStatusItem.
 type InstanceStatusItem struct {
@@ -314,15 +299,14 @@ type LogList = openapi_types.File
 
 // Network defines model for Network.
 type Network struct {
-	Errors  []string     `json:"errors"`
-	Name    string       `json:"name"`
-	Network string       `json:"network"`
-	Type    string       `json:"type"`
-	Usage   NetworkUsage `json:"usage"`
+	Errors  *[]string `json:"errors,omitempty"`
+	Free    int       `json:"free"`
+	Name    string    `json:"name"`
+	Network string    `json:"network"`
+	Size    int       `json:"size"`
+	Type    string    `json:"type"`
+	Used    int       `json:"used"`
 }
-
-// NetworkArray defines model for NetworkArray.
-type NetworkArray = []Network
 
 // NetworkIp defines model for NetworkIp.
 type NetworkIp struct {
@@ -333,8 +317,14 @@ type NetworkIp struct {
 	Rid     string           `json:"rid"`
 }
 
-// NetworkIpArray defines model for NetworkIpArray.
-type NetworkIpArray = []NetworkIp
+// NetworkIpItems defines model for NetworkIpItems.
+type NetworkIpItems = []NetworkIp
+
+// NetworkIpList defines model for NetworkIpList.
+type NetworkIpList struct {
+	Items NetworkIpItems `json:"items"`
+	Kind  string         `json:"kind"`
+}
 
 // NetworkIpNetwork defines model for NetworkIpNetwork.
 type NetworkIpNetwork struct {
@@ -343,12 +333,13 @@ type NetworkIpNetwork struct {
 	Type    string `json:"type"`
 }
 
-// NetworkUsage defines model for NetworkUsage.
-type NetworkUsage struct {
-	Free int     `json:"free"`
-	Pct  float32 `json:"pct"`
-	Size int     `json:"size"`
-	Used int     `json:"used"`
+// NetworkItems defines model for NetworkItems.
+type NetworkItems = []Network
+
+// NetworkList defines model for NetworkList.
+type NetworkList struct {
+	Items NetworkItems `json:"items"`
+	Kind  string       `json:"kind"`
 }
 
 // Node defines model for Node.
@@ -358,20 +349,8 @@ type Node struct {
 	Status  *NodeStatus  `json:"status,omitempty"`
 }
 
-// NodeArray defines model for NodeArray.
-type NodeArray = []NodeItem
-
 // NodeConfig defines model for NodeConfig.
 type NodeConfig = node.Config
-
-// NodeConfigArray defines model for NodeConfigArray.
-type NodeConfigArray = []NodeConfigItem
-
-// NodeConfigItem defines model for NodeConfigItem.
-type NodeConfigItem struct {
-	Data NodeConfig `json:"data"`
-	Meta NodeMeta   `json:"meta"`
-}
 
 // NodeInfo defines model for NodeInfo.
 type NodeInfo struct {
@@ -391,6 +370,9 @@ type NodeItem struct {
 	Meta NodeMeta `json:"meta"`
 }
 
+// NodeItems defines model for NodeItems.
+type NodeItems = []NodeItem
+
 // NodeLabel defines model for NodeLabel.
 type NodeLabel struct {
 	// Name name is the label name.
@@ -398,6 +380,12 @@ type NodeLabel struct {
 
 	// Value value is the label value.
 	Value string `json:"value"`
+}
+
+// NodeList defines model for NodeList.
+type NodeList struct {
+	Items NodeItems `json:"items"`
+	Kind  string    `json:"kind"`
 }
 
 // NodeMeta defines model for NodeMeta.
@@ -408,32 +396,11 @@ type NodeMeta struct {
 // NodeMonitor defines model for NodeMonitor.
 type NodeMonitor = node.Monitor
 
-// NodeMonitorArray defines model for NodeMonitorArray.
-type NodeMonitorArray = []NodeMonitorItem
-
-// NodeMonitorItem defines model for NodeMonitorItem.
-type NodeMonitorItem struct {
-	Data NodeMonitor `json:"data"`
-	Meta NodeMeta    `json:"meta"`
-}
-
 // NodeStatus defines model for NodeStatus.
 type NodeStatus = node.Status
 
-// NodeStatusArray defines model for NodeStatusArray.
-type NodeStatusArray = []NodeStatusItem
-
-// NodeStatusItem defines model for NodeStatusItem.
-type NodeStatusItem struct {
-	Data NodeStatus `json:"data"`
-	Meta NodeMeta   `json:"meta"`
-}
-
 // NodesInfo defines model for NodesInfo.
 type NodesInfo = []NodeInfo
-
-// ObjectArray defines model for ObjectArray.
-type ObjectArray = []ObjectItem
 
 // ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {
@@ -483,6 +450,15 @@ type ObjectItem struct {
 	Meta ObjectMeta `json:"meta"`
 }
 
+// ObjectItems defines model for ObjectItems.
+type ObjectItems = []ObjectItem
+
+// ObjectList defines model for ObjectList.
+type ObjectList struct {
+	Items ObjectItems `json:"items"`
+	Kind  string      `json:"kind"`
+}
+
 // ObjectMeta defines model for ObjectMeta.
 type ObjectMeta struct {
 	Object string `json:"object"`
@@ -518,8 +494,14 @@ type Pool struct {
 	VolumeCount  int       `json:"volume_count"`
 }
 
-// PoolArray defines model for PoolArray.
-type PoolArray = []Pool
+// PoolItems defines model for PoolItems.
+type PoolItems = []Pool
+
+// PoolList defines model for PoolList.
+type PoolList struct {
+	Items PoolItems `json:"items"`
+	Kind  string    `json:"kind"`
+}
 
 // PoolVolume defines model for PoolVolume.
 type PoolVolume struct {
@@ -530,8 +512,14 @@ type PoolVolume struct {
 	Size     int64    `json:"size"`
 }
 
-// PoolVolumeArray defines model for PoolVolumeArray.
-type PoolVolumeArray = []PoolVolume
+// PoolVolumeItems defines model for PoolVolumeItems.
+type PoolVolumeItems = []PoolVolume
+
+// PoolVolumeList defines model for PoolVolumeList.
+type PoolVolumeList struct {
+	Items PoolVolumeItems `json:"items"`
+	Kind  string          `json:"kind"`
+}
 
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
@@ -635,25 +623,22 @@ type Resource struct {
 	Status  *ResourceStatus  `json:"status,omitempty"`
 }
 
-// ResourceArray defines model for ResourceArray.
-type ResourceArray = []ResourceItem
-
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
-
-// ResourceConfigArray defines model for ResourceConfigArray.
-type ResourceConfigArray = []ResourceConfigItem
-
-// ResourceConfigItem defines model for ResourceConfigItem.
-type ResourceConfigItem struct {
-	Data ResourceConfig `json:"data"`
-	Meta ResourceMeta   `json:"meta"`
-}
 
 // ResourceItem defines model for ResourceItem.
 type ResourceItem struct {
 	Data Resource     `json:"data"`
 	Meta ResourceMeta `json:"meta"`
+}
+
+// ResourceItems defines model for ResourceItems.
+type ResourceItems = []ResourceItem
+
+// ResourceList defines model for ResourceList.
+type ResourceList struct {
+	Items ResourceItems `json:"items"`
+	Kind  string        `json:"kind"`
 }
 
 // ResourceLog defines model for ResourceLog.
@@ -675,15 +660,6 @@ type ResourceMeta struct {
 // ResourceMonitor defines model for ResourceMonitor.
 type ResourceMonitor = instance.ResourceMonitor
 
-// ResourceMonitorArray defines model for ResourceMonitorArray.
-type ResourceMonitorArray = []ResourceMonitorItem
-
-// ResourceMonitorItem defines model for ResourceMonitorItem.
-type ResourceMonitorItem struct {
-	Data ResourceMonitor `json:"data"`
-	Meta ResourceMeta    `json:"meta"`
-}
-
 // ResourceMonitorRestart defines model for ResourceMonitorRestart.
 type ResourceMonitorRestart struct {
 	LastAt    time.Time `json:"last_at"`
@@ -700,15 +676,6 @@ type ResourceProvisionStatus struct {
 
 // ResourceStatus defines model for ResourceStatus.
 type ResourceStatus = resource.Status
-
-// ResourceStatusArray defines model for ResourceStatusArray.
-type ResourceStatusArray = []ResourceStatusItem
-
-// ResourceStatusItem defines model for ResourceStatusItem.
-type ResourceStatusItem struct {
-	Data ResourceStatus `json:"data"`
-	Meta ResourceMeta   `json:"meta"`
-}
 
 // Role defines model for Role.
 type Role string
@@ -866,46 +833,13 @@ type GetDaemonStatusParams struct {
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
-// GetInstanceParams defines parameters for GetInstance.
-type GetInstanceParams struct {
+// GetInstancesParams defines parameters for GetInstances.
+type GetInstancesParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetInstanceConfigParams defines parameters for GetInstanceConfig.
-type GetInstanceConfigParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetInstanceMonitorParams defines parameters for GetInstanceMonitor.
-type GetInstanceMonitorParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetInstanceStatusParams defines parameters for GetInstanceStatus.
-type GetInstanceStatusParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetNetworkParams defines parameters for GetNetwork.
-type GetNetworkParams struct {
-	// Name the name of a cluster backend network
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.
@@ -914,10 +848,10 @@ type GetNetworkIpParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
-// GetNodeParams defines parameters for GetNode.
-type GetNodeParams struct {
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+// GetNetworksParams defines parameters for GetNetworks.
+type GetNetworksParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetNodeBacklogsParams defines parameters for GetNodeBacklogs.
@@ -927,12 +861,6 @@ type GetNodeBacklogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
-}
-
-// GetNodeConfigParams defines parameters for GetNodeConfig.
-type GetNodeConfigParams struct {
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -956,22 +884,10 @@ type GetNodeLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
-// GetNodeMonitorParams defines parameters for GetNodeMonitor.
-type GetNodeMonitorParams struct {
+// GetNodesParams defines parameters for GetNodes.
+type GetNodesParams struct {
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetNodeStatusParams defines parameters for GetNodeStatus.
-type GetNodeStatusParams struct {
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetObjectParams defines parameters for GetObject.
-type GetObjectParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 }
 
 // GetObjectBacklogsParams defines parameters for GetObjectBacklogs.
@@ -1016,14 +932,20 @@ type GetObjectPathsParams struct {
 	Path Path `form:"path" json:"path"`
 }
 
-// GetPoolParams defines parameters for GetPool.
-type GetPoolParams struct {
+// GetObjectsParams defines parameters for GetObjects.
+type GetObjectsParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// GetPoolVolumesParams defines parameters for GetPoolVolumes.
+type GetPoolVolumesParams struct {
 	// Name the name of a backend storage pool
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
-// GetPoolVolumeParams defines parameters for GetPoolVolume.
-type GetPoolVolumeParams struct {
+// GetPoolsParams defines parameters for GetPools.
+type GetPoolsParams struct {
 	// Name the name of a backend storage pool
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
@@ -1037,44 +959,8 @@ type GetRelayMessageParams struct {
 	ClusterId *RelayClusterId `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
 }
 
-// GetResourceParams defines parameters for GetResource.
-type GetResourceParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-
-	// Resource resource selector expression.
-	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
-}
-
-// GetResourceConfigParams defines parameters for GetResourceConfig.
-type GetResourceConfigParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-
-	// Resource resource selector expression.
-	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
-}
-
-// GetResourceMonitorParams defines parameters for GetResourceMonitor.
-type GetResourceMonitorParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-
-	// Resource resource selector expression.
-	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
-}
-
-// GetResourceStatusParams defines parameters for GetResourceStatus.
-type GetResourceStatusParams struct {
+// GetResourcesParams defines parameters for GetResources.
+type GetResourcesParams struct {
 	// Path object selector expression.
 	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 

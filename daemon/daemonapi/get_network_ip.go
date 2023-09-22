@@ -51,7 +51,7 @@ func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams
 	} else {
 		networkStatusList = network.ShowNetworks(n, cips)
 	}
-	var l api.NetworkIpArray
+	var l api.NetworkIpItems
 	for _, networkStatus := range networkStatusList {
 		for _, ip := range networkStatus.IPs {
 			l = append(l, api.NetworkIp{
@@ -67,5 +67,5 @@ func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams
 			})
 		}
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.NetworkIpList{Kind: "NetworkIpList", Items: l})
 }

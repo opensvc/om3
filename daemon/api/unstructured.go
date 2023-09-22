@@ -36,27 +36,6 @@ func (t InstanceItem) Unstructured() map[string]any {
 	}
 }
 
-func (t InstanceConfigItem) Unstructured() map[string]any {
-	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
-	}
-}
-
-func (t InstanceMonitorItem) Unstructured() map[string]any {
-	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
-	}
-}
-
-func (t InstanceStatusItem) Unstructured() map[string]any {
-	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
-	}
-}
-
 func (t ObjectItem) Unstructured() map[string]any {
 	return map[string]any{
 		"meta": t.Meta.Unstructured(),
@@ -121,24 +100,25 @@ func (t ResourceItem) Unstructured() map[string]any {
 	}
 }
 
-func (t ResourceConfigItem) Unstructured() map[string]any {
+func (t NetworkIp) Unstructured() map[string]any {
 	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
+		"ip":      t.Ip,
+		"network": t.Network,
+		"node":    t.Node,
+		"path":    t.Path,
+		"rid":     t.Rid,
 	}
 }
 
-func (t ResourceMonitorItem) Unstructured() map[string]any {
+func (t Network) Unstructured() map[string]any {
 	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
-	}
-}
-
-func (t ResourceStatusItem) Unstructured() map[string]any {
-	return map[string]any{
-		"meta": t.Meta.Unstructured(),
-		"data": t.Data.Unstructured(),
+		"errors":  t.Errors,
+		"name":    t.Name,
+		"network": t.Network,
+		"free":    t.Free,
+		"size":    t.Size,
+		"type":    t.Type,
+		"used":    t.Used,
 	}
 }
 

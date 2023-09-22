@@ -22,11 +22,11 @@ func (t *CmdPoolVolumeLs) Run() error {
 	if err != nil {
 		return err
 	}
-	params := api.GetPoolVolumeParams{}
+	params := api.GetPoolVolumesParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetPoolVolumeWithResponse(context.Background(), &params)
+	resp, err := c.GetPoolVolumesWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (t *CmdPoolVolumeLs) Run() error {
 			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          *resp.JSON200,
+			Data:          resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

@@ -11,19 +11,19 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetPoolVolume(ctx echo.Context, params api.GetPoolVolumeParams) error {
+func (a *DaemonApi) GetPoolVolumes(ctx echo.Context, params api.GetPoolVolumesParams) error {
 	l := getPoolVolumes(params.Name)
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.PoolVolumeList{Kind: "PoolVolumeList", Items: l})
 }
 
-func getPoolVolumes(name *string) api.PoolVolumeArray {
+func getPoolVolumes(name *string) api.PoolVolumeItems {
 	volNames := make(map[string]any)
 	poolNames := make(map[string]any)
 	for _, e := range pool.StatusData.GetAll() {
 		poolNames[e.Name] = nil
 	}
 
-	l := make(api.PoolVolumeArray, 0)
+	l := make(api.PoolVolumeItems, 0)
 	for _, instConfig := range instance.ConfigData.GetAll() {
 		var (
 			poolOk   bool

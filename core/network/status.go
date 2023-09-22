@@ -8,10 +8,9 @@ import (
 
 type (
 	Usage struct {
-		Free int     `json:"free"`
-		Used int     `json:"used"`
-		Size int     `json:"size"`
-		Pct  float64 `json:"pct"`
+		Free int `json:"free"`
+		Used int `json:"used"`
+		Size int `json:"size"`
 	}
 
 	Status struct {
@@ -20,7 +19,7 @@ type (
 		Network string      `json:"network"`
 		IPs     clusterip.L `json:"ips"`
 		Errors  []string    `json:"errors,omitempty"`
-		Usage   Usage       `json:"usage"`
+		Usage
 	}
 	StatusList []Status
 )
@@ -44,11 +43,6 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 			ones, bits := ipn.Mask.Size()
 			data.Usage.Size = int(math.Pow(2.0, float64(bits-ones)))
 			data.Usage.Free = data.Usage.Size - data.Usage.Used
-		}
-		if data.Usage.Size == 0 {
-			data.Usage.Pct = 100.0
-		} else {
-			data.Usage.Pct = float64(data.Usage.Used) / float64(data.Usage.Size) * 100.0
 		}
 	}
 	return data

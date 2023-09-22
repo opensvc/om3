@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetInstance(ctx echo.Context, params api.GetInstanceParams) error {
+func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
@@ -21,7 +21,7 @@ func (a *DaemonApi) GetInstance(ctx echo.Context, params api.GetInstanceParams) 
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := instance.ConfigData.GetAll()
-	l := make(api.InstanceArray, 0)
+	l := make(api.InstanceItems, 0)
 	for _, config := range configs {
 		if !meta.HasPath(config.Path.String()) {
 			continue
@@ -44,5 +44,5 @@ func (a *DaemonApi) GetInstance(ctx echo.Context, params api.GetInstanceParams) 
 		}
 		l = append(l, d)
 	}
-	return ctx.JSON(http.StatusOK, l)
+	return ctx.JSON(http.StatusOK, api.InstanceList{Kind: "InstanceList", Items: l})
 }

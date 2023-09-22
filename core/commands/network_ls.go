@@ -22,23 +22,22 @@ func (t *CmdNetworkLs) Run() error {
 	if err != nil {
 		return err
 	}
-	params := api.GetNetworkParams{}
+	params := api.GetNetworksParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetNetworkWithResponse(context.Background(), &params)
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		data := *resp.JSON200
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:usage.size,USED:usage.used,FREE:usage.free,USE_PCT:usage.pct",
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          data,
+			Data:          resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil
