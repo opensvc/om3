@@ -37,7 +37,7 @@ func (c Client) NewPinger(d time.Duration) func() {
 		for {
 			select {
 			case <-stop:
-				break
+				return
 			case <-ticker.C:
 				c.Ping()
 			}
