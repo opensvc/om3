@@ -938,7 +938,7 @@ paths:
     post:
       operationId: PostSvcActionAbort
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -968,7 +968,7 @@ paths:
     post:
       operationId: PostVolActionAbort
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -998,7 +998,7 @@ paths:
     post:
       operationId: PostVolActionDelete
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1028,7 +1028,7 @@ paths:
     post:
       operationId: PostUsrActionDelete
       tags:
-        - usr
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1058,7 +1058,7 @@ paths:
     post:
       operationId: PostSvcActionDelete
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1088,7 +1088,7 @@ paths:
     post:
       operationId: PostCfgActionDelete
       tags:
-        - cfg
+        - object / cfg
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1118,7 +1118,7 @@ paths:
     post:
       operationId: PostSecActionDelete
       tags:
-        - sec
+        - object / sec
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1148,7 +1148,7 @@ paths:
     post:
       operationId: PostSvcActionFreeze
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1178,7 +1178,7 @@ paths:
     post:
       operationId: PostVolActionFreeze
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1208,7 +1208,7 @@ paths:
     post:
       operationId: PostSvcActionGiveback
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1238,7 +1238,7 @@ paths:
     post:
       operationId: PostSvcActionProvision
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1268,7 +1268,7 @@ paths:
     post:
       operationId: PostVolActionProvision
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1298,7 +1298,7 @@ paths:
     post:
       operationId: PostSvcActionPurge
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1328,7 +1328,7 @@ paths:
     post:
       operationId: PostVolActionPurge
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1358,7 +1358,7 @@ paths:
     post:
       operationId: PostSvcActionStart
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1388,7 +1388,7 @@ paths:
     post:
       operationId: PostSvcActionStop
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1418,7 +1418,7 @@ paths:
     post:
       operationId: PostSvcActionSwitch
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1454,7 +1454,7 @@ paths:
     post:
       operationId: PostSvcActionUnfreeze
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1484,7 +1484,7 @@ paths:
     post:
       operationId: PostVolActionUnfreeze
       tags:
-        - vol
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1514,7 +1514,7 @@ paths:
     post:
       operationId: PostSvcActionUnprovision
       tags:
-        - svc
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1544,7 +1544,7 @@ paths:
     post:
       operationId: PostVolActionUnprovision
       tags:
-        - svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
