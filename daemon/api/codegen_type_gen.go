@@ -738,9 +738,6 @@ type NamespaceOptional = string
 // NodeOptional defines model for NodeOptional.
 type NodeOptional = string
 
-// ObjectPath defines model for ObjectPath.
-type ObjectPath = string
-
 // Path defines model for Path.
 type Path = string
 
@@ -764,6 +761,12 @@ type Roles = []Role
 
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
+
+// EvaluateQueryParam defines model for evaluateQueryParam.
+type EvaluateQueryParam = bool
+
+// ImpersonateQueryParam defines model for impersonateQueryParam.
+type ImpersonateQueryParam = string
 
 // KindPathParam defines model for kindPathParam.
 type KindPathParam = string
@@ -849,6 +852,15 @@ type GetInstancesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
+// GetObjectConfigParams defines parameters for GetObjectConfig.
+type GetObjectConfigParams struct {
+	// Evaluate evaluate
+	Evaluate *EvaluateQueryParam `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+
+	// Impersonate impersonate the evaluation as node
+	Impersonate *ImpersonateQueryParam `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
 // GetNetworkIpParams defines parameters for GetNetworkIp.
 type GetNetworkIpParams struct {
 	// Name the name of a cluster backend network
@@ -904,24 +916,6 @@ type GetObjectBacklogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
-}
-
-// GetObjectConfigParams defines parameters for GetObjectConfig.
-type GetObjectConfigParams struct {
-	// Path object path
-	Path ObjectPath `form:"path" json:"path"`
-
-	// Evaluate evaluate
-	Evaluate *bool `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-
-	// Impersonate impersonate the evaluation as node
-	Impersonate *string `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
-// GetObjectFileParams defines parameters for GetObjectFile.
-type GetObjectFileParams struct {
-	// Path object path
-	Path ObjectPath `form:"path" json:"path"`
 }
 
 // GetObjectLogsParams defines parameters for GetObjectLogs.

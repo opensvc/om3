@@ -425,7 +425,11 @@ paths:
     get:
       operationId: GetObject
       tags:
-        - object
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -831,62 +835,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/config:
-    get:
-      operationId: GetObjectConfig
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/ObjectPath'
-        - name: evaluate
-          in: query
-          description: evaluate
-          schema:
-            type: boolean
-        - name: impersonate
-          in: query
-          description: impersonate the evaluation as node
-          schema:
-            type: string
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ObjectConfig'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /object/file:
-    get:
-      operationId: GetObjectFile
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/ObjectPath'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ObjectFile'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
   /object/progress:
     post:
       operationId: PostObjectProgress
@@ -992,6 +940,66 @@ paths:
           $ref: '#/components/responses/408'
         409:
           $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/config:
+    get:
+      operationId: GetObjectConfig
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/evaluateQueryParam'
+        - $ref: '#/components/parameters/impersonateQueryParam'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectConfig'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/file:
+    get:
+      operationId: GetObjectFile
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectFile'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
   /namespaces/{namespace}/vol/{name}/delete:
@@ -3206,6 +3214,18 @@ components:
       default: failover
 
   parameters:
+    evaluateQueryParam:
+      name: evaluate
+      in: query
+      description: evaluate
+      schema:
+        type: boolean
+    impersonateQueryParam:
+      name: impersonate
+      in: query
+      description: impersonate the evaluation as node
+      schema:
+        type: string
     namePathParam:
       in: path
       name: name

@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -72,10 +71,7 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 }
 
 func fetchConfig(p path.T, c *client.T) ([]byte, error) {
-	params := api.GetObjectFileParams{
-		Path: p.String(),
-	}
-	resp, err := c.GetObjectFileWithResponse(context.Background(), &params)
+	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind.String(), p.Name)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
