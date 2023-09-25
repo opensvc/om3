@@ -27,6 +27,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -523,6 +524,10 @@ func (o *nmon) clearPending() {
 
 func (o *nmon) getStats() (node.Stats, error) {
 	stats := node.Stats{}
+	if runtime.GOOS != "linux" {
+		return stats, nil
+	}
+
 	fs, err := procfs.NewDefaultFS()
 	if err != nil {
 		return stats, err
