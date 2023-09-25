@@ -8,17 +8,42 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
 )
 
 func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
-	meta := Meta{
-		Context: ctx,
-		Path:    params.Path,
-	}
-	if err := meta.Expand(); err != nil {
+	if l, err := a.getObjects(ctx, params.Path); err != nil {
 		log.Error().Err(err).Send()
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
+	} else {
+		return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
+	}
+}
+
+func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind string, name string) error {
+	p, err := path.New(name, namespace, kind)
+	if err != nil {
+		return err
+	}
+	s := p.FQN()
+	if l, err := a.getObjects(ctx, &s); err != nil {
+		log.Error().Err(err).Send()
+		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
+	} else if len(l) == 0 {
+		return JSONProblem(ctx, http.StatusNotFound, "", "")
+	} else {
+		return ctx.JSON(http.StatusOK, l[0])
+	}
+}
+
+func (a *DaemonApi) getObjects(ctx echo.Context, pathSelector *string) (api.ObjectItems, error) {
+	meta := Meta{
+		Context: ctx,
+		Path:    pathSelector,
+	}
+	if err := meta.Expand(); err != nil {
+		return nil, err
 	}
 	ostats := object.StatusData.GetAll()
 	l := make(api.ObjectItems, 0)
@@ -64,5 +89,5 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 		}
 		l = append(l, d)
 	}
-	return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
+	return l, nil
 }

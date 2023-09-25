@@ -16,62 +16,97 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectActionAbort(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectAborted)
+func (a *DaemonApi) PostSvcActionAbort(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectAborted)
 }
 
-func (a *DaemonApi) PostObjectActionDelete(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectDeleted)
+func (a *DaemonApi) PostVolActionAbort(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectAborted)
 }
 
-func (a *DaemonApi) PostObjectActionFreeze(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectFrozen)
+func (a *DaemonApi) PostSvcActionDelete(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionGiveback(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectPlaced)
+func (a *DaemonApi) PostVolActionDelete(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionProvision(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectProvisioned)
+func (a *DaemonApi) PostCfgActionDelete(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "cfg", name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectPurged)
+func (a *DaemonApi) PostSecActionDelete(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "sec", name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionStart(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectStarted)
+func (a *DaemonApi) PostUsrActionDelete(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "usr", name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionStop(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectStopped)
+func (a *DaemonApi) PostSvcActionFreeze(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectFrozen)
 }
 
-func (a *DaemonApi) PostObjectActionUnfreeze(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectThawed)
+func (a *DaemonApi) PostVolActionFreeze(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectFrozen)
 }
 
-func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context) error {
-	return a.PostObjectAction(ctx, instance.MonitorGlobalExpectUnprovisioned)
+func (a *DaemonApi) PostSvcActionGiveback(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectPlaced)
 }
 
-func (a *DaemonApi) PostObjectAction(ctx echo.Context, globalExpect instance.MonitorGlobalExpect) error {
+func (a *DaemonApi) PostSvcActionProvision(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectProvisioned)
+}
+
+func (a *DaemonApi) PostVolActionProvision(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectProvisioned)
+}
+
+func (a *DaemonApi) PostSvcActionPurge(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectPurged)
+}
+
+func (a *DaemonApi) PostVolActionPurge(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectPurged)
+}
+
+func (a *DaemonApi) PostSvcActionStart(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectStarted)
+}
+
+func (a *DaemonApi) PostSvcActionStop(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectStopped)
+}
+
+func (a *DaemonApi) PostSvcActionUnfreeze(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectThawed)
+}
+
+func (a *DaemonApi) PostVolActionUnfreeze(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectThawed)
+}
+
+func (a *DaemonApi) PostSvcActionUnprovision(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "svc", name, instance.MonitorGlobalExpectUnprovisioned)
+}
+
+func (a *DaemonApi) PostVolActionUnprovision(ctx echo.Context, namespace, name string) error {
+	return a.PostObjectAction(ctx, namespace, "vol", name, instance.MonitorGlobalExpectUnprovisioned)
+}
+
+func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace, kind, name string, globalExpect instance.MonitorGlobalExpect) error {
 	var (
-		payload = api.PostObjectAction{}
-		value   = instance.MonitorUpdate{}
-		p       path.T
-		err     error
+		value = instance.MonitorUpdate{}
+		p     path.T
+		err   error
 	)
-	if err := ctx.Bind(&payload); err != nil {
-		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
-	}
-	p, err = path.Parse(payload.Path)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "Invalid path: %s", payload.Path)
+	if p, err = path.New(name, namespace, kind); err != nil {
+		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
 	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", payload.Path)
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", p)
 	}
 	value = instance.MonitorUpdate{
 		GlobalExpect:             &globalExpect,

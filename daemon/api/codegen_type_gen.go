@@ -549,17 +549,6 @@ type PostNodeDRBDConfigRequest struct {
 	Data         []byte             `json:"data"`
 }
 
-// PostObjectAction defines model for PostObjectAction.
-type PostObjectAction struct {
-	Path string `json:"path"`
-}
-
-// PostObjectActionSwitch defines model for PostObjectActionSwitch.
-type PostObjectActionSwitch struct {
-	Destination []string `json:"destination"`
-	Path        string   `json:"path"`
-}
-
 // PostObjectClear defines model for PostObjectClear.
 type PostObjectClear struct {
 	Path string `json:"path"`
@@ -579,6 +568,11 @@ type PostRelayMessage struct {
 	ClusterName string `json:"cluster_name"`
 	Msg         string `json:"msg"`
 	Nodename    string `json:"nodename"`
+}
+
+// PostSvcActionSwitch defines model for PostSvcActionSwitch.
+type PostSvcActionSwitch struct {
+	Destination []string `json:"destination"`
 }
 
 // Problem defines model for Problem.
@@ -770,6 +764,15 @@ type Roles = []Role
 
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
+
+// KindPathParam defines model for kindPathParam.
+type KindPathParam = string
+
+// NamePathParam defines model for namePathParam.
+type NamePathParam = string
+
+// NamespacePathParam defines model for namespacePathParam.
+type NamespacePathParam = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -984,41 +987,11 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatusItem
 
+// PostSvcActionSwitchJSONRequestBody defines body for PostSvcActionSwitch for application/json ContentType.
+type PostSvcActionSwitchJSONRequestBody = PostSvcActionSwitch
+
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
-
-// PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
-type PostObjectActionAbortJSONRequestBody = PostObjectAction
-
-// PostObjectActionDeleteJSONRequestBody defines body for PostObjectActionDelete for application/json ContentType.
-type PostObjectActionDeleteJSONRequestBody = PostObjectAction
-
-// PostObjectActionFreezeJSONRequestBody defines body for PostObjectActionFreeze for application/json ContentType.
-type PostObjectActionFreezeJSONRequestBody = PostObjectAction
-
-// PostObjectActionGivebackJSONRequestBody defines body for PostObjectActionGiveback for application/json ContentType.
-type PostObjectActionGivebackJSONRequestBody = PostObjectAction
-
-// PostObjectActionProvisionJSONRequestBody defines body for PostObjectActionProvision for application/json ContentType.
-type PostObjectActionProvisionJSONRequestBody = PostObjectAction
-
-// PostObjectActionPurgeJSONRequestBody defines body for PostObjectActionPurge for application/json ContentType.
-type PostObjectActionPurgeJSONRequestBody = PostObjectAction
-
-// PostObjectActionStartJSONRequestBody defines body for PostObjectActionStart for application/json ContentType.
-type PostObjectActionStartJSONRequestBody = PostObjectAction
-
-// PostObjectActionStopJSONRequestBody defines body for PostObjectActionStop for application/json ContentType.
-type PostObjectActionStopJSONRequestBody = PostObjectAction
-
-// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
-type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
-
-// PostObjectActionUnfreezeJSONRequestBody defines body for PostObjectActionUnfreeze for application/json ContentType.
-type PostObjectActionUnfreezeJSONRequestBody = PostObjectAction
-
-// PostObjectActionUnprovisionJSONRequestBody defines body for PostObjectActionUnprovision for application/json ContentType.
-type PostObjectActionUnprovisionJSONRequestBody = PostObjectAction
 
 // PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
 type PostObjectClearJSONRequestBody = PostObjectClear
