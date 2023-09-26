@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -38,7 +37,6 @@ type (
 		ctx           context.Context
 		cancel        context.CancelFunc
 		cmdC          chan any
-		databus       *daemondata.T
 		drainDuration time.Duration
 		bus           *pubsub.Bus
 		log           zerolog.Logger
@@ -85,7 +83,6 @@ func New(drainDuration time.Duration) *ccfg {
 // Start launches the ccfg worker goroutine
 func (o *ccfg) Start(parent context.Context) error {
 	o.ctx, o.cancel = context.WithCancel(parent)
-	o.databus = daemondata.FromContext(o.ctx)
 	o.bus = pubsub.BusFromContext(o.ctx)
 	cmdC = o.cmdC
 
