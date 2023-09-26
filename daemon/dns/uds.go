@@ -274,16 +274,34 @@ func (t *dns) startUDSListener() error {
 		}
 	}
 	listen := func() {
-		defer l.Close()
+		go func() {
+			defer l.Close()
+			select {
+			case <-t.ctx.Done():
+				return
+			}
+		}()
 
 		for {
 			conn, err := l.Accept()
-			if err != nil {
+			if err != nil && errors.Is(err, net.ErrClosed) {
+				return
+			} else {
 				t.log.Error().Err(err).Msg("UDS accept")
 			}
-			go serve(conn)
+			t.wg.Add(1)
+			go func() {
+				defer t.wg.Done()
+				serve(conn)
+			}()
 		}
 	}
-	go listen()
+
+	t.wg.Add(1)
+	go func() {
+		defer t.wg.Done()
+		listen()
+	}()
+
 	return nil
 }
