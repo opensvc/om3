@@ -3,7 +3,7 @@ package commands
 import (
 	"context"
 
-	"github.com/opensvc/om3/daemon/daemoncli"
+	"github.com/opensvc/om3/daemon/daemoncmd"
 )
 
 type (
@@ -32,5 +32,5 @@ func (t *CmdDaemonStart) Run() error {
 		return err
 	}
 	ctx := context.Background()
-	return daemoncli.NewContext(ctx, cli).StartFromCmd(ctx, t.Foreground, t.CpuProfile)
+	return daemoncmd.NewContext(ctx, cli).StartFromCmd(ctx, t.Foreground, t.CpuProfile)
 }
