@@ -5,6 +5,7 @@ package istat
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,12 +40,14 @@ type (
 
 		log zerolog.Logger
 
-		ctx context.Context
+		ctx    context.Context
+		cancel context.CancelFunc
 
 		bus *pubsub.Bus
 		sub *pubsub.Subscription
 
 		labelLocalhost pubsub.Label
+		wg             sync.WaitGroup
 	}
 )
 
@@ -53,41 +56,51 @@ var (
 	SubscriptionQueueSize = 1000
 )
 
-func Start(ctx context.Context) error {
+func New() *T {
 	localhost := hostname.Hostname()
-	t := T{
-		ctx: ctx,
-		bus: pubsub.BusFromContext(ctx),
-		log: log.Logger.With().Str("func", "istat").Logger(),
-
+	return &T{
+		log:            log.Logger.With().Str("func", "istat").Logger(),
 		iStatusM:       make(map[string]instance.Status),
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
+}
 
-	sub := t.bus.Sub("istats", pubsub.WithQueueSize(SubscriptionQueueSize))
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.InstanceStatusPost{}, t.labelLocalhost)
-	sub.Start()
-	t.sub = sub
+func (t *T) Start(ctx context.Context) error {
+	err := make(chan error)
+	t.wg.Add(1)
+	go func(errC chan<- error) {
+		defer t.wg.Done()
+		defer t.log.Info().Msg("stopped")
 
-	started := make(chan error)
-	go func() {
-		t.log.Info().Msg("started")
-		started <- nil
+		t.ctx, t.cancel = context.WithCancel(ctx)
+		t.bus = pubsub.BusFromContext(t.ctx)
+
+		sub := t.bus.Sub("istats", pubsub.WithQueueSize(SubscriptionQueueSize))
+		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.InstanceStatusPost{}, t.labelLocalhost)
+		sub.Start()
+		t.sub = sub
+
 		defer func() {
 			if err := sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Warn().Err(err).Msg("subscription stop")
 			}
-			t.log.Info().Msg("done")
 		}()
-
+		t.log.Info().Msg("started")
+		errC <- nil
 		t.worker()
-	}()
+	}(err)
 
-	return <-started
+	return <-err
+}
+
+func (t *T) Stop() error {
+	t.cancel()
+	t.wg.Wait()
+	return nil
 }
 
 func (t *T) worker() {
