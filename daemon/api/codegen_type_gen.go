@@ -852,6 +852,24 @@ type GetInstancesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
+// GetInstancesBacklogsParams defines parameters for GetInstancesBacklogs.
+type GetInstancesBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetInstancesLogsParams defines parameters for GetInstancesLogs.
+type GetInstancesLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	// Evaluate evaluate
@@ -859,6 +877,24 @@ type GetObjectConfigParams struct {
 
 	// Impersonate impersonate the evaluation as node
 	Impersonate *ImpersonateQueryParam `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// GetInstanceBacklogsParams defines parameters for GetInstanceBacklogs.
+type GetInstanceBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.
@@ -907,24 +943,6 @@ type GetNodeLogsParams struct {
 type GetNodesParams struct {
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetObjectBacklogsParams defines parameters for GetObjectBacklogs.
-type GetObjectBacklogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
-}
-
-// GetObjectLogsParams defines parameters for GetObjectLogs.
-type GetObjectLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetObjectPathsParams defines parameters for GetObjectPaths.

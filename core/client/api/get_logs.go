@@ -86,11 +86,11 @@ func (t *GetLogs) GetReader() (event.ReadCloser, error) {
 
 func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 	if t.Paths != nil {
-		params := api.GetObjectLogsParams{
+		params := api.GetInstancesLogsParams{
 			Filter: t.Filters,
 			Paths:  *t.Paths,
 		}
-		resp, err = t.client.GetObjectLogs(context.Background(), &params)
+		resp, err = t.client.GetInstancesLogs(context.Background(), &params)
 	} else {
 		params := api.GetNodeLogsParams{
 			Filter: t.Filters,

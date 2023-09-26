@@ -372,7 +372,7 @@ paths:
     get:
       operationId: GetInstances
       tags:
-        - instance
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -397,7 +397,7 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - instance
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -459,7 +459,7 @@ paths:
     get:
       operationId: GetNetworks
       tags:
-        - network
+        - networks
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -488,7 +488,7 @@ paths:
     get:
       operationId: GetNetworkIp
       tags:
-        - network
+        - networks
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -521,7 +521,7 @@ paths:
     get:
       operationId: GetNodes
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -546,7 +546,7 @@ paths:
     post:
       operationId: PostNodeActionDrain
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -573,7 +573,7 @@ paths:
     get:
       operationId: GetNodeDRBDAllocation
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -590,7 +590,7 @@ paths:
     post:
       operationId: PostNodeClear
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -610,7 +610,7 @@ paths:
     get:
       operationId: GetNodeDRBDConfig
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -634,7 +634,7 @@ paths:
     post:
       operationId: PostNodeDRBDConfig
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -662,7 +662,7 @@ paths:
     get:
       operationId: GetNodeBacklogs
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -688,7 +688,7 @@ paths:
     get:
       operationId: GetNodeLogs
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -714,7 +714,7 @@ paths:
     get:
       operationId: GetNodesInfo
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -735,7 +735,7 @@ paths:
     get:
       operationId: GetObjects
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -758,11 +758,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/backlogs:
+  /instances/backlogs:
     get:
-      operationId: GetObjectBacklogs
+      operationId: GetInstancesBacklogs
       tags:
-        - object
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -784,11 +784,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/logs:
+  /instances/logs:
     get:
-      operationId: GetObjectLogs
+      operationId: GetInstancesLogs
       tags:
-        - object
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -810,11 +810,77 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/backlogs:
+    get:
+      operationId: GetInstanceBacklogs
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve recent logs
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/logs:
+    get:
+      operationId: GetInstanceLogs
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve new logs
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/clear:
     post:
       operationId: PostObjectClear
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -838,7 +904,7 @@ paths:
     post:
       operationId: PostObjectProgress
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -862,7 +928,7 @@ paths:
     get:
       operationId: GetObjectPaths
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1581,7 +1647,7 @@ paths:
     get:
       operationId: GetPools
       tags:
-        - storage
+        - pools
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1609,7 +1675,7 @@ paths:
     get:
       operationId: GetPoolVolumes
       tags:
-        - storage
+        - pools
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1702,7 +1768,7 @@ paths:
     get:
       operationId: GetResources
       tags:
-        - resource
+        - resources
       security:
         - basicAuth: []
         - bearerAuth: []
