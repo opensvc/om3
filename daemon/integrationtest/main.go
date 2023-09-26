@@ -1,6 +1,7 @@
 package integrationtest
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,12 +48,13 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	rawconfig.LoadSections()
 
 	t.Logf("RunDaemon")
-	runDaemon, err := daemon.RunDaemon()
+	mainDaemon := daemon.New()
+	err := mainDaemon.Start(context.Background())
 	require.NoError(t, err)
 
 	stop := func() {
 		t.Logf("Stopping daemon with osvc_root_path=%s", env.Root)
-		err := runDaemon.Stop()
+		err := mainDaemon.Stop()
 		assert.NoError(t, err, "Stop Daemon error")
 		t.Logf("Stopped daemon with osvc_root_path=%s", env.Root)
 		time.Sleep(250 * time.Millisecond)
@@ -64,9 +66,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	t.Logf("wait %s", waitRunningDuration)
 	time.Sleep(waitRunningDuration)
 
-	t.Logf("Verify daemon is running")
-	require.True(t, runDaemon.Running())
-	t.Logf("Verify daemon is running ok")
 	return env, stop
 }
 
