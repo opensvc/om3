@@ -100,10 +100,10 @@ func (t *T) Start(ctx context.Context) error {
 	go t.notifyWatchDogSys(t.ctx)
 
 	t.wg.Add(1)
-	go func() {
+	go func(ctx context.Context) {
 		defer t.wg.Done()
-		t.notifyWatchDogBus()
-	}()
+		t.notifyWatchDogBus(ctx)
+	}(t.ctx)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
 	t.stopFuncs = append(t.stopFuncs, func() error {
@@ -111,6 +111,7 @@ func (t *T) Start(ctx context.Context) error {
 		dataCmdCancel()
 		return nil
 	})
+
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
@@ -252,7 +253,7 @@ func (t *T) startComponent(ctx context.Context, a startStopper) error {
 	return nil
 }
 
-func (t *T) notifyWatchDogBus() {
+func (t *T) notifyWatchDogBus(ctx context.Context) {
 	defer t.log.Info().Msg("watch dog bus done")
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
@@ -260,7 +261,7 @@ func (t *T) notifyWatchDogBus() {
 	msg := msgbus.WatchDog{Bus: t.bus.Name()}
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			t.bus.Pub(&msg, labels...)
