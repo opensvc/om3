@@ -8,6 +8,7 @@ package cstat
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,23 +40,26 @@ type (
 		change      bool
 
 		sub *pubsub.Subscription
+		wg  sync.WaitGroup
 	}
 )
 
-// Start launches the cstat worker goroutine
-func Start(parent context.Context) error {
-	ctx, cancel := context.WithCancel(parent)
-
-	o := &cstat{
-		ctx:        ctx,
-		cancel:     cancel,
-		bus:        pubsub.BusFromContext(ctx),
+func New() *cstat {
+	return &cstat{
 		log:        log.Logger.With().Str("func", "cstat").Logger(),
 		nodeStatus: make(map[string]node.Status),
 	}
+}
+
+// Start launches the cstat worker goroutine
+func (o *cstat) Start(parent context.Context) error {
+	o.ctx, o.cancel = context.WithCancel(parent)
+	o.bus = pubsub.BusFromContext(o.ctx)
 
 	o.startSubscriptions()
+	o.wg.Add(1)
 	go func() {
+		defer o.wg.Done()
 		defer func() {
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Error().Err(err).Msg("subscription stop")
@@ -63,6 +67,12 @@ func Start(parent context.Context) error {
 		}()
 		o.worker()
 	}()
+	return nil
+}
+
+func (o *cstat) Stop() error {
+	o.cancel()
+	o.wg.Wait()
 	return nil
 }
 
