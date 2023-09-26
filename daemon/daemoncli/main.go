@@ -427,6 +427,11 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 			}
 			defer pprof.StopCPUProfile()
 		}
+		if t.daemonsys != nil {
+			if err := t.daemonsys.Close(); err != nil {
+				return fmt.Errorf("start daemon cli unable to close daemonsys: %w", err)
+			}
+		}
 		if err := t.Start(); err != nil {
 			return fmt.Errorf("start daemon cli: %w", err)
 		}
