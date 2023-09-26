@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -22,8 +23,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/routinehelper"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -31,23 +30,29 @@ import (
 
 type (
 	T struct {
-		*subdaemon.T
-		routinehelper.TT
-		log          zerolog.Logger
-		routineTrace routineTracer
-		rootDaemon   subdaemon.RootManager
-		txs          map[string]hbtype.Transmitter
-		rxs          map[string]hbtype.Receiver
+		log zerolog.Logger
+		txs map[string]hbtype.Transmitter
+		rxs map[string]hbtype.Receiver
 
-		ctrlC        chan<- any
+		ctrl  *hbctrl.C
+		ctrlC chan<- any
+
 		readMsgQueue chan *hbtype.Msg
 
-		registerTxC   chan registerTxQueue
-		unregisterTxC chan string
+		msgToTxRegister   chan registerTxQueue
+		msgToTxUnregister chan string
+		msgToTxCtx        context.Context
 
 		ridSignature map[string]string
 
 		sub *pubsub.Subscription
+
+		// ctx is the main context for controller, and started hb drivers
+		ctx context.Context
+
+		// cancel is the cancel function for msgToTx, msgFromRx, janitor
+		cancel context.CancelFunc
+		wg     sync.WaitGroup
 	}
 
 	registerTxQueue struct {
@@ -55,26 +60,15 @@ type (
 		// msgToSendQueue is the queue on which a tx fetch messages to send
 		msgToSendQueue chan []byte
 	}
-
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
-	}
 )
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	t.log = log.Logger.With().Str("sub", "hb").Logger()
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
 		return nil
 	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("hb"),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
 	t.readMsgQueue = make(chan *hbtype.Msg)
@@ -82,28 +76,55 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-// MainStart starts heartbeat components
+// Start startup the heartbeat components
 //
 // It starts:
-// - the hb controller to maintain heartbeat status and peers
+// with ctx:
+//   - the hb controller to maintain heartbeat status and peers
+//     It is firstly started and lastly stopped
+//   - hb drivers
+//
+// with cancelable context
 // - the dispatcher of messages to send to hb tx components
 // - the dispatcher of read messages from hb rx components to daemon data
-// - the launcher of tx, rx components found in configuration
-func (t *T) MainStart(ctx context.Context) error {
-	t.ctrlC = hbctrl.Start(ctx)
+// - the goroutine responsible for hb drivers lifecycle
+func (t *T) Start(ctx context.Context) error {
+	t.log.Info().Msg("starting hb")
 
+	// we have to start controller routine first (it will be used by hb drivers)
+	// It uses main context ctx: it is the last go routine to stop (after t.cancel() & t.wg.Wait())
+	t.ctrl = hbctrl.New()
+	t.ctrlC = t.ctrl.Start(ctx)
+
+	// t.ctx will be used to start hb drivers
+	t.ctx = ctx
+
+	// create cancelable context to cancel other routines
+	ctx, cancel := context.WithCancel(ctx)
+	t.cancel = cancel
 	err := t.msgToTx(ctx)
 	if err != nil {
 		return err
 	}
 
-	go t.msgFromRx(ctx)
+	t.wg.Add(1)
+	go func() {
+		defer t.wg.Done()
+		t.msgFromRx(ctx)
+	}()
 
-	t.startJanitorHb(ctx)
+	t.janitor(ctx)
+	t.log.Info().Msg("started hb")
 	return nil
 }
 
-func (t *T) MainStop() error {
+func (t *T) Stop() error {
+	t.log.Info().Msg("stopping hb")
+	defer t.log.Info().Msg("stopped hb")
+
+	// this will cancel janitor, msgToTx, msgFromRx and hb drivers context
+	t.cancel()
+
 	hbToStop := make([]hbtype.IdStopper, 0)
 	var failedIds []string
 	for _, hb := range t.txs {
@@ -121,6 +142,14 @@ func (t *T) MainStop() error {
 	if len(failedIds) > 0 {
 		return fmt.Errorf("failure while stopping heartbeat %s", strings.Join(failedIds, ", "))
 	}
+
+	t.wg.Wait()
+
+	// We can now stop the controller
+	if err := t.ctrl.Stop(); err != nil {
+		t.log.Error().Err(err).Msgf("failure during stop hbctrl")
+	}
+
 	return nil
 }
 
@@ -128,7 +157,11 @@ func (t *T) stopHb(hb hbtype.IdStopper) error {
 	hbId := hb.Id()
 	switch hb.(type) {
 	case hbtype.Transmitter:
-		t.unregisterTxC <- hbId
+		select {
+		case <-t.msgToTxCtx.Done():
+			// don't hang up when context is done
+		case t.msgToTxUnregister <- hbId:
+		}
 	}
 	t.ctrlC <- hbctrl.CmdUnregister{Id: hbId}
 	return hb.Stop()
@@ -157,8 +190,12 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 		t.ctrlC <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
 		return err
 	}
-	t.registerTxC <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}
-	t.txs[hb.Name()] = tx
+	select {
+	case <-t.msgToTxCtx.Done():
+		// don't hang up when context is done
+	case t.msgToTxRegister <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}:
+		t.txs[hb.Name()] = tx
+	}
 	return nil
 }
 
@@ -265,16 +302,23 @@ func (t *T) rescanHb(ctx context.Context) error {
 	return errs
 }
 
-// msgToTx starts a msg multiplexer data messages to hb tx drivers
+// msgToTx starts the goroutine to multiplex data messages to hb tx drivers
+//
+// It ends when ctx is done
 func (t *T) msgToTx(ctx context.Context) error {
 	msgC := make(chan hbtype.Msg)
 	databus := daemondata.FromContext(ctx)
 	if err := databus.SetHBSendQ(msgC); err != nil {
 		return fmt.Errorf("msgToTx can't set daemondata HBSendQ")
 	}
-	t.registerTxC = make(chan registerTxQueue)
-	t.unregisterTxC = make(chan string)
+	t.msgToTxRegister = make(chan registerTxQueue)
+	t.msgToTxUnregister = make(chan string)
+	t.msgToTxCtx = ctx
+	t.wg.Add(1)
 	go func() {
+		defer t.wg.Done()
+		defer t.log.Info().Msg("multiplexer message to hb tx drivers stopped")
+		t.log.Info().Msg("multiplexer message to hb tx drivers started")
 		defer func() {
 			if err := databus.SetHBSendQ(nil); err != nil {
 				t.log.Error().Err(err).Msg("msgToTx can't unset daemondata HBSendQ")
@@ -289,8 +333,8 @@ func (t *T) msgToTx(ctx context.Context) error {
 					return
 				case <-msgC:
 					t.log.Debug().Msgf("msgToTx drop msg (done context)")
-				case <-t.registerTxC:
-				case <-t.unregisterTxC:
+				case <-t.msgToTxRegister:
+				case <-t.msgToTxUnregister:
 				}
 			}
 		}()
@@ -298,10 +342,10 @@ func (t *T) msgToTx(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return
-			case c := <-t.registerTxC:
+			case c := <-t.msgToTxRegister:
 				t.log.Debug().Msgf("add %s to hb transmitters", c.id)
 				registeredTxMsgQueue[c.id] = c.msgToSendQueue
-			case txId := <-t.unregisterTxC:
+			case txId := <-t.msgToTxUnregister:
 				t.log.Debug().Msgf("remove %s from hb transmitters", txId)
 				delete(registeredTxMsgQueue, txId)
 			case msg := <-msgC:
@@ -317,7 +361,12 @@ func (t *T) msgToTx(ctx context.Context) error {
 					continue
 				}
 				for _, txQueue := range registeredTxMsgQueue {
-					txQueue <- b
+					select {
+					case <-ctx.Done():
+						// don't hang up when context is done
+						return
+					case txQueue <- b:
+					}
 				}
 			}
 		}
@@ -330,7 +379,11 @@ func (t *T) msgToTx(ctx context.Context) error {
 //
 // When multiple hb rx are running, we can get multiple times the same hb message,
 // but only one hb decoded message is forwarded to daemondata HBRecvMsgQ
+//
+// It ends when ctx is done
 func (t *T) msgFromRx(ctx context.Context) {
+	defer t.log.Info().Msg("message receiver from hb rx drivers stopped")
+	t.log.Info().Msg("message receiver from hb rx drivers started")
 	count := 0.0
 	statTicker := time.NewTicker(60 * time.Second)
 	defer statTicker.Stop()
@@ -366,10 +419,15 @@ func (t *T) msgFromRx(ctx context.Context) {
 				t.log.Debug().Msgf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				continue
 			}
-			t.log.Debug().Msgf("process msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
-			msgTimes[peer] = msg.UpdatedAt
-			dataMsgRecvQ <- msg
-			count++
+			select {
+			case <-ctx.Done():
+				// don't hang up when context is done
+				return
+			case dataMsgRecvQ <- msg:
+				t.log.Debug().Msgf("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				msgTimes[peer] = msg.UpdatedAt
+				count++
+			}
 		}
 	}
 }
@@ -382,7 +440,13 @@ func (t *T) startSubscriptions(ctx context.Context) {
 	t.sub.Start()
 }
 
-func (t *T) startJanitorHb(ctx context.Context) {
+// janitor starts the goroutine responsible for hb drivers lifecycle.
+//
+// It ends when ctx is done.
+//
+// It watches cluster InstanceConfigUpdated and DaemonCtl to (re)start hb drivers
+// When a hb driver is started, it will use the main context t.ctx.
+func (t *T) janitor(ctx context.Context) {
 	t.startSubscriptions(ctx)
 	started := make(chan bool)
 
@@ -390,7 +454,9 @@ func (t *T) startJanitorHb(ctx context.Context) {
 		t.log.Error().Err(err).Msg("initial rescan on janitor hb start")
 	}
 
+	t.wg.Add(1)
 	go func() {
+		defer t.wg.Done()
 		started <- true
 		defer func() {
 			if err := t.sub.Stop(); err != nil {
@@ -408,7 +474,7 @@ func (t *T) startJanitorHb(ctx context.Context) {
 						continue
 					}
 					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
-					_ = t.rescanHb(ctx)
+					_ = t.rescanHb(t.ctx)
 					t.log.Info().Msg("rescan heartbeat configurations done")
 				case *msgbus.DaemonCtl:
 					hbId := msg.Component
@@ -420,7 +486,7 @@ func (t *T) startJanitorHb(ctx context.Context) {
 					case "stop":
 						t.daemonCtlStop(hbId, action)
 					case "start":
-						t.daemonCtlStart(ctx, hbId, action)
+						t.daemonCtlStart(t.ctx, hbId, action)
 					}
 				}
 			}
@@ -479,7 +545,11 @@ func (t *T) daemonCtlStop(hbId string, action string) {
 	t.log.Info().Msgf("ask to %s %s", action, hbId)
 	switch hbI.(type) {
 	case hbtype.Transmitter:
-		t.unregisterTxC <- hbId
+		select {
+		case <-t.msgToTxCtx.Done():
+		// don't hang up when context is done
+		case t.msgToTxUnregister <- hbId:
+		}
 	}
 	if err := hbI.(hbtype.IdStopper).Stop(); err != nil {
 		t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)

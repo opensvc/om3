@@ -11,8 +11,6 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/rbac"
-	"github.com/opensvc/om3/daemon/subdaemon"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -22,16 +20,16 @@ type (
 	}
 
 	DaemonApi struct {
-		Daemon     subdaemon.RootManager
 		Daemondata *daemondata.T
 		EventBus   *pubsub.Bus
 		JWTcreator JWTCreater
+
+		LabelNode pubsub.Label
 	}
 )
 
 var (
-	labelApi  = pubsub.Label{"origin", "api"}
-	labelNode = pubsub.Label{"node", hostname.Hostname()}
+	labelApi = pubsub.Label{"origin", "api"}
 )
 
 func JSONProblem(ctx echo.Context, code int, title, detail string) error {

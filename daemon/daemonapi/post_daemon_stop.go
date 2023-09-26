@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonApi) PostDaemonStop(ctx echo.Context) error {
@@ -28,21 +29,9 @@ func (a *DaemonApi) PostDaemonStop(ctx echo.Context) error {
 		time.Sleep(2 * daemondata.PropagationInterval())
 	}
 
-	if a.Daemon.Running() {
-		maintenance()
+	maintenance()
 
-		log.Info().Msg("daemon stopping")
-		go func() {
-			// Give time for response received by client before stop daemon
-			time.Sleep(50 * time.Millisecond)
-			if err := a.Daemon.Stop(); err != nil {
-				log.Error().Err(err).Msg("daemon stop failure")
-				return
-			}
-			log.Info().Msg("daemon stopped")
-		}()
-		return JSONProblem(ctx, http.StatusOK, "Daemon stopping", "")
-	} else {
-		return JSONProblem(ctx, http.StatusOK, "Daemon is already stopping", "")
-	}
+	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
+		pubsub.Label{"id", "daemon"}, labelApi, a.LabelNode)
+	return JSONProblem(ctx, http.StatusOK, "announce maintenance state and ask daemon to stop", "")
 }

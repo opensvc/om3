@@ -26,6 +26,6 @@ func (a *DaemonApi) PostDaemonLeave(ctx echo.Context, params api.PostDaemonLeave
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
 	}
 	log.Info().Msgf("publish leave request for node %s", node)
-	a.EventBus.Pub(&msgbus.LeaveRequest{Node: node}, labelApi, labelNode)
+	a.EventBus.Pub(&msgbus.LeaveRequest{Node: node}, labelApi, a.LabelNode)
 	return ctx.JSON(http.StatusOK, nil)
 }

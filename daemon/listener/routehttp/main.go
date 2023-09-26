@@ -15,8 +15,8 @@ import (
 
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonapi"
-	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -43,10 +43,10 @@ func New(ctx context.Context, enableUi bool) *T {
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
 	api.RegisterHandlers(e, &daemonapi.DaemonApi{
-		Daemon:     daemonctx.Daemon(ctx),
 		Daemondata: daemondata.FromContext(ctx),
 		EventBus:   pubsub.BusFromContext(ctx),
 		JWTcreator: ctx.Value("JWTCreator").(daemonapi.JWTCreater),
+		LabelNode: pubsub.Label{"node", hostname.Hostname()},
 	})
 	g := e.Group("/public/ui")
 	if enableUi {

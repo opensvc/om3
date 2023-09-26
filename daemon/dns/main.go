@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,6 +40,8 @@ type (
 	}
 
 	dns struct {
+		drainDuration time.Duration
+
 		// state is a map indexed by object path where the key is a zone fragment regrouping all records created for this object.
 		// Using this map layout permits fast records drop on InstanceStatusDeleted.
 		// The zone data is obtained by merging all map values.
@@ -59,6 +62,8 @@ type (
 		pendingCancel context.CancelFunc
 
 		sub *pubsub.Subscription
+
+		wg sync.WaitGroup
 	}
 
 	cmdGet struct {
@@ -86,20 +91,23 @@ func init() {
 	cmdC = make(chan any)
 }
 
-// Start launches the dns worker goroutine
-func Start(parent context.Context, drainDuration time.Duration) error {
-	ctx, cancel := context.WithCancel(parent)
-
-	t := &dns{
-		cluster: ccfg.Get(),
-		ctx:     ctx,
-		cancel:  cancel,
-		cmdC:    make(chan any),
-		bus:     pubsub.BusFromContext(ctx),
-		log:     log.Logger.With().Str("func", "dns").Logger(),
-		state:   make(map[stateKey]Zone),
-		score:   make(map[string]uint64),
+func New(d time.Duration) *dns {
+	return &dns{
+		cmdC:          make(chan any),
+		drainDuration: d,
+		log:           log.Logger.With().Str("func", "dns").Logger(),
+		state:         make(map[stateKey]Zone),
+		score:         make(map[string]uint64),
 	}
+}
+
+// Start launches the dns worker goroutine
+func (t *dns) Start(parent context.Context) error {
+	t.log.Info().Msg("dns starting")
+	t.ctx, t.cancel = context.WithCancel(parent)
+	t.cluster = ccfg.Get()
+
+	t.bus = pubsub.BusFromContext(t.ctx)
 
 	t.startSubscriptions()
 
@@ -107,12 +115,14 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		return err
 	}
 
+	t.wg.Add(1)
 	go func() {
+		t.wg.Done()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Error().Err(err).Msg("subscription stop")
 			}
-			draincommand.Do(t.cmdC, drainDuration)
+			draincommand.Do(t.cmdC, t.drainDuration)
 		}()
 		t.worker()
 	}()
@@ -120,6 +130,15 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	// start serving
 	cmdC = t.cmdC
 
+	t.log.Info().Msg("dns started")
+	return nil
+}
+
+func (t *dns) Stop() error {
+	t.log.Info().Msg("dns stopping")
+	defer t.log.Info().Msg("dns stopped")
+	t.cancel()
+	t.wg.Wait()
 	return nil
 }
 

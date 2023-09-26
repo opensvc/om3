@@ -1,4 +1,4 @@
-package daemoncli
+package daemoncmd
 
 import (
 	"context"
@@ -389,7 +389,7 @@ func (t *T) stop() error {
 	return b
 }
 
-func (t *T) start() (waiter, error) {
+func (t *T) start() (*daemon.T, error) {
 	if err := capabilities.Scan(); err != nil {
 		return nil, err
 	}
@@ -403,13 +403,9 @@ func (t *T) start() (waiter, error) {
 		log.Debug().Msg("Already started")
 		return nil, nil
 	}
-	log.Debug().Msg("cli-start RunDaemon")
-	d, err := daemon.RunDaemon()
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Msg("cli-start daemon started")
-	return d, nil
+	d := daemon.New()
+	log.Debug().Msg("cli-start starts daemon...")
+	return d, d.Start(context.Background())
 }
 
 func (t *T) startFromCmd(foreground bool, profile string) error {
@@ -426,6 +422,11 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 				return fmt.Errorf("start CPU profile: %w", err)
 			}
 			defer pprof.StopCPUProfile()
+		}
+		if t.daemonsys != nil {
+			if err := t.daemonsys.Close(); err != nil {
+				return fmt.Errorf("start daemon cli unable to close daemonsys: %w", err)
+			}
 		}
 		if err := t.Start(); err != nil {
 			return fmt.Errorf("start daemon cli: %w", err)

@@ -2,9 +2,8 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/http"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -14,39 +13,16 @@ import (
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpux"
-	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/routinehelper"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (
 	T struct {
-		*subdaemon.T
-		routinehelper.TT
-		log          zerolog.Logger
-		loopC        chan action
-		loopDelay    time.Duration
-		loopEnabled  *enable.T
-		routineTrace routineTracer
-		rootDaemon   subdaemon.RootManager
-		httpHandler  http.Handler
-	}
-	action struct {
-		do   string
-		done chan string
-	}
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
-	}
-
-	sub struct {
-		new        func(t *T) subdaemon.Manager
-		subActions subdaemon.Manager
+		log      zerolog.Logger
+		stopFunc []func() error
+		cancel   context.CancelFunc
 	}
 
 	// authOption implements interfaces for daemonauth.Init
@@ -72,58 +48,30 @@ func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-func getMandatorySub() map[string]sub {
-	clusterConfig := ccfg.Get()
-	subs := make(map[string]sub)
-	subs["listenerHttpUx"] = sub{
-		new: func(t *T) subdaemon.Manager {
-			return lsnrhttpux.New(
-				lsnrhttpux.WithRoutineTracer(&t.TT),
-				lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
-				lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
-				lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
-			)
-		},
-	}
-	if clusterConfig.Listener.Port > 0 {
-		subs["listenerHttpInet"] = sub{
-			new: func(t *T) subdaemon.Manager {
-				return lsnrhttpinet.New(
-					lsnrhttpinet.WithRoutineTracer(&t.TT),
-					lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
-					lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
-					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
-				)
-			},
-		}
-	}
-	return subs
-}
-
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   1 * time.Second,
-		loopEnabled: enable.New(),
-		log:         log.Logger.With().Str("name", "listener").Logger(),
+		log: log.Logger.With().Str("name", "listener").Logger(),
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
 	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("listener"),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
-	t.log = t.Log()
-	t.loopC = make(chan action)
 	return t
 }
 
-func (t *T) MainStart(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
+	t.log.Info().Msg("listeners starting")
+	ctx, cancel := context.WithCancel(ctx)
+	t.cancel = cancel
+	type startStopper interface {
+		Start(context.Context) error
+		Stop() error
+	}
+
 	if err := startCertFS(); err != nil {
 		t.log.Err(err).Msgf("start certificates volatile fs")
+	} else {
+		t.stopFunc = append(t.stopFunc, stopCertFS)
 	}
 	if strategies, err := daemonauth.InitStategies(&authOption{}); err != nil {
 		return err
@@ -131,52 +79,39 @@ func (t *T) MainStart(ctx context.Context) error {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)
 		ctx = context.WithValue(ctx, "JWTCreator", &daemonauth.JWTCreator{})
 	}
-	started := make(chan bool)
-	go func() {
-		defer t.Trace(t.Name() + "-loop")()
-		defer func() {
-			_ = stopCertFS()
-		}()
-		//defer t.cancel()
-		started <- true
-		t.loop(ctx)
-	}()
-	t.httpHandler = routehttp.New(ctx, false)
-	for subName, sub := range getMandatorySub() {
-		sub.subActions = sub.new(t)
-		if err := t.Register(sub.subActions); err != nil {
-			t.log.Err(err).Msgf("%s register", subName)
+	clusterConfig := ccfg.Get()
+	for _, lsnr := range []startStopper{
+		lsnrhttpinet.New(
+			lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
+			lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
+			lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
+		),
+		lsnrhttpux.New(
+			lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
+			lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
+			lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
+		),
+	} {
+		if err := lsnr.Start(ctx); err != nil {
 			return err
 		}
-		if err := sub.subActions.Start(ctx); err != nil {
-			t.log.Err(err).Msgf("%s start", subName)
-			return err
-		}
+		t.stopFunc = append(t.stopFunc, lsnr.Stop)
 	}
-	<-started
+
+	t.log.Info().Msg("listeners started")
 	return nil
 }
 
-func (t *T) MainStop() error {
-	//t.cancel()
-	return nil
-}
-
-func (t *T) loop(ctx context.Context) {
-	t.log.Info().Msg("loop started")
-	t.aLoop()
-	ticker := time.NewTicker(t.loopDelay)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			t.log.Info().Msg("loop stopped")
-			return
-		case <-ticker.C:
-			t.aLoop()
+func (t *T) Stop() error {
+	t.log.Info().Msg("listeners stopping")
+	defer t.log.Info().Msg("listeners stopped")
+	var errs error
+	t.cancel()
+	for i, f := range t.stopFunc {
+		if err := f(); err != nil {
+			t.log.Error().Err(err).Msgf("stop listener %d", i)
+			errs = errors.Join(errs, errs)
 		}
 	}
-}
-
-func (t *T) aLoop() {
+	return errs
 }

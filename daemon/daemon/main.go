@@ -7,9 +7,11 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,7 +20,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -27,18 +28,14 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/daemon/discover"
 	"github.com/opensvc/om3/daemon/dns"
-	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/hb"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/listener"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/nmon"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/scheduler"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/version"
@@ -46,22 +43,19 @@ import (
 
 type (
 	T struct {
-		*subdaemon.T
-		routinehelper.TT
 		ctx    context.Context
 		cancel context.CancelFunc
 		log    zerolog.Logger
-		loopC  chan action
 
-		// loopDelay is the interval of sub... updates
-		loopDelay time.Duration
+		bus *pubsub.Bus
 
-		loopEnabled *enable.T
-		cancelFuncs []context.CancelFunc
+		stopFuncs []func() error
+		wg        sync.WaitGroup
 	}
-	action struct {
-		do   string
-		done chan string
+
+	startStopper interface {
+		Start(ctx context.Context) error
+		Stop() error
 	}
 )
 
@@ -69,116 +63,62 @@ var (
 	profiling = true
 )
 
-func New(opts ...funcopt.O) *T {
-	t := &T{
-		loopDelay:   1 * time.Second,
-		loopEnabled: enable.New(),
-		log:         log.Logger,
+func New() *T {
+	return &T{
+		log:       log.Logger,
+		stopFuncs: make([]func() error, 0),
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
-	if err := funcopt.Apply(t, opts...); err != nil {
-		return nil
-	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("root"),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
-	t.cancelFuncs = make([]context.CancelFunc, 0)
-	t.loopC = make(chan action)
-	return t
 }
 
-// RunDaemon starts main daemon
-func RunDaemon(opts ...funcopt.O) (*T, error) {
-	if profiling {
-		go startProfiling()
+// Start is used to startup mandatory daemon components
+func (t *T) Start(ctx context.Context) error {
+	if t.Running() {
+		return fmt.Errorf("can't start again, daemon is already running")
 	}
-
-	main := New(opts...)
-	ctx := context.Background()
-	if err := main.Start(ctx); err != nil {
-		main.log.Error().Err(err).Msg("daemon Start")
-		return main, err
-	}
-	return main, nil
-}
-
-// MainStart starts loop, mandatory subdaemons
-func (t *T) MainStart(ctx context.Context) error {
-	signal.Ignore(syscall.SIGHUP)
-	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-
-	go t.notifyWatchDog(ctx)
-
-	t.ctx = ctx
-	started := make(chan bool)
-	t.Add(1)
-	go func() {
-		defer t.Trace(t.Name() + "-loop")()
-		defer t.Done()
-		started <- true
-		t.loop()
-	}()
+	t.log.Info().Msg("daemon starting")
+	go startProfiling()
+	t.ctx, t.cancel = context.WithCancel(ctx)
 
 	bus := pubsub.NewBus("daemon")
 	bus.SetDefaultSubscriptionQueueSize(200)
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
-	bus.Start(t.ctx)
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop daemon pubsub bus")
-		bus.Stop()
-	})
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
-
+	t.wg.Add(1)
+	bus.Start(t.ctx)
+	t.bus = bus
+	t.stopFuncs = append(t.stopFuncs, func() error {
+		defer t.wg.Done()
+		t.log.Info().Msg("stop daemon pubsub bus")
+		t.bus.Stop()
+		t.log.Info().Msg("stopped daemon pubsub bus")
+		return nil
+	})
 	localhost := hostname.Hostname()
 
+	defer t.stopWatcher()
+
+	go t.notifyWatchDogSys(t.ctx)
+
+	t.wg.Add(1)
 	go func(ctx context.Context) {
-		labels := []pubsub.Label{
-			{"node", localhost},
-			{"bus", bus.Name()},
-		}
-		ticker := time.NewTicker(4 * time.Second)
-		defer ticker.Stop()
-		defer stop()
-		for {
-			select {
-			case <-ticker.C:
-				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
-			case <-notifyCtx.Done():
-				t.Stop()
-				return
-			case <-ctx.Done():
-				return
-			}
-		}
-	}(ctx)
-
-	t.ctx = daemonctx.WithDaemon(t.ctx, t)
-
-	hbcache.Start(t.ctx, 2*daemonenv.DrainChanDuration)
+		defer t.wg.Done()
+		t.notifyWatchDogBus(ctx)
+	}(t.ctx)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
-	t.cancelFuncs = append(t.cancelFuncs, func() {
+	t.stopFuncs = append(t.stopFuncs, func() error {
 		t.log.Debug().Msg("stop daemon data")
 		dataCmdCancel()
+		return nil
 	})
+
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
-	<-started
-
-	if err := ccfg.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+	// startup ccfg
+	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration)); err != nil {
 		return err
 	}
-	if err := cstat.Start(t.ctx); err != nil {
-		return err
-	}
-
-	if err := istat.Start(t.ctx); err != nil {
-		return err
-	}
-
 	initialCcfg := ccfg.Get()
 	if initialCcfg.Name == "" {
 		panic("cluster name read from ccfg is empty")
@@ -186,96 +126,155 @@ func (t *T) MainStart(ctx context.Context) error {
 	// Before any icfg, hb, or listener: ensure omcrypto has cluster name and secret
 	omcrypto.SetClusterName(initialCcfg.Name)
 	omcrypto.SetClusterSecret(initialCcfg.Secret())
-
 	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HttpPort {
 		// update daemonenv.HttpPort from live config value. Discover will need
 		// connect to peers to fetch config...
 		daemonenv.HttpPort = initialCcfg.Listener.Port
 	}
 
-	lsnr := listener.New(listener.WithRoutineTracer(&t.TT))
-	if err := t.Register(lsnr); err != nil {
-		return err
-	}
-	if err := lsnr.Start(t.ctx); err != nil {
-		return err
-	}
-
-	cancelNMon, err := nmon.Start(t.ctx, daemonenv.DrainChanDuration)
-	if err != nil {
-		return err
-	}
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop nmon")
-		cancelNMon()
-		t.log.Debug().Msg("stopped nmon")
-	})
-
-	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
-		return err
-	}
-
-	cancelDiscover, err := discover.Start(t.ctx, daemonenv.DrainChanDuration)
-	if err != nil {
-		return err
-	}
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop daemon discover")
-		cancelDiscover()
-		t.log.Debug().Msg("stopped daemon discover")
-	})
-
-	for _, sub := range []subdaemon.Manager{
-		hb.New(hb.WithRoutineTracer(&t.TT), hb.WithRootDaemon(t)),
-		scheduler.New(scheduler.WithRoutineTracer(&t.TT)),
+	for _, s := range []startStopper{
+		hbcache.New(2 * daemonenv.DrainChanDuration),
+		cstat.New(),
+		istat.New(),
+		listener.New(),
+		nmon.New(daemonenv.DrainChanDuration),
+		dns.New(daemonenv.DrainChanDuration),
+		discover.New(daemonenv.DrainChanDuration),
+		hb.New(),
+		scheduler.New(),
 	} {
-		if err := t.Register(sub); err != nil {
-			return err
-		}
-		if err := sub.Start(t.ctx); err != nil {
+		if err := t.startComponent(t.ctx, s); err != nil {
 			return err
 		}
 	}
 
 	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
+	t.log.Info().Msg("daemon started")
 	return nil
 }
 
-func (t *T) MainStop() error {
-	// stop goroutines without cancel context
-	for i := len(t.cancelFuncs) - 1; i >= 0; i-- {
-		t.cancelFuncs[i]()
+func (t *T) Stop() error {
+	if t.cancel == nil {
+		return fmt.Errorf("can't stop not started daemon")
 	}
+	var errs error
+	// stop goroutines without cancel context
+	defer t.log.Info().Msg("daemon stopped")
+	t.log.Info().Msg("daemon stopping")
+	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
+		if err := t.stopFuncs[i](); err != nil {
+			t.log.Error().Err(err).Msgf("stop daemon component %d failed", i)
+			errs = errors.Join(errs, errs)
+		}
+	}
+	t.stopFuncs = make([]func() error, 0)
 
-	// goroutines started by MainStart are stopped by the context cancel
+	t.cancel()
+	t.cancel = nil
+
+	t.wg.Wait()
+	return errs
+}
+
+func (t *T) Running() bool {
+	if t.ctx == nil {
+		return false
+	}
+	select {
+	case <-t.ctx.Done():
+		return false
+	default:
+		return true
+	}
+}
+
+func (t *T) Wait() {
+	t.wg.Wait()
+}
+
+func (t *T) stopWatcher() {
+	sub := pubsub.BusFromContext(t.ctx).Sub("daemon.stop.watcher")
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", hostname.Hostname()}, pubsub.Label{"id", "daemon"})
+	sub.Start()
+
+	signal.Ignore(syscall.SIGHUP)
+	signalCtx, signalCancel := signal.NotifyContext(t.ctx, os.Interrupt, syscall.SIGTERM)
+
+	started := make(chan bool)
+	go func() {
+		defer func() {
+			signalCancel()
+			_ = sub.Stop()
+			t.log.Info().Msg("daemon stop watcher done")
+		}()
+		t.log.Info().Msg("daemon stop watcher started")
+		started <- true
+		for {
+			select {
+			case <-t.ctx.Done():
+				t.log.Info().Msg("daemon stop watcher returns on context done")
+				return
+			case <-signalCtx.Done():
+				t.log.Info().Msg("daemon stopping on signal")
+				go func() { _ = t.Stop() }()
+				return
+			case i := <-sub.C:
+				switch m := i.(type) {
+				case *msgbus.DaemonCtl:
+					if m.Action == "stop" {
+						t.log.Info().Msg("daemon stopping on daemon ctl message")
+						go func() { _ = t.Stop() }()
+						return
+					}
+				}
+			}
+		}
+	}()
+	<-started
+}
+
+// startComponent startup a component and add glue to wait group.
+//
+// on succeed startup the wait group is updated,
+// the t.stopFuncs list is updated with a.Stop + wait group update.
+func (t *T) startComponent(ctx context.Context, a startStopper) error {
+	if err := a.Start(ctx); err != nil {
+		return err
+	}
+	t.wg.Add(1)
+	t.stopFuncs = append(t.stopFuncs, func() error {
+		defer t.wg.Done()
+		if err := a.Stop(); err != nil {
+			t.log.Error().Err(err).Msg("stopping component failed")
+			return err
+		}
+		return nil
+	})
 	return nil
 }
 
-func (t *T) loop() {
-	t.log.Info().Msg("loop started")
-	t.loopEnabled.Enable()
-	ticker := time.NewTicker(t.loopDelay)
+func (t *T) notifyWatchDogBus(ctx context.Context) {
+	defer t.log.Info().Msg("watch dog bus done")
+	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
-	t.aLoop()
+	labels := []pubsub.Label{{"node", hostname.Hostname()}, {"bus", t.bus.Name()}}
+	msg := msgbus.WatchDog{Bus: t.bus.Name()}
 	for {
 		select {
-		case <-ticker.C:
-			t.aLoop()
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			return
+		case <-ticker.C:
+			t.bus.Pub(&msg, labels...)
 		}
 	}
 }
 
-func (t *T) aLoop() {
-}
-
-// notifyWatchDog is a notify watch dog loop that send notify watch dog
+// notifyWatchDogSys is a notify watch dog loop that send notify watch dog
 //
 // It does nothing when:
 //   - env var WATCHDOG_USEC is empty, os is < 2s
 //   - if there is no daemon sysmanager (daemonsys.New retuns error)
-func (t *T) notifyWatchDog(ctx context.Context) {
+func (t *T) notifyWatchDogSys(ctx context.Context) {
 	var (
 		i   interface{}
 		err error
@@ -308,8 +307,10 @@ func (t *T) notifyWatchDog(ctx context.Context) {
 		return
 	}
 	defer func() {
+		t.log.Info().Msg("notify watchdog sys done")
 		_ = o.Close()
 	}()
+	t.log.Info().Msg("notify watchdog sys started")
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 	for {
@@ -318,11 +319,11 @@ func (t *T) notifyWatchDog(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if ok, err := o.NotifyWatchdog(); err != nil {
-				t.log.Warn().Err(err).Msg("notifyWatchDog")
+				t.log.Warn().Err(err).Msg("notifyWatchDogSys")
 			} else if !ok {
-				t.log.Warn().Msg("notifyWatchDog not delivered")
+				t.log.Warn().Msg("notifyWatchDogSys not delivered")
 			} else {
-				t.log.Debug().Msg("notifyWatchDog delivered")
+				t.log.Debug().Msg("notifyWatchDogSys delivered")
 			}
 		}
 	}
@@ -340,8 +341,4 @@ func startProfiling() {
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
 	cannula.Start(daemonenv.PathUxProfile())
-}
-
-func DaemonPidFile() string {
-	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }

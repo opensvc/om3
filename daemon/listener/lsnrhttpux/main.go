@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,108 +16,75 @@ import (
 
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/routinehelper"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (
 	T struct {
-		*subdaemon.T
-		routinehelper.TT
-		listener     *net.Listener
-		log          zerolog.Logger
-		routineTrace routineTracer
-		addr         string
-		certFile     string
-		keyFile      string
-	}
-
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
+		listener *net.Listener
+		log      zerolog.Logger
+		addr     string
+		certFile string
+		keyFile  string
+		wg       sync.WaitGroup
 	}
 )
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
 	}
-	name := "lsnr-http-ux"
-	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", name).Logger()
-	t.T = subdaemon.New(
-		subdaemon.WithName(name),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
+	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-ux").Logger()
 	return t
 }
 
-func (t *T) MainStart(ctx context.Context) error {
-	ctx = daemonctx.WithListenAddr(ctx, t.addr)
-	started := make(chan bool)
-	go func() {
-		defer t.Trace(t.Name())()
-		if err := t.start(ctx); err != nil {
-			t.log.Error().Err(err).Msg("mgr start failure")
-		}
-		started <- true
-	}()
-	<-started
-	return nil
-}
-
-func (t *T) MainStop() error {
-	if err := t.stop(); err != nil {
-		t.log.Error().Err(err).Msg("mgr stop failure")
-	}
-	return nil
-}
-
-func (t *T) stop() error {
-	if t.listener == nil {
-		t.log.Info().Msg("listener already closed")
-		return nil
-	}
-	if err := (*t.listener).Close(); err != nil {
-		t.log.Error().Err(err).Msg("listener Close failure")
-		return err
-	}
-	t.log.Info().Msg("listener closed")
-	return nil
-}
-
-func (t *T) start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
+	errC := make(chan error)
 	t.log.Info().Msg("listener starting")
 	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Error().Err(err).Msg("RemoveAll")
 		return err
 	}
-	started := make(chan bool)
-	s := &http2.Server{}
-	server := http.Server{
-		Handler: h2c.NewHandler(routehttp.New(ctx, false), s),
-		ErrorLog: golog.New(t.log, "", 0),
-	}
-	listener, err := net.Listen("unix", t.addr)
-	if err != nil {
+	if listener, err := net.Listen("unix", t.addr); err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
+	} else {
+		t.listener = &listener
 	}
-	t.listener = &listener
+	t.wg.Add(1)
+	go func(errC chan<- error) {
+		defer t.wg.Done()
+		ctx = daemonctx.WithListenAddr(ctx, t.addr)
 
-	go func() {
-		started <- true
-		err = server.Serve(listener)
-		if err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+		s := &http2.Server{}
+		server := http.Server{
+			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
+			ErrorLog: golog.New(t.log, "", 0),
+		}
+		t.log.Info().Msg("listener started")
+		errC <- nil
+		if err := server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 			t.log.Debug().Err(err).Msg("http listener ends with unexpected error")
 		}
 		t.log.Info().Msg("listener stopped")
-	}()
-	<-started
-	t.log.Info().Msg("listener started ")
-	return nil
+	}(errC)
+
+	return <-errC
+}
+
+func (t *T) Stop() error {
+	t.log.Info().Msgf("listener stopping %s", t.addr)
+	defer t.log.Info().Msgf("listener stopped %s", t.addr)
+	if t.listener == nil {
+		t.log.Info().Msg("listener already closed")
+		return nil
+	}
+	err := (*t.listener).Close()
+	if err != nil {
+		t.log.Error().Err(err).Msg("listener Close failure")
+	}
+	t.wg.Wait()
+	return err
 }

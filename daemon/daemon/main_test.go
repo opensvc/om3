@@ -3,7 +3,6 @@ package daemon_test
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
-	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -37,70 +35,36 @@ func TestDaemon(t *testing.T) {
 	env := setup(t)
 
 	t.Logf("New with root %s", env.Root)
-	main = daemon.New(
-		daemon.WithRoutineTracer(routinehelper.NewTracer()),
-	)
+	main = daemon.New()
 	require.NotNil(t, main)
-	require.False(t, main.Enabled(), "The daemon should not be Enabled after New")
-	require.False(t, main.Running(), "The daemon should not be Running after New")
-	require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 
-	t.Log("Start")
-	require.NoError(t, main.Start(context.Background()))
-	require.True(t, main.Enabled(), "The daemon should be Enabled after Start")
-	require.True(t, main.Running(), "The daemon should be Running after Start")
+	t.Run("ensure not started daemon is not running", func(t *testing.T) {
+		require.False(t, main.Running(), "running should be false when daemon is not yet started")
+	})
+	require.False(t, t.Failed(), "abort test on errors")
 
-	t.Log("Restart")
-	require.NoError(t, main.Restart(context.Background()))
-	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
-	require.True(t, main.Running(), "The daemon should be Running after Restart")
+	t.Run("Start-Stop-Wait", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	t.Log("Stop")
-	require.NoError(t, main.Stop())
-	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
-	require.False(t, main.Running(), "The daemon should not be Running after Stop")
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
+		t.Run("Start", func(t *testing.T) {
+			require.NoError(t, main.Start(ctx), "daemon start returns error !")
+			require.True(t, main.Running(), "daemon is not running after succeed startup !")
+		})
+		require.False(t, t.Failed(), "abort test on errors")
 
-	t.Log("Stop")
-	require.NoError(t, main.Stop())
-	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
-	require.False(t, main.Running(), "The daemon should not be Running after Stop")
+		t.Run("Stop", func(t *testing.T) {
+			require.NoError(t, main.Stop(), "daemon stop a running daemon returns error !")
+			require.False(t, main.Running(), "stopped daemon should be running after succeed stop !")
+		})
+		require.False(t, t.Failed(), "abort test on errors")
 
-	t.Log("Restart")
-	require.NoError(t, main.Restart(context.Background()))
-	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
-	require.True(t, main.Running(), "The daemon should be Running after Restart")
-
-	t.Log("Restart")
-	require.NoError(t, main.Restart(context.Background()))
-	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
-	require.True(t, main.Running(), "The daemon should be Running after Restart")
-
-	t.Log("Stop")
-	require.NoError(t, main.Stop())
-	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
-	require.False(t, main.Running(), "The daemon should not be Running after Stop")
-
-	main.Wait()
-	main.Wait() // verify we don't block on calling WaitDone() multiple times
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
-
-	t.Log("RunDaemon")
-	main, err := daemon.RunDaemon()
-	require.NotNil(t, main)
-	require.NoError(t, err)
-	require.True(t, main.Enabled(), "The daemon should be Enabled after RunDaemon")
-	require.True(t, main.Running(), "The daemon should be Running after RunDaemon")
-
-	t.Log("Stop")
-	minLastShutdown := time.Now()
-	require.NoError(t, main.Stop())
-	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
-	require.False(t, main.Running(), "The daemon should not be Running after Stop")
-	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
-
-	lastShutdownFile := filepath.Join(env.Root, "var", "last_shutdown")
-	stat, err := os.Stat(lastShutdownFile)
-	require.NoError(t, err)
-	require.Truef(t, minLastShutdown.Before(stat.ModTime()), "min %s should before last_shutdown file mtime %s", minLastShutdown, stat.ModTime())
+		t.Run("Wait", func(t *testing.T) {
+			waitStart := time.Now()
+			main.Wait()
+			require.WithinDuration(t, time.Now(), waitStart, 10*time.Millisecond,
+				"daemon Wait() duration exceeds 10ms on a stopped daemon !")
+		})
+		require.False(t, t.Failed(), "abort test on errors")
+	})
 }

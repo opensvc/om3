@@ -81,7 +81,8 @@ func TestDaemonData(t *testing.T) {
 	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()
 
-	hbcache.Start(ctx, drainDuration)
+	hbc := hbcache.New(drainDuration)
+	require.NoError(t, hbc.Start(ctx))
 
 	t.Logf("start daemondata")
 	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond)
@@ -90,7 +91,8 @@ func TestDaemonData(t *testing.T) {
 	ctx = daemondata.ContextWithBus(ctx, cmdC)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, hbRecvMsgQ)
 
-	require.NoError(t, ccfg.Start(ctx, drainDuration))
+	ccfgD := ccfg.New(drainDuration)
+	require.NoError(t, ccfgD.Start(ctx))
 
 	bus := daemondata.New(cmdC)
 	localNode := hostname.Hostname()

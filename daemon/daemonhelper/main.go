@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -59,7 +60,8 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 
-	hbcache.Start(ctx, drainDuration)
+	hbc := hbcache.New(drainDuration)
+	require.NoError(t, hbc.Start(ctx))
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)

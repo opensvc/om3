@@ -10,6 +10,7 @@ package hbcache
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -17,24 +18,51 @@ import (
 	"github.com/opensvc/om3/daemon/draincommand"
 )
 
+type (
+	T struct {
+		drainDuration time.Duration
+		ctx           context.Context
+		cancel        context.CancelFunc
+		wg            sync.WaitGroup
+	}
+)
+
 var (
 	cmdI = make(chan interface{})
 )
 
-func Start(ctx context.Context, drainDuration time.Duration) {
-	go run(ctx, drainDuration)
+func New(drainDuration time.Duration) *T {
+	return &T{drainDuration: drainDuration}
 }
 
-func run(ctx context.Context, drainDuration time.Duration) {
+func (t *T) Start(ctx context.Context) error {
+	err := make(chan error)
+	t.wg.Add(1)
+	go func(err chan<- error) {
+		defer t.wg.Done()
+		err <- nil
+		t.run(ctx)
+	}(err)
+	return <-err
+}
+
+func (t *T) Stop() error {
+	t.cancel()
+	t.wg.Wait()
+	return nil
+}
+
+func (t *T) run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
 	heartbeats := make([]cluster.HeartbeatStream, 0)
 	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
 	log.Debug().Msg("started")
 	defer log.Debug().Msg("done")
-	defer draincommand.Do(cmdI, drainDuration)
+	defer draincommand.Do(cmdI, t.drainDuration)
+	t.ctx, t.cancel = context.WithCancel(ctx)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-t.ctx.Done():
 			return
 		case i := <-cmdI:
 			switch cmd := i.(type) {

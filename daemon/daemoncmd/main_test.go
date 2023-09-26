@@ -1,4 +1,4 @@
-package daemoncli_test
+package daemoncmd_test
 
 import (
 	"os"
@@ -15,7 +15,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemoncli"
+	"github.com/opensvc/om3/daemon/daemoncmd"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/testhelper"
 )
@@ -72,7 +72,7 @@ func TestDaemonBootstrap(t *testing.T) {
 			env := setup(t, hasConfig)
 			t.Logf("using env root: %s", env.Root)
 			cli, err := client.New(client.WithURL(daemonenv.UrlUxHttp()))
-			daemonCli := daemoncli.New(cli)
+			daemonCli := daemoncmd.New(cli)
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 			startError := make(chan error)
@@ -167,7 +167,7 @@ func TestDaemonBootstrap(t *testing.T) {
 				t.Run("check running with client "+name, func(t *testing.T) {
 					cli, err := newClient(url)
 					require.NoError(t, err)
-					require.Truef(t, daemoncli.New(cli).Running(), "can't detect running from client with url %s", url)
+					require.Truef(t, daemoncmd.New(cli).Running(), "can't detect running from client with url %s", url)
 				})
 			}
 
@@ -179,8 +179,9 @@ func TestDaemonBootstrap(t *testing.T) {
 					// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
 					cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
 					require.NoError(t, err)
-					daemonCli = daemoncli.New(cli)
-					require.NoError(t, daemonCli.Stop())
+					daemonCli = daemoncmd.New(cli)
+					e := daemonCli.Stop()
+					require.NoErrorf(t, e, "unexpected error during stop: %s", e)
 					require.NoFileExists(t, filepath.Join(rawconfig.Paths.Var, "osvcd.pid"))
 				})
 				require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
@@ -200,7 +201,7 @@ func TestDaemonBootstrap(t *testing.T) {
 					t.Run("check stop again with client "+name, func(t *testing.T) {
 						cli, err := newClient(url)
 						require.Nil(t, err)
-						require.NoError(t, daemoncli.New(cli).Stop())
+						require.NoError(t, daemoncmd.New(cli).Stop())
 						require.False(t, daemonCli.Running())
 					})
 				}

@@ -17,8 +17,6 @@ import (
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/routinehelper"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -26,23 +24,19 @@ import (
 
 type (
 	T struct {
-		*subdaemon.T
-		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
-		log          zerolog.Logger
-		localhost    string
-		routineTrace routineTracer
-		databus      *daemondata.T
-		pubsub       *pubsub.Bus
+		ctx       context.Context
+		cancel    context.CancelFunc
+		log       zerolog.Logger
+		localhost string
+		databus   *daemondata.T
+		pubsub    *pubsub.Bus
 
 		events      chan any
 		jobs        Jobs
 		enabled     bool
 		provisioned map[path.T]bool
 
-		// selfWaitGroup is wait group for T
-		selfWaitGroup sync.WaitGroup
+		wg sync.WaitGroup
 	}
 
 	Jobs map[string]Job
@@ -51,11 +45,6 @@ type (
 		schedule schedule.Entry
 		cancel   func()
 	}
-	routineTracer interface {
-		Trace(string) func()
-		Stats() routinehelper.Stat
-	}
-
 	eventJobDone struct {
 		schedule schedule.Entry
 		begin    time.Time
@@ -78,23 +67,16 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		log:           log.Logger.With().Str("name", "scheduler").Logger(),
-		localhost:     hostname.Hostname(),
-		events:        make(chan any),
-		jobs:          make(Jobs),
-		provisioned:   make(map[path.T]bool),
-		selfWaitGroup: sync.WaitGroup{},
+		log:         log.Logger.With().Str("name", "scheduler").Logger(),
+		localhost:   hostname.Hostname(),
+		events:      make(chan any),
+		jobs:        make(Jobs),
+		provisioned: make(map[path.T]bool),
 	}
-	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("scheduler funcopt.Apply")
 		return nil
 	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("scheduler"),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
 	return t
 }
 
@@ -205,31 +187,32 @@ func (t *T) createJob(e schedule.Entry) {
 	return
 }
 
-func (t *T) MainStart(ctx context.Context) error {
-	if stopFeederPinger, err := t.startFeederPinger(); err != nil {
-		t.log.Error().Err(err).Msg("start collector pinger")
-		return err
-	} else {
-		defer stopFeederPinger()
-	}
+func (t *T) Start(ctx context.Context) error {
+	errC := make(chan error)
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	started := make(chan error)
-	t.Add(1)
-	go func() {
-		t.selfWaitGroup.Add(1)
-		defer t.selfWaitGroup.Done()
-		defer t.Done()
-		defer t.Trace(t.Name() + "-loop")()
-		started <- nil
+
+	t.wg.Add(1)
+	go func(errC chan<- error) {
+		defer t.wg.Done()
+		if stopFeeder, err := t.startFeederPinger(); err != nil {
+			t.log.Error().Err(err).Msg("start collector pinger")
+			errC <- err
+			return
+		} else {
+			defer stopFeeder()
+		}
+		errC <- nil
 		t.loop()
-	}()
-	<-started
-	return nil
+	}(errC)
+
+	return <-errC
 }
 
-func (t *T) MainStop() error {
+func (t *T) Stop() error {
+	t.log.Info().Msg("scheduler stopping")
+	defer t.log.Info().Msg("scheduler stopped")
 	t.cancel()
-	t.selfWaitGroup.Wait()
+	t.wg.Wait()
 	return nil
 }
 
