@@ -478,7 +478,8 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 		bootid.Set(c.bootID)
 	}
 
-	require.NoError(t, istat.Start(setup.Ctx))
+	istatD := istat.New()
+	require.NoError(t, istatD.Start(setup.Ctx))
 
 	//c := c
 	p := path.T{Kind: kind.Svc, Name: c.obj}
