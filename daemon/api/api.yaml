@@ -897,21 +897,26 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/progress:
+  /namespaces/{namespace}/{kind}/{name}/instance/progress:
     post:
-      operationId: PostObjectProgress
+      operationId: PostInstanceProgress
       tags:
-        - objects
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
       requestBody:
         description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectProgress'
+              $ref: '#/components/schemas/PostInstanceProgress'
       responses:
         200:
           description: OK
@@ -944,46 +949,18 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/abort:
+  /namespaces/{namespace}/{kind}/{name}/abort:
     post:
-      operationId: PostSvcActionAbort
+      operationId: PostObjectActionAbort
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/abort:
-    post:
-      operationId: PostVolActionAbort
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1064,46 +1041,21 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/delete:
+  /namespaces/{namespace}/{kind}/{name}/delete:
     post:
-      operationId: PostVolActionDelete
+      operationId: PostObjectActionDelete
       tags:
+        - object / svc
         - object / vol
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/usr/{name}/delete:
-    post:
-      operationId: PostUsrActionDelete
-      tags:
+        - object / cfg
+        - object / sec
         - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1124,136 +1076,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/delete:
+  /namespaces/{namespace}/{kind}/{name}/freeze:
     post:
-      operationId: PostSvcActionDelete
+      operationId: PostObjectActionFreeze
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/cfg/{name}/delete:
-    post:
-      operationId: PostCfgActionDelete
-      tags:
-        - object / cfg
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/sec/{name}/delete:
-    post:
-      operationId: PostSecActionDelete
-      tags:
-        - object / sec
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/freeze:
-    post:
-      operationId: PostSvcActionFreeze
-      tags:
-        - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/freeze:
-    post:
-      operationId: PostVolActionFreeze
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1274,9 +1108,9 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/giveback:
+  /namespaces/{namespace}/{kind}/{name}/giveback:
     post:
-      operationId: PostSvcActionGiveback
+      operationId: PostObjectActionGiveback
       tags:
         - object / svc
       security:
@@ -1284,6 +1118,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1304,46 +1139,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/provision:
+  /namespaces/{namespace}/{kind}/{name}/provision:
     post:
-      operationId: PostSvcActionProvision
+      operationId: PostObjectActionProvision
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/provision:
-    post:
-      operationId: PostVolActionProvision
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1364,46 +1171,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/purge:
+  /namespaces/{namespace}/{kind}/{name}/purge:
     post:
-      operationId: PostSvcActionPurge
+      operationId: PostObjectActionPurge
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/purge:
-    post:
-      operationId: PostVolActionPurge
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1424,9 +1203,9 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/start:
+  /namespaces/{namespace}/{kind}/{name}/start:
     post:
-      operationId: PostSvcActionStart
+      operationId: PostObjectActionStart
       tags:
         - object / svc
       security:
@@ -1434,6 +1213,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1454,9 +1234,9 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/stop:
+  /namespaces/{namespace}/{kind}/{name}/stop:
     post:
-      operationId: PostSvcActionStop
+      operationId: PostObjectActionStop
       tags:
         - object / svc
       security:
@@ -1464,6 +1244,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1484,9 +1265,9 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/switch:
+  /namespaces/{namespace}/{kind}/{name}/switch:
     post:
-      operationId: PostSvcActionSwitch
+      operationId: PostObjectActionSwitch
       tags:
         - object / svc
       security:
@@ -1494,13 +1275,14 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostSvcActionSwitch'
+              $ref: '#/components/schemas/PostObjectActionSwitch'
       responses:
         200:
           description: OK
@@ -1520,46 +1302,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/unfreeze:
+  /namespaces/{namespace}/{kind}/{name}/unfreeze:
     post:
-      operationId: PostSvcActionUnfreeze
+      operationId: PostObjectActionUnfreeze
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/unfreeze:
-    post:
-      operationId: PostVolActionUnfreeze
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -1580,46 +1334,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /namespaces/{namespace}/svc/{name}/unprovision:
+  /namespaces/{namespace}/{kind}/{name}/unprovision:
     post:
-      operationId: PostSvcActionUnprovision
+      operationId: PostObjectActionUnprovision
       tags:
         - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/namePathParam'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/vol/{name}/unprovision:
-    post:
-      operationId: PostVolActionUnprovision
-      tags:
         - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
@@ -2723,15 +2449,12 @@ components:
         data:
           type: string
           format: byte
-    PostObjectProgress:
+    PostInstanceProgress:
       type: object
       required:
-        - path
         - session_id
         - state
       properties:
-        path:
-          type: string
         session_id:
           type: string
           format: uuid
@@ -2881,7 +2604,7 @@ components:
         size:
           type: integer
           format: int64
-    PostSvcActionSwitch:
+    PostObjectActionSwitch:
       type: object
       required:
         - destination

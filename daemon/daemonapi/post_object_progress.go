@@ -13,23 +13,24 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectProgress(ctx echo.Context) error {
+func (a *DaemonApi) PostInstanceProgress(ctx echo.Context, namespace, kind, name string) error {
 	var (
-		payload   = api.PostObjectProgress{}
-		p         path.T
-		err       error
+		payload   = api.PostInstanceProgress{}
 		isPartial bool
 	)
-	if err := ctx.Bind(&payload); err != nil {
-		return JSONProblem(ctx, http.StatusBadRequest, "Failed to json decode request body", err.Error())
-	}
-	p, err = path.Parse(payload.Path)
+	p, err := path.New(name, namespace, kind)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "path: %s", payload.Path)
+		JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
+		return err
+	}
+	if err := ctx.Bind(&payload); err != nil {
+		JSONProblem(ctx, http.StatusBadRequest, "Failed to json decode request body", err.Error())
+		return err
 	}
 	state, ok := instance.MonitorStateValues[payload.State]
 	if !ok {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "state: %s", payload.State)
+		JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "state: %s", payload.State)
+		return err
 	}
 	if payload.IsPartial != nil {
 		isPartial = *payload.IsPartial

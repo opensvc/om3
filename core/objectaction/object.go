@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -411,506 +410,241 @@ func (t T) DoAsync() error {
 		}
 		switch target {
 		case instance.MonitorGlobalExpectAborted:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionAbortWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionAbortWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectDeleted:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionDeleteWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionDeleteWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			case kind.Cfg:
-				if resp, e := c.PostCfgActionDeleteWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			case kind.Sec:
-				if resp, e := c.PostSecActionDeleteWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			case kind.Usr:
-				if resp, e := c.PostUsrActionDeleteWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectFrozen:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionFreezeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionFreezeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectProvisioned:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionProvisionWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionProvisionWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectPurged:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionPurgeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionPurgeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectStarted:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionStartWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectStopped:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionStopWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectThawed:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionUnfreezeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionUnfreezeWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectUnprovisioned:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionUnprovisionWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			case kind.Vol:
-				if resp, e := c.PostVolActionUnprovisionWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectPlaced:
-			switch p.Kind {
-			case kind.Svc:
-				if resp, e := c.PostSvcActionGivebackWithResponse(ctx, p.Namespace, p.Name); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
+			if resp, e := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		case instance.MonitorGlobalExpectPlacedAt:
-			switch p.Kind {
-			case kind.Svc:
-				params := api.PostSvcActionSwitch{}
-				if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
-					return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
-				} else {
-					params.Destination = options.Destination
+			params := api.PostObjectActionSwitch{}
+			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
+				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
+			} else {
+				params.Destination = options.Destination
+			}
+			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name, params); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
 				}
-				if resp, e := c.PostSvcActionSwitchWithResponse(ctx, p.Namespace, p.Name, params); e != nil {
-					err = e
-				} else {
-					switch resp.StatusCode() {
-					case http.StatusOK:
-						b = resp.Body
-					case 400:
-						err = fmt.Errorf("%s", resp.JSON400)
-					case 401:
-						err = fmt.Errorf("%s", resp.JSON401)
-					case 403:
-						err = fmt.Errorf("%s", resp.JSON403)
-					case 408:
-						err = fmt.Errorf("%s", resp.JSON408)
-					case 409:
-						err = fmt.Errorf("%s", resp.JSON409)
-					case 500:
-						err = fmt.Errorf("%s", resp.JSON500)
-					}
-				}
-			default:
-				return fmt.Errorf("unsupported action on kind %s", p.Kind)
 			}
 		}
 		var r result

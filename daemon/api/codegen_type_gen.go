@@ -543,18 +543,22 @@ type PostDaemonSubAction struct {
 // PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
 type PostDaemonSubActionAction string
 
+// PostInstanceProgress defines model for PostInstanceProgress.
+type PostInstanceProgress struct {
+	IsPartial *bool              `json:"is_partial,omitempty"`
+	SessionId openapi_types.UUID `json:"session_id"`
+	State     string             `json:"state"`
+}
+
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
 	AllocationId openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
 
-// PostObjectProgress defines model for PostObjectProgress.
-type PostObjectProgress struct {
-	IsPartial *bool              `json:"is_partial,omitempty"`
-	Path      string             `json:"path"`
-	SessionId openapi_types.UUID `json:"session_id"`
-	State     string             `json:"state"`
+// PostObjectActionSwitch defines model for PostObjectActionSwitch.
+type PostObjectActionSwitch struct {
+	Destination []string `json:"destination"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -563,11 +567,6 @@ type PostRelayMessage struct {
 	ClusterName string `json:"cluster_name"`
 	Msg         string `json:"msg"`
 	Nodename    string `json:"nodename"`
-}
-
-// PostSvcActionSwitch defines model for PostSvcActionSwitch.
-type PostSvcActionSwitch struct {
-	Destination []string `json:"destination"`
 }
 
 // Problem defines model for Problem.
@@ -988,14 +987,14 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatusItem
 
-// PostSvcActionSwitchJSONRequestBody defines body for PostSvcActionSwitch for application/json ContentType.
-type PostSvcActionSwitchJSONRequestBody = PostSvcActionSwitch
+// PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
+type PostInstanceProgressJSONRequestBody = PostInstanceProgress
+
+// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
+type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
-
-// PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
-type PostObjectProgressJSONRequestBody = PostObjectProgress
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

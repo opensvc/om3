@@ -16,9 +16,9 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostSvcActionSwitch(ctx echo.Context, namespace, name string) error {
+func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context, namespace, kind, name string) error {
 	var (
-		payload = api.PostSvcActionSwitch{}
+		payload = api.PostObjectActionSwitch{}
 		value   = instance.MonitorUpdate{}
 		p       path.T
 		err     error
@@ -26,7 +26,7 @@ func (a *DaemonApi) PostSvcActionSwitch(ctx echo.Context, namespace, name string
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
 	}
-	p, err = path.New(name, namespace, "svc")
+	p, err = path.New(name, namespace, kind)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
