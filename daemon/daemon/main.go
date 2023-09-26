@@ -7,6 +7,8 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -26,7 +28,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/daemon/discover"
 	"github.com/opensvc/om3/daemon/dns"
-	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/hb"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/istat"
@@ -35,7 +36,6 @@ import (
 	"github.com/opensvc/om3/daemon/nmon"
 	"github.com/opensvc/om3/daemon/scheduler"
 	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/version"
@@ -46,18 +46,11 @@ type (
 		ctx    context.Context
 		cancel context.CancelFunc
 		log    zerolog.Logger
-		loopC  chan action
 
-		// loopDelay is the interval of sub... updates
-		loopDelay time.Duration
+		bus *pubsub.Bus
 
-		loopEnabled *enable.T
-		cancelFuncs []context.CancelFunc
-		wg          sync.WaitGroup
-	}
-	action struct {
-		do   string
-		done chan string
+		stopFuncs []func() error
+		wg        sync.WaitGroup
 	}
 
 	startStopper interface {
@@ -70,117 +63,61 @@ var (
 	profiling = true
 )
 
-func New(opts ...funcopt.O) *T {
-	t := &T{
-		loopDelay:   1 * time.Second,
-		loopEnabled: enable.New(),
-		log:         log.Logger,
+func New() *T {
+	return &T{
+		log:       log.Logger,
+		stopFuncs: make([]func() error, 0),
 	}
-	if err := funcopt.Apply(t, opts...); err != nil {
-		return nil
-	}
-	t.cancelFuncs = make([]context.CancelFunc, 0)
-	t.loopC = make(chan action)
-	return t
 }
 
-// RunDaemon starts main daemon
-func RunDaemon(opts ...funcopt.O) (*T, error) {
-	if profiling {
-		go startProfiling()
-	}
-
-	main := New(opts...)
-	ctx := context.Background()
-	if err := main.Start(ctx); err != nil {
-		main.log.Error().Err(err).Msg("daemon Start")
-		return main, err
-	}
-	return main, nil
-}
-
-// MainStart starts loop, mandatory subdaemons
+// Start is used to startup mandatory daemon components
 func (t *T) Start(ctx context.Context) error {
+	if t.Running() {
+		return fmt.Errorf("can't start again, daemon is already running")
+	}
 	t.log.Info().Msg("daemon starting")
+	go startProfiling()
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	signal.Ignore(syscall.SIGHUP)
-	notifyCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-
-	go t.notifyWatchDog(ctx)
 
 	bus := pubsub.NewBus("daemon")
 	bus.SetDefaultSubscriptionQueueSize(200)
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
-	bus.Start(t.ctx)
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop daemon pubsub bus")
-		bus.Stop()
-	})
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
+	t.wg.Add(1)
+	bus.Start(t.ctx)
+	t.bus = bus
+	t.stopFuncs = append(t.stopFuncs, func() error {
+		defer t.wg.Done()
+		t.log.Info().Msg("stop daemon pubsub bus")
+		t.bus.Stop()
+		t.log.Info().Msg("stopped daemon pubsub bus")
+		return nil
+	})
 	localhost := hostname.Hostname()
 
-	subStarted := make(chan bool)
-	t.wg.Add(1)
-	go func(ctx context.Context, started chan<- bool) {
-		defer t.wg.Done()
-		mainSub := bus.Sub("main")
-		mainSub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", localhost}, pubsub.Label{"id", "daemon"})
-		mainSub.Start()
-		defer mainSub.Stop()
-		labels := []pubsub.Label{
-			{"node", localhost},
-			{"bus", bus.Name()},
-		}
-		ticker := time.NewTicker(4 * time.Second)
-		defer ticker.Stop()
-		defer stop()
-		subStarted <- true
-		for {
-			select {
-			case <-ticker.C:
-				bus.Pub(&msgbus.WatchDog{Bus: bus.Name()}, labels...)
-			case <-notifyCtx.Done():
-				t.Stop()
-				return
-			case <-ctx.Done():
-				return
-			case i := <-mainSub.C:
-				switch m := i.(type) {
-				case *msgbus.DaemonCtl:
-					t.log.Info().Msgf("daemon ctl received %v", m)
-					if m.Action == "stop" {
-						t.log.Info().Msg("daemon ctl received, daemon will be stopped")
-						if err := t.Stop(); err != nil {
-							t.log.Error().Err(err).Msg("daemon ctl failed to stop daemon")
-						}
-						return
-					}
-				}
-			}
-		}
-	}(ctx, subStarted)
-	<-subStarted
+	defer t.stopWatcher()
 
-	hbcache.Start(t.ctx, 2*daemonenv.DrainChanDuration)
+	go t.notifyWatchDogSys(t.ctx)
+
+	t.wg.Add(1)
+	go func() {
+		defer t.wg.Done()
+		t.notifyWatchDogBus()
+	}()
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
-	t.cancelFuncs = append(t.cancelFuncs, func() {
+	t.stopFuncs = append(t.stopFuncs, func() error {
 		t.log.Debug().Msg("stop daemon data")
 		dataCmdCancel()
+		return nil
 	})
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
-	if err := ccfg.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+	// startup ccfg
+	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration)); err != nil {
 		return err
 	}
-	if err := cstat.Start(t.ctx); err != nil {
-		return err
-	}
-	if err := istat.Start(t.ctx); err != nil {
-		return err
-	}
-
 	initialCcfg := ccfg.Get()
 	if initialCcfg.Name == "" {
 		panic("cluster name read from ccfg is empty")
@@ -188,7 +125,6 @@ func (t *T) Start(ctx context.Context) error {
 	// Before any icfg, hb, or listener: ensure omcrypto has cluster name and secret
 	omcrypto.SetClusterName(initialCcfg.Name)
 	omcrypto.SetClusterSecret(initialCcfg.Secret())
-
 	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HttpPort {
 		// update daemonenv.HttpPort from live config value. Discover will need
 		// connect to peers to fetch config...
@@ -196,6 +132,9 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	for _, s := range []startStopper{
+		hbcache.New(2 * daemonenv.DrainChanDuration),
+		cstat.New(),
+		istat.New(),
 		listener.New(),
 		nmon.New(daemonenv.DrainChanDuration),
 		dns.New(daemonenv.DrainChanDuration),
@@ -203,7 +142,7 @@ func (t *T) Start(ctx context.Context) error {
 		hb.New(),
 		scheduler.New(),
 	} {
-		if err := t.start(t.ctx, s); err != nil {
+		if err := t.startComponent(t.ctx, s); err != nil {
 			return err
 		}
 	}
@@ -213,42 +152,128 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) start(ctx context.Context, a startStopper) error {
-	if err := a.Start(ctx); err != nil {
-		return err
-	}
-	t.wg.Add(1)
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		if err := a.Stop(); err != nil {
-			t.log.Error().Err(err).Msg("stopping component failed")
-		}
-		t.wg.Done()
-	})
-	return nil
-}
-
 func (t *T) Stop() error {
-	// stop goroutines without cancel context
-	t.log.Info().Msg("daemon stopping")
-	defer t.log.Info().Msg("daemon stopped")
-	for i := len(t.cancelFuncs) - 1; i >= 0; i-- {
-		t.cancelFuncs[i]()
+	if t.cancel == nil {
+		return fmt.Errorf("can't stop not started daemon")
 	}
+	var errs error
+	// stop goroutines without cancel context
+	defer t.log.Info().Msg("daemon stopped")
+	t.log.Info().Msg("daemon stopping")
+	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
+		if err := t.stopFuncs[i](); err != nil {
+			t.log.Error().Err(err).Msgf("stop daemon component %d failed", i)
+			errs = errors.Join(errs, errs)
+		}
+	}
+	t.stopFuncs = make([]func() error, 0)
 
 	t.cancel()
-	return nil
+	t.cancel = nil
+
+	t.wg.Wait()
+	return errs
+}
+
+func (t *T) Running() bool {
+	if t.ctx == nil {
+		return false
+	}
+	select {
+	case <-t.ctx.Done():
+		return false
+	default:
+		return true
+	}
 }
 
 func (t *T) Wait() {
 	t.wg.Wait()
 }
 
-// notifyWatchDog is a notify watch dog loop that send notify watch dog
+func (t *T) stopWatcher() {
+	sub := pubsub.BusFromContext(t.ctx).Sub("daemon.stop.watcher")
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", hostname.Hostname()}, pubsub.Label{"id", "daemon"})
+	sub.Start()
+
+	signal.Ignore(syscall.SIGHUP)
+	signalCtx, signalCancel := signal.NotifyContext(t.ctx, os.Interrupt, syscall.SIGTERM)
+
+	started := make(chan bool)
+	go func() {
+		defer func() {
+			signalCancel()
+			_ = sub.Stop()
+			t.log.Info().Msg("daemon stop watcher done")
+		}()
+		t.log.Info().Msg("daemon stop watcher started")
+		started <- true
+		for {
+			select {
+			case <-t.ctx.Done():
+				t.log.Info().Msg("daemon stop watcher returns on context done")
+				return
+			case <-signalCtx.Done():
+				t.log.Info().Msg("daemon stopping on signal")
+				go func() { _ = t.Stop() }()
+				return
+			case i := <-sub.C:
+				switch m := i.(type) {
+				case *msgbus.DaemonCtl:
+					if m.Action == "stop" {
+						t.log.Info().Msg("daemon stopping on daemon ctl message")
+						go func() { _ = t.Stop() }()
+						return
+					}
+				}
+			}
+		}
+	}()
+	<-started
+}
+
+// startComponent startup a component and add glue to wait group.
+//
+// on succeed startup the wait group is updated,
+// the t.stopFuncs list is updated with a.Stop + wait group update.
+func (t *T) startComponent(ctx context.Context, a startStopper) error {
+	if err := a.Start(ctx); err != nil {
+		return err
+	}
+	t.wg.Add(1)
+	t.stopFuncs = append(t.stopFuncs, func() error {
+		defer t.wg.Done()
+		if err := a.Stop(); err != nil {
+			t.log.Error().Err(err).Msg("stopping component failed")
+			return err
+		}
+		return nil
+	})
+	return nil
+}
+
+func (t *T) notifyWatchDogBus() {
+	defer t.log.Info().Msg("watch dog bus done")
+	ticker := time.NewTicker(4 * time.Second)
+	defer ticker.Stop()
+	labels := []pubsub.Label{{"node", hostname.Hostname()}, {"bus", t.bus.Name()}}
+	msg := msgbus.WatchDog{Bus: t.bus.Name()}
+	for {
+		select {
+		case <-t.ctx.Done():
+			return
+		case <-ticker.C:
+			t.bus.Pub(&msg, labels...)
+		}
+	}
+}
+
+// notifyWatchDogSys is a notify watch dog loop that send notify watch dog
 //
 // It does nothing when:
 //   - env var WATCHDOG_USEC is empty, os is < 2s
 //   - if there is no daemon sysmanager (daemonsys.New retuns error)
-func (t *T) notifyWatchDog(ctx context.Context) {
+func (t *T) notifyWatchDogSys(ctx context.Context) {
 	var (
 		i   interface{}
 		err error
@@ -281,8 +306,10 @@ func (t *T) notifyWatchDog(ctx context.Context) {
 		return
 	}
 	defer func() {
+		t.log.Info().Msg("notify watchdog sys done")
 		_ = o.Close()
 	}()
+	t.log.Info().Msg("notify watchdog sys started")
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 	for {
@@ -291,11 +318,11 @@ func (t *T) notifyWatchDog(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if ok, err := o.NotifyWatchdog(); err != nil {
-				t.log.Warn().Err(err).Msg("notifyWatchDog")
+				t.log.Warn().Err(err).Msg("notifyWatchDogSys")
 			} else if !ok {
-				t.log.Warn().Msg("notifyWatchDog not delivered")
+				t.log.Warn().Msg("notifyWatchDogSys not delivered")
 			} else {
-				t.log.Debug().Msg("notifyWatchDog delivered")
+				t.log.Debug().Msg("notifyWatchDogSys delivered")
 			}
 		}
 	}
