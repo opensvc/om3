@@ -31,6 +31,7 @@ func (a *DaemonApi) PostDaemonStop(ctx echo.Context) error {
 
 	maintenance()
 
-	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"}, pubsub.Label{"id", "daemon"}, labelNode, labelApi)
+	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
+		pubsub.Label{"id", "daemon"}, labelApi, a.LabelNode)
 	return JSONProblem(ctx, http.StatusOK, "announce maintenance state and ask daemon to stop", "")
 }
