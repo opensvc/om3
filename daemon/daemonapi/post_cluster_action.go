@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -41,7 +42,7 @@ func (a *DaemonApi) PostClusterAction(ctx echo.Context, globalExpect node.Monito
 		Value: value,
 		Err:   make(chan error),
 	}
-	a.EventBus.Pub(&msg, labelNode, labelApi)
+	a.EventBus.Pub(&msg, labelApi, a.LabelNode)
 	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
 	var errs error
