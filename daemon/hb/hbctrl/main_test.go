@@ -12,21 +12,20 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
+	t.Helper()
 	t.Logf("start pubsub")
 	drainDuration := 10 * time.Millisecond
 	bus := pubsub.NewBus("daemon")
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
-	var daemon subdaemon.RootManager
-	ctx = daemonctx.WithDaemon(ctx, daemon)
 
 	t.Logf("start daemon")
-	hbcache.Start(ctx, drainDuration)
+	hbc := hbcache.New(drainDuration)
+	require.NoError(t, hbc.Start(ctx))
 	dataCmd, dataMsgRecvQ, _ := daemondata.Start(ctx, drainDuration)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
@@ -34,12 +33,12 @@ func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
 	return ctx
 }
 
-func setupCtrl(ctx context.Context) *ctrl {
-	c := &ctrl{
+func setupCtrl(ctx context.Context) *C {
+	c := &C{
 		cmd: make(chan any),
 		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
 	}
-	c.start(ctx)
+	c.Start(ctx)
 	return c
 }
 
@@ -237,4 +236,8 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				name, tc.events)
 		})
 	}
+
+	t.Run("Stop", func(t *testing.T) {
+		require.NoError(t, testCtrl.Stop(), "unexpected controller stop error")
+	})
 }

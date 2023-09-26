@@ -6,8 +6,8 @@ daemondata on a ticker interval
 
 Example:
 
-	ctrl := New(context.Background())
-	ctrl.start()
+	c := New()
+	c.Start(context.Background())
 
 	// from another hb#2.tx routine
 	// Add a watchers for hb#2.rx nodes node2 and node3
@@ -27,7 +27,7 @@ Example:
 	}
 
 	//set the success status of node2
-	ctrl.cmdC() <- hbctrl.CmdSetPeerSuccess{
+	c.cmdC() <- hbctrl.CmdSetPeerSuccess{
 		Nodename: "node2",
 		HbId:     "hb#2.tx",
 		Success:  true,
@@ -39,6 +39,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -127,15 +128,14 @@ type (
 		HbId   string
 		result chan<- map[string]cluster.HeartbeatPeerStatus
 	}
-)
 
-type (
-	// ctrl struct holds the hb controller data
-	ctrl struct {
+	// C struct holds the hb controller data
+	C struct {
 		cmd    chan any
 		ctx    context.Context
 		cancel context.CancelFunc
 		log    zerolog.Logger
+		wg     sync.WaitGroup
 	}
 )
 
@@ -143,6 +143,10 @@ var (
 	evStale   = "hb_stale"
 	evBeating = "hb_beating"
 )
+
+func New() *C {
+	return &C{}
+}
 
 // Start starts hb controller goroutine, it returns its cmd chan
 //
@@ -154,26 +158,28 @@ var (
 // # The cache is sent to daemondata on regular time interval
 //
 // The controller will die when ctx is done
-func Start(ctx context.Context) chan any {
-	c := &ctrl{
-		cmd: make(chan any),
-		log: daemonlogctx.Logger(ctx).With().Str("Name", "hbctrl").Logger(),
-	}
-	go c.start(ctx)
-	return c.cmd
-}
-
-func (c *ctrl) start(ctx context.Context) {
-	started := make(chan bool)
+func (c *C) Start(ctx context.Context) chan<- any {
+	c.log = daemonlogctx.Logger(ctx).With().Str("Name", "hbctrl").Logger()
+	respC := make(chan chan<- any)
+	c.wg.Add(1)
 	go func() {
-		started <- true
-		c.run(ctx)
+		defer c.wg.Done()
+		cmdC := make(chan any)
+		c.ctx, c.cancel = context.WithCancel(ctx)
+		c.cmd = cmdC
+		respC <- cmdC
+		c.run()
 	}()
-	<-started
+	return <-respC
 }
 
-func (c *ctrl) run(ctx context.Context) {
-	c.ctx, c.cancel = context.WithCancel(ctx)
+func (c *C) Stop() error {
+	c.cancel()
+	c.wg.Wait()
+	return nil
+}
+
+func (c *C) run() {
 	c.log.Info().Msg("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
@@ -183,7 +189,11 @@ func (c *ctrl) run(ctx context.Context) {
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
 
-	go peerDropWorker(c.ctx)
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		peerDropWorker(c.ctx)
+	}()
 
 	for {
 		select {
@@ -363,10 +373,4 @@ func (c *ctrl) run(ctx context.Context) {
 			}
 		}
 	}
-}
-
-func GetEventStats(c chan<- any) EventStats {
-	result := make(chan EventStats)
-	c <- CmdGetEventStats{result: result}
-	return <-result
 }
