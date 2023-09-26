@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -61,6 +62,8 @@ type (
 		pendingCancel context.CancelFunc
 
 		sub *pubsub.Subscription
+
+		wg sync.WaitGroup
 	}
 
 	cmdGet struct {
@@ -90,12 +93,11 @@ func init() {
 
 func New(d time.Duration) *dns {
 	return &dns{
-		cluster: ccfg.Get(),
-		cmdC:    make(chan any),
+		cmdC:          make(chan any),
 		drainDuration: d,
-		log:     log.Logger.With().Str("func", "dns").Logger(),
-		state:   make(map[stateKey]Zone),
-		score:   make(map[string]uint64),
+		log:           log.Logger.With().Str("func", "dns").Logger(),
+		state:         make(map[stateKey]Zone),
+		score:         make(map[string]uint64),
 	}
 }
 
@@ -103,6 +105,7 @@ func New(d time.Duration) *dns {
 func (t *dns) Start(parent context.Context) error {
 	t.log.Info().Msg("dns starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
+	t.cluster = ccfg.Get()
 
 	t.bus = pubsub.BusFromContext(t.ctx)
 
@@ -112,7 +115,9 @@ func (t *dns) Start(parent context.Context) error {
 		return err
 	}
 
+	t.wg.Add(1)
 	go func() {
+		t.wg.Done()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Error().Err(err).Msg("subscription stop")
@@ -133,6 +138,7 @@ func (t *dns) Stop() error {
 	t.log.Info().Msg("dns stopping")
 	defer t.log.Info().Msg("dns stopped")
 	t.cancel()
+	t.wg.Wait()
 	return nil
 }
 
