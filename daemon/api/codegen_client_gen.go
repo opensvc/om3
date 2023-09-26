@@ -226,6 +226,9 @@ type ClientInterface interface {
 	// GetInstanceBacklogs request
 	GetInstanceBacklogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInstanceClear request
+	PostInstanceClear(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInstanceLogs request
 	GetInstanceLogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -263,11 +266,6 @@ type ClientInterface interface {
 
 	// GetNodesInfo request
 	GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostObjectClear request with any body
-	PostObjectClearWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostObjectClear(ctx context.Context, body PostObjectClearJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectPaths request
 	GetObjectPaths(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -865,6 +863,18 @@ func (c *Client) GetInstanceBacklogs(ctx context.Context, namespace NamespacePat
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostInstanceClear(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceClearRequest(c.Server, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetInstanceLogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceLogsRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
@@ -1011,30 +1021,6 @@ func (c *Client) GetNodes(ctx context.Context, params *GetNodesParams, reqEditor
 
 func (c *Client) GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodesInfoRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectClearWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectClearRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectClear(ctx context.Context, body PostObjectClearJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectClearRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3080,6 +3066,54 @@ func NewGetInstanceBacklogsRequest(server string, namespace NamespacePathParam, 
 	return req, nil
 }
 
+// NewPostInstanceClearRequest generates requests for PostInstanceClear
+func NewPostInstanceClearRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/namespaces/%s/%s/%s/instance/clear", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetInstanceLogsRequest generates requests for GetInstanceLogs
 func NewGetInstanceLogsRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams) (*http.Request, error) {
 	var err error
@@ -3610,46 +3644,6 @@ func NewGetNodesInfoRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewPostObjectClearRequest calls the generic PostObjectClear builder with application/json body
-func NewPostObjectClearRequest(server string, body PostObjectClearJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostObjectClearRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostObjectClearRequestWithBody generates requests for PostObjectClear with any type of body
-func NewPostObjectClearRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/clear")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -4267,6 +4261,9 @@ type ClientWithResponsesInterface interface {
 	// GetInstanceBacklogs request
 	GetInstanceBacklogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*GetInstanceBacklogsResponse, error)
 
+	// PostInstanceClear request
+	PostInstanceClearWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
+
 	// GetInstanceLogs request
 	GetInstanceLogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
 
@@ -4304,11 +4301,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodesInfo request
 	GetNodesInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesInfoResponse, error)
-
-	// PostObjectClear request with any body
-	PostObjectClearWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error)
-
-	PostObjectClearWithResponse(ctx context.Context, body PostObjectClearJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error)
 
 	// GetObjectPaths request
 	GetObjectPathsWithResponse(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*GetObjectPathsResponse, error)
@@ -5484,6 +5476,30 @@ func (r GetInstanceBacklogsResponse) StatusCode() int {
 	return 0
 }
 
+type PostInstanceClearResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceClearResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceClearResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetInstanceLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5780,30 +5796,6 @@ func (r GetNodesInfoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodesInfoResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostObjectClearResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostObjectClearResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectClearResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -6455,6 +6447,15 @@ func (c *ClientWithResponses) GetInstanceBacklogsWithResponse(ctx context.Contex
 	return ParseGetInstanceBacklogsResponse(rsp)
 }
 
+// PostInstanceClearWithResponse request returning *PostInstanceClearResponse
+func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error) {
+	rsp, err := c.PostInstanceClear(ctx, namespace, kind, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceClearResponse(rsp)
+}
+
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
 func (c *ClientWithResponses) GetInstanceLogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error) {
 	rsp, err := c.GetInstanceLogs(ctx, namespace, kind, name, params, reqEditors...)
@@ -6569,23 +6570,6 @@ func (c *ClientWithResponses) GetNodesInfoWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseGetNodesInfoResponse(rsp)
-}
-
-// PostObjectClearWithBodyWithResponse request with arbitrary body returning *PostObjectClearResponse
-func (c *ClientWithResponses) PostObjectClearWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error) {
-	rsp, err := c.PostObjectClearWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectClearResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostObjectClearWithResponse(ctx context.Context, body PostObjectClearJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error) {
-	rsp, err := c.PostObjectClear(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectClearResponse(rsp)
 }
 
 // GetObjectPathsWithResponse request returning *GetObjectPathsResponse
@@ -9172,6 +9156,46 @@ func ParseGetInstanceBacklogsResponse(rsp *http.Response) (*GetInstanceBacklogsR
 	return response, nil
 }
 
+// ParsePostInstanceClearResponse parses an HTTP response from a PostInstanceClearWithResponse call
+func ParsePostInstanceClearResponse(rsp *http.Response) (*PostInstanceClearResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceClearResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetInstanceLogsResponse parses an HTTP response from a GetInstanceLogsWithResponse call
 func ParseGetInstanceLogsResponse(rsp *http.Response) (*GetInstanceLogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9724,46 +9748,6 @@ func ParseGetNodesInfoResponse(rsp *http.Response) (*GetNodesInfoResponse, error
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostObjectClearResponse parses an HTTP response from a PostObjectClearWithResponse call
-func ParsePostObjectClearResponse(rsp *http.Response) (*PostObjectClearResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostObjectClearResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

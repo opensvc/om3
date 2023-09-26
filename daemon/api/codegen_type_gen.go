@@ -549,11 +549,6 @@ type PostNodeDRBDConfigRequest struct {
 	Data         []byte             `json:"data"`
 }
 
-// PostObjectClear defines model for PostObjectClear.
-type PostObjectClear struct {
-	Path string `json:"path"`
-}
-
 // PostObjectProgress defines model for PostObjectProgress.
 type PostObjectProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
@@ -998,9 +993,6 @@ type PostSvcActionSwitchJSONRequestBody = PostSvcActionSwitch
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
-
-// PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
-type PostObjectClearJSONRequestBody = PostObjectClear
 
 // PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
 type PostObjectProgressJSONRequestBody = PostObjectProgress

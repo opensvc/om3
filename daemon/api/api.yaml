@@ -874,21 +874,20 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/clear:
+  /namespaces/{namespace}/{kind}/{name}/instance/clear:
     post:
-      operationId: PostObjectClear
+      operationId: PostInstanceClear
       tags:
-        - objects
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectClear'
+      description: Clear an error ("start failed" for example) in the instance monitor state.
+      parameters:
+        - $ref: '#/components/parameters/namespacePathParam'
+        - $ref: '#/components/parameters/kindPathParam'
+        - $ref: '#/components/parameters/namePathParam'
       responses:
         200:
           description: OK
@@ -2724,13 +2723,6 @@ components:
         data:
           type: string
           format: byte
-    PostObjectClear:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
     PostObjectProgress:
       type: object
       required:

@@ -8,7 +8,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -38,10 +37,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 			if err != nil {
 				return err
 			}
-			params := api.PostObjectClear{
-				Path: p.String(),
-			}
-			if resp, err := c.PostObjectClear(context.Background(), params); err != nil {
+			if resp, err := c.PostInstanceClear(context.Background(), p.Namespace, p.Kind.String(), p.Name); err != nil {
 				errs = errors.Join(errs, fmt.Errorf("unexpected post object clear %s@%s error %s", p, node, err))
 			} else if resp.StatusCode != http.StatusOK {
 				errs = errors.Join(errs, fmt.Errorf("unexpected post object clear %s@%s status code %s", p, node, resp.Status))
