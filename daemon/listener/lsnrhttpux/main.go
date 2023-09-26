@@ -42,32 +42,30 @@ func New(opts ...funcopt.O) *T {
 
 func (t *T) Start(ctx context.Context) error {
 	errC := make(chan error)
-
+	t.log.Info().Msg("listener starting")
+	if err := os.RemoveAll(t.addr); err != nil {
+		t.log.Error().Err(err).Msg("RemoveAll")
+		return err
+	}
+	if listener, err := net.Listen("unix", t.addr); err != nil {
+		t.log.Error().Err(err).Msg("listen failed")
+		return err
+	} else {
+		t.listener = &listener
+	}
 	t.wg.Add(1)
 	go func(errC chan<- error) {
 		defer t.wg.Done()
 		ctx = daemonctx.WithListenAddr(ctx, t.addr)
-		t.log.Info().Msg("listener starting")
-		if err := os.RemoveAll(t.addr); err != nil {
-			t.log.Error().Err(err).Msg("RemoveAll")
-			errC <- err
-			return
-		}
+
 		s := &http2.Server{}
 		server := http.Server{
 			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
 			ErrorLog: golog.New(t.log, "", 0),
 		}
-		listener, err := net.Listen("unix", t.addr)
-		if err != nil {
-			t.log.Error().Err(err).Msg("listen failed")
-			errC <- err
-			return
-		}
 		t.log.Info().Msg("listener started")
 		errC <- nil
-		t.listener = &listener
-		if err := server.Serve(listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+		if err := server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 			t.log.Debug().Err(err).Msg("http listener ends with unexpected error")
 		}
 		t.log.Info().Msg("listener stopped")
