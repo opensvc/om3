@@ -223,14 +223,14 @@ type ClientInterface interface {
 	// GetNetworks request
 	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostNodeActionDrain request
-	PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetNodeBacklogs request
 	GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostNodeClear request
 	PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionDrain request
+	PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -847,18 +847,6 @@ func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeActionDrainRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeBacklogsRequest(c.Server, params)
 	if err != nil {
@@ -873,6 +861,18 @@ func (c *Client) GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsPar
 
 func (c *Client) PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeClearRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionDrainRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1246,7 +1246,7 @@ func NewPostClusterActionFreezeRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/action/freeze")
+	operationPath := fmt.Sprintf("/cluster/freeze")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1273,7 +1273,7 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/action/unfreeze")
+	operationPath := fmt.Sprintf("/cluster/unfreeze")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2958,33 +2958,6 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 	return req, nil
 }
 
-// NewPostNodeActionDrainRequest generates requests for PostNodeActionDrain
-func NewPostNodeActionDrainRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/action/drain")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetNodeBacklogsRequest generates requests for GetNodeBacklogs
 func NewGetNodeBacklogsRequest(server string, params *GetNodeBacklogsParams) (*http.Request, error) {
 	var err error
@@ -3054,6 +3027,33 @@ func NewPostNodeClearRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/node/clear")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionDrainRequest generates requests for PostNodeActionDrain
+func NewPostNodeActionDrainRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/drain")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4098,14 +4098,14 @@ type ClientWithResponsesInterface interface {
 	// GetNetworks request
 	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
 
-	// PostNodeActionDrain request
-	PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error)
-
 	// GetNodeBacklogs request
 	GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error)
 
 	// PostNodeClear request
 	PostNodeClearWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeClearResponse, error)
+
+	// PostNodeActionDrain request
+	PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -5288,34 +5288,6 @@ func (r GetNetworksResponse) StatusCode() int {
 	return 0
 }
 
-type PostNodeActionDrainResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *OrchestrationQueued
-	JSON400      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON408      *Problem
-	JSON409      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeActionDrainResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeActionDrainResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetNodeBacklogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5361,6 +5333,34 @@ func (r PostNodeClearResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostNodeClearResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionDrainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON408      *Problem
+	JSON409      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionDrainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionDrainResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -6225,15 +6225,6 @@ func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, param
 	return ParseGetNetworksResponse(rsp)
 }
 
-// PostNodeActionDrainWithResponse request returning *PostNodeActionDrainResponse
-func (c *ClientWithResponses) PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error) {
-	rsp, err := c.PostNodeActionDrain(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeActionDrainResponse(rsp)
-}
-
 // GetNodeBacklogsWithResponse request returning *GetNodeBacklogsResponse
 func (c *ClientWithResponses) GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error) {
 	rsp, err := c.GetNodeBacklogs(ctx, params, reqEditors...)
@@ -6250,6 +6241,15 @@ func (c *ClientWithResponses) PostNodeClearWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParsePostNodeClearResponse(rsp)
+}
+
+// PostNodeActionDrainWithResponse request returning *PostNodeActionDrainResponse
+func (c *ClientWithResponses) PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error) {
+	rsp, err := c.PostNodeActionDrain(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionDrainResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -8893,74 +8893,6 @@ func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) 
 	return response, nil
 }
 
-// ParsePostNodeActionDrainResponse parses an HTTP response from a PostNodeActionDrainWithResponse call
-func ParsePostNodeActionDrainResponse(rsp *http.Response) (*PostNodeActionDrainResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeActionDrainResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OrchestrationQueued
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON408 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetNodeBacklogsResponse parses an HTTP response from a GetNodeBacklogsWithResponse call
 func ParseGetNodeBacklogsResponse(rsp *http.Response) (*GetNodeBacklogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9049,6 +8981,74 @@ func ParsePostNodeClearResponse(rsp *http.Response) (*PostNodeClearResponse, err
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionDrainResponse parses an HTTP response from a PostNodeActionDrainWithResponse call
+func ParsePostNodeActionDrainResponse(rsp *http.Response) (*PostNodeActionDrainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionDrainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Problem

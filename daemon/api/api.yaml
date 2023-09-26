@@ -63,7 +63,7 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /cluster/action/freeze:
+  /cluster/freeze:
     post:
       operationId: PostClusterActionFreeze
       tags:
@@ -90,7 +90,7 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /cluster/action/unfreeze:
+  /cluster/unfreeze:
     post:
       operationId: PostClusterActionUnfreeze
       tags:
@@ -122,7 +122,6 @@ paths:
       operationId: GetDaemonDNSDump
       tags:
         - daemon
-        - dns
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -543,7 +542,7 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /node/action/drain:
+  /node/drain:
     post:
       operationId: PostNodeActionDrain
       tags:

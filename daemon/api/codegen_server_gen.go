@@ -27,10 +27,10 @@ type ServerInterface interface {
 	// (POST /cluster/abort)
 	PostClusterActionAbort(ctx echo.Context) error
 
-	// (POST /cluster/action/freeze)
+	// (POST /cluster/freeze)
 	PostClusterActionFreeze(ctx echo.Context) error
 
-	// (POST /cluster/action/unfreeze)
+	// (POST /cluster/unfreeze)
 	PostClusterActionUnfreeze(ctx echo.Context) error
 
 	// (GET /daemon/dns/dump)
@@ -147,14 +147,14 @@ type ServerInterface interface {
 	// (GET /networks)
 	GetNetworks(ctx echo.Context, params GetNetworksParams) error
 
-	// (POST /node/action/drain)
-	PostNodeActionDrain(ctx echo.Context) error
-
 	// (GET /node/backlogs)
 	GetNodeBacklogs(ctx echo.Context, params GetNodeBacklogsParams) error
 
 	// (POST /node/clear)
 	PostNodeClear(ctx echo.Context) error
+
+	// (POST /node/drain)
+	PostNodeActionDrain(ctx echo.Context) error
 
 	// (GET /node/drbd/allocation)
 	GetNodeDRBDAllocation(ctx echo.Context) error
@@ -1269,19 +1269,6 @@ func (w *ServerInterfaceWrapper) GetNetworks(ctx echo.Context) error {
 	return err
 }
 
-// PostNodeActionDrain converts echo context to params.
-func (w *ServerInterfaceWrapper) PostNodeActionDrain(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostNodeActionDrain(ctx)
-	return err
-}
-
 // GetNodeBacklogs converts echo context to params.
 func (w *ServerInterfaceWrapper) GetNodeBacklogs(ctx echo.Context) error {
 	var err error
@@ -1321,6 +1308,19 @@ func (w *ServerInterfaceWrapper) PostNodeClear(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostNodeClear(ctx)
+	return err
+}
+
+// PostNodeActionDrain converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeActionDrain(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostNodeActionDrain(ctx)
 	return err
 }
 
@@ -1734,8 +1734,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.POST(baseURL+"/auth/token", wrapper.PostAuthToken)
 	router.POST(baseURL+"/cluster/abort", wrapper.PostClusterActionAbort)
-	router.POST(baseURL+"/cluster/action/freeze", wrapper.PostClusterActionFreeze)
-	router.POST(baseURL+"/cluster/action/unfreeze", wrapper.PostClusterActionUnfreeze)
+	router.POST(baseURL+"/cluster/freeze", wrapper.PostClusterActionFreeze)
+	router.POST(baseURL+"/cluster/unfreeze", wrapper.PostClusterActionUnfreeze)
 	router.GET(baseURL+"/daemon/dns/dump", wrapper.GetDaemonDNSDump)
 	router.GET(baseURL+"/daemon/events", wrapper.GetDaemonEvents)
 	router.POST(baseURL+"/daemon/join", wrapper.PostDaemonJoin)
@@ -1774,9 +1774,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/namespaces/:namespace/:kind/:name/file", wrapper.GetObjectFile)
 	router.GET(baseURL+"/network/ip", wrapper.GetNetworkIp)
 	router.GET(baseURL+"/networks", wrapper.GetNetworks)
-	router.POST(baseURL+"/node/action/drain", wrapper.PostNodeActionDrain)
 	router.GET(baseURL+"/node/backlogs", wrapper.GetNodeBacklogs)
 	router.POST(baseURL+"/node/clear", wrapper.PostNodeClear)
+	router.POST(baseURL+"/node/drain", wrapper.PostNodeActionDrain)
 	router.GET(baseURL+"/node/drbd/allocation", wrapper.GetNodeDRBDAllocation)
 	router.GET(baseURL+"/node/drbd/config", wrapper.GetNodeDRBDConfig)
 	router.POST(baseURL+"/node/drbd/config", wrapper.PostNodeDRBDConfig)
@@ -1891,43 +1891,42 @@ var swaggerSpec = []string{
 	"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",
-	"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",
-	"AA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
