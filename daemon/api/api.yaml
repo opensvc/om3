@@ -829,7 +829,6 @@ paths:
         - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
         - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/Paths'
       responses:
         200:
           description: OK
@@ -862,7 +861,6 @@ paths:
         - $ref: '#/components/parameters/kindPathParam'
         - $ref: '#/components/parameters/namePathParam'
         - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/Paths'
       responses:
         200:
           description: OK

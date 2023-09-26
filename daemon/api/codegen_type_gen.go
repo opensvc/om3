@@ -883,18 +883,12 @@ type GetObjectConfigParams struct {
 type GetInstanceBacklogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.

@@ -3070,18 +3070,6 @@ func NewGetInstanceBacklogsRequest(server string, namespace NamespacePathParam, 
 
 	}
 
-	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
-		return nil, err
-	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-		return nil, err
-	} else {
-		for k, v := range parsed {
-			for _, v2 := range v {
-				queryValues.Add(k, v2)
-			}
-		}
-	}
-
 	queryURL.RawQuery = queryValues.Encode()
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -3148,18 +3136,6 @@ func NewGetInstanceLogsRequest(server string, namespace NamespacePathParam, kind
 			}
 		}
 
-	}
-
-	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
-		return nil, err
-	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-		return nil, err
-	} else {
-		for k, v := range parsed {
-			for _, v2 := range v {
-				queryValues.Add(k, v2)
-			}
-		}
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
