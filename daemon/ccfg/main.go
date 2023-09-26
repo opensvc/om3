@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -38,6 +39,7 @@ type (
 		cancel        context.CancelFunc
 		cmdC          chan any
 		databus       *daemondata.T
+		drainDuration time.Duration
 		bus           *pubsub.Bus
 		log           zerolog.Logger
 		startedAt     time.Time
@@ -53,6 +55,7 @@ type (
 		change      bool
 
 		sub *pubsub.Subscription
+		wg  sync.WaitGroup
 	}
 
 	cmdGet struct {
@@ -68,20 +71,22 @@ var (
 	cmdC chan any
 )
 
-// Start launches the ccfg worker goroutine
-func Start(parent context.Context, drainDuration time.Duration) error {
-	ctx, cancel := context.WithCancel(parent)
-
+func New(drainDuration time.Duration) *ccfg {
 	o := &ccfg{
-		networkSigs: make(map[string]string),
-		ctx:         ctx,
-		cancel:      cancel,
-		cmdC:        make(chan any),
-		databus:     daemondata.FromContext(ctx),
-		bus:         pubsub.BusFromContext(ctx),
-		log:         log.Logger.With().Str("func", "ccfg").Logger(),
-		localhost:   hostname.Hostname(),
+		cmdC:          make(chan any),
+		drainDuration: drainDuration,
+		localhost:     hostname.Hostname(),
+		log:           log.Logger.With().Str("func", "ccfg").Logger(),
+		networkSigs:   make(map[string]string),
 	}
+	return o
+}
+
+// Start launches the ccfg worker goroutine
+func (o *ccfg) Start(parent context.Context) error {
+	o.ctx, o.cancel = context.WithCancel(parent)
+	o.databus = daemondata.FromContext(o.ctx)
+	o.bus = pubsub.BusFromContext(o.ctx)
 	cmdC = o.cmdC
 
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
@@ -93,12 +98,14 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	o.pubClusterConfig()
 
 	o.startSubscriptions()
+	o.wg.Add(1)
 	go func() {
 		defer func() {
-			draincommand.Do(o.cmdC, drainDuration)
+			draincommand.Do(o.cmdC, o.drainDuration)
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Warn().Err(err).Msg("subscription stop")
 			}
+			o.wg.Done()
 		}()
 		o.worker()
 	}()
@@ -106,6 +113,12 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	// start serving
 	cmdC = o.cmdC
 
+	return nil
+}
+
+func (o *ccfg) Stop() error {
+	o.cancel()
+	o.wg.Wait()
 	return nil
 }
 
