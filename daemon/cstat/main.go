@@ -15,7 +15,6 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -27,7 +26,6 @@ type (
 		ctx       context.Context
 		cancel    context.CancelFunc
 		cmdC      chan any
-		databus   *daemondata.T
 		bus       *pubsub.Bus
 		log       zerolog.Logger
 		startedAt time.Time
@@ -51,7 +49,6 @@ func Start(parent context.Context) error {
 	o := &cstat{
 		ctx:        ctx,
 		cancel:     cancel,
-		databus:    daemondata.FromContext(ctx),
 		bus:        pubsub.BusFromContext(ctx),
 		log:        log.Logger.With().Str("func", "cstat").Logger(),
 		nodeStatus: make(map[string]node.Status),
@@ -60,7 +57,7 @@ func Start(parent context.Context) error {
 	o.startSubscriptions()
 	go func() {
 		defer func() {
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 		}()
