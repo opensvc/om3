@@ -1,4 +1,4 @@
-package daemoncli
+package daemoncmd
 
 import (
 	"context"
