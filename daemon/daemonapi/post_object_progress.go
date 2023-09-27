@@ -13,12 +13,12 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceProgress(ctx echo.Context, namespace, kind, name string) error {
+func (a *DaemonApi) PostInstanceProgress(ctx echo.Context, namespace string, kind path.Kind, name string) error {
 	var (
 		payload   = api.PostInstanceProgress{}
 		isPartial bool
 	)
-	p, err := path.New(name, namespace, kind)
+	p, err := path.New(namespace, kind, name)
 	if err != nil {
 		JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
 		return err

@@ -71,7 +71,11 @@ var (
 )
 
 // New allocates a new path type from its elements
-func New(name string, namespace string, kind string) (T, error) {
+func New(namespace string, kind Kind, name string) (T, error) {
+	return FromStrings(namespace, kind.String(), name)
+}
+
+func FromStrings(namespace, kind, name string) (T, error) {
 	var path T
 	name = strings.ToLower(name)
 	namespace = strings.ToLower(namespace)
@@ -226,7 +230,7 @@ func Parse(s string) (T, error) {
 			name = l[0]
 		}
 	}
-	return New(name, namespace, kind)
+	return FromStrings(namespace, kind, name)
 }
 
 // MarshalJSON implements the json interface

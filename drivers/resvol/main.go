@@ -244,7 +244,7 @@ func (t T) access() volaccess.T {
 }
 
 func (t *T) Volume() (object.Vol, error) {
-	p, err := path.New(t.name(), t.Path.Namespace, path.KindVol.String())
+	p, err := path.New(t.Path.Namespace, path.KindVol, t.name())
 	if err != nil {
 		return nil, err
 	}

@@ -80,7 +80,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t T) secPath() (path.T, error) {
-	return path.New(t.Secret, t.Path.Namespace, path.KindSec.String())
+	return path.New(t.Path.Namespace, path.KindSec, t.Secret)
 }
 
 func (t T) passphraseKeyname() string {

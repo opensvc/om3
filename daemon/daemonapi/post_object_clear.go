@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceClear(ctx echo.Context, namespace, kind, name string) error {
-	p, err := path.New(name, namespace, kind)
+func (a *DaemonApi) PostInstanceClear(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+	p, err := path.New(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 		return err

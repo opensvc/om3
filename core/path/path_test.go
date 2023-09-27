@@ -112,7 +112,7 @@ func TestNew(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, err := New(test.name, test.namespace, test.kind)
+		path, err := FromStrings(test.namespace, test.kind, test.name)
 		if test.ok {
 			if ok := assert.Nil(t, err); !ok {
 				return
@@ -128,8 +128,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestL_len(t *testing.T) {
-	p1, _ := New("n1", "ns1", "svc")
-	p2, _ := New("n2", "ns1", "svc")
+	p1, _ := Parse("ns1/svc/n1")
+	p2, _ := Parse("ns1/svc/n2")
 	assert.Equal(t, 0, len(L{}))
 	assert.Equal(t, 1, len(L{p1}))
 	assert.Equal(t, 2, len(L{p1, p2}))
@@ -271,7 +271,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	path, _ := New("svc1", "ns1", "svc")
+	path, _ := Parse("ns1/svc/svc1")
 	b, err := json.Marshal(path)
 	assert.Nil(t, err)
 	assert.Equal(t, b, []byte(`"ns1/svc/svc1"`))
@@ -381,7 +381,7 @@ func TestMatch(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, _ := New(test.name, test.namespace, test.kind)
+		path, _ := FromStrings(test.namespace, test.kind, test.name)
 		assert.Equal(t, test.match, path.Match(test.pattern))
 	}
 }
@@ -513,7 +513,7 @@ func TestConfigFile(t *testing.T) {
 				TestingT: t,
 				Root:     test.root,
 			})
-			p, _ := New(test.name, test.namespace, test.kind)
+			p, _ := FromStrings(test.namespace, test.kind, test.name)
 			require.Equal(t, test.cf, p.ConfigFile())
 		})
 	}

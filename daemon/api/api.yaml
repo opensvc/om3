@@ -2508,6 +2508,20 @@ components:
       additionalProperties:
         $ref: '#/components/schemas/Instance'
 
+    Kind:
+      x-go-type: path.Kind
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/path
+      type: string
+      enum:
+        - svc
+        - vol
+        - cfg
+        - sec
+        - usr
+        - nscfg
+        - ccfg
+
     # ========================================================================
     # pool schemas
     # ========================================================================
@@ -3010,7 +3024,7 @@ components:
       name: kind
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/Kind'
 
     Evaluate:
       name: evaluate

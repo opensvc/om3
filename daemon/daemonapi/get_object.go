@@ -21,8 +21,8 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 	}
 }
 
-func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind string, name string) error {
-	p, err := path.New(name, namespace, kind)
+func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+	p, err := path.New(namespace, kind, name)
 	if err != nil {
 		return err
 	}

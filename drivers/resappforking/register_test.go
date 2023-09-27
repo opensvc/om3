@@ -29,7 +29,7 @@ func TestKeywords(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
 
-	p, err := path.New("svc1", "", "")
+	p, err := path.Parse("svc1")
 	require.Nil(t, err)
 	o, err := object.NewSvc(p)
 	require.Nil(t, err)

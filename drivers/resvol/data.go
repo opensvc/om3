@@ -149,7 +149,7 @@ func (t T) parseReference(s string, filter path.Kind, head string) Metadata {
 	if len(l) != 2 {
 		return Metadata{}
 	}
-	if p, err := path.New(l[0], t.Path.Namespace, kind.String()); err != nil {
+	if p, err := path.New(t.Path.Namespace, kind, l[0]); err != nil {
 		return Metadata{}
 	} else {
 		return Metadata{

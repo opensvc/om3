@@ -33,7 +33,7 @@ func Parse(s string) (*T, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err = path.New(name, namespace, kind)
+	p, err = path.FromStrings(namespace, kind, name)
 	return &T{
 		Path:    p,
 		Cluster: cluster,
