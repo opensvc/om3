@@ -150,62 +150,62 @@ type ClientInterface interface {
 	GetInstancesLogs(ctx context.Context, params *GetInstancesLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObject request
-	GetObject(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObject(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionAbort request
-	PostObjectActionAbort(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionAbort(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectConfig request
-	GetObjectConfig(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionDelete request
-	PostObjectActionDelete(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectFile request
-	GetObjectFile(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionFreeze request
-	PostObjectActionFreeze(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionFreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionGiveback request
-	PostObjectActionGiveback(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionGiveback(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstanceBacklogs request
-	GetInstanceBacklogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetInstanceBacklogs(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceClear request
-	PostInstanceClear(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostInstanceClear(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstanceLogs request
-	GetInstanceLogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetInstanceLogs(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceProgress request with any body
-	PostInstanceProgressWithBody(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostInstanceProgressWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostInstanceProgress(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostInstanceProgress(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionProvision request
-	PostObjectActionProvision(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionPurge request
-	PostObjectActionPurge(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionStart request
-	PostObjectActionStart(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionStart(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionStop request
-	PostObjectActionStop(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionSwitch request with any body
-	PostObjectActionSwitchWithBody(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionSwitchWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostObjectActionSwitch(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionSwitch(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionUnfreeze request
-	PostObjectActionUnfreeze(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionUnfreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionUnprovision request
-	PostObjectActionUnprovision(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNetworkIp request
 	GetNetworkIp(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -521,7 +521,7 @@ func (c *Client) GetInstancesLogs(ctx context.Context, params *GetInstancesLogsP
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObject(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetObject(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -533,7 +533,7 @@ func (c *Client) GetObject(ctx context.Context, namespace NamespacePathParam, ki
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionAbort(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionAbort(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionAbortRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -545,7 +545,7 @@ func (c *Client) PostObjectActionAbort(ctx context.Context, namespace NamespaceP
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectConfig(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
@@ -557,7 +557,7 @@ func (c *Client) GetObjectConfig(ctx context.Context, namespace NamespacePathPar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionDelete(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionDeleteRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -569,7 +569,7 @@ func (c *Client) PostObjectActionDelete(ctx context.Context, namespace Namespace
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectFile(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetObjectFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectFileRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -581,7 +581,7 @@ func (c *Client) GetObjectFile(ctx context.Context, namespace NamespacePathParam
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionFreeze(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionFreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionFreezeRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -593,7 +593,7 @@ func (c *Client) PostObjectActionFreeze(ctx context.Context, namespace Namespace
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionGiveback(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionGiveback(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionGivebackRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -605,7 +605,7 @@ func (c *Client) PostObjectActionGiveback(ctx context.Context, namespace Namespa
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetInstanceBacklogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetInstanceBacklogs(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceBacklogsRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
@@ -617,7 +617,7 @@ func (c *Client) GetInstanceBacklogs(ctx context.Context, namespace NamespacePat
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostInstanceClear(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostInstanceClear(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceClearRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -629,7 +629,7 @@ func (c *Client) PostInstanceClear(ctx context.Context, namespace NamespacePathP
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetInstanceLogs(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetInstanceLogs(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceLogsRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
@@ -641,7 +641,7 @@ func (c *Client) GetInstanceLogs(ctx context.Context, namespace NamespacePathPar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostInstanceProgressWithBody(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostInstanceProgressWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceProgressRequestWithBody(c.Server, namespace, kind, name, contentType, body)
 	if err != nil {
 		return nil, err
@@ -653,7 +653,7 @@ func (c *Client) PostInstanceProgressWithBody(ctx context.Context, namespace Nam
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostInstanceProgress(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostInstanceProgress(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceProgressRequest(c.Server, namespace, kind, name, body)
 	if err != nil {
 		return nil, err
@@ -665,7 +665,7 @@ func (c *Client) PostInstanceProgress(ctx context.Context, namespace NamespacePa
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionProvision(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionProvisionRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -677,7 +677,7 @@ func (c *Client) PostObjectActionProvision(ctx context.Context, namespace Namesp
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionPurge(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionPurgeRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -689,7 +689,7 @@ func (c *Client) PostObjectActionPurge(ctx context.Context, namespace NamespaceP
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionStart(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionStart(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionStartRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -701,7 +701,7 @@ func (c *Client) PostObjectActionStart(ctx context.Context, namespace NamespaceP
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionStop(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionStopRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -713,7 +713,7 @@ func (c *Client) PostObjectActionStop(ctx context.Context, namespace NamespacePa
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionSwitchWithBody(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionSwitchWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionSwitchRequestWithBody(c.Server, namespace, kind, name, contentType, body)
 	if err != nil {
 		return nil, err
@@ -725,7 +725,7 @@ func (c *Client) PostObjectActionSwitchWithBody(ctx context.Context, namespace N
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionSwitch(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionSwitch(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionSwitchRequest(c.Server, namespace, kind, name, body)
 	if err != nil {
 		return nil, err
@@ -737,7 +737,7 @@ func (c *Client) PostObjectActionSwitch(ctx context.Context, namespace Namespace
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionUnfreeze(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionUnfreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionUnfreezeRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -749,7 +749,7 @@ func (c *Client) PostObjectActionUnfreeze(ctx context.Context, namespace Namespa
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionUnprovision(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionUnprovisionRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
@@ -1795,7 +1795,7 @@ func NewGetInstancesLogsRequest(server string, params *GetInstancesLogsParams) (
 }
 
 // NewGetObjectRequest generates requests for GetObject
-func NewGetObjectRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewGetObjectRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1843,7 +1843,7 @@ func NewGetObjectRequest(server string, namespace NamespacePathParam, kind KindP
 }
 
 // NewPostObjectActionAbortRequest generates requests for PostObjectActionAbort
-func NewPostObjectActionAbortRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionAbortRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1891,7 +1891,7 @@ func NewPostObjectActionAbortRequest(server string, namespace NamespacePathParam
 }
 
 // NewGetObjectConfigRequest generates requests for GetObjectConfig
-func NewGetObjectConfigRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetObjectConfigParams) (*http.Request, error) {
+func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1975,7 +1975,7 @@ func NewGetObjectConfigRequest(server string, namespace NamespacePathParam, kind
 }
 
 // NewPostObjectActionDeleteRequest generates requests for PostObjectActionDelete
-func NewPostObjectActionDeleteRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionDeleteRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2023,7 +2023,7 @@ func NewPostObjectActionDeleteRequest(server string, namespace NamespacePathPara
 }
 
 // NewGetObjectFileRequest generates requests for GetObjectFile
-func NewGetObjectFileRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewGetObjectFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2071,7 +2071,7 @@ func NewGetObjectFileRequest(server string, namespace NamespacePathParam, kind K
 }
 
 // NewPostObjectActionFreezeRequest generates requests for PostObjectActionFreeze
-func NewPostObjectActionFreezeRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionFreezeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2119,7 +2119,7 @@ func NewPostObjectActionFreezeRequest(server string, namespace NamespacePathPara
 }
 
 // NewPostObjectActionGivebackRequest generates requests for PostObjectActionGiveback
-func NewPostObjectActionGivebackRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionGivebackRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2167,7 +2167,7 @@ func NewPostObjectActionGivebackRequest(server string, namespace NamespacePathPa
 }
 
 // NewGetInstanceBacklogsRequest generates requests for GetInstanceBacklogs
-func NewGetInstanceBacklogsRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams) (*http.Request, error) {
+func NewGetInstanceBacklogsRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceBacklogsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2235,7 +2235,7 @@ func NewGetInstanceBacklogsRequest(server string, namespace NamespacePathParam, 
 }
 
 // NewPostInstanceClearRequest generates requests for PostInstanceClear
-func NewPostInstanceClearRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostInstanceClearRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2283,7 +2283,7 @@ func NewPostInstanceClearRequest(server string, namespace NamespacePathParam, ki
 }
 
 // NewGetInstanceLogsRequest generates requests for GetInstanceLogs
-func NewGetInstanceLogsRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams) (*http.Request, error) {
+func NewGetInstanceLogsRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2351,7 +2351,7 @@ func NewGetInstanceLogsRequest(server string, namespace NamespacePathParam, kind
 }
 
 // NewPostInstanceProgressRequest calls the generic PostInstanceProgress builder with application/json body
-func NewPostInstanceProgressRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostInstanceProgressJSONRequestBody) (*http.Request, error) {
+func NewPostInstanceProgressRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceProgressJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2362,7 +2362,7 @@ func NewPostInstanceProgressRequest(server string, namespace NamespacePathParam,
 }
 
 // NewPostInstanceProgressRequestWithBody generates requests for PostInstanceProgress with any type of body
-func NewPostInstanceProgressRequestWithBody(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostInstanceProgressRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2412,7 +2412,7 @@ func NewPostInstanceProgressRequestWithBody(server string, namespace NamespacePa
 }
 
 // NewPostObjectActionProvisionRequest generates requests for PostObjectActionProvision
-func NewPostObjectActionProvisionRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2460,7 +2460,7 @@ func NewPostObjectActionProvisionRequest(server string, namespace NamespacePathP
 }
 
 // NewPostObjectActionPurgeRequest generates requests for PostObjectActionPurge
-func NewPostObjectActionPurgeRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2508,7 +2508,7 @@ func NewPostObjectActionPurgeRequest(server string, namespace NamespacePathParam
 }
 
 // NewPostObjectActionStartRequest generates requests for PostObjectActionStart
-func NewPostObjectActionStartRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionStartRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2556,7 +2556,7 @@ func NewPostObjectActionStartRequest(server string, namespace NamespacePathParam
 }
 
 // NewPostObjectActionStopRequest generates requests for PostObjectActionStop
-func NewPostObjectActionStopRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionStopRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2604,7 +2604,7 @@ func NewPostObjectActionStopRequest(server string, namespace NamespacePathParam,
 }
 
 // NewPostObjectActionSwitchRequest calls the generic PostObjectActionSwitch builder with application/json body
-func NewPostObjectActionSwitchRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostObjectActionSwitchJSONRequestBody) (*http.Request, error) {
+func NewPostObjectActionSwitchRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectActionSwitchJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2615,7 +2615,7 @@ func NewPostObjectActionSwitchRequest(server string, namespace NamespacePathPara
 }
 
 // NewPostObjectActionSwitchRequestWithBody generates requests for PostObjectActionSwitch with any type of body
-func NewPostObjectActionSwitchRequestWithBody(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostObjectActionSwitchRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2665,7 +2665,7 @@ func NewPostObjectActionSwitchRequestWithBody(server string, namespace Namespace
 }
 
 // NewPostObjectActionUnfreezeRequest generates requests for PostObjectActionUnfreeze
-func NewPostObjectActionUnfreezeRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionUnfreezeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2713,7 +2713,7 @@ func NewPostObjectActionUnfreezeRequest(server string, namespace NamespacePathPa
 }
 
 // NewPostObjectActionUnprovisionRequest generates requests for PostObjectActionUnprovision
-func NewPostObjectActionUnprovisionRequest(server string, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) (*http.Request, error) {
+func NewPostObjectActionUnprovisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3723,62 +3723,62 @@ type ClientWithResponsesInterface interface {
 	GetInstancesLogsWithResponse(ctx context.Context, params *GetInstancesLogsParams, reqEditors ...RequestEditorFn) (*GetInstancesLogsResponse, error)
 
 	// GetObject request
-	GetObjectWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
+	GetObjectWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
 
 	// PostObjectActionAbort request
-	PostObjectActionAbortWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error)
+	PostObjectActionAbortWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error)
 
 	// GetObjectConfig request
-	GetObjectConfigWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error)
+	GetObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error)
 
 	// PostObjectActionDelete request
-	PostObjectActionDeleteWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error)
+	PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error)
 
 	// GetObjectFile request
-	GetObjectFileWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error)
+	GetObjectFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error)
 
 	// PostObjectActionFreeze request
-	PostObjectActionFreezeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionFreezeResponse, error)
+	PostObjectActionFreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionFreezeResponse, error)
 
 	// PostObjectActionGiveback request
-	PostObjectActionGivebackWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error)
+	PostObjectActionGivebackWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error)
 
 	// GetInstanceBacklogs request
-	GetInstanceBacklogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*GetInstanceBacklogsResponse, error)
+	GetInstanceBacklogsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*GetInstanceBacklogsResponse, error)
 
 	// PostInstanceClear request
-	PostInstanceClearWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
+	PostInstanceClearWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
 
 	// GetInstanceLogs request
-	GetInstanceLogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
+	GetInstanceLogsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
 
 	// PostInstanceProgress request with any body
-	PostInstanceProgressWithBodyWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error)
+	PostInstanceProgressWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error)
 
-	PostInstanceProgressWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error)
+	PostInstanceProgressWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error)
 
 	// PostObjectActionProvision request
-	PostObjectActionProvisionWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
+	PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
 
 	// PostObjectActionPurge request
-	PostObjectActionPurgeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
+	PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
 
 	// PostObjectActionStart request
-	PostObjectActionStartWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionStartResponse, error)
+	PostObjectActionStartWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStartResponse, error)
 
 	// PostObjectActionStop request
-	PostObjectActionStopWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error)
+	PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error)
 
 	// PostObjectActionSwitch request with any body
-	PostObjectActionSwitchWithBodyWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error)
+	PostObjectActionSwitchWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error)
 
-	PostObjectActionSwitchWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error)
+	PostObjectActionSwitchWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error)
 
 	// PostObjectActionUnfreeze request
-	PostObjectActionUnfreezeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionUnfreezeResponse, error)
+	PostObjectActionUnfreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnfreezeResponse, error)
 
 	// PostObjectActionUnprovision request
-	PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error)
+	PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error)
 
 	// GetNetworkIp request
 	GetNetworkIpWithResponse(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*GetNetworkIpResponse, error)
@@ -5443,7 +5443,7 @@ func (c *ClientWithResponses) GetInstancesLogsWithResponse(ctx context.Context, 
 }
 
 // GetObjectWithResponse request returning *GetObjectResponse
-func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*GetObjectResponse, error) {
+func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectResponse, error) {
 	rsp, err := c.GetObject(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5452,7 +5452,7 @@ func (c *ClientWithResponses) GetObjectWithResponse(ctx context.Context, namespa
 }
 
 // PostObjectActionAbortWithResponse request returning *PostObjectActionAbortResponse
-func (c *ClientWithResponses) PostObjectActionAbortWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error) {
+func (c *ClientWithResponses) PostObjectActionAbortWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionAbortResponse, error) {
 	rsp, err := c.PostObjectActionAbort(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5461,7 +5461,7 @@ func (c *ClientWithResponses) PostObjectActionAbortWithResponse(ctx context.Cont
 }
 
 // GetObjectConfigWithResponse request returning *GetObjectConfigResponse
-func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error) {
+func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error) {
 	rsp, err := c.GetObjectConfig(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5470,7 +5470,7 @@ func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, n
 }
 
 // PostObjectActionDeleteWithResponse request returning *PostObjectActionDeleteResponse
-func (c *ClientWithResponses) PostObjectActionDeleteWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error) {
+func (c *ClientWithResponses) PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error) {
 	rsp, err := c.PostObjectActionDelete(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5479,7 +5479,7 @@ func (c *ClientWithResponses) PostObjectActionDeleteWithResponse(ctx context.Con
 }
 
 // GetObjectFileWithResponse request returning *GetObjectFileResponse
-func (c *ClientWithResponses) GetObjectFileWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error) {
+func (c *ClientWithResponses) GetObjectFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error) {
 	rsp, err := c.GetObjectFile(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5488,7 +5488,7 @@ func (c *ClientWithResponses) GetObjectFileWithResponse(ctx context.Context, nam
 }
 
 // PostObjectActionFreezeWithResponse request returning *PostObjectActionFreezeResponse
-func (c *ClientWithResponses) PostObjectActionFreezeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionFreezeResponse, error) {
+func (c *ClientWithResponses) PostObjectActionFreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionFreezeResponse, error) {
 	rsp, err := c.PostObjectActionFreeze(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5497,7 +5497,7 @@ func (c *ClientWithResponses) PostObjectActionFreezeWithResponse(ctx context.Con
 }
 
 // PostObjectActionGivebackWithResponse request returning *PostObjectActionGivebackResponse
-func (c *ClientWithResponses) PostObjectActionGivebackWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error) {
+func (c *ClientWithResponses) PostObjectActionGivebackWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error) {
 	rsp, err := c.PostObjectActionGiveback(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5506,7 +5506,7 @@ func (c *ClientWithResponses) PostObjectActionGivebackWithResponse(ctx context.C
 }
 
 // GetInstanceBacklogsWithResponse request returning *GetInstanceBacklogsResponse
-func (c *ClientWithResponses) GetInstanceBacklogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*GetInstanceBacklogsResponse, error) {
+func (c *ClientWithResponses) GetInstanceBacklogsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceBacklogsParams, reqEditors ...RequestEditorFn) (*GetInstanceBacklogsResponse, error) {
 	rsp, err := c.GetInstanceBacklogs(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5515,7 +5515,7 @@ func (c *ClientWithResponses) GetInstanceBacklogsWithResponse(ctx context.Contex
 }
 
 // PostInstanceClearWithResponse request returning *PostInstanceClearResponse
-func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error) {
+func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error) {
 	rsp, err := c.PostInstanceClear(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5524,7 +5524,7 @@ func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context,
 }
 
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
-func (c *ClientWithResponses) GetInstanceLogsWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error) {
+func (c *ClientWithResponses) GetInstanceLogsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error) {
 	rsp, err := c.GetInstanceLogs(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5533,7 +5533,7 @@ func (c *ClientWithResponses) GetInstanceLogsWithResponse(ctx context.Context, n
 }
 
 // PostInstanceProgressWithBodyWithResponse request with arbitrary body returning *PostInstanceProgressResponse
-func (c *ClientWithResponses) PostInstanceProgressWithBodyWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error) {
+func (c *ClientWithResponses) PostInstanceProgressWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error) {
 	rsp, err := c.PostInstanceProgressWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5541,7 +5541,7 @@ func (c *ClientWithResponses) PostInstanceProgressWithBodyWithResponse(ctx conte
 	return ParsePostInstanceProgressResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostInstanceProgressWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error) {
+func (c *ClientWithResponses) PostInstanceProgressWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceProgressJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceProgressResponse, error) {
 	rsp, err := c.PostInstanceProgress(ctx, namespace, kind, name, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5550,7 +5550,7 @@ func (c *ClientWithResponses) PostInstanceProgressWithResponse(ctx context.Conte
 }
 
 // PostObjectActionProvisionWithResponse request returning *PostObjectActionProvisionResponse
-func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error) {
+func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error) {
 	rsp, err := c.PostObjectActionProvision(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5559,7 +5559,7 @@ func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.
 }
 
 // PostObjectActionPurgeWithResponse request returning *PostObjectActionPurgeResponse
-func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error) {
+func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error) {
 	rsp, err := c.PostObjectActionPurge(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5568,7 +5568,7 @@ func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Cont
 }
 
 // PostObjectActionStartWithResponse request returning *PostObjectActionStartResponse
-func (c *ClientWithResponses) PostObjectActionStartWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionStartResponse, error) {
+func (c *ClientWithResponses) PostObjectActionStartWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStartResponse, error) {
 	rsp, err := c.PostObjectActionStart(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5577,7 +5577,7 @@ func (c *ClientWithResponses) PostObjectActionStartWithResponse(ctx context.Cont
 }
 
 // PostObjectActionStopWithResponse request returning *PostObjectActionStopResponse
-func (c *ClientWithResponses) PostObjectActionStopWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error) {
+func (c *ClientWithResponses) PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error) {
 	rsp, err := c.PostObjectActionStop(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5586,7 +5586,7 @@ func (c *ClientWithResponses) PostObjectActionStopWithResponse(ctx context.Conte
 }
 
 // PostObjectActionSwitchWithBodyWithResponse request with arbitrary body returning *PostObjectActionSwitchResponse
-func (c *ClientWithResponses) PostObjectActionSwitchWithBodyWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error) {
+func (c *ClientWithResponses) PostObjectActionSwitchWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error) {
 	rsp, err := c.PostObjectActionSwitchWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5594,7 +5594,7 @@ func (c *ClientWithResponses) PostObjectActionSwitchWithBodyWithResponse(ctx con
 	return ParsePostObjectActionSwitchResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostObjectActionSwitchWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error) {
+func (c *ClientWithResponses) PostObjectActionSwitchWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectActionSwitchJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error) {
 	rsp, err := c.PostObjectActionSwitch(ctx, namespace, kind, name, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5603,7 +5603,7 @@ func (c *ClientWithResponses) PostObjectActionSwitchWithResponse(ctx context.Con
 }
 
 // PostObjectActionUnfreezeWithResponse request returning *PostObjectActionUnfreezeResponse
-func (c *ClientWithResponses) PostObjectActionUnfreezeWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionUnfreezeResponse, error) {
+func (c *ClientWithResponses) PostObjectActionUnfreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnfreezeResponse, error) {
 	rsp, err := c.PostObjectActionUnfreeze(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5612,7 +5612,7 @@ func (c *ClientWithResponses) PostObjectActionUnfreezeWithResponse(ctx context.C
 }
 
 // PostObjectActionUnprovisionWithResponse request returning *PostObjectActionUnprovisionResponse
-func (c *ClientWithResponses) PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error) {
+func (c *ClientWithResponses) PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error) {
 	rsp, err := c.PostObjectActionUnprovision(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err

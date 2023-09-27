@@ -717,8 +717,14 @@ type DRBDConfigName = string
 // Duration defines model for Duration.
 type Duration = string
 
+// Evaluate defines model for Evaluate.
+type Evaluate = bool
+
 // EventFilter defines model for EventFilter.
 type EventFilter = []string
+
+// Impersonate defines model for Impersonate.
+type Impersonate = string
 
 // Limit defines model for Limit.
 type Limit = int64
@@ -756,20 +762,14 @@ type Roles = []Role
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
 
-// EvaluateQueryParam defines model for evaluateQueryParam.
-type EvaluateQueryParam = bool
+// InPathKind defines model for inPathKind.
+type InPathKind = string
 
-// ImpersonateQueryParam defines model for impersonateQueryParam.
-type ImpersonateQueryParam = string
+// InPathName defines model for inPathName.
+type InPathName = string
 
-// KindPathParam defines model for kindPathParam.
-type KindPathParam = string
-
-// NamePathParam defines model for namePathParam.
-type NamePathParam = string
-
-// NamespacePathParam defines model for namespacePathParam.
-type NamespacePathParam = string
+// InPathNamespace defines model for inPathNamespace.
+type InPathNamespace = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -867,10 +867,10 @@ type GetInstancesLogsParams struct {
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	// Evaluate evaluate
-	Evaluate *EvaluateQueryParam `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 
 	// Impersonate impersonate the evaluation as node
-	Impersonate *ImpersonateQueryParam `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
 // GetInstanceBacklogsParams defines parameters for GetInstanceBacklogs.

@@ -433,9 +433,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -825,9 +825,9 @@ paths:
       description: |
         Serve recent logs
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/LogFilter'
       responses:
         200:
@@ -857,9 +857,9 @@ paths:
       description: |
         Serve new logs
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/LogFilter'
       responses:
         200:
@@ -885,9 +885,9 @@ paths:
         - bearerAuth: []
       description: Clear an error ("start failed" for example) in the instance monitor state.
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -907,9 +907,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       requestBody:
         description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
         required: true
@@ -959,9 +959,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -994,11 +994,11 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
-        - $ref: '#/components/parameters/evaluateQueryParam'
-        - $ref: '#/components/parameters/impersonateQueryParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/Evaluate'
+        - $ref: '#/components/parameters/Impersonate'
       responses:
         200:
           description: OK
@@ -1025,9 +1025,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1054,9 +1054,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1086,9 +1086,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1117,9 +1117,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1149,9 +1149,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1181,9 +1181,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1212,9 +1212,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1243,9 +1243,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1274,9 +1274,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       requestBody:
         required: true
         content:
@@ -1312,9 +1312,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1344,9 +1344,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/namespacePathParam'
-        - $ref: '#/components/parameters/kindPathParam'
-        - $ref: '#/components/parameters/namePathParam'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -2992,34 +2992,36 @@ components:
       default: failover
 
   parameters:
-    evaluateQueryParam:
-      name: evaluate
-      in: query
-      description: evaluate
-      schema:
-        type: boolean
-    impersonateQueryParam:
-      name: impersonate
-      in: query
-      description: impersonate the evaluation as node
-      schema:
-        type: string
-    namePathParam:
+
+    inPathName:
       in: path
       name: name
       required: true
       schema:
         type: string
-    namespacePathParam:
+    inPathNamespace:
       in: path
       name: namespace
       required: true
       schema:
         type: string
-    kindPathParam:
+    inPathKind:
       in: path
       name: kind
       required: true
+      schema:
+        type: string
+
+    Evaluate:
+      name: evaluate
+      in: query
+      description: evaluate
+      schema:
+        type: boolean
+    Impersonate:
+      name: impersonate
+      in: query
+      description: impersonate the evaluation as node
       schema:
         type: string
     Duration:

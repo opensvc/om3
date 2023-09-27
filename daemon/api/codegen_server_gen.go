@@ -76,58 +76,58 @@ type ServerInterface interface {
 	GetInstancesLogs(ctx echo.Context, params GetInstancesLogsParams) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name})
-	GetObject(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	GetObject(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/abort)
-	PostObjectActionAbort(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionAbort(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name}/config)
-	GetObjectConfig(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params GetObjectConfigParams) error
+	GetObjectConfig(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params GetObjectConfigParams) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/delete)
-	PostObjectActionDelete(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionDelete(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name}/file)
-	GetObjectFile(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	GetObjectFile(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/freeze)
-	PostObjectActionFreeze(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionFreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/giveback)
-	PostObjectActionGiveback(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionGiveback(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name}/instance/backlogs)
-	GetInstanceBacklogs(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params GetInstanceBacklogsParams) error
+	GetInstanceBacklogs(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params GetInstanceBacklogsParams) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/instance/clear)
-	PostInstanceClear(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostInstanceClear(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name}/instance/logs)
-	GetInstanceLogs(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam, params GetInstanceLogsParams) error
+	GetInstanceLogs(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params GetInstanceLogsParams) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/instance/progress)
-	PostInstanceProgress(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostInstanceProgress(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/provision)
-	PostObjectActionProvision(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionProvision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/purge)
-	PostObjectActionPurge(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionPurge(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/start)
-	PostObjectActionStart(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionStart(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/stop)
-	PostObjectActionStop(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionStop(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/switch)
-	PostObjectActionSwitch(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionSwitch(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/unfreeze)
-	PostObjectActionUnfreeze(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionUnfreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/unprovision)
-	PostObjectActionUnprovision(ctx echo.Context, namespace NamespacePathParam, kind KindPathParam, name NamePathParam) error
+	PostObjectActionUnprovision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
 	// (GET /network/ip)
 	GetNetworkIp(ctx echo.Context, params GetNetworkIpParams) error
@@ -551,7 +551,7 @@ func (w *ServerInterfaceWrapper) GetInstancesLogs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetObject(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -559,7 +559,7 @@ func (w *ServerInterfaceWrapper) GetObject(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -567,7 +567,7 @@ func (w *ServerInterfaceWrapper) GetObject(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -587,7 +587,7 @@ func (w *ServerInterfaceWrapper) GetObject(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionAbort(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -595,7 +595,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionAbort(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -603,7 +603,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionAbort(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -623,7 +623,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionAbort(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetObjectConfig(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -631,7 +631,7 @@ func (w *ServerInterfaceWrapper) GetObjectConfig(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -639,7 +639,7 @@ func (w *ServerInterfaceWrapper) GetObjectConfig(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -675,7 +675,7 @@ func (w *ServerInterfaceWrapper) GetObjectConfig(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionDelete(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -683,7 +683,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionDelete(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -691,7 +691,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionDelete(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -711,7 +711,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionDelete(ctx echo.Context) error 
 func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -719,7 +719,7 @@ func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -727,7 +727,7 @@ func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -747,7 +747,7 @@ func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionFreeze(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -755,7 +755,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionFreeze(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -763,7 +763,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionFreeze(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -783,7 +783,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionFreeze(ctx echo.Context) error 
 func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -791,7 +791,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) erro
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -799,7 +799,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) erro
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -819,7 +819,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) erro
 func (w *ServerInterfaceWrapper) GetInstanceBacklogs(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -827,7 +827,7 @@ func (w *ServerInterfaceWrapper) GetInstanceBacklogs(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -835,7 +835,7 @@ func (w *ServerInterfaceWrapper) GetInstanceBacklogs(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -864,7 +864,7 @@ func (w *ServerInterfaceWrapper) GetInstanceBacklogs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -872,7 +872,7 @@ func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -880,7 +880,7 @@ func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -900,7 +900,7 @@ func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetInstanceLogs(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -908,7 +908,7 @@ func (w *ServerInterfaceWrapper) GetInstanceLogs(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -916,7 +916,7 @@ func (w *ServerInterfaceWrapper) GetInstanceLogs(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -945,7 +945,7 @@ func (w *ServerInterfaceWrapper) GetInstanceLogs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostInstanceProgress(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -953,7 +953,7 @@ func (w *ServerInterfaceWrapper) PostInstanceProgress(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -961,7 +961,7 @@ func (w *ServerInterfaceWrapper) PostInstanceProgress(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -981,7 +981,7 @@ func (w *ServerInterfaceWrapper) PostInstanceProgress(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionProvision(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -989,7 +989,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionProvision(ctx echo.Context) err
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -997,7 +997,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionProvision(ctx echo.Context) err
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1017,7 +1017,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionProvision(ctx echo.Context) err
 func (w *ServerInterfaceWrapper) PostObjectActionPurge(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1025,7 +1025,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionPurge(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1033,7 +1033,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionPurge(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1053,7 +1053,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionPurge(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionStart(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1061,7 +1061,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStart(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1069,7 +1069,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStart(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1089,7 +1089,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStart(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionStop(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1097,7 +1097,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStop(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1105,7 +1105,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStop(ctx echo.Context) error {
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1125,7 +1125,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionStop(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostObjectActionSwitch(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1133,7 +1133,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionSwitch(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1141,7 +1141,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionSwitch(ctx echo.Context) error 
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1161,7 +1161,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionSwitch(ctx echo.Context) error 
 func (w *ServerInterfaceWrapper) PostObjectActionUnfreeze(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1169,7 +1169,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionUnfreeze(ctx echo.Context) erro
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1177,7 +1177,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionUnfreeze(ctx echo.Context) erro
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1197,7 +1197,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionUnfreeze(ctx echo.Context) erro
 func (w *ServerInterfaceWrapper) PostObjectActionUnprovision(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "namespace" -------------
-	var namespace NamespacePathParam
+	var namespace InPathNamespace
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
 	if err != nil {
@@ -1205,7 +1205,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionUnprovision(ctx echo.Context) e
 	}
 
 	// ------------- Path parameter "kind" -------------
-	var kind KindPathParam
+	var kind InPathKind
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
 	if err != nil {
@@ -1213,7 +1213,7 @@ func (w *ServerInterfaceWrapper) PostObjectActionUnprovision(ctx echo.Context) e
 	}
 
 	// ------------- Path parameter "name" -------------
-	var name NamePathParam
+	var name InPathName
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
 	if err != nil {
@@ -1713,130 +1713,130 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"5SEcYQStkq33t7e3t/8/AAD//7CKUodk8AAA",
+	"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",
+	"/z8AAP//VP4aMJHvAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
