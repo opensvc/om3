@@ -6,8 +6,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -289,7 +289,7 @@ func (o *imon) orchestrateResourceRestart() {
 
 	// discard all execpt svc and vol
 	switch o.path.Kind {
-	case kind.Svc, kind.Vol:
+	case path.KindSvc, path.KindVol:
 	default:
 		return
 	}

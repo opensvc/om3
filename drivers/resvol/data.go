@@ -9,7 +9,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/volsignal"
@@ -41,17 +40,17 @@ func (t Metadata) IsEmpty() bool {
 
 func (t T) getRefs() []string {
 	refs := make([]string, 0)
-	refs = append(refs, t.getRefsByKind(kind.Sec)...)
-	refs = append(refs, t.getRefsByKind(kind.Cfg)...)
+	refs = append(refs, t.getRefsByKind(path.KindSec)...)
+	refs = append(refs, t.getRefsByKind(path.KindCfg)...)
 	return refs
 }
 
-func (t T) getRefsByKind(filter kind.T) []string {
+func (t T) getRefsByKind(filter path.Kind) []string {
 	refs := make([]string, 0)
 	switch filter {
-	case kind.Sec:
+	case path.KindSec:
 		refs = append(refs, t.Secrets...)
-	case kind.Cfg:
+	case path.KindCfg:
 		refs = append(refs, t.Configs...)
 	}
 	return refs
@@ -59,14 +58,14 @@ func (t T) getRefsByKind(filter kind.T) []string {
 
 func (t T) getMetadata() []Metadata {
 	l := make([]Metadata, 0)
-	l = append(l, t.getMetadataByKind(kind.Sec)...)
-	l = append(l, t.getMetadataByKind(kind.Cfg)...)
+	l = append(l, t.getMetadataByKind(path.KindSec)...)
+	l = append(l, t.getMetadataByKind(path.KindCfg)...)
 	return l
 }
 
-func (t T) getMetadataByKind(kd kind.T) []Metadata {
+func (t T) getMetadataByKind(kind path.Kind) []Metadata {
 	l := make([]Metadata, 0)
-	refs := t.getRefsByKind(kd)
+	refs := t.getRefsByKind(kind)
 	if len(refs) == 0 {
 		// avoid the Head() call when possible
 		return []Metadata{}
@@ -76,7 +75,7 @@ func (t T) getMetadataByKind(kd kind.T) []Metadata {
 		return []Metadata{}
 	}
 	for _, ref := range refs {
-		md := t.parseReference(ref, kd, head)
+		md := t.parseReference(ref, kind, head)
 		if md.IsEmpty() {
 			continue
 		}
@@ -99,7 +98,7 @@ func (t T) HasMetadata(p path.T, k string) bool {
 	return false
 }
 
-func (t T) parseReference(s string, filter kind.T, head string) Metadata {
+func (t T) parseReference(s string, filter path.Kind, head string) Metadata {
 	if head == "" {
 		return Metadata{}
 	}
@@ -121,36 +120,36 @@ func (t T) parseReference(s string, filter kind.T, head string) Metadata {
 	from := strings.TrimLeft(l[0], "/")
 	// from = "sec/s1/k[12]"
 
-	kd := filter
+	kind := filter
 
 	switch {
 	case strings.HasPrefix(from, "usr/"):
-		kd = kind.Usr
+		kind = path.KindUsr
 		from = from[4:]
-		if filter == kind.Cfg {
+		if filter == path.KindCfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "sec/"):
-		kd = kind.Sec
+		kind = path.KindSec
 		from = from[4:]
-		if filter == kind.Cfg {
+		if filter == path.KindCfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "cfg/"):
-		kd = kind.Cfg
+		kind = path.KindCfg
 		from = from[4:]
-		if filter == kind.Sec {
+		if filter == path.KindSec {
 			return Metadata{}
 		}
 	}
-	// kd = kind.Sec
+	// kind = path.KindSec
 	// from = s1/k[12]
 
 	l = strings.SplitN(from, "/", 2)
 	if len(l) != 2 {
 		return Metadata{}
 	}
-	if p, err := path.New(l[0], t.Path.Namespace, kd.String()); err != nil {
+	if p, err := path.New(l[0], t.Path.Namespace, kind.String()); err != nil {
 		return Metadata{}
 	} else {
 		return Metadata{
@@ -188,12 +187,12 @@ func (t T) installData() error {
 	if err := t.installDirs(); err != nil {
 		return err
 	}
-	if v, err := t.InstallDataByKind(kind.Sec); err != nil {
+	if v, err := t.InstallDataByKind(path.KindSec); err != nil {
 		return err
 	} else {
 		changed = v || changed
 	}
-	if v, err := t.InstallDataByKind(kind.Cfg); err != nil {
+	if v, err := t.InstallDataByKind(path.KindCfg); err != nil {
 		return err
 	} else {
 		changed = v || changed
@@ -238,7 +237,7 @@ func (t T) SendSignals() error {
 	return nil
 }
 
-func (t T) InstallDataByKind(filter kind.T) (bool, error) {
+func (t T) InstallDataByKind(filter path.Kind) (bool, error) {
 	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {

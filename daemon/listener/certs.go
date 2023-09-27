@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -28,8 +27,8 @@ var (
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 
-	caPath   = path.T{Name: "ca", Namespace: "system", Kind: kind.Sec}
-	certPath = path.T{Name: "cert", Namespace: "system", Kind: kind.Sec}
+	caPath   = path.T{Name: "ca", Namespace: "system", Kind: path.KindSec}
+	certPath = path.T{Name: "cert", Namespace: "system", Kind: path.KindSec}
 )
 
 func startCertFS() error {
@@ -209,7 +208,7 @@ func bootStrapCaPath(p path.T) error {
 //	return false, nil when no v2 ca exists
 //	return true, != nil when migration fails
 func migrateCaPathV2(clusterName string) (ok bool, err error) {
-	caPathV2 := path.T{Name: "ca-" + clusterName, Namespace: "system", Kind: kind.Sec}
+	caPathV2 := path.T{Name: "ca-" + clusterName, Namespace: "system", Kind: path.KindSec}
 	ok = caPathV2.Exists()
 	if !ok {
 		return
@@ -254,7 +253,7 @@ func getClusterName() (string, error) {
 //	return false, nil when no v2 cert exists
 //	return true, != nil when migration fails
 func migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
-	certPathV2 := path.T{Name: "cert-" + clusterName, Namespace: "system", Kind: kind.Sec}
+	certPathV2 := path.T{Name: "cert-" + clusterName, Namespace: "system", Kind: path.KindSec}
 	hasV2cert = certPathV2.Exists()
 	if !hasV2cert {
 		return

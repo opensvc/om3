@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/converters"
@@ -1385,5 +1385,5 @@ var nodeCommonKeywords = []keywords.Keyword{
 var nodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeywords...))
 
 func (t Node) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(nodeKeywordStore, k, kind.Invalid, sectionType)
+	return keywordLookup(nodeKeywordStore, k, path.KindInvalid, sectionType)
 }

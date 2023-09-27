@@ -12,7 +12,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
@@ -193,8 +192,8 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 	filePaths := make(map[string]path.T)
 	toFetch := []path.T{
 		path.Cluster,
-		{Namespace: "system", Kind: kind.Sec, Name: "ca"},
-		{Namespace: "system", Kind: kind.Sec, Name: "cert"},
+		{Namespace: "system", Kind: path.KindSec, Name: "ca"},
+		{Namespace: "system", Kind: path.KindSec, Name: "cert"},
 	}
 	downloadedFiles := make([]string, 0)
 	defer func([]string) {

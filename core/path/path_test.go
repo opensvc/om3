@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -389,22 +388,22 @@ func TestMatch(t *testing.T) {
 
 func TestMerge(t *testing.T) {
 	l1 := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
 	}
 	l2 := L{
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	l1l2 := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	l2l1 := L{
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
-		T{"s1", "ns1", kind.Svc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
+		T{"s1", "ns1", KindSvc},
 	}
 	merged := l1.Merge(l2)
 	assert.Equal(t, merged.String(), l1l2.String())
@@ -415,9 +414,9 @@ func TestMerge(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	l := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	tests := []struct {
 		pattern  string
@@ -426,14 +425,14 @@ func TestFilter(t *testing.T) {
 		{
 			"s*",
 			L{
-				T{"s1", "ns1", kind.Svc},
-				T{"s2", "ns2", kind.Svc},
+				T{"s1", "ns1", KindSvc},
+				T{"s2", "ns2", KindSvc},
 			},
 		},
 		{
 			"*/vol/*",
 			L{
-				T{"v1", "ns1", kind.Vol},
+				T{"v1", "ns1", KindVol},
 			},
 		},
 	}
@@ -526,11 +525,11 @@ func TestString(t *testing.T) {
 }
 
 func TestT_Equal(t *testing.T) {
-	p := T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}
+	p := T{Name: "foo", Namespace: "ns1", Kind: KindSvc}
 
-	assert.True(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}))
+	assert.True(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: KindSvc}))
 
-	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns2", Kind: kind.Svc}))
-	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Cfg}))
-	assert.False(t, p.Equal(T{Name: "bar", Namespace: "ns1", Kind: kind.Svc}))
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns2", Kind: KindSvc}))
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: KindCfg}))
+	assert.False(t, p.Equal(T{Name: "bar", Namespace: "ns1", Kind: KindSvc}))
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
@@ -81,7 +80,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t T) secPath() (path.T, error) {
-	return path.New(t.Secret, t.Path.Namespace, kind.Sec.String())
+	return path.New(t.Secret, t.Path.Namespace, path.KindSec.String())
 }
 
 func (t T) passphraseKeyname() string {

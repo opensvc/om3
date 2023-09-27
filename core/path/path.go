@@ -10,7 +10,6 @@ import (
 	"github.com/danwakefield/fnmatch"
 
 	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -26,7 +25,7 @@ type (
 		// Namespace is the namespace part of the path
 		Namespace string
 		// Kind is the kind part of the path
-		Kind kind.T
+		Kind Kind
 	}
 
 	// Relation is an object path or an instance path (path@node).
@@ -45,7 +44,7 @@ type (
 	Metadata struct {
 		Name      string `json:"name"`
 		Namespace string `json:"namespace"`
-		Kind      kind.T `json:"kind"`
+		Kind      Kind   `json:"kind"`
 	}
 
 	pather interface {
@@ -59,39 +58,37 @@ const (
 )
 
 var (
-	Cluster = T{Name: "cluster", Namespace: "root", Kind: kind.Ccfg}
+	Cluster = T{Name: "cluster", Namespace: "root", Kind: KindCcfg}
 
 	// ErrInvalid is raised when the path allocator can not return a path
 	// because one of the path element is not valid.
 	ErrInvalid = errors.New("invalid path")
 
 	forbiddenNames = append(
-		kind.Names(),
-		[]string{
-			"node",
-		}...,
+		KindStrings,
+		"node",
 	)
 )
 
 // New allocates a new path type from its elements
-func New(name string, namespace string, kd string) (T, error) {
+func New(name string, namespace string, kind string) (T, error) {
 	var path T
 	name = strings.ToLower(name)
 	namespace = strings.ToLower(namespace)
-	kd = strings.ToLower(kd)
+	kind = strings.ToLower(kind)
 	// apply defaults
-	if kd == "" {
-		kd = "svc"
+	if kind == "" {
+		kind = "svc"
 	}
 	if namespace == "" {
 		namespace = "root"
 	}
 
-	k := kind.New(kd)
+	k := NewKind(kind)
 	switch k {
-	case kind.Invalid:
-		return path, fmt.Errorf("%w: invalid kind %s", ErrInvalid, kd)
-	case kind.Nscfg:
+	case KindInvalid:
+		return path, fmt.Errorf("%w: invalid kind %s", ErrInvalid, kind)
+	case KindNscfg:
 		name = "namespace"
 	}
 
@@ -132,7 +129,7 @@ func (t T) ScalerSliceIndex() int {
 
 func (t T) FQN() string {
 	var s string
-	if t.Kind == kind.Invalid {
+	if t.Kind == KindInvalid {
 		return ""
 	}
 	if t.Namespace == "" {
@@ -146,13 +143,13 @@ func (t T) FQN() string {
 
 func (t T) String() string {
 	var s string
-	if t.Kind == kind.Invalid {
+	if t.Kind == KindInvalid {
 		return ""
 	}
 	if t.Namespace != "" && t.Namespace != "root" {
 		s += t.Namespace + Separator
 	}
-	if (t.Kind != kind.Svc && t.Kind != kind.Ccfg) || s != "" {
+	if (t.Kind != KindSvc && t.Kind != KindCcfg) || s != "" {
 		s += t.Kind.String() + Separator
 	}
 	return s + t.Name
@@ -175,7 +172,7 @@ func (t *T) ToMetadata() *Metadata {
 }
 
 func (t T) IsZero() bool {
-	return t.Name == "" && t.Namespace == "" && t.Kind == kind.Invalid
+	return t.Name == "" && t.Namespace == "" && t.Kind == KindInvalid
 }
 
 // ParseList returns a new path.L from a []string path list.
@@ -197,39 +194,39 @@ func Parse(s string) (T, error) {
 	var (
 		name      string
 		namespace string
-		kd        string
+		kind      string
 	)
 	s = strings.ToLower(s)
 	l := strings.Split(s, Separator)
 	switch len(l) {
 	case 3:
 		namespace = l[0]
-		kd = l[1]
+		kind = l[1]
 		name = l[2]
 	case 2:
 		switch l[1] {
 		case "": // ex: ns1/
 			namespace = l[0]
-			kd = "nscfg"
+			kind = "nscfg"
 			name = "namespace"
 		default: // ex: cfg/c1
 			namespace = "root"
-			kd = l[0]
+			kind = l[0]
 			name = l[1]
 		}
 	case 1:
 		switch l[0] {
 		case "cluster":
 			namespace = "root"
-			kd = "ccfg"
+			kind = "ccfg"
 			name = l[0]
 		default:
 			namespace = "root"
-			kd = "svc"
+			kind = "svc"
 			name = l[0]
 		}
 	}
-	return New(name, namespace, kd)
+	return New(name, namespace, kind)
 }
 
 // MarshalJSON implements the json interface
@@ -407,7 +404,7 @@ func (t T) TmpDir() string {
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
 		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Tmp, t.Namespace, t.Kind)
-	case t.Kind == kind.Svc, t.Kind == kind.Ccfg:
+	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
 	default:
 		s = fmt.Sprintf("%s/%s", rawconfig.Paths.Tmp, t.Kind)
@@ -422,7 +419,7 @@ func (t T) LogDir() string {
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
 		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Log, t.Namespace, t.Kind)
-	case t.Kind == kind.Svc, t.Kind == kind.Ccfg:
+	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Log)
 	default:
 		s = fmt.Sprintf("%s/%s", rawconfig.Paths.Log, t.Kind)
@@ -473,7 +470,7 @@ func List() (L, error) {
 		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
 	}
 	envNamespace := env.Namespace()
-	envKind := kind.New(env.Kind())
+	envKind := NewKind(env.Kind())
 	for _, ps := range matches {
 		for _, r := range replacements {
 			ps = strings.Replace(ps, r, "", 1)
@@ -484,7 +481,7 @@ func List() (L, error) {
 		if err != nil {
 			continue
 		}
-		if envKind != kind.Invalid && envKind != p.Kind {
+		if envKind != KindInvalid && envKind != p.Kind {
 			continue
 		}
 		if envNamespace != "" && envNamespace != p.Namespace {

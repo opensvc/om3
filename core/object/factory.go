@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/funcopt"
 )
@@ -95,17 +94,17 @@ func New(id any, opts ...funcopt.O) (any, error) {
 		p = parsed
 	}
 	switch p.Kind {
-	case kind.Svc:
+	case path.KindSvc:
 		return NewSvc(p, opts...)
-	case kind.Vol:
+	case path.KindVol:
 		return NewVol(p, opts...)
-	case kind.Cfg:
+	case path.KindCfg:
 		return NewCfg(p, opts...)
-	case kind.Sec:
+	case path.KindSec:
 		return NewSec(p, opts...)
-	case kind.Usr:
+	case path.KindUsr:
 		return NewUsr(p, opts...)
-	case kind.Ccfg:
+	case path.KindCcfg:
 		return newCcfg(p, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", p.Kind)

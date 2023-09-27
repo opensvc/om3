@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/status"
@@ -40,7 +39,7 @@ func HostPath(s string, namespace string) (string, error) {
 	volPath := path.T{
 		Name:      l[0],
 		Namespace: namespace,
-		Kind:      kind.Vol,
+		Kind:      path.KindVol,
 	}
 	vol, err := object.NewVol(volPath)
 	if err != nil {
@@ -95,7 +94,7 @@ func HostDevpath(s string, namespace string) (string, error) {
 	volPath := path.T{
 		Name:      s,
 		Namespace: namespace,
-		Kind:      kind.Vol,
+		Kind:      path.KindVol,
 	}
 	vol, err := object.NewVol(volPath)
 	if err != nil {

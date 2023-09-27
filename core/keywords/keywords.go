@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/ssrathi/go-attr"
@@ -63,7 +63,7 @@ type (
 		Depends []keyop.T
 
 		// Kind limits the scope of this keyword to the object with kind matching this mask.
-		Kind kind.Mask
+		Kind path.Kinds
 
 		// Provisioning is set to true for keywords only used for resource provisioning
 		Provisioning bool
@@ -132,11 +132,11 @@ func (t Store) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
 
-func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
+func (t Store) Lookup(k key.T, kind path.Kind, sectionType string) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	baseOption := k.BaseOption()
 	for _, kw := range t {
-		if !kw.Kind.Has(kd) {
+		if !kw.Kind.Has(kind) {
 			continue
 		}
 		if baseOption != kw.Option && !stringslice.Has(baseOption, kw.Aliases) {

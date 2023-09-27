@@ -24,7 +24,6 @@ import (
 
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
@@ -64,7 +63,7 @@ type (
 )
 
 var (
-	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
+	clusterPath = path.T{Name: "cluster", Kind: path.KindCcfg}
 
 	configFileCheckError = errors.New("config file check")
 
@@ -322,7 +321,7 @@ func (o *T) configFileCheck() error {
 // else => eval DEFAULT.nodes
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	switch o.path.Kind {
-	case kind.Ccfg:
+	case path.KindCcfg:
 		scope = clusternode.Get()
 	default:
 		var evalNodes interface{}
@@ -408,7 +407,7 @@ func (o *T) getPriority(cf *xconfig.T) priority.T {
 
 func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 	switch o.path.Kind {
-	case kind.Svc, kind.Vol:
+	case path.KindSvc, path.KindVol:
 		target = cf.GetInt(keyFlexTarget)
 	}
 	switch {
@@ -422,7 +421,7 @@ func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 
 func (o *T) getFlexMin(cf *xconfig.T) int {
 	switch o.path.Kind {
-	case kind.Svc, kind.Vol:
+	case path.KindSvc, path.KindVol:
 		return cf.GetInt(keyFlexMin)
 	}
 	return 0
@@ -430,7 +429,7 @@ func (o *T) getFlexMin(cf *xconfig.T) int {
 
 func (o *T) getFlexMax(cf *xconfig.T) int {
 	switch o.path.Kind {
-	case kind.Svc, kind.Vol:
+	case path.KindSvc, path.KindVol:
 		if i, err := cf.GetIntStrict(keyFlexMax); err == nil {
 			return i
 		} else if scope, err := o.getScope(cf); err == nil {
