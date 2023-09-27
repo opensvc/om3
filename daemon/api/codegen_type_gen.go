@@ -543,34 +543,22 @@ type PostDaemonSubAction struct {
 // PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
 type PostDaemonSubActionAction string
 
+// PostInstanceProgress defines model for PostInstanceProgress.
+type PostInstanceProgress struct {
+	IsPartial *bool              `json:"is_partial,omitempty"`
+	SessionId openapi_types.UUID `json:"session_id"`
+	State     string             `json:"state"`
+}
+
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
 	AllocationId openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
 
-// PostObjectAction defines model for PostObjectAction.
-type PostObjectAction struct {
-	Path string `json:"path"`
-}
-
 // PostObjectActionSwitch defines model for PostObjectActionSwitch.
 type PostObjectActionSwitch struct {
 	Destination []string `json:"destination"`
-	Path        string   `json:"path"`
-}
-
-// PostObjectClear defines model for PostObjectClear.
-type PostObjectClear struct {
-	Path string `json:"path"`
-}
-
-// PostObjectProgress defines model for PostObjectProgress.
-type PostObjectProgress struct {
-	IsPartial *bool              `json:"is_partial,omitempty"`
-	Path      string             `json:"path"`
-	SessionId openapi_types.UUID `json:"session_id"`
-	State     string             `json:"state"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -729,8 +717,14 @@ type DRBDConfigName = string
 // Duration defines model for Duration.
 type Duration = string
 
+// Evaluate defines model for Evaluate.
+type Evaluate = bool
+
 // EventFilter defines model for EventFilter.
 type EventFilter = []string
+
+// Impersonate defines model for Impersonate.
+type Impersonate = string
 
 // Limit defines model for Limit.
 type Limit = int64
@@ -743,9 +737,6 @@ type NamespaceOptional = string
 
 // NodeOptional defines model for NodeOptional.
 type NodeOptional = string
-
-// ObjectPath defines model for ObjectPath.
-type ObjectPath = string
 
 // Path defines model for Path.
 type Path = string
@@ -770,6 +761,15 @@ type Roles = []Role
 
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
+
+// InPathKind defines model for inPathKind.
+type InPathKind = string
+
+// InPathName defines model for inPathName.
+type InPathName = string
+
+// InPathNamespace defines model for inPathNamespace.
+type InPathNamespace = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -846,6 +846,45 @@ type GetInstancesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
+// GetInstancesBacklogsParams defines parameters for GetInstancesBacklogs.
+type GetInstancesBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetInstancesLogsParams defines parameters for GetInstancesLogs.
+type GetInstancesLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetObjectConfigParams defines parameters for GetObjectConfig.
+type GetObjectConfigParams struct {
+	// Evaluate evaluate
+	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+
+	// Impersonate impersonate the evaluation as node
+	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// GetInstanceBacklogsParams defines parameters for GetInstanceBacklogs.
+type GetInstanceBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
 // GetNetworkIpParams defines parameters for GetNetworkIp.
 type GetNetworkIpParams struct {
 	// Name the name of a cluster backend network
@@ -892,42 +931,6 @@ type GetNodeLogsParams struct {
 type GetNodesParams struct {
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetObjectBacklogsParams defines parameters for GetObjectBacklogs.
-type GetObjectBacklogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
-}
-
-// GetObjectConfigParams defines parameters for GetObjectConfig.
-type GetObjectConfigParams struct {
-	// Path object path
-	Path ObjectPath `form:"path" json:"path"`
-
-	// Evaluate evaluate
-	Evaluate *bool `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-
-	// Impersonate impersonate the evaluation as node
-	Impersonate *string `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
-// GetObjectFileParams defines parameters for GetObjectFile.
-type GetObjectFileParams struct {
-	// Path object path
-	Path ObjectPath `form:"path" json:"path"`
-}
-
-// GetObjectLogsParams defines parameters for GetObjectLogs.
-type GetObjectLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetObjectPathsParams defines parameters for GetObjectPaths.
@@ -984,47 +987,14 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatusItem
 
-// PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
-type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
-
-// PostObjectActionAbortJSONRequestBody defines body for PostObjectActionAbort for application/json ContentType.
-type PostObjectActionAbortJSONRequestBody = PostObjectAction
-
-// PostObjectActionDeleteJSONRequestBody defines body for PostObjectActionDelete for application/json ContentType.
-type PostObjectActionDeleteJSONRequestBody = PostObjectAction
-
-// PostObjectActionFreezeJSONRequestBody defines body for PostObjectActionFreeze for application/json ContentType.
-type PostObjectActionFreezeJSONRequestBody = PostObjectAction
-
-// PostObjectActionGivebackJSONRequestBody defines body for PostObjectActionGiveback for application/json ContentType.
-type PostObjectActionGivebackJSONRequestBody = PostObjectAction
-
-// PostObjectActionProvisionJSONRequestBody defines body for PostObjectActionProvision for application/json ContentType.
-type PostObjectActionProvisionJSONRequestBody = PostObjectAction
-
-// PostObjectActionPurgeJSONRequestBody defines body for PostObjectActionPurge for application/json ContentType.
-type PostObjectActionPurgeJSONRequestBody = PostObjectAction
-
-// PostObjectActionStartJSONRequestBody defines body for PostObjectActionStart for application/json ContentType.
-type PostObjectActionStartJSONRequestBody = PostObjectAction
-
-// PostObjectActionStopJSONRequestBody defines body for PostObjectActionStop for application/json ContentType.
-type PostObjectActionStopJSONRequestBody = PostObjectAction
+// PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
+type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PostObjectActionUnfreezeJSONRequestBody defines body for PostObjectActionUnfreeze for application/json ContentType.
-type PostObjectActionUnfreezeJSONRequestBody = PostObjectAction
-
-// PostObjectActionUnprovisionJSONRequestBody defines body for PostObjectActionUnprovision for application/json ContentType.
-type PostObjectActionUnprovisionJSONRequestBody = PostObjectAction
-
-// PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
-type PostObjectClearJSONRequestBody = PostObjectClear
-
-// PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
-type PostObjectProgressJSONRequestBody = PostObjectProgress
+// PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
+type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

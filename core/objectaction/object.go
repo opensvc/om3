@@ -410,8 +410,7 @@ func (t T) DoAsync() error {
 		}
 		switch target {
 		case instance.MonitorGlobalExpectAborted:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionAbortWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -432,8 +431,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectDeleted:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -454,8 +452,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectFrozen:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -476,8 +473,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectProvisioned:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -498,8 +494,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectPurged:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -520,8 +515,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectStarted:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionStartWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -542,8 +536,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectStopped:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionStopWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -564,8 +557,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectThawed:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -586,8 +578,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectUnprovisioned:
-			params := api.PostObjectAction{Path: p.String()}
-			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -608,8 +599,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectPlaced:
-			params := api.PostObjectActionSwitch{Path: p.String()}
-			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -630,13 +620,13 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectPlacedAt:
-			params := api.PostObjectActionSwitch{Path: p.String()}
+			params := api.PostObjectActionSwitch{}
 			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
 				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
 			} else {
 				params.Destination = options.Destination
 			}
-			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, params); e != nil {
+			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name, params); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {

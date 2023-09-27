@@ -32,7 +32,7 @@ func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.GetObjectBacklogs(context.Background(), &api.GetObjectBacklogsParams{Filter: t.Filter, Paths: paths.StrSlice()})
+	resp, err := c.GetInstancesBacklogs(context.Background(), &api.GetInstancesBacklogsParams{Filter: t.Filter, Paths: paths.StrSlice()})
 	if err != nil {
 		return nil, err
 	}

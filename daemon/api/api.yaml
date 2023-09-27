@@ -36,7 +36,7 @@ paths:
           $ref: '#/components/responses/500'
         503:
           $ref: '#/components/responses/503'
-  /cluster/action/abort:
+  /cluster/abort:
     post:
       operationId: PostClusterActionAbort
       tags:
@@ -63,7 +63,7 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /cluster/action/freeze:
+  /cluster/freeze:
     post:
       operationId: PostClusterActionFreeze
       tags:
@@ -90,7 +90,7 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /cluster/action/unfreeze:
+  /cluster/unfreeze:
     post:
       operationId: PostClusterActionUnfreeze
       tags:
@@ -122,7 +122,6 @@ paths:
       operationId: GetDaemonDNSDump
       tags:
         - daemon
-        - dns
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -373,7 +372,7 @@ paths:
     get:
       operationId: GetInstances
       tags:
-        - instance
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -398,7 +397,7 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - instance
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -421,6 +420,37 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /namespaces/{namespace}/{kind}/{name}:
+    get:
+      operationId: GetObject
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectItem'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+
   # ========================================================================
   # network paths
   # ========================================================================
@@ -429,7 +459,7 @@ paths:
     get:
       operationId: GetNetworks
       tags:
-        - network
+        - networks
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -458,7 +488,7 @@ paths:
     get:
       operationId: GetNetworkIp
       tags:
-        - network
+        - networks
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -491,7 +521,7 @@ paths:
     get:
       operationId: GetNodes
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -512,11 +542,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /node/action/drain:
+  /node/drain:
     post:
       operationId: PostNodeActionDrain
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -543,7 +573,7 @@ paths:
     get:
       operationId: GetNodeDRBDAllocation
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -560,7 +590,7 @@ paths:
     post:
       operationId: PostNodeClear
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -580,7 +610,7 @@ paths:
     get:
       operationId: GetNodeDRBDConfig
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -604,7 +634,7 @@ paths:
     post:
       operationId: PostNodeDRBDConfig
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -632,7 +662,7 @@ paths:
     get:
       operationId: GetNodeBacklogs
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -658,7 +688,7 @@ paths:
     get:
       operationId: GetNodeLogs
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -684,7 +714,7 @@ paths:
     get:
       operationId: GetNodesInfo
       tags:
-        - node
+        - nodes
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -705,7 +735,7 @@ paths:
     get:
       operationId: GetObjects
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -728,11 +758,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/backlogs:
+  /instances/backlogs:
     get:
-      operationId: GetObjectBacklogs
+      operationId: GetInstancesBacklogs
       tags:
-        - object
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -754,11 +784,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/logs:
+  /instances/logs:
     get:
-      operationId: GetObjectLogs
+      operationId: GetInstancesLogs
       tags:
-        - object
+        - instances
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -780,101 +810,113 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/clear:
-    post:
-      operationId: PostObjectClear
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectClear'
-      responses:
-        200:
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /object/config:
+  /namespaces/{namespace}/{kind}/{name}/instance/backlogs:
     get:
-      operationId: GetObjectConfig
+      operationId: GetInstanceBacklogs
       tags:
-        - object
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Serve recent logs
       parameters:
-        - $ref: '#/components/parameters/ObjectPath'
-        - name: evaluate
-          in: query
-          description: evaluate
-          schema:
-            type: boolean
-        - name: impersonate
-          in: query
-          description: impersonate the evaluation as node
-          schema:
-            type: string
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/LogFilter'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectConfig'
+                $ref: '#/components/schemas/LogList'
         401:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/file:
+  /namespaces/{namespace}/{kind}/{name}/instance/logs:
     get:
-      operationId: GetObjectFile
+      operationId: GetInstanceLogs
       tags:
-        - object
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Serve new logs
       parameters:
-        - $ref: '#/components/parameters/ObjectPath'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/LogFilter'
       responses:
         200:
           description: OK
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: '#/components/schemas/ObjectFile'
+                $ref: '#/components/schemas/LogList'
         401:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/progress:
+  /namespaces/{namespace}/{kind}/{name}/instance/clear:
     post:
-      operationId: PostObjectProgress
+      operationId: PostInstanceClear
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: Clear an error ("start failed" for example) in the instance monitor state.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/progress:
+    post:
+      operationId: PostInstanceProgress
+      tags:
+        - object / svc
+        - object / vol
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       requestBody:
         description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectProgress'
+              $ref: '#/components/schemas/PostInstanceProgress'
       responses:
         200:
           description: OK
@@ -888,7 +930,7 @@ paths:
     get:
       operationId: GetObjectPaths
       tags:
-        - object
+        - objects
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -907,21 +949,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /object/action/abort:
+  /namespaces/{namespace}/{kind}/{name}/abort:
     post:
       operationId: PostObjectActionAbort
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Cancel the current orchestration.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -941,21 +981,82 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/delete:
+  /namespaces/{namespace}/{kind}/{name}/config:
+    get:
+      operationId: GetObjectConfig
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/Evaluate'
+        - $ref: '#/components/parameters/Impersonate'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectConfig'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/file:
+    get:
+      operationId: GetObjectFile
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectFile'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/delete:
     post:
       operationId: PostObjectActionDelete
       tags:
-        - object
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance delete.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -975,21 +1076,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/freeze:
+  /namespaces/{namespace}/{kind}/{name}/freeze:
     post:
       operationId: PostObjectActionFreeze
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance freeze.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1009,21 +1108,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/giveback:
+  /namespaces/{namespace}/{kind}/{name}/giveback:
     post:
       operationId: PostObjectActionGiveback
       tags:
-        - object
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance giveback.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1043,21 +1139,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/provision:
+  /namespaces/{namespace}/{kind}/{name}/provision:
     post:
       operationId: PostObjectActionProvision
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance provision.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1077,21 +1171,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/purge:
+  /namespaces/{namespace}/{kind}/{name}/purge:
     post:
       operationId: PostObjectActionPurge
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance unprovision and delete.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1111,21 +1203,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/start:
+  /namespaces/{namespace}/{kind}/{name}/start:
     post:
       operationId: PostObjectActionStart
       tags:
-        - object
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance start.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1145,21 +1234,18 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/stop:
+  /namespaces/{namespace}/{kind}/{name}/stop:
     post:
       operationId: PostObjectActionStop
       tags:
-        - object
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance stop.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1179,16 +1265,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/switch:
+  /namespaces/{namespace}/{kind}/{name}/switch:
     post:
       operationId: PostObjectActionSwitch
       tags:
-        - object
+        - object / svc
       security:
         - basicAuth: []
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       requestBody:
-        description: Orchestrate the object instance switch.
         required: true
         content:
           application/json:
@@ -1213,21 +1302,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/unfreeze:
+  /namespaces/{namespace}/{kind}/{name}/unfreeze:
     post:
       operationId: PostObjectActionUnfreeze
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance unfreeze.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1247,21 +1334,19 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-  /object/action/unprovision:
+  /namespaces/{namespace}/{kind}/{name}/unprovision:
     post:
       operationId: PostObjectActionUnprovision
       tags:
-        - object
+        - object / svc
+        - object / vol
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Orchestrate the object instance unprovision.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAction'
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
       responses:
         200:
           description: OK
@@ -1285,7 +1370,7 @@ paths:
     get:
       operationId: GetPools
       tags:
-        - storage
+        - pools
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1313,7 +1398,7 @@ paths:
     get:
       operationId: GetPoolVolumes
       tags:
-        - storage
+        - pools
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1406,7 +1491,7 @@ paths:
     get:
       operationId: GetResources
       tags:
-        - resource
+        - resources
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2364,22 +2449,12 @@ components:
         data:
           type: string
           format: byte
-    PostObjectClear:
+    PostInstanceProgress:
       type: object
       required:
-        - path
-      properties:
-        path:
-          type: string
-    PostObjectProgress:
-      type: object
-      required:
-        - path
         - session_id
         - state
       properties:
-        path:
-          type: string
         session_id:
           type: string
           format: uuid
@@ -2529,17 +2604,9 @@ components:
         size:
           type: integer
           format: int64
-    PostObjectAction:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
     PostObjectActionSwitch:
       type: object
       required:
-        - path
         - destination
       properties:
         destination:
@@ -2547,8 +2614,6 @@ components:
           minItems: 1
           items:
             type: string
-        path:
-          type: string
     PostRelayMessage:
       type: object
       required:
@@ -2927,6 +2992,38 @@ components:
       default: failover
 
   parameters:
+
+    inPathName:
+      in: path
+      name: name
+      required: true
+      schema:
+        type: string
+    inPathNamespace:
+      in: path
+      name: namespace
+      required: true
+      schema:
+        type: string
+    inPathKind:
+      in: path
+      name: kind
+      required: true
+      schema:
+        type: string
+
+    Evaluate:
+      name: evaluate
+      in: query
+      description: evaluate
+      schema:
+        type: boolean
+    Impersonate:
+      name: impersonate
+      in: query
+      description: impersonate the evaluation as node
+      schema:
+        type: string
     Duration:
       name: duration
       in: query

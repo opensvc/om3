@@ -11,14 +11,26 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-// GetObjectBacklogs feeds publications in rss format.
-func (a *DaemonApi) GetObjectBacklogs(ctx echo.Context, params api.GetObjectBacklogsParams) error {
+func (a *DaemonApi) GetInstanceBacklogs(ctx echo.Context, namespace, kind, name string, params api.GetInstanceBacklogsParams) error {
+	p, err := path.New(name, namespace, kind)
+	if err != nil {
+		JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
+		return err
+	}
+	return a.GetInstancesBacklogs(ctx, api.GetInstancesBacklogsParams{
+		Paths:  path.L{p}.StrSlice(),
+		Filter: params.Filter,
+	})
+}
+
+// GetInstancesBacklogs feeds publications in rss format.
+func (a *DaemonApi) GetInstancesBacklogs(ctx echo.Context, params api.GetInstancesBacklogsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
 		return err
 	} else if !v {
 		return nil
 	}
-	log := LogHandler(ctx, "GetObjectBacklogs")
+	log := LogHandler(ctx, "GetInstancesBacklogs")
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
 

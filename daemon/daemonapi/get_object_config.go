@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfig(ctx echo.Context, params api.GetObjectConfigParams) error {
+func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace, kind, name string, params api.GetObjectConfigParams) error {
 	var (
 		evaluate    bool
 		impersonate string
@@ -29,10 +29,10 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, params api.GetObjectConfig
 	log := LogHandler(ctx, "GetObjectConfig")
 	log.Debug().Msg("starting")
 
-	objPath, err := path.Parse(params.Path)
+	objPath, err := path.New(name, namespace, kind)
 	if err != nil {
-		log.Info().Err(err).Msgf("invalid path: %s", params.Path)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parametter", "invalid path: %s", params.Path)
+		log.Info().Err(err).Send()
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	if impersonate != "" && !evaluate {
 		// Force evaluate when impersonate

@@ -16,7 +16,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context) error {
+func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context, namespace, kind, name string) error {
 	var (
 		payload = api.PostObjectActionSwitch{}
 		value   = instance.MonitorUpdate{}
@@ -26,12 +26,12 @@ func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context) error {
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
 	}
-	p, err = path.Parse(payload.Path)
+	p, err = path.New(name, namespace, kind)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "Invalid path: %s", payload.Path)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", payload.Path)
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", p)
 	}
 	globalExpect := instance.MonitorGlobalExpectPlacedAt
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{}

@@ -73,11 +73,10 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {
 	params := api.GetObjectConfigParams{
-		Path:        p.String(),
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
 	}
-	resp, err := c.GetObjectConfigWithResponse(context.Background(), &params)
+	resp, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind.String(), p.Name, &params)
 	if err != nil {
 		return rawconfig.T{}, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -93,6 +92,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconf
 	} else {
 		return data, nil
 	}
+	return rawconfig.T{}, nil
 }
 
 func parseRoutedResponse(b []byte) (rawconfig.T, error) {
