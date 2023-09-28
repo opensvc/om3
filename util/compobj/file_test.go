@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFile(t *testing.T) {
@@ -55,6 +56,7 @@ func TestFile(t *testing.T) {
 	}
 
 	defer startServer(":8080")()
+	time.Sleep(time.Millisecond)
 	t.Run("ensure fake web server is running", func(t *testing.T) {
 		get, err := http.Get("http://localhost:8080/")
 		require.NoError(t, err)
