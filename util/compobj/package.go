@@ -531,7 +531,7 @@ func aptExpand(names []string) ([]string, error) {
 	expanded := map[string]interface{}{}
 	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
-		line := string(scanner.Text())
+		line := scanner.Text()
 		l := strings.Split(line, "/")
 		if len(l) < 2 {
 			continue
