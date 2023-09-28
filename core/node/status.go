@@ -36,6 +36,12 @@ type (
 		Status status.T `json:"status"`
 	}
 
+	// Lsnr describes the inet listener addr and port
+	Lsnr struct {
+		Addr string `json:"addr"`
+		Port string `json:"port"`
+	}
+
 	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
 	// used by nodes to:
 	// * expand node selector expressions based on labels
