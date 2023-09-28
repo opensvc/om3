@@ -629,6 +629,10 @@ func (o *nmon) loadConfig() error {
 	o.config = n.MergedConfig()
 	o.nodeConfig = o.getNodeConfig()
 	localNodeInfo.Env = o.nodeConfig.Env
+
+	if lsnr := node.LsnrData.Get(o.localhost); lsnr != nil {
+		localNodeInfo.Lsnr = *lsnr
+	}
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
 	return nil
 }

@@ -52,6 +52,7 @@ type (
 		Env    string    `json:"env"`
 		Labels Labels    `json:"labels"`
 		Paths  san.Paths `json:"paths"`
+		Lsnr   Lsnr      `json:"lsnr"`
 	}
 )
 
