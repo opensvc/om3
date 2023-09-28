@@ -290,6 +290,8 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.JoinRequest{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.ListenerDeleted{})
+	sub.AddFilter(&msgbus.ListenerUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
 	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
@@ -402,6 +404,10 @@ func (o *nmon) worker() {
 				o.onJoinRequest(c)
 			case *msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
+			case *msgbus.ListenerUpdated:
+				o.onListenerUpdated(c)
+			case *msgbus.ListenerDeleted:
+				o.onListenerDeleted(c)
 			case *msgbus.NodeConfigUpdated:
 				o.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
@@ -576,6 +582,20 @@ func (o *nmon) refreshSanPaths() {
 	localNodeInfo.Paths = append(san.Paths{}, paths...)
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
 	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths}, o.labelLocalhost)
+}
+
+func (o *nmon) onListenerDeleted(m *msgbus.ListenerDeleted) {
+	nodeInfo := o.cacheNodesInfo[m.Node]
+	nodeInfo.Lsnr = node.Lsnr{}
+	o.cacheNodesInfo[m.Node] = nodeInfo
+	o.saveNodesInfo()
+}
+
+func (o *nmon) onListenerUpdated(m *msgbus.ListenerUpdated) {
+	nodeInfo := o.cacheNodesInfo[m.Node]
+	nodeInfo.Lsnr = m.Lsnr
+	o.cacheNodesInfo[m.Node] = nodeInfo
+	o.saveNodesInfo()
 }
 
 func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
