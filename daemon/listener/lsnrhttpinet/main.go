@@ -13,10 +13,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
@@ -78,9 +82,33 @@ func (t *T) Start(ctx context.Context) error {
 			ErrorLog: golog.New(t.log, "", 0),
 		}
 
+		lsnr, err := net.Listen("tcp", t.addr)
+		if err != nil {
+			t.log.Error().Err(err).Msg("listen failure")
+			errC <- err
+			return
+		}
+		defer func(lsnr net.Listener) {
+			if err := lsnr.Close(); err != nil {
+				t.log.Error().Err(err).Msg("listener close failure")
+			}
+		}(lsnr)
+
+		bus := pubsub.BusFromContext(ctx)
+		tcpAddr := lsnr.Addr().(*net.TCPAddr)
+		port := fmt.Sprintf("%d", tcpAddr.Port)
+		addr := tcpAddr.IP.String()
+		localhost := hostname.Hostname()
+		labels := []pubsub.Label{{"node", localhost}}
+		node.LsnrData.Set(localhost, &node.Lsnr{Addr: addr, Port: port})
+		bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{Addr: addr, Port: port}}, labels...)
+		defer func() {
+			node.LsnrData.Unset(localhost)
+			bus.Pub(&msgbus.ListenerDeleted{Node: localhost}, labels...)
+		}()
 		t.log.Info().Msg("listener started")
 		errC <- nil
-		if err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile); err != nil {
+		if err := t.listener.ServeTLS(lsnr, t.certFile, t.keyFile); err != nil {
 			if errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) {
 				t.log.Debug().Msg("listener ends with expected error")
 			} else {
