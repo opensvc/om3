@@ -1,0 +1,39 @@
+  INSTDATE:  Aug 16 2018 19:09
+   HOTLINE:  Please contact your local service provider
+    STATUS:  completely installed
+
+   PKGINST:  SUNWsmhba
+      NAME:  SM-HBA Libraries and CLI
+  CATEGORY:  system
+      ARCH:  i386
+   VERSION:  11.11,REV=2009.11.11
+   BASEDIR:  /
+    VENDOR:  Oracle Corporation
+      DESC:  T11 Storage Management HBA API Libraries and CLI
+  INSTDATE:  Aug 16 2018 19:09
+   HOTLINE:  Please contact your local service provider
+    STATUS:  completely installed
+
+   PKGINST:  SUNWsmhbar
+      NAME:  SM-HBA Libraries and CLI (root)
+  CATEGORY:  system
+      ARCH:  i386
+   VERSION:  11.11,REV=2009.11.11
+   BASEDIR:  /
+    VENDOR:  Oracle Corporation
+      DESC:  T11 Storage Management HBA API Libraries and CLI (root)
+  INSTDATE:  Aug 16 2018 19:09
+   HOTLINE:  Please contact your local service provider
+    STATUS:  completely installed
+
+   PKGINST:  SUNWsmpd
+      NAME:  Target Driver for Serial SCSI Management Protocol (SMP) Compliant Devices
+  CATEGORY:  system
+      ARCH:  i386
+   VERSION:  11.11,REV=2009.11.11
+   BASEDIR:  /
+    VENDOR:  Oracle Corporation
+      DESC:  Target Driver for Serial SCSI Management Protocol (SMP) Compliant Devices
+  INSTDATE:  Aug 16 2018 19:09
+   HOTLINE:  Please contact your local service provider
+    STATUS:  completely installed
