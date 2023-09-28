@@ -11,11 +11,11 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace, kind, name string) error {
+func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind path.Kind, name string) error {
 	log := LogHandler(ctx, "objecthandler.GetObjectFile")
 	log.Debug().Msg("starting")
 
-	objPath, err := path.New(name, namespace, kind)
+	objPath, err := path.New(namespace, kind, name)
 	if err != nil {
 		log.Warn().Err(err).Send()
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)

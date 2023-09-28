@@ -31,7 +31,6 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
@@ -481,9 +480,9 @@ func updateLastBootID(p path.T, s string) error {
 
 func (o *imon) bootAble() bool {
 	switch o.path.Kind {
-	case kind.Svc:
+	case path.KindSvc:
 		return true
-	case kind.Vol:
+	case path.KindVol:
 		return true
 	default:
 		return false

@@ -76,7 +76,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconf
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
 	}
-	resp, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind.String(), p.Name, &params)
+	resp, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
 		return rawconfig.T{}, err
 	} else if resp.StatusCode() != http.StatusOK {

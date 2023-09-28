@@ -1,8 +1,8 @@
 package actioncontext
 
 import (
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/ordering"
+	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -16,7 +16,7 @@ type (
 		MustLock              bool
 		LockGroup             string
 		Freeze                bool
-		Kinds                 []kind.T
+		Kinds                 path.Kinds
 		DisableNodeValidation bool
 		RelayToAny            bool
 		Rollback              bool
@@ -40,7 +40,7 @@ var (
 		MustLock:        true,
 		Order:           ordering.Desc,
 		LocalExpect:     "",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		Freeze:          true,
 		TimeoutKeywords: []string{"timeout"},
 		PG:              true,
@@ -48,7 +48,7 @@ var (
 	Decode = Properties{
 		Name:       "decode",
 		RelayToAny: true,
-		Kinds:      []kind.T{kind.Usr, kind.Sec, kind.Cfg},
+		Kinds:      path.NewKinds(path.KindCfg, path.KindSec, path.KindUsr),
 	}
 	Delete = Properties{
 		Name:       "delete",
@@ -58,7 +58,7 @@ var (
 		Local:      true,
 		MustLock:   true,
 		RelayToAny: true,
-		Kinds:      []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+		Kinds:      path.NewKinds(path.KindSvc, path.KindVol, path.KindCfg, path.KindSec, path.KindUsr),
 	}
 	Eval = Properties{
 		Name:       "eval",
@@ -70,14 +70,14 @@ var (
 		Progress:    "freezing",
 		Local:       true,
 		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		Kinds:       path.NewKinds(path.KindSvc, path.KindVol),
 		PG:          true,
 	}
 	SyncFull = Properties{
 		Name:     "sync_full",
 		Local:    true,
 		MustLock: true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Kinds:    path.NewKinds(path.KindSvc, path.KindVol),
 		PG:       true,
 	}
 	GenCert = Properties{
@@ -119,7 +119,7 @@ var (
 		Target:          "placed",
 		Progress:        "placing",
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc},
+		Kinds:           path.NewKinds(path.KindSvc),
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Keys = Properties{
@@ -136,7 +136,7 @@ var (
 		Target:          "placed@",
 		Progress:        "placing@",
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc},
+		Kinds:           path.NewKinds(path.KindSvc),
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Provision = Properties{
@@ -146,7 +146,7 @@ var (
 		Local:           true,
 		MustLock:        true,
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		Rollback:        true,
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
@@ -154,20 +154,20 @@ var (
 	PRStart = Properties{
 		Name:     "prstart",
 		Local:    true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Kinds:    path.NewKinds(path.KindSvc, path.KindVol),
 		Rollback: true,
 		PG:       true,
 	}
 	PRStop = Properties{
 		Name:  "prstop",
 		Local: true,
-		Kinds: []kind.T{kind.Svc, kind.Vol},
+		Kinds: path.NewKinds(path.KindSvc, path.KindVol),
 		PG:    true,
 	}
 	PushResInfo = Properties{
 		Name:  "push resinfo",
 		Local: true,
-		Kinds: []kind.T{kind.Svc, kind.Vol},
+		Kinds: path.NewKinds(path.KindSvc, path.KindVol),
 		PG:    true,
 	}
 	Purge = Properties{
@@ -176,7 +176,7 @@ var (
 		Progress:        "purging",
 		Order:           ordering.Desc,
 		Local:           true,
-		Kinds:           []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol, path.KindCfg, path.KindSec, path.KindUsr),
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 	}
 	Restart = Properties{
@@ -185,14 +185,14 @@ var (
 		Progress:        "restarting",
 		Local:           true,
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
 	}
 	Run = Properties{
 		Name:            "run",
 		Local:           true,
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
 		PG:              true,
 	}
@@ -202,7 +202,7 @@ var (
 		Progress:        "shutting",
 		Local:           true,
 		Order:           ordering.Desc,
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
@@ -212,7 +212,7 @@ var (
 		Progress:        "starting",
 		Local:           true,
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		Rollback:        true,
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
@@ -222,7 +222,7 @@ var (
 		Progress:        "starting",
 		Local:           true,
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		Rollback:        true,
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
@@ -235,7 +235,7 @@ var (
 		MustLock:        true,
 		Order:           ordering.Desc,
 		LocalExpect:     "",
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		Freeze:          true,
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
@@ -245,14 +245,14 @@ var (
 		Target:          "placed@",
 		Progress:        "placing@",
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc},
+		Kinds:           path.NewKinds(path.KindSvc),
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	SyncResync = Properties{
 		Name:     "sync_resync",
 		Local:    true,
 		MustLock: true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Kinds:    path.NewKinds(path.KindSvc, path.KindVol),
 		PG:       true,
 	}
 	Takeover = Properties{
@@ -260,7 +260,7 @@ var (
 		Target:          "placed@",
 		Progress:        "placing@",
 		LocalExpect:     "unset",
-		Kinds:           []kind.T{kind.Svc},
+		Kinds:           path.NewKinds(path.KindSvc),
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	TOC = Properties{
@@ -275,7 +275,7 @@ var (
 		Progress:    "thawing",
 		Local:       true,
 		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		Kinds:       path.NewKinds(path.KindSvc, path.KindVol),
 		PG:          true,
 	}
 	Unprovision = Properties{
@@ -285,7 +285,7 @@ var (
 		Local:           true,
 		MustLock:        true,
 		Order:           ordering.Desc,
-		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Kinds:           path.NewKinds(path.KindSvc, path.KindVol),
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
@@ -293,7 +293,7 @@ var (
 		Name:     "sync_update",
 		Local:    true,
 		MustLock: true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Kinds:    path.NewKinds(path.KindSvc, path.KindVol),
 		PG:       true,
 	}
 )

@@ -30,7 +30,6 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/pool"
@@ -245,7 +244,7 @@ func (t T) access() volaccess.T {
 }
 
 func (t *T) Volume() (object.Vol, error) {
-	p, err := path.New(t.name(), t.Path.Namespace, kind.Vol.String())
+	p, err := path.New(t.Path.Namespace, path.KindVol, t.name())
 	if err != nil {
 		return nil, err
 	}

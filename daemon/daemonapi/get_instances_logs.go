@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, namespace, kind, name string, params api.GetInstanceLogsParams) error {
-	p, err := path.New(name, namespace, kind)
+func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, namespace string, kind path.Kind, name string, params api.GetInstanceLogsParams) error {
+	p, err := path.New(namespace, kind, name)
 	if err != nil {
 		JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 		return err

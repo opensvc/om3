@@ -309,7 +309,7 @@ func pathFromMetadata(data *orderedmap.OrderedMap) (path.T, error) {
 			return path.T{}, fmt.Errorf("metadata format error: namespace")
 		}
 	}
-	return path.New(name, namespace, kind)
+	return path.FromStrings(namespace, kind, name)
 }
 
 func rawFromStdinFlat(p path.T) (Pivot, error) {

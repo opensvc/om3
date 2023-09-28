@@ -1,4 +1,4 @@
-package kind
+package path
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ func TestKind(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		k := New(test.kind)
+		k := NewKind(test.kind)
 		output := k.String()
 		assert.Equal(t, test.output, output)
 	}

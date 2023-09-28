@@ -3,10 +3,9 @@ package statusbus
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/status"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRefuseStartTwice(t *testing.T) {
@@ -44,7 +43,7 @@ func TestPost(t *testing.T) {
 	p := path.T{
 		Name:      "foo",
 		Namespace: "root",
-		Kind:      kind.Svc,
+		Kind:      path.KindSvc,
 	}
 	bus.Post(p, "app#1", status.Down, false)
 	bus.Post(p, "app#2", status.Up, false)

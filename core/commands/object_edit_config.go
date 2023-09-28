@@ -71,7 +71,7 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 }
 
 func fetchConfig(p path.T, c *client.T) ([]byte, error) {
-	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind.String(), p.Name)
+	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {

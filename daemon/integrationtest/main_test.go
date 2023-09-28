@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/cmd"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/testhelper"
 )
@@ -58,7 +57,7 @@ func Test_GetDaemonStatus(t *testing.T) {
 		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
 		time.Sleep(250 * time.Millisecond)
 		cData, err := GetDaemonStatus(t)
-		p := path.T{Name: "foo", Kind: kind.Svc}
+		p := path.T{Name: "foo", Kind: path.KindSvc}
 		require.Nil(t, err)
 		_, ok := cData.Cluster.Node["node1"].Instance[p.String()]
 		assert.Truef(t, ok, "unable to find node1 instance %s", p)

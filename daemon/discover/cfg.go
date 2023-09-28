@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -124,7 +123,7 @@ func (d *discover) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 }
 
 func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
-	if c.Path.Kind == kind.Invalid {
+	if c.Path.Kind == path.KindInvalid {
 		// may be node.conf
 		return
 	}

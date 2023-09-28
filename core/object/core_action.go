@@ -162,7 +162,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	}
 	isPartial := !resourceselector.FromContext(ctx, nil).IsZero()
 	p := t.Path()
-	resp, err := c.PostInstanceProgress(ctx, p.Namespace, p.Kind.String(), p.Name, api.PostInstanceProgress{
+	resp, err := c.PostInstanceProgress(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
 		State:     progress,
 		SessionId: xsession.ID,
 		IsPartial: &isPartial,

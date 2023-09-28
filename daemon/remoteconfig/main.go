@@ -57,7 +57,7 @@ func fetchFromApi(cli *client.T, p path.T) (b []byte, updated time.Time, err err
 	var (
 		resp *api.GetObjectFileResponse
 	)
-	resp, err = cli.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind.String(), p.Name)
+	resp, err = cli.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {

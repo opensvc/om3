@@ -10,7 +10,6 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -45,7 +44,7 @@ func (t T) Abort(ctx context.Context) bool {
 	if t.Standby {
 		return false
 	}
-	if t.Path.Kind == kind.Vol {
+	if t.Path.Kind == path.KindVol {
 		// volumes are enslaved to their consumer services
 		return false
 	}

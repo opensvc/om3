@@ -9,6 +9,7 @@ import (
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/resource"
 )
 
@@ -294,6 +295,9 @@ type InstanceStatusItem struct {
 	Data InstanceStatus `json:"data"`
 	Meta InstanceMeta   `json:"meta"`
 }
+
+// Kind defines model for Kind.
+type Kind = path.Kind
 
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
@@ -763,7 +767,7 @@ type Roles = []Role
 type SelectorOptional = string
 
 // InPathKind defines model for inPathKind.
-type InPathKind = string
+type InPathKind = Kind
 
 // InPathName defines model for inPathName.
 type InPathName = string

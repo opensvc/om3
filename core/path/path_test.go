@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -113,7 +112,7 @@ func TestNew(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, err := New(test.name, test.namespace, test.kind)
+		path, err := FromStrings(test.namespace, test.kind, test.name)
 		if test.ok {
 			if ok := assert.Nil(t, err); !ok {
 				return
@@ -129,8 +128,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestL_len(t *testing.T) {
-	p1, _ := New("n1", "ns1", "svc")
-	p2, _ := New("n2", "ns1", "svc")
+	p1, _ := Parse("ns1/svc/n1")
+	p2, _ := Parse("ns1/svc/n2")
 	assert.Equal(t, 0, len(L{}))
 	assert.Equal(t, 1, len(L{p1}))
 	assert.Equal(t, 2, len(L{p1, p2}))
@@ -272,7 +271,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	path, _ := New("svc1", "ns1", "svc")
+	path, _ := Parse("ns1/svc/svc1")
 	b, err := json.Marshal(path)
 	assert.Nil(t, err)
 	assert.Equal(t, b, []byte(`"ns1/svc/svc1"`))
@@ -382,29 +381,29 @@ func TestMatch(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, _ := New(test.name, test.namespace, test.kind)
+		path, _ := FromStrings(test.namespace, test.kind, test.name)
 		assert.Equal(t, test.match, path.Match(test.pattern))
 	}
 }
 
 func TestMerge(t *testing.T) {
 	l1 := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
 	}
 	l2 := L{
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	l1l2 := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	l2l1 := L{
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
-		T{"s1", "ns1", kind.Svc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
+		T{"s1", "ns1", KindSvc},
 	}
 	merged := l1.Merge(l2)
 	assert.Equal(t, merged.String(), l1l2.String())
@@ -415,9 +414,9 @@ func TestMerge(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	l := L{
-		T{"s1", "ns1", kind.Svc},
-		T{"s2", "ns2", kind.Svc},
-		T{"v1", "ns1", kind.Vol},
+		T{"s1", "ns1", KindSvc},
+		T{"s2", "ns2", KindSvc},
+		T{"v1", "ns1", KindVol},
 	}
 	tests := []struct {
 		pattern  string
@@ -426,14 +425,14 @@ func TestFilter(t *testing.T) {
 		{
 			"s*",
 			L{
-				T{"s1", "ns1", kind.Svc},
-				T{"s2", "ns2", kind.Svc},
+				T{"s1", "ns1", KindSvc},
+				T{"s2", "ns2", KindSvc},
 			},
 		},
 		{
 			"*/vol/*",
 			L{
-				T{"v1", "ns1", kind.Vol},
+				T{"v1", "ns1", KindVol},
 			},
 		},
 	}
@@ -514,7 +513,7 @@ func TestConfigFile(t *testing.T) {
 				TestingT: t,
 				Root:     test.root,
 			})
-			p, _ := New(test.name, test.namespace, test.kind)
+			p, _ := FromStrings(test.namespace, test.kind, test.name)
 			require.Equal(t, test.cf, p.ConfigFile())
 		})
 	}
@@ -526,11 +525,11 @@ func TestString(t *testing.T) {
 }
 
 func TestT_Equal(t *testing.T) {
-	p := T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}
+	p := T{Name: "foo", Namespace: "ns1", Kind: KindSvc}
 
-	assert.True(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}))
+	assert.True(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: KindSvc}))
 
-	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns2", Kind: kind.Svc}))
-	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Cfg}))
-	assert.False(t, p.Equal(T{Name: "bar", Namespace: "ns1", Kind: kind.Svc}))
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns2", Kind: KindSvc}))
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: KindCfg}))
+	assert.False(t, p.Equal(T{Name: "bar", Namespace: "ns1", Kind: KindSvc}))
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/xconfig"
@@ -70,7 +69,7 @@ func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	if !template.Exists() {
 		return nil, fmt.Errorf("template object %s does not exist", template)
 	}
-	if template.Kind != kind.Vol {
+	if template.Kind != path.KindVol {
 		return nil, fmt.Errorf("template object %s is not a vol", template)
 	}
 	cf := template.ConfigFile()

@@ -410,7 +410,7 @@ func (t T) DoAsync() error {
 		}
 		switch target {
 		case instance.MonitorGlobalExpectAborted:
-			if resp, e := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -431,7 +431,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectDeleted:
-			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -452,7 +452,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectFrozen:
-			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -473,7 +473,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectProvisioned:
-			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -494,7 +494,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectPurged:
-			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -515,7 +515,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectStarted:
-			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -536,7 +536,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectStopped:
-			if resp, e := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -557,7 +557,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectThawed:
-			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -578,7 +578,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectUnprovisioned:
-			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -599,7 +599,7 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectPlaced:
-			if resp, e := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name); e != nil {
+			if resp, e := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -626,7 +626,7 @@ func (t T) DoAsync() error {
 			} else {
 				params.Destination = options.Destination
 			}
-			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind.String(), p.Name, params); e != nil {
+			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
