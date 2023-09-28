@@ -18,21 +18,38 @@ type (
 		*Obj
 	}
 	CompPackage []string
+
+	commandInterface interface {
+		Run() error
+		Stdout() []byte
+	}
 )
 
-var compPackagesInfo = ObjInfo{
-	DefaultPrefix: "OSVC_COMP_PACKAGES_",
-	ExampleValue: CompPackage{
-		"bzip2",
-		"-zip",
-		"zip",
-	},
-	Description: `* Verify a list of packages is installed or removed
+var (
+	cmdRun = func(r commandInterface) error {
+		return r.Run()
+	}
+
+	cmdStdout = func(r commandInterface) []byte {
+		return r.Stdout()
+	}
+	execLookPath = func(path string) (string, error) {
+		return exec.LookPath(path)
+	}
+
+	compPackagesInfo = ObjInfo{
+		DefaultPrefix: "OSVC_COMP_PACKAGES_",
+		ExampleValue: CompPackage{
+			"bzip2",
+			"-zip",
+			"zip",
+		},
+		Description: `* Verify a list of packages is installed or removed
 * A '-' prefix before the package name means the package should be removed
 * No prefix before the package name means the package should be installed
 * The package version is not checked
 `,
-	FormDefinition: `Desc: |
+		FormDefinition: `Desc: |
   A rule defining a set of packages, fed to the 'packages' compliance object for it to check each package installed or not-installed status.
 Css: comp48
 
@@ -53,13 +70,15 @@ Inputs:
     Help: Use '-' as a prefix to set 'not installed' as the target state. Use '*' as a wildcard for package name expansion for operating systems able to list packages available for installation.
     Type: string
 `,
-}
+	}
+)
 
 var (
 	packages = map[string]interface{}{}
 	hasItMap = map[string]bool{}
 	osVendor = os.Getenv("OSVC_COMP_NODES_OS_VENDOR")
 	osName   = os.Getenv("OSVC_COMP_NODES_OS_NAME")
+	osArch   = os.Getenv("OSVC_COMP_NODES_OS_ARCH")
 )
 
 func init() {
@@ -77,7 +96,7 @@ func hasDpkg() bool {
 		default:
 			return false
 		}
-		p, err := exec.LookPath("dpkg")
+		p, err := execLookPath("dpkg")
 		return p != "" && err == nil
 	})
 }
@@ -98,6 +117,22 @@ func hasYum() bool {
 	})
 }
 
+func hasDnf() bool {
+	return hasIt("dnf", func() bool {
+		if osName != "Linux" {
+			return false
+		}
+		switch osVendor {
+		case "Red Hat", "RedHat", "CentOS", "Oracle":
+			// pass
+		default:
+			return false
+		}
+		p, err := exec.LookPath("dnf")
+		return p != "" && err == nil
+	})
+}
+
 func hasRpm() bool {
 	return hasIt("rpm", func() bool {
 		if osName != "Linux" {
@@ -109,7 +144,7 @@ func hasRpm() bool {
 		default:
 			return false
 		}
-		p, err := exec.LookPath("rpm")
+		p, err := execLookPath("rpm")
 		return p != "" && err == nil
 	})
 }
@@ -135,7 +170,7 @@ func hasPkgadd() bool {
 		if osName != "SunOS" {
 			return false
 		}
-		p, err := exec.LookPath("pkgadd")
+		p, err := execLookPath("pkgadd")
 		return p != "" && err == nil
 	})
 }
@@ -161,7 +196,7 @@ func hasFreebsdPkg() bool {
 		if osName != "FreeBSD" {
 			return false
 		}
-		p, err := exec.LookPath("pkg")
+		p, err := execLookPath("pkg")
 		return p != "" && err == nil
 	})
 }
@@ -354,12 +389,12 @@ func yumExpand(names []string) ([]string, error) {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return names, err
 	}
 	expanded := map[string]interface{}{}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		line := string(scanner.Text())
 		l := strings.Fields(line)
@@ -369,6 +404,114 @@ func yumExpand(names []string) ([]string, error) {
 		name := l[0]
 		expanded[name] = nil
 	}
+
+	for _, pkg := range names {
+		expanded = filterPkgMap(expanded, pkg)
+	}
+
+	return xmap.Keys(expanded), nil
+}
+
+func filterPkgMap(m map[string]interface{}, pkgName string) map[string]interface{} {
+	numberOfOccurence := 0
+
+	for key := range m {
+		if strings.Split(key, ".")[0] == pkgName {
+			numberOfOccurence++
+		}
+	}
+
+	if numberOfOccurence < 2 {
+		return m
+	}
+
+	if osArch == "i386" || osArch == "i586" || osArch == "i686" || osArch == "ia32" {
+		numberOf32BitsArchOccurence := 0
+		last32bitsKey := ""
+		for key := range m {
+			switch {
+			case key == pkgName+".i386" || key == pkgName+".i586" || key == pkgName+".i686" || key == pkgName+".ia32":
+				numberOf32BitsArchOccurence++
+				last32bitsKey = key
+				delete(m, key)
+			case strings.Split(key, ".")[0] == pkgName && key != pkgName+".noarch":
+				delete(m, key)
+			}
+		}
+
+		if numberOf32BitsArchOccurence == 1 {
+			m[last32bitsKey] = nil
+		}
+		return m
+	}
+
+	for key := range m {
+		if strings.Split(key, ".")[0] == pkgName && key != pkgName+".noarch" && key != pkgName+"."+osArch {
+			delete(m, key)
+		}
+	}
+	return m
+}
+
+func dnfAdd(names []string) error {
+	names, err := dnfExpand(names)
+	if err != nil {
+		return err
+	}
+	args := []string{"-y", "install"}
+	args = append(args, names...)
+	cmd := command.New(
+		command.WithName("dnf"),
+		command.WithArgs(args),
+		command.WithOnStdoutLine(fo),
+		command.WithOnStderrLine(fe),
+	)
+	fmt.Println(cmd)
+	return cmd.Run()
+}
+
+func dnfDel(names []string) error {
+	args := []string{"-y", "remove"}
+	args = append(args, names...)
+	cmd := command.New(
+		command.WithName("dnf"),
+		command.WithArgs(args),
+		command.WithOnStdoutLine(fo),
+		command.WithOnStderrLine(fe),
+	)
+	fmt.Println(cmd)
+	return cmd.Run()
+}
+
+func dnfExpand(names []string) ([]string, error) {
+	args := []string{"list"}
+	args = append(args, names...)
+	cmd := command.New(
+		command.WithName("dnf"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+		command.WithOnStderrLine(fe),
+	)
+	err := cmdRun(cmd)
+	if err != nil {
+		return names, err
+	}
+	expanded := map[string]interface{}{}
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
+	for scanner.Scan() {
+		line := string(scanner.Text())
+		l := strings.Fields(line)
+		if len(l) != 3 {
+			continue
+		}
+		name := l[0]
+		expanded[name] = nil
+	}
+
+	for _, pkg := range names {
+		expanded = filterPkgMap(expanded, pkg)
+	}
+
 	return xmap.Keys(expanded), nil
 }
 
@@ -381,12 +524,12 @@ func aptExpand(names []string) ([]string, error) {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return names, err
 	}
 	expanded := map[string]interface{}{}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		line := string(scanner.Text())
 		l := strings.Split(line, "/")
@@ -436,13 +579,15 @@ func rpmLoadInstalledPackages() error {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		name := string(scanner.Text())
+		packages[name] = nil
+		name = strings.Split(name, ".")[0]
 		packages[name] = nil
 	}
 	return nil
@@ -455,11 +600,11 @@ func pkginfoLoadInstalledPackages() error {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		line := string(scanner.Text())
 		v := strings.Split(line, ":")
@@ -482,18 +627,17 @@ func dpkgLoadInstalledPackages() error {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		line := string(scanner.Text())
 		if !strings.HasPrefix(line, "ii") {
 			continue
 		}
 		name := strings.Fields(line)[1]
-		name = strings.Split(name, ":")[0]
 		packages[name] = nil
 	}
 	return nil
@@ -506,11 +650,11 @@ func freebsdPkgLoadInstalledPackages() error {
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(fe),
 	)
-	err := cmd.Run()
+	err := cmdRun(cmd)
 	if err != nil {
 		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	scanner := bufio.NewScanner(bytes.NewReader(cmdStdout(cmd)))
 	for scanner.Scan() {
 		line := string(scanner.Text())
 		l := strings.Fields(line)
@@ -525,11 +669,21 @@ func freebsdPkgLoadInstalledPackages() error {
 	return nil
 }
 
-func (t CompPackages) fixPkgAdd(names []string) ExitCode {
+func (t *CompPackages) fixPkgAdd(names []string) ExitCode {
 	var err error
 	switch {
 	case hasApt():
 		err = aptAdd(names)
+	case hasDnf():
+		err = dnfAdd(names)
+	case hasYum():
+		err = yumAdd(names)
+	case hasZypper():
+		err = zypperAdd(names)
+	case hasFreebsdPkg():
+		err = freebsdPkgAdd(names)
+	case hasApk():
+		err = apkAdd(names)
 	default:
 		return ExitNotApplicable
 	}
@@ -540,11 +694,13 @@ func (t CompPackages) fixPkgAdd(names []string) ExitCode {
 	return ExitOk
 }
 
-func (t CompPackages) fixPkgDel(names []string) ExitCode {
+func (t *CompPackages) fixPkgDel(names []string) ExitCode {
 	var err error
 	switch {
 	case hasApt():
 		err = aptDel(names)
+	case hasDnf():
+		err = dnfDel(names)
 	case hasYum():
 		err = yumDel(names)
 	case hasZypper():
@@ -563,7 +719,7 @@ func (t CompPackages) fixPkgDel(names []string) ExitCode {
 	return ExitOk
 }
 
-func (t CompPackages) checkPkgAdd(name string) ExitCode {
+func (t *CompPackages) checkPkgAdd(name string) ExitCode {
 	if _, ok := packages[name]; !ok {
 		t.VerboseErrorf("package %s is not installed, but should be\n", name)
 		return ExitNok
@@ -572,7 +728,7 @@ func (t CompPackages) checkPkgAdd(name string) ExitCode {
 	return ExitOk
 }
 
-func (t CompPackages) checkPkgDel(name string) ExitCode {
+func (t *CompPackages) checkPkgDel(name string) ExitCode {
 	if _, ok := packages[name]; ok {
 		t.Errorf("package %s is installed, but should not be\n", name)
 		return ExitNok
@@ -581,7 +737,7 @@ func (t CompPackages) checkPkgDel(name string) ExitCode {
 	return ExitOk
 }
 
-func (t CompPackages) CheckRule(rule CompPackage) ExitCode {
+func (t *CompPackages) CheckRule(rule CompPackage) ExitCode {
 	var e, o ExitCode
 	for _, s := range rule {
 		s = strings.TrimPrefix(s, "+")
@@ -596,7 +752,7 @@ func (t CompPackages) CheckRule(rule CompPackage) ExitCode {
 	return e
 }
 
-func (t CompPackages) Check() ExitCode {
+func (t *CompPackages) Check() ExitCode {
 	t.SetVerbose(true)
 	if err := loadInstalledPackages(); err != nil {
 		t.VerboseErrorf("%s\n", err)
@@ -611,7 +767,7 @@ func (t CompPackages) Check() ExitCode {
 	return e
 }
 
-func (t CompPackages) parseRules() ([]string, []string) {
+func (t *CompPackages) parseRules() ([]string, []string) {
 	adds := []string{}
 	dels := []string{}
 	for _, i := range t.Rules() {
@@ -623,7 +779,7 @@ func (t CompPackages) parseRules() ([]string, []string) {
 	return adds, dels
 }
 
-func (t CompPackages) parseRule(rule CompPackage) ([]string, []string) {
+func (t *CompPackages) parseRule(rule CompPackage) ([]string, []string) {
 	adds := []string{}
 	dels := []string{}
 	for _, s := range rule {
@@ -642,7 +798,7 @@ func (t CompPackages) parseRule(rule CompPackage) ([]string, []string) {
 	return adds, dels
 }
 
-func (t CompPackages) Fix() ExitCode {
+func (t *CompPackages) Fix() ExitCode {
 	e := ExitNotApplicable
 	t.SetVerbose(false)
 	if err := loadInstalledPackages(); err != nil {
@@ -661,10 +817,10 @@ func (t CompPackages) Fix() ExitCode {
 	return e
 }
 
-func (t CompPackages) Fixable() ExitCode {
+func (t *CompPackages) Fixable() ExitCode {
 	return ExitNotApplicable
 }
 
-func (t CompPackages) Info() ObjInfo {
+func (t *CompPackages) Info() ObjInfo {
 	return compPackagesInfo
 }
