@@ -81,15 +81,15 @@ func (t *T) Start(ctx context.Context) error {
 	}
 	clusterConfig := ccfg.Get()
 	for _, lsnr := range []startStopper{
-		lsnrhttpinet.New(
-			lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
-			lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
-			lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
-		),
 		lsnrhttpux.New(
 			lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
 			lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
 			lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
+		),
+		lsnrhttpinet.New(
+			lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
+			lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
+			lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
 		),
 	} {
 		if err := lsnr.Start(ctx); err != nil {
