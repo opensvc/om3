@@ -212,6 +212,6 @@ func DefaultHumanRenderer(data interface{}) string {
 	case []byte:
 		return string(v)
 	default:
-		return ""
+		return fmt.Sprintln(v)
 	}
 }
