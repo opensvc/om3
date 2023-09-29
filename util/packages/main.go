@@ -25,10 +25,8 @@ type (
 	Lister func() (Pkgs, error)
 )
 
-//
 // List returns the list of installed packages of all known types
 // (deb, rpm, snap, ...).
-//
 func List() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo, ListPkgutil, ListLPP, ListFreeBSDPkgInfo, ListFreeBSDPkgQuery} {
@@ -41,14 +39,13 @@ func List() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListSnap returns the list of installed snap packages.
 // Example command output:
-//   Name      Version    Rev   Tracking  Publisher   Notes
-//   core      16-2.35.4  5662  stable    canonical*  core
-//   inkscape  0.92.3     4274  stable    inkscape*   -
-//   skype     8.32.0.44  60    stable    skype*      classic
 //
+//	Name      Version    Rev   Tracking  Publisher   Notes
+//	core      16-2.35.4  5662  stable    canonical*  core
+//	inkscape  0.92.3     4274  stable    inkscape*   -
+//	skype     8.32.0.44  60    stable    skype*      classic
 func ListSnap() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if !file.Exists("/var/lib/snapd") {
@@ -77,9 +74,7 @@ func ListSnap() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListRpm returns the list of installed rpm packages.
-//
 func ListRpm() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if !file.Exists("/var/lib/rpm") {
@@ -148,11 +143,10 @@ func ListDeb() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListIPS returns the list of installed ips packages (solaris).
 // Example output:
-//   x11/library/libsm                                 1.2.2-11.4.0.0.1.14.0      i--
 //
+//	x11/library/libsm                                 1.2.2-11.4.0.0.1.14.0      i--
 func ListIPS() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "solaris" {
@@ -185,19 +179,18 @@ func ListIPS() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListPkginfo returns the list of installed pkginfo packages (solaris).
 // Example output:
-//   PKGINST:  SUNWzoneu
-//      NAME:  Solaris Zones (Usr)
-//  CATEGORY:  system
-//      ARCH:  i386
-//   VERSION:  11.11,REV=2009.04.08.17.26
-//    VENDOR:  Sun Microsystems, Inc.
-//      DESC:  Solaris Zones Configuration and Administration
-//   HOTLINE:  Please contact your local service provider
-//    STATUS:  completely installed
 //
+//	 PKGINST:  SUNWzoneu
+//	    NAME:  Solaris Zones (Usr)
+//	CATEGORY:  system
+//	    ARCH:  i386
+//	 VERSION:  11.11,REV=2009.04.08.17.26
+//	  VENDOR:  Sun Microsystems, Inc.
+//	    DESC:  Solaris Zones Configuration and Administration
+//	 HOTLINE:  Please contact your local service provider
+//	  STATUS:  completely installed
 func ListPkginfo() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "solaris" {
@@ -242,24 +235,23 @@ func ListPkginfo() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListPkgutil returns the list of packages installed with pkgutil (darwin).
 // Example output:
 //
-//   $ pkgutil --packages
-//   com.apple.pkg.HP_Scan
-//   com.apple.pkg.HP_Scan3
-//   ...
+//	$ pkgutil --packages
+//	com.apple.pkg.HP_Scan
+//	com.apple.pkg.HP_Scan3
+//	...
 //
 // Example output:
-//   $ pkgutil --pkg-info com.apple.pkg.X11User
-//   package-id: com.apple.pkg.X11User
-//   version: 10.6.0.1.1.1238328574
-//   volume: /
-//   location: /
-//   install-time: 1285389505
-//   groups: com.apple.snowleopard-repair-permissions.pkg-group com.apple.FindSystemFiles.pkg-group
 //
+//	$ pkgutil --pkg-info com.apple.pkg.X11User
+//	package-id: com.apple.pkg.X11User
+//	version: 10.6.0.1.1.1238328574
+//	volume: /
+//	location: /
+//	install-time: 1285389505
+//	groups: com.apple.snowleopard-repair-permissions.pkg-group com.apple.FindSystemFiles.pkg-group
 func ListPkgutil() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "darwin" {
@@ -317,9 +309,7 @@ func ListPkgutil() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListLPP returns the list of installed lpp packages (aix).
-//
 func ListLPP() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "aix" {
@@ -352,9 +342,7 @@ func ListLPP() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListFreeBSDPkgInfo returns the list of installed pkg_info packages (FreeBSD).
-//
 func ListFreeBSDPkgInfo() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "freebsd" {
@@ -389,9 +377,7 @@ func ListFreeBSDPkgInfo() (Pkgs, error) {
 	return l, nil
 }
 
-//
 // ListFreeBSDPkgQuery returns the list of installed packages (FreeBSD).
-//
 func ListFreeBSDPkgQuery() (Pkgs, error) {
 	l := make(Pkgs, 0)
 	if runtime.GOOS != "freebsd" {

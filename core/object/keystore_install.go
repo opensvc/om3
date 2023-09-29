@@ -50,7 +50,7 @@ func (t keystore) resolveKey(k string) ([]vKey, error) {
 }
 
 func mergeMapsets(m1 map[string]interface{}, m2 map[string]interface{}) map[string]interface{} {
-	for k, _ := range m1 {
+	for k := range m1 {
 		m2[k] = nil
 	}
 	return m2

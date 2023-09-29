@@ -18,9 +18,9 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -37,14 +37,14 @@ import (
 type (
 	T struct {
 		resdisk.T
-		Path  naming.Path `json:"path"`
-		Nodes []string    `json:"nodes"`
-		Res      string   `json:"res"`
-		Disk     string   `json:"disk"`
-		MaxPeers int      `json:"max_peers"`
-		Addr     string   `json:"addr"`
-		Port     int      `json:"port"`
-		Network  string   `json:"network"`
+		Path     naming.Path `json:"path"`
+		Nodes    []string    `json:"nodes"`
+		Res      string      `json:"res"`
+		Disk     string      `json:"disk"`
+		MaxPeers int         `json:"max_peers"`
+		Addr     string      `json:"addr"`
+		Port     int         `json:"port"`
+		Network  string      `json:"network"`
 	}
 	DRBDDriver interface {
 		Adjust() error

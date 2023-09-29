@@ -129,7 +129,7 @@ func (_ *JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration,
 		return
 	}
 	expiredAt = time.Now().Add(duration)
-	claims := map[string]interface{} {
+	claims := map[string]interface{}{
 		"sub":   userInfo.GetUserName(),
 		"exp":   expiredAt.Unix(),
 		"grant": userInfo.GetExtensions()["grant"],

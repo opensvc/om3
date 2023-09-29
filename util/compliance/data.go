@@ -111,9 +111,9 @@ func (t ModulesetRelations) Parents() map[string][]string {
 }
 
 // HeadModulesets returns the name of modulesets that either
-// * have no parent in ModsetRelations
-// * have a parent in ModsetRelations, but this parent is not in Modsets,
-//   ie not attached
+//   - have no parent in ModsetRelations
+//   - have a parent in ModsetRelations, but this parent is not in Modsets,
+//     ie not attached
 func (t Data) HeadModulesets() []string {
 	l := make([]string, 0)
 	m := t.ModsetRelations.Parents()
@@ -129,7 +129,7 @@ func (t Data) HeadModulesets() []string {
 		}
 		return false
 	}
-	for name, _ := range t.Modsets {
+	for name := range t.Modsets {
 		if !hasParent(name) {
 			l = append(l, name)
 		}

@@ -15,4 +15,3 @@ func (data *ClusterData) onNodeStatusUpdated(m *NodeStatusUpdated) {
 	}
 	data.Cluster.Node[m.Node] = v
 }
-

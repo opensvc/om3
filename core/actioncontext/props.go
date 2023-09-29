@@ -1,8 +1,8 @@
 package actioncontext
 
 import (
-	"github.com/opensvc/om3/core/ordering"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/ordering"
 )
 
 type (

@@ -15,7 +15,6 @@ var (
 	Group TGroup
 )
 
-//
 func (t TUser) Convert(s string) (interface{}, error) {
 	return t.convert(s)
 }
@@ -34,7 +33,6 @@ func (t TUser) String() string {
 	return "user"
 }
 
-//
 func (t TGroup) Convert(s string) (interface{}, error) {
 	return t.convert(s)
 }

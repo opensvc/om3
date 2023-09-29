@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
+	"github.com/rs/zerolog"
 )
 
 type (

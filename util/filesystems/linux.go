@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
+	"github.com/rs/zerolog"
 )
 
 func (t T) Mount(dev string, mnt string, options string) error {

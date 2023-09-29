@@ -12,20 +12,21 @@ import (
 )
 
 // ISCSITarget defines model for ISCSITarget.
-// {
-//  "id": 79,
-//  "name": "iqn.2009-11.com.opensvc.srv:qau20c26n3.storage.target.1",
-//  "alias": null,
-//  "mode": "ISCSI",
-//  "groups": [
-//   {
-//    "portal": 1,
-//    "initiator": 43,
-//    "auth": null,
-//    "authmethod": "NONE"
-//   }
-//  ]
-// },
+//
+//	{
+//	 "id": 79,
+//	 "name": "iqn.2009-11.com.opensvc.srv:qau20c26n3.storage.target.1",
+//	 "alias": null,
+//	 "mode": "ISCSI",
+//	 "groups": [
+//	  {
+//	   "portal": 1,
+//	   "initiator": 43,
+//	   "auth": null,
+//	   "authmethod": "NONE"
+//	  }
+//	 ]
+//	},
 type ISCSITarget struct {
 	Id     int     `json:"id"`
 	Name   string  `json:"name"`

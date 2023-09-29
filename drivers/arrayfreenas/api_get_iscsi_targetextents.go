@@ -12,12 +12,13 @@ import (
 )
 
 // ISCSITargetExtent defines model for ISCSITargetExtent.
-//     {
-//        "id": 1463,
-//        "lunid": 42,
-//        "extent": 211,
-//        "target": 76
-//    }
+//
+//	 {
+//	    "id": 1463,
+//	    "lunid": 42,
+//	    "extent": 211,
+//	    "target": 76
+//	}
 type ISCSITargetExtent struct {
 	Id       int `json:"id"`
 	LunId    int `json:"lunid"`

@@ -47,7 +47,7 @@ func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p naming.Path) e
 	}
 	for {
 		logger.Info().Msgf("wait for the %s record to be resolved by dns %s", name, todo.Slice())
-		for dns, _ := range todo {
+		for dns := range todo {
 			if ips, err := lookupHostOnDNS(ctx, name, dns); err != nil {
 				logger.Info().Err(err).Msgf("lookup %s record on dns %s", name, dns)
 				todo.Remove(dns)

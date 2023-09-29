@@ -20,8 +20,8 @@ import (
 
 type (
 	register struct {
-		path naming.Path
-		rid  string
+		path     naming.Path
+		rid      string
 		hook     func(status.T)
 		response chan uuid.UUID
 	}
@@ -33,21 +33,21 @@ type (
 	}
 
 	postStatus struct {
-		path naming.Path
-		rid  string
+		path    naming.Path
+		rid     string
 		state   status.T
 		pending bool
 	}
 
 	getFirstStatus struct {
-		path naming.Path
-		rid  string
+		path     naming.Path
+		rid      string
 		response chan status.T
 	}
 
 	getStatus struct {
-		path naming.Path
-		rid  string
+		path     naming.Path
+		rid      string
 		response chan status.T
 	}
 

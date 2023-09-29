@@ -31,8 +31,8 @@ type (
 	// T is the driver structure for app unix & linux.
 	T struct {
 		BaseT
-		Path  naming.Path `json:"path"`
-		Nodes []string    `json:"nodes"`
+		Path         naming.Path    `json:"path"`
+		Nodes        []string       `json:"nodes"`
 		ScriptPath   string         `json:"script"`
 		StartCmd     string         `json:"start"`
 		StopCmd      string         `json:"stop"`

@@ -23,9 +23,9 @@ import (
 // T is the driver structure.
 type T struct {
 	resource.T
-	Path  naming.Path `json:"path"`
-	Nodes []string    `json:"nodes"`
-	Topology topology.T `json:"topology"`
+	Path     naming.Path `json:"path"`
+	Nodes    []string    `json:"nodes"`
+	Topology topology.T  `json:"topology"`
 	lazyFile string
 	lazyDir  string
 }

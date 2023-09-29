@@ -12,27 +12,28 @@ import (
 )
 
 // ISCSIExtent defines model for ISCSIExtent.
-// {
-//   "id": 218,
-//   "name": "c28_disk_md4",
-//   "serial": "08002734c651217",
-//   "type": "DISK",
-//   "path": "zvol/osvcdata/c28_disk_md4",
-//   "filesize": "0",
-//   "blocksize": 512,
-//   "pblocksize": false,
-//   "avail_threshold": null,
-//   "comment": "",
-//   "naa": "0x6589cfc000000f487531b4688113d131",
-//   "insecure_tpc": true,
-//   "xen": false,
-//   "rpm": "SSD",
-//   "ro": false,
-//   "enabled": true,
-//   "vendor": "TrueNAS",
-//   "disk": "zvol/osvcdata/c28_disk_md4",
-//   "locked": false
-// }
+//
+//	{
+//	  "id": 218,
+//	  "name": "c28_disk_md4",
+//	  "serial": "08002734c651217",
+//	  "type": "DISK",
+//	  "path": "zvol/osvcdata/c28_disk_md4",
+//	  "filesize": "0",
+//	  "blocksize": 512,
+//	  "pblocksize": false,
+//	  "avail_threshold": null,
+//	  "comment": "",
+//	  "naa": "0x6589cfc000000f487531b4688113d131",
+//	  "insecure_tpc": true,
+//	  "xen": false,
+//	  "rpm": "SSD",
+//	  "ro": false,
+//	  "enabled": true,
+//	  "vendor": "TrueNAS",
+//	  "disk": "zvol/osvcdata/c28_disk_md4",
+//	  "locked": false
+//	}
 type ISCSIExtent struct {
 	Id             int     `json:"id"`
 	Name           string  `json:"name"`

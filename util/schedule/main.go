@@ -926,7 +926,7 @@ func parseCalendarExpression(spec string, all []int) ([]int, error) {
 	}
 	list := func(a map[int]interface{}) []int {
 		l := make([]int, 0)
-		for k, _ := range a {
+		for k := range a {
 			l = append(l, k)
 		}
 		sort.Ints(l)

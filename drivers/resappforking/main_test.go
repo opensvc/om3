@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resapp"

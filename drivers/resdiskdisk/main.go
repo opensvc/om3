@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -22,15 +22,15 @@ import (
 type (
 	T struct {
 		resdisk.T
-		DiskID    string   `json:"disk_id"`
-		Name      string   `json:"name"`
-		Pool      string   `json:"pool"`
-		Array     string   `json:"array"`
-		DiskGroup string   `json:"diskgroup"`
-		SLO       string   `json:"slo"`
-		Size      *int64   `json:"size"`
-		Nodes []string    `json:"-"`
-		Path  naming.Path `json:"-"`
+		DiskID    string      `json:"disk_id"`
+		Name      string      `json:"name"`
+		Pool      string      `json:"pool"`
+		Array     string      `json:"array"`
+		DiskGroup string      `json:"diskgroup"`
+		SLO       string      `json:"slo"`
+		Size      *int64      `json:"size"`
+		Nodes     []string    `json:"-"`
+		Path      naming.Path `json:"-"`
 	}
 	forceMode int
 )

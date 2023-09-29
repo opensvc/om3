@@ -25,8 +25,8 @@ type (
 	Digest struct {
 		IsCompat  bool                `json:"is_compat"`
 		Instances instance.StatesList `json:"instances"`
-		Object Status      `json:"object"`
-		Path   naming.Path `json:"path"`
+		Object    Status              `json:"object"`
+		Path      naming.Path         `json:"path"`
 	}
 
 	// Status contains the object states obtained via

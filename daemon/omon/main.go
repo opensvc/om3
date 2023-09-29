@@ -18,8 +18,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"

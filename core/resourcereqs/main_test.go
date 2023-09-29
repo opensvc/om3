@@ -3,8 +3,8 @@ package resourcereqs
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/opensvc/om3/core/status"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestResourceRequirements(t *testing.T) {

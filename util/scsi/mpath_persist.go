@@ -5,9 +5,9 @@ package scsi
 import (
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
+	"github.com/rs/zerolog"
 )
 
 type (

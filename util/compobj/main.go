@@ -159,7 +159,7 @@ func syntax() {
 func links(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "The compliance objects in this collection must be called via a symlink.")
 	_, _ = fmt.Fprintln(w, "Collection content:")
-	for k, _ := range m {
+	for k := range m {
 		_, _ = fmt.Fprintf(w, "  %s\n", k)
 	}
 }

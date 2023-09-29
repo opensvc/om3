@@ -13,17 +13,17 @@ type (
 	Table []Entry
 
 	Entry struct {
-		Action             string    `json:"action"`
-		Definition         string    `json:"schedule_definition"`
-		Key                string    `json:"config_parameter"`
-		LastRunAt          time.Time `json:"last_run_at"`
-		LastRunFile        string    `json:"last_run_file"`
-		LastSuccessFile    string    `json:"last_success_file"`
-		NextRunAt          time.Time `json:"next_run_at"`
-		Node             string      `json:"node"`
-		Path             naming.Path `json:"path"`
-		RequireCollector bool        `json:"require_collector"`
-		RequireProvisioned bool      `json:"require_provisioned"`
+		Action             string      `json:"action"`
+		Definition         string      `json:"schedule_definition"`
+		Key                string      `json:"config_parameter"`
+		LastRunAt          time.Time   `json:"last_run_at"`
+		LastRunFile        string      `json:"last_run_file"`
+		LastSuccessFile    string      `json:"last_success_file"`
+		NextRunAt          time.Time   `json:"next_run_at"`
+		Node               string      `json:"node"`
+		Path               naming.Path `json:"path"`
+		RequireCollector   bool        `json:"require_collector"`
+		RequireProvisioned bool        `json:"require_provisioned"`
 	}
 )
 

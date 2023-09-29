@@ -31,9 +31,9 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -49,8 +49,8 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
-		path naming.Path
-		id   string
+		path    naming.Path
+		id      string
 		ctx     context.Context
 		cancel  context.CancelFunc
 		cmdC    chan any

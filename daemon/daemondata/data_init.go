@@ -55,11 +55,11 @@ func newData() *data {
 	return &data{
 		statCount:          make(map[int]uint64),
 		gen:                nodeData.Status.Gen[localNode],
-		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
+		hbGens:             map[string]map[string]uint64{localNode: {localNode: 0}},
 		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 		localNode:          localNode,
-		clusterNodes:       map[string]struct{}{localNode: struct{}{}},
+		clusterNodes:       map[string]struct{}{localNode: {}},
 		clusterData:        msgbus.NewClusterData(status.DeepCopy()),
 		eventQueue:         make(eventQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),

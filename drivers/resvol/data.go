@@ -206,7 +206,7 @@ func (t T) installData() error {
 func (t T) signalData() []SigRoute {
 	routes := make([]SigRoute, 0)
 	for i, ridmap := range volsignal.Parse(t.Signal) {
-		for rid, _ := range ridmap {
+		for rid := range ridmap {
 			routes = append(routes, SigRoute{
 				Signum: i,
 				RID:    rid,

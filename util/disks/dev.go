@@ -103,7 +103,7 @@ func loadDevs() error {
 func (d Dev) Parents() []Dev {
 	devs := make([]Dev, 0)
 	for parent, pm := range _relations {
-		for child, _ := range pm {
+		for child := range pm {
 			if child != d.Name {
 				continue
 			}
@@ -121,7 +121,7 @@ func (d Dev) Children() []Dev {
 	if !ok {
 		return devs
 	}
-	for child, _ := range pm {
+	for child := range pm {
 		if dev, ok := _devices[child]; ok {
 			devs = append(devs, dev)
 		}

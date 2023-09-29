@@ -12,8 +12,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -16,11 +16,9 @@ type (
 	}
 )
 
-//
 // VolDestroyWithForce forces an unmount of any file systems using the
 // unmount -f command.  This option has no effect on non-file systems or
 // unmounted file systems.
-//
 func VolDestroyWithForce() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*volDestroyOpts)
@@ -29,10 +27,8 @@ func VolDestroyWithForce() funcopt.O {
 	})
 }
 
-//
 // VolDestroyWithBusyRetries is the number of retries when the destroy
 // command reports "busy".
-//
 func VolDestroyWithBusyRetries(count int) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*volDestroyOpts)

@@ -8,12 +8,10 @@ import (
 	"github.com/opensvc/om3/util/xmap"
 )
 
-//
 // MatchingDirs returns the list of all directories and parent directories
 // hosting keys in the store's virtual filesystem.
 //
 // Example: []key{"a/b/c", "a/c/b"} => []dir{"a", "a/b", "a/c"}
-//
 func (t *keystore) MatchingDirs(pattern string) ([]string, error) {
 	m := make(map[string]interface{})
 	keys, err := t.MatchingKeys(pattern)

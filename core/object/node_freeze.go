@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/util/file"
+	"github.com/rs/zerolog/log"
 )
 
 // lockName is the path of the file to use as an action lock.
@@ -24,10 +24,8 @@ func (t *Node) Frozen() time.Time {
 	return fi.ModTime()
 }
 
-//
 // Freeze creates a persistant flag file that prevents orchestration
 // of the object instance.
-//
 func (t *Node) Freeze() error {
 	p := t.frozenFile()
 	if file.Exists(p) {
@@ -48,10 +46,8 @@ func (t *Node) Freeze() error {
 	return nil
 }
 
-//
 // Unfreeze removes the persistant flag file that prevents orchestration
 // of the object instance.
-//
 func (t *Node) Unfreeze() error {
 	p := t.frozenFile()
 	if !file.Exists(p) {

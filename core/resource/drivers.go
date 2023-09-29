@@ -49,19 +49,15 @@ func (t Drivers) Less(i, j int) bool {
 	}
 }
 
-//
 // Has returns true if t has a driver whose RID() is the same
 // as d.
-//
 func (t Drivers) Has(d Driver) bool {
 	rid := d.RID()
 	return t.HasRID(rid)
 }
 
-//
 // HasRID returns true if t has a driver whose RID() is the same
 // as rid.
-//
 func (t Drivers) HasRID(rid string) bool {
 	for _, r := range t {
 		if r.RID() == rid {
@@ -71,9 +67,7 @@ func (t Drivers) HasRID(rid string) bool {
 	return false
 }
 
-//
 // ResolveLink returns the driver intstance targeted by <to>
-//
 func (t Drivers) ResolveLink(to string) (Driver, bool) {
 	for _, r := range t {
 		i, ok := r.(LinkNameser)
@@ -112,10 +106,8 @@ func (t Drivers) Linkers(names []string) Drivers {
 	return l
 }
 
-//
 // Intersection returns a list of drivers ordered like t and
 // purged from drivers in other.
-//
 func (t Drivers) Intersection(other Drivers) Drivers {
 	l := make(Drivers, 0)
 	for _, r := range t {
@@ -126,10 +118,8 @@ func (t Drivers) Intersection(other Drivers) Drivers {
 	return l
 }
 
-//
 // Union return a deduplicated list containing all drivers from
 // t and other.
-//
 func (t Drivers) Union(other Drivers) Drivers {
 	l := make(Drivers, 0)
 	l = append(l, t...)
@@ -157,26 +147,20 @@ func (t Drivers) Add(r Driver) Drivers {
 	return append(t, r)
 }
 
-//
 // Sort sorts the driver list.
-//
 func (t Drivers) Sort() {
 	sort.Sort(t)
 }
 
-//
 // Reverse reverses the driver list sort.
-//
 func (t Drivers) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-//
 // Truncate returns the drivers list from first to the driver with <rid>.
 // If rid is not set, return the whole driver list.
 // The second return value is true if the rid was found, whatever the
 // truncation done.
-//
 func (t Drivers) Truncate(rid string) (Drivers, bool) {
 	if rid == "" {
 		return t, false

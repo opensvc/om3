@@ -11,10 +11,8 @@ func TrimLast(s string, n int) string {
 	return string(r[:len(r)-n])
 }
 
-//
 // SwapRuneCase returns a uppercased rune for a lowercase rune,
 // or a lowercased rune for a uppercase rune.
-//
 func SwapRuneCase(r rune) rune {
 	switch {
 	case 'a' <= r && r <= 'z':
@@ -26,18 +24,14 @@ func SwapRuneCase(r rune) rune {
 	}
 }
 
-//
 // SwapCase returns a copy of the input string with rune case
 // swapped.
-//
 func SwapCase(s string) string {
 	return strings.Map(SwapRuneCase, s)
 }
 
-//
 // Capitalize return a copy of the input string with the first rune
 // uppercased.
-//
 func Capitalize(s string) string {
 	switch len(s) {
 	case 0:

@@ -1,15 +1,13 @@
-//
 // Parses a posix arguments string using shlex.Split() and proposes
 // methods to drop options and option-values.
 //
 // Example:
 //
-//   args, _ := Parse("-f -c /tmp/foo --comment foo --comment 'foo bar'")
-//   args.DropOption("-f")
-//   args.DropOptionAndAnyValue("-c")
-//   args.DropOptionAndAnyValue("--comment")
-//   args.Get()
-//
+//	args, _ := Parse("-f -c /tmp/foo --comment foo --comment 'foo bar'")
+//	args.DropOption("-f")
+//	args.DropOptionAndAnyValue("-c")
+//	args.DropOptionAndAnyValue("--comment")
+//	args.Get()
 package args
 
 import (

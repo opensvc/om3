@@ -20,8 +20,8 @@ import (
 type (
 	T struct {
 		resdisk.T
-		Path   naming.Path
-		VGName string   `json:"vg"`
+		Path    naming.Path
+		VGName  string   `json:"vg"`
 		Size    string   `json:"size"`
 		Options []string `json:"options"`
 		PVs     []string `json:"pvs"`

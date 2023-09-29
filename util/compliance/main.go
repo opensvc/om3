@@ -3,11 +3,11 @@ package compliance
 import (
 	"path/filepath"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type (

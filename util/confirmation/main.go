@@ -89,11 +89,11 @@ func ReadLn(description string, timeout time.Duration) (string, error) {
 				}
 			case ev.Key == keyboard.KeySpace:
 				offset := len(word) - pos
-				word = word[0:offset] + " " + word[offset:len(word)]
+				word = word[0:offset] + " " + word[offset:]
 				_ = prompt()
 			case ev.Rune != '0':
 				offset := len(word) - pos
-				word = word[0:offset] + string(ev.Rune) + word[offset:len(word)]
+				word = word[0:offset] + string(ev.Rune) + word[offset:]
 				_ = prompt()
 			}
 		case <-time.After(time.Second):

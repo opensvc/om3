@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"

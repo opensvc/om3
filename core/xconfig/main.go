@@ -866,7 +866,7 @@ func (t T) RawEvaluatedAs(impersonate string) (rawconfig.T, error) {
 	r := rawconfig.New()
 	for _, s := range t.file.Sections() {
 		sectionMap := *orderedmap.New()
-		for k, _ := range s.KeysHash() {
+		for k := range s.KeysHash() {
 			_k := key.New(s.Name(), k)
 			_k.Option = _k.BaseOption()
 			if v, err := t.EvalAs(_k, impersonate); err != nil {
@@ -961,7 +961,7 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 	}
 	if strings.HasPrefix(ref, "#") {
 		count = true
-		ref = ref[1:len(ref)]
+		ref = ref[1:]
 	}
 	switch {
 	case strings.HasPrefix(ref, "node."):

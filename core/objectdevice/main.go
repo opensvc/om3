@@ -12,9 +12,9 @@ import (
 
 type (
 	T struct {
-		Device     device.T  `json:"device"`
-		Role       Role      `json:"role"`
-		RID        string    `json:"rid"`
+		Device     device.T    `json:"device"`
+		Role       Role        `json:"role"`
+		RID        string      `json:"rid"`
 		DriverID   driver.ID   `json:"driver"`
 		ObjectPath naming.Path `json:"path"`
 	}

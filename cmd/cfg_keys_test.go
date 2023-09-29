@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opensvc/om3/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/opensvc/om3/testhelper"
 )
 
 type (

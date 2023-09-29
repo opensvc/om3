@@ -18,8 +18,8 @@ import (
 type (
 	ValidateAlerts []ValidateAlert
 	ValidateAlert  struct {
-		Path  naming.Path        `json:"path"`
-		Level ValidateAlertLevel `json:"level"`
+		Path    naming.Path        `json:"path"`
+		Level   ValidateAlertLevel `json:"level"`
 		Kind    ValidateAlertKind  `json:"kind"`
 		Key     key.T              `json:"key"`
 		Driver  driver.ID          `json:"driver"`
@@ -288,7 +288,7 @@ func (t T) Validate() (ValidateAlerts, error) {
 				}
 			}
 		}
-		for option, _ := range s.KeysHash() {
+		for option := range s.KeysHash() {
 			k := key.Parse(section + "." + option)
 			if k.BaseOption() == "type" {
 				continue

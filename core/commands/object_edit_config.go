@@ -9,9 +9,9 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"

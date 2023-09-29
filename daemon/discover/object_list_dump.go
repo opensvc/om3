@@ -124,7 +124,7 @@ func (t *objectList) write() error {
 		return err
 	}
 	defer f.Close()
-	for p, _ := range t.m {
+	for p := range t.m {
 		if _, err := fmt.Fprintf(f, "%s\n", p); err != nil {
 			return err
 		}

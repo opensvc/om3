@@ -23,7 +23,6 @@ func pgNameResource(s string) string {
 	return strings.ReplaceAll(s, "#", ".")
 }
 
-//
 // /opensvc/ns.ns1/vol.v1/subset.g1/disk.1 	# ns ss
 // /opensvc/ns.ns1/vol.v1/subset.g1/fs.1 	# ns ss
 // /opensvc/ns.ns1/vol.v1/subset.g1/fs.g1	# ns ss
@@ -32,7 +31,6 @@ func pgNameResource(s string) string {
 // /opensvc/vol.v1/subset.g1/disk.1		# !ns ss
 // /opensvc/vol.v1/subset.g1/app.1		# !ns ss
 // /opensvc/vol.v1/disk.1			# !ns !ss
-//
 func (t *core) pgConfig(section string) *pg.Config {
 	data := pg.Config{}
 	data.CpuShares, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_shares"))

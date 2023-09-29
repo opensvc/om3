@@ -11,11 +11,9 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-//
 // frozenFile is the path of the file to use as the frozen flag.
 // The file mtime is loaded as the frozen key value in the
 // instance status dataset.
-//
 func (t *actor) frozenFile() string {
 	return filepath.Join(t.varDir(), "frozen")
 }
@@ -30,10 +28,8 @@ func (t *actor) Frozen() time.Time {
 	return fi.ModTime()
 }
 
-//
 // Freeze creates a persistant flag file that prevents orchestration
 // of the object instance.
-//
 func (t *actor) Freeze(ctx context.Context) error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
@@ -58,10 +54,8 @@ func (t *actor) Freeze(ctx context.Context) error {
 	return nil
 }
 
-//
 // Unfreeze removes the persistant flag file that prevents orchestration
 // of the object instance.
-//
 func (t *actor) Unfreeze(ctx context.Context) error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()

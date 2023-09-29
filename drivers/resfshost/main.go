@@ -26,8 +26,8 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
-		Path       naming.Path
-		MountPoint string         `json:"mnt"`
+		Path            naming.Path
+		MountPoint      string         `json:"mnt"`
 		Device          string         `json:"dev"`
 		Type            string         `json:"type"`
 		MountOptions    string         `json:"mnt_opt"`

@@ -35,7 +35,7 @@ func (t DeviceClaims) AddPath(s string) {
 	if err != nil {
 		return
 	}
-	for current, _ := range t {
+	for current := range t {
 		if _relations.leafOf(dev.Name, current) {
 			// A parent device idev.Name already claimed
 			return

@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemonhelper"

@@ -10,11 +10,11 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/vishvananda/netlink"
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/vishvananda/netlink"
 )
 
 func (t T) ActionResourceDeps() []actionresdeps.Dep {

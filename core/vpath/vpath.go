@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/loop"

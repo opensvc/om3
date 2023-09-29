@@ -37,7 +37,7 @@ func regions(d Dev, claims ObjectsDeviceClaims) []Region {
 	l := make([]Region, 0)
 	unclaimedSize := d.Size
 	for objPath, objClaims := range claims {
-		for claimedDevName, _ := range objClaims {
+		for claimedDevName := range objClaims {
 			if _relations.rootOf(claimedDevName) != d.Name {
 				continue
 			}
@@ -77,10 +77,8 @@ func (d *Disk) Used() (used uint64, err error) {
 	return
 }
 
-//
 // List return the list of disks visible on the node.
 // Multipath paths are not considered disks.
-//
 func GetDisks(claims ObjectsDeviceClaims) (Disks, error) {
 	l := make(Disks, 0)
 	devices, err := GetDevices()

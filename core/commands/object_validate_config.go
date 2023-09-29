@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/naming"
 )
 
 type (

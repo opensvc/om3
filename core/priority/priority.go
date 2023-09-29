@@ -10,10 +10,8 @@ type T int
 // Default is the default priority
 const Default = 50
 
-//
 // StatusString returns a short string representation of the priority
 // to embed in printed status.
-//
 func (t T) StatusString() string {
 	if t != Default {
 		return fmt.Sprintf("p%d", t)

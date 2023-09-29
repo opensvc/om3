@@ -8,8 +8,8 @@ import (
 
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/resource"
 )
 

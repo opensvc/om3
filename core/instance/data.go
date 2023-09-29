@@ -12,8 +12,8 @@ type (
 	}
 
 	DataElement[T Dataer] struct {
-		Path naming.Path
-		Node string
+		Path  naming.Path
+		Node  string
 		Value *T
 	}
 

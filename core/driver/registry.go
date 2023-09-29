@@ -41,7 +41,7 @@ func GetStrict(id ID) any {
 func List() IDs {
 	l := make(IDs, len(registry))
 	i := 0
-	for did, _ := range registry {
+	for did := range registry {
 		l[i] = did
 		i = i + 1
 	}
