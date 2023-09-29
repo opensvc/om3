@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/stringset"
@@ -38,7 +37,7 @@ func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p naming.Path) e
 	limit := time.Now().Add(*timeout)
 	todo := stringset.New()
 	clusterSection := rawconfig.ClusterSection()
-	name := fqdn.New(p, clusterSection.Name).String()
+	name := naming.NewFQDN(p, clusterSection.Name).String()
 
 	for _, dns := range strings.Fields(clusterSection.DNS) {
 		todo.Add(dns)

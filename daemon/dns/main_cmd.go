@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
@@ -80,7 +79,7 @@ func (t *dns) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 
 func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
-	name := fqdn.New(c.Path, t.cluster.Name).String() + "."
+	name := naming.NewFQDN(c.Path, t.cluster.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
 	records := make(Zone, 0)
 	updatedRecords := make(map[string]any)

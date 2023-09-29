@@ -23,7 +23,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -46,9 +45,9 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
-		PG       pg.Config   `json:"pg"`
-		Path     naming.Path `json:"path"`
-		ObjectID uuid.UUID   `json:"object_id"`
+		PG              pg.Config      `json:"pg"`
+		Path            naming.Path    `json:"path"`
+		ObjectID        uuid.UUID      `json:"object_id"`
 		SCSIReserv      bool           `json:"scsireserv"`
 		PromoteRW       bool           `json:"promote_rw"`
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
@@ -815,7 +814,7 @@ func (t T) dnsSearch() []string {
 	if !t.needDNS() {
 		return []string{}
 	}
-	dom0 := fqdn.New(t.Path, rawconfig.ClusterSection().Name).Domain()
+	dom0 := naming.NewFQDN(t.Path, rawconfig.ClusterSection().Name).Domain()
 	dom1 := strings.SplitN(dom0, ".", 2)[1]
 	dom2 := strings.SplitN(dom1, ".", 2)[1]
 	return []string{dom0, dom1, dom2}
