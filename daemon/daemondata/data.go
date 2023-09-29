@@ -391,6 +391,8 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 
+	sub.AddFilter(&msgbus.ListenerUpdated{}, d.labelLocalNode)
+
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
@@ -457,6 +459,10 @@ func (d *data) onSubEvent(i interface{}) error {
 			d.appendEv(c)
 		}
 	case *msgbus.InstanceStatusDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.ListenerUpdated:
 		if c.Node == d.localNode {
 			d.appendEv(c)
 		}
