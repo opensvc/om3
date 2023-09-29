@@ -589,6 +589,11 @@ func (o *nmon) onListenerDeleted(m *msgbus.ListenerDeleted) {
 	nodeInfo.Lsnr = node.Lsnr{}
 	o.cacheNodesInfo[m.Node] = nodeInfo
 	o.saveNodesInfo()
+
+	if m.Node == o.localhost {
+		o.nodeStatus.Lsnr = node.Lsnr{}
+		o.publishNodeStatus()
+	}
 }
 
 func (o *nmon) onListenerUpdated(m *msgbus.ListenerUpdated) {
@@ -596,6 +601,11 @@ func (o *nmon) onListenerUpdated(m *msgbus.ListenerUpdated) {
 	nodeInfo.Lsnr = m.Lsnr
 	o.cacheNodesInfo[m.Node] = nodeInfo
 	o.saveNodesInfo()
+
+	if m.Node == o.localhost {
+		o.nodeStatus.Lsnr = m.Lsnr
+		o.publishNodeStatus()
+	}
 }
 
 func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
@@ -639,6 +649,11 @@ func (o *nmon) saveNodesInfo() {
 	}
 }
 
+func (o *nmon) publishNodeStatus() {
+	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+}
+
 func (o *nmon) loadConfig() error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
@@ -652,6 +667,7 @@ func (o *nmon) loadConfig() error {
 
 	if lsnr := node.LsnrData.Get(o.localhost); lsnr != nil {
 		localNodeInfo.Lsnr = *lsnr
+		o.nodeStatus.Lsnr = *lsnr
 	}
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
 	return nil
@@ -661,16 +677,20 @@ func (o *nmon) loadAndPublishConfig() error {
 	if err := o.loadConfig(); err != nil {
 		return err
 	}
+
 	node.ConfigData.Set(o.localhost, o.nodeConfig.DeepCopy())
 	o.bus.Pub(&msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
+
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
 	o.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
+
 	o.nodeStatus.Labels = localNodeInfo.Labels
-	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	o.publishNodeStatus()
+
 	paths := localNodeInfo.Paths.DeepCopy()
 	node.OsPathsData.Set(o.localhost, &paths)
 	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
+
 	select {
 	case o.poolC <- nil:
 	default:
