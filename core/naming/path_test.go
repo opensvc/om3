@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/testhelper"
 )
 
-func TestNew(t *testing.T) {
+func TestNewPath(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -127,7 +127,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestL_len(t *testing.T) {
+func TestPathsLen(t *testing.T) {
 	p1, _ := ParsePath("ns1/svc/n1")
 	p2, _ := ParsePath("ns1/svc/n2")
 	assert.Equal(t, 0, len(Paths{}))
@@ -137,49 +137,7 @@ func TestL_len(t *testing.T) {
 	assert.Equal(t, 0, len(l))
 }
 
-func TestParseRelation(t *testing.T) {
-	tests := map[string]struct {
-		objectPath string
-		node       string
-		ok         bool
-	}{
-		"svc1": {
-			objectPath: "svc1",
-			node:       "",
-			ok:         true,
-		},
-		"svc1@": {
-			objectPath: "svc1",
-			node:       "",
-			ok:         true,
-		},
-		"svc1@n1": {
-			objectPath: "svc1",
-			node:       "n1",
-			ok:         true,
-		},
-		"svc1@n1@n1": {
-			objectPath: "svc1",
-			node:       "n1@n1",
-			ok:         true,
-		},
-	}
-	for input, test := range tests {
-		t.Logf("input: '%s'", input)
-		objectPath, node, err := Relation(input).Split()
-		switch test.ok {
-		case true:
-			assert.Nil(t, err)
-		case false:
-			assert.NotNil(t, err)
-			continue
-		}
-		assert.Equal(t, test.objectPath, objectPath.String())
-		assert.Equal(t, test.node, node)
-	}
-}
-
-func TestParse(t *testing.T) {
+func TestParsePath(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -270,14 +228,14 @@ func TestParse(t *testing.T) {
 
 }
 
-func TestMarshalJSON(t *testing.T) {
+func TestPathMarshalJSON(t *testing.T) {
 	path, _ := ParsePath("ns1/svc/svc1")
 	b, err := json.Marshal(path)
 	assert.Nil(t, err)
 	assert.Equal(t, b, []byte(`"ns1/svc/svc1"`))
 }
 
-func TestUnmarshalJSON(t *testing.T) {
+func TestPathUnmarshalJSON(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -314,7 +272,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	}
 }
 
-func TestMatch(t *testing.T) {
+func TestPathMatch(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -386,7 +344,7 @@ func TestMatch(t *testing.T) {
 	}
 }
 
-func TestMerge(t *testing.T) {
+func TestPathsMerge(t *testing.T) {
 	l1 := Paths{
 		Path{"s1", "ns1", KindSvc},
 		Path{"s2", "ns2", KindSvc},
@@ -412,7 +370,7 @@ func TestMerge(t *testing.T) {
 
 }
 
-func TestFilter(t *testing.T) {
+func TestPathsFilter(t *testing.T) {
 	l := Paths{
 		Path{"s1", "ns1", KindSvc},
 		Path{"s2", "ns2", KindSvc},
@@ -519,12 +477,12 @@ func TestConfigFile(t *testing.T) {
 	}
 }
 
-func TestString(t *testing.T) {
+func TestPathStringer(t *testing.T) {
 	p := Path{}
 	assert.Equal(t, "", p.String())
 }
 
-func TestT_Equal(t *testing.T) {
+func TestPathEqual(t *testing.T) {
 	p := Path{Name: "foo", Namespace: "ns1", Kind: KindSvc}
 
 	assert.True(t, p.Equal(Path{Name: "foo", Namespace: "ns1", Kind: KindSvc}))

@@ -28,12 +28,6 @@ type (
 		Kind Kind
 	}
 
-	// Relation is an object path or an instance path (path@node).
-	Relation string
-
-	// Relations is a slice of Relation
-	Relations []Relation
-
 	// Paths is a list of object paths.
 	Paths []Path
 
@@ -294,33 +288,6 @@ func (t Path) Path() Path {
 	return t
 }
 
-func (t Relation) String() string {
-	return string(t)
-}
-
-func (t Relation) Split() (Path, string, error) {
-	p, err := t.Path()
-	return p, t.Node(), err
-}
-
-func (t Relation) Node() string {
-	var s string
-	if strings.Contains(string(t), "@") {
-		s = strings.SplitN(string(t), "@", 2)[1]
-	}
-	return s
-}
-
-func (t Relation) Path() (Path, error) {
-	var s string
-	if strings.Contains(string(t), "@") {
-		s = strings.SplitN(string(t), "@", 2)[0]
-	} else {
-		s = string(t)
-	}
-	return ParsePath(s)
-}
-
 func (t Paths) String() string {
 	l := make([]string, len(t))
 	for i, p := range t {
@@ -501,20 +468,4 @@ func PathOf(o any) Path {
 		return p.Path()
 	}
 	return Path{}
-}
-
-func (relations Relations) Strings() []string {
-	l := make([]string, len(relations))
-	for i, relation := range relations {
-		l[i] = string(relation)
-	}
-	return l
-}
-
-func NewRelationsFromStrings(l []string) Relations {
-	relations := make(Relations, len(l))
-	for i, s := range l {
-		relations[i] = Relation(s)
-	}
-	return relations
 }
