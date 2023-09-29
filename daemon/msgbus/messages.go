@@ -585,7 +585,7 @@ type (
 	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string
+		Node       string      `json:"node" yaml:"node"`
 		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
