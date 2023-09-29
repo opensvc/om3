@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
@@ -24,7 +24,7 @@ type (
 	core struct {
 		sync.Mutex
 
-		path path.T
+		path naming.Path
 
 		// private
 		volatile         bool
@@ -62,7 +62,7 @@ type (
 		Configurer
 		compliancer
 		volatiler
-		Path() path.T
+		Path() naming.Path
 		FQDN() string
 		Status(context.Context) (instance.Status, error)
 		FreshStatus(context.Context) (instance.Status, error)
@@ -130,7 +130,7 @@ func (t core) IsVolatile() bool {
 	return t.volatile
 }
 
-func (t *core) Path() path.T {
+func (t *core) Path() naming.Path {
 	return t.path
 }
 

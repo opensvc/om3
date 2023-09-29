@@ -16,8 +16,8 @@ import (
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -435,7 +435,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
 	t.sub = bus.Sub("hb")
-	t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", path.Cluster.String()})
+	t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.Cluster.String()})
 	t.sub.AddFilter(&msgbus.DaemonCtl{})
 	t.sub.Start()
 }
@@ -576,7 +576,7 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 	var node *clusterhb.T
 	node, err = clusterhb.New()
 	if err != nil {
-		t.log.Error().Err(err).Msgf("clusterhb.New")
+		t.log.Error().Err(err).Msgf("clusterhb.NewPath")
 		return
 	}
 	for _, h := range node.Hbs() {

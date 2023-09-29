@@ -1,4 +1,4 @@
-package fqdn
+package naming
 
 import (
 	"testing"
@@ -26,7 +26,7 @@ func TestIsValid(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Logf("%s", test.s)
-		v := IsValid(test.s)
+		v := IsValidFQDN(test.s)
 		assert.Equalf(t, test.v, v, "%s", test.s)
 	}
 }

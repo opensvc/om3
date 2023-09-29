@@ -14,39 +14,39 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 )
 
 type (
 	register struct {
-		path     path.T
+		path     naming.Path
 		rid      string
 		hook     func(status.T)
 		response chan uuid.UUID
 	}
 
 	unregister struct {
-		path path.T
+		path naming.Path
 		rid  string
 		uuid uuid.UUID
 	}
 
 	postStatus struct {
-		path    path.T
+		path    naming.Path
 		rid     string
 		state   status.T
 		pending bool
 	}
 
 	getFirstStatus struct {
-		path     path.T
+		path     naming.Path
 		rid      string
 		response chan status.T
 	}
 
 	getStatus struct {
-		path     path.T
+		path     naming.Path
 		rid      string
 		response chan status.T
 	}
@@ -57,7 +57,7 @@ type (
 		firstState status.T
 		pending    bool
 	}
-	statesMap map[path.T]map[string]leaf
+	statesMap map[naming.Path]map[string]leaf
 
 	T struct {
 		states  statesMap
@@ -73,7 +73,7 @@ type (
 
 	ObjT struct {
 		bus  *T
-		path path.T
+		path naming.Path
 	}
 
 	keyT int
@@ -116,11 +116,11 @@ func (t *T) Start() {
 
 // Post push a new object rid status to status bus
 //
-// bus.Post(path.T{Name:"foo",Namespace: "root", Kind: kind.Svc},
+// bus.Post(naming.Path{Name:"foo",Namespace: "root", Kind: kind.Svc},
 //
 //	"app#1",
 //	status.Down))
-func (t *T) Post(p path.T, rid string, state status.T, pending bool) {
+func (t *T) Post(p naming.Path, rid string, state status.T, pending bool) {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -132,7 +132,7 @@ func (t *T) Post(p path.T, rid string, state status.T, pending bool) {
 	}
 }
 
-func (t *T) Pending(p path.T, rid string) {
+func (t *T) Pending(p naming.Path, rid string) {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -150,15 +150,15 @@ func (t *T) Pending(p path.T, rid string) {
 //
 // Example:
 //
-//	p := path.T{Name:"foo",Namespace: "root", Kind: kind.Svc}
+//	p := path.Path{Name:"foo",Namespace: "root", Kind: kind.Svc}
 //	bus.Post(p, "app#1", status.Up)
 //	bus.Post(p, "app#2", status.Down)
 //
 //	bus.Get(p, "app#1") // returns status.Up
 //	bus.Get(p, "app#2") // returns status.Down
 //	bus.Get(p, "app#99") // returns status.Undef
-//	bus.Get(path.T{}, "app#1") // returns status.Undef
-func (t *T) Get(p path.T, rid string) status.T {
+//	bus.Get(path.Path{}, "app#1") // returns status.Undef
+func (t *T) Get(p naming.Path, rid string) status.T {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -171,7 +171,7 @@ func (t *T) Get(p path.T, rid string) status.T {
 	return <-resp
 }
 
-func (t *T) First(p path.T, rid string) status.T {
+func (t *T) First(p naming.Path, rid string) status.T {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -184,7 +184,7 @@ func (t *T) First(p path.T, rid string) status.T {
 	return <-resp
 }
 
-func (t *T) Wait(p path.T, rid string, timeout time.Duration) status.T {
+func (t *T) Wait(p naming.Path, rid string, timeout time.Duration) status.T {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -210,7 +210,7 @@ func (t *T) Wait(p path.T, rid string, timeout time.Duration) status.T {
 	}
 }
 
-func (t *T) Register(p path.T, rid string, hook func(status.T)) uuid.UUID {
+func (t *T) Register(p naming.Path, rid string, hook func(status.T)) uuid.UUID {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -224,7 +224,7 @@ func (t *T) Register(p path.T, rid string, hook func(status.T)) uuid.UUID {
 	return <-resp
 }
 
-func (t *T) Unregister(p path.T, rid string, u uuid.UUID) {
+func (t *T) Unregister(p naming.Path, rid string, u uuid.UUID) {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
@@ -235,7 +235,7 @@ func (t *T) Unregister(p path.T, rid string, u uuid.UUID) {
 	}
 }
 
-func (t T) getLeaf(p path.T, rid string) leaf {
+func (t T) getLeaf(p naming.Path, rid string) leaf {
 	if m, ok := t.states[p]; ok {
 		if l, ok := m[rid]; ok {
 			return l
@@ -244,7 +244,7 @@ func (t T) getLeaf(p path.T, rid string) leaf {
 	return leaf{state: status.Undef}
 }
 
-func (t *T) addLeaf(p path.T, rid string) {
+func (t *T) addLeaf(p naming.Path, rid string) {
 	_, ok := t.states[p]
 	if !ok {
 		t.states[p] = make(map[string]leaf)
@@ -259,14 +259,14 @@ func (t *T) addLeaf(p path.T, rid string) {
 	}
 }
 
-func (t *T) delHook(p path.T, rid string, u uuid.UUID) {
+func (t *T) delHook(p naming.Path, rid string, u uuid.UUID) {
 	l := t.getLeaf(p, rid)
 	if _, ok := l.hooks[u]; ok {
 		delete(t.states[p][rid].hooks, u)
 	}
 }
 
-func (t *T) addHook(p path.T, rid string, hook func(status.T)) uuid.UUID {
+func (t *T) addHook(p naming.Path, rid string, hook func(status.T)) uuid.UUID {
 	t.addLeaf(p, rid)
 	u := uuid.New()
 	t.states[p][rid].hooks[u] = hook
@@ -274,7 +274,7 @@ func (t *T) addHook(p path.T, rid string, hook func(status.T)) uuid.UUID {
 
 }
 
-func (t *T) post(p path.T, rid string, state status.T, pending bool) {
+func (t *T) post(p naming.Path, rid string, state status.T, pending bool) {
 	t.addLeaf(p, rid)
 	l := t.getLeaf(p, rid)
 	l.pending = pending
@@ -342,7 +342,7 @@ func (t *ObjT) Unregister(rid string, u uuid.UUID) {
 	t.bus.Unregister(t.path, rid, u)
 }
 
-func NewObjectBus(p path.T) *ObjT {
+func NewObjectBus(p naming.Path) *ObjT {
 	t := ObjT{
 		path: p,
 		bus:  &T{},
@@ -350,7 +350,7 @@ func NewObjectBus(p path.T) *ObjT {
 	return &t
 }
 
-func WithContext(ctx context.Context, p path.T) (context.Context, func()) {
+func WithContext(ctx context.Context, p naming.Path) (context.Context, func()) {
 	if sb := FromContext(ctx); sb != nil {
 		// the context already has a statusbus
 		return ctx, func() {}

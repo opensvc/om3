@@ -10,10 +10,10 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -47,7 +47,7 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, er
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, error) {
+func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
 	if data, err := t.extractFromDaemon(p, c); err == nil {
 		return data, nil
 	}
@@ -57,7 +57,7 @@ func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, e
 	return t.extractLocal(p)
 }
 
-func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
+func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) {
 	obj, err := object.NewConfigurer(p)
 	if err != nil {
 		return rawconfig.T{}, err
@@ -71,7 +71,7 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 	return obj.PrintConfig()
 }
 
-func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {
+func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
@@ -128,7 +128,7 @@ func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 		return fmt.Errorf("no match")
 	}
 	var render func() string
-	if _, err := path.Parse(selector); err == nil {
+	if _, err := naming.ParsePath(selector); err == nil {
 		// single object selection
 		render = func() string {
 			d, _ := data[selector]

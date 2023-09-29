@@ -3,9 +3,9 @@ package commands
 import (
 	"context"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -32,7 +32,7 @@ func (t *CmdObjectComplianceEnv) Run(selector, kind string) error {
 			"moduleset": t.Moduleset,
 			"module":    t.Module,
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {

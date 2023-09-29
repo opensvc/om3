@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -27,7 +27,7 @@ func (t *CmdObjectStatus) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("status"),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewCore(p)
 			if err != nil {
 				return nil, err

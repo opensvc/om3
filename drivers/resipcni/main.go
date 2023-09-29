@@ -17,7 +17,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -35,7 +35,7 @@ type (
 	T struct {
 		resource.T
 
-		Path path.T
+		Path naming.Path
 
 		// config
 		Expose     []string `json:"expose"`

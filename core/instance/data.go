@@ -3,7 +3,7 @@ package instance
 import (
 	"sync"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -12,7 +12,7 @@ type (
 	}
 
 	DataElement[T Dataer] struct {
-		Path  path.T
+		Path  naming.Path
 		Node  string
 		Value *T
 	}
@@ -20,8 +20,8 @@ type (
 	// Data defines a shared holder for all instances Dataer
 	Data[T Dataer] struct {
 		sync.RWMutex
-		nodeToPath map[string]map[path.T]struct{}
-		pathToNode map[path.T]map[string]struct{}
+		nodeToPath map[string]map[naming.Path]struct{}
+		pathToNode map[naming.Path]map[string]struct{}
 		data       map[string]*T
 	}
 )
@@ -38,12 +38,12 @@ var (
 )
 
 // Set will add or update instance data
-func (c *Data[T]) Set(p path.T, nodename string, v *T) {
+func (c *Data[T]) Set(p naming.Path, nodename string, v *T) {
 	id := p.String() + "@" + nodename
 	c.Lock()
 	defer c.Unlock()
 	if _, ok := c.nodeToPath[nodename]; !ok {
-		c.nodeToPath[nodename] = make(map[path.T]struct{})
+		c.nodeToPath[nodename] = make(map[naming.Path]struct{})
 	}
 	if _, ok := c.pathToNode[p]; !ok {
 		c.pathToNode[p] = make(map[string]struct{})
@@ -54,7 +54,7 @@ func (c *Data[T]) Set(p path.T, nodename string, v *T) {
 }
 
 // Set removes an instance data
-func (c *Data[T]) Unset(p path.T, nodename string) {
+func (c *Data[T]) Unset(p naming.Path, nodename string) {
 	id := p.String() + "@" + nodename
 	c.Lock()
 	defer c.Unlock()
@@ -81,7 +81,7 @@ func (c *Data[T]) DropNode(nodename string) {
 }
 
 // Get returns an instance data or nil if data is not found
-func (c *Data[T]) Get(p path.T, nodename string) *T {
+func (c *Data[T]) Get(p naming.Path, nodename string) *T {
 	id := p.String() + "@" + nodename
 	c.RLock()
 	v := c.data[id]
@@ -90,9 +90,9 @@ func (c *Data[T]) Get(p path.T, nodename string) *T {
 }
 
 // GetByNode returns a map (indexed by path) of instance data for nodename
-func (c *Data[T]) GetByNode(nodename string) map[path.T]*T {
+func (c *Data[T]) GetByNode(nodename string) map[naming.Path]*T {
 	c.RLock()
-	result := make(map[path.T]*T)
+	result := make(map[naming.Path]*T)
 	for p := range c.nodeToPath[nodename] {
 		result[p] = c.data[p.String()+"@"+nodename]
 	}
@@ -101,7 +101,7 @@ func (c *Data[T]) GetByNode(nodename string) map[path.T]*T {
 }
 
 // GetByPath returns a map (indexed by nodename) of instance data for path p
-func (c *Data[T]) GetByPath(p path.T) map[string]*T {
+func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	c.RLock()
 	result := make(map[string]*T)
 	for nodename := range c.pathToNode[p] {
@@ -130,8 +130,8 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 
 func NewData[T Dataer]() *Data[T] {
 	return &Data[T]{
-		nodeToPath: make(map[string]map[path.T]struct{}),
-		pathToNode: make(map[path.T]map[string]struct{}),
+		nodeToPath: make(map[string]map[naming.Path]struct{}),
+		pathToNode: make(map[naming.Path]map[string]struct{}),
 		data:       make(map[string]*T),
 	}
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
+	"github.com/rs/zerolog"
 )
 
 func datasetGetProperty(ds Dataset, prop string) (string, error) {

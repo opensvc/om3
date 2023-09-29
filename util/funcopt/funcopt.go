@@ -1,4 +1,3 @@
-//
 // Package funcopt is a functional options helper package.
 //
 // Functional options benefits are described at
@@ -6,22 +5,21 @@
 //
 // A typical allocator is implemented as:
 //
-// func New(opts ...funcopt.O) *T {
-//     t := &T{<my defaults>}
-//     funcopt.Apply(t, opts...)
-//     return t
-// }
+//	func New(opts ...funcopt.O) *T {
+//	    t := &T{<my defaults>}
+//	    funcopt.Apply(t, opts...)
+//	    return t
+//	}
 //
 // Example:
 //
-// func WithName(name string) funcopt.O {
-//     return funcopt.F(func(i interface{}) error {
-//         t := i.(*T)
-//         t.name = name
-//         return nil
-//     })
-// }
-//
+//	func WithName(name string) funcopt.O {
+//	    return funcopt.F(func(i interface{}) error {
+//	        t := i.(*T)
+//	        t.name = name
+//	        return nil
+//	    })
+//	}
 package funcopt
 
 type (

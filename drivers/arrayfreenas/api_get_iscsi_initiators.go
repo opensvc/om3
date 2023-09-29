@@ -12,14 +12,15 @@ import (
 )
 
 // ISCSIInitiator defines model for ISCSIInitiator.
-//    {
-//        "id": 40,
-//        "initiators": [
-//            "iqn.2009-11.com.opensvc.srv:qau22c13n3.storage.initiator"
-//        ],
-//        "auth_network": [],
-//        "comment": ""
-//    }
+//
+//	{
+//	    "id": 40,
+//	    "initiators": [
+//	        "iqn.2009-11.com.opensvc.srv:qau22c13n3.storage.initiator"
+//	    ],
+//	    "auth_network": [],
+//	    "comment": ""
+//	}
 type ISCSIInitiator struct {
 	Id         int      `json:"id"`
 	Initiators []string `json:"initiators"`

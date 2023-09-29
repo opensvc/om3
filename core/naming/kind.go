@@ -1,4 +1,4 @@
-package path
+package naming
 
 type (
 	// Kind is opensvc object kind.
@@ -68,7 +68,7 @@ func (t Kind) String() string {
 	return string(t)
 }
 
-// New returns a kind struct from its string representation.
+// NewPath returns a kind struct from its string representation.
 func NewKind(s string) Kind {
 	if _, ok := kindMap[s]; ok {
 		return Kind(s)

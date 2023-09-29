@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
@@ -166,7 +166,7 @@ var keywordStore = keywords.Store{
 		Section:     "DEFAULT",
 		Option:      "nodes",
 		Scopable:    true,
-		Kind:        path.NewKinds(path.KindSvc, path.KindVol),
+		Kind:        naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Inherit:     keywords.InheritHead,
 		Converter:   xconfig.NodesConverter,
 		DefaultText: keywords.NewText(fs, "text/kw/core/nodes.default"),
@@ -177,7 +177,7 @@ var keywordStore = keywords.Store{
 		Section:   "DEFAULT",
 		Option:    "nodes",
 		Scopable:  true,
-		Kind:      path.NewKinds(path.KindCfg, path.KindSec, path.KindUsr, path.KindNscfg),
+		Kind:      naming.NewKinds(naming.KindCfg, naming.KindSec, naming.KindUsr, naming.KindNscfg),
 		Inherit:   keywords.InheritHead,
 		Converter: xconfig.NodesConverter,
 		Text:      keywords.NewText(fs, "text/kw/core/nodes"),
@@ -379,7 +379,7 @@ var keywordStore = keywords.Store{
 		Option:   "cn",
 		Scopable: true,
 		Example:  "test.opensvc.com",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/cn"),
 	},
 	{
@@ -387,7 +387,7 @@ var keywordStore = keywords.Store{
 		Option:   "c",
 		Scopable: true,
 		Example:  "FR",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/c"),
 	},
 	{
@@ -395,7 +395,7 @@ var keywordStore = keywords.Store{
 		Option:   "st",
 		Scopable: true,
 		Example:  "Oise",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/st"),
 	},
 	{
@@ -403,7 +403,7 @@ var keywordStore = keywords.Store{
 		Option:   "l",
 		Scopable: true,
 		Example:  "Gouvieux",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/l"),
 	},
 	{
@@ -411,7 +411,7 @@ var keywordStore = keywords.Store{
 		Option:   "o",
 		Scopable: true,
 		Example:  "OpenSVC",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/o"),
 	},
 	{
@@ -419,7 +419,7 @@ var keywordStore = keywords.Store{
 		Option:   "ou",
 		Scopable: true,
 		Example:  "Lab",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/ou"),
 	},
 	{
@@ -427,7 +427,7 @@ var keywordStore = keywords.Store{
 		Option:   "email",
 		Scopable: true,
 		Example:  "test@opensvc.com",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/email"),
 	},
 	{
@@ -436,7 +436,7 @@ var keywordStore = keywords.Store{
 		Converter: converters.List,
 		Scopable:  true,
 		Example:   "www.opensvc.com opensvc.com",
-		Kind:      path.NewKinds(path.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec),
 		Text:      keywords.NewText(fs, "text/kw/core/alt_names"),
 	},
 	{
@@ -446,7 +446,7 @@ var keywordStore = keywords.Store{
 		Scopable:  true,
 		Default:   "4kib",
 		Example:   "8192",
-		Kind:      path.NewKinds(path.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec),
 		Text:      keywords.NewText(fs, "text/kw/core/bits"),
 	},
 
@@ -455,7 +455,7 @@ var keywordStore = keywords.Store{
 		Section:   "DEFAULT",
 		Option:    "grant",
 		Scopable:  true,
-		Kind:      path.NewKinds(path.KindUsr),
+		Kind:      naming.NewKinds(naming.KindUsr),
 		Inherit:   keywords.InheritHead,
 		Converter: converters.ListLowercase,
 		Text:      keywords.NewText(fs, "text/kw/core/grant"),
@@ -476,7 +476,7 @@ var keywordStore = keywords.Store{
 		Scopable:  true,
 		Default:   "1y",
 		Example:   "10y",
-		Kind:      path.NewKinds(path.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec),
 		Text:      keywords.NewText(fs, "text/kw/core/validity"),
 	},
 	{
@@ -484,7 +484,7 @@ var keywordStore = keywords.Store{
 		Option:   "ca",
 		Scopable: true,
 		Example:  "ca",
-		Kind:     path.NewKinds(path.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Text:     keywords.NewText(fs, "text/kw/core/ca"),
 	},
 	{
@@ -588,7 +588,7 @@ var keywordStore = keywords.Store{
 	{
 		Option:     "access",
 		Attr:       "Access",
-		Kind:       path.NewKinds(path.KindVol),
+		Kind:       naming.NewKinds(naming.KindVol),
 		Inherit:    keywords.InheritHead,
 		Default:    "rwo",
 		Candidates: []string{"rwo", "roo", "rwx", "rox"},
@@ -599,7 +599,7 @@ var keywordStore = keywords.Store{
 		Option:    "size",
 		Attr:      "Size",
 		Inherit:   keywords.InheritHead,
-		Kind:      path.NewKinds(path.KindVol),
+		Kind:      naming.NewKinds(naming.KindVol),
 		Scopable:  true,
 		Converter: converters.Size,
 		Text:      keywords.NewText(fs, "text/kw/core/size"),
@@ -608,7 +608,7 @@ var keywordStore = keywords.Store{
 		Option:   "pool",
 		Attr:     "Pool",
 		Inherit:  keywords.InheritHead,
-		Kind:     path.NewKinds(path.KindVol),
+		Kind:     naming.NewKinds(naming.KindVol),
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pool"),
 	},
@@ -635,7 +635,7 @@ func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
 	return did, nil
 }
 
-func keywordLookup(store keywords.Store, k key.T, kind path.Kind, sectionType string) keywords.Keyword {
+func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) keywords.Keyword {
 	switch k.Section {
 	case "data", "env":
 		return keywords.Keyword{

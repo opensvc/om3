@@ -5,14 +5,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 )
 
 func Test_Mapper(t *testing.T) {
 	mapper := NewData[Status]()
-	p, _ := path.Parse("foo")
-	p2, _ := path.Parse("bar")
+	p, _ := naming.ParsePath("foo")
+	p2, _ := naming.ParsePath("bar")
 	mapper.Set(p, "node1", &Status{Avail: status.Up})
 	mapper.Set(p, "node2", &Status{Avail: status.Warn})
 	mapper.Set(p2, "node2", &Status{Avail: status.Down})

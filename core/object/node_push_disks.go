@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/disks"
 	"github.com/opensvc/om3/util/hostname"
 )
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
-	paths, err := path.List()
+	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return claims, err
 	}

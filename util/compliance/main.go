@@ -3,17 +3,17 @@ package compliance
 import (
 	"path/filepath"
 
+	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
 	T struct {
 		collectorClient *collector.Client
-		objectPath      path.T
+		objectPath      naming.Path
 		log             zerolog.Logger
 		varDir          string
 
@@ -38,7 +38,7 @@ func (t *T) SetCollectorClient(c *collector.Client) {
 	t.collectorClient = c
 }
 
-func (t *T) SetObjectPath(s path.T) {
+func (t *T) SetObjectPath(s naming.Path) {
 	t.objectPath = s
 }
 

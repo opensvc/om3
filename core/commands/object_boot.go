@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -27,7 +27,7 @@ func (t *CmdObjectBoot) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("boot"),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p,
 				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),

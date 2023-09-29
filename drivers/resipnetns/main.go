@@ -14,12 +14,11 @@ import (
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resip"
-	"github.com/opensvc/om3/util/fqdn"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
 
@@ -38,7 +37,7 @@ type (
 	T struct {
 		resource.T
 
-		Path path.T
+		Path naming.Path
 
 		// config
 		NetNS        string         `json:"netns"`
@@ -554,7 +553,7 @@ func (t *T) defaultMask() (net.IPMask, error) {
 
 func (t T) getIPAddr() net.IP {
 	switch {
-	case fqdn.IsValid(t.IpName) || hostname.IsValid(t.IpName):
+	case naming.IsValidFQDN(t.IpName) || hostname.IsValid(t.IpName):
 		var (
 			l   []net.IP
 			err error

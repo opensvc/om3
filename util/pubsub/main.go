@@ -316,14 +316,14 @@ func (t Labels) Is(labels Labels) bool {
 	for k, v := range labels {
 		m2[fmt.Sprintf("%#v", []string{k, v})] = nil
 	}
-	for l1, _ := range m1 {
+	for l1 := range m1 {
 		if _, ok := m2[l1]; !ok {
 			return false
 		} else {
 			delete(m2, l1)
 		}
 	}
-	for l2, _ := range m2 {
+	for l2 := range m2 {
 		if _, ok := m1[l2]; !ok {
 			return false
 		}

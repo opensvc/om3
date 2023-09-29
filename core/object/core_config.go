@@ -11,9 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -88,7 +87,7 @@ func (t core) Orchestrate() string {
 
 func (t core) FQDN() string {
 	clusterName := rawconfig.ClusterSection().Name
-	return fqdn.New(t.path, clusterName).String()
+	return naming.NewFQDN(t.path, clusterName).String()
 }
 
 func (t core) Env() string {
@@ -141,8 +140,8 @@ func (t core) Peers() ([]string, error) {
 	return nil, fmt.Errorf("node %s has no peers: not in nodes nor drpnodes", impersonate)
 }
 
-func (t core) Children() []path.Relation {
-	data := make([]path.Relation, 0)
+func (t core) Children() []naming.Relation {
+	data := make([]naming.Relation, 0)
 	k := key.Parse("children")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
@@ -150,13 +149,13 @@ func (t core) Children() []path.Relation {
 		return data
 	}
 	for _, e := range l {
-		data = append(data, path.Relation(e))
+		data = append(data, naming.Relation(e))
 	}
 	return data
 }
 
-func (t core) Parents() []path.Relation {
-	data := make([]path.Relation, 0)
+func (t core) Parents() []naming.Relation {
+	data := make([]naming.Relation, 0)
 	k := key.Parse("parents")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
@@ -164,7 +163,7 @@ func (t core) Parents() []path.Relation {
 		return data
 	}
 	for _, e := range l {
-		data = append(data, path.Relation(e))
+		data = append(data, naming.Relation(e))
 	}
 	return data
 }
@@ -319,7 +318,7 @@ func (t core) Dereference(ref string) (string, error) {
 		if t.path.IsZero() {
 			return "", nil
 		}
-		return fqdn.New(t.path, rawconfig.ClusterSection().Name).Domain(), nil
+		return naming.NewFQDN(t.path, rawconfig.ClusterSection().Name).Domain(), nil
 	case "private_var":
 		return t.paths.varDir, nil
 	case "initd":

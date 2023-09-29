@@ -12,8 +12,8 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -38,12 +38,12 @@ const (
 type (
 	T struct {
 		resdisk.T
-		Name             string `json:"name"`
-		Dev              string `json:"dev"`
-		ManagePassphrase bool   `json:"manage_passphrase"`
-		Secret           string `json:"secret"`
-		FormatLabel      string `json:"label"`
-		Path             path.T `json:"path"`
+		Name             string      `json:"name"`
+		Dev              string      `json:"dev"`
+		ManagePassphrase bool        `json:"manage_passphrase"`
+		Secret           string      `json:"secret"`
+		FormatLabel      string      `json:"label"`
+		Path             naming.Path `json:"path"`
 	}
 )
 
@@ -79,8 +79,8 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) secPath() (path.T, error) {
-	return path.New(t.Path.Namespace, path.KindSec, t.Secret)
+func (t T) secPath() (naming.Path, error) {
+	return naming.NewPath(t.Path.Namespace, naming.KindSec, t.Secret)
 }
 
 func (t T) passphraseKeyname() string {

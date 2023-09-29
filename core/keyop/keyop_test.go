@@ -3,8 +3,8 @@ package keyop
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/opensvc/om3/util/key"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeyopParse(t *testing.T) {

@@ -12,8 +12,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -75,7 +75,7 @@ func (t *CmdDaemonJoin) run() error {
 	}
 
 	_, _ = fmt.Fprintf(os.Stdout, "Fetch cluster config from %s\n", t.Node)
-	file, _, err := remoteconfig.FetchObjectFile(cli, path.Cluster)
+	file, _, err := remoteconfig.FetchObjectFile(cli, naming.Cluster)
 	if err != nil {
 		return err
 	}
@@ -189,11 +189,11 @@ func (t *CmdDaemonJoin) createTmpCertFile(b []byte) (certFile string, err error)
 }
 
 func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
-	filePaths := make(map[string]path.T)
-	toFetch := []path.T{
-		path.Cluster,
-		{Namespace: "system", Kind: path.KindSec, Name: "ca"},
-		{Namespace: "system", Kind: path.KindSec, Name: "cert"},
+	filePaths := make(map[string]naming.Path)
+	toFetch := []naming.Path{
+		naming.Cluster,
+		{Namespace: "system", Kind: naming.KindSec, Name: "ca"},
+		{Namespace: "system", Kind: naming.KindSec, Name: "cert"},
 	}
 	downloadedFiles := make([]string, 0)
 	defer func([]string) {

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/opensvc/om3/core/fqdn"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -30,7 +29,7 @@ var (
 	defaultWeight = 10
 )
 
-func (t *dns) stateKey(p path.T, node string) stateKey {
+func (t *dns) stateKey(p naming.Path, node string) stateKey {
 	return stateKey{
 		path: p.String(),
 		node: node,
@@ -46,7 +45,7 @@ func (t *dns) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	_ = t.sockChown()
 }
 
-func (t *dns) pubDeleted(record Record, p path.T, node string) {
+func (t *dns) pubDeleted(record Record, p naming.Path, node string) {
 	t.bus.Pub(&msgbus.ZoneRecordDeleted{
 		Path:    p,
 		Node:    node,
@@ -57,7 +56,7 @@ func (t *dns) pubDeleted(record Record, p path.T, node string) {
 	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
-func (t *dns) pubUpdated(record Record, p path.T, node string) {
+func (t *dns) pubUpdated(record Record, p naming.Path, node string) {
 	t.bus.Pub(&msgbus.ZoneRecordUpdated{
 		Path:    p,
 		Node:    node,
@@ -80,7 +79,7 @@ func (t *dns) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 
 func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
-	name := fqdn.New(c.Path, t.cluster.Name).String() + "."
+	name := naming.NewFQDN(c.Path, t.cluster.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
 	records := make(Zone, 0)
 	updatedRecords := make(map[string]any)

@@ -7,17 +7,17 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (
 	T struct {
-		IP   net.IP `json:"ip"`
-		Node string `json:"node"`
-		Path path.T `json:"path"`
-		RID  string `json:"rid"`
+		IP   net.IP      `json:"ip"`
+		Node string      `json:"node"`
+		Path naming.Path `json:"path"`
+		RID  string      `json:"rid"`
 	}
 	L []T
 )
@@ -99,7 +99,7 @@ func (t L) Load(clusterStatus cluster.Data) L {
 			}
 			for rid, rstat := range inst.Status.Resources {
 				if ipIntf, ok := rstat.Info["ipaddr"]; ok {
-					p, err := path.Parse(ps)
+					p, err := naming.ParsePath(ps)
 					if err != nil {
 						log.Debug().Err(err).Str("path", ps).Send()
 						continue

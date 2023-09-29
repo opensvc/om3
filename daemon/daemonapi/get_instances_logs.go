@@ -7,20 +7,20 @@ import (
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, namespace string, kind path.Kind, name string, params api.GetInstanceLogsParams) error {
-	p, err := path.New(namespace, kind, name)
+func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetInstanceLogsParams) error {
+	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 		return err
 	}
 	return a.GetInstancesLogs(ctx, api.GetInstancesLogsParams{
-		Paths:  path.L{p}.StrSlice(),
+		Paths:  naming.Paths{p}.StrSlice(),
 		Filter: params.Filter,
 	})
 }
@@ -48,7 +48,7 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 		setStreamHeaders(w)
 	}
 
-	paths, err := path.ParseList(params.Paths...)
+	paths, err := naming.ParsePaths(params.Paths...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}

@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (
 	Infos struct {
-		ObjectPath path.T
+		ObjectPath naming.Path
 		Resources  []Info
 	}
 
@@ -116,7 +116,7 @@ func (t Infos) Render() string {
 	return tree.Render()
 }
 
-func NewInfos(p path.T) Infos {
+func NewInfos(p naming.Path) Infos {
 	return Infos{
 		ObjectPath: p,
 		Resources:  make([]Info, 0),

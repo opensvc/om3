@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -34,7 +34,7 @@ type (
 		events      chan any
 		jobs        Jobs
 		enabled     bool
-		provisioned map[path.T]bool
+		provisioned map[naming.Path]bool
 
 		wg sync.WaitGroup
 	}
@@ -71,7 +71,7 @@ func New(opts ...funcopt.O) *T {
 		localhost:   hostname.Hostname(),
 		events:      make(chan any),
 		jobs:        make(Jobs),
-		provisioned: make(map[path.T]bool),
+		provisioned: make(map[naming.Path]bool),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("scheduler funcopt.Apply")
@@ -103,7 +103,7 @@ func (t Jobs) Del(e schedule.Entry) {
 	delete(t, k)
 }
 
-func (t Jobs) DelPath(p path.T) {
+func (t Jobs) DelPath(p naming.Path) {
 	for _, e := range t {
 		if e.schedule.Path != p {
 			continue
@@ -303,7 +303,7 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	switch {
 	case t.enabled:
 		t.log.Info().Msg("update node schedules")
-		t.unschedule(path.T{})
+		t.unschedule(naming.Path{})
 		t.scheduleNode()
 	}
 }
@@ -322,7 +322,7 @@ func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	}
 }
 
-func (t *T) hasAnyJob(p path.T) bool {
+func (t *T) hasAnyJob(p naming.Path) bool {
 	for _, job := range t.jobs {
 		if job.schedule.Path == p {
 			return true
@@ -338,7 +338,7 @@ func (t *T) scheduleAll() {
 	t.scheduleNode()
 }
 
-func (t *T) schedule(p path.T) {
+func (t *T) schedule(p naming.Path) {
 	if !t.enabled {
 		return
 	}
@@ -360,7 +360,7 @@ func (t *T) scheduleNode() {
 	}
 }
 
-func (t *T) scheduleObject(p path.T) {
+func (t *T) scheduleObject(p naming.Path) {
 	if isProvisioned, ok := t.provisioned[p]; !ok {
 		t.log.Debug().Msgf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
@@ -384,7 +384,7 @@ func (t *T) scheduleObject(p path.T) {
 	}
 }
 
-func (t *T) unschedule(p path.T) {
+func (t *T) unschedule(p naming.Path) {
 	t.jobs.DelPath(p)
 }
 

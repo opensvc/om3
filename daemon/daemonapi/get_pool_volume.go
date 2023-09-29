@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -30,7 +30,7 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 			poolName string
 			size     int64
 		)
-		if instConfig.Path.Kind != path.KindVol {
+		if instConfig.Path.Kind != naming.KindVol {
 			continue
 		}
 		p := instConfig.Path.String()
@@ -51,7 +51,7 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		}
 		l = append(l, api.PoolVolume{
 			Path:     p,
-			Children: instConfig.Value.Children.StringSlice(),
+			Children: instConfig.Value.Children.Strings(),
 			IsOrphan: !poolOk,
 			Pool:     poolName,
 			Size:     size,

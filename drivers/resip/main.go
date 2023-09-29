@@ -7,8 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/fqdn"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/stringset"
 	"github.com/rs/zerolog"
@@ -27,7 +26,7 @@ func lookupHostOnDNS(ctx context.Context, name, dns string) ([]string, error) {
 	return r.LookupHost(ctx, name)
 }
 
-func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p path.T) error {
+func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p naming.Path) error {
 	if timeout == nil {
 		return nil
 	}
@@ -38,7 +37,7 @@ func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p path.T) error 
 	limit := time.Now().Add(*timeout)
 	todo := stringset.New()
 	clusterSection := rawconfig.ClusterSection()
-	name := fqdn.New(p, clusterSection.Name).String()
+	name := naming.NewFQDN(p, clusterSection.Name).String()
 
 	for _, dns := range strings.Fields(clusterSection.DNS) {
 		todo.Add(dns)
@@ -48,7 +47,7 @@ func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p path.T) error 
 	}
 	for {
 		logger.Info().Msgf("wait for the %s record to be resolved by dns %s", name, todo.Slice())
-		for dns, _ := range todo {
+		for dns := range todo {
 			if ips, err := lookupHostOnDNS(ctx, name, dns); err != nil {
 				logger.Info().Err(err).Msgf("lookup %s record on dns %s", name, dns)
 				todo.Remove(dns)

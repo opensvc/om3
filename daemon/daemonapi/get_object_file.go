@@ -6,16 +6,16 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "objecthandler.GetObjectFile")
 	log.Debug().Msg("starting")
 
-	objPath, err := path.New(namespace, kind, name)
+	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Warn().Err(err).Send()
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)

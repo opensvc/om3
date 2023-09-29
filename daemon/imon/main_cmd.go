@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
@@ -29,7 +29,7 @@ func (o *imon) initRelationAvailStatus() {
 		o.log.Info().Msgf("skip relations avail status cache init: no config cached yet")
 		return
 	}
-	do := func(relation path.Relation, name string, cache map[string]status.T) {
+	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
 			o.log.Warn().Err(err).Msgf("init %s status cache: split %s", name, relation)
@@ -206,7 +206,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		}
 	}
 
-	janitorRelations := func(relations []path.Relation, name string, cache map[string]status.T) {
+	janitorRelations := func(relations []naming.Relation, name string, cache map[string]status.T) {
 		// m is a map representation of relations, used to determine
 		// if a relation in cache is still in the configured relations
 		m := make(map[string]any)
@@ -246,10 +246,10 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 				}
 			}
 		}
-		for relationS, _ := range cache {
+		for relationS := range cache {
 			if _, ok := m[relationS]; !ok {
 				o.log.Info().Msgf("unsubscribe from %s %s avail status updates and deletes", name, relationS)
-				objectPath, node, _ := path.Relation(relationS).Split()
+				objectPath, node, _ := naming.Relation(relationS).Split()
 				if node == "" {
 					o.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
 					o.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()})

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -25,7 +25,7 @@ func (t *CmdObjectCollectorTagAttach) Run(selector, kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

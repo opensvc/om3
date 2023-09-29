@@ -19,9 +19,7 @@ type (
 	Lister  func() (Patches, error)
 )
 
-//
 // List returns the list of installed patches of all known types
-//
 func List() (Patches, error) {
 	l := make(Patches, 0)
 	for _, fn := range []Lister{ListSolaris} {
@@ -34,11 +32,10 @@ func List() (Patches, error) {
 	return l, nil
 }
 
-//
 // ListSolaris returns the solaris patches installed.
 // Example output:
-//   Patch: patchnum-rev Obsoletes: num-rev[,patch-rev]... Requires: .... Incompatibles: ... Packages: ...
 //
+//	Patch: patchnum-rev Obsoletes: num-rev[,patch-rev]... Requires: .... Incompatibles: ... Packages: ...
 func ListSolaris() (Patches, error) {
 	l := make(Patches, 0)
 	if !file.Exists("/var/sadm/patch") {

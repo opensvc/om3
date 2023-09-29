@@ -13,7 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
@@ -93,7 +93,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						return nil
 					}
 					var (
-						p   path.T
+						p   naming.Path
 						err error
 					)
 					if filename == nodeConf {
@@ -194,7 +194,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					}
 				case strings.HasSuffix(filename, ".conf"):
 					var (
-						p   path.T
+						p   naming.Path
 						err error
 					)
 					if filename == nodeConf {
@@ -250,16 +250,16 @@ func (d *discover) fsWatcherStart() (func(), error) {
 	return stop, nil
 }
 
-func cfgFilenameToPath(filename string) (path.T, error) {
+func cfgFilenameToPath(filename string) (naming.Path, error) {
 	return filenameToPath(filename, rawconfig.Paths.Etc, ".conf")
 }
 
-func filenameToPath(filename, prefix, suffix string) (path.T, error) {
+func filenameToPath(filename, prefix, suffix string) (naming.Path, error) {
 	svcName := strings.TrimPrefix(filename, prefix+"/")
 	svcName = strings.TrimPrefix(svcName, "namespaces/")
 	svcName = strings.TrimSuffix(svcName, suffix)
 	if len(svcName) == 0 {
-		return path.T{}, fmt.Errorf("skipped null filename")
+		return naming.Path{}, fmt.Errorf("skipped null filename")
 	}
-	return path.Parse(svcName)
+	return naming.ParsePath(svcName)
 }

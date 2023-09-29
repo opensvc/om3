@@ -1,10 +1,10 @@
 package zfs
 
 import (
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -16,11 +16,9 @@ type (
 	}
 )
 
-//
 // FilesystemDestroyWithForce forces an unmount of any file systems using the
 // unmount -f command.  This option has no effect on non-file systems or
 // unmounted file systems.
-//
 func FilesystemDestroyWithRemoveSnapshots(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*fsDestroyOpts)
@@ -29,11 +27,9 @@ func FilesystemDestroyWithRemoveSnapshots(v bool) funcopt.O {
 	})
 }
 
-//
 // FilesystemDestroyWithRecurse recursively destroys all clones of these snapshots,
 // including the clones, snapshots, and children.  If this flag is specified,
 // the FilesystemDestroyWithTryImmediate flag will have no effect.
-//
 func FilesystemDestroyWithRecurse(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*fsDestroyOpts)
@@ -42,10 +38,8 @@ func FilesystemDestroyWithRecurse(v bool) funcopt.O {
 	})
 }
 
-//
 // FilesystemDestroyWithTryImmediate destroys immediately.
 // If a snapshot cannot be destroyed now, mark it for deferred destruction.
-//
 func FilesystemDestroyWithTryImmediate(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*fsDestroyOpts)

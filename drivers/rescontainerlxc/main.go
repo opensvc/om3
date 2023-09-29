@@ -22,8 +22,8 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -51,7 +51,7 @@ var (
 type (
 	T struct {
 		resource.T
-		Path                     path.T         `json:"path"`
+		Path                     naming.Path    `json:"path"`
 		ObjectID                 uuid.UUID      `json:"object_id"`
 		Nodes                    []string       `json:"nodes"`
 		DNS                      []string       `json:"dns"`

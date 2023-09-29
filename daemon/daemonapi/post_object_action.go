@@ -9,60 +9,60 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectActionAbort(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionAbort(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectAborted)
 }
 
-func (a *DaemonApi) PostObjectActionDelete(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionDelete(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectDeleted)
 }
 
-func (a *DaemonApi) PostObjectActionFreeze(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionFreeze(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectFrozen)
 }
 
-func (a *DaemonApi) PostObjectActionGiveback(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionGiveback(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPlaced)
 }
 
-func (a *DaemonApi) PostObjectActionProvision(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionProvision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectProvisioned)
 }
 
-func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPurged)
 }
 
-func (a *DaemonApi) PostObjectActionStart(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionStart(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStarted)
 }
 
-func (a *DaemonApi) PostObjectActionStop(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionStop(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStopped)
 }
 
-func (a *DaemonApi) PostObjectActionUnfreeze(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectThawed)
 }
 
-func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectUnprovisioned)
 }
 
-func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace string, kind path.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
+func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
 	var (
 		value = instance.MonitorUpdate{}
-		p     path.T
+		p     naming.Path
 		err   error
 	)
-	if p, err = path.New(namespace, kind, name); err != nil {
+	if p, err = naming.NewPath(namespace, kind, name); err != nil {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
 	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {

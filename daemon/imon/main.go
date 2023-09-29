@@ -31,9 +31,9 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -49,7 +49,7 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
-		path    path.T
+		path    naming.Path
 		id      string
 		ctx     context.Context
 		cancel  context.CancelFunc
@@ -106,7 +106,7 @@ type (
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
-func (f Factory) Start(parent context.Context, p path.T, nodes []string) error {
+func (f Factory) Start(parent context.Context, p naming.Path, nodes []string) error {
 	return start(parent, p, nodes, f.DrainDuration)
 }
 
@@ -122,7 +122,7 @@ var (
 )
 
 // start launch goroutine imon worker for a local instance state
-func start(parent context.Context, p path.T, nodes []string, drainDuration time.Duration) error {
+func start(parent context.Context, p naming.Path, nodes []string, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -458,7 +458,7 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 	return &stateLogger
 }
 
-func lastBootIDFile(p path.T) string {
+func lastBootIDFile(p naming.Path) string {
 	if p.Namespace != "root" && p.Namespace != "" {
 		return filepath.Join(rawconfig.Paths.Var, "namespaces", p.String(), "last_boot_id")
 	} else {
@@ -466,7 +466,7 @@ func lastBootIDFile(p path.T) string {
 	}
 }
 
-func lastBootID(p path.T) string {
+func lastBootID(p naming.Path) string {
 	if b, err := os.ReadFile(lastBootIDFile(p)); err != nil {
 		return ""
 	} else {
@@ -474,15 +474,15 @@ func lastBootID(p path.T) string {
 	}
 }
 
-func updateLastBootID(p path.T, s string) error {
+func updateLastBootID(p naming.Path, s string) error {
 	return os.WriteFile(lastBootIDFile(p), []byte(s), 0644)
 }
 
 func (o *imon) bootAble() bool {
 	switch o.path.Kind {
-	case path.KindSvc:
+	case naming.KindSvc:
 		return true
-	case path.KindVol:
+	case naming.KindVol:
 		return true
 	default:
 		return false

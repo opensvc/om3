@@ -11,7 +11,7 @@ func New() Set {
 func (t Set) Slice() []string {
 	l := make([]string, len(t))
 	i := 0
-	for k, _ := range t {
+	for k := range t {
 		l[i] = k
 		i += 1
 	}

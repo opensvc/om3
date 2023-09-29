@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
@@ -39,7 +39,7 @@ import (
 type (
 	T struct {
 		ressync.T
-		Path           path.T
+		Path           naming.Path
 		BandwidthLimit string
 		Src            string
 		Dst            string

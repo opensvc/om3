@@ -30,16 +30,14 @@ var (
 // each branch of lsblk, starting at "parent".
 func (t Relations) LeavesOf(parent string) []string {
 	l := make([]string, 0)
-	for k, _ := range t.leavesOf(parent) {
+	for k := range t.leavesOf(parent) {
 		l = append(l, k)
 	}
 	return l
 }
 
-//
 // Use a map[string]interface{} to avoid dup leaves
 // For example: raid legs from the same disk)
-//
 func (t Relations) leavesOf(parent string) map[string]interface{} {
 	m := make(map[string]interface{})
 	pm, ok := t[parent]
@@ -47,20 +45,19 @@ func (t Relations) leavesOf(parent string) map[string]interface{} {
 		m[parent] = nil
 		return m
 	}
-	for child, _ := range pm {
-		for name, _ := range t.leavesOf(child) {
+	for child := range pm {
+		for name := range t.leavesOf(child) {
 			m[name] = nil
 		}
 	}
 	return m
 }
 
-//
 // rootOf returns the topmost parent of the leaf
 // For example,
-//   chain:       sda > md127 > lv1
-//   rootOf(lv1): sda
 //
+//	chain:       sda > md127 > lv1
+//	rootOf(lv1): sda
 func (t Relations) rootOf(leaf string) string {
 	if d, ok := _devices[leaf]; ok {
 		if d.Type == "mpath" {
@@ -71,7 +68,7 @@ func (t Relations) rootOf(leaf string) string {
 		if parent == "" {
 			continue
 		}
-		for child, _ := range pm {
+		for child := range pm {
 			if child == leaf {
 				return t.rootOf(parent)
 			}
@@ -80,16 +77,15 @@ func (t Relations) rootOf(leaf string) string {
 	return leaf
 }
 
-//
 // leafOf returns true if nodeA is a leaf of NodeB.
 // Example:
-//   chain:       sda > md127 > lv1 > lv2
-//   leafOf(lv2, lv1):   true
-//   leafOf(lv2, md127): true
-//   leafOf(md127, lv2): false
+//
+//	chain:       sda > md127 > lv1 > lv2
+//	leafOf(lv2, lv1):   true
+//	leafOf(lv2, md127): true
+//	leafOf(md127, lv2): false
 //
 // This is useful to merge claims.
-//
 func (t Relations) leafOf(nodeA, nodeB string) bool {
 	if nodeB == "" {
 		return false
@@ -98,7 +94,7 @@ func (t Relations) leafOf(nodeA, nodeB string) bool {
 	if !ok {
 		return false
 	}
-	for child, _ := range pm {
+	for child := range pm {
 		if child == nodeA {
 			return true
 		}

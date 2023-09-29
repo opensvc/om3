@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -20,7 +20,7 @@ import (
 type (
 	T struct {
 		resdisk.T
-		Path    path.T
+		Path    naming.Path
 		VGName  string   `json:"vg"`
 		Size    string   `json:"size"`
 		Options []string `json:"options"`

@@ -24,8 +24,8 @@ import (
 
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/resourceset"
@@ -41,7 +41,7 @@ import (
 
 type (
 	T struct {
-		path                     path.T
+		path                     naming.Path
 		configure                object.Configurer
 		filename                 string
 		log                      zerolog.Logger
@@ -63,7 +63,7 @@ type (
 )
 
 var (
-	clusterPath = path.T{Name: "cluster", Kind: path.KindCcfg}
+	clusterPath = naming.Path{Name: "cluster", Kind: naming.KindCcfg}
 
 	configFileCheckError = errors.New("config file check")
 
@@ -86,7 +86,7 @@ var (
 )
 
 // Start launch goroutine instConfig worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
+func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	ctx, cancel := context.WithCancel(parent)
 	o := &T{
@@ -321,7 +321,7 @@ func (o *T) configFileCheck() error {
 // else => eval DEFAULT.nodes
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	switch o.path.Kind {
-	case path.KindCcfg:
+	case naming.KindCcfg:
 		scope = clusternode.Get()
 	default:
 		var evalNodes interface{}
@@ -340,14 +340,14 @@ func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 	return instance.MonitorAction(s)
 }
 
-func (o *T) getChildren(cf *xconfig.T) path.Relations {
+func (o *T) getChildren(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyChildren)
-	return path.NewRelationsFromStringSlice(l)
+	return naming.NewRelationsFromStrings(l)
 }
 
-func (o *T) getParents(cf *xconfig.T) path.Relations {
+func (o *T) getParents(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyParents)
-	return path.NewRelationsFromStringSlice(l)
+	return naming.NewRelationsFromStrings(l)
 }
 
 func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
@@ -407,7 +407,7 @@ func (o *T) getPriority(cf *xconfig.T) priority.T {
 
 func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 	switch o.path.Kind {
-	case path.KindSvc, path.KindVol:
+	case naming.KindSvc, naming.KindVol:
 		target = cf.GetInt(keyFlexTarget)
 	}
 	switch {
@@ -421,7 +421,7 @@ func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 
 func (o *T) getFlexMin(cf *xconfig.T) int {
 	switch o.path.Kind {
-	case path.KindSvc, path.KindVol:
+	case naming.KindSvc, naming.KindVol:
 		return cf.GetInt(keyFlexMin)
 	}
 	return 0
@@ -429,7 +429,7 @@ func (o *T) getFlexMin(cf *xconfig.T) int {
 
 func (o *T) getFlexMax(cf *xconfig.T) int {
 	switch o.path.Kind {
-	case path.KindSvc, path.KindVol:
+	case naming.KindSvc, naming.KindVol:
 		if i, err := cf.GetIntStrict(keyFlexMax); err == nil {
 			return i
 		} else if scope, err := o.getScope(cf); err == nil {

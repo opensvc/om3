@@ -9,9 +9,9 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
@@ -70,7 +70,7 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 	return nil
 }
 
-func fetchConfig(p path.T, c *client.T) ([]byte, error) {
+func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return nil, err
@@ -80,9 +80,9 @@ func fetchConfig(p path.T, c *client.T) ([]byte, error) {
 	return resp.JSON200.Data, nil
 }
 
-func pushConfig(p path.T, fName string, c *client.T) (err error) {
+func pushConfig(p naming.Path, fName string, c *client.T) (err error) {
 	/*
-		var cfg *xconfig.T
+		var cfg *xconfig.Path
 		if cfg, err = xconfig.NewObject("", fName); err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func pushConfig(p path.T, fName string, c *client.T) (err error) {
 	return fmt.Errorf("todo")
 }
 
-func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
+func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
 	var (
 		err    error
 		refSum []byte

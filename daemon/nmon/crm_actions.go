@@ -58,12 +58,12 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		o.bus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "nmon",}, labels...)
+		o.bus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "nmon"}, labels...)
 		o.log.Error().Err(err).Msgf("failed %s", cmd)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.bus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "nmon",}, labels...)
+	o.bus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "nmon"}, labels...)
 	o.log.Debug().Msgf("<- exec %s %s", cmdPath, cmd)
 	return nil
 }

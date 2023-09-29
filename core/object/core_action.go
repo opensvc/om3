@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceselector"
@@ -201,7 +201,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		return nil
 	}
 	for _, pStr := range t.HardAffinity() {
-		p, err := path.Parse(pStr)
+		p, err := naming.ParsePath(pStr)
 		if err != nil {
 			return fmt.Errorf("hard affinity object %s parse path: %w", p, err)
 		}
@@ -221,7 +221,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
-		p, err := path.Parse(pStr)
+		p, err := naming.ParsePath(pStr)
 		if err != nil {
 			return fmt.Errorf("hard anti affinity object %s parse path: %w", p, err)
 		}

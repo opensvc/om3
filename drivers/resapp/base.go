@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/envprovider"
 )
@@ -14,7 +14,7 @@ import (
 type BaseT struct {
 	resource.T
 	RetCodes     string         `json:"retcodes"`
-	Path         path.T         `json:"path"`
+	Path         naming.Path    `json:"path"`
 	Nodes        []string       `json:"nodes"`
 	SecretsEnv   []string       `json:"secret_environment"`
 	ConfigsEnv   []string       `json:"configs_environment"`

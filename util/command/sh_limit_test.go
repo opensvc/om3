@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/stretchr/testify/assert"
 	"github.com/opensvc/om3/util/limits"
+	"github.com/stretchr/testify/assert"
 	"runtime"
 	"testing"
 	"time"

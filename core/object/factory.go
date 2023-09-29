@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
 )
 
@@ -54,7 +54,7 @@ func WithConsoleColor(s bool) funcopt.O {
 	})
 }
 
-func NewList(paths path.L, opts ...funcopt.O) ([]any, error) {
+func NewList(paths naming.Paths, opts ...funcopt.O) ([]any, error) {
 	var errs error
 	l := make([]any, 0)
 	for _, p := range paths {
@@ -67,17 +67,17 @@ func NewList(paths path.L, opts ...funcopt.O) ([]any, error) {
 	return l, errs
 }
 
-func toPathType(id any) (path.T, error) {
-	var p path.T
+func toPathType(id any) (naming.Path, error) {
+	var p naming.Path
 	switch i := id.(type) {
 	case string:
-		if parsed, err := path.Parse(i); err != nil {
+		if parsed, err := naming.ParsePath(i); err != nil {
 			return p, err
 		} else {
 			p = parsed
 		}
 		return p, nil
-	case path.T:
+	case naming.Path:
 		p = i
 		return p, nil
 	default:
@@ -87,24 +87,24 @@ func toPathType(id any) (path.T, error) {
 
 // New allocates a new kinded object
 func New(id any, opts ...funcopt.O) (any, error) {
-	var p path.T
+	var p naming.Path
 	if parsed, err := toPathType(id); err != nil {
 		return nil, err
 	} else {
 		p = parsed
 	}
 	switch p.Kind {
-	case path.KindSvc:
+	case naming.KindSvc:
 		return NewSvc(p, opts...)
-	case path.KindVol:
+	case naming.KindVol:
 		return NewVol(p, opts...)
-	case path.KindCfg:
+	case naming.KindCfg:
 		return NewCfg(p, opts...)
-	case path.KindSec:
+	case naming.KindSec:
 		return NewSec(p, opts...)
-	case path.KindUsr:
+	case naming.KindUsr:
 		return NewUsr(p, opts...)
-	case path.KindCcfg:
+	case naming.KindCcfg:
 		return newCcfg(p, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", p.Kind)

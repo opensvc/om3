@@ -83,7 +83,7 @@ func ReadLn(description string, timeout time.Duration) (string, error) {
 			case (key == tcell.KeyBackspace) || (key == tcell.KeyBackspace2):
 				offset := len(word) - pos
 				if offset > 0 {
-					word = word[0:offset-1] + word[offset:len(word)]
+					word = word[0:offset-1] + word[offset:]
 					_ = prompt()
 				}
 			case key == tcell.KeyLeft:
@@ -101,7 +101,7 @@ func ReadLn(description string, timeout time.Duration) (string, error) {
 				return string(word), nil
 			default:
 				offset := len(word) - pos
-				word = word[0:offset] + string(ev.Rune()) + word[offset:len(word)]
+				word = word[0:offset] + string(ev.Rune()) + word[offset:]
 				_ = prompt()
 			}
 		case <-time.After(time.Second):

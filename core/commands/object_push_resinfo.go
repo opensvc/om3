@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -30,7 +30,7 @@ func (t *CmdObjectPushResInfo) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("push resinfo"),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (any, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p,
 				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),

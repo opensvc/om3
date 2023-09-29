@@ -9,8 +9,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/volsignal"
 	"golang.org/x/sys/unix"
 )
@@ -24,7 +24,7 @@ type (
 	Metadata struct {
 		ToPath    string
 		FromKey   string
-		FromStore path.T
+		FromStore naming.Path
 	}
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
@@ -40,17 +40,17 @@ func (t Metadata) IsEmpty() bool {
 
 func (t T) getRefs() []string {
 	refs := make([]string, 0)
-	refs = append(refs, t.getRefsByKind(path.KindSec)...)
-	refs = append(refs, t.getRefsByKind(path.KindCfg)...)
+	refs = append(refs, t.getRefsByKind(naming.KindSec)...)
+	refs = append(refs, t.getRefsByKind(naming.KindCfg)...)
 	return refs
 }
 
-func (t T) getRefsByKind(filter path.Kind) []string {
+func (t T) getRefsByKind(filter naming.Kind) []string {
 	refs := make([]string, 0)
 	switch filter {
-	case path.KindSec:
+	case naming.KindSec:
 		refs = append(refs, t.Secrets...)
-	case path.KindCfg:
+	case naming.KindCfg:
 		refs = append(refs, t.Configs...)
 	}
 	return refs
@@ -58,12 +58,12 @@ func (t T) getRefsByKind(filter path.Kind) []string {
 
 func (t T) getMetadata() []Metadata {
 	l := make([]Metadata, 0)
-	l = append(l, t.getMetadataByKind(path.KindSec)...)
-	l = append(l, t.getMetadataByKind(path.KindCfg)...)
+	l = append(l, t.getMetadataByKind(naming.KindSec)...)
+	l = append(l, t.getMetadataByKind(naming.KindCfg)...)
 	return l
 }
 
-func (t T) getMetadataByKind(kind path.Kind) []Metadata {
+func (t T) getMetadataByKind(kind naming.Kind) []Metadata {
 	l := make([]Metadata, 0)
 	refs := t.getRefsByKind(kind)
 	if len(refs) == 0 {
@@ -86,7 +86,7 @@ func (t T) getMetadataByKind(kind path.Kind) []Metadata {
 
 // HasMetadata returns true if the volume has a configs or secrets reference to
 // <namespace>/<kind>/<name>[/<key>]
-func (t T) HasMetadata(p path.T, k string) bool {
+func (t T) HasMetadata(p naming.Path, k string) bool {
 	for _, md := range t.getMetadataByKind(p.Kind) {
 		if md.FromStore.Name != p.Name {
 			continue
@@ -98,7 +98,7 @@ func (t T) HasMetadata(p path.T, k string) bool {
 	return false
 }
 
-func (t T) parseReference(s string, filter path.Kind, head string) Metadata {
+func (t T) parseReference(s string, filter naming.Kind, head string) Metadata {
 	if head == "" {
 		return Metadata{}
 	}
@@ -124,21 +124,21 @@ func (t T) parseReference(s string, filter path.Kind, head string) Metadata {
 
 	switch {
 	case strings.HasPrefix(from, "usr/"):
-		kind = path.KindUsr
+		kind = naming.KindUsr
 		from = from[4:]
-		if filter == path.KindCfg {
+		if filter == naming.KindCfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "sec/"):
-		kind = path.KindSec
+		kind = naming.KindSec
 		from = from[4:]
-		if filter == path.KindCfg {
+		if filter == naming.KindCfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "cfg/"):
-		kind = path.KindCfg
+		kind = naming.KindCfg
 		from = from[4:]
-		if filter == path.KindSec {
+		if filter == naming.KindSec {
 			return Metadata{}
 		}
 	}
@@ -149,7 +149,7 @@ func (t T) parseReference(s string, filter path.Kind, head string) Metadata {
 	if len(l) != 2 {
 		return Metadata{}
 	}
-	if p, err := path.New(t.Path.Namespace, kind, l[0]); err != nil {
+	if p, err := naming.NewPath(t.Path.Namespace, kind, l[0]); err != nil {
 		return Metadata{}
 	} else {
 		return Metadata{
@@ -187,12 +187,12 @@ func (t T) installData() error {
 	if err := t.installDirs(); err != nil {
 		return err
 	}
-	if v, err := t.InstallDataByKind(path.KindSec); err != nil {
+	if v, err := t.InstallDataByKind(naming.KindSec); err != nil {
 		return err
 	} else {
 		changed = v || changed
 	}
-	if v, err := t.InstallDataByKind(path.KindCfg); err != nil {
+	if v, err := t.InstallDataByKind(naming.KindCfg); err != nil {
 		return err
 	} else {
 		changed = v || changed
@@ -206,7 +206,7 @@ func (t T) installData() error {
 func (t T) signalData() []SigRoute {
 	routes := make([]SigRoute, 0)
 	for i, ridmap := range volsignal.Parse(t.Signal) {
-		for rid, _ := range ridmap {
+		for rid := range ridmap {
 			routes = append(routes, SigRoute{
 				Signum: i,
 				RID:    rid,
@@ -237,7 +237,7 @@ func (t T) SendSignals() error {
 	return nil
 }
 
-func (t T) InstallDataByKind(filter path.Kind) (bool, error) {
+func (t T) InstallDataByKind(filter naming.Kind) (bool, error) {
 	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {

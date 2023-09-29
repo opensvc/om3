@@ -20,7 +20,7 @@ import (
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
@@ -1254,7 +1254,7 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 }
 
 func (t *T) ProgressKey() []string {
-	p := rawconfig.Colorize.Bold(path.PathOf(t.object).String())
+	p := rawconfig.Colorize.Bold(naming.PathOf(t.object).String())
 	return []string{p, t.RID()}
 }
 

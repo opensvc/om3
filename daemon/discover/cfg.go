@@ -8,8 +8,8 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
@@ -123,7 +123,7 @@ func (d *discover) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 }
 
 func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
-	if c.Path.Kind == path.KindInvalid {
+	if c.Path.Kind == naming.KindInvalid {
 		// may be node.conf
 		return
 	}
@@ -165,13 +165,13 @@ func (d *discover) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	d.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
 }
 
-func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig instance.Config) {
+func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteConfig instance.Config) {
 	s := p.String()
 
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	// Never drop local cluster config, ignore remote config older that local
-	if !p.Equal(path.Cluster) && remoteConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteConfig) {
+	if !p.Equal(naming.Cluster) && remoteConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteConfig) {
 		d.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
@@ -263,7 +263,7 @@ func (d *discover) cancelFetcher(s string) {
 	}
 }
 
-func (d *discover) fetchConfigFromRemote(p path.T, node string, updated time.Time) {
+func (d *discover) fetchConfigFromRemote(p naming.Path, node string, updated time.Time) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
 		d.log.Error().Msgf("fetcher already in progress for %s from %s", s, n)
@@ -297,7 +297,7 @@ func (d *discover) newDaemonClient(node string) (*client.T, error) {
 	)
 }
 
-func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<- any) {
+func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC chan<- any) {
 	id := p.String() + "@" + node
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "cfg.fetch").Str("id", id).Logger()
 

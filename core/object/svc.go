@@ -2,7 +2,7 @@ package object
 
 import (
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 )
@@ -23,7 +23,7 @@ type (
 )
 
 // NewSvc allocates a svc kind object.
-func NewSvc(p path.T, opts ...funcopt.O) (*svc, error) {
+func NewSvc(p naming.Path, opts ...funcopt.O) (*svc, error) {
 	s := &svc{}
 	err := s.init(s, p, opts...)
 	return s, err

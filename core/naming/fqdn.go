@@ -1,63 +1,71 @@
-package fqdn
+package naming
 
 import (
 	"fmt"
-
-	"github.com/opensvc/om3/core/path"
+	"regexp"
 )
 
+const regexStringRFC1123 = `^([a-zA-Z0-9]{1}[a-zA-Z0-9_-]{0,62})(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*?(\.[a-zA-Z]{1}[a-zA-Z0-9]{0,62})\.?$`
+
+var regexRFC1123 = regexp.MustCompile(regexStringRFC1123)
+
 type (
-	T struct {
-		Path    path.T
+	FQDN struct {
+		Path    Path
 		Cluster string
 	}
 )
 
-func New(path path.T, cluster string) *T {
-	return &T{
+// IsValidFQDN verifies the string meets the RFC1123 requirements
+func IsValidFQDN(s string) bool {
+	return regexRFC1123.MatchString(s)
+}
+
+func NewFQDN(path Path, cluster string) *FQDN {
+	return &FQDN{
 		Path:    path,
 		Cluster: cluster,
 	}
 }
 
-func Parse(s string) (*T, error) {
+func ParseFQDN(s string) (*FQDN, error) {
 	var (
 		name      string
 		namespace string
 		kind      string
 		cluster   string
-		p         path.T
+		p         Path
 		err       error
 	)
 	_, err = fmt.Sscanf("%s.%s.%s.%s", s, &name, &namespace, &kind, &cluster)
 	if err != nil {
 		return nil, err
 	}
-	p, err = path.FromStrings(namespace, kind, name)
-	return &T{
+	p, err = NewPathFromStrings(namespace, kind, name)
+	return &FQDN{
 		Path:    p,
 		Cluster: cluster,
 	}, nil
 }
 
-func (t T) String() string {
+func (t FQDN) String() string {
 	return fmt.Sprintf("%s.%s.%s.%s", t.Path.Name, t.Path.Namespace, t.Path.Kind, t.Cluster)
 }
 
 // Domain returns the domain part of the fqdn
-func (t T) Domain() string {
+func (t FQDN) Domain() string {
 	return fmt.Sprintf("%s.%s.%s", t.Path.Namespace, t.Path.Kind, t.Cluster)
 }
 
 // MarshalText implements the json interface
-func (t T) MarshalText() ([]byte, error) {
+func (t FQDN) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
 // UnmarshalText implements the json interface
-func (t *T) UnmarshalText(b []byte) error {
+func (t *FQDN) UnmarshalText(b []byte) error {
 	s := string(b)
-	p, err := Parse(s)
+	p, err := ParseFQDN(s)
 	if err != nil {
 		return err
 	}

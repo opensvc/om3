@@ -10,8 +10,8 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/util/key"
@@ -49,11 +49,11 @@ type (
 	Capabilities []string
 
 	VolumeStatus struct {
-		Pool     string `json:"pool"`
-		Path     path.T `json:"path"`
-		Children path.L `json:"children"`
-		IsOrphan bool   `json:"is_orphan"`
-		Size     int64  `json:"size"`
+		Pool     string       `json:"pool"`
+		Path     naming.Path  `json:"path"`
+		Children naming.Paths `json:"children"`
+		IsOrphan bool         `json:"is_orphan"`
+		Size     int64        `json:"size"`
 	}
 	VolumeStatusList []VolumeStatus
 
@@ -492,7 +492,7 @@ func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
 func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Path.String())
 	head.AddColumn().AddText("")
-	head.AddColumn().AddText(path.L(t.Children).String())
+	head.AddColumn().AddText(naming.Paths(t.Children).String())
 	head.AddColumn().AddText(strconv.FormatBool(t.IsOrphan))
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Size)))

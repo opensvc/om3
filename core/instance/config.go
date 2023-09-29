@@ -3,7 +3,7 @@ package instance
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/topology"
@@ -17,7 +17,7 @@ type (
 	Config struct {
 		App              string           `json:"app,omitempty"`
 		Checksum         string           `json:"csum"`
-		Children         path.Relations   `json:"children,omitempty"`
+		Children         naming.Relations `json:"children,omitempty"`
 		DRP              bool             `json:"drp,omitempty"`
 		Env              string           `json:"env,omitempty"`
 		FlexMax          int              `json:"flex_max,omitempty"`
@@ -27,8 +27,8 @@ type (
 		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
 		Nodename         string           `json:"-"`
 		Orchestrate      string           `json:"orchestrate"`
-		Path             path.T           `json:"-"`
-		Parents          path.Relations   `json:"parents,omitempty"`
+		Path             naming.Path      `json:"-"`
+		Parents          naming.Relations `json:"parents,omitempty"`
 		PlacementPolicy  placement.Policy `json:"placement_policy"`
 		Priority         priority.T       `json:"priority,omitempty"`
 		Resources        ResourceConfigs  `json:"resources"`

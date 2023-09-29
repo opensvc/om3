@@ -12,8 +12,8 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -27,15 +27,15 @@ import (
 type (
 	T struct {
 		resdisk.T
-		UUID   string   `json:"uuid"`
-		Size   string   `json:"size"`
-		Spares int      `json:"spares"`
-		Chunk  *int64   `json:"chunk"`
-		Layout string   `json:"layout"`
-		Level  string   `json:"level"`
-		Devs   []string `json:"devs"`
-		Path   path.T   `json:"path"`
-		Nodes  []string `json:"nodes"`
+		UUID   string      `json:"uuid"`
+		Size   string      `json:"size"`
+		Spares int         `json:"spares"`
+		Chunk  *int64      `json:"chunk"`
+		Layout string      `json:"layout"`
+		Level  string      `json:"level"`
+		Devs   []string    `json:"devs"`
+		Path   naming.Path `json:"path"`
+		Nodes  []string    `json:"nodes"`
 	}
 	MDDriver interface {
 		Activate() error

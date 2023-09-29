@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -29,7 +29,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"rid": t.RID,
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err

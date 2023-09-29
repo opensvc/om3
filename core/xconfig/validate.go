@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/util/capabilities"
@@ -18,7 +18,7 @@ import (
 type (
 	ValidateAlerts []ValidateAlert
 	ValidateAlert  struct {
-		Path    path.T             `json:"path"`
+		Path    naming.Path        `json:"path"`
 		Level   ValidateAlertLevel `json:"level"`
 		Kind    ValidateAlertKind  `json:"kind"`
 		Key     key.T              `json:"key"`
@@ -288,7 +288,7 @@ func (t T) Validate() (ValidateAlerts, error) {
 				}
 			}
 		}
-		for option, _ := range s.KeysHash() {
+		for option := range s.KeysHash() {
 			k := key.Parse(section + "." + option)
 			if k.BaseOption() == "type" {
 				continue
