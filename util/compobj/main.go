@@ -38,7 +38,8 @@ type (
 		Description    string      `json:"description"`
 		FormDefinition string      `json:"form_definition"`
 	}
-	ExitCode int
+	ExitCode     int
+	exitCodePair [2]ExitCode
 )
 
 var (
@@ -59,18 +60,19 @@ func (t ExitCode) Exit() {
 }
 
 func (t ExitCode) Merge(o ExitCode) ExitCode {
+	pair := exitCodePair{t, o}
 	switch {
-	case t == ExitOk && o == ExitOk:
+	case pair.is(ExitOk, ExitOk):
 		return ExitOk
-	case t == ExitOk && o == ExitNok:
+	case pair.is(ExitOk, ExitNok):
 		return ExitNok
-	case t == ExitOk && o == ExitNotApplicable:
+	case pair.is(ExitOk, ExitNotApplicable):
 		return ExitOk
-	case t == ExitNok && o == ExitOk:
+	case pair.is(ExitNok, ExitNotApplicable):
 		return ExitNok
-	case t == ExitNok && o == ExitNotApplicable:
+	case pair.is(ExitNok, ExitNok):
 		return ExitNok
-	case t == ExitNotApplicable && o == ExitNotApplicable:
+	case pair.is(ExitNotApplicable, ExitNotApplicable):
 		return ExitNotApplicable
 	default:
 		return ExitCode(-1)
@@ -154,35 +156,43 @@ func syntax() {
 `, os.Args[0], os.Args[0])
 }
 
-func links() {
-	fmt.Println("The compliance objects in this collection must be called via a symlink.")
-	fmt.Println("Collection content:")
+func links(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "The compliance objects in this collection must be called via a symlink.")
+	_, _ = fmt.Fprintln(w, "Collection content:")
 	for k, _ := range m {
-		fmt.Printf("  %s\n", k)
+		_, _ = fmt.Fprintf(w, "  %s\n", k)
 	}
+}
+func (t exitCodePair) is(e0 ExitCode, e1 ExitCode) bool {
+	return (t[0] == e0 && t[1] == e1) || (t[1] == e0 && t[0] == e1)
 }
 
 func main() {
-	objName := filepath.Base(os.Args[0])
-	if p, err := os.Readlink(os.Args[0]); err != nil || filepath.Base(p) == objName {
-		links()
-		os.Exit(0)
+	e := mainArgs(os.Args, os.Stdout, os.Stderr)
+	e.Exit()
+}
+
+func mainArgs(osArgs []string, wOut, wErr io.Writer) ExitCode {
+	objName := filepath.Base(osArgs[0])
+	if p, err := os.Readlink(osArgs[0]); err != nil || filepath.Base(p) == objName {
+		links(wErr)
+		return ExitOk
 	}
 	newObj, ok := m[objName]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "%s compliance object not found in the core collection\n", objName)
-		os.Exit(1)
+		fmt.Fprintf(wErr, "%s compliance object not found in the core collection\n", objName)
+		return ExitNok
 	}
 	var prefix, action string
-	switch len(os.Args) {
+	switch len(osArgs) {
 	case 2:
-		action = os.Args[1]
+		action = osArgs[1]
 	case 3:
-		prefix = os.Args[1]
-		action = os.Args[2]
+		prefix = osArgs[1]
+		action = osArgs[2]
 	default:
 		syntax()
-		os.Exit(1)
+		return ExitNok
 	}
 	obj := newObj().(I)
 	if prefix == "" {
@@ -196,27 +206,26 @@ func main() {
 			continue
 		}
 		if err := obj.Add(v); err != nil {
-			fmt.Fprintf(os.Stderr, "incompatible data: %s: %+v\n", err, v)
+			_, _ = fmt.Fprintf(wErr, "incompatible data:  %s: %+v\n", err, v)
 			continue
 		}
 	}
 
-	var e ExitCode
 	switch action {
 	case "check":
-		e = obj.Check()
+		return obj.Check()
 	case "fix":
-		e = obj.Fix()
+		return obj.Fix()
 	case "fixable":
-		e = obj.Fixable()
+		return obj.Fixable()
 	case "info":
 		nfo := obj.Info()
-		fmt.Println(nfo.MarkDown())
+		_, _ = fmt.Fprintln(wOut, nfo.MarkDown())
+		return ExitOk
 	default:
-		fmt.Fprintf(os.Stderr, "invalid action: %s\n", action)
-		e.Exit()
+		_, _ = fmt.Fprintf(wErr, "invalid action: %s\n", action)
+		return ExitOk
 	}
-	e.Exit()
 }
 
 func getFile(url string) ([]byte, error) {

@@ -45,7 +45,18 @@ func (t L) Len() int {
 }
 
 func (t L) Less(i, j int) bool {
-	return t[i].Path.String() < t[j].Path.String()
+	switch {
+	case t[i].Path.String() != t[j].Path.String():
+		return t[i].Path.String() < t[j].Path.String()
+	case t[i].Node != t[j].Node:
+		return t[i].Node < t[j].Node
+	case t[i].RID != t[j].RID:
+		return t[i].RID < t[j].RID
+	case !t[i].IP.Equal(t[j].IP):
+		return t[i].IP.String() < t[j].IP.String()
+	default:
+		return false
+	}
 }
 
 func (t L) Swap(i, j int) {

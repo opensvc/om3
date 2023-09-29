@@ -1,0 +1,9 @@
+bash.x86_64                                          5.1.8-6.el9_1                       @rhel-9-for-x86_64-baseos-rpms
+bash-completion.noarch                               1:2.11-4.el9                        @anaconda
+bash-completion.amd64                                1:2.11-4.el9                        @anaconda
+systemd-container.i686                               252-14.el9_2.3                      rhel-9-for-x86_64-baseos-rpms
+systemd-container.i586                               252-14.el9_2.3                      rhel-9-for-x86_64-baseos-rpms
+systemd-container.noarch                             252-14.el9_2.3                      rhel-9-for-x86_64-baseos-rpms
+systemd-container.x86_64                             252-14.el9_2.3                      rhel-9-for-x86_64-baseos-rpms
+iproute.amd64                                        6.1.0-1.el9                         @rhel-9-for-x86_64-baseos-rpms
+iproute.x86_64                                       6.1.0-1.el9                         @rhel-9-for-x86_64-baseos-rpms
