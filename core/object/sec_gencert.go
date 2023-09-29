@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/fqdn"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 )
@@ -134,7 +133,7 @@ func (t *sec) IPAddressesFromAltNames() []net.IP {
 func (t *sec) DNSNamesFromAltNames() []string {
 	l := []string{}
 	for _, word := range t.config.GetStrings(key.Parse("alt_names")) {
-		if !fqdn.IsValid(word) && !hostname.IsValid(word) {
+		if !naming.IsValidFQDN(word) && !hostname.IsValid(word) {
 			continue
 		}
 		l = append(l, word)
