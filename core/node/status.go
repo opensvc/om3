@@ -20,6 +20,7 @@ type (
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		IsSpeaker       bool                        `json:"is_speaker"`
 		Labels          Labels                      `json:"labels"`
+		Lsnr            Lsnr                        `json:"lsnr"`
 	}
 
 	// Instances groups instances configuration digest and status
@@ -38,8 +39,9 @@ type (
 
 	// Lsnr describes the inet listener addr and port
 	Lsnr struct {
-		Addr string `json:"addr"`
-		Port string `json:"port"`
+		Addr      string    `json:"addr"`
+		Port      string    `json:"port"`
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 
 	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
@@ -55,6 +57,14 @@ type (
 		Lsnr   Lsnr      `json:"lsnr"`
 	}
 )
+
+func (l *Lsnr) DeepCopy() *Lsnr {
+	return &Lsnr{
+		Addr:      l.Addr,
+		Port:      l.Port,
+		UpdatedAt: l.UpdatedAt,
+	}
+}
 
 func (t Status) IsFrozen() bool {
 	return !t.FrozenAt.IsZero()
@@ -78,6 +88,7 @@ func (t *Status) DeepCopy() *Status {
 	}
 	result.Gen = newGen
 	result.Labels = t.Labels.DeepCopy()
+	result.Lsnr = *t.Lsnr.DeepCopy()
 
 	return &result
 }
