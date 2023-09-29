@@ -40,7 +40,7 @@ func (a *DaemonApi) GetInstancesBacklogs(ctx echo.Context, params api.GetInstanc
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 
-	paths, err := naming.ParseList(params.Paths...)
+	paths, err := naming.ParsePaths(params.Paths...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}

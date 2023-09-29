@@ -6,8 +6,8 @@ import (
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -222,7 +222,7 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(peer string, current *remoteInfo
 func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[string]time.Time) (updates, removes []string) {
 	for s, updated := range current {
 		if _, ok := toPath[s]; !ok {
-			p, err := naming.Parse(s)
+			p, err := naming.ParsePath(s)
 			if err != nil {
 				continue
 			}
@@ -238,7 +238,7 @@ func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[stri
 	}
 	for s := range previous {
 		if _, ok := toPath[s]; !ok {
-			p, err := naming.Parse(s)
+			p, err := naming.ParsePath(s)
 			if err != nil {
 				continue
 			}

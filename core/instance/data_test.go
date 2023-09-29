@@ -11,8 +11,8 @@ import (
 
 func Test_Mapper(t *testing.T) {
 	mapper := NewData[Status]()
-	p, _ := naming.Parse("foo")
-	p2, _ := naming.Parse("bar")
+	p, _ := naming.ParsePath("foo")
+	p2, _ := naming.ParsePath("bar")
 	mapper.Set(p, "node1", &Status{Avail: status.Up})
 	mapper.Set(p, "node2", &Status{Avail: status.Warn})
 	mapper.Set(p2, "node2", &Status{Avail: status.Down})

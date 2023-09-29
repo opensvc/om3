@@ -201,7 +201,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		return nil
 	}
 	for _, pStr := range t.HardAffinity() {
-		p, err := naming.Parse(pStr)
+		p, err := naming.ParsePath(pStr)
 		if err != nil {
 			return fmt.Errorf("hard affinity object %s parse path: %w", p, err)
 		}
@@ -221,7 +221,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
-		p, err := naming.Parse(pStr)
+		p, err := naming.ParsePath(pStr)
 		if err != nil {
 			return fmt.Errorf("hard anti affinity object %s parse path: %w", p, err)
 		}

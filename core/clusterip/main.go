@@ -14,7 +14,7 @@ import (
 
 type (
 	T struct {
-		IP   net.IP `json:"ip"`
+		IP   net.IP      `json:"ip"`
 		Node string      `json:"node"`
 		Path naming.Path `json:"path"`
 		RID  string      `json:"rid"`
@@ -99,7 +99,7 @@ func (t L) Load(clusterStatus cluster.Data) L {
 			}
 			for rid, rstat := range inst.Status.Resources {
 				if ipIntf, ok := rstat.Info["ipaddr"]; ok {
-					p, err := naming.Parse(ps)
+					p, err := naming.ParsePath(ps)
 					if err != nil {
 						log.Debug().Err(err).Str("path", ps).Send()
 						continue

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -104,14 +104,14 @@ func (s *Data) WithNamespace(namespace string) *Data {
 	}
 	for nodename, nodeData := range s.Cluster.Node {
 		for ps := range nodeData.Instance {
-			p, _ := naming.Parse(ps)
+			p, _ := naming.ParsePath(ps)
 			if p.Namespace != namespace {
 				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
 	for ps := range s.Cluster.Object {
-		p, _ := naming.Parse(ps)
+		p, _ := naming.ParsePath(ps)
 		if p.Namespace != namespace {
 			delete(s.Cluster.Object, ps)
 		}

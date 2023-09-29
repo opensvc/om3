@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -87,7 +87,7 @@ func (t *T) Configure(ctx context.Context) {
 
 func (t *T) passwordSec() (object.Sec, error) {
 	secName := t.GetString("password")
-	secPath, err := naming.Parse(secName)
+	secPath, err := naming.ParsePath(secName)
 	if err != nil {
 		return nil, err
 	}

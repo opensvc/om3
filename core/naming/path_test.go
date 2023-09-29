@@ -128,8 +128,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestL_len(t *testing.T) {
-	p1, _ := Parse("ns1/svc/n1")
-	p2, _ := Parse("ns1/svc/n2")
+	p1, _ := ParsePath("ns1/svc/n1")
+	p2, _ := ParsePath("ns1/svc/n2")
 	assert.Equal(t, 0, len(Paths{}))
 	assert.Equal(t, 1, len(Paths{p1}))
 	assert.Equal(t, 2, len(Paths{p1, p2}))
@@ -255,7 +255,7 @@ func TestParse(t *testing.T) {
 	}
 	for input, test := range tests {
 		t.Logf("input: '%s'", input)
-		path, err := Parse(input)
+		path, err := ParsePath(input)
 		switch test.ok {
 		case true:
 			assert.Nil(t, err)
@@ -271,7 +271,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	path, _ := Parse("ns1/svc/svc1")
+	path, _ := ParsePath("ns1/svc/svc1")
 	b, err := json.Marshal(path)
 	assert.Nil(t, err)
 	assert.Equal(t, b, []byte(`"ns1/svc/svc1"`))

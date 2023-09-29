@@ -282,7 +282,7 @@ func (t keystore) postInstall(k string) error {
 		Volume() (Vol, error)
 		SendSignals() error
 	}
-	paths, err := naming.List()
+	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return err
 	}

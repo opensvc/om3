@@ -9,8 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -121,7 +121,7 @@ func installCaFiles(clusterName string) error {
 	caList := []string{caPath.String()}
 	caList = append(caList, ccfg.Get().CASecPaths...)
 	for _, p := range caList {
-		caPath, err := naming.Parse(p)
+		caPath, err := naming.ParsePath(p)
 		if err != nil {
 			log.Logger.Warn().Err(err).Msgf("parse ca %s", p)
 			continue

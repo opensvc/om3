@@ -87,7 +87,7 @@ func SelectionWithServer(server string) funcopt.O {
 
 // SelectionWithInstalled forces a list of installed naming.Path
 // The daemon knows the path of objects with no local instance, so better
-// to use that instead of crawling etc/ via naming.List()
+// to use that instead of crawling etc/ via naming.InstalledPaths()
 func SelectionWithInstalled(installed naming.Paths) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
@@ -176,7 +176,7 @@ func (t *Selection) localExpand() error {
 			return err
 		}
 		for _, i := range pset.Values() {
-			p, _ := naming.Parse(i.(string))
+			p, _ := naming.ParsePath(i.(string))
 			t.add(p)
 		}
 	}
@@ -256,7 +256,7 @@ func (t *Selection) getInstalled() (naming.Paths, error) {
 		return t.installed, nil
 	}
 	var err error
-	t.installed, err = naming.List()
+	t.installed, err = naming.InstalledPaths()
 	if err != nil {
 		return t.installed, err
 	}
@@ -300,7 +300,7 @@ func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) 
 
 func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	matching := orderedset.NewOrderedSet()
-	p, err := naming.Parse(s)
+	p, err := naming.ParsePath(s)
 	if err != nil {
 		return matching, err
 	}

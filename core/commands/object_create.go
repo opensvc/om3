@@ -75,7 +75,7 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, err
 		// allowed with multi-definitions fed via stdin
 		return naming.Path{}, nil
 	}
-	p, err := naming.Parse(objectPath)
+	p, err := naming.ParsePath(objectPath)
 	if err != nil {
 		return p, err
 	}
@@ -332,7 +332,7 @@ func rawFromBytesFlat(p naming.Path, b []byte) (Pivot, error) {
 
 func (t CmdObjectCreate) localFromData(pivot Pivot) error {
 	for opath, c := range pivot {
-		p, err := naming.Parse(opath)
+		p, err := naming.ParsePath(opath)
 		if err != nil {
 			return err
 		}

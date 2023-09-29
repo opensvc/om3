@@ -11,7 +11,7 @@ import (
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
-	paths, err := naming.List()
+	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return claims, err
 	}

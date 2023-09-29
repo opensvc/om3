@@ -26,7 +26,7 @@ func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 		return err
 	}
-	p, err = naming.Parse(payload.Meta.Object)
+	p, err = naming.ParsePath(payload.Meta.Object)
 	if err != nil {
 		log.Warn().Err(err).Msgf("can't parse path: %s", payload.Meta.Object)
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Meta.Object, err)

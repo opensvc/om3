@@ -51,7 +51,7 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		}
 		l = append(l, api.PoolVolume{
 			Path:     p,
-			Children: instConfig.Value.Children.StringSlice(),
+			Children: instConfig.Value.Children.Strings(),
 			IsOrphan: !poolOk,
 			Pool:     poolName,
 			Size:     size,

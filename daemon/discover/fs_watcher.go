@@ -261,5 +261,5 @@ func filenameToPath(filename, prefix, suffix string) (naming.Path, error) {
 	if len(svcName) == 0 {
 		return naming.Path{}, fmt.Errorf("skipped null filename")
 	}
-	return naming.Parse(svcName)
+	return naming.ParsePath(svcName)
 }

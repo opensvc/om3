@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
@@ -31,7 +31,7 @@ func (m *Meta) HasPath(s string) bool {
 	if v := m.pathMap.Has(s); !v {
 		return false
 	}
-	p, err := naming.Parse(s)
+	p, err := naming.ParsePath(s)
 	if err != nil {
 		return false
 	}

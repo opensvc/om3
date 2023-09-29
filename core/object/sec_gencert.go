@@ -193,7 +193,7 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 
 func (t *sec) getCASec() (*sec, error) {
 	s := t.CertInfo("ca")
-	p, err := naming.Parse(s)
+	p, err := naming.ParsePath(s)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ca secret path %s: %w", s, err)
 	}

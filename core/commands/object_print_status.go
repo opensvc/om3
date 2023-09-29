@@ -12,11 +12,11 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -129,7 +129,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	}
 	data := make([]object.Digest, 0)
 	for ps := range clusterStatus.Cluster.Object {
-		p, err := naming.Parse(ps)
+		p, err := naming.ParsePath(ps)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
 			continue

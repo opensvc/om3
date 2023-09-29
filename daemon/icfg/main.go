@@ -24,8 +24,8 @@ import (
 
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/resourceset"
@@ -41,8 +41,8 @@ import (
 
 type (
 	T struct {
-		path      naming.Path
-		configure object.Configurer
+		path                     naming.Path
+		configure                object.Configurer
 		filename                 string
 		log                      zerolog.Logger
 		lastMtime                time.Time
@@ -342,12 +342,12 @@ func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 
 func (o *T) getChildren(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyChildren)
-	return naming.NewRelationsFromStringSlice(l)
+	return naming.NewRelationsFromStrings(l)
 }
 
 func (o *T) getParents(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyParents)
-	return naming.NewRelationsFromStringSlice(l)
+	return naming.NewRelationsFromStrings(l)
 }
 
 func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {

@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
@@ -191,7 +191,7 @@ func ExecuteArgs(args []string) {
 }
 
 func guessSubsystem(s string) string {
-	if p, err := naming.Parse(s); err == nil {
+	if p, err := naming.ParsePath(s); err == nil {
 		return p.Kind.String()
 	}
 	return "all"

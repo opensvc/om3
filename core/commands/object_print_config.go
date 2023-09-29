@@ -10,10 +10,10 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -128,7 +128,7 @@ func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 		return fmt.Errorf("no match")
 	}
 	var render func() string
-	if _, err := naming.Parse(selector); err == nil {
+	if _, err := naming.ParsePath(selector); err == nil {
 		// single object selection
 		render = func() string {
 			d, _ := data[selector]

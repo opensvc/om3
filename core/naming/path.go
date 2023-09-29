@@ -167,7 +167,7 @@ func (t Path) Equal(o Path) bool {
 }
 
 // ToMetadata returns the parsed representation of the path
-func (t *Path) ToMetadata() *Metadata {
+func (t Path) ToMetadata() *Metadata {
 	return &Metadata{
 		Name:      t.Name,
 		Namespace: t.Namespace,
@@ -179,13 +179,13 @@ func (t Path) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == KindInvalid
 }
 
-// ParseList returns a new naming.Paths from a []string path list.
-func ParseList(l ...string) (Paths, error) {
+// ParsePaths returns a new naming.Paths from a []string path list.
+func ParsePaths(l ...string) (Paths, error) {
 	var errs error
 	paths := make(Paths, 0)
 	for _, s := range l {
-		if p, err := Parse(s); err != nil {
-			errors.Join(errs, err)
+		if p, err := ParsePath(s); err != nil {
+			errs = errors.Join(errs, err)
 		} else {
 			paths = append(paths, p)
 		}
@@ -193,8 +193,8 @@ func ParseList(l ...string) (Paths, error) {
 	return paths, errs
 }
 
-// Parse returns a new path struct from a path string representation
-func Parse(s string) (Path, error) {
+// ParsePath returns a new path struct from a path string representation
+func ParsePath(s string) (Path, error) {
 	var (
 		name      string
 		namespace string
@@ -233,15 +233,15 @@ func Parse(s string) (Path, error) {
 	return NewPathFromStrings(namespace, kind, name)
 }
 
-// MarshalJSON implements the json interface
+// MarshalText implements the json interface
 func (t Path) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
-// UnmarshalJSON implements the json interface
+// UnmarshalText implements the json interface
 func (t *Path) UnmarshalText(b []byte) error {
 	s := string(b)
-	if p, err := Parse(s); err != nil {
+	if p, err := ParsePath(s); err != nil {
 		return err
 	} else {
 		*t = p
@@ -318,7 +318,7 @@ func (t Relation) Path() (Path, error) {
 	} else {
 		s = string(t)
 	}
-	return Parse(s)
+	return ParsePath(s)
 }
 
 func (t Paths) String() string {
@@ -453,8 +453,8 @@ func (t Path) Exists() bool {
 	return file.Exists(t.ConfigFile())
 }
 
-// List returns a list of every object path with a locally installed configuration file.
-func List() (Paths, error) {
+// InstalledPaths returns a list of every object path with a locally installed configuration file.
+func InstalledPaths() (Paths, error) {
 	l := make(Paths, 0)
 	matches := make([]string, 0)
 	patterns := []string{
@@ -481,7 +481,7 @@ func List() (Paths, error) {
 			ps = strings.Replace(ps, r, "", 1)
 		}
 		ps = xstrings.TrimLast(ps, 5) // strip trailing .conf
-		p, err := Parse(ps)
+		p, err := ParsePath(ps)
 		if err != nil {
 			continue
 		}
@@ -503,7 +503,7 @@ func PathOf(o any) Path {
 	return Path{}
 }
 
-func (relations Relations) StringSlice() []string {
+func (relations Relations) Strings() []string {
 	l := make([]string, len(relations))
 	for i, relation := range relations {
 		l[i] = string(relation)
@@ -511,7 +511,7 @@ func (relations Relations) StringSlice() []string {
 	return l
 }
 
-func NewRelationsFromStringSlice(l []string) Relations {
+func NewRelationsFromStrings(l []string) Relations {
 	relations := make(Relations, len(l))
 	for i, s := range l {
 		relations[i] = Relation(s)

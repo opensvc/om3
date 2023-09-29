@@ -20,7 +20,7 @@ import (
 func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.Paths.Drivers, "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
-	paths, err := naming.List()
+	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return *check.NewResultSet(), err
 	}

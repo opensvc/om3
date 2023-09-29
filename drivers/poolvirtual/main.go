@@ -41,7 +41,7 @@ func (t T) Head() string {
 
 func (t T) template() (naming.Path, error) {
 	s := t.GetString("template")
-	return naming.Parse(s)
+	return naming.ParsePath(s)
 }
 
 func (t T) optionalVolumeEnv() []string {

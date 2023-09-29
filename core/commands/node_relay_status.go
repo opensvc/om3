@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/api"
@@ -150,7 +150,7 @@ func (t relayMessages) Render() string {
 
 func configSectionPasswordSec(config *xconfig.T, section string) (object.Sec, error) {
 	s := config.GetString(key.New(section, "password"))
-	secPath, err := naming.Parse(s)
+	secPath, err := naming.ParsePath(s)
 	if err != nil {
 		return nil, err
 	}

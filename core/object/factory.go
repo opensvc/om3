@@ -71,7 +71,7 @@ func toPathType(id any) (naming.Path, error) {
 	var p naming.Path
 	switch i := id.(type) {
 	case string:
-		if parsed, err := naming.Parse(i); err != nil {
+		if parsed, err := naming.ParsePath(i); err != nil {
 			return p, err
 		} else {
 			p = parsed

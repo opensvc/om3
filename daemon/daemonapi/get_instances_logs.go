@@ -48,7 +48,7 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 		setStreamHeaders(w)
 	}
 
-	paths, err := naming.ParseList(params.Paths...)
+	paths, err := naming.ParsePaths(params.Paths...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}

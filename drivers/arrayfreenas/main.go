@@ -14,8 +14,8 @@ import (
 
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/san"
 	"github.com/opensvc/om3/util/sizeconv"
 )
@@ -634,7 +634,7 @@ func (t Array) passwordSec() (object.Sec, error) {
 	if err != nil {
 		return nil, err
 	}
-	secPath, err := naming.Parse(secName)
+	secPath, err := naming.ParsePath(secName)
 	if err != nil {
 		return nil, err
 	}

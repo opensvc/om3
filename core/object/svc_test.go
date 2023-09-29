@@ -54,7 +54,7 @@ func TestAppStart(t *testing.T) {
 		conf = append(conf, sectionApp1...)
 		conf = append(conf, sectionEnv...)
 
-		p, err := naming.Parse("conf1")
+		p, err := naming.ParsePath("conf1")
 		assert.NoError(t, err)
 
 		s, err := object.NewSvc(p, object.WithConfigData(conf))
@@ -87,7 +87,7 @@ func TestWithConfigData(t *testing.T) {
 			o   object.Svc
 			err error
 		)
-		p, _ := naming.Parse("conf1")
+		p, _ := naming.ParsePath("conf1")
 		conf1 := map[string]map[string]string{
 			"app#1": {
 				"start": "/usr/bin/touch {env.flag1}",
