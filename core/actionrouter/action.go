@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/monitor"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -135,9 +135,9 @@ type (
 
 	// Result is a predictible type of actions return value, for reflect.
 	Result struct {
-		Nodename      string        `json:"nodename"`
-		Path          path.T        `json:"path,omitempty"`
-		Data          interface{}   `json:"data"`
+		Nodename string      `json:"nodename"`
+		Path     naming.Path `json:"path,omitempty"`
+		Data     interface{} `json:"data"`
 		Error         error         `json:"error,omitempty"`
 		Panic         interface{}   `json:"panic,omitempty"`
 		HumanRenderer func() string `json:"-"`

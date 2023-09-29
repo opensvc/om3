@@ -3,7 +3,7 @@ package statusbus
 import (
 	"testing"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +23,7 @@ func TestPanicIfNotStarted(t *testing.T) {
 			t,
 			ErrorNeedStart.Error(),
 			func() {
-				bus.Post(path.T{}, "app#1", status.Warn, false)
+				bus.Post(naming.Path{}, "app#1", status.Warn, false)
 			})
 	})
 	t.Run("Post", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestPanicIfNotStarted(t *testing.T) {
 			t,
 			ErrorNeedStart.Error(),
 			func() {
-				bus.Get(path.T{}, "app#1")
+				bus.Get(naming.Path{}, "app#1")
 			})
 	})
 }
@@ -40,10 +40,10 @@ func TestPost(t *testing.T) {
 	bus := T{}
 	bus.Start()
 	defer bus.Stop()
-	p := path.T{
+	p := naming.Path{
 		Name:      "foo",
 		Namespace: "root",
-		Kind:      path.KindSvc,
+		Kind:      naming.KindSvc,
 	}
 	bus.Post(p, "app#1", status.Down, false)
 	bus.Post(p, "app#2", status.Up, false)
@@ -62,7 +62,7 @@ func TestPost(t *testing.T) {
 		assert.Equal(t, ridState.state, found)
 	}
 	t.Run("status is undef when service is not found", func(t *testing.T) {
-		assert.Equal(t, status.Undef, bus.Get(path.T{}, ""))
-		assert.Equal(t, status.Undef, bus.Get(path.T{}, "app#1"))
+		assert.Equal(t, status.Undef, bus.Get(naming.Path{}, ""))
+		assert.Equal(t, status.Undef, bus.Get(naming.Path{}, "app#1"))
 	})
 }

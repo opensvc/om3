@@ -5,14 +5,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/testhelper"
 )
 
 func TestVolatileFuncOpt(t *testing.T) {
 	t.Run("volatile funcopt", func(t *testing.T) {
 		testhelper.Setup(t)
-		p, _ := path.Parse("ci/svc/alpha")
+		p, _ := naming.Parse("ci/svc/alpha")
 		o, err := object.NewSvc(p, object.WithVolatile(true))
 		assert.NoError(t, err)
 		assert.Equal(t, o.IsVolatile(), true)

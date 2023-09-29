@@ -9,24 +9,24 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context, namespace string, kind path.Kind, name string) error {
+func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	var (
 		payload = api.PostObjectActionSwitch{}
 		value   = instance.MonitorUpdate{}
-		p       path.T
+		p       naming.Path
 		err     error
 	)
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
 	}
-	p, err = path.New(namespace, kind, name)
+	p, err = naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}

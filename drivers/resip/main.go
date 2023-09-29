@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/fqdn"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/stringset"
 	"github.com/rs/zerolog"
@@ -27,7 +27,7 @@ func lookupHostOnDNS(ctx context.Context, name, dns string) ([]string, error) {
 	return r.LookupHost(ctx, name)
 }
 
-func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p path.T) error {
+func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p naming.Path) error {
 	if timeout == nil {
 		return nil
 	}

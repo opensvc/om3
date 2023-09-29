@@ -1,7 +1,7 @@
 package clusterip
 
 import (
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"sort"
@@ -11,14 +11,14 @@ import (
 func TestSort(t *testing.T) {
 	sortedList := func() L {
 		return L{
-			{IP: net.IP{10, 8, 0, 8}, Node: "test", Path: path.T{Name: "a", Namespace: "A", Kind: path.KindCcfg}, RID: "ip#10"},
-			{IP: net.IP{10, 200, 3, 1}, Node: "test", Path: path.T{Name: "b", Namespace: "A", Kind: path.KindSvc}, RID: "ip#3"},
-			{IP: net.IP{10, 6, 6, 9}, Node: "a", Path: path.T{Name: "z", Namespace: "C", Kind: path.KindVol}, RID: "ip#99"},
-			{IP: net.IP{10, 0, 0, 0}, Node: "b", Path: path.T{Name: "z", Namespace: "C", Kind: path.KindVol}, RID: "ip#70"},
-			{IP: net.IP{10, 20, 1, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: path.KindSvc}, RID: "ip#10"},
-			{IP: net.IP{10, 30, 0, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: path.KindSvc}, RID: "ip#10"},
-			{IP: net.IP{10, 99, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: path.KindUsr}, RID: "ip#10"},
-			{IP: net.IP{10, 0, 99, 1}, Node: "b", Path: path.T{Name: "z", Namespace: "D", Kind: path.KindUsr}, RID: "ip#8"},
+			{IP: net.IP{10, 8, 0, 8}, Node: "test", Path: naming.Path{Name: "a", Namespace: "A", Kind: naming.KindCcfg}, RID: "ip#10"},
+			{IP: net.IP{10, 200, 3, 1}, Node: "test", Path: naming.Path{Name: "b", Namespace: "A", Kind: naming.KindSvc}, RID: "ip#3"},
+			{IP: net.IP{10, 6, 6, 9}, Node: "a", Path: naming.Path{Name: "z", Namespace: "C", Kind: naming.KindVol}, RID: "ip#99"},
+			{IP: net.IP{10, 0, 0, 0}, Node: "b", Path: naming.Path{Name: "z", Namespace: "C", Kind: naming.KindVol}, RID: "ip#70"},
+			{IP: net.IP{10, 20, 1, 1}, Node: "b", Path: naming.Path{Name: "z", Namespace: "D", Kind: naming.KindSvc}, RID: "ip#10"},
+			{IP: net.IP{10, 30, 0, 1}, Node: "b", Path: naming.Path{Name: "z", Namespace: "D", Kind: naming.KindSvc}, RID: "ip#10"},
+			{IP: net.IP{10, 99, 99, 1}, Node: "b", Path: naming.Path{Name: "z", Namespace: "D", Kind: naming.KindUsr}, RID: "ip#10"},
+			{IP: net.IP{10, 0, 99, 1}, Node: "b", Path: naming.Path{Name: "z", Namespace: "D", Kind: naming.KindUsr}, RID: "ip#8"},
 		}
 	}
 	unsortedList := func(order []int) L {

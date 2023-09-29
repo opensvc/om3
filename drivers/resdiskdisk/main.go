@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -29,8 +29,8 @@ type (
 		DiskGroup string   `json:"diskgroup"`
 		SLO       string   `json:"slo"`
 		Size      *int64   `json:"size"`
-		Nodes     []string `json:"-"`
-		Path      path.T   `json:"-"`
+		Nodes []string    `json:"-"`
+		Path  naming.Path `json:"-"`
 	}
 	forceMode int
 )
@@ -269,7 +269,7 @@ func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
 		return err
 	}
 
-	// Set our local node DiskID resource property, for use by T.configure()
+	// Set our local node DiskID resource property, for use by Path.configure()
 	t.DiskID = obj.Config().GetString(key.T{t.RID(), "disk_id"})
 
 	return nil

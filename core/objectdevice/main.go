@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/device"
 )
 
@@ -15,8 +15,8 @@ type (
 		Device     device.T  `json:"device"`
 		Role       Role      `json:"role"`
 		RID        string    `json:"rid"`
-		DriverID   driver.ID `json:"driver"`
-		ObjectPath path.T    `json:"path"`
+		DriverID   driver.ID   `json:"driver"`
+		ObjectPath naming.Path `json:"path"`
 	}
 	L    []T
 	Role int

@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Time, err error) {
+func FetchObjectFile(cli *client.T, p naming.Path) (filename string, updated time.Time, err error) {
 	var (
 		b       []byte
 		tmpFile *os.File
@@ -53,7 +53,7 @@ func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Tim
 	return
 }
 
-func fetchFromApi(cli *client.T, p path.T) (b []byte, updated time.Time, err error) {
+func fetchFromApi(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
 	var (
 		resp *api.GetObjectFileResponse
 	)

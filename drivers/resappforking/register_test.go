@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/testhelper"
 )
@@ -29,7 +29,7 @@ func TestKeywords(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
 
-	p, err := path.Parse("svc1")
+	p, err := naming.Parse("svc1")
 	require.Nil(t, err)
 	o, err := object.NewSvc(p)
 	require.Nil(t, err)

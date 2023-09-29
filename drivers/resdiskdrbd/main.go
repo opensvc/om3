@@ -20,7 +20,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -37,8 +37,8 @@ import (
 type (
 	T struct {
 		resdisk.T
-		Path     path.T   `json:"path"`
-		Nodes    []string `json:"nodes"`
+		Path  naming.Path `json:"path"`
+		Nodes []string    `json:"nodes"`
 		Res      string   `json:"res"`
 		Disk     string   `json:"disk"`
 		MaxPeers int      `json:"max_peers"`
@@ -875,23 +875,23 @@ func (t T) ClaimedDevices() device.L {
 }
 
 /*
-func (t T) Boot(ctx context.Context) error {
+func (t Path) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }
 
-func (t T) PostSync() error {
+func (t Path) PostSync() error {
 	return nil
 }
 
-func (t T) PreSync() error {
+func (t Path) PreSync() error {
 	return t.dumpCacheFile()
 }
 
-func (t T) ToSync() []string {
+func (t Path) ToSync() []string {
 	return []string{}
 }
 
-func (t T) Resync(ctx context.Context) error {
+func (t Path) Resync(ctx context.Context) error {
 	return t.drbd().Resync()
 }
 */

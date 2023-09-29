@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -58,7 +58,7 @@ func (t *CmdObjectEditKey) doLocal(obj object.Keystore, c *client.T) error {
 	return obj.EditKey(t.Key)
 }
 
-func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
+func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
 	/*
 		params := api.GetKey{}
 		params.Path = p.String()
@@ -72,7 +72,7 @@ func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
 	return nil, fmt.Errorf("todo")
 }
 
-func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
+func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 	/*
 		var b []byte
 		if b, err = os.ReadFile(fName); err != nil {
@@ -91,7 +91,7 @@ func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
 	return fmt.Errorf("todo")
 }
 
-func (t *CmdObjectEditKey) doRemote(p path.T, c *client.T) error {
+func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {
 	var (
 		err    error
 		refSum []byte

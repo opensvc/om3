@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 )
 
 type (
@@ -56,7 +56,7 @@ func envVars(envItem, ns, kd string) (result []string, err error) {
 }
 
 func getKeysDecoder(name, ns, kd string) (decoder, error) {
-	if p, err := path.FromStrings(ns, kd, name); err != nil {
+	if p, err := naming.NewPathFromStrings(ns, kd, name); err != nil {
 		return nil, err
 	} else if !p.Exists() {
 		return nil, fmt.Errorf("'%s' doesn't exists", p)

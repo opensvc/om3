@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
-func pgNameObject(p path.T) string {
+func pgNameObject(p naming.Path) string {
 	return fmt.Sprintf("%s.%s", p.Kind, p.Name)
 }
 

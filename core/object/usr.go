@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 )
@@ -47,7 +47,7 @@ func (t usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 
 // UserGrants returns grants for username if username and password match existing usr object
 func (_ *UsrDB) UserGrants(username, password string) ([]string, error) {
-	usrPath := path.T{Name: username, Namespace: "system", Kind: path.KindUsr}
+	usrPath := naming.Path{Name: username, Namespace: "system", Kind: naming.KindUsr}
 	user, err := NewUsr(usrPath, WithVolatile(true))
 	if err != nil {
 		return nil, err

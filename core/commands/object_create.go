@@ -14,9 +14,9 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/file"
@@ -37,7 +37,7 @@ type (
 		Namespace   string
 
 		client *client.T
-		path   path.T
+		path   naming.Path
 	}
 	Pivot map[string]rawconfig.T
 )
@@ -62,10 +62,10 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	return t.Do()
 }
 
-func (t *CmdObjectCreate) parseSelector(selector, kind string) (path.T, error) {
+func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, error) {
 	var objectPath string
 	if selector != "" && t.ObjectSelector != "" {
-		return path.T{}, fmt.Errorf("use either 'om <path> create' or 'om <kind> create -s <path>', not 'om <path> create -s <path>'")
+		return naming.Path{}, fmt.Errorf("use either 'om <path> create' or 'om <kind> create -s <path>', not 'om <path> create -s <path>'")
 	} else if selector == "" && t.ObjectSelector != "" {
 		objectPath = t.ObjectSelector
 	} else {
@@ -73,9 +73,9 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (path.T, error) {
 	}
 	if objectPath == "" {
 		// allowed with multi-definitions fed via stdin
-		return path.T{}, nil
+		return naming.Path{}, nil
 	}
-	p, err := path.Parse(objectPath)
+	p, err := naming.Parse(objectPath)
 	if err != nil {
 		return p, err
 	}
@@ -102,7 +102,7 @@ func (t *CmdObjectCreate) getTemplate() string {
 	return ""
 }
 
-func (t *CmdObjectCreate) getSourcePaths() path.L {
+func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 	paths, _ := objectselector.NewSelection(
 		t.Config,
 		objectselector.SelectionWithLocal(t.Local),
@@ -146,7 +146,7 @@ func (t *CmdObjectCreate) submit(pivot Pivot) error {
 	return fmt.Errorf("todo")
 }
 
-func (t CmdObjectCreate) fromPaths(paths path.L) error {
+func (t CmdObjectCreate) fromPaths(paths naming.Paths) error {
 	pivot := make(Pivot)
 	multi := len(paths) > 1
 	for _, p := range paths {
@@ -238,7 +238,7 @@ func (t CmdObjectCreate) rawFromConfig() (Pivot, error) {
 	}
 }
 
-func rawFromConfigURI(p path.T, u uri.T) (Pivot, error) {
+func rawFromConfigURI(p naming.Path, u uri.T) (Pivot, error) {
 	fpath, err := u.Fetch()
 	if err != nil {
 		return make(Pivot), nil
@@ -248,7 +248,7 @@ func rawFromConfigURI(p path.T, u uri.T) (Pivot, error) {
 	return rawFromConfigFile(p, fpath)
 }
 
-func rawFromConfigFile(p path.T, fpath string) (Pivot, error) {
+func rawFromConfigFile(p naming.Path, fpath string) (Pivot, error) {
 	pivot := make(Pivot)
 	c, err := xconfig.NewObject("", fpath)
 	if err != nil {
@@ -259,7 +259,7 @@ func rawFromConfigFile(p path.T, fpath string) (Pivot, error) {
 	return pivot, nil
 }
 
-func rawFromScratch(p path.T) (Pivot, error) {
+func rawFromScratch(p naming.Path) (Pivot, error) {
 	pivot := make(Pivot)
 	pivot[p.String()] = rawconfig.T{}
 	return pivot, nil
@@ -287,16 +287,16 @@ func rawFromStdinNested(namespace string) (Pivot, error) {
 	return pivot, nil
 }
 
-func pathFromMetadata(data *orderedmap.OrderedMap) (path.T, error) {
+func pathFromMetadata(data *orderedmap.OrderedMap) (naming.Path, error) {
 	var name, namespace, kind string
 	if s, ok := data.Get("name"); ok {
 		if name, ok = s.(string); !ok {
-			return path.T{}, fmt.Errorf("metadata format error: name")
+			return naming.Path{}, fmt.Errorf("metadata format error: name")
 		}
 	}
 	if s, ok := data.Get("kind"); ok {
 		if kind, ok = s.(string); !ok {
-			return path.T{}, fmt.Errorf("metadata format error: kind")
+			return naming.Path{}, fmt.Errorf("metadata format error: kind")
 		}
 	}
 	if s, ok := data.Get("namespace"); ok {
@@ -306,13 +306,13 @@ func pathFromMetadata(data *orderedmap.OrderedMap) (path.T, error) {
 		case string:
 			namespace = k
 		default:
-			return path.T{}, fmt.Errorf("metadata format error: namespace")
+			return naming.Path{}, fmt.Errorf("metadata format error: namespace")
 		}
 	}
-	return path.FromStrings(namespace, kind, name)
+	return naming.NewPathFromStrings(namespace, kind, name)
 }
 
-func rawFromStdinFlat(p path.T) (Pivot, error) {
+func rawFromStdinFlat(p naming.Path) (Pivot, error) {
 	b, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return nil, err
@@ -320,7 +320,7 @@ func rawFromStdinFlat(p path.T) (Pivot, error) {
 	return rawFromBytesFlat(p, b)
 }
 
-func rawFromBytesFlat(p path.T, b []byte) (Pivot, error) {
+func rawFromBytesFlat(p naming.Path, b []byte) (Pivot, error) {
 	pivot := make(Pivot)
 	c := &rawconfig.T{}
 	if err := json.Unmarshal(b, c); err != nil {
@@ -332,7 +332,7 @@ func rawFromBytesFlat(p path.T, b []byte) (Pivot, error) {
 
 func (t CmdObjectCreate) localFromData(pivot Pivot) error {
 	for opath, c := range pivot {
-		p, err := path.Parse(opath)
+		p, err := naming.Parse(opath)
 		if err != nil {
 			return err
 		}
@@ -344,7 +344,7 @@ func (t CmdObjectCreate) localFromData(pivot Pivot) error {
 	return nil
 }
 
-func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
+func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 	if !t.Force && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}
@@ -367,7 +367,7 @@ func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 	return oc.Config().SetKeys(ops...)
 }
 
-func (t CmdObjectCreate) localEmpty(p path.T) error {
+func (t CmdObjectCreate) localEmpty(p naming.Path) error {
 	if !t.Force && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}

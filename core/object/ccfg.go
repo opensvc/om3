@@ -2,7 +2,7 @@ package object
 
 import (
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 )
@@ -36,7 +36,7 @@ var ccfgPrivateKeywords = []keywords.Keyword{
 var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
 
 func NewCluster(opts ...funcopt.O) (*ccfg, error) {
-	return newCcfg(path.Cluster, opts...)
+	return newCcfg(naming.Cluster, opts...)
 }
 
 // newCcfg allocates a ccfg kind object.

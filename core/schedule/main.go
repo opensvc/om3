@@ -3,7 +3,7 @@ package schedule
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	usched "github.com/opensvc/om3/util/schedule"
@@ -20,9 +20,9 @@ type (
 		LastRunFile        string    `json:"last_run_file"`
 		LastSuccessFile    string    `json:"last_success_file"`
 		NextRunAt          time.Time `json:"next_run_at"`
-		Node               string    `json:"node"`
-		Path               path.T    `json:"path"`
-		RequireCollector   bool      `json:"require_collector"`
+		Node             string      `json:"node"`
+		Path             naming.Path `json:"path"`
+		RequireCollector bool        `json:"require_collector"`
 		RequireProvisioned bool      `json:"require_provisioned"`
 	}
 )

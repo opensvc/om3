@@ -3,7 +3,7 @@ package object
 import (
 	"sync"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -12,14 +12,14 @@ type (
 	}
 
 	DataElement[T Dataer] struct {
-		Path  path.T
+		Path  naming.Path
 		Value *T
 	}
 
 	// Data defines a shared holder for all objects Dataer
 	Data[T Dataer] struct {
 		sync.RWMutex
-		data map[path.T]*T
+		data map[naming.Path]*T
 	}
 )
 
@@ -30,23 +30,23 @@ var (
 
 func NewData[T Dataer]() *Data[T] {
 	return &Data[T]{
-		data: make(map[path.T]*T),
+		data: make(map[naming.Path]*T),
 	}
 }
 
-func (c *Data[T]) Set(p path.T, v *T) {
+func (c *Data[T]) Set(p naming.Path, v *T) {
 	c.Lock()
 	defer c.Unlock()
 	c.data[p] = v
 }
 
-func (c *Data[T]) Unset(p path.T) {
+func (c *Data[T]) Unset(p naming.Path) {
 	c.Lock()
 	defer c.Unlock()
 	delete(c.data, p)
 }
 
-func (c *Data[T]) Get(p path.T) *T {
+func (c *Data[T]) Get(p naming.Path) *T {
 	c.RLock()
 	v := c.data[p]
 	c.RUnlock()
@@ -66,8 +66,8 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	return result
 }
 
-func (c *Data[T]) GetPaths() path.L {
-	l := make(path.L, 0)
+func (c *Data[T]) GetPaths() naming.Paths {
+	l := make(naming.Paths, 0)
 	c.RLock()
 	defer c.RUnlock()
 	for k := range c.data {

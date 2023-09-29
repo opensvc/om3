@@ -8,7 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/provisioned"
@@ -25,8 +25,8 @@ type (
 	Digest struct {
 		IsCompat  bool                `json:"is_compat"`
 		Instances instance.StatesList `json:"instances"`
-		Object    Status              `json:"object"`
-		Path      path.T              `json:"path"`
+		Object Status      `json:"object"`
+		Path   naming.Path `json:"path"`
 	}
 
 	// Status contains the object states obtained via

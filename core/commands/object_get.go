@@ -5,7 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -30,7 +30,7 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"kw": t.Keyword,
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			c, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -61,7 +61,7 @@ func (t T) GetAllData(modsets []string) (Data, error) {
 	return t.GetData([]string{})
 }
 
-func (t T) GetObjectData(p path.T, modsets []string) (Data, error) {
+func (t T) GetObjectData(p naming.Path, modsets []string) (Data, error) {
 	data := Data{}
 	err := t.collectorClient.CallFor(&data, "comp_get_svc_data_v2", hostname.Hostname(), p.String(), modsets)
 	if err != nil {

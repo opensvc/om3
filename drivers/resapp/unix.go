@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
@@ -31,8 +31,8 @@ type (
 	// T is the driver structure for app unix & linux.
 	T struct {
 		BaseT
-		Path         path.T         `json:"path"`
-		Nodes        []string       `json:"nodes"`
+		Path  naming.Path `json:"path"`
+		Nodes []string    `json:"nodes"`
 		ScriptPath   string         `json:"script"`
 		StartCmd     string         `json:"start"`
 		StopCmd      string         `json:"stop"`

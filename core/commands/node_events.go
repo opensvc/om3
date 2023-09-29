@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
@@ -69,7 +69,7 @@ func (c *templateHelper) setSuccess(b bool) bool {
 	return b
 }
 
-func toInst(p path.T, n string) string {
+func toInst(p naming.Path, n string) string {
 	return p.String() + "@" + n
 }
 

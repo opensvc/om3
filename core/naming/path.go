@@ -1,4 +1,4 @@
-package path
+package naming
 
 import (
 	"errors"
@@ -18,8 +18,8 @@ import (
 )
 
 type (
-	// T represents an opensvc object path-like identifier. Ex: ns1/svc/svc1
-	T struct {
+	// Path represents an opensvc object path-like identifier. Ex: ns1/svc/svc1
+	Path struct {
 		// Name is the name part of the path
 		Name string
 		// Namespace is the namespace part of the path
@@ -34,8 +34,8 @@ type (
 	// Relations is a slice of Relation
 	Relations []Relation
 
-	// L is a list of object paths.
-	L []T
+	// Paths is a list of object paths.
+	Paths []Path
 
 	// M is a map indexed by path string representation.
 	M map[string]interface{}
@@ -48,7 +48,7 @@ type (
 	}
 
 	pather interface {
-		Path() T
+		Path() Path
 	}
 )
 
@@ -58,7 +58,7 @@ const (
 )
 
 var (
-	Cluster = T{Name: "cluster", Namespace: "root", Kind: KindCcfg}
+	Cluster = Path{Name: "cluster", Namespace: "root", Kind: KindCcfg}
 
 	// ErrInvalid is raised when the path allocator can not return a path
 	// because one of the path element is not valid.
@@ -70,13 +70,13 @@ var (
 	)
 )
 
-// New allocates a new path type from its elements
-func New(namespace string, kind Kind, name string) (T, error) {
-	return FromStrings(namespace, kind.String(), name)
+// NewPath allocates a new path type from its elements
+func NewPath(namespace string, kind Kind, name string) (Path, error) {
+	return NewPathFromStrings(namespace, kind.String(), name)
 }
 
-func FromStrings(namespace, kind, name string) (T, error) {
-	var path T
+func NewPathFromStrings(namespace, kind, name string) (Path, error) {
+	var path Path
 	name = strings.ToLower(name)
 	namespace = strings.ToLower(namespace)
 	kind = strings.ToLower(kind)
@@ -119,7 +119,7 @@ func FromStrings(namespace, kind, name string) (T, error) {
 
 // ScalerSliceIndex returns the <i> int from a scaler slice name like <i>.<scalerName>
 // Return -1 if not a scaler slice.
-func (t T) ScalerSliceIndex() int {
+func (t Path) ScalerSliceIndex() int {
 	l := strings.SplitN(t.Name, ".", 2)
 	if len(l) != 2 {
 		return -1
@@ -131,7 +131,7 @@ func (t T) ScalerSliceIndex() int {
 	}
 }
 
-func (t T) FQN() string {
+func (t Path) FQN() string {
 	var s string
 	if t.Kind == KindInvalid {
 		return ""
@@ -145,7 +145,7 @@ func (t T) FQN() string {
 	return s + t.Name
 }
 
-func (t T) String() string {
+func (t Path) String() string {
 	var s string
 	if t.Kind == KindInvalid {
 		return ""
@@ -159,7 +159,7 @@ func (t T) String() string {
 	return s + t.Name
 }
 
-func (t T) Equal(o T) bool {
+func (t Path) Equal(o Path) bool {
 	if t.Namespace != o.Namespace || t.Kind != o.Kind || t.Name != o.Name {
 		return false
 	}
@@ -167,7 +167,7 @@ func (t T) Equal(o T) bool {
 }
 
 // ToMetadata returns the parsed representation of the path
-func (t *T) ToMetadata() *Metadata {
+func (t *Path) ToMetadata() *Metadata {
 	return &Metadata{
 		Name:      t.Name,
 		Namespace: t.Namespace,
@@ -175,14 +175,14 @@ func (t *T) ToMetadata() *Metadata {
 	}
 }
 
-func (t T) IsZero() bool {
+func (t Path) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == KindInvalid
 }
 
-// ParseList returns a new path.L from a []string path list.
-func ParseList(l ...string) (L, error) {
+// ParseList returns a new naming.Paths from a []string path list.
+func ParseList(l ...string) (Paths, error) {
 	var errs error
-	paths := make(L, 0)
+	paths := make(Paths, 0)
 	for _, s := range l {
 		if p, err := Parse(s); err != nil {
 			errors.Join(errs, err)
@@ -194,7 +194,7 @@ func ParseList(l ...string) (L, error) {
 }
 
 // Parse returns a new path struct from a path string representation
-func Parse(s string) (T, error) {
+func Parse(s string) (Path, error) {
 	var (
 		name      string
 		namespace string
@@ -230,16 +230,16 @@ func Parse(s string) (T, error) {
 			name = l[0]
 		}
 	}
-	return FromStrings(namespace, kind, name)
+	return NewPathFromStrings(namespace, kind, name)
 }
 
 // MarshalJSON implements the json interface
-func (t T) MarshalText() ([]byte, error) {
+func (t Path) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
 // UnmarshalJSON implements the json interface
-func (t *T) UnmarshalText(b []byte) error {
+func (t *Path) UnmarshalText(b []byte) error {
 	s := string(b)
 	if p, err := Parse(s); err != nil {
 		return err
@@ -256,7 +256,7 @@ func (t *T) UnmarshalText(b []byte) error {
 // Trick:
 // The 'f*' pattern matches all svc objects in the root namespace.
 // The '*' pattern matches all svc objects in all namespaces.
-func (t T) Match(pattern string) bool {
+func (t Path) Match(pattern string) bool {
 	if pattern == "**" {
 		return true
 	}
@@ -290,7 +290,7 @@ func (t T) Match(pattern string) bool {
 }
 
 // Path implements the Pather interface
-func (t T) Path() T {
+func (t Path) Path() Path {
 	return t
 }
 
@@ -298,7 +298,7 @@ func (t Relation) String() string {
 	return string(t)
 }
 
-func (t Relation) Split() (T, string, error) {
+func (t Relation) Split() (Path, string, error) {
 	p, err := t.Path()
 	return p, t.Node(), err
 }
@@ -311,7 +311,7 @@ func (t Relation) Node() string {
 	return s
 }
 
-func (t Relation) Path() (T, error) {
+func (t Relation) Path() (Path, error) {
 	var s string
 	if strings.Contains(string(t), "@") {
 		s = strings.SplitN(string(t), "@", 2)[0]
@@ -321,7 +321,7 @@ func (t Relation) Path() (T, error) {
 	return Parse(s)
 }
 
-func (t L) String() string {
+func (t Paths) String() string {
 	l := make([]string, len(t))
 	for i, p := range t {
 		l[i] = p.String()
@@ -329,8 +329,8 @@ func (t L) String() string {
 	return strings.Join(l, ",")
 }
 
-func (t L) Filter(pattern string) L {
-	l := make(L, 0)
+func (t Paths) Filter(pattern string) Paths {
+	l := make(Paths, 0)
 	for _, p := range t {
 		if p.Match(pattern) {
 			l = append(l, p)
@@ -339,9 +339,9 @@ func (t L) Filter(pattern string) L {
 	return l
 }
 
-// StrMap converts L into a map indexed by path string representation.
+// StrMap converts Paths into a map indexed by path string representation.
 // This format is useful for fast Has(string) bool functions.
-func (t L) StrMap() M {
+func (t Paths) StrMap() M {
 	m := make(M)
 	for _, p := range t {
 		m[p.String()] = nil
@@ -349,9 +349,9 @@ func (t L) StrMap() M {
 	return m
 }
 
-// StrSlice converts L into a string slice.
+// StrSlice converts Paths into a string slice.
 // This format is useful to prepare api handlers parameters.
-func (t L) StrSlice() []string {
+func (t Paths) StrSlice() []string {
 	l := make([]string, len(t))
 	for i, p := range t {
 		l[i] = p.String()
@@ -359,8 +359,8 @@ func (t L) StrSlice() []string {
 	return l
 }
 
-// Namespaces return the list of unique namespaces in L
-func (t L) Namespaces() []string {
+// Namespaces return the list of unique namespaces in Paths
+func (t Paths) Namespaces() []string {
 	m := make(map[string]interface{})
 	for _, p := range t {
 		m[p.Namespace] = nil
@@ -373,9 +373,9 @@ func (t M) Has(s string) bool {
 	return ok
 }
 
-func (t L) Merge(other L) L {
-	m := make(map[T]interface{})
-	l := make(L, 0)
+func (t Paths) Merge(other Paths) Paths {
+	m := make(map[Path]interface{})
+	l := make(Paths, 0)
 	for _, p := range t {
 		m[p] = nil
 		l = append(l, p)
@@ -390,7 +390,7 @@ func (t L) Merge(other L) L {
 
 // VarDir returns the directory on the local filesystem where the object
 // variable persistent data is stored as files.
-func (t T) VarDir() string {
+func (t Path) VarDir() string {
 	var s string
 	switch t.Namespace {
 	case "", "root":
@@ -403,7 +403,7 @@ func (t T) VarDir() string {
 
 // TmpDir returns the directory on the local filesystem where the object
 // stores its temporary files.
-func (t T) TmpDir() string {
+func (t Path) TmpDir() string {
 	var s string
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
@@ -418,7 +418,7 @@ func (t T) TmpDir() string {
 
 // LogDir returns the directory on the local filesystem where the object
 // stores its temporary files.
-func (t T) LogDir() string {
+func (t Path) LogDir() string {
 	var s string
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
@@ -432,12 +432,12 @@ func (t T) LogDir() string {
 }
 
 // LogFile returns the object log file path on the local filesystem.
-func (t T) LogFile() string {
+func (t Path) LogFile() string {
 	return filepath.Join(t.LogDir(), t.Name+".log")
 }
 
 // ConfigFile returns the object configuration file path on the local filesystem.
-func (t T) ConfigFile() string {
+func (t Path) ConfigFile() string {
 	s := t.String()
 	switch t.Namespace {
 	case "", "root":
@@ -449,13 +449,13 @@ func (t T) ConfigFile() string {
 }
 
 // Exists returns true if the object configuration file exists.
-func (t T) Exists() bool {
+func (t Path) Exists() bool {
 	return file.Exists(t.ConfigFile())
 }
 
 // List returns a list of every object path with a locally installed configuration file.
-func List() (L, error) {
-	l := make(L, 0)
+func List() (Paths, error) {
+	l := make(Paths, 0)
 	matches := make([]string, 0)
 	patterns := []string{
 		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),                // root svc
@@ -496,11 +496,11 @@ func List() (L, error) {
 	return l, nil
 }
 
-func PathOf(o any) T {
+func PathOf(o any) Path {
 	if p, ok := o.(pather); ok {
 		return p.Path()
 	}
-	return T{}
+	return Path{}
 }
 
 func (relations Relations) StringSlice() []string {

@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -32,7 +32,7 @@ func (t *CmdObjectPRStop) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("prstop"),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (any, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p,
 				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),

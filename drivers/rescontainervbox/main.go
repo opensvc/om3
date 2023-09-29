@@ -24,7 +24,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -40,8 +40,8 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
-		Path     path.T    `json:"path"`
-		ObjectID uuid.UUID `json:"object_id"`
+		Path     naming.Path `json:"path"`
+		ObjectID uuid.UUID   `json:"object_id"`
 		Peers    []string  `json:"peers"`
 		DNS      []string  `json:"dns"`
 		Topology topology.T

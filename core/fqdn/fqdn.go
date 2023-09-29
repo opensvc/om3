@@ -3,17 +3,17 @@ package fqdn
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
 	T struct {
-		Path    path.T
+		Path    naming.Path
 		Cluster string
 	}
 )
 
-func New(path path.T, cluster string) *T {
+func New(path naming.Path, cluster string) *T {
 	return &T{
 		Path:    path,
 		Cluster: cluster,
@@ -26,14 +26,14 @@ func Parse(s string) (*T, error) {
 		namespace string
 		kind      string
 		cluster   string
-		p         path.T
+		p         naming.Path
 		err       error
 	)
 	_, err = fmt.Sscanf("%s.%s.%s.%s", s, &name, &namespace, &kind, &cluster)
 	if err != nil {
 		return nil, err
 	}
-	p, err = path.FromStrings(namespace, kind, name)
+	p, err = naming.NewPathFromStrings(namespace, kind, name)
 	return &T{
 		Path:    p,
 		Cluster: cluster,

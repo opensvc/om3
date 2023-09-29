@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -219,10 +219,10 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(peer string, current *remoteInfo
 	}
 }
 
-func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]time.Time) (updates, removes []string) {
+func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[string]time.Time) (updates, removes []string) {
 	for s, updated := range current {
 		if _, ok := toPath[s]; !ok {
-			p, err := path.Parse(s)
+			p, err := naming.Parse(s)
 			if err != nil {
 				continue
 			}
@@ -238,7 +238,7 @@ func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]ti
 	}
 	for s := range previous {
 		if _, ok := toPath[s]; !ok {
-			p, err := path.Parse(s)
+			p, err := naming.Parse(s)
 			if err != nil {
 				continue
 			}
@@ -253,7 +253,7 @@ func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]ti
 
 func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInfo) {
 	var updates, removes []string
-	toPath := make(map[string]path.T)
+	toPath := make(map[string]naming.Path)
 	previous, ok := d.previousRemoteInfo[peer]
 	if !ok {
 		previous = remoteInfo{

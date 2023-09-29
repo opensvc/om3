@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -16,7 +16,7 @@ import (
 func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
 	var (
 		err     error
-		p       path.T
+		p       naming.Path
 		payload api.InstanceStatusItem
 	)
 	log := LogHandler(ctx, "PostInstanceStatus")
@@ -26,7 +26,7 @@ func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 		return err
 	}
-	p, err = path.Parse(payload.Meta.Object)
+	p, err = naming.Parse(payload.Meta.Object)
 	if err != nil {
 		log.Warn().Err(err).Msgf("can't parse path: %s", payload.Meta.Object)
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Meta.Object, err)

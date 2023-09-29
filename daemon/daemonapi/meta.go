@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
@@ -17,7 +17,7 @@ type (
 		Path    *string
 		Node    *string
 
-		pathMap path.M
+		pathMap naming.M
 		nodeMap nodeselector.ResultMap
 		grants  rbac.Grants
 	}
@@ -31,7 +31,7 @@ func (m *Meta) HasPath(s string) bool {
 	if v := m.pathMap.Has(s); !v {
 		return false
 	}
-	p, err := path.Parse(s)
+	p, err := naming.Parse(s)
 	if err != nil {
 		return false
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -34,7 +34,7 @@ type (
 	// T exposes methods to read and write configurations.
 	T struct {
 		ConfigFilePath string
-		Path           path.T
+		Path           naming.Path
 		Referrer       Referrer
 		NodeReferrer   Referrer
 		file           *ini.File

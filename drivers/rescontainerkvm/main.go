@@ -23,7 +23,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -42,8 +42,8 @@ const (
 type (
 	T struct {
 		resource.T
-		Path     path.T    `json:"path"`
-		ObjectID uuid.UUID `json:"object_id"`
+		Path     naming.Path `json:"path"`
+		ObjectID uuid.UUID   `json:"object_id"`
 		Peers    []string  `json:"peers"`
 		DNS      []string  `json:"dns"`
 		Topology topology.T
@@ -643,7 +643,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 /*
-func (t *T) copyFrom(src, dst string) error {
+func (t *Path) copyFrom(src, dst string) error {
 	rootDir, err := t.rootDir()
 	if err != nil {
 		return err
@@ -652,7 +652,7 @@ func (t *T) copyFrom(src, dst string) error {
 	return file.Copy(src, dst)
 }
 
-func (t *T) copyTo(src, dst string) error {
+func (t *Path) copyTo(src, dst string) error {
 	rootDir, err := t.rootDir()
 	if err != nil {
 		return err
@@ -664,7 +664,7 @@ func (t *T) copyTo(src, dst string) error {
 // SetEncapFileOwnership sets the ownership of the file to be the
 // same ownership than the container root dir, which may be not root
 // for unprivileged containers.
-func (t *T) SetEncapFileOwnership(p string) error {
+func (t *Path) SetEncapFileOwnership(p string) error {
 	rootDir, err := t.rootDir()
 	if err != nil {
 		return err
@@ -822,7 +822,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 }
 
 /*
-func (t *T) ContainerHead() (string, error) {
+func (t *Path) ContainerHead() (string, error) {
 	return t.rootDir()
 }
 */

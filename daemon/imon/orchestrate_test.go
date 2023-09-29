@@ -17,7 +17,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemonhelper"
@@ -481,7 +481,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 	require.NoError(t, istatD.Start(setup.Ctx))
 
 	//c := c
-	p := path.T{Kind: path.KindSvc, Name: c.obj}
+	p := naming.Path{Kind: naming.KindSvc, Name: c.obj}
 
 	if c.lastBootID != "" {
 		t.Logf("set %s last instance boot id for test to %s", p, c.lastBootID)
@@ -584,7 +584,7 @@ func (c *crmSpy) getCalls() [][]string {
 	return append([][]string{}, c.calls...)
 }
 
-func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
+func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map[string]sideEffect) *crm {
 	bus := pubsub.BusFromContext(ctx)
 	c := crm{
 		crmSpy: crmSpy{
@@ -652,7 +652,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 		var (
 			evC = make(chan *msgbus.InstanceMonitorUpdated)
 
-			p = path.T{Kind: path.KindSvc, Name: c.obj}
+			p = naming.Path{Kind: naming.KindSvc, Name: c.obj}
 
 			monStarted bool
 

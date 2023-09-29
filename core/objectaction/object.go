@@ -25,7 +25,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -42,7 +42,7 @@ type (
 	// method implementation differ.
 	T struct {
 		actionrouter.T
-		Func func(context.Context, path.T) (any, error)
+		Func func(context.Context, naming.Path) (any, error)
 	}
 )
 
@@ -243,7 +243,7 @@ func WithServer(s string) funcopt.O {
 }
 
 // WithLocalRun sets a function to run if the action is local
-func WithLocalRun(f func(context.Context, path.T) (any, error)) funcopt.O {
+func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Func = f
@@ -716,7 +716,7 @@ func (t T) Do() error {
 
 // selectionDo executes in parallel the action on all selected objects supporting
 // the action.
-func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, path.T) (any, error)) ([]actionrouter.Result, error) {
+func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, naming.Path) (any, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)
 
 	paths, err := selection.Expand()
@@ -742,7 +742,7 @@ func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Cont
 	started := 0
 
 	for _, p := range paths {
-		go func(p path.T) {
+		go func(p naming.Path) {
 			result := actionrouter.Result{
 				Path:     p,
 				Nodename: hostname.Hostname(),
@@ -773,7 +773,7 @@ func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Cont
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
 // It starts new subscription before return to avoid missed events.
 // it starts go routine to watch events for expectation reached
-func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string, p path.T, errC chan<- error) {
+func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string, p naming.Path, errC chan<- error) {
 	var (
 		filters []string
 		msg     pubsub.Messager

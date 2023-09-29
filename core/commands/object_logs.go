@@ -8,10 +8,10 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
@@ -26,7 +26,7 @@ type (
 	}
 )
 
-func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) {
+func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (slog.Events, error) {
 	events := make(slog.Events, 0)
 	c, err := client.New(client.WithURL(node))
 	if err != nil {
@@ -43,7 +43,7 @@ func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) 
 	return events, nil
 }
 
-func (t *CmdObjectLogs) stream(node string, paths path.L) {
+func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -75,7 +75,7 @@ func (t *CmdObjectLogs) stream(node string, paths path.L) {
 	}
 }
 
-func nodesFromPath(p path.T) ([]string, error) {
+func nodesFromPath(p naming.Path) ([]string, error) {
 	o, err := object.NewCore(p, object.WithVolatile(true))
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func nodesFromPath(p path.T) ([]string, error) {
 	return o.Nodes()
 }
 
-func nodesFromPaths(paths path.L) ([]string, error) {
+func nodesFromPaths(paths naming.Paths) ([]string, error) {
 	m := make(map[string]any)
 	for _, p := range paths {
 		nodes, err := nodesFromPath(p)

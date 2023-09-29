@@ -6,7 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/funcopt"
@@ -31,7 +31,7 @@ type (
 		Actor
 		Head() string
 		Device() *device.T
-		HoldersExcept(ctx context.Context, p path.T) path.L
+		HoldersExcept(ctx context.Context, p naming.Path) naming.Paths
 	}
 )
 
@@ -118,8 +118,8 @@ func (t *vol) Device() *device.T {
 	return nil
 }
 
-func (t *vol) HoldersExcept(ctx context.Context, p path.T) path.L {
-	l := make(path.L, 0)
+func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) naming.Paths {
+	l := make(naming.Paths, 0)
 	type volNamer interface {
 		VolName() string
 	}

@@ -3,7 +3,7 @@ package instance
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/topology"
@@ -16,9 +16,9 @@ type (
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
 		App              string           `json:"app,omitempty"`
-		Checksum         string           `json:"csum"`
-		Children         path.Relations   `json:"children,omitempty"`
-		DRP              bool             `json:"drp,omitempty"`
+		Checksum        string           `json:"csum"`
+		Children        naming.Relations `json:"children,omitempty"`
+		DRP             bool             `json:"drp,omitempty"`
 		Env              string           `json:"env,omitempty"`
 		FlexMax          int              `json:"flex_max,omitempty"`
 		FlexMin          int              `json:"flex_min,omitempty"`
@@ -26,10 +26,10 @@ type (
 		MonitorAction    MonitorAction    `json:"monitor_action,omitempty"`
 		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
 		Nodename         string           `json:"-"`
-		Orchestrate      string           `json:"orchestrate"`
-		Path             path.T           `json:"-"`
-		Parents          path.Relations   `json:"parents,omitempty"`
-		PlacementPolicy  placement.Policy `json:"placement_policy"`
+		Orchestrate     string           `json:"orchestrate"`
+		Path            naming.Path      `json:"-"`
+		Parents         naming.Relations `json:"parents,omitempty"`
+		PlacementPolicy placement.Policy `json:"placement_policy"`
 		Priority         priority.T       `json:"priority,omitempty"`
 		Resources        ResourceConfigs  `json:"resources"`
 		Scope            []string         `json:"scope"`

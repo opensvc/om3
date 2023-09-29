@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
@@ -195,16 +195,16 @@ type (
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		File       string `json:"file" yaml:"file"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		File       string `json:"file" yaml:"file"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
 	}
 
 	ClientSubscribed struct {
@@ -288,8 +288,8 @@ type (
 	}
 
 	Exit struct {
-		Path path.T `json:"path" yaml:"path"`
-		File string `json:"file" yaml:"file"`
+		Path naming.Path `json:"path" yaml:"path"`
+		File string      `json:"file" yaml:"file"`
 	}
 
 	ForgetPeer struct {
@@ -339,78 +339,78 @@ type (
 
 	InstanceConfigDeleted struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 	}
 
 	InstanceConfigUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T          `json:"path" yaml:"path"`
-		Node       string          `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.Config `json:"instance_config" yaml:"instance_config"`
 	}
 
 	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
 	InstanceFrozenFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T    `json:"path" yaml:"path"`
-		File       string    `json:"file" yaml:"file"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
 		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
 	InstanceFrozenFileRemoved struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T    `json:"path" yaml:"path"`
-		File       string    `json:"file" yaml:"file"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
 		At         time.Time `json:"at" yaml:"at"`
 	}
 
 	InstanceMonitorAction struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T                 `json:"path" yaml:"path"`
-		Node       string                 `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Action     instance.MonitorAction `json:"action" yaml:"action"`
 		RID        string                 `json:"rid" yaml:"rid"`
 	}
 
 	InstanceMonitorDeleted struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 	}
 
 	InstanceMonitorUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T           `json:"path" yaml:"path"`
-		Node       string           `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.Monitor `json:"instance_monitor" yaml:"instance_monitor"`
 	}
 
 	InstanceStatusDeleted struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 	}
 
 	InstanceStatusPost struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T          `json:"path" yaml:"path"`
-		Node       string          `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.Status `json:"instance_status" yaml:"instance_status"`
 	}
 
 	InstanceStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T          `json:"path" yaml:"path"`
-		Node       string          `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.Status `json:"instance_status" yaml:"instance_status"`
 	}
 
 	InstanceConfigManagerDone struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		File       string `json:"file" yaml:"file"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
 	}
 
 	JoinError struct {
@@ -577,41 +577,41 @@ type (
 	ObjectOrchestrationEnd struct {
 		pubsub.Msg `yaml:",inline"`
 		Id         string `json:"id" yaml:"id"`
-		Node       string `json:"node" yaml:"node"`
-		Path       path.T `json:"path" yaml:"path"`
+		Node string      `json:"node" yaml:"node"`
+		Path naming.Path `json:"path" yaml:"path"`
 	}
 
 	ObjectOrchestrationRefused struct {
 		pubsub.Msg `yaml:",inline"`
 		Id         string `json:"id" yaml:"id"`
-		Node       string `json:"node" yaml:"node"`
-		Path       path.T `json:"path" yaml:"path"`
-		Reason     string `json:"reason" yaml:"reason"`
+		Node   string      `json:"node" yaml:"node"`
+		Path   naming.Path `json:"path" yaml:"path"`
+		Reason string      `json:"reason" yaml:"reason"`
 	}
 
 	ObjectStatusDeleted struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 	}
 
 	ObjectStatusDone struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
+		Path       naming.Path `json:"path" yaml:"path"`
 	}
 
 	ObjectStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T        `json:"path" yaml:"path"`
-		Node       string        `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      object.Status `json:"object_status" yaml:"object_status"`
 		SrcEv      any           `json:"source_event" yaml:"source_event"`
 	}
 
 	ProgressInstanceMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T                `json:"path" yaml:"path"`
-		Node       string                `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
 		SessionId  uuid.UUID             `json:"sessionId" yaml:"sessionId"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
@@ -626,8 +626,8 @@ type (
 
 	RemoteFileConfig struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T          `json:"path" yaml:"path"`
-		Node       string          `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		File       string          `json:"file" yaml:"file"`
 		UpdatedAt  time.Time       `json:"updated_at" yaml:"updated_at"`
 		Ctx        context.Context `json:"-" yaml:"-"`
@@ -636,16 +636,16 @@ type (
 
 	SetInstanceMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T                 `json:"path" yaml:"path"`
-		Node       string                 `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 		Err        chan error             `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitorRefused struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T                 `json:"path" yaml:"path"`
-		Node       string                 `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 	}
 
@@ -663,8 +663,8 @@ type (
 
 	ZoneRecordDeleted struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Name       string `json:"name" yaml:"name"`
 		Type       string `json:"type" yaml:"type"`
 		TTL        int    `json:"ttl" yaml:"ttl"`
@@ -672,8 +672,8 @@ type (
 	}
 	ZoneRecordUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       path.T `json:"path" yaml:"path"`
-		Node       string `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
 		Name       string `json:"name" yaml:"name"`
 		Type       string `json:"type" yaml:"type"`
 		TTL        int    `json:"ttl" yaml:"ttl"`

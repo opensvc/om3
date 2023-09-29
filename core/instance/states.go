@@ -3,7 +3,7 @@ package instance
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -11,8 +11,8 @@ type (
 
 	// States groups config and status of the object instance as seen by the daemon.
 	States struct {
-		Path    path.T  `json:"path"`
-		Node    Node    `json:"node,omitempty"`
+		Path naming.Path `json:"path"`
+		Node Node        `json:"node,omitempty"`
 		Config  Config  `json:"config,omitempty"`
 		Status  Status  `json:"status,omitempty"`
 		Monitor Monitor `json:"monitor,omitempty"`

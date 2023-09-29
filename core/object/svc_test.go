@@ -15,7 +15,7 @@ import (
 	"github.com/opensvc/om3/testhelper"
 
 	_ "github.com/opensvc/om3/core/driverdb"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
@@ -54,7 +54,7 @@ func TestAppStart(t *testing.T) {
 		conf = append(conf, sectionApp1...)
 		conf = append(conf, sectionEnv...)
 
-		p, err := path.Parse("conf1")
+		p, err := naming.Parse("conf1")
 		assert.NoError(t, err)
 
 		s, err := object.NewSvc(p, object.WithConfigData(conf))
@@ -87,7 +87,7 @@ func TestWithConfigData(t *testing.T) {
 			o   object.Svc
 			err error
 		)
-		p, _ := path.Parse("conf1")
+		p, _ := naming.Parse("conf1")
 		conf1 := map[string]map[string]string{
 			"app#1": {
 				"start": "/usr/bin/touch {env.flag1}",

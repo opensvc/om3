@@ -6,14 +6,14 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind path.Kind, name string, params api.GetObjectConfigParams) error {
+func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
 	var (
 		evaluate    bool
 		impersonate string
@@ -29,7 +29,7 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind pat
 	log := LogHandler(ctx, "GetObjectConfig")
 	log.Debug().Msg("starting")
 
-	objPath, err := path.New(namespace, kind, name)
+	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Info().Err(err).Send()
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
@@ -69,7 +69,7 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind pat
 	return ctx.JSON(http.StatusOK, resp)
 }
 
-func configData(p path.T, eval bool, impersonate string) (data *orderedmap.OrderedMap, err error) {
+func configData(p naming.Path, eval bool, impersonate string) (data *orderedmap.OrderedMap, err error) {
 	var o object.Configurer
 	var config rawconfig.T
 	if o, err = object.NewConfigurer(p, object.WithVolatile(true)); err != nil {

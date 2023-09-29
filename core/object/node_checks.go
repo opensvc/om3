@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/check"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/exe"
 	"github.com/opensvc/om3/util/hostname"
@@ -20,7 +20,7 @@ import (
 func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.Paths.Drivers, "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
-	paths, err := path.List()
+	paths, err := naming.List()
 	if err != nil {
 		return *check.NewResultSet(), err
 	}

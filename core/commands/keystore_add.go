@@ -5,7 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -33,7 +33,7 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 			"from":  t.From,
 			"value": t.Value,
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			store, err := object.NewKeystore(p)
 			if err != nil {
 				return nil, err

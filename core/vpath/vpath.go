@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/loop"
@@ -36,10 +36,10 @@ func HostPath(s string, namespace string) (string, error) {
 	if len(l) == 2 {
 		volRelativeSourcePath = l[1]
 	}
-	volPath := path.T{
+	volPath := naming.Path{
 		Name:      l[0],
 		Namespace: namespace,
-		Kind:      path.KindVol,
+		Kind:      naming.KindVol,
 	}
 	vol, err := object.NewVol(volPath)
 	if err != nil {
@@ -91,10 +91,10 @@ func HostDevpath(s string, namespace string) (string, error) {
 		}
 	}
 	// volume device
-	volPath := path.T{
+	volPath := naming.Path{
 		Name:      s,
 		Namespace: namespace,
-		Kind:      path.KindVol,
+		Kind:      naming.KindVol,
 	}
 	vol, err := object.NewVol(volPath)
 	if err != nil {

@@ -30,8 +30,8 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -61,7 +61,7 @@ type (
 		DirPerm     *os.FileMode `json:"dirperm"`
 		Signal      string       `json:"signal"`
 
-		Path     path.T
+		Path     naming.Path
 		Topology topology.T
 		Nodes    []string
 	}
@@ -244,7 +244,7 @@ func (t T) access() volaccess.T {
 }
 
 func (t *T) Volume() (object.Vol, error) {
-	p, err := path.New(t.Path.Namespace, path.KindVol, t.name())
+	p, err := naming.NewPath(t.Path.Namespace, naming.KindVol, t.name())
 	if err != nil {
 		return nil, err
 	}

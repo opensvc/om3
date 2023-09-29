@@ -13,7 +13,7 @@ import (
 	"github.com/danwakefield/fnmatch"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 )
@@ -275,14 +275,14 @@ func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, di
 }
 
 func (t keystore) postInstall(k string) error {
-	changedVolumes := make(map[path.T]interface{})
+	changedVolumes := make(map[naming.Path]interface{})
 	type resvoler interface {
-		InstallDataByKind(path.Kind) (bool, error)
-		HasMetadata(p path.T, k string) bool
+		InstallDataByKind(naming.Kind) (bool, error)
+		HasMetadata(p naming.Path, k string) bool
 		Volume() (Vol, error)
 		SendSignals() error
 	}
-	paths, err := path.List()
+	paths, err := naming.List()
 	if err != nil {
 		return err
 	}
@@ -290,7 +290,7 @@ func (t keystore) postInstall(k string) error {
 		if p.Namespace != t.path.Namespace {
 			continue
 		}
-		if p.Kind != path.KindSvc {
+		if p.Kind != naming.KindSvc {
 			continue
 		}
 		o, err := NewCore(p, WithVolatile(true))

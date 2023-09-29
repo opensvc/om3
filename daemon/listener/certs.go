@@ -10,7 +10,7 @@ import (
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -27,8 +27,8 @@ var (
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 
-	caPath   = path.T{Name: "ca", Namespace: "system", Kind: path.KindSec}
-	certPath = path.T{Name: "cert", Namespace: "system", Kind: path.KindSec}
+	caPath   = naming.Path{Name: "ca", Namespace: "system", Kind: naming.KindSec}
+	certPath = naming.Path{Name: "cert", Namespace: "system", Kind: naming.KindSec}
 )
 
 func startCertFS() error {
@@ -121,7 +121,7 @@ func installCaFiles(clusterName string) error {
 	caList := []string{caPath.String()}
 	caList = append(caList, ccfg.Get().CASecPaths...)
 	for _, p := range caList {
-		caPath, err := path.Parse(p)
+		caPath, err := naming.Parse(p)
 		if err != nil {
 			log.Logger.Warn().Err(err).Msgf("parse ca %s", p)
 			continue
@@ -192,7 +192,7 @@ func installCertFiles(clusterName string) error {
 	return nil
 }
 
-func bootStrapCaPath(p path.T) error {
+func bootStrapCaPath(p naming.Path) error {
 	log.Logger.Info().Msgf("create %s", p)
 	caSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
@@ -208,7 +208,7 @@ func bootStrapCaPath(p path.T) error {
 //	return false, nil when no v2 ca exists
 //	return true, != nil when migration fails
 func migrateCaPathV2(clusterName string) (ok bool, err error) {
-	caPathV2 := path.T{Name: "ca-" + clusterName, Namespace: "system", Kind: path.KindSec}
+	caPathV2 := naming.Path{Name: "ca-" + clusterName, Namespace: "system", Kind: naming.KindSec}
 	ok = caPathV2.Exists()
 	if !ok {
 		return
@@ -220,7 +220,7 @@ func migrateCaPathV2(clusterName string) (ok bool, err error) {
 	return
 }
 
-func bootStrapCertPath(p path.T, caPath path.T) error {
+func bootStrapCertPath(p naming.Path, caPath naming.Path) error {
 	log.Logger.Info().Msgf("create %s", p)
 	certSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
@@ -253,7 +253,7 @@ func getClusterName() (string, error) {
 //	return false, nil when no v2 cert exists
 //	return true, != nil when migration fails
 func migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
-	certPathV2 := path.T{Name: "cert-" + clusterName, Namespace: "system", Kind: path.KindSec}
+	certPathV2 := naming.Path{Name: "cert-" + clusterName, Namespace: "system", Kind: naming.KindSec}
 	hasV2cert = certPathV2.Exists()
 	if !hasV2cert {
 		return

@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -104,14 +104,14 @@ func (s *Data) WithNamespace(namespace string) *Data {
 	}
 	for nodename, nodeData := range s.Cluster.Node {
 		for ps := range nodeData.Instance {
-			p, _ := path.Parse(ps)
+			p, _ := naming.Parse(ps)
 			if p.Namespace != namespace {
 				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
 	for ps := range s.Cluster.Object {
-		p, _ := path.Parse(ps)
+		p, _ := naming.Parse(ps)
 		if p.Namespace != namespace {
 			delete(s.Cluster.Object, ps)
 		}
@@ -139,7 +139,7 @@ func (s *Data) GetNodeStatus(nodename string) *node.Status {
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (s *Data) GetObjectStatus(p path.T) object.Digest {
+func (s *Data) GetObjectStatus(p naming.Path) object.Digest {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p

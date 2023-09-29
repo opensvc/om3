@@ -2383,7 +2383,7 @@ components:
       type: array
       items:
         type: string
-        description: object path or an instance path (path@node)
+        description: object naming or an instance naming (naming@node)
     PlacementPolicy:
       type: string
       default: none
@@ -2509,9 +2509,9 @@ components:
         $ref: '#/components/schemas/Instance'
 
     Kind:
-      x-go-type: path.Kind
+      x-go-type: naming.Kind
       x-go-type-import:
-          path: github.com/opensvc/om3/core/path
+          path: github.com/opensvc/om3/core/naming
       type: string
       enum:
         - svc
@@ -2951,11 +2951,11 @@ components:
           $ref: '#/components/schemas/SANPathTarget'
     SANPathInitiator:
       type: object
-      description: initiator is the host side san path endpoint.
+      description: initiator is the host side san naming endpoint.
       properties:
         name:
           type: string
-          description: name is a worldwide unique path endpoint identifier.
+          description: name is a worldwide unique naming endpoint identifier.
           example: iqn.2004-10.com.ubuntu:01:e6bd4a3b554
         type:
           type: string
@@ -2963,11 +2963,11 @@ components:
           example: iscsi
     SANPathTarget:
       type: object
-      description: target is the storage array side san path endpoint.
+      description: target is the storage array side san naming endpoint.
       properties:
         name:
           type: string
-          description: name is a worldwide unique path endpoint identifier.
+          description: name is a worldwide unique naming endpoint identifier.
           example: iqn.2009-11.com.opensvc.srv:dev2n1.storage.target.1
         type:
           type: string
@@ -3008,19 +3008,19 @@ components:
   parameters:
 
     inPathName:
-      in: path
+      in: naming
       name: name
       required: true
       schema:
         type: string
     inPathNamespace:
-      in: path
+      in: naming
       name: namespace
       required: true
       schema:
         type: string
     inPathKind:
-      in: path
+      in: naming
       name: kind
       required: true
       schema:
@@ -3054,7 +3054,7 @@ components:
         type: array
         items:
           type: string
-          description: object path
+          description: object naming
           example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
     LogFilter:
       name: filter
@@ -3076,11 +3076,11 @@ components:
           type: string
           description: |
             filter expression: [kind][,label=value]*
-          example: ObjectStatusUpdated,path=foo
+          example: ObjectStatusUpdated,naming=foo
     DRBDConfigName:
       name: name
       in: query
-      description: the full path of the file is deduced from the name
+      description: the full naming of the file is deduced from the name
       required: true
       schema:
         type: string
@@ -3107,14 +3107,14 @@ components:
       schema:
         type: string
     ObjectPath:
-      name: path
+      name: naming
       in: query
-      description: object path
+      description: object naming
       required: true
       schema:
         type: string
     Path:
-      name: path
+      name: naming
       in: query
       description: object selector expression.
       required: true
@@ -3122,7 +3122,7 @@ components:
         type: string
         example: db1,web*
     PathOptional:
-      name: path
+      name: naming
       in: query
       description: object selector expression.
       schema:

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
@@ -39,9 +39,9 @@ func (t T) Head() string {
 	return t.GetString("template")
 }
 
-func (t T) template() (path.T, error) {
+func (t T) template() (naming.Path, error) {
 	s := t.GetString("template")
-	return path.Parse(s)
+	return naming.Parse(s)
 }
 
 func (t T) optionalVolumeEnv() []string {
@@ -69,7 +69,7 @@ func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	if !template.Exists() {
 		return nil, fmt.Errorf("template object %s does not exist", template)
 	}
-	if template.Kind != path.KindVol {
+	if template.Kind != naming.KindVol {
 		return nil, fmt.Errorf("template object %s is not a vol", template)
 	}
 	cf := template.ConfigFile()

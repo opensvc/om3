@@ -19,7 +19,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
@@ -33,7 +33,7 @@ import (
 type (
 	T struct {
 		status object.Status
-		path   path.T
+		path   naming.Path
 		id     string
 
 		discoverCmdC chan<- any
@@ -78,12 +78,12 @@ type (
 	}
 
 	IMonStarter interface {
-		Start(parent context.Context, p path.T, nodes []string) error
+		Start(parent context.Context, p naming.Path, nodes []string) error
 	}
 )
 
 // Start a goroutine responsible for the status of an object
-func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
+func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
 	id := p.String()
 	localhost := hostname.Hostname()
 	o := &T{

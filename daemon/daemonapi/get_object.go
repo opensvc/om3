@@ -7,8 +7,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -21,8 +21,8 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 	}
 }
 
-func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind path.Kind, name string) error {
-	p, err := path.New(namespace, kind, name)
+func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return err
 	}

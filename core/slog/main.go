@@ -12,7 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/tail"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/logging"
 	"github.com/rs/zerolog"
@@ -176,7 +176,7 @@ func GetEventStreamFromNode(filters map[string]interface{}) (*Stream, error) {
 	return GetEventStreamFromFiles(files, filters)
 }
 
-func GetEventStreamFromObjects(paths []path.T, filters map[string]interface{}) (*Stream, error) {
+func GetEventStreamFromObjects(paths []naming.Path, filters map[string]interface{}) (*Stream, error) {
 	files := make([]string, len(paths))
 	for i := 0; i < len(paths); i += 1 {
 		files[i] = paths[i].LogFile()
@@ -200,7 +200,7 @@ func GetEventsFromNode(filters map[string]interface{}) (Events, error) {
 	return GetEventsFromFile(file, filters)
 }
 
-func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Events, error) {
+func GetEventsFromObjects(paths []naming.Path, filters map[string]interface{}) (Events, error) {
 	events := make(Events, 0)
 	var errs error
 	for _, p := range paths {

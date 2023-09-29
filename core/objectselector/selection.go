@@ -15,8 +15,8 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/funcopt"
@@ -30,8 +30,8 @@ type (
 		hasClient          bool
 		client             *client.T
 		local              bool
-		paths              path.L
-		installed          path.L
+		paths              naming.Paths
+		installed          naming.Paths
 		installedSet       *orderedset.OrderedSet
 		server             string
 	}
@@ -85,10 +85,10 @@ func SelectionWithServer(server string) funcopt.O {
 	})
 }
 
-// SelectionWithInstalled forces a list of installed path.T
+// SelectionWithInstalled forces a list of installed naming.Path
 // The daemon knows the path of objects with no local instance, so better
-// to use that instead of crawling etc/ via path.List()
-func SelectionWithInstalled(installed path.L) funcopt.O {
+// to use that instead of crawling etc/ via naming.List()
+func SelectionWithInstalled(installed naming.Paths) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.installed = installed
@@ -106,7 +106,7 @@ func (t Selection) String() string {
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
-func (t *Selection) Expand() (path.L, error) {
+func (t *Selection) Expand() (naming.Paths, error) {
 	if t.paths != nil {
 		return t.paths, nil
 	}
@@ -129,7 +129,7 @@ func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
 	return s, nil
 }
 
-func (t *Selection) add(p path.T) {
+func (t *Selection) add(p naming.Path) {
 	pathStr := p.String()
 	for _, e := range t.paths {
 		if pathStr == e.String() {
@@ -140,7 +140,7 @@ func (t *Selection) add(p path.T) {
 }
 
 func (t *Selection) expand() error {
-	t.paths = make(path.L, 0)
+	t.paths = make(naming.Paths, 0)
 	if !t.local {
 		if !t.hasClient {
 			c, _ := client.New(
@@ -176,7 +176,7 @@ func (t *Selection) localExpand() error {
 			return err
 		}
 		for _, i := range pset.Values() {
-			p, _ := path.Parse(i.(string))
+			p, _ := naming.Parse(i.(string))
 			t.add(p)
 		}
 	}
@@ -251,12 +251,12 @@ func (t *Selection) localExpandOnePositive(s string) (*orderedset.OrderedSet, er
 
 // getInstalled returns the list of all paths with a locally installed
 // configuration file.
-func (t *Selection) getInstalled() (path.L, error) {
+func (t *Selection) getInstalled() (naming.Paths, error) {
 	if t.installed != nil {
 		return t.installed, nil
 	}
 	var err error
-	t.installed, err = path.List()
+	t.installed, err = naming.List()
 	if err != nil {
 		return t.installed, err
 	}
@@ -300,7 +300,7 @@ func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) 
 
 func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	matching := orderedset.NewOrderedSet()
-	p, err := path.Parse(s)
+	p, err := naming.Parse(s)
 	if err != nil {
 		return matching, err
 	}

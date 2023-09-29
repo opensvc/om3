@@ -24,7 +24,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/fqdn"
-	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
@@ -46,9 +46,9 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
-		PG              pg.Config      `json:"pg"`
-		Path            path.T         `json:"path"`
-		ObjectID        uuid.UUID      `json:"object_id"`
+		PG       pg.Config   `json:"pg"`
+		Path     naming.Path `json:"path"`
+		ObjectID uuid.UUID   `json:"object_id"`
 		SCSIReserv      bool           `json:"scsireserv"`
 		PromoteRW       bool           `json:"promote_rw"`
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
