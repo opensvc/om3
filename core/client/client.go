@@ -9,6 +9,7 @@ import (
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/rawconfig"
 	oapi "github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -208,7 +209,15 @@ func (t *T) newRequester() (err error) {
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
-			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
+			if nodesInfo, err := nodesinfo.Load(); err != nil {
+				t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
+			} else {
+				if nodeInfo, ok := nodesInfo[t.url]; ok && nodeInfo.Lsnr.Port != "" {
+					t.url += ":" + nodeInfo.Lsnr.Port
+				} else {
+					t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
+				}
+			}
 		}
 		t.url = reqh2.InetPrefix + t.url
 		t.ClientWithResponses, err = reqh2.NewInet(reqh2.Config{
