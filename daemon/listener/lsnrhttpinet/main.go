@@ -116,8 +116,10 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	t.bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{Addr: addr, Port: port, UpdatedAt: now}},
 		labelLocalhost)
 	defer func() {
-		node.LsnrData.Unset(localhost)
-		t.bus.Pub(&msgbus.ListenerDeleted{Node: localhost}, labelLocalhost)
+		now := time.Now()
+		node.LsnrData.Set(localhost, &node.Lsnr{UpdatedAt: now})
+		t.bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{UpdatedAt: now}},
+			labelLocalhost)
 	}()
 	t.log.Info().Msg("listener started")
 	errC <- nil

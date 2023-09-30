@@ -101,8 +101,6 @@ var (
 
 		"ListenerUpdated": func() any { return &ListenerUpdated{} },
 
-		"ListenerDeleted": func() any { return &ListenerDeleted{} },
-
 		"Log": func() any { return &Log{} },
 
 		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
@@ -471,11 +469,6 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string    `json:"node" yaml:"node"`
 		Lsnr       node.Lsnr `json:"lsnr" yaml:"lsnr"`
-	}
-
-	ListenerDeleted struct {
-		pubsub.Msg `yaml:",inline"`
-		Node       string `json:"node" yaml:"node"`
 	}
 
 	// Log is a log message.
@@ -897,10 +890,6 @@ func (e *LeaveSuccess) Kind() string {
 
 func (e *ListenerUpdated) Kind() string {
 	return "ListenerUpdated"
-}
-
-func (e *ListenerDeleted) Kind() string {
-	return "ListenerDeleted"
 }
 
 func (e *Log) Kind() string {
