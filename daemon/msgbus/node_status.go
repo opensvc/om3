@@ -1,6 +1,8 @@
 package msgbus
 
-import "github.com/opensvc/om3/core/node"
+import (
+	"github.com/opensvc/om3/core/node"
+)
 
 // onNodeStatusUpdated updates .cluster.node.<node>.status from msgbus.NodeStatusUpdated and from gen cache.
 // The gen cache contains synchronously updated gen values, and this may avoid undue path->full->patch meassage type
