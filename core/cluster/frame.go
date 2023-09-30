@@ -54,11 +54,12 @@ var (
 type (
 	// Frame exposes daemon status renderer tunables.
 	Frame struct {
-		Nodes    []string
-		Sections []string
-		Current  Data
-		Previous Data
-		Stats    Stats
+		Localhost string
+		Nodes     []string
+		Sections  []string
+		Current   Data
+		Previous  Data
+		Stats     Stats
 
 		// private
 		w           *tabwriter.TabWriter

@@ -3,7 +3,6 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render/listener"
 )
 
@@ -40,14 +39,22 @@ func (f Frame) wThreadCollector() string {
 func (f Frame) wThreadListener() string {
 	var s string
 	s += bold(" listener") + "\t"
-	if f.Current.Daemon.Listener.State == "running" {
+	if f.Current.Cluster.Node[f.Localhost].Status.Lsnr.Port != "" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
 	}
-	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Daemon.Listener.Config.Addr, f.Current.Daemon.Listener.Config.Port))
+	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Daemon.Listener.Config.Addr, f.Current.Cluster.Config.Listener.Port))
 	s += f.info.separator + "\t"
-	s += f.info.emptyNodes
+	for _, node := range f.Current.Cluster.Config.Nodes {
+		port := f.Current.Cluster.Node[node].Status.Lsnr.Port
+		switch port {
+		case "":
+			s += iconDownIssue + "\t"
+		default:
+			s += port + "\t"
+		}
+	}
 	return s
 }
 
@@ -112,7 +119,7 @@ func (f Frame) wThreadHeartbeats() string {
 		s += "\t" + hbStatus.Type + "\t"
 		s += f.info.separator + "\t"
 		for _, peer := range f.Current.Cluster.Config.Nodes {
-			if peer == hostname.Hostname() {
+			if peer == f.Localhost {
 				s += iconNotApplicable + "\t"
 				continue
 			}
