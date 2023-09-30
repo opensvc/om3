@@ -79,10 +79,14 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Quorum = o.clusterConfig.GetBool(keyQuorum)
 
 	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
-	if v, err := o.clusterConfig.Eval(keyListenerAddr); err == nil {
+	if v, err := o.clusterConfig.Eval(keyListenerAddr); err != nil {
+		o.log.Error().Err(err).Msg("eval listener port")
+	} else {
 		cfg.Listener.Addr = v.(string)
 	}
-	if v, err := o.clusterConfig.Eval(keyListenerPort); err == nil {
+	if v, err := o.clusterConfig.Eval(keyListenerPort); err != nil {
+		o.log.Error().Err(err).Msg("eval listener port")
+	} else {
 		cfg.Listener.Port = v.(int)
 	}
 	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIdWellKnown)
