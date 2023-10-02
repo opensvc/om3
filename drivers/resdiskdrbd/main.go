@@ -143,7 +143,7 @@ func (t T) WaitKnownDiskStates(dev DRBDDriver) error {
 			return nil
 		}
 		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return fmt.Errorf("Timeout waiting for peers to have a known dstate")
+			return fmt.Errorf("timeout waiting for peers to have a known dstate")
 		}
 		time.Sleep(WaitKnownDiskStatesDelay)
 	}
@@ -584,7 +584,7 @@ func (t T) fetchConfig() error {
 		}
 		return nil
 	}
-	return fmt.Errorf("Failed to fetch %s, tried node %s", cf, t.Nodes)
+	return fmt.Errorf("failed to fetch %s, tried node %s", cf, t.Nodes)
 }
 
 func (t T) writeConfig(ctx context.Context) error {
@@ -671,7 +671,7 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	case 500:
 		return fmt.Errorf("%s", resp.JSON500)
 	default:
-		return fmt.Errorf("Unexpected status code: %s", resp.Status())
+		return fmt.Errorf("unexpected status code: %s", resp.Status())
 	}
 }
 
