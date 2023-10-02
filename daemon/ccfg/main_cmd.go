@@ -18,9 +18,10 @@ import (
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (o *ccfg) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
-	if err := o.clusterConfig.Reload(); err != nil {
-		o.log.Error().Err(err).Msg("reload merged config")
-		return
+	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
+		o.log.Error().Err(err).Msg("can't create volatile cluster object on config file updated")
+	} else {
+		o.clusterConfig = n.Config()
 	}
 	o.pubClusterConfig()
 }
