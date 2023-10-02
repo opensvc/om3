@@ -53,7 +53,7 @@ func (c *Data[T]) Set(p naming.Path, nodename string, v *T) {
 	c.data[id] = v
 }
 
-// Set removes an instance data
+// Unset removes an instance data
 func (c *Data[T]) Unset(p naming.Path, nodename string) {
 	id := p.String() + "@" + nodename
 	c.Lock()

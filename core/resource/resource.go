@@ -383,7 +383,7 @@ func (t T) RestartCount() int {
 	return t.Restart
 }
 
-// RestartDelay returns the duration between 2 restarts
+// GetRestartDelay returns the duration between 2 restarts
 func (t T) GetRestartDelay() time.Duration {
 	if t.RestartDelay == nil {
 		return 500 * time.Millisecond

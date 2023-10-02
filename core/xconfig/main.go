@@ -15,6 +15,9 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
@@ -24,8 +27,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xstrings"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -42,7 +43,7 @@ type (
 		changed        bool
 	}
 
-	// Referer is the interface implemented by node and object to
+	// Referrer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
 		KeywordLookup(key.T, string) keywords.Keyword

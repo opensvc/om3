@@ -82,7 +82,7 @@ func (t Mgr) Register(c *Config) {
 	}
 }
 
-// Chain return the list of self and parents from closest to farthest
+// RevChain returns the list of self and parents from closest to farthest
 func RevChain(id string) []string {
 	chain := make([]string, 0)
 	for {

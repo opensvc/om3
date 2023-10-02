@@ -5,7 +5,7 @@ func (t *Vol) GetProperty(prop string) (string, error) {
 	return datasetGetProperty(t, prop)
 }
 
-// GetProperty sets a dataset property value
+// SetProperty sets a dataset property value
 func (t *Vol) SetProperty(prop, value string) error {
 	return datasetSetProperty(t, prop, value)
 }

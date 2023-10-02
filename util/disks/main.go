@@ -77,7 +77,7 @@ func (d *Disk) Used() (used uint64, err error) {
 	return
 }
 
-// List return the list of disks visible on the node.
+// GetDisks return the list of disks visible on the node.
 // Multipath paths are not considered disks.
 func GetDisks(claims ObjectsDeviceClaims) (Disks, error) {
 	l := make(Disks, 0)

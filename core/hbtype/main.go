@@ -21,7 +21,7 @@ type (
 		Nodename  string                   `json:"nodename"`
 	}
 
-	// IdStopper
+	// IdStopper is the interface to stop a hb driver
 	IdStopper interface {
 		Id() string
 		Stop() error

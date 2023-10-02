@@ -1,5 +1,5 @@
 /*
-Volume resource driver
+Package resvol is the volume resource driver
 
 A volume resource is linked to a volume object named <name> in the
 namespace of the service.

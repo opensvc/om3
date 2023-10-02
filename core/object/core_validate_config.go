@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 )
 
-// ValidateConfig
+// ValidateConfig validates the configuration
 func (t *core) ValidateConfig(ctx context.Context) (xconfig.ValidateAlerts, error) {
 	ctx = actioncontext.WithProps(ctx, actioncontext.ValidateConfig)
 	unlock, err := t.lockAction(ctx)

@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 )
 
-// Start starts the local instance of the object
+// PushResInfo pushes resources information of the local instance of the object
 func (t *actor) PushResInfo(ctx context.Context) (resource.Infos, error) {
 	ctx = actioncontext.WithProps(ctx, actioncontext.PushResInfo)
 	if err := t.validateAction(); err != nil {

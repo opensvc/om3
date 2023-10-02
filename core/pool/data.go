@@ -33,7 +33,7 @@ func (c *Data[T]) Set(name string, v *T) {
 	c.data[name] = v
 }
 
-// Set removes an instance data
+// Unset removes an instance data
 func (c *Data[T]) Unset(name string) {
 	c.Lock()
 	defer c.Unlock()

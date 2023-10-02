@@ -75,7 +75,7 @@ func (t T) SortKey() string {
 	}
 }
 
-// Stop the Resource
+// CommonStop stops the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	t.Log().Debug().Msg("CommonStop()")
 	var opts []funcopt.O
@@ -144,7 +144,7 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 	return true
 }
 
-// Status evaluates and display the Resource status and logs
+// CommonStatus evaluates and display the Resource status and logs
 func (t *T) CommonStatus(ctx context.Context) status.T {
 	t.Log().Debug().Msg("status()")
 	var opts []funcopt.O
@@ -217,7 +217,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 	return command.CmdArgsFromString(baseCommand)
 }
 
-// cmdArgs returns the command argv of an action
+// CmdArgs returns the command argv of an action
 func (t T) CmdArgs(s string, action string) ([]string, error) {
 	if len(s) == 0 {
 		t.Log().Debug().Msgf("nothing to do for action '%v'", action)

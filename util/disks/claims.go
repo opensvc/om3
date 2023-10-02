@@ -11,7 +11,7 @@ type (
 	// DeviceClaims is a dedup-map indexed by block device path.
 	DeviceClaims map[string]interface{}
 
-	// ObjectDeviceClaims is a map of DeviceClaims indexed by object path.
+	// ObjectsDeviceClaims is a map of DeviceClaims indexed by object path.
 	// It links objects to block device paths.
 	ObjectsDeviceClaims map[string]DeviceClaims
 

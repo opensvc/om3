@@ -1,4 +1,4 @@
-// Parses a posix arguments string using shlex.Split() and proposes
+// Package args parses a posix arguments string using shlex.Split() and proposes
 // methods to drop options and option-values.
 //
 // Example:
@@ -76,7 +76,7 @@ func (t *T) DropOption(s string) {
 	})
 }
 
-// DropOptionAndValue removes from args the elements matching s and the
+// DropOptionAndAnyValue removes from args the elements matching s and the
 // following element, considered the value of the option. If multiple
 // elements match, they are all removed.
 func (t *T) DropOptionAndAnyValue(s string) {

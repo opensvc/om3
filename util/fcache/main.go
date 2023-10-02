@@ -1,4 +1,4 @@
-// package fcache provide session cache for functions
+// Package fcache provide session cache for functions
 package fcache
 
 import (
@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/fcache"
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
+
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -28,7 +29,7 @@ func Clear(sig string) error {
 	return fcache.Clear(sig, cacheDir(), maxLockDuration, outputLockP)
 }
 
-// Purge session function cache
+// PurgeCache purges session cache
 func PurgeCache() error {
 	cacheDir := cacheDir()
 	if !strings.Contains(cacheDir, "/cache/") {

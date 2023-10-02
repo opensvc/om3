@@ -38,7 +38,7 @@ func GetClusterIps() clusterip.L {
 	return cips
 }
 
-// GetNetworks returns network status list.
+// GetNetworkIp returns network status list.
 func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams) error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
