@@ -327,7 +327,6 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 	case <-time.After(*t.StartTimeout):
 		return fmt.Errorf("timeout")
 	}
-	return nil
 }
 
 func (t T) create(ctx context.Context) (*container.Container, error) {
