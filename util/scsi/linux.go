@@ -5,7 +5,6 @@ package scsi
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,11 +81,11 @@ func ScanAllBusTargetLun(b, t, l string) error {
 func ScanHostDirBusTargetLun(h, b, t, l string) error {
 	filename := fmt.Sprintf("%s/scan", h)
 	s := fmt.Sprintf("%s %s %s", b, t, l)
-	return ioutil.WriteFile(filename, []byte(s), os.ModePerm)
+	return os.WriteFile(filename, []byte(s), os.ModePerm)
 }
 
 func ScanHostBusTargetLun(h, b, t, l string) error {
 	filename := fmt.Sprintf("/sys/class/scsi_host/host%s/scan", h)
 	s := fmt.Sprintf("%s %s %s", b, t, l)
-	return ioutil.WriteFile(filename, []byte(s), os.ModePerm)
+	return os.WriteFile(filename, []byte(s), os.ModePerm)
 }

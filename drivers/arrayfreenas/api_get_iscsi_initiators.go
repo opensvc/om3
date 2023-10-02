@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -180,7 +179,7 @@ func (c *ClientWithResponses) GetISCSIInitiatorsWithResponse(ctx context.Context
 
 // ParseGetISCSIInitiatorsResponse parses an HTTP response from a GetISCSIInitiatorsWithResponse call
 func ParseGetISCSIInitiatorsResponse(rsp *http.Response) (*GetISCSIInitiatorsResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

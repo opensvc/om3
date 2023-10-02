@@ -3,7 +3,7 @@ package arrayfreenas
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -33,7 +33,7 @@ func (r DeleteISCSITargetExtentResponse) StatusCode() int {
 
 // ParseDeleteISCSITargetExtentResponse parses an HTTP response from a DeleteISCSITargetExtentWithResponse call
 func ParseDeleteISCSITargetExtentResponse(rsp *http.Response) (*DeleteISCSITargetExtentResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
