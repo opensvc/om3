@@ -194,6 +194,8 @@ func (o *nmon) Start(parent context.Context) error {
 	if err := o.loadAndPublishConfig(); err != nil {
 		return err
 	}
+	// ensure saveNodesInfo is called once.
+	o.saveNodesInfo()
 
 	bootID := bootid.Get()
 	if len(bootID) > 0 {
