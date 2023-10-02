@@ -403,6 +403,11 @@ func (t Path) LogFile() string {
 	return filepath.Join(t.LogDir(), t.Name+".log")
 }
 
+// FrozenFile returns the path of the flag file blocking orchestrations and resource restart.
+func (t Path) FrozenFile() string {
+	return filepath.Join(t.VarDir(), "frozen")
+}
+
 // ConfigFile returns the object configuration file path on the local filesystem.
 func (t Path) ConfigFile() string {
 	s := t.String()

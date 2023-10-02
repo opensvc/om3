@@ -8,11 +8,11 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/icfg"
@@ -167,13 +167,13 @@ func (d *discover) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	d.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
 }
 
-func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteConfig instance.Config) {
+func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
 	s := p.String()
 
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	// Never drop local cluster config, ignore remote config older that local
-	if !p.Equal(naming.Cluster) && remoteConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteConfig) {
+	if !p.Equal(naming.Cluster) && remoteInstanceConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteInstanceConfig) {
 		d.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
@@ -185,17 +185,17 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteConfi
 		return
 	}
 	if mtime, ok := d.cfgMTime[s]; ok {
-		if !remoteConfig.UpdatedAt.After(mtime) {
+		if !remoteInstanceConfig.UpdatedAt.After(mtime) {
 			// our version is more recent than remote one
 			return
 		}
-	} else if !remoteConfig.UpdatedAt.After(localUpdated) {
+	} else if !remoteInstanceConfig.UpdatedAt.After(localUpdated) {
 		// Not yet started icfg, but file exists
 		return
 	}
 	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required
-		if remoteConfig.UpdatedAt.After(remoteFetcherUpdated) {
+		if remoteInstanceConfig.UpdatedAt.After(remoteFetcherUpdated) {
 			d.log.Warn().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
 			d.cancelFetcher(s)
 		} else {
@@ -204,7 +204,7 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteConfi
 		}
 	}
 	d.log.Info().Msgf("fetch config %s from node %s", s, node)
-	d.fetchConfigFromRemote(p, node, remoteConfig.UpdatedAt)
+	d.fetchConfigFromRemote(p, node, remoteInstanceConfig)
 }
 
 func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
@@ -221,26 +221,37 @@ func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 }
 
 func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
+
+	freezeIfOrchestrateHA := func(confFile string) error {
+		if !c.Freeze {
+			return nil
+		}
+		if err := freeze.Freeze(c.Path.FrozenFile()); err != nil {
+			d.log.Error().Err(err).Msgf("can't freeze instance before installing %s config fetched from %s", c.Path, c.Node)
+			return err
+		}
+		d.log.Info().Msgf("freeze instance before installing %s config fetched from %s", c.Path, c.Node)
+		return nil
+	}
+
 	defer d.cancelFetcher(c.Path.String())
 	select {
 	case <-c.Ctx.Done():
 		c.Err <- nil
-		return
 	default:
-		var prefix string
-		if c.Path.Namespace != "root" {
-			prefix = "namespaces/"
+		confFile := c.Path.ConfigFile()
+		if err := freezeIfOrchestrateHA(confFile); err != nil {
+			c.Err <- err
+			return
 		}
-		s := c.Path.String()
-		confFile := rawconfig.Paths.Etc + "/" + prefix + s + ".conf"
-		d.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
-		err := os.Rename(c.File, confFile)
-		if err != nil {
-			d.log.Error().Err(err).Msgf("can't install fetched config to %s", confFile)
+		if err := os.Rename(c.File, confFile); err != nil {
+			d.log.Error().Err(err).Msgf("can't install %s config fetched from %s to %s", c.Path, c.Node, confFile)
+			c.Err <- err
+		} else {
+			d.log.Info().Msgf("install %s config fetched from %s", c.Path, c.Node)
 		}
-		c.Err <- err
+		c.Err <- nil
 	}
-	return
 }
 
 func (d *discover) inScope(cfg *instance.Config) bool {
@@ -265,7 +276,7 @@ func (d *discover) cancelFetcher(s string) {
 	}
 }
 
-func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, updated time.Time) {
+func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
 		d.log.Error().Msgf("fetcher already in progress for %s from %s", s, n)
@@ -274,7 +285,7 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, updated tim
 	ctx, cancel := context.WithCancel(d.ctx)
 	d.fetcherCancel[s] = cancel
 	d.fetcherFrom[s] = peer
-	d.fetcherUpdated[s] = updated
+	d.fetcherUpdated[s] = remoteInstanceConfig.UpdatedAt
 	if _, ok := d.fetcherNodeCancel[peer]; ok {
 		d.fetcherNodeCancel[peer][s] = cancel
 	} else {
@@ -290,7 +301,7 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, updated tim
 		d.log.Error().Msgf("can't create newDaemonClient to fetch %s from %s", p, peer)
 		return
 	}
-	go fetch(ctx, cli, p, peer, d.cfgCmdC)
+	go fetch(ctx, cli, p, peer, d.cfgCmdC, remoteInstanceConfig)
 }
 
 func (d *discover) newDaemonClient(node, port string) (*client.T, error) {
@@ -303,7 +314,7 @@ func (d *discover) newDaemonClient(node, port string) (*client.T, error) {
 	)
 }
 
-func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC chan<- any) {
+func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
 	id := p.String() + "@" + node
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "cfg.fetch").Str("id", id).Logger()
 
@@ -337,6 +348,10 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC 
 		log.Info().Msgf("invalid scope %s", nodes)
 		return
 	}
+	var freeze bool
+	if remoteInstanceConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
+		freeze = true
+	}
 	select {
 	case <-ctx.Done():
 		log.Info().Msgf("abort fetch config %s", id)
@@ -347,6 +362,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC 
 			Path:      p,
 			Node:      node,
 			File:      tmpFilename,
+			Freeze:    freeze,
 			UpdatedAt: updated,
 			Ctx:       ctx,
 			Err:       err,

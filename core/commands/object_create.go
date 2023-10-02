@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -356,6 +358,7 @@ func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
+
 	ops := keyop.ParseOps(t.Keywords)
 	if !t.Restore {
 		op := keyop.Parse("id=" + uuid.New().String())
@@ -364,7 +367,21 @@ func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 		}
 		ops = append(ops, *op)
 	}
-	return oc.Config().SetKeys(ops...)
+
+	if err := oc.Config().SetKeys(ops...); err != nil {
+		return err
+	}
+
+	// Freeze if orchestrate==ha and freeze capable, so the daemon
+	// doesn't decide to start the instance too soon.
+	orchestrate := oc.Config().GetString(key.Parse("orchestrate"))
+	if oa, ok := o.(object.Actor); ok && orchestrate == "ha" {
+		if err := oa.Freeze(context.Background()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t CmdObjectCreate) localEmpty(p naming.Path) error {
