@@ -1316,22 +1316,6 @@ func newCmdNodeSysreport() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeThaw() *cobra.Command {
-	var options commands.CmdNodeUnfreeze
-	cmd := &cobra.Command{
-		Use:     "thaw",
-		Short:   "unblock ha automatic start and split action",
-		Hidden:  true,
-		Aliases: []string{"thaw"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdNodeUnfreeze() *cobra.Command {
 	var options commands.CmdNodeUnfreeze
 	cmd := &cobra.Command{
