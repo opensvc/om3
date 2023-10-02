@@ -637,6 +637,7 @@ type (
 		Path       naming.Path     `json:"path" yaml:"path"`
 		Node       string          `json:"node" yaml:"node"`
 		File       string          `json:"file" yaml:"file"`
+		Freeze     bool            `json:"freeze yaml:"freeze"`
 		UpdatedAt  time.Time       `json:"updated_at" yaml:"updated_at"`
 		Ctx        context.Context `json:"-" yaml:"-"`
 		Err        chan error      `json:"-" yaml:"-"`
