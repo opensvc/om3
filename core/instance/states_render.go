@@ -24,8 +24,9 @@ func (t States) Tree() *tree.Tree {
 	return newTree
 }
 
-// LoadTreeNode add the tree nodes representing the type instance into another
+// LoadTreeNodeFolded add the tree nodes representing the type instance into another
 // tree, at the specified node.
+// TODO: probable bug, LoadTreeNodeFolded duplicate code of LoadTreeNode
 func (t States) LoadTreeNodeFolded(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()

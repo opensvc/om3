@@ -1,10 +1,11 @@
 package zfs
 
 import (
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -16,9 +17,10 @@ type (
 	}
 )
 
-// FilesystemDestroyWithForce forces an unmount of any file systems using the
+// FilesystemDestroyWithRemoveSnapshots forces an unmount of any file systems using the
 // unmount -f command.  This option has no effect on non-file systems or
 // unmounted file systems.
+// TODO: fix above doc ?
 func FilesystemDestroyWithRemoveSnapshots(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*fsDestroyOpts)

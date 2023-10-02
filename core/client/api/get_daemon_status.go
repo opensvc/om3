@@ -33,7 +33,7 @@ func NewGetDaemonStatus(t api.ClientInterface) *GetDaemonStatus {
 	return options
 }
 
-// Do fetches the daemon status structure from the agent api
+// Get fetches the daemon status structure from the agent api
 func (t GetDaemonStatus) Get() ([]byte, error) {
 	params := api.GetDaemonStatusParams{
 		Namespace: t.namespace,

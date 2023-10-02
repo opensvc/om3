@@ -11,7 +11,7 @@ type (
 	// which makes sure the local nodename is in the resulting []string.
 	TNodesConverter string
 
-	// TNodesConverter is the type of converter used for the drpnodes and
+	// TOtherNodesConverter is the type of converter used for the drpnodes and
 	// encapnodes keyword, which accepts to return an empty list.
 	TOtherNodesConverter string
 )

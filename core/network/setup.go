@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// The cniVersion key value in generated CNI network configuration files
+	// The CNIVersion key value in generated CNI network configuration files
 	CNIVersion = "0.3.0"
 )
 

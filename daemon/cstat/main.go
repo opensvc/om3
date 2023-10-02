@@ -1,4 +1,4 @@
-// cstat is responsible of the cluster status
+// Package cstat is responsible for the cluster status
 //
 // It provides:
 //

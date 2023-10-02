@@ -137,7 +137,7 @@ var (
 		"":        MonitorGlobalExpectZero,
 	}
 
-	// the node monitor states evicting a node from ranking algorithms
+	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
 		MonitorStateMaintenance: nil,
 		MonitorStateUpgrade:     nil,

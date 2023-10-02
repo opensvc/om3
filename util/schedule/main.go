@@ -238,7 +238,7 @@ func (t timerange) TestIncludes(tm time.Time) error {
 	return fmt.Errorf("%w: not in timerange %s-%s", ErrNotAllowed, t.begin, t.end)
 }
 
-// TestIncludes returns true if <tm> is in the Timerange
+// Includes returns true if <tm> is in the Timerange
 func (t timerange) Includes(tm time.Time) bool {
 	err := t.TestIncludes(tm)
 	return err == nil

@@ -70,7 +70,7 @@ func WithClient(client *client.T) funcopt.O {
 	})
 }
 
-// WithClient sets the client struct key
+// WithLogger sets the logger
 func WithLogger(log zerolog.Logger) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)

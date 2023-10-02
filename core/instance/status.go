@@ -107,7 +107,7 @@ func (a ResourceOrder) Less(i, j int) bool {
 	}
 }
 
-// resourceFlagsString formats resource flags as a vector of characters.
+// ResourceFlagsString formats resource flags as a vector of characters.
 //
 //	R  Running
 //	M  Monitored

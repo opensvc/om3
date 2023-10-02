@@ -1,4 +1,4 @@
-// vpath is a helper package easing the expansion of a virtual path like
+// Package vpath is a helper package easing the expansion of a virtual path like
 // vol1/etc/nginx.conf to a host path like
 // /srv/svc1data.ns1.vol.clu1/etc/nginx.conf
 package vpath
@@ -20,7 +20,7 @@ var (
 	ErrAccess = errors.New("vol is not accessible")
 )
 
-// Realpath expand a volume-relative path to a host full path.
+// HostPath expand a volume-relative path to a host full path.
 //
 // Example:
 //
@@ -72,6 +72,7 @@ func HostPaths(l []string, namespace string) ([]string, error) {
 	return l, nil
 }
 
+// HostDevpath returns host device path for a volume
 // translation rules:
 // INPUT        VOL     OUPUT       COMMENT
 // /path                /dev/sda1   loop dev

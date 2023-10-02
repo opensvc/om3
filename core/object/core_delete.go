@@ -10,8 +10,9 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-// Delete is the 'delete' object action entrypoint.
+// DeleteSection deletes a resource section from object.
 //
+// TODO: Fix/verify following doc
 // If no resource selector is set, remove all etc, var and log
 // file belonging to the object.
 //

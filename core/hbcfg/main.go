@@ -1,5 +1,5 @@
 /*
-Package hb provides helpers to create hb drivers from configuration
+Package hbcfg provides helpers to create hb drivers from configuration
 
 candidate hb drivers needs to be registered before use
 

@@ -107,7 +107,7 @@ func WithStdoutLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
-// WithStdoutLogLevel sets the level of the log entries coming from the process stderr
+// WithStderrLogLevel sets the level of the log entries coming from the process stderr
 // If not set, stderr lines are not logged.
 func WithStderrLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
