@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	regexpQueryLine = regexp.MustCompile(`/dev/raw/raw([0-9]+):  bound to major ([0-9]+), minor ([0-9]+)`)
+	regexpQueryLine = regexp.MustCompile(`/dev/raw/raw([0-9]+): {2}bound to major ([0-9]+), minor ([0-9]+)`)
 	ErrExist        = errors.New("the raw device is already bound")
 )
 
