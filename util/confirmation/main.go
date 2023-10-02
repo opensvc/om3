@@ -103,6 +103,4 @@ func ReadLn(description string, timeout time.Duration) (string, error) {
 			}
 		}
 	}
-	fmt.Println("")
-	return "", nil
 }

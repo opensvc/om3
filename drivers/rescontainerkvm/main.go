@@ -930,5 +930,4 @@ func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) erro
 		}
 		time.Sleep(interval)
 	}
-	panic("")
 }

@@ -39,7 +39,6 @@ func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-ch
 				case <-ticker.C:
 				}
 			}
-			return
 		case c := <-begin:
 			startTime = time.Now()
 			cmd = c

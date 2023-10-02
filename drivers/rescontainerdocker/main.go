@@ -299,7 +299,6 @@ func (t T) Start(ctx context.Context) error {
 		}
 		return t.start(ctx, c)
 	}
-	return nil
 }
 
 func (t T) start(ctx context.Context, c *container.Container) error {

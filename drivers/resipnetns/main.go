@@ -297,7 +297,6 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 			}
 			return nil
 		}
-		return nil
 	}); err != nil {
 		return err
 	}

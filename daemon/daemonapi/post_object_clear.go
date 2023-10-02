@@ -16,7 +16,6 @@ func (a *DaemonApi) PostInstanceClear(ctx echo.Context, namespace string, kind n
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
-		return err
 	}
 	state := instance.MonitorStateIdle
 	instMonitor := instance.MonitorUpdate{
