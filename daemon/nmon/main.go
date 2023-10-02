@@ -185,6 +185,7 @@ func (o *nmon) Start(parent context.Context) error {
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.databus = daemondata.FromContext(o.ctx)
 	o.bus = pubsub.BusFromContext(o.ctx)
+	o.nodeStatus.Pid = os.Getpid()
 
 	// trigger an initial pool status eval
 	o.poolC <- nil

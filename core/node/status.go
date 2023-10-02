@@ -21,6 +21,7 @@ type (
 		IsSpeaker       bool                        `json:"is_speaker"`
 		Labels          Labels                      `json:"labels"`
 		Lsnr            Lsnr                        `json:"lsnr"`
+		Pid             int                         `json:"pid"`
 	}
 
 	// Instances groups instances configuration digest and status
