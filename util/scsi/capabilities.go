@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-version"
+
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 )
@@ -85,7 +85,7 @@ func mpathVersion() (string, error) {
 }
 
 func isMpathReservationKeyConfigured() (bool, error) {
-	b, err := ioutil.ReadFile("/etc/multipath.conf")
+	b, err := os.ReadFile("/etc/multipath.conf")
 	if os.IsNotExist(err) {
 		return false, nil
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -97,7 +97,7 @@ func (c *ClientWithResponses) GetSystemInfoWithResponse(ctx context.Context, req
 
 // ParseGetSystemInfoResponse parses an HTTP response from a GetSystemInfoWithResponse call
 func ParseGetSystemInfoResponse(rsp *http.Response) (*GetSystemInfoResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

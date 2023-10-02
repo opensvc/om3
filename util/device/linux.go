@@ -5,7 +5,6 @@ package device
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,7 +92,7 @@ func (t T) Delete() error {
 		return err
 	}
 	p = p + "/device/delete"
-	return ioutil.WriteFile(p, []byte("1"), os.ModePerm)
+	return os.WriteFile(p, []byte("1"), os.ModePerm)
 }
 
 func (t T) SlaveHosts() ([]string, error) {
@@ -195,7 +194,7 @@ func (t T) IsMultipath() (bool, error) {
 		return false, err
 	}
 	p += "/dm/uuid"
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	switch {
 	case os.IsNotExist(err):
 		return false, nil
@@ -246,7 +245,7 @@ func (t T) scsiIdentityString(s string) (string, error) {
 		return "", err
 	}
 	p += "/device/" + s
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return "", err
 	}
