@@ -209,17 +209,22 @@ func (t *T) newRequester() (err error) {
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
-			if nodesInfo, err := nodesinfo.Load(); err != nil {
-				t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
-			} else {
-				if nodeInfo, ok := nodesInfo[t.url]; ok && nodeInfo.Lsnr.Port != "" {
-					t.url += ":" + nodeInfo.Lsnr.Port
-				} else {
-					t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
+			if nodesInfo, err := nodesinfo.Load(); err == nil {
+				addr := nodesInfo[t.url].Lsnr.Addr
+				if addr == "::" || addr == "" {
+					addr = t.url
 				}
+				port := nodesInfo[t.url].Lsnr.Port
+				if port == "" {
+					port = fmt.Sprint(daemonenv.HttpPort)
+				}
+				t.url = fmt.Sprintf("https://%s:%s", addr, port)
+			} else {
+				t.url = fmt.Sprintf("https://%s:%d", t.url, daemonenv.HttpPort)
 			}
+		} else {
+			t.url = reqh2.InetPrefix + t.url
 		}
-		t.url = reqh2.InetPrefix + t.url
 		t.ClientWithResponses, err = reqh2.NewInet(reqh2.Config{
 			URL:                t.url,
 			Certificate:        t.clientCertificate,
