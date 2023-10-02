@@ -111,6 +111,7 @@ func (d *data) dropPeer(peer string) {
 	delete(d.hbPatchMsgUpdated, peer)
 	delete(d.hbMsgPatchLength, peer)
 	delete(d.hbMsgType, peer)
+	delete(d.previousRemoteInfo, peer)
 
 	// delete peer d.clusterData.Cluster.Node...
 	if d.clusterData.Cluster.Node[d.localNode].Status.Gen != nil {

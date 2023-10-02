@@ -32,6 +32,7 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 	if prev, ok := d.previousRemoteInfo[peer]; ok {
 		if prev.gen == d.clusterData.Cluster.Node[peer].Status.Gen[peer] {
+			d.log.Debug().Msgf("refreshPreviousUpdated skipped (already computed gen %d)", prev.gen)
 			return nil
 		}
 	}
