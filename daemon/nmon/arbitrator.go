@@ -86,7 +86,7 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 
 func (o *nmon) getAndUpdateStatusArbitrator() {
 	o.nodeStatus.Arbitrators = o.getStatusArbitrators()
-	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	o.publishNodeStatus()
 	pubValue := make(map[string]node.ArbitratorStatus)
 	for k, v := range o.nodeStatus.Arbitrators {
 		pubValue[k] = v

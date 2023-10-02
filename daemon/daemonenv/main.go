@@ -61,6 +61,10 @@ func UrlHttpNode(node string) string {
 	return fmt.Sprintf("https://%s:%d", node, HttpPort)
 }
 
+func UrlHttpNodeAndPort(node, port string) string {
+	return fmt.Sprintf("https://%s:%s", node, port)
+}
+
 func UrlUxHttp() string {
 	return "http://" + PathUxHttp()
 }

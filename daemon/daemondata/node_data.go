@@ -99,6 +99,9 @@ func (d *data) dropPeer(peer string) {
 	}
 	if v := node.MonitorData.Get(peer); v != nil {
 		node.DropNode(peer)
+		// TODO: find a way to clear parts of cluster.node.<peer>.Status
+		node.LsnrData.Unset(peer) // keep this even if it is already done during DropNode
+		d.bus.Pub(&msgbus.ListenerUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)
 	}
 
@@ -108,6 +111,7 @@ func (d *data) dropPeer(peer string) {
 	delete(d.hbPatchMsgUpdated, peer)
 	delete(d.hbMsgPatchLength, peer)
 	delete(d.hbMsgType, peer)
+	delete(d.previousRemoteInfo, peer)
 
 	// delete peer d.clusterData.Cluster.Node...
 	if d.clusterData.Cluster.Node[d.localNode].Status.Gen != nil {

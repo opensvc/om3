@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -37,7 +36,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		return err
 	}
 	t.cli, err = client.New(
-		client.WithURL(daemonenv.UrlHttpNode(t.ApiNode)),
+		client.WithURL(t.ApiNode),
 	)
 	if err != nil {
 		return

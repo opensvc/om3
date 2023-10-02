@@ -31,7 +31,7 @@ type (
 
 	data struct {
 		// previousRemoteInfo map[node] of remoteInfo from clusterData data just
-		// after commit, it is used to publish diff for other nodes
+		// after full message applied (used to publish detected diff on full message applied).
 		previousRemoteInfo map[string]remoteInfo
 
 		// clusterData is the live current data (after apply msg from patch or subscription)
@@ -90,7 +90,7 @@ type (
 	gens       map[string]uint64
 	eventQueue map[string][]event.Event
 
-	// remoteInfo struct holds information about remote node used to publish diff
+	// remoteInfo struct holds information about remote node used to publish diff on full message received
 	remoteInfo struct {
 		nmonUpdated       time.Time
 		nodeStats         node.Stats
@@ -391,6 +391,8 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 
+	sub.AddFilter(&msgbus.ListenerUpdated{}, d.labelLocalNode)
+
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
@@ -457,6 +459,10 @@ func (d *data) onSubEvent(i interface{}) error {
 			d.appendEv(c)
 		}
 	case *msgbus.InstanceStatusDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.ListenerUpdated:
 		if c.Node == d.localNode {
 			d.appendEv(c)
 		}

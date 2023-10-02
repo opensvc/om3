@@ -46,7 +46,8 @@
           "min_avail_mem": 0,
           "min_avail_swap": 0,
           "speaker": false,
-          "labels": {}
+          "labels": {},
+          "lsnr": {"port": "2222"}
         },
         "os": {
           "paths": [

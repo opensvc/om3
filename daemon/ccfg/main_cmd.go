@@ -79,8 +79,16 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Quorum = o.clusterConfig.GetBool(keyQuorum)
 
 	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
-	cfg.Listener.Addr = o.clusterConfig.GetString(keyListenerAddr)
-	cfg.Listener.Port = o.clusterConfig.GetInt(keyListenerPort)
+	if v, err := o.clusterConfig.Eval(keyListenerAddr); err != nil {
+		o.log.Error().Err(err).Msg("eval listener port")
+	} else {
+		cfg.Listener.Addr = v.(string)
+	}
+	if v, err := o.clusterConfig.Eval(keyListenerPort); err != nil {
+		o.log.Error().Err(err).Msg("eval listener port")
+	} else {
+		cfg.Listener.Port = v.(int)
+	}
 	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIdWellKnown)
 	cfg.Listener.DNSSockGID = o.clusterConfig.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = o.clusterConfig.GetString(keyListenerDNSSockUID)

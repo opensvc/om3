@@ -32,6 +32,7 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 	if prev, ok := d.previousRemoteInfo[peer]; ok {
 		if prev.gen == d.clusterData.Cluster.Node[peer].Status.Gen[peer] {
+			d.log.Debug().Msgf("refreshPreviousUpdated skipped (already computed gen %d)", prev.gen)
 			return nil
 		}
 	}
@@ -184,12 +185,19 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(peer string) {
 			d.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: peer, Value: next.Labels.DeepCopy()}, labels...)
 			changed = true
 		}
+		if next.Lsnr.UpdatedAt.After(prev.Lsnr.UpdatedAt) {
+			node.LsnrData.Set(peer, next.Lsnr.DeepCopy())
+			d.bus.Pub(&msgbus.ListenerUpdated{Node: peer, Lsnr: *next.Lsnr.DeepCopy()}, labels...)
+			changed = true
+		}
 		if changed || !reflect.DeepEqual(prev, next) {
 			node.StatusData.Set(peer, next.DeepCopy())
 			d.bus.Pub(&msgbus.NodeStatusUpdated{Node: peer, Value: *next.DeepCopy()}, labels...)
 		}
 	}
 	onCreate := func() {
+		node.LsnrData.Set(peer, next.Lsnr.DeepCopy())
+		d.bus.Pub(&msgbus.ListenerUpdated{Node: peer, Lsnr: *next.Lsnr.DeepCopy()}, labels...)
 		d.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: peer, Value: next.Labels.DeepCopy()}, labels...)
 		node.StatusData.Set(peer, next.DeepCopy())
 		d.bus.Pub(&msgbus.NodeStatusUpdated{Node: peer, Value: *next.DeepCopy()}, labels...)

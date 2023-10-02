@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -131,8 +132,9 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 	human := func() string {
 		f := cluster.Frame{
-			Current:  data,
-			Sections: m.sections,
+			Current:   data,
+			Sections:  m.sections,
+			Localhost: hostname.Hostname(),
 		}
 		return f.Render()
 	}

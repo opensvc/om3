@@ -99,6 +99,8 @@ var (
 
 		"LeaveSuccess": func() any { return &LeaveSuccess{} },
 
+		"ListenerUpdated": func() any { return &ListenerUpdated{} },
+
 		"Log": func() any { return &Log{} },
 
 		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
@@ -463,6 +465,12 @@ type (
 		Node string `json:"node" yaml:"node"`
 	}
 
+	ListenerUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string    `json:"node" yaml:"node"`
+		Lsnr       node.Lsnr `json:"lsnr" yaml:"lsnr"`
+	}
+
 	// Log is a log message.
 	//
 	// Usage example:
@@ -570,7 +578,7 @@ type (
 	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string
+		Node       string      `json:"node" yaml:"node"`
 		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
@@ -878,6 +886,10 @@ func (e *LeaveRequest) Kind() string {
 
 func (e *LeaveSuccess) Kind() string {
 	return "LeaveSuccess"
+}
+
+func (e *ListenerUpdated) Kind() string {
+	return "ListenerUpdated"
 }
 
 func (e *Log) Kind() string {

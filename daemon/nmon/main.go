@@ -194,6 +194,8 @@ func (o *nmon) Start(parent context.Context) error {
 	if err := o.loadAndPublishConfig(); err != nil {
 		return err
 	}
+	// ensure saveNodesInfo is called once.
+	o.saveNodesInfo()
 
 	bootID := bootid.Get()
 	if len(bootID) > 0 {
@@ -290,6 +292,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.JoinRequest{}, o.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.ListenerUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
 	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
@@ -402,6 +405,8 @@ func (o *nmon) worker() {
 				o.onJoinRequest(c)
 			case *msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
+			case *msgbus.ListenerUpdated:
+				o.onListenerUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				o.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
@@ -578,6 +583,18 @@ func (o *nmon) refreshSanPaths() {
 	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths}, o.labelLocalhost)
 }
 
+func (o *nmon) onListenerUpdated(m *msgbus.ListenerUpdated) {
+	nodeInfo := o.cacheNodesInfo[m.Node]
+	nodeInfo.Lsnr = m.Lsnr
+	o.cacheNodesInfo[m.Node] = nodeInfo
+	o.saveNodesInfo()
+
+	if m.Node == o.localhost {
+		o.nodeStatus.Lsnr = m.Lsnr
+		o.publishNodeStatus()
+	}
+}
+
 func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
 	peerNodeInfo := o.cacheNodesInfo[m.Node]
 	peerNodeInfo.Env = m.Value.Env
@@ -619,6 +636,11 @@ func (o *nmon) saveNodesInfo() {
 	}
 }
 
+func (o *nmon) publishNodeStatus() {
+	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+}
+
 func (o *nmon) loadConfig() error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
@@ -629,6 +651,11 @@ func (o *nmon) loadConfig() error {
 	o.config = n.MergedConfig()
 	o.nodeConfig = o.getNodeConfig()
 	localNodeInfo.Env = o.nodeConfig.Env
+
+	if lsnr := node.LsnrData.Get(o.localhost); lsnr != nil {
+		localNodeInfo.Lsnr = *lsnr
+		o.nodeStatus.Lsnr = *lsnr
+	}
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
 	return nil
 }
@@ -637,16 +664,20 @@ func (o *nmon) loadAndPublishConfig() error {
 	if err := o.loadConfig(); err != nil {
 		return err
 	}
+
 	node.ConfigData.Set(o.localhost, o.nodeConfig.DeepCopy())
 	o.bus.Pub(&msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
+
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
 	o.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
+
 	o.nodeStatus.Labels = localNodeInfo.Labels
-	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	o.publishNodeStatus()
+
 	paths := localNodeInfo.Paths.DeepCopy()
 	node.OsPathsData.Set(o.localhost, &paths)
 	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
+
 	select {
 	case o.poolC <- nil:
 	default:

@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -243,8 +245,8 @@ func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 
 func (d *discover) inScope(cfg *instance.Config) bool {
 	localhost := d.localhost
-	for _, node := range cfg.Scope {
-		if node == localhost {
+	for _, s := range cfg.Scope {
+		if s == localhost {
 			return true
 		}
 	}
@@ -255,15 +257,15 @@ func (d *discover) cancelFetcher(s string) {
 	if cancel, ok := d.fetcherCancel[s]; ok {
 		d.log.Debug().Msgf("cancelFetcher %s", s)
 		cancel()
-		node := d.fetcherFrom[s]
+		peer := d.fetcherFrom[s]
 		delete(d.fetcherCancel, s)
-		delete(d.fetcherNodeCancel[node], s)
+		delete(d.fetcherNodeCancel[peer], s)
 		delete(d.fetcherUpdated, s)
 		delete(d.fetcherFrom, s)
 	}
 }
 
-func (d *discover) fetchConfigFromRemote(p naming.Path, node string, updated time.Time) {
+func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, updated time.Time) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
 		d.log.Error().Msgf("fetcher already in progress for %s from %s", s, n)
@@ -271,26 +273,30 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, node string, updated tim
 	}
 	ctx, cancel := context.WithCancel(d.ctx)
 	d.fetcherCancel[s] = cancel
-	d.fetcherFrom[s] = node
+	d.fetcherFrom[s] = peer
 	d.fetcherUpdated[s] = updated
-	if _, ok := d.fetcherNodeCancel[node]; ok {
-		d.fetcherNodeCancel[node][s] = cancel
+	if _, ok := d.fetcherNodeCancel[peer]; ok {
+		d.fetcherNodeCancel[peer][s] = cancel
 	} else {
-		d.fetcherNodeCancel[node] = make(map[string]context.CancelFunc)
+		d.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
 	}
 
-	cli, err := d.newDaemonClient(node)
+	peerPort := fmt.Sprintf("%d", daemonenv.HttpPort)
+	if lsnr := node.LsnrData.Get(peer); lsnr != nil {
+		peerPort = lsnr.Port
+	}
+	cli, err := d.newDaemonClient(peer, peerPort)
 	if err != nil {
-		d.log.Error().Msgf("can't create newDaemonClient to fetch %s from %s", p, node)
+		d.log.Error().Msgf("can't create newDaemonClient to fetch %s from %s", p, peer)
 		return
 	}
-	go fetch(ctx, cli, p, node, d.cfgCmdC)
+	go fetch(ctx, cli, p, peer, d.cfgCmdC)
 }
 
-func (d *discover) newDaemonClient(node string) (*client.T, error) {
+func (d *discover) newDaemonClient(node, port string) (*client.T, error) {
 	// TODO add WithRootCa to avoid send password to wrong url ?
 	return client.New(
-		client.WithURL(daemonenv.UrlHttpNode(node)),
+		client.WithURL(daemonenv.UrlHttpNodeAndPort(node, port)),
 		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(d.clusterConfig.Secret()),
 		client.WithCertificate(daemonenv.CertChainFile()),
