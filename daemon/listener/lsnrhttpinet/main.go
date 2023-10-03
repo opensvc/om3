@@ -64,7 +64,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.bus = pubsub.BusFromContext(ctx)
 
 	go func() {
-		t.configWatcher(ctx)
+		t.janitor(ctx)
 	}()
 
 	errC := make(chan error)
@@ -134,28 +134,58 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		if err := t.listener.Close(); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 			t.log.Error().Err(err).Msg("listener close")
 		}
+		t.log.Info().Msg("listener closed")
 	}
-	t.log.Info().Msg("listener stopped")
 }
 
-// configWatcher watch cluster config lsnr port changes to restart
-// listener.
-func (t *T) configWatcher(ctx context.Context) {
+// janitor watch events that may require a stop, start or restart listener
+func (t *T) janitor(ctx context.Context) {
 	sub := t.bus.Sub("lsnr-http-inet")
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{},
 		pubsub.Label{"node", hostname.Hostname()})
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
 			t.log.Error().Err(err).Msg("subscription stop")
 		}
 	}()
+	stop := func() {
+		t.log.Info().Msg("stopping")
+		if err := t.Stop(); err != nil {
+			t.log.Error().Err(err).Msg("stop failed")
+		}
+	}
+	start := func() {
+		t.log.Info().Msg("starting")
+		errC := make(chan error)
+		go t.start(ctx, errC)
+		if err := <-errC; err != nil {
+			t.log.Error().Err(err).Msg("start failed")
+		}
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case e := <-sub.C:
 			switch m := e.(type) {
+			case *msgbus.DaemonCtl:
+				t.log.Info().Msgf("listener receive a %s order", m.Action)
+				switch m.Action {
+				case "stop":
+					stop()
+				case "start":
+					start()
+				case "restart":
+					stop()
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					start()
+				}
 			case *msgbus.ClusterConfigUpdated:
 				select {
 				case <-ctx.Done():
@@ -166,9 +196,7 @@ func (t *T) configWatcher(ctx context.Context) {
 				newAddr := fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)
 				if t.addr != newAddr {
 					t.log.Info().Msgf("listener will restart: addr changed %s -> %s", t.addr, newAddr)
-					if err := t.Stop(); err != nil {
-						t.log.Error().Err(err).Msg("restarting has stop failure")
-					}
+					stop()
 					select {
 					case <-ctx.Done():
 						return
@@ -176,11 +204,7 @@ func (t *T) configWatcher(ctx context.Context) {
 					}
 					t.addr = newAddr
 					t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-inet").Logger()
-					errC := make(chan error)
-					go t.start(ctx, errC)
-					if err := <-errC; err != nil {
-						t.log.Error().Err(err).Msg("restarting has start failure")
-					}
+					start()
 					t.log.Info().Msgf("restarted on new addr %s", t.addr)
 				}
 			}
