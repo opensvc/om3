@@ -60,15 +60,15 @@ func (t *T) Stop() error {
 	return err
 }
 
+// Start startup the inet http janitor. janitor startup initial inet http listener.
 func (t *T) Start(ctx context.Context) error {
 	t.bus = pubsub.BusFromContext(ctx)
 
-	go func() {
-		t.janitor(ctx)
-	}()
-
 	errC := make(chan error)
-	go t.start(ctx, errC)
+	go func(ctx context.Context, errC chan error) {
+		t.janitor(ctx, errC)
+	}(ctx, errC)
+
 	return <-errC
 }
 
@@ -138,8 +138,11 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	}
 }
 
-// janitor watch events that may require a stop, start or restart listener
-func (t *T) janitor(ctx context.Context) {
+// janitor startup initial http inet listener, then watch events to stop, start or restart listener.
+// events are: DaemonCtl,name=lsnr-http-inet, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
+// TODO: also watch for tls setting changed
+func (t *T) janitor(ctx context.Context, errC chan<- error) {
+	var started bool
 	sub := t.bus.Sub("lsnr-http-inet")
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{},
 		pubsub.Label{"node", hostname.Hostname()})
@@ -150,20 +153,36 @@ func (t *T) janitor(ctx context.Context) {
 			t.log.Error().Err(err).Msg("subscription stop")
 		}
 	}()
+
 	stop := func() {
 		t.log.Info().Msg("stopping")
 		if err := t.Stop(); err != nil {
 			t.log.Error().Err(err).Msg("stop failed")
+			return
 		}
+		started = false
 	}
-	start := func() {
+
+	start := func() error {
+		if started {
+			err := fmt.Errorf("can't start already started listener")
+			t.log.Error().Err(err).Msg("start")
+			return err
+		}
 		t.log.Info().Msg("starting")
 		errC := make(chan error)
 		go t.start(ctx, errC)
-		if err := <-errC; err != nil {
+		err := <-errC
+		if err != nil {
 			t.log.Error().Err(err).Msg("start failed")
+			return err
 		}
+		started = true
+		return nil
 	}
+
+	errC <- start()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -171,12 +190,14 @@ func (t *T) janitor(ctx context.Context) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.DaemonCtl:
-				t.log.Info().Msgf("listener receive a %s order", m.Action)
+				t.log.Info().Msgf("daemon control %s asked", m.Action)
 				switch m.Action {
 				case "stop":
 					stop()
 				case "start":
-					start()
+					if err := start(); err != nil {
+						t.log.Error().Err(err).Msgf("on daemon control %s start failed", m.Action)
+					}
 				case "restart":
 					stop()
 					select {
@@ -184,7 +205,9 @@ func (t *T) janitor(ctx context.Context) {
 						return
 					default:
 					}
-					start()
+					if err := start(); err != nil {
+						t.log.Error().Err(err).Msgf("on daemon control %s start failed", m.Action)
+					}
 				}
 			case *msgbus.ClusterConfigUpdated:
 				select {
@@ -204,7 +227,9 @@ func (t *T) janitor(ctx context.Context) {
 					}
 					t.addr = newAddr
 					t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-inet").Logger()
-					start()
+					if err := start(); err != nil {
+						t.log.Error().Err(err).Msgf("on addr changed start failed")
+					}
 					t.log.Info().Msgf("restarted on new addr %s", t.addr)
 				}
 			}
