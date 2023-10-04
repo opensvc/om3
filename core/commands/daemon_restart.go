@@ -58,7 +58,7 @@ func (t *CmdDaemonRestart) restartRemotes(nodes []string) error {
 
 func (t *CmdDaemonRestart) restartRemote(s string) error {
 	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on remote %s\n", s)
-	cli, err := newClient(s)
+	cli, err := client.New(client.WithURL(s))
 	if err != nil {
 		return err
 	}
