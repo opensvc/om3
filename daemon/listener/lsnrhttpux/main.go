@@ -24,8 +24,6 @@ type (
 		listener *net.Listener
 		log      zerolog.Logger
 		addr     string
-		certFile string
-		keyFile  string
 		wg       sync.WaitGroup
 	}
 )
