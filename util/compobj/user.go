@@ -154,15 +154,18 @@ func (t *CompUsers) Add(s string) error {
 			return fmt.Errorf("name should be in the dict: %s\n", s)
 		}
 
-		if rule.Uid == nil {
-			t.Errorf("uid should be in the dict: %s\n", s)
-			return fmt.Errorf("uid should be in the dict: %s\n", s)
+		if !strings.HasPrefix(name, "-") {
+			if rule.Uid == nil {
+				t.Errorf("uid should be in the dict: %s\n", s)
+				return fmt.Errorf("uid should be in the dict: %s\n", s)
+			}
+
+			if rule.Gid == nil {
+				t.Errorf("gid should be in the dict: %s\n", s)
+				return fmt.Errorf("gid should be in the dict: %s\n", s)
+			}
 		}
 
-		if rule.Gid == nil {
-			t.Errorf("gid should be in the dict: %s\n", s)
-			return fmt.Errorf("gid should be in the dict: %s\n", s)
-		}
 		i, b := t.hasUserRule(name)
 		if b {
 			u := t.rules[i].(CompUser)
@@ -264,10 +267,25 @@ func (t CompUsers) checkFilesNsswitch() bool {
 }
 
 func (t CompUsers) checkRule(rule CompUser) ExitCode {
-	userInfos, err := t.getUserInfos(rule.User, passwdFileContent)
+	checkDel := false
+	if strings.HasPrefix(rule.User, "-") {
+		checkDel = true
+		rule.User = rule.User[1:]
+	}
+	userInfos, userExist := t.getUserInfos(rule.User, passwdFileContent)
 
-	if err != nil {
-		t.VerboseInfof("user %s missing in /etc/passwd %s \n", rule.User, err)
+	if !userExist {
+		fmt.Println("on rentre")
+		if checkDel {
+			t.VerboseInfof("user %s doesn't exist --> ok\n", rule.User)
+			return ExitOk
+		}
+		t.VerboseInfof("user %s missing in /etc/passwd \n", rule.User)
+		return ExitNok
+	}
+
+	if checkDel {
+		t.VerboseInfof("user %s exist and should not --> not ok\n", rule.User)
 		return ExitNok
 	}
 
@@ -392,16 +410,16 @@ func (t CompUsers) getShell(userInfos []string) string {
 	return userInfos[6]
 }
 
-func (t CompUsers) getUserInfos(userName string, passwdFile []byte) ([]string, error) {
+func (t CompUsers) getUserInfos(userName string, passwdFile []byte) ([]string, bool) {
 	scanner := bufio.NewScanner((bytes.NewReader(passwdFile)))
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitedLine := strings.Split(line, ":")
 		if splitedLine[0] == userName {
-			return splitedLine, nil
+			return splitedLine, true
 		}
 	}
-	return []string{}, fmt.Errorf("can't find user %s", userName)
+	return []string{}, false
 }
 
 func (t CompUsers) Fix() ExitCode {

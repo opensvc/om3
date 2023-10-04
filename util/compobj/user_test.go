@@ -121,6 +121,13 @@ func TestUserAdd(t *testing.T) {
 			expectedRules: []CompUser{titiCompUser},
 		},
 
+		"with a delete rule:": {
+			jsonRules: []string{
+				`{"-toto" : {}}`,
+			},
+			expectedRules: []CompUser{{User: "-toto"}},
+		},
+
 		"with empty json :": {
 			jsonRules:               []string{},
 			expecteErrorInAddOutput: true,
@@ -396,6 +403,36 @@ func TestUserCheckRule(t *testing.T) {
 			envFunc:        []func(pRule *CompUser) error{withHomePath, withHomeWrongOwnerShip},
 			needRoot:       true,
 			expectedOutput: ExitNok,
+		},
+
+		"check not supposed to exist but exist": {
+			rule: CompUser{
+				User:      "-zozo",
+				Uid:       nil,
+				Gid:       nil,
+				Shell:     "",
+				Home:      "",
+				Password:  "",
+				Gecos:     "",
+				CheckHome: "",
+			},
+			envFunc:        []func(pRule *CompUser) error{},
+			expectedOutput: ExitNok,
+		},
+
+		"check not supposed to exist and does not exist": {
+			rule: CompUser{
+				User:      "-iDontExist",
+				Uid:       nil,
+				Gid:       nil,
+				Shell:     "",
+				Home:      "",
+				Password:  "",
+				Gecos:     "",
+				CheckHome: "",
+			},
+			envFunc:        []func(pRule *CompUser) error{},
+			expectedOutput: ExitOk,
 		},
 	}
 
