@@ -737,21 +737,21 @@ func (t T) maxPeers() int {
 	v := t.MaxPeers
 	nNodes := len(t.Nodes)
 
-	// min could be nNodes-1 but we want to add a slot to allow a server
+	// minValue could be nNodes-1 but we want to add a slot to allow a server
 	// swap.
-	min := nNodes
-	if min < 1 {
-		min = 1
+	minValue := nNodes
+	if minValue < 1 {
+		minValue = 1
 	}
-	max := MaxNodes - 1
+	maxValue := MaxNodes - 1
 	if v == 0 {
 		v = (nNodes * 2) - 1
 	}
-	if v < min {
-		v = min
+	if v < minValue {
+		v = minValue
 	}
-	if v > max {
-		v = max
+	if v > maxValue {
+		v = maxValue
 	}
 	return v
 }

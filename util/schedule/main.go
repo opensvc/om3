@@ -176,7 +176,7 @@ func monthDays(tm time.Time) int {
 // ContextualizeDays returns a copy of Days with the "nth-from-tail" monthdays
 // evaluated using the actual number of days in the <tm> month
 func (t Schedule) ContextualizeDays(tm time.Time) []day {
-	max := monthDays(tm)
+	maxValue := monthDays(tm)
 	days := make([]day, len(t.days))
 	for i, d := range t.days {
 		days[i] = d
@@ -186,10 +186,10 @@ func (t Schedule) ContextualizeDays(tm time.Time) []day {
 		if d.monthday > 0 {
 			continue
 		}
-		if -d.monthday > max {
+		if -d.monthday > maxValue {
 			continue
 		}
-		days[i].monthday = max + d.monthday + 1
+		days[i].monthday = maxValue + d.monthday + 1
 	}
 	return days
 }

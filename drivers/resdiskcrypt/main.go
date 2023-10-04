@@ -55,10 +55,10 @@ func New() resource.Driver {
 func genPassphrase() []byte {
 	var s strings.Builder
 	passLen := 256
-	max := len(allCharSet)
+	maxValue := len(allCharSet)
 
 	for i := 0; i < passLen; i++ {
-		n := rand.Intn(max)
+		n := rand.Intn(maxValue)
 		s.WriteString(string(allCharSet[n]))
 	}
 	inRune := []rune(s.String())

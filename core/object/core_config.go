@@ -170,8 +170,8 @@ func (t core) Parents() []naming.Relation {
 
 func (t core) FlexMin() (int, error) {
 	var (
-		i, max int
-		err    error
+		i, maxValue int
+		err         error
 	)
 	k := key.Parse("flex_min")
 	if i, err = t.config.GetIntStrict(k); err != nil {
@@ -180,11 +180,11 @@ func (t core) FlexMin() (int, error) {
 	if i < 0 {
 		return 0, nil
 	}
-	if max, err = t.FlexMax(); err != nil {
+	if maxValue, err = t.FlexMax(); err != nil {
 		return 0, err
 	}
-	if i > max {
-		return max, nil
+	if i > maxValue {
+		return maxValue, nil
 	}
 	return i, nil
 }
@@ -198,13 +198,13 @@ func (t core) FlexMax() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	max := len(nodes)
+	maxValue := len(nodes)
 	k := key.Parse("flex_max")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		return max, nil
+		return maxValue, nil
 	}
-	if i > max {
-		return max, nil
+	if i > maxValue {
+		return maxValue, nil
 	}
 	if i < 0 {
 		return 0, nil
@@ -214,24 +214,24 @@ func (t core) FlexMax() (int, error) {
 
 func (t core) FlexTarget() (int, error) {
 	var (
-		i, min, max int
-		err         error
+		i, minValue, maxValue int
+		err                   error
 	)
 	k := key.Parse("flex_target")
 	if i, err = t.config.GetIntStrict(k); err != nil {
 		return t.FlexMin()
 	}
-	if min, err = t.FlexMin(); err != nil {
+	if minValue, err = t.FlexMin(); err != nil {
 		return 0, err
 	}
-	if max, err = t.FlexMax(); err != nil {
+	if maxValue, err = t.FlexMax(); err != nil {
 		return 0, err
 	}
-	if i < min {
-		return min, nil
+	if i < minValue {
+		return minValue, nil
 	}
-	if i > max {
-		return max, nil
+	if i > maxValue {
+		return maxValue, nil
 	}
 	return i, nil
 }

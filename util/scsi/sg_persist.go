@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -242,8 +243,8 @@ func (t SGPersistDriver) ackUnitAttention(dev device.T) {
 }
 
 func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O) error {
-	max := 10
-	countdown := max
+	maxValue := 10
+	countdown := maxValue
 	for {
 		options = append(
 			options,
