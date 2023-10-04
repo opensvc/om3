@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	cgroups "github.com/containerd/cgroups"
+	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
 	"github.com/opencontainers/runtime-spec/specs-go"
 

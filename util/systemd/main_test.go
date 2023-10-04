@@ -5,7 +5,7 @@ package systemd
 import (
 	"testing"
 
-	require "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHasSystemd(t *testing.T) {
