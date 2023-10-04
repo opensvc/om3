@@ -301,7 +301,7 @@ func (t T) DoLocal() error {
 					log.Fatal().Msgf("%s", err)
 				}
 			}
-			if i, ok := any(r.Data).(treeProvider); ok {
+			if i, ok := r.Data.(treeProvider); ok {
 				if rsTree == nil {
 					rsTree = tree.New()
 				}

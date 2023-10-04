@@ -62,7 +62,6 @@ func (t T) Usage() (pool.Usage, error) {
 	}
 	var used int64
 	if size > 0 {
-		size = size
 		free = free
 		used = size - free
 	} else {

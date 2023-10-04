@@ -100,7 +100,7 @@ func (t T) Data() (InfoEntries, error) {
 	if err = json.Unmarshal(out, &data); err != nil {
 		return nil, err
 	}
-	return InfoEntries(data.LoopDevices), nil
+	return data.LoopDevices, nil
 }
 
 func (t T) Add(filePath string) error {

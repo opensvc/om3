@@ -143,7 +143,7 @@ func runScanner(sc scanner, running chan int, result chan L) {
 		result <- L{}
 		return
 	}
-	result <- L(scannerCaps)
+	result <- scannerCaps
 }
 
 func getPath() string {

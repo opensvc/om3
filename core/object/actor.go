@@ -227,7 +227,7 @@ func resourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Dri
 			}
 		}
 	}
-	return resource.Drivers(l)
+	return l
 }
 
 func (t *actor) Resources() resource.Drivers {

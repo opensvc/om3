@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/util/file"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+
+	"github.com/opensvc/om3/util/file"
 )
 
 var (
@@ -57,7 +58,7 @@ func NewClient(n string) (*ssh.Client, error) {
 			ssh.PublicKeys(signers...),
 		},
 		HostKeyCallback: AddingKnownHostCallback,
-		Timeout:         time.Duration(time.Second * 10),
+		Timeout:         time.Second * 10,
 	}
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), config)
 	return client, err

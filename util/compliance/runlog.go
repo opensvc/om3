@@ -59,7 +59,7 @@ func (t *LogEntries) Err(s string) {
 	})
 }
 
-func (t LogEntries) Render() string {
+func (t *LogEntries) Render() string {
 	buff := ""
 	for _, e := range t.Entries() {
 		switch e.Level {
@@ -72,7 +72,7 @@ func (t LogEntries) Render() string {
 	return buff
 }
 
-func (t LogEntries) RenderForCollector() string {
+func (t *LogEntries) RenderForCollector() string {
 	buff := ""
 	for _, e := range t.Entries() {
 		switch e.Level {
@@ -86,11 +86,11 @@ func (t LogEntries) RenderForCollector() string {
 }
 
 // MarshalJSON marshals the data as a quoted json string
-func (t LogEntries) MarshalJSON() ([]byte, error) {
+func (t *LogEntries) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.entries)
 }
 
-// UnmarshalJSON unmashals a quoted json string to value
+// UnmarshalJSON unmarshals a quoted json string to value
 func (t *LogEntries) UnmarshalJSON(b []byte) error {
-	return json.Unmarshal(b, t.entries)
+	return json.Unmarshal(b, &t.entries)
 }

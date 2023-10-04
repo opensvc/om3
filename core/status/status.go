@@ -185,11 +185,11 @@ func (t L) Has(s T) bool {
 }
 
 func List(l ...T) L {
-	return L(l)
+	return l
 }
 
 func (t L) Add(s ...T) L {
-	return L(append(t, s...))
+	return append(t, s...)
 }
 
 func (t L) String() string {

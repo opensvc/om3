@@ -133,7 +133,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Down
 	}
-	if !Addrs(addrs).Has(ip) {
+	if !addrs.Has(ip) {
 		t.Log().Debug().Msg("ip not found on intf")
 		return status.Down
 	}

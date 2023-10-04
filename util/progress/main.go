@@ -294,9 +294,9 @@ func (v *View) render() {
 }
 
 func (t nodes) render(widths []int, depth int) {
-	max := len(t.l) - 1
+	maxValue := len(t.l) - 1
 	for i, n := range t.l {
-		n.render(widths, depth, i == max)
+		n.render(widths, depth, i == maxValue)
 	}
 }
 

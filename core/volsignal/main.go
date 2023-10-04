@@ -33,5 +33,5 @@ func Parse(s string) T {
 			t[sigNum][rid] = nil
 		}
 	}
-	return T(t)
+	return t
 }
