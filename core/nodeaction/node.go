@@ -251,7 +251,7 @@ func (t T) DoAsync() error {
 		default:
 			return fmt.Errorf("unexpected target: %s", t.Target)
 		}
-		go t.waitExpectation(ctx, c, expectation, waitC)
+		t.waitExpectation(ctx, c, expectation, waitC)
 	}
 	switch t.Target {
 	case node.MonitorStateDrained.String():
@@ -422,24 +422,20 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 		err      error
 		evReader event.ReadCloser
 	)
-	defer func() {
-		select {
-		case <-ctx.Done():
-		case errC <- err:
-		}
-	}()
 	switch exp.(type) {
 	case node.MonitorState:
 		filters = []string{"NodeMonitorUpdated,node=" + hostname.Hostname()}
 	case node.MonitorGlobalExpect:
 		filters = []string{"NodeMonitorUpdated"}
 	}
+	log.Debug().Msgf("get event with filters: %+v", filters)
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
 	}
 	evReader, err = getEvents.GetReader()
 	if err != nil {
+		errC <- err
 		return
 	}
 
@@ -447,52 +443,64 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 		x.SetContext(ctx)
 	}
 	go func() {
-		// close reader when ctx is done
-		select {
-		case <-ctx.Done():
-			_ = evReader.Close()
-		}
-	}()
-	for {
-		ev, readError := evReader.Read()
-		if readError != nil {
-			if errors.Is(readError, io.EOF) {
-				err = fmt.Errorf("no more events (%w), wait %v failed", err, exp)
-			} else {
-				err = readError
-			}
-			return
-		}
-		switch ev.Kind {
-		case "NodeMonitorUpdated":
-			err = json.Unmarshal(ev.Data, &msg)
+		defer func() {
 			if err != nil {
+				err = fmt.Errorf("wait expectation %s failed: %w", exp, err)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = fmt.Errorf("no more events (%w), wait %v failed", err, exp)
+				} else {
+					err = readError
+				}
 				return
 			}
-			log.Debug().Msgf("NodeMonitorUpdated %+v", msg)
-			nmon := msg.Value
-			switch v := exp.(type) {
-			case node.MonitorState:
-				if nmon.State == v {
-					reached[msg.Node] = true
-					log.Debug().Msgf("NodeMonitorUpdated reached state %s", v)
-				} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
-					log.Debug().Msgf("NodeMonitorUpdated reached state %s unset", v)
+			switch ev.Kind {
+			case "NodeMonitorUpdated":
+				err = json.Unmarshal(ev.Data, &msg)
+				if err != nil {
 					return
 				}
-			case node.MonitorGlobalExpect:
-				if nmon.GlobalExpect == v {
-					reached[msg.Node] = true
-					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s", v)
-				} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectNone {
-					reachedUnset[msg.Node] = true
-					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
-				}
-				if len(reached) > 0 && len(reached) == len(reachedUnset) {
-					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
-					return
+				log.Debug().Msgf("NodeMonitorUpdated %+v", msg)
+				nmon := msg.Value
+				switch v := exp.(type) {
+				case node.MonitorState:
+					if nmon.State == v {
+						reached[msg.Node] = true
+						log.Debug().Msgf("NodeMonitorUpdated reached state %s", v)
+					} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
+						log.Debug().Msgf("NodeMonitorUpdated reached state %s unset", v)
+						return
+					}
+				case node.MonitorGlobalExpect:
+					if nmon.GlobalExpect == v {
+						reached[msg.Node] = true
+						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s", v)
+					} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectNone {
+						reachedUnset[msg.Node] = true
+						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
+					}
+					if len(reached) > 0 && len(reached) == len(reachedUnset) {
+						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
+						return
+					}
 				}
 			}
 		}
-	}
+	}()
 }
