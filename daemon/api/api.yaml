@@ -199,12 +199,12 @@ paths:
         The authenticated client requires at least grant 'root' or 'Join'.
 
         Processing of the join request is done asynchronously by daemon, http response is sent
-        when the join request has been published with label: node=<apinode>
+        when the join request has been published with label: node=<api_node>
 
         To follow processing of the join request, you have to watch following events:
-        - JoinSuccess,node=<apinode>,added=<node> (the new node has been added to cluster nodes)
-        - JoinIgnored,node=<apinode>,join-node=<node> (the new node was already a cluster node)
-        - JoinError,node=<apinode>,join-node=<node> (an error occur during update cluster node list)
+        - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
+        - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
+        - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
       tags:
         - daemon
       security:
@@ -217,7 +217,7 @@ paths:
           required: true
           schema:
             type: string
-            example: newnode
+            example: new_node
             minLength: 2
       responses:
         200:
@@ -236,12 +236,12 @@ paths:
         The authenticated client requires at least grant 'root' or 'Leave'.
 
         Processing of the leave request is done asynchronously by daemon, http response is sent
-        when the leave request has been published with label: node=<apinode>
+        when the leave request has been published with label: node=<api_node>
 
         To follow processing of the leave request, you have to watch following events:
-        - LeaveSuccess,node=<apinode>,removed=<node> (node has been removed to cluster nodes)
-        - LeaveIgnored,node=<apinode>,leave-node=<node> (node is not a cluster node)
-        - LeaveError,node=<apinode>,leave-node=<node> (an error occur during update cluster node list)
+        - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
+        - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
+        - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
       tags:
         - daemon
       security:
@@ -464,12 +464,12 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-      - in: query
-        name: name
-        description: the name of a cluster backend network
-        required: false
-        schema:
-          type: string
+        - in: query
+          name: name
+          description: the name of a cluster backend network
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: OK
@@ -2951,11 +2951,11 @@ components:
           $ref: '#/components/schemas/SANPathTarget'
     SANPathInitiator:
       type: object
-      description: initiator is the host side san naming endpoint.
+      description: initiator is the host side san path endpoint.
       properties:
         name:
           type: string
-          description: name is a worldwide unique naming endpoint identifier.
+          description: name is a worldwide unique path endpoint identifier.
           example: iqn.2004-10.com.ubuntu:01:e6bd4a3b554
         type:
           type: string
@@ -2963,11 +2963,11 @@ components:
           example: iscsi
     SANPathTarget:
       type: object
-      description: target is the storage array side san naming endpoint.
+      description: target is the storage array side san path endpoint.
       properties:
         name:
           type: string
-          description: name is a worldwide unique naming endpoint identifier.
+          description: name is a worldwide unique path endpoint identifier.
           example: iqn.2009-11.com.opensvc.srv:dev2n1.storage.target.1
         type:
           type: string
@@ -3008,19 +3008,19 @@ components:
   parameters:
 
     inPathName:
-      in: naming
+      in: path
       name: name
       required: true
       schema:
         type: string
     inPathNamespace:
-      in: naming
+      in: path
       name: namespace
       required: true
       schema:
         type: string
     inPathKind:
-      in: naming
+      in: path
       name: kind
       required: true
       schema:
@@ -3054,7 +3054,7 @@ components:
         type: array
         items:
           type: string
-          description: object naming
+          description: object path
           example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
     LogFilter:
       name: filter
@@ -3107,14 +3107,14 @@ components:
       schema:
         type: string
     ObjectPath:
-      name: naming
+      name: path
       in: query
-      description: object naming
+      description: object path
       required: true
       schema:
         type: string
     Path:
-      name: naming
+      name: path
       in: query
       description: object selector expression.
       required: true
@@ -3122,7 +3122,7 @@ components:
         type: string
         example: db1,web*
     PathOptional:
-      name: naming
+      name: path
       in: query
       description: object selector expression.
       schema:
