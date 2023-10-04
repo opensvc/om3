@@ -296,7 +296,10 @@ func (t CompUsers) checkRule(rule CompUser) ExitCode {
 		e = e.Merge(t.checkUserShell(rule, userInfos))
 	}
 	if rule.Home != "" {
-		e = e.Merge(t.checkUserHome(rule, userInfos))
+		e = e.Merge(t.checkUserHomeDir(rule, userInfos))
+	}
+	if rule.CheckHome == "yes" {
+		e = e.Merge(t.checkUserHomeDirOwnerShip(rule, userInfos))
 	}
 	if rule.Password != "" {
 		e = e.Merge(t.checkHash(rule, shadowFileContent))
@@ -347,21 +350,22 @@ func (t CompUsers) checkUserShell(rule CompUser, userInfos []string) ExitCode {
 	return ExitOk
 }
 
-func (t CompUsers) checkUserHome(rule CompUser, userInfos []string) ExitCode {
+func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode {
 	home := getHomeDir(userInfos)
 	t.Infof("user home dir = %s target = %s \n", home, rule.Home)
 	if home != rule.Home {
 		t.Infof("user home not ok \n")
 		return ExitNok
 	}
+	return ExitOk
+}
 
-	if rule.CheckHome == "yes" {
-		uid, _, _ := file.Ownership(rule.Home)
-		t.Infof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
-		if uid != *rule.Uid {
-			t.Infof("user home ownership not ok \n")
-			return ExitNok
-		}
+func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) ExitCode {
+	uid, _, _ := file.Ownership(getHomeDir(userInfos))
+	t.Infof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
+	if uid != *rule.Uid {
+		t.Infof("user home ownership not ok \n")
+		return ExitNok
 	}
 	return ExitOk
 }
@@ -403,7 +407,7 @@ func (t CompUsers) getGid(userInfos []string) (int, error) {
 }
 
 func (t CompUsers) getGecos(userInfos []string) string {
-	return userInfos[4][:len(userInfos[4])-3]
+	return userInfos[4]
 }
 
 func (t CompUsers) getShell(userInfos []string) string {

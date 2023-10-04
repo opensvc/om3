@@ -263,6 +263,11 @@ func TestUserCheckRule(t *testing.T) {
 		return os.Chown(pRule.Home, *pRule.Uid+1, 1234)
 	}
 
+	DelHomeDirInRule := func(pRule *CompUser) error {
+		pRule.Home = ""
+		return nil
+	}
+
 	testCases := map[string]struct {
 		rule           CompUser
 		envFunc        []func(pRule *CompUser) error
@@ -401,6 +406,22 @@ func TestUserCheckRule(t *testing.T) {
 				CheckHome: "yes",
 			},
 			envFunc:        []func(pRule *CompUser) error{withHomePath, withHomeWrongOwnerShip},
+			needRoot:       true,
+			expectedOutput: ExitNok,
+		},
+
+		"check home owner ship if the home field the not filled": {
+			rule: CompUser{
+				User:      "zozo",
+				Uid:       pti(2000),
+				Gid:       pti(2000),
+				Shell:     "/bin/bash",
+				Home:      "/home/zozo",
+				Password:  "zozohash",
+				Gecos:     "i am zozo,,,",
+				CheckHome: "yes",
+			},
+			envFunc:        []func(pRule *CompUser) error{withHomePath, withHomeWrongOwnerShip, DelHomeDirInRule},
 			needRoot:       true,
 			expectedOutput: ExitNok,
 		},
