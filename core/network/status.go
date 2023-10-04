@@ -49,8 +49,7 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 }
 
 func NewStatusList() StatusList {
-	l := make(StatusList, 0)
-	return StatusList(l)
+	return make(StatusList, 0)
 }
 
 func (t StatusList) Len() int {

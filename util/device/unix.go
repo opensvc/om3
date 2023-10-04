@@ -30,6 +30,7 @@ func (t T) MajorMinor() (uint32, uint32, error) {
 	if err != nil {
 		return 0, 0, err
 	}
+	// below conversion uint64 for darwin
 	return unix.Major(uint64(stat.Rdev)), unix.Minor(uint64(stat.Rdev)), nil
 }
 

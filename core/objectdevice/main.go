@@ -77,7 +77,7 @@ func ParseRoles(s string) Role {
 			roles = roles | RoleClaimed
 		}
 	}
-	return Role(roles)
+	return roles
 }
 
 func (t Role) String() string {

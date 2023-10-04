@@ -390,8 +390,7 @@ func translate(p Pooler, name string, size int64, format bool, shared bool) ([]s
 }
 
 func NewStatusList() StatusList {
-	l := make([]Status, 0)
-	return StatusList(l)
+	return make([]Status, 0)
 }
 
 func (t StatusList) Len() int {
@@ -410,7 +409,7 @@ func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
 	s := GetStatus(p, withUsage)
 	l := []Status(t)
 	l = append(l, s)
-	return StatusList(l)
+	return l
 }
 
 func (t StatusList) Render(verbose bool) string {

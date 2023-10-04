@@ -23,7 +23,7 @@ func TestPanicIfNotStarted(t *testing.T) {
 			t,
 			ErrorNeedStart.Error(),
 			func() {
-				bus.Post(TName("foo"), "app#1", []byte("Warn"), false)
+				bus.Post("foo", "app#1", []byte("Warn"), false)
 			})
 	})
 	t.Run("Post", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestPanicIfNotStarted(t *testing.T) {
 			t,
 			ErrorNeedStart.Error(),
 			func() {
-				bus.Get(TName("foo"), "app#1")
+				bus.Get("foo", "app#1")
 			})
 	})
 }
@@ -60,8 +60,8 @@ func TestPost(t *testing.T) {
 		})
 	}
 	t.Run("status is undef when service is not found", func(t *testing.T) {
-		assert.Equal(t, nil, bus.Get(TName(""), ""))
-		assert.Equal(t, nil, bus.Get(TName(""), "app#1"))
+		assert.Equal(t, nil, bus.Get("", ""))
+		assert.Equal(t, nil, bus.Get("", "app#1"))
 	})
 }
 

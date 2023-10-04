@@ -106,7 +106,7 @@ func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {
 	}
 	fName := f.Name()
 	defer os.Remove(fName)
-	if _, err = f.Write([]byte(buff)); err != nil {
+	if _, err = f.Write(buff); err != nil {
 		return err
 	}
 	if refSum, err = file.MD5(fName); err != nil {

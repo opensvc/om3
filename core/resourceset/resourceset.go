@@ -7,10 +7,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -58,7 +59,7 @@ func SubsetSectionToName(s string) string {
 }
 
 func NewList() L {
-	return L(make([]*T, 0))
+	return make([]*T, 0)
 }
 
 func (t L) Len() int {

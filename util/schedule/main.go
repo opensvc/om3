@@ -1132,7 +1132,7 @@ func getNext(data Schedule, options nextOptionsT, excludes Schedules) (time.Time
 
 	isValidDay := func(tm time.Time, days []day) bool {
 		weekday := ISOWeekday(tm)
-		monthday := int(tm.Day())
+		monthday := tm.Day()
 		for _, d := range days {
 			if d.weekday != weekday {
 				continue
@@ -1189,7 +1189,7 @@ func getNext(data Schedule, options nextOptionsT, excludes Schedules) (time.Time
 	}
 
 	tm := options.Time
-	year1 := int(tm.Year())
+	year1 := tm.Year()
 	month1 := int(tm.Month())
 	for year := year1; year <= year1+1; year += 1 {
 		for _, month := range data.months {

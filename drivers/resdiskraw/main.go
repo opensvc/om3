@@ -523,7 +523,7 @@ func (t T) ExposedDevices() device.L {
 }
 
 func NewDevPairs() DevPairs {
-	return DevPairs(make([]DevPair, 0))
+	return make([]DevPair, 0)
 }
 
 func (t DevPairs) Add(src *device.T, dst *device.T) DevPairs {
