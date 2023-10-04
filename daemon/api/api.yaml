@@ -2429,6 +2429,7 @@ components:
         action:
           type: string
           enum:
+            - restart
             - start
             - stop
         subs:

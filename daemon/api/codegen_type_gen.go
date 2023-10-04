@@ -57,8 +57,9 @@ const (
 
 // Defines values for PostDaemonSubActionAction.
 const (
-	PostDaemonSubActionActionStart PostDaemonSubActionAction = "start"
-	PostDaemonSubActionActionStop  PostDaemonSubActionAction = "stop"
+	PostDaemonSubActionActionRestart PostDaemonSubActionAction = "restart"
+	PostDaemonSubActionActionStart   PostDaemonSubActionAction = "start"
+	PostDaemonSubActionActionStop    PostDaemonSubActionAction = "stop"
 )
 
 // Defines values for Provisioned.

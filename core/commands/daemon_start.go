@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/daemoncmd"
 )
 
@@ -27,7 +28,7 @@ func (t *CmdDaemonStart) cmdArgs() []string {
 }
 
 func (t *CmdDaemonStart) Run() error {
-	cli, err := newClient(t.Server)
+	cli, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
