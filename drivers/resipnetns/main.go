@@ -5,6 +5,7 @@ package resipnetns
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -741,8 +742,10 @@ func (t T) newGuestDev(netns ns.NetNS) (string, error) {
 				return nil
 			}
 			i = i + 1
+			if i > math.MaxUint16 {
+				return fmt.Errorf("can't find available link at %s", name)
+			}
 		}
-		return nil
 	})
 	return name, err
 }
