@@ -65,7 +65,7 @@ var (
 	// SlotSize is the data size reserved for a single node
 	SlotSize = 1024 * 1024
 
-	// MaxSlot is maximum number of slots that can fit in MetaSize
+	// MaxSlots is maximum number of slots that can fit in MetaSize
 	MaxSlots = MetaSize / PageSize
 )
 

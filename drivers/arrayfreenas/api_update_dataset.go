@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -143,7 +142,7 @@ func (c *ClientWithResponses) UpdateDatasetWithBodyWithResponse(ctx context.Cont
 
 // ParseUpdateDatasetResponse parses an HTTP response from a UpdateDatasetWithResponse call
 func ParseUpdateDatasetResponse(rsp *http.Response) (*UpdateDatasetResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

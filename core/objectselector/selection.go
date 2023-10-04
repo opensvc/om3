@@ -339,9 +339,9 @@ func (t *Selection) daemonExpand() error {
 	if resp, err := t.client.GetObjectPaths(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected get objects selector status %s", resp.Status)
+		return fmt.Errorf("unexpected get objects selector status %s", resp.Status)
 	} else {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return json.NewDecoder(resp.Body).Decode(&t.paths)
 	}
 }

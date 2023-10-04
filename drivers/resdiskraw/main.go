@@ -256,7 +256,6 @@ func (t *T) checkSource(pair DevPair) []string {
 	} else {
 		return []string{fmt.Sprintf("%s cur src maj:min err: %s", pair.Dst.Path(), err)}
 	}
-	return []string{}
 }
 
 func (t *T) checkMode(p string) []string {

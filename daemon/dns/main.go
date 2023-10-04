@@ -1,4 +1,4 @@
-// dns is responsible of the cluster dns zone.
+// Package dns is responsible for the cluster dns zone management.
 //
 // This zone contains the records needed to address a svc with
 // cni ip addresses, which are randomly changing on restart.

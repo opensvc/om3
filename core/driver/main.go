@@ -1,4 +1,4 @@
-// driver is the package serving the driver registry.
+// Package driver is the package serving the driver registry.
 // A driver is identified by group and name, via the ID type.
 package driver
 

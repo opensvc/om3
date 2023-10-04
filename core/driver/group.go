@@ -81,12 +81,12 @@ var (
 	}
 )
 
-// Names returns all supported drivergroup names
+// GroupNames returns all supported drivergroup names
 func GroupNames() []string {
 	return xmap.Keys(toGroupID)
 }
 
-// New allocates a Group from its string representation.
+// NewGroup allocates a Group from its string representation.
 func NewGroup(s string) Group {
 	if t, ok := toGroupID[s]; ok {
 		return t

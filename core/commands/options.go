@@ -38,7 +38,7 @@ type (
 		Timeout time.Duration
 	}
 
-	// OpTo sets a barrier when iterating over a resource lister
+	// OptTo sets a barrier when iterating over a resource lister
 	OptTo struct {
 		To     string
 		UpTo   string // Deprecated

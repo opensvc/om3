@@ -11,6 +11,7 @@ import (
 	"time"
 
 	errchain "github.com/g8rswimmer/error-chain"
+
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/seq"
@@ -237,7 +238,7 @@ func (t timerange) TestIncludes(tm time.Time) error {
 	return fmt.Errorf("%w: not in timerange %s-%s", ErrNotAllowed, t.begin, t.end)
 }
 
-// TestIncludes returns true if <tm> is in the Timerange
+// Includes returns true if <tm> is in the Timerange
 func (t timerange) Includes(tm time.Time) bool {
 	err := t.TestIncludes(tm)
 	return err == nil
@@ -995,7 +996,6 @@ func parseOneCalendarExpression(spec string, all []int) (map[int]interface{}, er
 	default:
 		return m, fmt.Errorf("%w: only one '-' is allowed in range: %s", ErrInvalid, spec)
 	}
-	return m, fmt.Errorf("%w: unexpected syntax: %s", ErrInvalid, spec)
 }
 func parseMonths(spec string) ([]int, error) {
 	elements := strings.Split(spec, "%")

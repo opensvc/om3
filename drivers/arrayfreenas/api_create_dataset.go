@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -112,7 +111,7 @@ func (c *ClientWithResponses) CreateDatasetWithResponse(ctx context.Context, bod
 
 // ParseCreateDatasetResponse parses an HTTP response from a CreateDatasetWithResponse call
 func ParseCreateDatasetResponse(rsp *http.Response) (*CreateDatasetResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

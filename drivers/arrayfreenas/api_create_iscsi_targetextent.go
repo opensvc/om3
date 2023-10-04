@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -77,7 +76,7 @@ func (c *ClientWithResponses) CreateISCSITargetExtentWithResponse(ctx context.Co
 
 // ParseCreateISCSITargetExtentResponse parses an HTTP response from a CreateISCSITargetExtentWithResponse call
 func ParseCreateISCSITargetExtentResponse(rsp *http.Response) (*CreateISCSITargetExtentResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

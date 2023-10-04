@@ -157,7 +157,7 @@ func (t *Tree) AddNode() *Node {
 	return t.head.AddNode()
 }
 
-// PlugNode add an existing tree head Node as child of the head node of the tree
+// PlugTree add an existing tree head Node as child of the head node of the tree
 func (t *Tree) PlugTree(n *Tree) {
 	t.head.PlugTree(n)
 }
@@ -194,7 +194,7 @@ func assignNode(parent, child *Node) {
 	}
 }
 
-// PlugNode add an existing tree head Node as child this node.
+// PlugTree add an existing tree head Node as child this node.
 func (t *Node) PlugTree(n *Tree) {
 	t.PlugNode(n.Head())
 }

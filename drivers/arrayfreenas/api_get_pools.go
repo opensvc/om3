@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -174,7 +174,7 @@ func (c *ClientWithResponses) GetPoolsWithResponse(ctx context.Context, params *
 
 // ParseGetPoolsResponse parses an HTTP response from a GetPoolsWithResponse call
 func ParseGetPoolsResponse(rsp *http.Response) (*GetPoolsResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

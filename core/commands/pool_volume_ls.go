@@ -49,5 +49,4 @@ func (t *CmdPoolVolumeLs) Run() error {
 	default:
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	return nil
 }

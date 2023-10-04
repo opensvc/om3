@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -166,7 +166,7 @@ func (c *ClientWithResponses) GetDatasetWithResponse(ctx context.Context, id str
 
 // ParseGetDatasetResponse parses an HTTP response from a GetDatasetWithResponse call
 func ParseGetDatasetResponse(rsp *http.Response) (*GetDatasetResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err

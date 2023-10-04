@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 )
 
-// Start starts the local instance of the object
+// PRStart starts the scsi reservations of the local instance of the object
 func (t *actor) PRStart(ctx context.Context) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Start)
 	if err := t.validateAction(); err != nil {
