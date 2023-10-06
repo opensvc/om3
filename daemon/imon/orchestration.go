@@ -70,6 +70,8 @@ func (o *imon) orchestrate() {
 	}
 
 	switch o.state.GlobalExpect {
+	case instance.MonitorGlobalExpectDeleted:
+		o.orchestrateDeleted()
 	case instance.MonitorGlobalExpectNone:
 		o.orchestrateNone()
 	case instance.MonitorGlobalExpectFrozen:
