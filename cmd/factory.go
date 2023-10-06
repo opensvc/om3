@@ -1941,6 +1941,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 }
 
 func newCmdObjectDelete(kind string) *cobra.Command {
+	// TODO: separate the rid deletion from object deletion. We should have 2 different commands for this
 	var options commands.CmdObjectDelete
 	cmd := &cobra.Command{
 		Use:     "delete",

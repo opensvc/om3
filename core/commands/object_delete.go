@@ -26,6 +26,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("delete"),
+		objectaction.WithAsyncTarget("deleted"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"rid": t.RID,
 		}),
