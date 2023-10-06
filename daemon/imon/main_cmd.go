@@ -533,6 +533,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 
 			// reset state to idle to allow the new orchestration to begin
 			o.state.State = instance.MonitorStateIdle
+			o.state.OrchestrationIsDone = false
 		}
 	}
 
