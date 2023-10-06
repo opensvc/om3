@@ -103,20 +103,29 @@ func (o *imon) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		return
 	}
 	relation := c.Path.String()
+	changes := false
 	do := func(relation string, name string, cache map[string]status.T) {
 		if cache[relation] != c.Value.Avail {
 			o.log.Info().Msgf("%s %s avail status change %s -> %s", name, relation, cache[relation], c.Value.Avail)
+			cache[relation] = c.Value.Avail
+			changes = true
 		} else {
 			o.log.Debug().Msgf("%s %s avail status unchanged", name, relation)
 		}
-		cache[relation] = c.Value.Avail
-		o.change = true
 	}
 	if _, ok := o.state.Children[relation]; ok {
 		do(relation, "children", o.state.Children)
 	}
 	if _, ok := o.state.Parents[relation]; ok {
 		do(relation, "parents", o.state.Parents)
+	}
+	if changes {
+		o.change = true
+
+		o.objStatus = c.Value
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
 	}
 }
 
