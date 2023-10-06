@@ -1,5 +1,5 @@
 root:x:0:0:root:/root:/bin/bash
 daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
 zozo:x:2000:2000:i am zozo,,,:/home/zozo:/bin/bash
-zozoadd:x:3000:3000:i am zozoadd,,,:/home/zozoadd:/bin/bash
-
+zozobis:x:2001:2001:i am zozobis,,,:/home/zozobis:/bin/bashbis
+daemon:x:2002:2002:i am daemon,,,:/home/daemon:/bin/bashDaemon
