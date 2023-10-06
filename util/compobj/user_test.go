@@ -514,6 +514,8 @@ func TestUserFix(t *testing.T) {
 		shellFix    fixCode = 4
 		passwordFix fixCode = 5
 		gecosFix    fixCode = 6
+		uidFix      fixCode = 7
+		gidFix      fixCode = 8
 	)
 	type test struct {
 		rule                        CompUser
@@ -876,6 +878,52 @@ func TestUserFix(t *testing.T) {
 			expectedFixOutput:           ExitNok,
 			expectedCheckOutputAfterFix: ExitNok,
 		},
+
+		"with wrong Uid ": {
+			rule: CompUser{
+				User:      "zozo",
+				Uid:       pti(2000),
+				Gid:       pti(2000),
+				Shell:     "",
+				Home:      "",
+				Password:  "",
+				Gecos:     "",
+				CheckHome: "",
+			},
+			currentPasswdFile:           "./testdata/user_passwd_with_wrong_uid",
+			currentShadowFile:           "./testdata/user_shadow",
+			goldenPasswdFile:            "./testdata/user_passwd",
+			goldenShadowFile:            "./testdata/user_shadow",
+			envFunction:                 []func(pRule *CompUser) error{},
+			needRoot:                    false,
+			expectedFixAction:           uidFix,
+			FixAction:                   noFix,
+			expectedFixOutput:           ExitOk,
+			expectedCheckOutputAfterFix: ExitOk,
+		},
+
+		"with wrong Gid ": {
+			rule: CompUser{
+				User:      "zozo",
+				Uid:       pti(2000),
+				Gid:       pti(2000),
+				Shell:     "",
+				Home:      "",
+				Password:  "",
+				Gecos:     "",
+				CheckHome: "",
+			},
+			currentPasswdFile:           "./testdata/user_passwd_with_wrong_gid",
+			currentShadowFile:           "./testdata/user_shadow",
+			goldenPasswdFile:            "./testdata/user_passwd",
+			goldenShadowFile:            "./testdata/user_shadow",
+			envFunction:                 []func(pRule *CompUser) error{},
+			needRoot:                    false,
+			expectedFixAction:           gidFix,
+			FixAction:                   noFix,
+			expectedFixOutput:           ExitOk,
+			expectedCheckOutputAfterFix: ExitOk,
+		},
 	}
 
 	for name, c := range testCases {
@@ -902,6 +950,20 @@ func TestUserFix(t *testing.T) {
 					return ExitNok
 				}
 				return ExitOk
+			}
+
+			execChUid = func(user string, uid int) *exec.Cmd {
+				c.FixAction = uidFix
+				c.currentPasswdFile = "./testdata/user_passwd"
+				c.currentShadowFile = "./testdata/user_shadow"
+				return exec.Command("pwd")
+			}
+
+			execChGid = func(user string, uid int) *exec.Cmd {
+				c.FixAction = gidFix
+				c.currentPasswdFile = "./testdata/user_passwd"
+				c.currentShadowFile = "./testdata/user_shadow"
+				return exec.Command("pwd")
 			}
 
 			execDelCommand = func(user string) *exec.Cmd {

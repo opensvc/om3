@@ -82,6 +82,14 @@ var (
 		return ExitOk
 	}
 
+	execChGid = func(user string, gid int) *exec.Cmd {
+		return exec.Command("usermod", "-g", fmt.Sprintf("%d", gid), user)
+	}
+
+	execChUid = func(user string, uid int) *exec.Cmd {
+		return exec.Command("usermod", "-u", fmt.Sprintf("%d", uid), user)
+	}
+
 	execDelCommand = func(user string) *exec.Cmd {
 		return exec.Command("bash", `userdel `+user)
 	}
@@ -360,16 +368,15 @@ func (t CompUsers) checkRule(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
-
-	uid, err := t.getUid(userInfos)
+	uid, err := t.getGid(userInfos)
 	if err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
 
-	t.Infof("uid = %d target = %d \n", uid, *rule.Uid)
+	t.Infof("gid = %d target = %d \n", uid, *rule.Uid)
 	if uid != *rule.Uid {
-		t.Infof("uid not ok \n")
+		t.Infof("gid not ok \n")
 		return ExitNok
 	}
 
@@ -598,8 +605,7 @@ func (t *CompUsers) fixRule(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixGid(rule CompUser) ExitCode {
-
-	cmd := exec.Command("usermod", "-g", fmt.Sprintf("%d", *rule.Gid), rule.User)
+	cmd := execChGid(rule.User, *rule.Gid)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -610,7 +616,7 @@ func (t CompUsers) fixGid(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixUid(rule CompUser) ExitCode {
-	cmd := exec.Command("usermod", "-u", fmt.Sprintf("%d", *rule.Uid), rule.User)
+	cmd := execChUid(rule.User, *rule.Uid)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
