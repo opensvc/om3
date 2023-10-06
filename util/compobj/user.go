@@ -727,5 +727,5 @@ func (t CompUsers) Fixable() ExitCode {
 }
 
 func (t CompUsers) Info() ObjInfo {
-	return compSymlinkInfo
+	return compUserInfo
 }
