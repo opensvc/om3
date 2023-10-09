@@ -65,7 +65,7 @@ var (
 	loadFiles = func(t CompUsers) ExitCode {
 		var err error
 		if !t.checkFilesNsswitch() {
-			t.Errorf("shadow or passwd are not using files")
+			t.Errorf("shadow or passwd are not using files (in /etc/Nsswitch)")
 			return ExitNok
 		}
 		shadowFileContent, err = os.ReadFile("/etc/shadow")
@@ -82,7 +82,7 @@ var (
 		return ExitOk
 	}
 
-	execChGid = func(user string, gid int) *exec.Cmd {
+	execChUserGid = func(user string, gid int) *exec.Cmd {
 		return exec.Command("usermod", "-g", fmt.Sprintf("%d", gid), user)
 	}
 
@@ -605,7 +605,7 @@ func (t *CompUsers) fixRule(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixGid(rule CompUser) ExitCode {
-	cmd := execChGid(rule.User, *rule.Gid)
+	cmd := execChUserGid(rule.User, *rule.Gid)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

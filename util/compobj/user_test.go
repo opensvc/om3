@@ -131,7 +131,7 @@ func TestUserAdd(t *testing.T) {
 		},
 
 		"with empty json :": {
-			jsonRules:               []string{},
+			jsonRules:               []string{`{"" : {}}`},
 			expecteErrorInAddOutput: true,
 		},
 
@@ -186,12 +186,12 @@ func TestUserCheckFilesNsswitch(t *testing.T) {
 		expectedOutput bool
 	}{
 		"with files for passwd and shadow": {
-			nsswitchFile:   "./testdata/user_nsswitch.conf_true",
+			nsswitchFile:   "./testdata/nsswitch.conf_true",
 			expectedOutput: true,
 		},
 
 		"with multiple fields but still using files": {
-			nsswitchFile:   "./testdata/user_nsswitch.conf_multipleFields",
+			nsswitchFile:   "./testdata/nsswitch.conf_multipleFields",
 			expectedOutput: true,
 		},
 
@@ -201,7 +201,7 @@ func TestUserCheckFilesNsswitch(t *testing.T) {
 		},
 
 		"with no files for shadow and passwd": {
-			nsswitchFile:   "./testdata/user_nsswitch.conf_noFilesPasswd_noFilesShadow",
+			nsswitchFile:   "./testdata/nsswitch.conf_noFilesPasswd_noFilesShadow_noFilesGroup",
 			expectedOutput: false,
 		},
 
@@ -959,7 +959,7 @@ func TestUserFix(t *testing.T) {
 				return exec.Command("pwd")
 			}
 
-			execChGid = func(user string, uid int) *exec.Cmd {
+			execChUserGid = func(user string, uid int) *exec.Cmd {
 				c.FixAction = gidFix
 				c.currentPasswdFile = "./testdata/user_passwd"
 				c.currentShadowFile = "./testdata/user_shadow"
