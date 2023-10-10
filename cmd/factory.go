@@ -936,21 +936,6 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeDelete() *cobra.Command {
-	var options commands.CmdNodeDelete
-	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "delete a configuration section",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagRID(flags, &options.RID)
-	return cmd
-}
-
 func newCmdNodeDoc() *cobra.Command {
 	var options commands.CmdNodeDoc
 	cmd := &cobra.Command{
@@ -1335,7 +1320,7 @@ func newCmdNodeUnset() *cobra.Command {
 	var options commands.CmdNodeUnset
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "unset a configuration key",
+		Short: "unset configuration keywords or sections",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1344,6 +1329,7 @@ func newCmdNodeUnset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 
