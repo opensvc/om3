@@ -52,7 +52,7 @@ func (o *imon) crmBoot() error {
 }
 
 func (o *imon) crmDelete() error {
-	return o.crmAction("delete", o.path.String(), "delete")
+	return o.crmAction("delete", o.path.String(), "delete", "--local")
 }
 
 func (o *imon) crmFreeze() error {

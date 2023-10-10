@@ -24,7 +24,6 @@ func init() {
 		newCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
 		newCmdObjectDoc(kind),
-		newCmdObjectDelete(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),

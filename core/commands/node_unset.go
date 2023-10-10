@@ -14,6 +14,7 @@ type (
 		OptsGlobal
 		OptsLock
 		Keywords []string
+		Sections []string
 	}
 )
 
@@ -27,9 +28,11 @@ func (t *CmdNodeUnset) Run() error {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("unset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw": t.Keywords,
+			"kw":       t.Keywords,
+			"sections": t.Sections,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
+			// TODO: one commit on Unset, one commit on DeleteSection. Change to single commit ?
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
@@ -37,8 +40,26 @@ func (t *CmdNodeUnset) Run() error {
 			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			kws := key.ParseL(t.Keywords)
-			return nil, n.Unset(ctx, kws...)
+			kws := key.ParseStrings(t.Keywords)
+			if len(kws) > 0 {
+				n.Log().Debug().Msgf("unsetting node keywords: %s", kws)
+				if err = n.Unset(ctx, kws...); err != nil {
+					return nil, err
+				}
+			}
+			sections := make([]string, 0)
+			for _, r := range t.Sections {
+				if r != "DEFAULT" {
+					sections = append(sections, r)
+				}
+			}
+			if len(sections) > 0 {
+				n.Log().Debug().Msgf("deleting node sections: %s", sections)
+				if err = n.DeleteSection(sections...); err != nil {
+					return nil, err
+				}
+			}
+			return nil, nil
 		}),
 	).Do()
 }

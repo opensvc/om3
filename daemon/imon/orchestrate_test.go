@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -34,6 +36,7 @@ import (
 type (
 	sideEffect struct {
 		iStatus *instance.Status
+		events  []pubsub.Messager
 		err     error
 	}
 
@@ -63,6 +66,14 @@ type (
 		expectedLocalExpect  instance.MonitorLocalExpect
 		expectedIsLeader     bool
 		expectedIsHALeader   bool
+
+		// expectedDeleteSuccess is true if check delete orchestration with a
+		// successfully crm delete
+		expectedDeleteSuccess bool
+
+		// expectedDeleteFailed is true if we want to check delete orchestration
+		// with a failure during crm delete
+		expectedDeleteFailed bool
 
 		expectedCrm [][]string
 	}
@@ -104,6 +115,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "boot", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -132,6 +144,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "boot", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -153,6 +166,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedCrm: [][]string{
 				{"obj", "status", "-r"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -175,6 +189,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedCrm: [][]string{
 				{"obj", "status", "-r"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -238,12 +253,26 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedCrm: [][]string{
 				{"obj", "status", "-r"},
 			},
+			expectedDeleteSuccess: true,
 		},
 	}
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			orchestrateTestfunc(t, c)
-		})
+		if c.expectedDeleteSuccess {
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+
+			// always add extra run with failed delete when expectedDeleteSuccess is set
+			c.expectedDeleteFailed = true
+			c.expectedDeleteSuccess = false
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		} else {
+			t.Run(c.name, func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		}
 	}
 }
 
@@ -280,6 +309,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "boot", "--local"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -313,6 +343,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "boot", "--local"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -339,6 +370,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -367,6 +399,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -395,6 +428,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 
 		{
@@ -422,12 +456,26 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				{"obj", "status", "-r"},
 				{"obj", "start", "--local"},
 			},
+			expectedDeleteSuccess: true,
 		},
 	}
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			orchestrateTestfunc(t, c)
-		})
+		if c.expectedDeleteSuccess {
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+
+			// always add extra run with failed delete when expectedDeleteSuccess is set
+			c.expectedDeleteFailed = true
+			c.expectedDeleteSuccess = false
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		} else {
+			t.Run(c.name, func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		}
 	}
 }
 
@@ -452,12 +500,26 @@ func Test_Orchestrate_No(t *testing.T) {
 			expectedCrm: [][]string{
 				{"obj", "status", "-r"},
 			},
+			expectedDeleteSuccess: true,
 		},
 	}
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			orchestrateTestfunc(t, c)
-		})
+		if c.expectedDeleteSuccess {
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+
+			// always add extra run with failed delete when expectedDeleteSuccess is set
+			c.expectedDeleteFailed = true
+			c.expectedDeleteSuccess = false
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		} else {
+			t.Run(c.name, func(t *testing.T) {
+				orchestrateTestfunc(t, c)
+			})
+		}
 	}
 }
 
@@ -509,6 +571,17 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 
 	initialReadyDuration := defaultReadyDuration
 	defaultReadyDuration = 1 * time.Millisecond
+
+	if c.expectedDeleteSuccess {
+		c.sideEffects["delete"] = sideEffect{
+			events: []pubsub.Messager{&msgbus.InstanceConfigDeleted{Path: p, Node: hostname.Hostname()}},
+			err:    nil,
+		}
+	} else if c.expectedDeleteFailed {
+		c.sideEffects["delete"] = sideEffect{
+			err: fmt.Errorf("crm delete action failed"),
+		}
+	}
 	crm := crmBuilder(t, setup.Ctx, p, c.sideEffects)
 	crmAction = crm.action
 	defer func() {
@@ -516,8 +589,9 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 		crmAction = nil
 	}()
 
-	factory := Factory{DrainDuration: setup.DrainDuration}
-	evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
+	evC, errC := waitExpectations(t, setup.Ctx, maxWaitTime, c)
+
+	objectMonCreator(t, setup.Ctx, c, Factory{DrainDuration: setup.DrainDuration})
 
 	cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.obj)
 	setup.Env.InstallFile(c.srcFile, cfgEtcFile)
@@ -526,7 +600,8 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 	require.Nil(t, err)
 
 	t.Logf("waiting for watcher result")
-	evImon := <-evC
+	evImon, err := <-evC, <-errC
+	assert.NoError(t, err)
 
 	calls := crm.getCalls()
 	t.Logf("crm calls: %v", calls)
@@ -555,7 +630,52 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 	assert.Equalf(t, c.expectedCrm, calls,
 		"expected calls %v, found %v", c.expectedCrm, calls)
 
-	drainDuration := setup.DrainDuration + 15*time.Millisecond
+	var deleteTest string
+	require.False(t, c.expectedDeleteFailed && c.expectedDeleteSuccess,
+		"can't test with both expectedDeleteFailed and expectedDeleteSuccess")
+	switch {
+	case c.expectedDeleteFailed:
+		deleteTest = "try delete failed orchestration"
+	case c.expectedDeleteFailed:
+		deleteTest = "try delete success orchestration "
+	}
+	if deleteTest != "" {
+		t.Run(deleteTest, func(t *testing.T) {
+			stateC, errC := waitNmonStates(setup.Ctx, "waiting for delete, deleting", 2*time.Second, p,
+				instance.MonitorStateDeleted,
+				instance.MonitorStateDeleting)
+			g := instance.MonitorGlobalExpectDeleted
+			msg := msgbus.SetInstanceMonitor{
+				Path: p,
+				Node: hostname.Hostname(),
+				Value: instance.MonitorUpdate{
+					GlobalExpect:             &g,
+					CandidateOrchestrationId: uuid.New(),
+				},
+				Err: make(chan error),
+			}
+			t.Logf("try delete orchestration with : %v", msg)
+			bus.Pub(&msg, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
+			require.NoError(t, <-msg.Err)
+
+			t.Logf("waiting for delete, deleting")
+			state, err := <-stateC, <-errC
+			require.NoError(t, err)
+			t.Logf("found expected state: %s", state)
+
+			// deleting state is published before crm call is done, delay getCalls
+			time.Sleep(50 * time.Millisecond)
+			calls = crm.getCalls()
+			t.Logf("crm calls: %v", calls)
+			t.Logf("verify last call is a delete call")
+			expectedCalls := [][]string{[]string{"obj", "delete", "--local"}}
+			assert.Equalf(t, expectedCalls, calls,
+				"expected calls %v, found %v", expectedCalls, calls)
+		})
+	}
+
+	drainDuration := setup.DrainDuration + 30*time.Millisecond
+
 	t.Logf("setup cancel and wait for drain duration %s", drainDuration)
 	setup.Cancel()
 	time.Sleep(drainDuration)
@@ -581,7 +701,9 @@ func (c *crmSpy) addCall(cmdArgs ...string) {
 func (c *crmSpy) getCalls() [][]string {
 	c.RLock()
 	defer c.RUnlock()
-	return append([][]string{}, c.calls...)
+	calls := append([][]string{}, c.calls...)
+	c.calls = make([][]string, 0)
+	return calls
 }
 
 func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map[string]sideEffect) *crm {
@@ -631,6 +753,13 @@ func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map
 			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt)
 		}
 
+		for _, e := range se.events {
+			t.Logf("--- crmAction %s %v publish sid effect %s %v", title, cmdArgs, reflect.TypeOf(e), e)
+			bus.Pub(e,
+				pubsub.Label{"path", p.String()},
+				pubsub.Label{"node", hostname.Hostname()},
+			)
+		}
 		if se.err != nil {
 			t.Logf("--- crmAction %s %v error %s", title, cmdArgs, se.err)
 		} else {
@@ -641,79 +770,141 @@ func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map
 	return &c
 }
 
-// objectMonCreatorAndExpectationWatch returns a channel where we can read the InstanceMonitorUpdated for c
-// that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
-//
-// It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan *msgbus.InstanceMonitorUpdated {
-	r := make(chan chan *msgbus.InstanceMonitorUpdated)
+// objectMonCreator emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
+func objectMonCreator(t *testing.T, ctx context.Context, c tCase, factory Factory) {
+	var (
+		p = naming.Path{Kind: naming.KindSvc, Name: c.obj}
+
+		monStarted bool
+	)
+
+	sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover")
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, pubsub.Label{"path", p.String()})
+	sub.Start()
 
 	go func() {
-		var (
-			evC = make(chan *msgbus.InstanceMonitorUpdated)
-
-			p = naming.Path{Kind: naming.KindSvc, Name: c.obj}
-
-			monStarted bool
-
-			latestInstanceMonitorUpdated *msgbus.InstanceMonitorUpdated
-		)
-		ctx, cancel := context.WithTimeout(ctx, duration)
-		defer cancel()
-
-		sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover & watcher")
-		sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
-		sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
-		sub.Start()
 		defer func() {
 			_ = sub.Stop()
 		}()
 
-		t.Logf("watching InstanceMonitorUpdated and InstanceConfigUpdated for path: %s, max duration %s", p, duration)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i := <-sub.C:
+				switch o := i.(type) {
+				case *msgbus.InstanceConfigDeleted:
+					monStarted = false
+					time.Sleep(10 * time.Millisecond)
+				case *msgbus.InstanceConfigUpdated:
+					if !monStarted {
+						t.Logf("--- starting omon for %s", p)
+						if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
+							t.Errorf("omon.Start failed: %s", err)
+						}
+						monStarted = true
+					}
+				}
+			}
+		}
+	}()
+}
 
-		// serve response channel
-		r <- evC
+// waitExpectations watches for InstanceMonitorUpdated until matched expectation from c or reached timeout
+// when timeout is reached, error is non nil and event is the latest event published or zero value
+func waitExpectations(t *testing.T, parent context.Context, timeout time.Duration, c tCase) (<-chan *msgbus.InstanceMonitorUpdated, <-chan error) {
+	evC := make(chan *msgbus.InstanceMonitorUpdated)
+	errC := make(chan error)
+	p := naming.Path{Kind: naming.KindSvc, Name: c.obj}
+	latestInstanceMonitorUpdated := &msgbus.InstanceMonitorUpdated{}
+
+	ctx, cancel := context.WithTimeout(parent, timeout)
+
+	sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": wait expectations")
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
+	sub.Start()
+
+	go func() {
+		t.Logf("watching InstanceMonitorUpdated for path: %s, max duration %s", p, timeout)
+		defer cancel()
+		defer func() {
+			_ = sub.Stop()
+		}()
 
 		for {
 			select {
 			case <-ctx.Done():
 				evC <- latestInstanceMonitorUpdated
+				errC <- ctx.Err()
 				return
 			case i := <-sub.C:
 				switch o := i.(type) {
-				case *msgbus.InstanceConfigUpdated:
-					if monStarted {
-						continue
-					}
-					t.Logf("--- starting omon for %s", p)
-					if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
-						t.Errorf("omon.Start failed: %s", err)
-					}
-					monStarted = true
 				case *msgbus.InstanceMonitorUpdated:
 					latestInstanceMonitorUpdated = o
 					value := o.Value
-					t.Logf("----  WATCH InstanceMonitorUpdated %s state: %s localExpect: %s globalExpect: %s isLeader: %v isHaLeader: %v",
-						o.Path,
-						value.State,
-						value.LocalExpect,
-						value.GlobalExpect,
-						value.IsLeader,
-						value.IsHALeader,
-					)
+
 					v := o.Value
-					t.Logf("Verify if expected is reached for fast return")
 					if c.expectedIsHALeader == v.IsHALeader &&
 						c.expectedIsLeader == v.IsLeader &&
 						c.expectedGlobalExpect == v.GlobalExpect &&
 						c.expectedState == v.State &&
 						c.expectedLocalExpect == v.LocalExpect {
-						cancel()
+						t.Logf("----  matched InstanceMonitorUpdated %s state: %s localExpect: %s globalExpect: %s isLeader: %v isHaLeader: %v",
+							o.Path,
+							value.State,
+							value.LocalExpect,
+							value.GlobalExpect,
+							value.IsLeader,
+							value.IsHALeader,
+						)
+						evC <- latestInstanceMonitorUpdated
+						errC <- nil
+						return
 					}
 				}
 			}
 		}
 	}()
 
-	return <-r
+	return evC, errC
+}
+
+func waitNmonStates(ctx context.Context, desc string, d time.Duration, p naming.Path, states ...instance.MonitorState) (<-chan instance.MonitorState, <-chan error) {
+	stateC := make(chan instance.MonitorState)
+	errC := make(chan error)
+
+	go func() {
+		bus := pubsub.BusFromContext(ctx)
+
+		sub := bus.Sub(desc)
+		sub.AddFilter(&msgbus.InstanceMonitorUpdated{},
+			[]pubsub.Label{{"path", p.String()}, {"node", hostname.Hostname()}}...)
+		sub.Start()
+		defer func() {
+			go func() {
+				_ = sub.Stop()
+			}()
+		}()
+
+		ctx, cancel := context.WithTimeout(ctx, d)
+		defer cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				stateC <- instance.MonitorStateZero
+				errC <- ctx.Err()
+				return
+			case i := <-sub.C:
+				if msg, ok := i.(*msgbus.InstanceMonitorUpdated); ok {
+					if msg.Value.State.Is(states...) {
+						stateC <- msg.Value.State
+						errC <- ctx.Err()
+						return
+					}
+				}
+			}
+		}
+	}()
+	return stateC, errC
 }

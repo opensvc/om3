@@ -70,6 +70,8 @@ func (o *imon) orchestrate() {
 	}
 
 	switch o.state.GlobalExpect {
+	case instance.MonitorGlobalExpectDeleted:
+		o.orchestrateDeleted()
 	case instance.MonitorGlobalExpectNone:
 		o.orchestrateNone()
 	case instance.MonitorGlobalExpectFrozen:
@@ -115,7 +117,7 @@ func (o *imon) setWaitParents() bool {
 
 func (o *imon) setWaitChildren() bool {
 	for relation, availStatus := range o.state.Children {
-		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef) {
+		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef, status.NotApplicable) {
 			if o.state.State != instance.MonitorStateWaitChildren {
 				o.log.Info().Msgf("wait children because %s avail status is %s", relation, availStatus)
 				o.state.State = instance.MonitorStateWaitChildren
@@ -125,7 +127,7 @@ func (o *imon) setWaitChildren() bool {
 		}
 	}
 	if o.state.State == instance.MonitorStateWaitChildren {
-		o.log.Info().Msgf("stop waiting children")
+		o.log.Info().Msgf("no more children to wait")
 		o.state.State = instance.MonitorStateIdle
 		o.change = true
 	}

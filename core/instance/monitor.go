@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
@@ -96,6 +97,7 @@ const (
 	MonitorStateBooting
 	MonitorStateIdle
 	MonitorStateDeleted
+	MonitorStateDeleteFailed
 	MonitorStateDeleting
 	MonitorStateFreezeFailed
 	MonitorStateFreezing
@@ -152,6 +154,7 @@ var (
 		MonitorStateBootFailed:        "boot failed",
 		MonitorStateBooting:           "booting",
 		MonitorStateDeleted:           "deleted",
+		MonitorStateDeleteFailed:      "delete failed",
 		MonitorStateDeleting:          "deleting",
 		MonitorStateFreezeFailed:      "freeze failed",
 		MonitorStateFreezing:          "freezing",
@@ -231,6 +234,7 @@ var (
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
 		MonitorGlobalExpectAborted:       "aborted",
+		MonitorGlobalExpectDeleted:       "deleted",
 		MonitorGlobalExpectZero:          "",
 		MonitorGlobalExpectFrozen:        "frozen",
 		MonitorGlobalExpectNone:          "none",
@@ -273,6 +277,15 @@ var (
 	MonitorActionReboot     MonitorAction = "reboot"
 	MonitorActionSwitch     MonitorAction = "switch"
 )
+
+func (t MonitorState) Is(states ...MonitorState) bool {
+	for _, s := range states {
+		if s == t {
+			return true
+		}
+	}
+	return false
+}
 
 func (t MonitorState) IsDoing() bool {
 	return strings.HasSuffix(t.String(), "ing")

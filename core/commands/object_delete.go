@@ -13,7 +13,6 @@ type (
 	CmdObjectDelete struct {
 		OptsGlobal
 		OptsLock
-		RID string
 	}
 )
 
@@ -26,8 +25,9 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("delete"),
+		objectaction.WithAsyncTarget("deleted"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"rid": t.RID,
+			"local": true,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewConfigurer(p)
@@ -36,11 +36,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			if t.RID != "" {
-				return nil, o.DeleteSection(ctx, t.RID)
-			} else {
-				return nil, o.Delete(ctx)
-			}
+			return nil, o.Delete(ctx)
 		}),
 	).Do()
 }

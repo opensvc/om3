@@ -20,8 +20,8 @@ func New(section, option string) T {
 	}
 }
 
-func ParseL(l []string) L {
-	kws := make(L, len(l))
+func ParseStrings(l []string) L {
+	kws := make(L, 0)
 	for _, s := range l {
 		kws = append(kws, Parse(s))
 	}

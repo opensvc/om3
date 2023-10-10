@@ -347,7 +347,7 @@ func newCmdDaemonStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagWatch(flags, &options.Watch)
-	addFlagSections(flags, &options.Sections)
+	addFlagOutputSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -491,7 +491,7 @@ func newCmdMonitor() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagWatch(flags, &options.Watch)
-	addFlagSections(flags, &options.Sections)
+	addFlagOutputSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -936,21 +936,6 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeDelete() *cobra.Command {
-	var options commands.CmdNodeDelete
-	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "delete a configuration section",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagRID(flags, &options.RID)
-	return cmd
-}
-
 func newCmdNodeDoc() *cobra.Command {
 	var options commands.CmdNodeDoc
 	cmd := &cobra.Command{
@@ -1335,7 +1320,7 @@ func newCmdNodeUnset() *cobra.Command {
 	var options commands.CmdNodeUnset
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "unset a configuration key",
+		Short: "unset configuration keywords or sections",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1344,6 +1329,7 @@ func newCmdNodeUnset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -1945,8 +1931,13 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "delete",
 		Aliases: []string{"del"},
-		Short:   "delete objects, instances or configuration sections",
-		Long:    "Beware: not setting --local nor --rid deletes all object instances via orchestration, which leaves no local backup of the configuration.",
+		Short:   "delete configuration object or instances (with --local)",
+		Long: "delete configuration object or instances (with --local)\n\n" +
+			"Beware: --local only removes the local instance config." +
+			" The config may be recreated by the daemon from a remote instance copy." +
+			" Without --local the delete is orchestrated so all instance configurations" +
+			" are deleted. The delete command is not responsible for stopping or unprovisioning." +
+			" The deletion happens whatever the object status.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1954,7 +1945,6 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagRID(flags, &options.RID)
 	return cmd
 }
 
@@ -2104,7 +2094,7 @@ func newCmdObjectMonitor(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagWatch(flags, &options.Watch)
-	addFlagSections(flags, &options.Sections)
+	addFlagOutputSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -2667,7 +2657,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	var options commands.CmdObjectUnset
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "unset a configuration key",
+		Short: "unset configuration keywords or sections",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2676,6 +2666,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 

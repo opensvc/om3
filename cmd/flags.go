@@ -160,7 +160,7 @@ func addFlagKeywordOps(flagSet *pflag.FlagSet, p *[]string) {
 }
 
 func addFlagKeywords(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "kw", []string{}, "A configuration keywords, [<section>].<option>.")
+	flagSet.StringSliceVar(p, "kw", []string{}, "Configuration keywords, [<section>.]<option>.")
 }
 
 func addFlagLeader(flagSet *pflag.FlagSet, p *bool) {
@@ -263,6 +263,10 @@ func addFlagModuleset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "moduleset", "", "The modulesets to limit the action to. The special value `all` can be used in conjonction with detach.")
 }
 
+func addFlagOutputSections(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "sections", "", "Sections to include in the output. threads,nodes,objects")
+}
+
 func addFlagRoles(flagSet *pflag.FlagSet, p *[]string) {
 	flagSet.StringSliceVar(p,
 		"role",
@@ -277,8 +281,8 @@ func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to. the special value `all` can be used in conjonction with detach.")
 }
 
-func addFlagSections(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "sections", "", "Sections to include in the output. threads,nodes,objects")
+func addFlagSections(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "section", []string{}, "Configuration sections.")
 }
 
 func addFlagSubset(flagSet *pflag.FlagSet, p *string) {

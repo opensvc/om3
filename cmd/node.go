@@ -123,7 +123,6 @@ func init() {
 		newCmdNodeChecks(),
 		newCmdNodeClear(),
 		newCmdNodeDoc(),
-		newCmdNodeDelete(),
 		newCmdNodeDrain(),
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),

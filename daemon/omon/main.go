@@ -251,6 +251,7 @@ func (o *T) worker() {
 
 			case *msgbus.InstanceConfigDeleted:
 				if c.Node == o.localhost && o.imonCancel != nil {
+					o.log.Info().Msg("local instance config deleted, cancel associated imon")
 					o.imonCancel()
 					o.imonCancel = nil
 				}
