@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/util/file"
@@ -18,14 +17,14 @@ import (
 //
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
-func (t core) DeleteSection(ctx context.Context, rid string) error {
+func (t core) DeleteSection(ctx context.Context, rids ...string) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	return t.deleteSections(rid)
+	return t.config.DeleteSections(rids)
 }
 
 func (t core) Delete(ctx context.Context) error {
@@ -93,9 +92,4 @@ func (t core) deleteInstanceLogs() error {
 
 func (t core) setPurgeCollectorTag() error {
 	return nil
-}
-
-func (t core) deleteSections(s string) error {
-	sections := strings.Split(s, ",")
-	return t.config.DeleteSections(sections)
 }

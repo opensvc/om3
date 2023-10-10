@@ -3,6 +3,8 @@ package commands
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -15,6 +17,7 @@ type (
 		OptsGlobal
 		OptsLock
 		Keywords []string
+		Sections []string
 	}
 )
 
@@ -29,9 +32,11 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("unset"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"kw": t.Keywords,
+			"kw":       t.Keywords,
+			"sections": t.Sections,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+			// TODO: one commit on Unset, one commit on DeleteSection. Change to single commit ?
 			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
@@ -39,7 +44,25 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			kws := key.ParseL(t.Keywords)
-			return nil, o.Unset(ctx, kws...)
+			if len(kws) > 0 {
+				log.Debug().Msgf("unsetting %s keywords: %s", p, kws)
+				if err = o.Unset(ctx, kws...); err != nil {
+					return nil, err
+				}
+			}
+			sections := make([]string, 0)
+			for _, r := range t.Sections {
+				if r != "DEFAULT" {
+					sections = append(sections, r)
+				}
+			}
+			if len(sections) > 0 {
+				log.Debug().Msgf("deleting %s sections: %s", p, sections)
+				if err = o.DeleteSection(ctx, sections...); err != nil {
+					return nil, err
+				}
+			}
+			return nil, nil
 		}),
 	).Do()
 }

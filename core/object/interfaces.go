@@ -25,7 +25,7 @@ type (
 		EvalAs(key.T, string) (interface{}, error)
 		Get(key.T) (interface{}, error)
 		ValidateConfig(context.Context) (xconfig.ValidateAlerts, error)
-		DeleteSection(context.Context, string) error
+		DeleteSection(context.Context, ...string) error
 		Delete(context.Context) error
 		Set(context.Context, ...keyop.T) error
 		Unset(context.Context, ...key.T) error
