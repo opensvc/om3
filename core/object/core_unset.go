@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-// Unset gets a keyword value
+// Unset unsets keywords
 func (t *core) Unset(ctx context.Context, kws ...key.T) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Unset)
 	unlock, err := t.lockAction(ctx)
