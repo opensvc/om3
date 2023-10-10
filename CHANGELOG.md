@@ -124,7 +124,7 @@
 
 * **breaking change:** "om ... set|unset" no longer accept --param and --value. Use --kw instead, which was also supported in v2.
 
-* "unset" now accepts "--section <name>" to remove an object configuration section.
+* "unset" now accepts "--section <name>" to remove an cluster, node or object configuration section.
 
 * "om monitor" instance availability icons changes:
 

@@ -43,7 +43,7 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			kws := key.ParseL(t.Keywords)
+			kws := key.ParseStrings(t.Keywords)
 			if len(kws) > 0 {
 				log.Debug().Msgf("unsetting %s keywords: %s", p, kws)
 				if err = o.Unset(ctx, kws...); err != nil {
