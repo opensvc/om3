@@ -282,7 +282,7 @@ func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagSections(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "rid", []string{}, "Configuration sections.")
+	flagSet.StringSliceVar(p, "section", []string{}, "Configuration sections.")
 }
 
 func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
