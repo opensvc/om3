@@ -1,0 +1,8 @@
+kernoops:x:113:65534:Kernel Oops Tracking Daemon,,,:/:/usr/sbin/nologin
+avahi:x:114:121:Avahi mDNS daemon,,,:/run/avahi-daemon:/usr/sbin/nologin
+cups-pk-helper:x:115:122:user for cups-pk-helper service,,,:/home/cups-pk-helper:/usr/sbin/nologin
+zozo:x:2000:2000:ircd:/run/ircd:/usr/sbin/nologin
+user1:x:2001:15:ircd:/run/ircd:/usr/sbin/nologin
+user2:x:2002:15:ircd:/run/ircd:/usr/sbin/nologin
+user3:x:2003:15:ircd:/run/ircd:/usr/sbin/nologin
+user4:x:2004:15:ircd:/run/ircd:/usr/sbin/nologin
