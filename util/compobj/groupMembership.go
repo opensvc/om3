@@ -21,9 +21,19 @@ var (
 	execGetent = func(file string, name string) *exec.Cmd {
 		return exec.Command("getent", file, name)
 	}
+
 	execId = func(userName string) *exec.Cmd {
 		return exec.Command("id", "-gn", userName)
 	}
+
+	execUsermodAdd = func(group string, user string) *exec.Cmd {
+		return exec.Command("usermod", "-aG", group, user)
+	}
+
+	execGpasswdDel = func(group string, user string) *exec.Cmd {
+		return exec.Command("gpasswd", "-d", user, group)
+	}
+
 	compGroupMembershipInfo = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_GROUPMEMBERSHIP_",
 		ExampleValue: map[string]CompGroupMembership{
@@ -132,44 +142,47 @@ func (t CompGroupsMemberships) checkGroupMembership(rule CompGroupMembership) Ex
 	}
 	out := true
 	for _, member := range rule.Members {
-		delMember := strings.HasPrefix(member, "-")
-		if delMember {
-			member = member[1:]
-		}
-		if primaryGroup, err := t.getPrimaryGroup(member); err != nil {
-			t.Errorf("%s\n", err)
-			return ExitNok
-		} else if primaryGroup == rule.Group {
-			if delMember {
-				t.VerboseInfof("user %s has the group %s as primary group and should not be present in the group --> not ok\n", member, rule.Group)
-				out = false
-				continue
-			}
-			t.VerboseInfof("user %s has the group %s as primary group and should be present in the group --> ok\n", member, rule.Group)
-			continue
-		}
-		if _, ok := groupMembers[member]; ok {
-			if delMember {
-				t.VerboseInfof("user %s is present in the group %s and should not be present --> not ok\n", member, rule.Group)
-				out = false
-				continue
-			}
-			t.VerboseInfof("user %s is present in the group %s and should be present --> ok\n", member, rule.Group)
-			continue
-		}
-
-		if delMember {
-			t.VerboseInfof("user %s is not present in the group %s and should not be present -->  ok\n", member, rule.Group)
-			continue
-		}
-		t.VerboseInfof("user %s is not present in the group %s and should be present --> not ok\n", member, rule.Group)
-		out = false
+		out = out && t.checkMember(groupMembers, member, rule.Group)
 	}
 	if out {
 		return ExitOk
 	}
 	return ExitNok
 }
+
+func (t CompGroupsMemberships) checkMember(groupMembers map[string]any, member string, groupName string) bool {
+	delMember := strings.HasPrefix(member, "-")
+	if delMember {
+		member = member[1:]
+	}
+	if primaryGroup, err := t.getPrimaryGroup(member); err != nil {
+		t.Errorf("%s\n", err)
+		return false
+	} else if primaryGroup == groupName {
+		if delMember {
+			t.VerboseInfof("user %s has the group %s as primary group and should not be present in the group --> not ok\n", member, groupName)
+			return false
+		}
+		t.VerboseInfof("user %s has the group %s as primary group and should be present in the group --> ok\n", member, groupName)
+		return true
+	}
+	if _, ok := groupMembers[member]; ok {
+		if delMember {
+			t.VerboseInfof("user %s is present in the group %s and should not be present --> not ok\n", member, groupName)
+			return false
+		}
+		t.VerboseInfof("user %s is present in the group %s and should be present --> ok\n", member, groupName)
+		return true
+	}
+
+	if delMember {
+		t.VerboseInfof("user %s is not present in the group %s and should not be present -->  ok\n", member, groupName)
+		return true
+	}
+	t.VerboseInfof("user %s is not present in the group %s and should be present --> not ok\n", member, groupName)
+	return false
+}
+
 func (t CompGroupsMemberships) getGroupMembers(groupName string) (map[string]any, error) {
 	m := map[string]any{}
 	cmd := execGetent("group", groupName)
@@ -244,32 +257,6 @@ func (t CompGroupsMemberships) isUserMissing(member string) (bool, error) {
 	return false, nil
 }
 
-func (t CompGroupsMemberships) fixLink(rule CompSymlink) ExitCode {
-	/*d := filepath.Dir(rule.Symlink)
-	if _, err := os.Stat(d); os.IsNotExist(err) {
-		if err := os.MkdirAll(d, 0511); err != nil {
-			t.Errorf("symlink: can not create dir %s to host the symlink %s\n", d, rule.Symlink)
-			return ExitNok
-		}
-	}
-	err := os.Symlink(rule.Target, rule.Symlink)
-	if err != nil {
-		t.Errorf("Cant create symlink %s\n", rule.Symlink)
-		return ExitNok
-	}*/
-	return ExitOk
-}
-
-func (t CompGroupsMemberships) FixSymlink(rule CompSymlink) ExitCode {
-	/*if e := t.CheckSymlink(rule); e == ExitNok {
-		if e := t.fixLink(rule); e == ExitNok {
-			return e
-		}
-	}
-	return ExitOk*/
-	return ExitOk
-}
-
 func (t CompGroupsMemberships) Check() ExitCode {
 	t.SetVerbose(true)
 	e := ExitOk
@@ -281,14 +268,77 @@ func (t CompGroupsMemberships) Check() ExitCode {
 	return e
 }
 
+func (t CompGroupsMemberships) fixRule(rule CompGroupMembership) ExitCode {
+	isGroupPresent, err := t.isGroupExisting(rule.Group)
+	if err != nil {
+		t.Errorf("can't check if group %s exist :%s \n", rule.Group, err)
+		return ExitNok
+	}
+	if !isGroupPresent {
+		return ExitOk
+	}
+	e := t.checkMembersExistence(rule.Members)
+	if e == ExitNok {
+		return e
+	}
+	groupMembers, err := t.getGroupMembers(rule.Group)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	for _, member := range rule.Members {
+		if !t.checkMember(groupMembers, member, rule.Group) {
+			e = e.Merge(t.fixMember(member, rule.Group))
+		}
+	}
+	return e
+}
+
+func (t CompGroupsMemberships) fixMember(member string, group string) ExitCode {
+	if strings.HasPrefix(member, "-") {
+		member = member[1:]
+		return t.fixMemberDel(member, group)
+	}
+	return t.fixMemberAdd(member, group)
+}
+
+func (t CompGroupsMemberships) fixMemberAdd(member string, group string) ExitCode {
+	cmd := execUsermodAdd(group, member)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("can't add the user %s to the group %s :%s \n", member, group, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCode {
+	primaryGroup, err := t.getPrimaryGroup(member)
+	if err != nil {
+		t.Errorf("can't read primary group for the user %s \n", member)
+		return ExitNok
+	}
+	if group == primaryGroup {
+		t.Errorf("user %s has the group %s as primary group --> cowardly refusing to del the user from its primary group \n", member, group)
+		return ExitNok
+	}
+	cmd := execGpasswdDel(group, member)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("error when trying to del the user %s from the group %s :%s \n", member, group, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
 func (t CompGroupsMemberships) Fix() ExitCode {
-	/*t.SetVerbose(false)
+	t.SetVerbose(false)
 	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		if e := t.FixSymlink(rule); e == ExitNok {
+		rule := i.(CompGroupMembership)
+		if e := t.fixRule(rule); e == ExitNok {
 			return ExitNok
 		}
-	}*/
+	}
 	return ExitOk
 }
 

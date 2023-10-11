@@ -170,7 +170,7 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 			expectedCheckOutput: ExitOk,
 		},
 
-		"with a group that is present but no members": {
+		"with a group that is present but no members in the rule (nil)": {
 			rule: CompGroupMembership{
 				Group:   "fax",
 				Members: nil,
@@ -230,7 +230,7 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 			expectedCheckOutput: ExitNok,
 		},
 
-		"with members that are not supposed to be present and on has the group as primary group": {
+		"with members that are not supposed to be present and one has the group as primary group": {
 			rule: CompGroupMembership{
 				Group:   "zozoPrimaryGroup",
 				Members: []string{"-user3", "-user2", "-zozo"},
@@ -279,6 +279,182 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 			}
 
 			require.Equal(t, c.expectedCheckOutput, obj.checkRule(c.rule))
+		})
+	}
+}
+
+func TestGroupMembershipFixRule(t *testing.T) {
+	oriExecGetent := execGetent
+	defer func() { execGetent = oriExecGetent }()
+
+	oriExecId := execId
+	defer func() { execId = oriExecId }()
+
+	oriExecUsermodAdd := execUsermodAdd
+	defer func() { execUsermodAdd = oriExecUsermodAdd }()
+
+	oriExecGpasswdDel := execGpasswdDel
+	defer func() { execGpasswdDel = oriExecGpasswdDel }()
+
+	type fixAction int
+
+	var (
+		addAction fixAction = 1
+		delAction fixAction = 2
+	)
+
+	getLine := func(FileContent []byte, name string) string {
+		scanner := bufio.NewScanner(bytes.NewReader(FileContent))
+		for scanner.Scan() {
+			line := strings.Split(scanner.Text(), ":")
+			if line[0] == name {
+				return scanner.Text()
+			}
+		}
+		return ""
+	}
+
+	getGroupNameFromId := func(groupFileContent []byte, id string) string {
+		scanner := bufio.NewScanner(bytes.NewReader(groupFileContent))
+		for scanner.Scan() {
+			line := strings.Split(scanner.Text(), ":")
+			if len(line) < 3 {
+				continue
+			}
+			if line[2] == id {
+				return line[0]
+			}
+		}
+		return ""
+	}
+
+	getPrimaryGroupId := func(passwdFileContent []byte, userName string) string {
+		scanner := bufio.NewScanner(bytes.NewReader(passwdFileContent))
+		for scanner.Scan() {
+			line := strings.Split(scanner.Text(), ":")
+			if len(line) < 4 {
+				continue
+			}
+			if line[0] == userName {
+				return line[3]
+			}
+		}
+		return ""
+	}
+
+	testCases := map[string]struct {
+		rule                        CompGroupMembership
+		passwdFile                  string
+		groupFile                   string
+		expectedFixActionsOnMembers map[string]fixAction
+		expectedFixOutput           ExitCode
+	}{
+		"with a true rule": {
+			rule: CompGroupMembership{
+				Group:   "zozoPrimaryGroup",
+				Members: []string{"user1", "user2", "-user4"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{},
+			expectedFixOutput:           ExitOk,
+		},
+
+		"with missing users (add)": {
+			rule: CompGroupMembership{
+				Group:   "zozoPrimaryGroup",
+				Members: []string{"user1", "user3", "user2", "user4", "zozo"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{"zozoPrimaryGroup:user3": addAction, "zozoPrimaryGroup:user4": addAction},
+			expectedFixOutput:           ExitOk,
+		},
+
+		"with users that are not supposed to be present (del)": {
+			rule: CompGroupMembership{
+				Group:   "zozoPrimaryGroup",
+				Members: []string{"-user1", "-user3", "-user2", "-user4", "zozo"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{"zozoPrimaryGroup:user1": delAction, "zozoPrimaryGroup:user2": delAction},
+			expectedFixOutput:           ExitOk,
+		},
+
+		"with a group that does not exist": {
+			rule: CompGroupMembership{
+				Group:   "IdontExist",
+				Members: []string{"-user1", "-user3", "-user2", "-user4", "zozo"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{},
+			expectedFixOutput:           ExitOk,
+		},
+
+		"with users that does not exist": {
+			rule: CompGroupMembership{
+				Group:   "zozoPrimaryGroup",
+				Members: []string{"-user1", "lala", "lolo", "-user4", "zozo"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{},
+			expectedFixOutput:           ExitNok,
+		},
+
+		"trying to del a user that has the group as primary group": {
+			rule: CompGroupMembership{
+				Group:   "zozoPrimaryGroup",
+				Members: []string{"-user1", "-user4", "-zozo"},
+			},
+			passwdFile:                  "./testdata/groupMembership_passwd_file",
+			groupFile:                   "./testdata/groupMembership_group_file",
+			expectedFixActionsOnMembers: map[string]fixAction{},
+			expectedFixOutput:           ExitNok,
+		},
+	}
+	obj := CompGroupsMemberships{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			actionOnMembers := map[string]fixAction{}
+			execGetent = func(file string, name string) *exec.Cmd {
+				var line string
+				switch file {
+				case "group":
+					fileContent, err := os.ReadFile(c.groupFile)
+					require.NoError(t, err)
+					line = getLine(fileContent, name)
+				case "passwd":
+					fileContent, err := os.ReadFile(c.passwdFile)
+					require.NoError(t, err)
+					line = getLine(fileContent, name)
+				default:
+					line = `the param file in execGetent only takes as argument "group"" or "file" you should not see this line ! this line come from groupMembership_test.go`
+				}
+				return exec.Command("echo", "-n", line)
+			}
+			execId = func(userName string) *exec.Cmd {
+				passwdFileContent, err := os.ReadFile(c.passwdFile)
+				require.NoError(t, err)
+				groupFileContent, err := os.ReadFile(c.groupFile)
+				require.NoError(t, err)
+				id := getPrimaryGroupId(passwdFileContent, userName)
+				return exec.Command("echo", "-n", getGroupNameFromId(groupFileContent, id))
+			}
+			execUsermodAdd = func(group string, user string) *exec.Cmd {
+				actionOnMembers[group+":"+user] = addAction
+				return exec.Command("pwd")
+			}
+			execGpasswdDel = func(group string, user string) *exec.Cmd {
+				actionOnMembers[group+":"+user] = delAction
+				return exec.Command("pwd")
+			}
+			require.Equal(t, c.expectedFixOutput, obj.fixRule(c.rule))
+			if c.expectedFixOutput == ExitOk {
+				require.Equal(t, c.expectedFixActionsOnMembers, actionOnMembers)
+			}
 		})
 	}
 }
