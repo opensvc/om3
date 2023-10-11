@@ -196,6 +196,9 @@ func (t CompGroupsMemberships) getGroupMembers(groupName string) (map[string]any
 	}
 	groupMembersList := strings.Split(lineFields[3], ",")
 	for _, member := range groupMembersList {
+		if strings.HasSuffix(member, "\n") {
+			member = member[:len(member)-1]
+		}
 		m[member] = nil
 	}
 	return m, nil

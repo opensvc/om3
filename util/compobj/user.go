@@ -91,7 +91,7 @@ var (
 	}
 
 	execDelCommand = func(user string) *exec.Cmd {
-		return exec.Command("bash", `userdel `+user)
+		return exec.Command(`userdel`, user)
 	}
 
 	execAddCommand = func(args []string) *exec.Cmd {
@@ -111,11 +111,11 @@ var (
 	}
 
 	execPasswordHashCommand = func(user string, password string) *exec.Cmd {
-		return exec.Command("bash", `echo "`+user+`:`+password+`" | chpasswd -e`)
+		return exec.Command(`echo "` + user + `:` + password + `" | chpasswd -e`)
 	}
 
 	execGecosCommand = func(gecos string, user string) *exec.Cmd {
-		return exec.Command("bash", `echo "`+gecos+`" | chfn `+user)
+		return exec.Command(`echo "` + gecos + `" | chfn ` + user)
 	}
 
 	osReadFile = os.ReadFile
@@ -374,7 +374,7 @@ func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
 		return ExitNok
 	}
 
-	t.Infof("gid = %d target = %d \n", uid, *rule.Uid)
+	t.VerboseInfof("gid = %d target = %d \n", uid, *rule.Uid)
 	if uid != *rule.Uid {
 		t.Infof("gid not ok \n")
 		return ExitNok
@@ -391,7 +391,7 @@ func (t CompUsers) checkUserUid(rule CompUser, userInfos []string) ExitCode {
 		return ExitNok
 	}
 
-	t.Infof("gid = %d target = %d \n", gid, *rule.Gid)
+	t.VerboseInfof("gid = %d target = %d \n", gid, *rule.Gid)
 	if gid != *rule.Gid {
 		t.Infof("gid not ok \n")
 		return ExitNok
@@ -412,13 +412,13 @@ func (t CompUsers) checkUserShell(rule CompUser, userInfos []string) ExitCode {
 
 func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode {
 	home := getHomeDir(userInfos)
-	t.Infof("user home dir = %s target = %s \n", home, rule.Home)
+	t.VerboseInfof("user home dir = %s target = %s \n", home, rule.Home)
 	if !file.Exists(home) {
-		t.Infof("user home dir does not exist --> not ok\n")
+		t.VerboseInfof("user home dir does not exist --> not ok\n")
 		return ExitNok
 	}
 	if home != rule.Home {
-		t.Infof("user home not ok \n")
+		t.VerboseInfof("user home not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -427,12 +427,12 @@ func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode 
 func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) ExitCode {
 	uid, _, err := file.Ownership(getHomeDir(userInfos))
 	if err != nil {
-		t.Infof("%s", err)
+		t.Errorf("%s", err)
 		return ExitNok
 	}
-	t.Infof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
+	t.VerboseInfof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
 	if uid != *rule.Uid {
-		t.Infof("user home ownership not ok \n")
+		t.VerboseErrorf("user home ownership not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -440,9 +440,9 @@ func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) 
 
 func (t CompUsers) checkUserGecos(rule CompUser, userInfos []string) ExitCode {
 	gecos := t.getGecos(userInfos)
-	t.Infof("user gecos = %s target = %s \n", gecos, rule.Gecos)
+	t.VerboseInfof("user gecos = %s target = %s \n", gecos, rule.Gecos)
 	if gecos != rule.Gecos {
-		t.Infof("user gecos not ok \n")
+		t.VerboseInfof("user gecos not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -454,15 +454,15 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 		line := scanner.Text()
 		splitedLine := strings.SplitN(line, ":", 3)
 		if splitedLine[0] == rule.User {
-			t.Infof("user password hash = %s target = %s \n", splitedLine[1], rule.Password)
+			t.VerboseInfof("user password hash = %s target = %s \n", splitedLine[1], rule.Password)
 			if splitedLine[1] == rule.Password {
 				return ExitOk
 			}
-			t.Infof("user password hash not ok \n")
+			t.VerboseInfof("user password hash not ok \n")
 			return ExitNok
 		}
 	}
-	t.Infof("not found in /etc/shadow \n")
+	t.VerboseInfof("not found in /etc/shadow \n")
 	return ExitNok
 }
 
@@ -632,7 +632,7 @@ func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
 	if rule.Home != "" {
 		cmdArgs = append(cmdArgs, "--home", rule.Home, "--create-home")
 	}
-
+	cmdArgs = append(cmdArgs, rule.User)
 	cmd := execAddCommand(cmdArgs)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -716,7 +716,7 @@ func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 	cmd := execDelCommand(rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s", output)
+		t.Errorf("%s:%s\n", err, output)
 		return ExitNok
 	}
 	return ExitOk
