@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
@@ -152,7 +153,11 @@ func (t CmdObjectCreate) fromPaths(paths naming.Paths) error {
 	pivot := make(Pivot)
 	multi := len(paths) > 1
 	for _, p := range paths {
-		obj, err := object.NewConfigurer(p, object.WithVolatile(true))
+		logger := objectlogger.New(p,
+			objectlogger.WithColor(t.Color != "no"),
+			objectlogger.WithConsoleLog(t.Log != ""),
+		)
+		obj, err := object.NewConfigurer(p, object.WithVolatile(true), object.WithLogger(logger))
 		if err != nil {
 			return err
 		}
@@ -350,7 +355,12 @@ func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 	if !t.Force && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}
-	o, err := object.New(p)
+	logger := objectlogger.New(p,
+		objectlogger.WithColor(t.Color != "no"),
+		objectlogger.WithConsoleLog(t.Log != ""),
+		objectlogger.WithLogFile(true),
+	)
+	o, err := object.New(p, object.WithLogger(logger))
 	if err != nil {
 		return err
 	}
@@ -388,7 +398,12 @@ func (t CmdObjectCreate) localEmpty(p naming.Path) error {
 	if !t.Force && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}
-	o, err := object.New(p)
+	logger := objectlogger.New(p,
+		objectlogger.WithColor(t.Color != "no"),
+		objectlogger.WithConsoleLog(t.Log != ""),
+		objectlogger.WithLogFile(true),
+	)
+	o, err := object.New(p, object.WithLogger(logger))
 	if err != nil {
 		return err
 	}

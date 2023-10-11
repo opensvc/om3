@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
@@ -28,7 +29,12 @@ func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 		return err
 	}
 	for _, p := range paths {
-		obj, err := object.New(p)
+		logger := objectlogger.New(p,
+			objectlogger.WithColor(t.Color != "no"),
+			objectlogger.WithConsoleLog(t.Log != ""),
+			objectlogger.WithLogFile(true),
+		)
+		obj, err := object.New(p, object.WithLogger(logger))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "skip %s: %s\n", p, err)
 			continue

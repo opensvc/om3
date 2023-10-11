@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -33,7 +34,12 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 			"eval":        true,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			c, err := object.NewConfigurer(p)
+			logger := objectlogger.New(p,
+				objectlogger.WithColor(t.Color != "no"),
+				objectlogger.WithConsoleLog(t.Log != ""),
+				objectlogger.WithLogFile(true),
+			)
+			c, err := object.NewConfigurer(p, object.WithLogger(logger))
 			if err != nil {
 				return nil, err
 			}

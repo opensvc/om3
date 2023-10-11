@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -58,7 +59,12 @@ func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig
 }
 
 func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) {
-	obj, err := object.NewConfigurer(p)
+	logger := objectlogger.New(p,
+		objectlogger.WithColor(t.Color != "no"),
+		objectlogger.WithConsoleLog(t.Log != ""),
+		objectlogger.WithLogFile(true),
+	)
+	obj, err := object.NewConfigurer(p, object.WithLogger(logger))
 	if err != nil {
 		return rawconfig.T{}, err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -50,7 +51,12 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 		return data
 	}
 	for _, p := range paths {
-		obj, err := object.New(p)
+		logger := objectlogger.New(p,
+			objectlogger.WithColor(t.Color != "no"),
+			objectlogger.WithConsoleLog(t.Log != ""),
+			objectlogger.WithLogFile(true),
+		)
+		obj, err := object.New(p, object.WithLogger(logger))
 		if err != nil {
 			continue
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog"
 )
 
 // WithConfigFile sets a non-standard configuration location.
@@ -36,20 +37,11 @@ func WithVolatile(s bool) funcopt.O {
 	})
 }
 
-// WithConsoleLog displays the logs on the console
-func WithConsoleLog(s bool) funcopt.O {
+// WithLogger let the factory user decide what kind of logging he wants
+func WithLogger(s zerolog.Logger) funcopt.O {
 	return funcopt.F(func(t any) error {
 		o := t.(*core)
-		o.withConsoleLog = s
-		return nil
-	})
-}
-
-// WithConsoleColor turns on console log coloring
-func WithConsoleColor(s bool) funcopt.O {
-	return funcopt.F(func(t any) error {
-		o := t.(*core)
-		o.withConsoleColor = s
+		o.log = s
 		return nil
 	})
 }

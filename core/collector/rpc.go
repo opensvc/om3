@@ -183,14 +183,14 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 		}),
 		secret: secret,
 		log: logging.Configure(logging.Config{
-			ConsoleLoggingEnabled: false,
-			EncodeLogsAsJSON:      true,
-			FileLoggingEnabled:    true,
-			Directory:             rawconfig.Paths.Log,
-			Filename:              "rpc.log",
-			MaxSize:               5,
-			MaxBackups:            1,
-			MaxAge:                30,
+			WithConsoleLog:   false,
+			EncodeLogsAsJSON: true,
+			WithLogFile:      true,
+			Directory:        rawconfig.Paths.Log,
+			Filename:         "rpc.log",
+			MaxSize:          5,
+			MaxBackups:       1,
+			MaxAge:           30,
 		}).
 			With().
 			Str("n", hostname.Hostname()).

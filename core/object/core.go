@@ -13,10 +13,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/progress"
-	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -27,10 +24,8 @@ type (
 		path naming.Path
 
 		// private
-		volatile         bool
-		withConsoleLog   bool
-		withConsoleColor bool
-		log              zerolog.Logger
+		volatile bool
+		log      zerolog.Logger
 
 		// caches
 		id         uuid.UUID
@@ -95,23 +90,6 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}
-	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: t.withConsoleLog,
-		ConsoleLoggingColor:   t.withConsoleColor,
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    !t.volatile,
-		Directory:             t.logDir(), // contains the ns/kind
-		Filename:              t.path.Name + ".log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
-	}).
-		With().
-		Stringer("o", t.path).
-		Str("n", hostname.Hostname()).
-		Stringer("sid", xsession.ID).
-		Logger()
-
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}

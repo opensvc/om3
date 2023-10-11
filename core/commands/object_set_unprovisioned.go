@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/core/objectlogger"
 )
 
 type (
@@ -31,11 +32,15 @@ func (t *CmdObjectSetUnprovisioned) Run(selector, kind string) error {
 			"rid": t.RID,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Log != ""),
-				object.WithConsoleColor(t.Color != "no"),
+			logger := objectlogger.New(p,
+				objectlogger.WithColor(t.Color != "no"),
+				objectlogger.WithConsoleLog(t.Log != ""),
+				objectlogger.WithLogFile(true),
+				objectlogger.WithSessionLogFile(true),
 			)
-
+			o, err := object.NewActor(p,
+				object.WithLogger(logger),
+			)
 			if err != nil {
 				return nil, err
 			}

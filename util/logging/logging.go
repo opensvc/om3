@@ -16,17 +16,20 @@ import (
 // Config is the configuration of the zerolog logger and writers
 type Config struct {
 	// Enable console logging
-	ConsoleLoggingEnabled bool
+	WithConsoleLog bool
 
 	// Enable console logging coloring
-	ConsoleLoggingColor bool
+	WithColor bool
 
 	// EncodeLogsAsJSON makes the log framework log JSON
 	EncodeLogsAsJSON bool
 
-	// FileLoggingEnabled makes the framework log to a file
+	// WithLogFile makes the framework log to a file
 	// the fields below can be skipped if this value is false!
-	FileLoggingEnabled bool
+	WithLogFile bool
+
+	// WithSessionLogFile logs to a per-sessionid-fqdn file, for sending to the collector
+	WithSessionLogFile bool
 
 	// Directory to log to to when filelogging is enabled
 	Directory string
@@ -94,11 +97,11 @@ func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
 func Configure(config Config) *Logger {
 	var writers []io.Writer
 
-	if config.ConsoleLoggingEnabled {
-		consoleWriter.NoColor = !config.ConsoleLoggingColor
+	if config.WithConsoleLog {
+		consoleWriter.NoColor = !config.WithColor
 		writers = append(writers, consoleWriter)
 	}
-	if config.FileLoggingEnabled {
+	if config.WithLogFile {
 		if fileWriter, err := newRollingFile(config); err == nil {
 			writers = append(writers, fileWriter)
 		}

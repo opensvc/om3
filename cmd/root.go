@@ -73,15 +73,15 @@ func configureLogger() {
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: logFlag != "" || foregroundFlag,
-		ConsoleLoggingColor:   colorFlag != "no",
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    true,
-		Directory:             rawconfig.Paths.Log,
-		Filename:              "node.log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
+		WithConsoleLog:   logFlag != "" || foregroundFlag,
+		WithColor:        colorFlag != "no",
+		EncodeLogsAsJSON: true,
+		WithLogFile:      true,
+		Directory:        rawconfig.Paths.Log,
+		Filename:         "node.log",
+		MaxSize:          5,
+		MaxBackups:       1,
+		MaxAge:           30,
 	}).
 		With().
 		Str("n", hostname.Hostname()).
