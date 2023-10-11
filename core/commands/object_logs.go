@@ -7,12 +7,13 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
@@ -26,8 +27,8 @@ type (
 	}
 )
 
-func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (slog.Events, error) {
-	events := make(slog.Events, 0)
+func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (streamlog.Events, error) {
+	events := make(streamlog.Events, 0)
 	c, err := client.New(client.WithURL(node))
 	if err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
 		}
-		rec, err := slog.NewEvent(event.Data)
+		rec, err := streamlog.NewEvent(event.Data)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
@@ -125,7 +126,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 			return err
 		}
 	}
-	events := make(slog.Events, 0)
+	events := make(streamlog.Events, 0)
 	for _, node := range nodes {
 		if more, err := t.backlog(node, paths); err != nil {
 			fmt.Fprintln(os.Stderr, "backlog fetch error:", err)
@@ -161,13 +162,13 @@ func (t *CmdObjectLogs) local(selStr string) error {
 		return err
 	}
 	filters := filterMap(t.Filter)
-	if events, err := slog.GetEventsFromObjects(paths, filters); err == nil {
+	if events, err := streamlog.GetEventsFromObjects(paths, filters); err == nil {
 		events.Render(t.Output)
 	} else {
 		return err
 	}
 	if t.Follow {
-		stream, err := slog.GetEventStreamFromObjects(paths, filters)
+		stream, err := streamlog.GetEventStreamFromObjects(paths, filters)
 		if err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 )
@@ -52,7 +52,7 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}
-	stream, err := slog.GetEventStreamFromObjects(paths, filters)
+	stream, err := streamlog.GetEventStreamFromObjects(paths, filters)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}

@@ -16,7 +16,7 @@ import (
 
 	_ "github.com/opensvc/om3/core/driverdb"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/xsession"
@@ -73,7 +73,7 @@ func TestAppStart(t *testing.T) {
 		err = s.Start(ctx)
 		assert.NoErrorf(t, err, "Start() should not err")
 		require.True(t, file.Exists(fpath), "%s should exist after start", fpath)
-		events, err := slog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
+		events, err := streamlog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
 		assert.NoError(t, err)
 		assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
 	})
