@@ -9,7 +9,7 @@ import (
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
-	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 )
@@ -45,7 +45,7 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
-	stream, err := slog.GetEventStreamFromNode(filters)
+	stream, err := streamlog.GetEventStreamFromNode(filters)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}

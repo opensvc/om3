@@ -1,4 +1,4 @@
-package slog
+package streamlog
 
 import (
 	"bufio"
@@ -12,11 +12,12 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/tail"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/logging"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type (

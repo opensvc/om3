@@ -8,9 +8,10 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
 )
@@ -35,8 +36,8 @@ func filterMap(l *[]string) map[string]any {
 	return m
 }
 
-func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
-	events := make(slog.Events, 0)
+func (t *CmdNodeLogs) backlog(node string) (streamlog.Events, error) {
+	events := make(streamlog.Events, 0)
 	c, err := client.New(client.WithURL(node))
 	if err != nil {
 		return nil, err
@@ -73,7 +74,7 @@ func (t *CmdNodeLogs) stream(node string) {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
 		}
-		rec, err := slog.NewEvent(event.Data)
+		rec, err := streamlog.NewEvent(event.Data)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
@@ -94,7 +95,7 @@ func (t *CmdNodeLogs) remote() error {
 	if len(nodes) == 0 {
 		return fmt.Errorf("no nodes to fetch logs from")
 	}
-	events := make(slog.Events, 0)
+	events := make(streamlog.Events, 0)
 	for _, node := range nodes {
 		if more, err := t.backlog(node); err != nil {
 			fmt.Fprintln(os.Stderr, "backlog fetch error:", err)
@@ -121,13 +122,13 @@ func (t *CmdNodeLogs) remote() error {
 
 func (t *CmdNodeLogs) local() error {
 	filters := filterMap(t.Filter)
-	if events, err := slog.GetEventsFromNode(filters); err == nil {
+	if events, err := streamlog.GetEventsFromNode(filters); err == nil {
 		events.Render(t.Output)
 	} else {
 		return err
 	}
 	if t.Follow {
-		stream, err := slog.GetEventStreamFromNode(filters)
+		stream, err := streamlog.GetEventStreamFromNode(filters)
 		if err != nil {
 			return err
 		}
