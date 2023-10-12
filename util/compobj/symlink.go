@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -78,11 +79,11 @@ func (t *CompSymlinks) Add(s string) error {
 	}
 	if data.Symlink == "" {
 		t.Errorf("symlink should be in the dict: %s\n", s)
-		return nil
+		return fmt.Errorf("symlink should be in the dict: %s\n", s)
 	}
 	if data.Target == "" {
 		t.Errorf("target should be in the dict: %s\n", s)
-		return nil
+		return fmt.Errorf("target should be in the dict: %s\n", s)
 	}
 	t.Obj.Add(data)
 	return nil
