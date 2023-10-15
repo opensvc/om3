@@ -98,9 +98,6 @@ func Configure(config Config) error {
 	var writers []io.Writer
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	zerolog.TimestampFieldName = "t"
-	zerolog.LevelFieldName = "l"
-	zerolog.MessageFieldName = "m"
 
 	if writer := journald.NewJournalDWriter(); writer != nil {
 		writers = append(writers, writer)

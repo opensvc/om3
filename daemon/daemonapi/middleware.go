@@ -41,7 +41,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 			reqUuid := uuid.New()
 			r := c.Request()
 			log := log.With().
-				Str("request-uuid", reqUuid.String()).
+				Str("request_uuid", reqUuid.String()).
 				Str("method", r.Method).
 				Str("path", r.URL.Path).
 				Str("remote", r.RemoteAddr).
@@ -85,11 +85,11 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
-				log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
+				log.Error().Err(err).Str("remote", r.RemoteAddr).Msgf("daemon: api: error authenticating request from %s: %s", r.RemoteAddr, err)
 				code := http.StatusUnauthorized
 				return JSONProblem(c, code, http.StatusText(code), err.Error())
 			}
-			log.Debug().Msgf("user %s authenticated", user.GetUserName())
+			log.Debug().Msgf("daemon: api: user %s authenticated", user.GetUserName())
 			c.Set("user", user)
 			c.Set("grants", rbac.NewGrants(user.GetExtensions()["grant"]...))
 			return next(c)
@@ -103,9 +103,9 @@ func LogUserMiddleware(parent context.Context) echo.MiddlewareFunc {
 			authUser := c.Get("user").(auth.Info)
 			extensions := authUser.GetExtensions()
 			log := c.Get("logger").(*zerolog.Logger).With().
-				Str("auth-user", authUser.GetUserName()).
-				Strs("auth-grant", extensions.Values("grant")).
-				Str("auth-strategy", extensions.Get("strategy")).
+				Str("auth_user", authUser.GetUserName()).
+				Strs("auth_grant", extensions.Values("grant")).
+				Str("auth_strategy", extensions.Get("strategy")).
 				Logger()
 			c.Set("logger", &log)
 			return next(c)
@@ -121,7 +121,7 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 				level = l
 			}
 			if level != zerolog.NoLevel {
-				GetLogger(c).WithLevel(level).Msg("request")
+				GetLogger(c).WithLevel(level).Msgf("daemon: api: new request %s: %s %s from user %s address %s", c.Get("uuid"), c.Request().Method, c.Path(), userFromContext(c).GetUserName(), c.Request().RemoteAddr)
 			}
 			return next(c)
 		}
