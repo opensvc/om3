@@ -50,13 +50,13 @@ func (c Client) NewPinger(d time.Duration) func() {
 func (c *Client) Ping() {
 	alive := Alive.Load()
 	_, err := c.Call("daemon_ping")
-	c.log.Debug().Bool("alive", alive).Err(err).Msgf("Ping collector")
+	c.log.Debug().Bool("alive", alive).Err(err).Msgf("ping collector")
 	switch {
 	case (err != nil) && alive:
-		c.log.Info().Msgf("Disable collector clients: %s", err)
+		c.log.Info().Msgf("disable collector clients: %s", err)
 		Alive.Store(false)
 	case (err == nil) && !alive:
-		c.log.Info().Msgf("Enable collector clients")
+		c.log.Info().Msgf("enable collector clients")
 		Alive.Store(true)
 	}
 }
@@ -221,9 +221,9 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	if response != nil && response.Error != nil {
 		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msgf("%s: %s", response.Error.Message, response.Error.Data)
 	} else if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("Collector call: %s", method)
+		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
 	} else {
-		t.log.Info().Str("method", method).Interface("params", params).Msgf("Collector call: %s", method)
+		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
 	}
 	return response, err
 }
@@ -231,9 +231,9 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 func (t Client) CallFor(out interface{}, method string, params ...interface{}) error {
 	err := t.client.CallFor(out, method, t.paramsWithAuth(params))
 	if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("Collector call: %s", method)
+		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
 	} else {
-		t.log.Info().Str("method", method).Interface("params", params).Msgf("Collector call: %s", method)
+		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
 	}
 	return err
 }
