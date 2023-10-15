@@ -5,37 +5,37 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Config is the configuration of the zerolog logger and writers
 type Config struct {
+	// WithCaller includes the caller file:line to the records
+	WithCaller bool
+
 	// Enable console logging
 	WithConsoleLog bool
 
 	// Enable console logging coloring
 	WithColor bool
 
-	// EncodeLogsAsJSON makes the log framework log JSON
-	EncodeLogsAsJSON bool
+	// LogFile makes the framework log to a file
+	LogFile string
 
-	// WithLogFile makes the framework log to a file
-	// the fields below can be skipped if this value is false!
-	WithLogFile bool
+	// SessionLogFile logs to a per-sessionid file
+	SessionLogFile string
 
-	// WithSessionLogFile logs to a per-sessionid-fqdn file, for sending to the collector
-	WithSessionLogFile bool
-
-	// Directory to log to to when filelogging is enabled
-	Directory string
-
-	// Filename is the name of the logfile which will be placed inside the directory
-	Filename string
+	// Level is the minimum log record level to accept.
+	// debug, info, warn[ing], error, fatal, panic
+	Level string
 
 	// MaxSize the max size in MB of the logfile before it's rolled
 	MaxSize int
@@ -48,10 +48,6 @@ type Config struct {
 }
 
 // Logger is the opensvc specific zerolog logger
-type Logger struct {
-	*zerolog.Logger
-}
-
 const (
 	TimeFormat = "15:04:05.000"
 )
@@ -93,52 +89,72 @@ func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
 	consoleWriter = w
 }
 
+func Logger() zerolog.Logger {
+	return log.Logger
+}
+
 // Configure sets up the logging framework
-func Configure(config Config) *Logger {
+func Configure(config Config) error {
 	var writers []io.Writer
 
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.TimestampFieldName = "t"
+	zerolog.LevelFieldName = "l"
+	zerolog.MessageFieldName = "m"
+
+	if writer := journald.NewJournalDWriter(); writer != nil {
+		writers = append(writers, writer)
+	}
 	if config.WithConsoleLog {
 		consoleWriter.NoColor = !config.WithColor
 		writers = append(writers, consoleWriter)
 	}
-	if config.WithLogFile {
-		if fileWriter, err := newRollingFile(config); err == nil {
+	if config.SessionLogFile != "" {
+		if fileWriter, err := newSessionLogFile(config.SessionLogFile); err != nil {
+			return err
+		} else {
 			writers = append(writers, fileWriter)
 		}
 	}
 	mw := io.MultiWriter(writers...)
 
-	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	logger := log.Output(mw)
 
-	/*
-		logger.Debug().
-			Bool("fileLogging", config.FileLoggingEnabled).
-			Bool("jsonLogOutput", config.EncodeLogsAsJSON).
-			Bool("withCaller", config.WithCaller).
-			Str("logDirectory", config.Directory).
-			Str("fileName", config.Filename).
-			Int("maxSizeMB", config.MaxSize).
-			Int("maxBackups", config.MaxBackups).
-			Int("maxAgeInDays", config.MaxAge).
-			Msg("logging configured")
-	*/
-
-	return &Logger{
-		Logger: &logger,
+	switch config.Level {
+	case "debug":
+		logger = logger.Level(zerolog.DebugLevel)
+	case "info":
+		logger = logger.Level(zerolog.InfoLevel)
+	case "warn", "warning":
+		logger = logger.Level(zerolog.WarnLevel)
+	case "error":
+		logger = logger.Level(zerolog.ErrorLevel)
+	case "fatal":
+		logger = logger.Level(zerolog.FatalLevel)
+	case "panic":
+		logger = logger.Level(zerolog.PanicLevel)
+	default:
+		logger = logger.Level(zerolog.InfoLevel)
 	}
 
+	if config.WithCaller {
+		logger = logger.With().Caller().Logger()
+	}
+
+	log.Logger = logger
+	return nil
 }
 
 func newRollingFile(config Config) (io.Writer, error) {
-	if err := os.MkdirAll(config.Directory, 0744); err != nil {
+	directory := filepath.Dir(config.LogFile)
+	if err := os.MkdirAll(directory, 0744); err != nil {
 		debug.PrintStack()
-		log.Error().Err(err).Str("path", config.Directory).Msg("can't create log directory")
+		log.Error().Err(err).Str("path", directory).Msg("can't create log directory")
 		return nil, err
 	}
 
 	return &lumberjack.Logger{
-		Filename:   path.Join(config.Directory, config.Filename),
+		Filename:   path.Join(config.LogFile),
 		MaxBackups: config.MaxBackups, // files
 		MaxSize:    config.MaxSize,    // megabytes
 		MaxAge:     config.MaxAge,     // days

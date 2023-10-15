@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/objectlogger"
 )
 
 type (
@@ -31,12 +30,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 			"local": true,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			logger := objectlogger.New(p,
-				objectlogger.WithColor(t.Color != "no"),
-				objectlogger.WithConsoleLog(t.Log != ""),
-				objectlogger.WithLogFile(true),
-			)
-			o, err := object.NewConfigurer(p, object.WithLogger(logger))
+			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}

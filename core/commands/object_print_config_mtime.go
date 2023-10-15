@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/util/timestamp"
 )
 
@@ -28,12 +27,7 @@ func (t *CmdObjectPrintConfigMtime) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("print_config_mtime"),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			logger := objectlogger.New(p,
-				objectlogger.WithColor(t.Color != "no"),
-				objectlogger.WithConsoleLog(t.Log != ""),
-				objectlogger.WithLogFile(true),
-			)
-			o, err := object.New(p, object.WithLogger(logger))
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}

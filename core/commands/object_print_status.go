@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -77,12 +76,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 	for _, p := range paths {
-		logger := objectlogger.New(p,
-			objectlogger.WithColor(t.Color != "no"),
-			objectlogger.WithConsoleLog(t.Log != ""),
-			objectlogger.WithLogFile(true),
-		)
-		obj, err := object.NewCore(p, object.WithLogger(logger))
+		obj, err := object.NewCore(p)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue

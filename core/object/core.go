@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/progress"
 )
 
@@ -82,6 +83,7 @@ func (t *core) List() (string, error) {
 }
 
 func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error {
+	t.log = logging.Logger()
 	if parsed, err := toPathType(id); err != nil {
 		return err
 	} else {
@@ -90,6 +92,12 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}
+	t.log = t.log.With().
+		Stringer("obj_path", t.path).
+		Stringer("obj_kind", t.path.Kind).
+		Str("obj_name", t.path.Name).
+		Str("obj_namespace", t.path.Namespace).
+		Logger()
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}

@@ -64,7 +64,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.Label())
+		t.Log().Info().Msgf("Volume group %s is already up", t.Label())
 		return nil
 	}
 	if err := t.vg().Activate(); err != nil {
@@ -87,7 +87,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.Label())
+		t.Log().Info().Msgf("Volume group %s is already down", t.Label())
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {
@@ -138,14 +138,14 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	vg := t.vg()
 	vgi, ok := vg.(VGDriverProvisioner)
 	if !ok {
-		return fmt.Errorf("vg %s %s driver does not implement provisioning", vg.FQN(), vg.DriverName())
+		return fmt.Errorf("Volume group %s provisioning skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
 	exists, err := vg.Exists()
 	if err != nil {
 		return err
 	}
 	if exists {
-		t.Log().Info().Msgf("%s is already provisioned", vg.FQN())
+		t.Log().Info().Msgf("Volume group %s is already provisioned", vg.FQN())
 		return nil
 	}
 	if pvs, err := vpath.HostDevpaths(t.PVs, t.Path.Namespace); err != nil {
@@ -162,13 +162,13 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !exists {
-		t.Log().Info().Msgf("%s is already unprovisioned", vg.FQN())
+		t.Log().Info().Msgf("Volume group %s is already unprovisioned", vg.FQN())
 		return nil
 	}
 	if vgi, ok := vg.(VGDriverWiper); ok {
 		_ = vgi.Wipe()
 	} else {
-		t.Log().Info().Msgf("%s wipe skipped: not implementing by %s", vg.FQN(), vg.DriverName())
+		t.Log().Info().Msgf("Volume group %s wipe skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
 	vgi, ok := vg.(VGDriverUnprovisioner)
 	if !ok {

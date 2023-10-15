@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectdevice"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -48,12 +47,7 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) (objectdevice.L, e
 		return data, err
 	}
 	for _, p := range paths {
-		logger := objectlogger.New(p,
-			objectlogger.WithColor(t.Color != "no"),
-			objectlogger.WithConsoleLog(t.Log != ""),
-			objectlogger.WithLogFile(true),
-		)
-		obj, err := object.New(p, object.WithLogger(logger))
+		obj, err := object.New(p)
 		if err != nil {
 			continue
 		}

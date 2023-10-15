@@ -458,7 +458,7 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		if run.Err != nil {
 			return run.Err
 		} else {
-			t.log.Info().Msgf("applied %s", run.Config)
+			t.log.Info().Msgf("Applied %s", run.Config)
 		}
 	}
 	return nil
@@ -607,7 +607,7 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 	if cmd == "" {
 		return nil
 	}
-	t.log.Info().Msgf("trigger %s %s %s: %s", blocking, hook, action, cmd)
+	t.log.Info().Msgf("Trigger %s %s %s: %s", blocking, hook, action, cmd)
 	t.Progress(ctx, "▶ "+hookId)
 	return t.trigger(ctx, cmd)
 }
@@ -724,7 +724,7 @@ func Run(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	r.Progress(ctx, "▶ run")
 	if err := runner.Run(ctx); err != nil {
@@ -734,7 +734,7 @@ func Run(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	return nil
 }
@@ -799,7 +799,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -812,7 +812,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	return nil
 }
@@ -836,7 +836,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -849,7 +849,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	return nil
 }
@@ -974,7 +974,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	r.Progress(ctx, "▶ shutdown")
 	if err := fn(ctx); err != nil {
@@ -987,7 +987,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Shutdown); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	return nil
 }
@@ -1028,7 +1028,7 @@ func stop(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	r.Progress(ctx, "▶ "+progressAction)
 	if err := fn(ctx); err != nil {
@@ -1041,7 +1041,7 @@ func stop(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
-		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("Trigger: %s", err)
 	}
 	return nil
 }
@@ -1079,11 +1079,11 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
-		r.Log().Debug().Msg("does not implement reservable disks listing")
+		r.Log().Debug().Msg("Resource does not implement reservable disks listing")
 		return nil
 	}
 	if !o.IsSCSIPersistentReservationEnabled() {
-		r.Log().Debug().Msg("scsi pr is not enabled")
+		r.Log().Debug().Msg("SCSI PR is not enabled")
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{

@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/editor"
@@ -34,12 +33,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 		return err
 	}
 	for _, p := range paths {
-		logger := objectlogger.New(p,
-			objectlogger.WithColor(t.Color != "no"),
-			objectlogger.WithConsoleLog(t.Log != ""),
-			objectlogger.WithLogFile(true),
-		)
-		obj, err := object.NewConfigurer(p, object.WithLogger(logger))
+		obj, err := object.NewConfigurer(p)
 		if err != nil {
 			return err
 		}
