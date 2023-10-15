@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -157,4 +158,8 @@ func (t core) Progress(ctx context.Context, cols ...any) {
 		key := t.ProgressKey()
 		view.Info(key, cols)
 	}
+}
+
+func (t core) Msgf(format string, args ...any) string {
+	return t.path.String() + ": " + fmt.Sprintf(format, args...)
 }

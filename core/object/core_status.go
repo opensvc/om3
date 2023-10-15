@@ -93,19 +93,19 @@ func (t *core) statusDump(data instance.Status) error {
 	enc := json.NewEncoder(jsonFile)
 	err = enc.Encode(data)
 	if err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Send()
+		t.log.Error().Str("file", tmp).Err(err).Msg(t.Msgf("json-encode instance status in %s: %s", tmp, err))
 		return err
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Send()
+		t.log.Error().Str("file", tmp).Err(err).Msg(t.Msgf("install new %s: %s", p, err))
 		return err
 	}
-	t.log.Debug().Str("file", p).Msg("dumped")
+	t.log.Debug().Msgf("%s: %s dumped", t.path, p)
 	if err := t.postInstanceStatus(data); err != nil {
 		// daemon can be down
-		t.log.Debug().Err(err).Msg("post instance status")
+		t.log.Debug().Err(err).Msgf(t.Msgf("post instance status error: %s", err))
 	} else {
-		t.log.Debug().Msg("posted instance status")
+		t.log.Debug().Msg(t.Msgf("posted instance status"))
 	}
 	return nil
 }
