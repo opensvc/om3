@@ -163,7 +163,7 @@ func New(drainDuration time.Duration) *nmon {
 		},
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),
-		log:         log.Logger.With().Str("func", "nmon").Logger(),
+		log:         log.Logger.With().Str("pkg", "nmon").Logger(),
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),

@@ -52,7 +52,7 @@ func dirRemoved(event fsnotify.Event) bool {
 }
 
 func (d *discover) fsWatcherStart() (func(), error) {
-	log := d.log.With().Str("func", "fsWatch").Logger()
+	log := d.log.With().Str("pkg", "discover.fs").Logger()
 	bus := pubsub.BusFromContext(d.ctx)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {

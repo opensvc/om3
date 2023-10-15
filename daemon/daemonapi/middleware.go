@@ -153,6 +153,6 @@ func grantsFromContext(ctx echo.Context) rbac.Grants {
 }
 
 func LogHandler(c echo.Context, name string) *zerolog.Logger {
-	l := c.Get("logger").(*zerolog.Logger).With().Str("func", name).Logger()
+	l := c.Get("logger").(*zerolog.Logger).With().Str("handler", name).Logger()
 	return &l
 }

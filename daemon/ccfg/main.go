@@ -74,7 +74,7 @@ func New(drainDuration time.Duration) *ccfg {
 		cmdC:          make(chan any),
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
-		log:           log.Logger.With().Str("func", "ccfg").Logger(),
+		log:           log.Logger.With().Str("pkg", "ccfg").Logger(),
 		networkSigs:   make(map[string]string),
 	}
 	return o

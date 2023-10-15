@@ -150,7 +150,7 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		cmdC:          make(chan any),
 		databus:       databus,
 		pubsubBus:     pubsub.BusFromContext(ctx),
-		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
+		log:           log.Logger.With().Str("pkg", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
 		nodeMonitor:   make(map[string]node.Monitor),

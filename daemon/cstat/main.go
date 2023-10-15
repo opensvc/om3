@@ -46,7 +46,7 @@ type (
 
 func New() *cstat {
 	return &cstat{
-		log:        log.Logger.With().Str("func", "cstat").Logger(),
+		log:        log.Logger.With().Str("pkg", "cstat").Logger(),
 		nodeStatus: make(map[string]node.Status),
 	}
 }

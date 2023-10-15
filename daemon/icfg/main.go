@@ -92,7 +92,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
-		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
+		log:            log.Logger.With().Str("pkg", "icfg").Stringer("object", p).Logger(),
 		localhost:      localhost,
 		forceRefresh:   false,
 		bus:            pubsub.BusFromContext(ctx),
