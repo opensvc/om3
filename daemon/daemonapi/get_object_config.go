@@ -26,12 +26,13 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	}
 	var err error
 	var data *orderedmap.OrderedMap
-	log := LogHandler(ctx, "GetObjectConfig")
-	log.Debug().Msg("starting")
+	logName := "GetObjectConfig"
+	log := LogHandler(ctx, logName)
+	log.Debug().Msgf("daemon: api: %s: starting", logName)
 
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		log.Info().Err(err).Send()
+		log.Info().Err(err).Msgf("daemon: api: %s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	if impersonate != "" && !evaluate {

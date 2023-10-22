@@ -53,7 +53,7 @@ func (o *imon) provisionedFromWaitLeader() {
 
 func (o *imon) provisionedClearIfReached() bool {
 	reached := func(msg string) bool {
-		o.log.Info().Msg(msg)
+		o.log.Info().Msgf("daemon: imon: %s: "+msg, o.path)
 		o.doneAndIdle()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()

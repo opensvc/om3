@@ -196,7 +196,7 @@ func (o *imon) startSubscriptions() {
 
 // worker watch for local imon updates
 func (o *imon) worker(initialNodes []string) {
-	defer o.log.Debug().Msgf("daemon: imon: %s: Worker started", o.path)
+	defer o.log.Debug().Msgf("daemon: imon: %s: worker started", o.path)
 
 	// Initiate crmStatus first, this will update our instance status cache
 	// as soon as possible.
@@ -204,7 +204,7 @@ func (o *imon) worker(initialNodes []string) {
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
 	if err := o.crmStatus(); err != nil {
-		o.log.Error().Err(err).Msgf("daemon: imon: %s: Error during initial crm status: %s", o.path, err)
+		o.log.Error().Err(err).Msgf("daemon: imon: %s: error during initial crm status: %s", o.path, err)
 	}
 
 	if o.bootAble() {
@@ -227,7 +227,7 @@ func (o *imon) worker(initialNodes []string) {
 	}
 	for n, v := range instance.MonitorData.GetByPath(o.path) {
 		if n == o.localhost {
-			o.log.Warn().Msgf("daemon: imon: %s: Bug: On init, instance.MonitorData[localhost] should be empty", o.path)
+			o.log.Warn().Msgf("daemon: imon: %s: bug: on init, instance.MonitorData[localhost] should be empty", o.path)
 			continue
 		}
 		o.instMonitor[n] = *v
@@ -245,7 +245,7 @@ func (o *imon) worker(initialNodes []string) {
 		go func() {
 			err := o.sub.Stop()
 			if err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msgf("daemon: imon: %s: Subscription stop: %s", o.path, err)
+				o.log.Error().Err(err).Msgf("daemon: imon: %s: subscription stop: %s", o.path, err)
 			}
 		}()
 		go func() {
@@ -273,7 +273,7 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 	}()
-	o.log.Debug().Msgf("daemon: imon: %s: Started", o.path)
+	o.log.Debug().Msgf("daemon: imon: %s: started", o.path)
 	for {
 		select {
 		case <-o.ctx.Done():
@@ -328,19 +328,19 @@ func (o *imon) ensureBooted() {
 	nodeLastBootID := bootid.Get()
 	if instanceLastBootID == "" {
 		// no last instance boot file, create it
-		o.log.Info().Msgf("daemon: imon: %s: Set last object boot id", o.path)
+		o.log.Info().Msgf("daemon: imon: %s: set last object boot id", o.path)
 		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-			o.log.Error().Err(err).Msgf("daemon: imon: %s: Can't update instance last boot id file: %s", o.path, err)
+			o.log.Error().Err(err).Msgf("daemon: imon: %s: can't update instance last boot id file: %s", o.path, err)
 		}
 	} else if instanceLastBootID != bootid.Get() {
 		// last instance boot id differ from current node boot id
 		// try boot and refresh last instance boot id if succeed
-		o.log.Info().Msgf("daemon: imon: %s: Need boot (node boot id differ from last object boot id)", o.path)
+		o.log.Info().Msgf("daemon: imon: %s: need boot (node boot id differ from last object boot id)", o.path)
 		o.transitionTo(instance.MonitorStateBooting)
 		if err := o.crmBoot(); err == nil {
-			o.log.Info().Msgf("daemon: imon: %s: Set last object boot id", o.path)
+			o.log.Info().Msgf("daemon: imon: %s: set last object boot id", o.path)
 			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-				o.log.Error().Err(err).Msgf("daemon: imon: %s: Can't update instance last boot id file: %s", o.path, err)
+				o.log.Error().Err(err).Msgf("daemon: imon: %s: can't update instance last boot id file: %s", o.path, err)
 			}
 			o.transitionTo(instance.MonitorStateBooted)
 			o.transitionTo(instance.MonitorStateIdle)
@@ -395,21 +395,21 @@ func (o *imon) updateIfChange() {
 		// Don't update GlobalExpectUpdated here
 		// GlobalExpectUpdated is updated only during cmdSetInstanceMonitorClient and
 		// its value is used for convergeGlobalExpectFromRemote
-		o.loggerWithState().Info().Msgf("daemon: imon: %s: Change global expect %s -> %s", o.path, previousVal.GlobalExpect, newVal.GlobalExpect)
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: change global expect %s -> %s", o.path, previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
 		o.state.LocalExpectUpdatedAt = now
-		o.loggerWithState().Info().Msgf("daemon: imon: %s: Change local expect %s -> %s", o.path, previousVal.LocalExpect, newVal.LocalExpect)
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: change local expect %s -> %s", o.path, previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	if newVal.State != previousVal.State {
 		o.state.StateUpdatedAt = now
-		o.loggerWithState().Info().Msgf("daemon: imon: %s: Change state %s -> %s", o.path, previousVal.State, newVal.State)
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: change state %s -> %s", o.path, previousVal.State, newVal.State)
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
-		o.loggerWithState().Info().Msgf("daemon: imon: %s: Change leader %t -> %t", o.path, previousVal.IsLeader, newVal.IsLeader)
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: change leader %t -> %t", o.path, previousVal.IsLeader, newVal.IsLeader)
 	}
 	if newVal.IsHALeader != previousVal.IsHALeader {
-		o.loggerWithState().Info().Msgf("daemon: imon: %s: Change ha leader %t -> %t", o.path, previousVal.IsHALeader, newVal.IsHALeader)
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: change ha leader %t -> %t", o.path, previousVal.IsHALeader, newVal.IsHALeader)
 	}
 	o.previousState = o.state
 	o.update()
@@ -428,13 +428,13 @@ func (o *imon) hasOtherNodeActing() bool {
 }
 
 func (o *imon) createPendingWithDuration(duration time.Duration) {
-	o.log.Debug().Msgf("daemon: imon: %s: Create new pending context with duration %s", o.path, duration)
+	o.log.Debug().Msgf("daemon: imon: %s: create new pending context with duration %s", o.path, duration)
 	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
 }
 
 func (o *imon) clearPending() {
 	if o.pendingCancel != nil {
-		o.log.Debug().Msgf("daemon: imon: %s: Clear pending context", o.path)
+		o.log.Debug().Msgf("daemon: imon: %s: clear pending context", o.path)
 		o.pendingCancel()
 		o.pendingCancel = nil
 		o.pendingCtx = nil

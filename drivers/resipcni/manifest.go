@@ -30,7 +30,6 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextCNIPlugins,
 		manifest.ContextCNIConfig,
 		manifest.ContextObjectID,
-		manifest.ContextPath,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Option:    "expose",

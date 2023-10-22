@@ -23,7 +23,7 @@ func (o *imon) orchestrateFailoverPlacedStart() {
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate placed start from %s", o.state.State)
+		o.log.Error().Msgf("daemon: imon: %s: don't know how to orchestrate placed start from %s", o.path, o.state.State)
 	}
 }
 
@@ -44,7 +44,7 @@ func (o *imon) orchestrateFlexPlacedStart() {
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate placed start from %s", o.state.State)
+		o.log.Error().Msgf("daemon: imon: %s: don't know how to orchestrate placed start from %s", o.path, o.state.State)
 	}
 }
 
@@ -67,7 +67,7 @@ func (o *imon) orchestrateFailoverPlacedStop() {
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate placed stop from %s", o.state.State)
+		o.log.Error().Msgf("daemon: imon: %s: don't know how to orchestrate placed stop from %s", o.path, o.state.State)
 	}
 }
 
@@ -90,7 +90,7 @@ func (o *imon) orchestrateFlexPlacedStop() {
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate placed stop from %s", o.state.State)
+		o.log.Error().Msgf("daemon: imon: %s: don't know how to orchestrate placed stop from %s", o.path, o.state.State)
 	}
 }
 
@@ -105,7 +105,7 @@ func (o *imon) getPlacedAtDestination() ([]string, bool) {
 func (o *imon) orchestratePlacedAt() {
 	dstNodes, ok := o.getPlacedAtDestination()
 	if !ok {
-		o.log.Error().Msgf("missing placed@ destination")
+		o.log.Error().Msgf("daemon: imon: %s: missing placed@ destination", o.path)
 		return
 	}
 	if stringslice.Has(o.localhost, dstNodes) {
@@ -157,14 +157,14 @@ func (o *imon) doPlacedStop() {
 }
 
 func (o *imon) skipPlacedStop() {
-	o.loggerWithState().Info().Msg("instance is already down")
+	o.loggerWithState().Info().Msgf("daemon: imon: %s: instance is already down", o.path)
 	o.change = true
 	o.state.State = instance.MonitorStateStopped
 	o.clearPending()
 }
 
 func (o *imon) skipPlacedStart() {
-	o.loggerWithState().Info().Msg("instance is already up")
+	o.loggerWithState().Info().Msgf("daemon: imon: %s: instance is already up", o.path)
 	o.change = true
 	o.state.State = instance.MonitorStateStarted
 	o.clearPending()
@@ -174,7 +174,7 @@ func (o *imon) clearStopFailedIfDown() {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown:
-		o.loggerWithState().Info().Msg("instance is down, clear stop failed")
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: instance is down, clear stop failed", o.path)
 		o.change = true
 		o.state.State = instance.MonitorStateStopped
 		o.clearPending()
@@ -224,14 +224,14 @@ func (o *imon) orchestratePlacedFromStartFailed() {
 	switch {
 	/*
 		case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
-			o.loggerWithState().Info().Msg("all instances are start failed -> set done")
+			o.loggerWithState().Info().Msgf("daemon: imon: %s: all instances are start failed -> set done", o.path)
 			o.done()
 			o.clearPending()
 	*/
 	case o.objStatus.Avail == status.Up:
 		o.startedClearIfReached()
 	default:
-		o.loggerWithState().Info().Msg("local instance is start failed -> set done")
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: local instance is start failed -> set done", o.path)
 		o.done()
 		o.clearPending()
 	}

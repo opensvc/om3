@@ -89,15 +89,15 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 		command.WithIgnoredExitCodes(),
 	)
 	cmd := command.New(opts...)
-	t.Log().Info().Stringer("cmd", cmd).Msg("run")
+	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("run %s", cmd))
 	err = cmd.Run()
 	if err := t.writeLastRun(cmd.ExitCode()); err != nil {
 		return err
 	}
 	if err != nil {
-		t.Log().Err(err).Send()
+		t.Log().Err(err).Msgf(t.Msgf("write last run: %s", err))
 		if err := t.onError(); err != nil {
-			t.Log().Warn().Msgf("%s", err)
+			t.Log().Warn().Msgf(t.Msgf("on error: %s", err))
 		}
 	}
 	if s, err := t.ExitCodeToStatus(cmd.ExitCode()); err != nil {
@@ -117,7 +117,7 @@ func (t T) onError() error {
 		return nil
 	}
 	cmd := command.New(opts...)
-	t.Log().Info().Stringer("cmd", cmd).Msg("on error run")
+	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("on error run"))
 	return cmd.Run()
 }
 
@@ -138,11 +138,11 @@ func (t *T) stop(ctx context.Context) error {
 		return err
 	}
 	if procs.Len() == 0 {
-		t.Log().Info().Msg("already stopped")
+		t.Log().Info().Msg(t.Msgf("already stopped"))
 		return nil
 	}
 	for _, p := range procs.Procs() {
-		t.Log().Info().Str("cmd", p.CommandLine()).Msgf("send termination signal to process %d", p.PID())
+		t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("send termination signal to process %d", p.PID()))
 		p.Signal(syscall.SIGTERM)
 	}
 	prev := procs
@@ -153,7 +153,7 @@ func (t *T) stop(ctx context.Context) error {
 		}
 		for _, p := range prev.Procs() {
 			if !procs.HasPID(p.PID()) {
-				t.Log().Info().Str("cmd", p.CommandLine()).Msgf("process %d is now terminated", p.PID())
+				t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("process %d is now terminated", p.PID()))
 			}
 		}
 		if procs.Len() == 0 {
@@ -270,7 +270,7 @@ func (t T) handleConfirmation(ctx context.Context) error {
 		return nil
 	}
 	if actioncontext.IsConfirm(ctx) {
-		t.Log().Info().Msg("run confirmed by --confirm command line option")
+		t.Log().Info().Msg(t.Msgf("run confirmed by --confirm command line option"))
 		return nil
 	}
 	if actioncontext.IsCron(ctx) {
@@ -288,7 +288,7 @@ Enter "yes" if you really want to run.`, t.RID())
 		return fmt.Errorf("read confirmation: %w", err)
 	}
 	if s == "yes" {
-		t.Log().Info().Msg("run confirmed interactively")
+		t.Log().Info().Msg(t.Msgf("run confirmed interactively"))
 		return nil
 	}
 	return fmt.Errorf("run aborted")

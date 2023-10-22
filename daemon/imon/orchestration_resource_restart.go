@@ -59,7 +59,7 @@ func (o *imon) orchestrateResourceRestart() {
 		if o.instConfig.PreMonitorAction == "" {
 			return nil
 		}
-		o.log.Info().Msgf("execute pre monitor action: %s", o.instConfig.PreMonitorAction)
+		o.log.Info().Msgf("daemon: imon: %s: execute pre monitor action: %s", o.path, o.instConfig.PreMonitorAction)
 		cmdArgs, err := command.CmdArgsFromString(o.instConfig.PreMonitorAction)
 		if err != nil {
 			return err
@@ -85,31 +85,31 @@ func (o *imon) orchestrateResourceRestart() {
 		case instance.MonitorActionReboot:
 		case instance.MonitorActionSwitch:
 		case instance.MonitorActionNone:
-			o.log.Error().Msgf("skip monitor action: not configured")
+			o.log.Error().Msgf("daemon: imon: %s: skip monitor action: not configured", o.path)
 			return
 		default:
-			o.log.Error().Msgf("skip monitor action: not supported: %s", o.instConfig.MonitorAction)
+			o.log.Error().Msgf("daemon: imon: %s: skip monitor action: not supported: %s", o.path, o.instConfig.MonitorAction)
 			return
 		}
 
 		if err := doPreMonitorAction(); err != nil {
-			o.log.Error().Err(err).Msg("pre monitor action")
+			o.log.Error().Err(err).Msgf("daemon: imon: %s: pre monitor action", o.path)
 		}
 
-		o.log.Info().Msgf("do %s monitor action", o.instConfig.MonitorAction)
+		o.log.Info().Msgf("daemon: imon: %s: do %s monitor action", o.path, o.instConfig.MonitorAction)
 		pubMonitorAction(rid)
 
 		switch o.instConfig.MonitorAction {
 		case instance.MonitorActionCrash:
 			if err := toc.Crash(); err != nil {
-				o.log.Error().Err(err).Msg("monitor action")
+				o.log.Error().Err(err).Msgf("daemon: imon: %s: monitor action", o.path)
 			}
 		case instance.MonitorActionFreezeStop:
 			o.doFreezeStop()
 			o.doStop()
 		case instance.MonitorActionReboot:
 			if err := toc.Reboot(); err != nil {
-				o.log.Error().Err(err).Msg("monitor action")
+				o.log.Error().Err(err).Msgf("daemon: imon: %s: monitor action", o.path)
 			}
 		case instance.MonitorActionSwitch:
 			o.createPendingWithDuration(stopDuration)
@@ -121,7 +121,7 @@ func (o *imon) orchestrateResourceRestart() {
 		todoRestart.Del(rid)
 		todoStandby.Del(rid)
 		if rmon.Restart.Timer != nil {
-			o.log.Info().Msgf("resource %s is up, reset delayed restart", rid)
+			o.log.Info().Msgf("daemon: imon: %s: resource %s is up, reset delayed restart", o.path, rid)
 			o.change = rmon.StopRestartTimer()
 			o.state.Resources.Set(rid, *rmon)
 		}
@@ -129,7 +129,7 @@ func (o *imon) orchestrateResourceRestart() {
 
 	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
 		if rmon.Restart.Remaining != rcfg.Restart {
-			o.log.Info().Msgf("resource %s is up, reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
+			o.log.Info().Msgf("daemon: imon: %s: resource %s is up, reset restart count to the max (%d -> %d)", o.path, rid, rmon.Restart.Remaining, rcfg.Restart)
 			o.state.MonitorActionExecutedAt = time.Time{}
 			rmon.Restart.Remaining = rcfg.Restart
 			o.state.Resources.Set(rid, *rmon)
@@ -157,20 +157,20 @@ func (o *imon) orchestrateResourceRestart() {
 		case rmon == nil:
 			return
 		case rcfg.IsDisabled:
-			o.log.Debug().Msgf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: disable=%v", o.path, rid, rcfg.IsDisabled)
 			resetRemainingAndTimer(rid, rcfg, rmon)
 		case resStatus.Is(status.NotApplicable, status.Undef):
-			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: status=%s", o.path, rid, resStatus)
 			resetRemainingAndTimer(rid, rcfg, rmon)
 		case resStatus.Is(status.Up, status.StandbyUp):
-			o.log.Debug().Msgf("resource %s restart skip: status=%s", rid, resStatus)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: status=%s", o.path, rid, resStatus)
 			resetRemainingAndTimer(rid, rcfg, rmon)
 		case rmon.Restart.Timer != nil:
-			o.log.Debug().Msgf("resource %s restart skip: already has a delay timer", rid)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: already has a delay timer", o.path, rid)
 		case !o.state.MonitorActionExecutedAt.IsZero():
-			o.log.Debug().Msgf("resource %s restart skip: already ran the monitor action", rid)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: already ran the monitor action", o.path, rid)
 		case started:
-			o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+			o.log.Info().Msgf("daemon: imon: %s: resource %s status %s, restart remaining %d out of %d", o.path, rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
 				o.state.MonitorActionExecutedAt = time.Now()
 				o.change = true
@@ -179,10 +179,10 @@ func (o *imon) orchestrateResourceRestart() {
 				todoRestart.Add(rid)
 			}
 		case rcfg.IsStandby:
-			o.log.Info().Msgf("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+			o.log.Info().Msgf("daemon: imon: %s: resource %s status %s, standby restart remaining %d out of %d", o.path, rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			todoStandby.Add(rid)
 		default:
-			o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
+			o.log.Debug().Msgf("daemon: imon: %s: resource %s restart skip: instance not started", o.path, rid)
 			resetTimer(rid, rmon)
 		}
 	}
@@ -320,7 +320,7 @@ func (o *imon) orchestrateResourceRestart() {
 
 	// discard not provisioned
 	if instanceStatus := o.instStatus[o.localhost]; instanceStatus.Provisioned.IsOneOf(provisioned.False, provisioned.Mixed, provisioned.Undef) {
-		o.log.Debug().Msgf("skip restart: provisioned=%s", instanceStatus.Provisioned)
+		o.log.Debug().Msgf("daemon: imon: %s: skip restart: provisioned=%s", o.path, instanceStatus.Provisioned)
 		resetTimers()
 		return
 	}
@@ -328,7 +328,7 @@ func (o *imon) orchestrateResourceRestart() {
 	// discard if the instance has no monitor data
 	instMonitor, ok := o.GetInstanceMonitor(o.localhost)
 	if !ok {
-		o.log.Debug().Msgf("skip restart: no instance monitor")
+		o.log.Debug().Msgf("daemon: imon: %s: skip restart: no instance monitor", o.path)
 		resetTimers()
 		return
 	}
@@ -338,7 +338,7 @@ func (o *imon) orchestrateResourceRestart() {
 	case instance.MonitorStateIdle, instance.MonitorStateStartFailed:
 		// pass
 	default:
-		o.log.Debug().Msgf("skip restart: state=%s", instMonitor.State)
+		o.log.Debug().Msgf("daemon: imon: %s: skip restart: state=%s", o.path, instMonitor.State)
 		return
 	}
 

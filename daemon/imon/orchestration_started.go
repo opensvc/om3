@@ -32,7 +32,7 @@ func (o *imon) orchestrateStarted() {
 	case instance.MonitorStateWaitParents:
 		o.setWaitParents()
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate started from %s", o.state.State)
+		o.log.Error().Msgf("daemon: imon: %s: don't know how to orchestrate started from %s", o.path, o.state.State)
 	}
 }
 
@@ -66,11 +66,11 @@ func (o *imon) startedFromThawed() {
 		return
 	}
 	if o.hasOtherNodeActing() {
-		o.log.Debug().Msg("another node acting")
+		o.log.Debug().Msgf("daemon: imon: %s: another node acting", o.path)
 		return
 	}
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
-		o.log.Debug().Msg("provisioned is false or undef")
+		o.log.Debug().Msgf("daemon: imon: %s: provisioned is false or undef", o.path)
 		return
 	}
 	o.transitionTo(instance.MonitorStateReady)
@@ -94,7 +94,7 @@ func (o *imon) doUnfreeze() {
 
 func (o *imon) cancelReadyState() bool {
 	if o.pendingCancel == nil {
-		o.loggerWithState().Error().Msg("startedFromReady without pending")
+		o.loggerWithState().Error().Msgf("daemon: imon: %s: startedFromReady without pending", o.path)
 		o.transitionTo(instance.MonitorStateIdle)
 		return true
 	}
@@ -102,7 +102,7 @@ func (o *imon) cancelReadyState() bool {
 		return true
 	}
 	if !o.state.IsHALeader {
-		o.loggerWithState().Info().Msg("leadership lost, clear the ready state")
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: leadership lost, clear the ready state", o.path)
 		o.transitionTo(instance.MonitorStateIdle)
 		o.clearPending()
 		return true
@@ -144,12 +144,12 @@ func (o *imon) startedFromStarted() {
 
 func (o *imon) startedFromStartFailed() {
 	if o.isStarted() {
-		o.loggerWithState().Info().Msg("object is up -> set done and idle, clear start failed")
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: object is up -> set done and idle, clear start failed", o.path)
 		o.doneAndIdle()
 		return
 	}
 	if o.isAllStartFailed() {
-		o.loggerWithState().Info().Msg("all instances start failed -> set done")
+		o.loggerWithState().Info().Msgf("daemon: imon: %s: all instances start failed -> set done", o.path)
 		o.done()
 		return
 	}
@@ -167,11 +167,11 @@ func (o *imon) isAllStartFailed() bool {
 func (o *imon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
 		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Info().Msg("instance is started -> set done and idle")
+			o.loggerWithState().Info().Msgf("daemon: imon: %s: instance is started -> set done and idle", o.path)
 			o.doneAndIdle()
 		}
 		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
-			o.loggerWithState().Info().Msg("instance is started, set local expect started")
+			o.loggerWithState().Info().Msgf("daemon: imon: %s: instance is started, set local expect started", o.path)
 			o.change = true
 			o.state.LocalExpect = instance.MonitorLocalExpectStarted
 		}
@@ -180,7 +180,7 @@ func (o *imon) startedClearIfReached() bool {
 	}
 	if o.isStarted() {
 		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Info().Msg("object is started -> set done and idle")
+			o.loggerWithState().Info().Msgf("daemon: imon: %s: object is started -> set done and idle", o.path)
 			o.doneAndIdle()
 		}
 		o.clearPending()

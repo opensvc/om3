@@ -1301,3 +1301,7 @@ func (t Status) Unstructured() map[string]any {
 	}
 	return m
 }
+
+func (t T) Msgf(format string, args ...any) string {
+	return t.GetObject().(fmt.Stringer).String() + ": " + t.RID() + ": " + fmt.Sprintf(format, args...)
+}

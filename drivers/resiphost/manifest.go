@@ -25,7 +25,6 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
-		manifest.ContextPath,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Option:   "ipname",

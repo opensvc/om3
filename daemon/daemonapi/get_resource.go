@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/resourceid"
@@ -12,13 +11,15 @@ import (
 )
 
 func (a *DaemonApi) GetResources(ctx echo.Context, params api.GetResourcesParams) error {
+	name := "GetResources"
+	log := LogHandler(ctx, name)
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
 		Path:    params.Path,
 	}
 	if err := meta.Expand(); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msgf("daemon: api: %s: %s", name, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := instance.ConfigData.GetAll()

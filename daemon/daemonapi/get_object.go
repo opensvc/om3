@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -13,8 +12,10 @@ import (
 )
 
 func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
+	logName := "GetObjects"
+	log := LogHandler(ctx, logName)
 	if l, err := a.getObjects(ctx, params.Path); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msgf("daemon: api: %s: %s", logName, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	} else {
 		return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
@@ -22,13 +23,15 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 }
 
 func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	logName := "GetObject"
+	log := LogHandler(ctx, logName)
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return err
 	}
 	s := p.FQN()
 	if l, err := a.getObjects(ctx, &s); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msgf("daemon: api: %s: %s", logName, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	} else if len(l) == 0 {
 		return JSONProblem(ctx, http.StatusNotFound, "", "")
