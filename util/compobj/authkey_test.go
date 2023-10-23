@@ -12,26 +12,26 @@ func TestAuthkeyAdd(t *testing.T) {
 		expectedRule CompAuthKey
 	}{
 		"with a full add action rule and authfile equal to authorized_keys": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "authdir":"/dir/", "user":"toto", "key":"totokey","port":22}`,
+			json:         `{"action":"add", "authfile":"authorized_keys", "authdir":"/dir/", "user":"toto", "key":"totokey","configfile":"/cf"}`,
 			expecteError: false,
 			expectedRule: CompAuthKey{
-				Action:   "add",
-				Authfile: "authorized_keys",
-				User:     "toto",
-				Key:      "totokey",
-				Port:     pti(22),
+				Action:     "add",
+				Authfile:   "authorized_keys",
+				User:       "toto",
+				Key:        "totokey",
+				ConfigFile: "/cf",
 			},
 		},
 
 		"with a full del action rule authfile equal to authorized_keys2": {
-			json:         `{"action":"del", "authfile":"authorized_keys2", "authdir":"/dir/", "user":"toto", "key":"totokey","port":22}`,
+			json:         `{"action":"del", "authfile":"authorized_keys2", "authdir":"/dir/", "user":"toto", "key":"totokey","port":22,"configfile":"/cf"}`,
 			expecteError: false,
 			expectedRule: CompAuthKey{
-				Action:   "del",
-				Authfile: "authorized_keys2",
-				User:     "toto",
-				Key:      "totokey",
-				Port:     pti(22),
+				Action:     "del",
+				Authfile:   "authorized_keys2",
+				User:       "toto",
+				Key:        "totokey",
+				ConfigFile: "/cf",
 			},
 		},
 
@@ -65,27 +65,15 @@ func TestAuthkeyAdd(t *testing.T) {
 			expectedRule: CompAuthKey{},
 		},
 
-		"json rule with no port precised": {
+		"json rule with no cf precised": {
 			json:         `{"action":"add", "authfile":"authorized_keys", "authdir":"/dir/", "user":"toto", "key":"totokey"}`,
 			expecteError: false,
 			expectedRule: CompAuthKey{
-				Action:   "add",
-				Authfile: "authorized_keys",
-				User:     "toto",
-				Key:      "totokey",
-				Port:     pti(22),
-			},
-		},
-
-		"json rule with another than 22 precised": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "authdir":"/dir/", "user":"toto", "key":"totokey","port":33}`,
-			expecteError: false,
-			expectedRule: CompAuthKey{
-				Action:   "add",
-				Authfile: "authorized_keys",
-				User:     "toto",
-				Key:      "totokey",
-				Port:     pti(33),
+				Action:     "add",
+				Authfile:   "authorized_keys",
+				User:       "toto",
+				Key:        "totokey",
+				ConfigFile: "/etc/ssh/sshd_config",
 			},
 		},
 	}

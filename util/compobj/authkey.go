@@ -10,11 +10,11 @@ type (
 		*Obj
 	}
 	CompAuthKey struct {
-		Action   string `json:"action"`
-		Authfile string `json:"authfile"`
-		User     string `json:"user"`
-		Key      string `json:"key"`
-		Port     *int   `json:"port"`
+		Action     string `json:"action"`
+		Authfile   string `json:"authfile"`
+		User       string `json:"user"`
+		Key        string `json:"key"`
+		ConfigFile string `json:"configfile"`
 	}
 )
 
@@ -88,14 +88,14 @@ Inputs:
     Help: The authorized_keys file to write the keys into.
 
   -
-    Id: port
-    Label: Port
-    DisplayModeLabel: port
+    Id: configfile
+    Label: sshd config file path
+    DisplayModeLabel: configfile
     LabelCss: hd16
     Mandatory: no
-    Default: 22
-    Type: int
-    Help: The port used by sshd
+    Default: /etc/ssh/sshd_config
+    Type: string
+    Help: The sshd configuration file path, if not precised the value used is /etc/ssh/sshd_config
 `,
 }
 
@@ -130,16 +130,28 @@ func (t *CompAuthkeys) Add(s string) error {
 		t.Errorf("key should be in the dict: %s\n", s)
 		return fmt.Errorf("user should be in the dict: %s\n", s)
 	}
-	if data.Port == nil {
-		data.Port = pti(22)
+	if data.ConfigFile == "" {
+		data.ConfigFile = "/etc/ssh/sshd_config"
 	}
 	t.Obj.Add(data)
 	return nil
 }
 
-func (t CompAuthkeys) CheckRule(rule CompAuthKey) ExitCode {
+func (t CompAuthkeys) truncateKey(key string) string {
+	if len(key) < 50 {
+		return key
+	}
+	return fmt.Sprintf("'%s ... %s'", key[0:17], key[len(key)-30:])
+}
+
+/*func (t CompAuthkeys) CheckRule(rule CompAuthKey) ExitCode {
+	e := ExitOk
 
 	return ExitOk
+}
+
+func (t CompAuthkeys) CheckAuthkey(rule CompAuthKey) ExitCode {
+
 }
 
 func (t CompAuthkeys) Check() ExitCode {
@@ -151,7 +163,7 @@ func (t CompAuthkeys) Check() ExitCode {
 		e = e.Merge(o)
 	}
 	return e
-}
+}*/
 
 func (t CompAuthkeys) Fix() ExitCode {
 	/*t.SetVerbose(false)
