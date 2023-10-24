@@ -25,7 +25,7 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
-		manifest.ContextPath,
+		manifest.ContextObjectPath,
 		manifest.ContextNodes,
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)

@@ -44,6 +44,15 @@ func WithLogger(l *zerolog.Logger) funcopt.O {
 	})
 }
 
+// WithLogPrefix defines the string to prepend to every log message
+func WithLogPrefix(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.logPrefix = s
+		return nil
+	})
+}
+
 // WithTimeout sets the max duration the process is allowed to run. After this duration,
 // the process is killed and an error is reported.
 func WithTimeout(timeout time.Duration) funcopt.O {

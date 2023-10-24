@@ -12,6 +12,7 @@ type (
 		Size      uint64
 		BlockSize uint64
 		Log       *zerolog.Logger
+		LogPrefix string
 	}
 	Vols []Vol
 )
@@ -30,6 +31,10 @@ func (t Vol) GetName() string {
 
 func (t Vol) GetLog() *zerolog.Logger {
 	return t.Log
+}
+
+func (t Vol) GetLogPrefix() string {
+	return t.LogPrefix
 }
 
 func (t Vols) Paths() []string {

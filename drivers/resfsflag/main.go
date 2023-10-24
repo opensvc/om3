@@ -51,13 +51,13 @@ func (t T) Abort(ctx context.Context) bool {
 	test := func(n string) bool {
 		client, err := sshnode.NewClient(n)
 		if err != nil {
-			t.Log().Warn().Str("peer", n).Msgf("No abort: %s", err)
+			t.Warnf("peer %s: no abort: new ssh client: %s", n, err)
 			return false
 		}
 		defer client.Close()
 		session, err := client.NewSession()
 		if err != nil {
-			t.Log().Warn().Str("peer", n).Msgf("No abort: %s", err)
+			t.Warnf("peer %s: no abort: new ssh session: %s", n, err)
 			return false
 		}
 		defer session.Close()
@@ -77,7 +77,7 @@ func (t T) Abort(ctx context.Context) bool {
 			continue
 		}
 		if test(n) {
-			t.Log().Info().Msgf("Abort: Conflict with node %s", n)
+			t.Infof("peer %s: abort: conflict", n)
 			return true
 		}
 	}
@@ -90,13 +90,13 @@ func (t T) Start(ctx context.Context) error {
 		return fmt.Errorf("empty file path")
 	}
 	if t.exists() {
-		t.Log().Info().Msgf("Flag file %s is already installed", t.file())
+		t.Infof("flag file %s is already installed", t.file())
 		return nil
 	}
 	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", t.dir(), err)
 	}
-	t.Log().Info().Msgf("Install flag file %s", t.file())
+	t.Infof("install flag file %s", t.file())
 	if _, err := os.Create(t.file()); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (t T) Stop(ctx context.Context) error {
 		return fmt.Errorf("empty file path")
 	}
 	if !t.exists() {
-		t.Log().Info().Msgf("Flag file %s is already uninstalled", t.file())
+		t.Infof("flag file %s is already uninstalled", t.file())
 		return nil
 	}
 	return t.stop()
@@ -120,7 +120,7 @@ func (t T) Stop(ctx context.Context) error {
 
 func (t T) stop() error {
 	p := t.file()
-	t.Log().Info().Msgf("Uninstall flag file %s", p)
+	t.Infof("uninstall flag file %s", p)
 	return os.Remove(p)
 }
 

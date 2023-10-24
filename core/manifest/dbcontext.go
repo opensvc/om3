@@ -1,7 +1,7 @@
 package manifest
 
 var (
-	ContextPath = Context{
+	ContextObjectPath = Context{
 		Key:  "path",
 		Attr: "Path",
 		Ref:  "object.path",

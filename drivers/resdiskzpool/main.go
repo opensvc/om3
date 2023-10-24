@@ -197,6 +197,7 @@ func (t T) genHostID() error {
 	cmd := command.New(
 		command.WithName(p),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),

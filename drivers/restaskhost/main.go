@@ -80,6 +80,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	if t.LogOutputs {
 		opts = append(opts,
 			command.WithLogger(t.Log()),
+			command.WithLogPrefix(t.Msgf("")+": "),
 			command.WithStdoutLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.WarnLevel),
 		)

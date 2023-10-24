@@ -260,7 +260,7 @@ func (t T) DoLocal() error {
 	log.Debug().
 		Str("format", t.Output).
 		Str("selector", t.ObjectSelector).
-		Msg("do local object selection action")
+		Msgf("do local object selection action")
 	sel := objectselector.NewSelection(
 		t.ObjectSelector,
 		objectselector.SelectionWithLocal(true),
@@ -292,13 +292,13 @@ func (t T) DoLocal() error {
 				}
 				rs[i].Error = nil
 			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
-				log.Error().Err(r.Error).Send()
+				log.Error().Msgf("%s: %s", r.Path, r.Error)
 			case r.Panic != nil:
 				switch err := r.Panic.(type) {
 				case error:
-					log.Fatal().Stack().Err(err).Send()
+					log.Fatal().Stack().Msgf("%s: %s", r.Path, err)
 				default:
-					log.Fatal().Msgf("%s", err)
+					log.Fatal().Msgf("%s: %s", r.Path, err)
 				}
 			}
 			if i, ok := r.Data.(treeProvider); ok {
@@ -325,7 +325,7 @@ func (t T) DoLocal() error {
 						s += fmt.Sprintln(e)
 					}
 				default:
-					log.Error().Msgf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
+					log.Error().Msgf("%s: unimplemented default renderer for local action result of type %s", r.Path, reflect.TypeOf(v))
 				}
 			}
 		}
@@ -834,16 +834,16 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 			}
 			switch m := msg.(type) {
 			case *msgbus.SetInstanceMonitorRefused:
-				err = fmt.Errorf("can't wait %s expectation %s, got SetInstanceMonitorRefused", p, expectation)
-				log.Debug().Err(err).Msgf("waitExpectation")
+				err = fmt.Errorf("%s: can't wait expectation %s, got SetInstanceMonitorRefused", p, expectation)
+				log.Debug().Msgf("%s", err)
 				return
 			case *msgbus.InstanceMonitorUpdated:
 				if m.Value.GlobalExpect == instance.MonitorGlobalExpectNone {
-					log.Debug().Msgf("InstanceMonitorUpdated %s reached global expect %s -> %s", p, expectation, m.Value.GlobalExpect)
+					log.Debug().Msgf("%s: reached expectation %s (global expect is %s)", p, expectation, m.Value.GlobalExpect)
 					return
 				}
 			case *msgbus.ObjectStatusDeleted:
-				log.Debug().Msgf("ObjectStatusDeleted %s reached %s", p, expectation)
+				log.Debug().Msgf("%s: reached expectation %s (deleted)", p, expectation)
 				return
 			}
 		}

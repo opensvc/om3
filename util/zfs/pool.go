@@ -10,8 +10,9 @@ import (
 
 type (
 	Pool struct {
-		Name string
-		Log  *zerolog.Logger
+		Name      string
+		Log       *zerolog.Logger
+		LogPrefix string
 	}
 )
 
@@ -20,6 +21,7 @@ func (t *Pool) Exists() (bool, error) {
 		command.WithName("zpool"),
 		command.WithVarArgs("list", t.Name),
 		command.WithLogger(t.Log),
+		command.WithLogPrefix(t.LogPrefix),
 		command.WithBufferedStderr(),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
 	)

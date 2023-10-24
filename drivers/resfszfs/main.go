@@ -65,7 +65,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s already umounted from %s", t.Device, t.mountPoint())
+		t.Infof("%s already umounted from %s", t.Device, t.mountPoint())
 		return nil
 	}
 	if err := t.umount(ctx); err != nil {
@@ -154,7 +154,7 @@ func (t *T) mount(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s already mounted on %s", t.Device, t.mountPoint())
+		t.Infof("%s already mounted on %s", t.Device, t.mountPoint())
 		return nil
 	}
 	if err := t.createMountPoint(ctx); err != nil {
@@ -202,6 +202,7 @@ func (t T) mountLegacy() error {
 		command.WithName("mount"),
 		command.WithArgs(a.Get()),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithTimeout(timeout),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -221,6 +222,7 @@ func (t T) umountLegacy() error {
 		command.WithName("umount"),
 		command.WithVarArgs(t.MountPoint),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithTimeout(timeout),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -273,7 +275,7 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if file.Exists(t.MountPoint) {
 		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.MountPoint)
 	}
-	t.Log().Info().Msgf("create missing mountpoint %s", t.MountPoint)
+	t.Infof("create missing mountpoint %s", t.MountPoint)
 	if err := os.MkdirAll(t.MountPoint, 0755); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %s", t.MountPoint, err)
 	}
@@ -282,15 +284,17 @@ func (t *T) createMountPoint(ctx context.Context) error {
 
 func (t T) fs() *zfs.Filesystem {
 	return &zfs.Filesystem{
-		Log:  t.Log(),
-		Name: t.Device,
+		Log:       t.Log(),
+		LogPrefix: t.Msgf("") + t.Device + ": ",
+		Name:      t.Device,
 	}
 }
 
 func (t T) pool() *zfs.Pool {
 	return &zfs.Pool{
-		Log:  t.Log(),
-		Name: t.poolName(),
+		Log:       t.Log(),
+		LogPrefix: t.Msgf("") + t.Device + ": ",
+		Name:      t.poolName(),
 	}
 }
 
@@ -385,7 +389,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.fs().Exists(); err != nil {
 		return fmt.Errorf("fs existance check: %w", err)
 	} else if v {
-		t.Log().Info().Msgf("dataset %s already exists", t.Device)
+		t.Infof("dataset %s already exists", t.Device)
 		return nil
 	}
 	fopts := make([]funcopt.O, 0)
@@ -421,7 +425,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	if v, err := fs.Exists(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("dataset %s is already destroyed", t.Device)
+		t.Infof("dataset %s is already destroyed", t.Device)
 		return nil
 	}
 	if err := fs.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(true)); err != nil {
@@ -446,7 +450,7 @@ func (t T) removeMountPoint() error {
 		return fmt.Errorf("dir %s is protected: refuse to remove", mnt)
 	}
 	if !file.Exists(mnt) {
-		t.Log().Info().Msgf("dir %s is already removed", mnt)
+		t.Infof("dir %s is already removed", mnt)
 		return nil
 	}
 	return os.RemoveAll(mnt)

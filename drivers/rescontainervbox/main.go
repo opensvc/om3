@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/antchfx/xmlquery"
 	"io"
 	"net"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/antchfx/xmlquery"
 
 	"github.com/go-ping/ping"
 	"github.com/google/uuid"
@@ -340,6 +341,7 @@ func (t *T) undefine() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("undefine", t.Name),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -547,6 +549,7 @@ func (t *T) execViaRCmd(args []string) error {
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
 		command.WithCommandLogLevel(zerolog.DebugLevel),

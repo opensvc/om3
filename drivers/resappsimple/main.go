@@ -46,6 +46,7 @@ func (t T) Start(ctx context.Context) (err error) {
 	}
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 	)
 	cmd := command.New(opts...)

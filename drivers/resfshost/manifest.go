@@ -134,7 +134,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driver.NewID(driver.GroupFS, t.Type), t)
-	m.Add(manifest.ContextPath)
+	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	return m
