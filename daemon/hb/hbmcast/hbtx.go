@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -28,7 +27,7 @@ type (
 		timeout  time.Duration
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -42,7 +41,7 @@ func (t *tx) Id() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -51,7 +50,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -65,8 +64,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Info().Msg("starting")
-		defer t.log.Info().Msg("stopped")
+		t.log.Infof("starting")
+		defer t.log.Infof("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -93,13 +92,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debug().Msg(reason)
+				t.log.Debugf(reason)
 				go t.send(b)
 			}
 		}
 	}()
 	<-started
-	t.log.Info().Msg("started")
+	t.log.Infof("started")
 	return nil
 }
 
@@ -110,11 +109,11 @@ func (t *tx) encryptMessage(b []byte) ([]byte, error) {
 
 func (t *tx) send(b []byte) {
 	//fmt.Println("xx >>>\n", hex.Dump(b))
-	t.log.Debug().Msgf("send to udp %s", t.udpAddr)
+	t.log.Debugf("send to udp %s", t.udpAddr)
 
 	c, err := net.DialUDP("udp", t.laddr, t.udpAddr)
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("dial udp %s", t.udpAddr)
+		t.log.Debugf("dial udp %s: %s", t.udpAddr, err)
 		return
 	}
 	defer c.Close()
@@ -126,7 +125,7 @@ func (t *tx) send(b []byte) {
 	}
 	if total > MaxFragments {
 		// the message will not be sent by this heart beat.
-		t.log.Error().Msgf("drop message for udp conn to %s: maximum fragment to create %d (message length %d)",
+		t.log.Errorf("drop message for udp conn to %s: maximum fragment to create %d (message length %d)",
 			t.udpAddr, total, msgLength)
 		return
 	}
@@ -144,11 +143,11 @@ func (t *tx) send(b []byte) {
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {
-			t.log.Debug().Err(err).Msgf("marshal frame")
+			t.log.Debugf("daemon: hbmcast.tx: marshal frame: %s", err)
 			return
 		}
 		if _, err := c.Write(dgram); err != nil {
-			t.log.Debug().Err(err).Msgf("write in udp conn to %s", t.udpAddr)
+			t.log.Debugf("daemon: hbmcast.tx: write in udp conn to %s: %s", t.udpAddr, err)
 			return
 		}
 	}
@@ -163,7 +162,6 @@ func (t *tx) send(b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net.UDPAddr, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
 		ctx:      ctx,
 		id:       id,
@@ -172,6 +170,13 @@ func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net
 		laddr:    laddr,
 		interval: interval,
 		timeout:  timeout,
-		log:      log,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().
+				Str("hb_func", "tx").
+				Str("hb_name", name).
+				Str("hb_id", id).
+				Logger(),
+			Prefix: "daemon: hb: mcast: tx: " + name + ": ",
+		},
 	}
 }

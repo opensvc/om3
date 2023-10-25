@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 )
 
 // T is the multicast heartbeat
@@ -66,7 +66,10 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := daemonlogctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().Str("hb_name", t.Name()).Logger(),
+		Prefix: "daemon: hb: mcast: " + t.Name() + ": ",
+	}
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
 	intf := t.GetString("intf")
@@ -78,7 +81,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debug().Msgf("configure %s timeout=%s interval= %s port=%d nodes=%s onodes=%s", t.Name(), timeout, interval,
+	log.Debugf("configure %s timeout=%s interval= %s port=%d nodes=%s onodes=%s", t.Name(), timeout, interval,
 		port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
@@ -100,14 +103,14 @@ func (t *T) Configure(ctx context.Context) {
 	if intf != "" {
 		ifi, err = net.InterfaceByName(intf)
 		if err != nil {
-			log.Error().Err(err).Msgf("configure %s", t.Name())
+			log.Errorf("configure %s: %s", t.Name(), err)
 			return
 		}
-		log.Debug().Msgf("configure %s: set rx interface %s", t.Name(), ifi.Name)
+		log.Debugf("configure %s: set rx interface %s", t.Name(), ifi.Name)
 
 		addrs, err := ifi.Addrs()
 		if err != nil {
-			log.Debug().Err(err).Msgf("configure %s: intf %s addrs", t.Name(), ifi.Name)
+			log.Warnf("configure %s: intf %s addrs: %s", t.Name(), ifi.Name, err)
 			return
 		}
 		for _, addr := range addrs {
@@ -115,12 +118,12 @@ func (t *T) Configure(ctx context.Context) {
 			l := strings.Split(addrStr, "/")
 			laddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", l[0], 0))
 			if err != nil {
-				log.Debug().Err(err).Msgf("configure %s: intf %s make tx laddr from addr %s", t.Name(), ifi.Name, addr)
+				log.Debugf("configure %s: intf %s make tx laddr from addr %s: %s", t.Name(), ifi.Name, addr, err)
 			} else {
 				break
 			}
 		}
-		log.Debug().Msgf("configure %s: set tx interface %s laddr %s", t.Name(), ifi.Name, laddr)
+		log.Debugf("configure %s: set tx interface %s laddr %s", t.Name(), ifi.Name, laddr)
 	}
 
 	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval)
