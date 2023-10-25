@@ -24,6 +24,13 @@ type (
 		ActionResourceDeps() []actionresdeps.Dep
 	}
 
+	// Configurer is an optional interface resource drivers can
+	// implement if they want to configure the resource after the
+	// manifest data has been loaded. For example, tuning the logger.
+	Configurer interface {
+		Configure() error
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

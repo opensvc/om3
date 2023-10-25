@@ -179,7 +179,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Error().Err(err).Msg(t.Msgf("announce %s state: %s", progress, err))
 		return err
 	}
-	t.log.Info().Msg(t.Msgf("announce %s state", progress))
+	t.Infof("announce %s state", progress)
 	return nil
 }
 

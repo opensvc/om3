@@ -163,3 +163,19 @@ func (t core) Progress(ctx context.Context, cols ...any) {
 func (t core) Msgf(format string, args ...any) string {
 	return t.path.String() + ": " + fmt.Sprintf(format, args...)
 }
+
+func (t core) Debugf(format string, args ...any) {
+	t.log.Debug().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Infof(format string, args ...any) {
+	t.log.Info().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Warnf(format string, args ...any) {
+	t.log.Warn().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Errorf(format string, args ...any) {
+	t.log.Error().Msg(t.Msgf(format, args...))
+}

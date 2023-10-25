@@ -471,11 +471,12 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 
 // SetObject holds the useful interface of the parent object of the resource.
 func (t *T) SetObject(o any) {
-	if _, ok := o.(ObjectDriver); !ok {
+	if od, ok := o.(ObjectDriver); !ok {
 		panic("SetObject accepts only ObjectDriver")
+	} else {
+		t.object = o
+		t.log = t.getLoggerFromObjectDriver(od)
 	}
-	t.object = o
-	t.log = t.getLogger()
 }
 
 // GetObject returns the object interface set by SetObjectriver upon configure.
@@ -488,8 +489,8 @@ func (t *T) GetObjectDriver() ObjectDriver {
 	return t.object.(ObjectDriver)
 }
 
-func (t *T) getLogger() zerolog.Logger {
-	l := t.object.(ObjectDriver).Log().With().Stringer("rid", t.ResourceID)
+func (t *T) getLoggerFromObjectDriver(o ObjectDriver) zerolog.Logger {
+	l := o.Log().With().Stringer("rid", t.ResourceID)
 	if t.Subset != "" {
 		l = l.Str("rs", t.Subset)
 	}
@@ -1313,20 +1314,24 @@ func (t T) Msgf(format string, args ...any) string {
 
 func (t T) Debugf(format string, args ...any) {
 	msg := t.Msgf(format, args...)
-	t.log.Debug().Msg(msg)
+	logger := t.log.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	logger.Debug().Msg(msg)
 }
 
 func (t T) Infof(format string, args ...any) {
 	msg := t.Msgf(format, args...)
-	t.log.Info().Msg(msg)
+	logger := t.log.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	logger.Info().Msg(msg)
 }
 
 func (t T) Warnf(format string, args ...any) {
 	msg := t.Msgf(format, args...)
-	t.log.Warn().Msg(msg)
+	logger := t.log.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	logger.Warn().Msg(msg)
 }
 
 func (t T) Errorf(format string, args ...any) {
 	msg := t.Msgf(format, args...)
-	t.log.Error().Msg(msg)
+	logger := t.log.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	logger.Error().Msg(msg)
 }
