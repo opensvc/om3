@@ -49,7 +49,7 @@ func init() {
 func (t *T) Configure(ctx context.Context) {
 	log := plog.Logger{
 		Logger: plog.PkgLogger(ctx, "daemon/hb/hbrelay").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: relay: " + t.Name() + ": ",
+		Prefix: "daemon: hb: relay: " + t.Name() + ": configure: ",
 	}
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
@@ -76,7 +76,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("configure %s, timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", t.Name(), timeout, interval, relay, insecure, nodes, oNodes)
+	log.Debugf("timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s", nodes, relay, timeout, interval)

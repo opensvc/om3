@@ -68,7 +68,7 @@ func init() {
 func (t *T) Configure(ctx context.Context) {
 	log := plog.Logger{
 		Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: mcast: " + t.Name() + ": ",
+		Prefix: "daemon: hb: mcast: " + t.Name() + ": configure: ",
 	}
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
@@ -81,7 +81,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("configure %s timeout=%s interval= %s port=%d nodes=%s onodes=%s", t.Name(), timeout, interval,
+	log.Debugf("timeout=%s interval= %s port=%d nodes=%s onodes=%s", timeout, interval,
 		port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
@@ -93,7 +93,7 @@ func (t *T) Configure(ctx context.Context) {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
-		log.Error().Err(err).Msgf("configure %s", t.Name())
+		log.Errorf("resolve udp addr: %s", err)
 		return
 	}
 
@@ -103,14 +103,14 @@ func (t *T) Configure(ctx context.Context) {
 	if intf != "" {
 		ifi, err = net.InterfaceByName(intf)
 		if err != nil {
-			log.Errorf("configure %s: %s", t.Name(), err)
+			log.Errorf("can't get interface by name: %s", err)
 			return
 		}
-		log.Debugf("configure %s: set rx interface %s", t.Name(), ifi.Name)
+		log.Debugf("set rx interface %s", ifi.Name)
 
 		addrs, err := ifi.Addrs()
 		if err != nil {
-			log.Warnf("configure %s: intf %s addrs: %s", t.Name(), ifi.Name, err)
+			log.Warnf("intf %s addrs: %s", ifi.Name, err)
 			return
 		}
 		for _, addr := range addrs {
@@ -118,12 +118,12 @@ func (t *T) Configure(ctx context.Context) {
 			l := strings.Split(addrStr, "/")
 			laddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", l[0], 0))
 			if err != nil {
-				log.Debugf("configure %s: intf %s make tx laddr from addr %s: %s", t.Name(), ifi.Name, addr, err)
+				log.Debugf("intf %s make tx laddr from addr %s: %s", ifi.Name, addr, err)
 			} else {
 				break
 			}
 		}
-		log.Debugf("configure %s: set tx interface %s laddr %s", t.Name(), ifi.Name, laddr)
+		log.Debugf("set tx interface %s laddr %s", ifi.Name, laddr)
 	}
 
 	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval)

@@ -52,7 +52,7 @@ func init() {
 func (t *T) Configure(ctx context.Context) {
 	log := plog.Logger{
 		Logger: plog.PkgLogger(ctx, "daemon/hb/hbucast").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: ucast: " + t.Name() + ": ",
+		Prefix: "daemon: hb: ucast: " + t.Name() + ": configure: ",
 	}
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
@@ -69,7 +69,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("Configure timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
+	log.Debugf("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
 		port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)

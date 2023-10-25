@@ -133,14 +133,14 @@ func (d *device) open() error {
 func (t *T) Configure(ctx context.Context) {
 	log := plog.Logger{
 		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: disk: " + t.Name() + ": ",
+		Prefix: "daemon: hb: disk: " + t.Name() + ": configure:",
 	}
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warnf("daemon: hbdisk.tx: reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 
 	nodes := t.GetStrings("nodes")
@@ -150,7 +150,7 @@ func (t *T) Configure(ctx context.Context) {
 	}
 	dev := t.GetString("dev")
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("configure timeout=%s interval=%s dev=%s nodes=%s onodes=%s", timeout, interval, dev, nodes, oNodes)
+	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s", timeout, interval, dev, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s", dev, nodes, timeout, interval)
