@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -14,19 +15,23 @@ var (
 )
 
 func (d *discover) omon(started chan<- bool) {
-	log := d.log.With().Str("pkg", "discover.omon").Logger()
-	log.Info().Msg("discover.omon started")
-	defer log.Info().Msg("discover.omon stopped")
+	log := plog.Logger{
+		Logger: plog.PkgLogger(d.ctx, "daemon/discover:omon"),
+		Prefix: "daemon: discover: omon: ",
+	}
+
+	log.Infof("started")
+	defer log.Infof("stopped")
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("discover.omon", pubsub.WithQueueSize(SubscriptionQueueSizeOmon))
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true
 	defer func() {
-		log.Debug().Msg("flushing queue")
-		defer log.Debug().Msg("flushed queue")
+		log.Debugf("flushing queue")
+		defer log.Debugf("flushed queue")
 		if err := sub.Stop(); err != nil {
-			d.log.Error().Err(err).Msg("subscription stop")
+			d.log.Errorf("subscription stop: %s", err)
 		}
 		tC := time.After(d.drainDuration)
 		for {
@@ -46,9 +51,9 @@ func (d *discover) omon(started chan<- bool) {
 			case *msgbus.InstanceConfigUpdated:
 				s := c.Path.String()
 				if _, ok := d.objectMonitor[s]; !ok {
-					log.Info().Msgf("discover new object %s", s)
+					log.Infof("new object %s", s)
 					if err := omon.Start(d.ctx, c.Path, c.Value, d.objectMonitorCmdC, d.imonStarter); err != nil {
-						log.Error().Err(err).Msgf("omon.Start %s", s)
+						log.Errorf("start %s failed: %s", s, err)
 						return
 					}
 					d.objectMonitor[s] = make(map[string]struct{})
@@ -59,7 +64,7 @@ func (d *discover) omon(started chan<- bool) {
 			case *msgbus.ObjectStatusDone:
 				delete(d.objectMonitor, c.Path.String())
 			default:
-				log.Error().Interface("cmd", i).Msg("unexpected cmd")
+				log.Errorf("unexpected cmd: %i", i)
 			}
 		}
 	}

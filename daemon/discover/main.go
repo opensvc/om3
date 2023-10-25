@@ -18,17 +18,16 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -38,7 +37,7 @@ type (
 		objectMonitorCmdC chan any
 		ctx               context.Context
 		cancel            context.CancelFunc
-		log               zerolog.Logger
+		log               *plog.Logger
 		databus           *daemondata.T
 
 		// cfgMTime is a map of local instance config file time, indexed by object
@@ -109,8 +108,11 @@ func New(drainDuration time.Duration) *discover {
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create.
 func (d *discover) Start(ctx context.Context) (err error) {
-	d.log = daemonlogctx.Logger(d.ctx).With().Str("name", "daemon.Discover").Logger()
-	d.log.Info().Msg("discover starting")
+	d.log = &plog.Logger{
+		Logger: plog.PkgLogger(d.ctx, "daemon/discover"),
+		Prefix: "daemon: discover: ",
+	}
+	d.log.Infof("discover starting")
 
 	d.ctx, d.cancel = context.WithCancel(ctx)
 	d.databus = daemondata.FromContext(d.ctx)
@@ -121,7 +123,7 @@ func (d *discover) Start(ctx context.Context) (err error) {
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer d.wg.Done()
-		defer d.log.Info().Msg("stopped discover.cfg")
+		defer d.log.Infof("cfg: stopped")
 		d.cfg(c)
 	}(cfgStarted)
 	<-cfgStarted
@@ -137,7 +139,7 @@ func (d *discover) Start(ctx context.Context) (err error) {
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
-		defer d.log.Info().Msg("stopped discover.nodelist")
+		defer d.log.Infof("cfg: node list stopped")
 		d.nodeList.Add(clusternode.Get()...)
 		d.nodeList.Loop()
 	}()
@@ -145,24 +147,24 @@ func (d *discover) Start(ctx context.Context) (err error) {
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
-		defer d.log.Info().Msg("stopped discover.objectList")
-		d.nodeList.Add(object.StatusData.GetPaths().StrSlice()...)
+		defer d.log.Infof("cfg: object list stopped")
+		d.objectList.Add(object.StatusData.GetPaths().StrSlice()...)
 		d.objectList.Loop()
 	}()
 
 	if stopFSWatcher, err := d.fsWatcherStart(); err != nil {
-		d.log.Error().Err(err).Msg("start fs watcher")
+		d.log.Errorf("fs: start failed: %s", err)
 		return err
 	} else {
 		d.fsWatcherStop = stopFSWatcher
 	}
-	d.log.Info().Msg("discover started")
+	d.log.Infof("fs: started")
 	return nil
 }
 
 func (d *discover) Stop() error {
-	d.log.Info().Msg("discover stopping")
-	defer d.log.Info().Msg("discover stopped")
+	d.log.Infof("stopping")
+	defer d.log.Infof("stopped")
 	if d.fsWatcherStop != nil {
 		d.fsWatcherStop()
 	}
