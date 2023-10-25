@@ -1,12 +1,14 @@
 package daemonauth
 
 import (
+	"context"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
 	"github.com/shaj13/libcache"
+
+	"github.com/opensvc/om3/util/plog"
 )
 
 var (
@@ -49,9 +51,13 @@ func initCache() error {
 
 // InitStategies initialize and returns strategies
 // to enable all strategies, i has to implement AllStrategieser
-func InitStategies(i any) (union.Union, error) {
+func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	if err := initCache(); err != nil {
 		return nil, err
+	}
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon.auth"),
+		Prefix: "daemon: auth: ",
 	}
 	l := make([]auth.Strategy, 0)
 	for _, fn := range []func(i interface{}) (string, auth.Strategy, error){
@@ -63,9 +69,12 @@ func InitStategies(i any) (union.Union, error) {
 	} {
 		name, s, err := fn(i)
 		if err != nil {
-			log.Logger.Error().Err(err).Msgf("init strategy %s", name)
+			log.Errorf("init strategy %s error: %s", name, err)
 		} else {
-			log.Logger.Info().Msgf("init strategy %s", name)
+			log.Infof("init strategy %s", name)
+			if name == "jwt" {
+				log.Infof("jwt verify key sig: %s", jwtVerifyKeySign)
+			}
 			l = append(l, s)
 		}
 	}
