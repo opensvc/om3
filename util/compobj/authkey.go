@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/pbar1/pkill-go"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,8 +28,14 @@ type (
 )
 
 var (
-	osReadDir  = os.ReadDir
-	osReadLink = os.Readlink
+	cacheAllowUsers      []string
+	cacheAllowGroups     []string
+	cacheInstalledKeys   = map[string][]string{}
+	osReadDir            = os.ReadDir
+	osReadLink           = os.Readlink
+	userLookup           = user.Lookup
+	userLookupGroupId    = user.LookupGroupId
+	getAuthKeyFilesPaths = CompAuthkeys{}.getAuthKeyFilesPaths
 
 	compAuthKeyInfo = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_AUTHKEY_",
@@ -163,7 +170,7 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 		return err
 	}
 	if len(pids) == 0 {
-		t.VerboseInfof("there is no need to reload sshd because sshd is not up")
+		t.VerboseInfof("there is no need to reload sshd because sshd is not up \n")
 		return nil
 	}
 	pid, err := t.getSshdPid(port)
@@ -198,12 +205,12 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 	for _, file := range files {
 		pid, err := strconv.Atoi(file.Name())
 		if err != nil {
-			t.VerboseInfof("info can't convert %s in int in /proc: %s", file.Name(), err)
+			t.VerboseInfof("info can't convert %s in int in /proc: %s \n", file.Name(), err)
 		}
 		if file.IsDir() && err == nil {
 			fds, err := osReadDir(filepath.Join("proc", file.Name(), "fd"))
 			if err != nil {
-				t.Errorf("error:%s can't read proc %s", err.Error(), file.Name())
+				t.Errorf("error:%s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			for _, fd := range fds {
@@ -236,12 +243,12 @@ func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
 		if file.IsDir() && err == nil {
 			tcpFileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp"))
 			if err != nil {
-				t.Infof("error:%s can't read proc %s", err.Error(), file.Name())
+				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			tcp6FileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp6"))
 			if err != nil {
-				t.Infof("error:%s can't read proc %s", err.Error(), file.Name())
+				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 
@@ -291,14 +298,238 @@ func (t CompAuthkeys) getInodeFromTcpFileContent(port int, content []byte) (int,
 	return -1, nil
 }
 
-/*func (t CompAuthkeys) CheckRule(rule CompAuthKey) ExitCode {
-	e := ExitOk
+func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string) ([]string, error) {
+	paths := []string{}
+	authKeyList1, err := t.getAuthKeyFilePath("authorized_keys", configFilePath, userName)
+	if err != nil {
+		return nil, err
+	}
+	if configFilePath == "authorized_keys" {
+		authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
+		if err != nil {
+			return []string{}, err
+		}
+		paths = append(paths, authKeyList2...)
+	}
+	paths = append(paths, authKeyList1...)
+	return t.expandPaths(paths, userName)
+}
 
+func (t CompAuthkeys) getAuthKeyFilePath(configFile string, configFilePath string, userName string) ([]string, error) {
+	if configFile == "authorized_keys" {
+		return t.expandPaths([]string{".ssh/authorized_keys"}, userName)
+	} else {
+		path, err := t.readAuthFilePathFromConfigFile(configFilePath, true)
+		if err != nil {
+			return []string{}, nil
+		}
+		return t.expandPaths(path, userName)
+	}
+}
+
+func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, readOnlyTheFirstAuthKeysFile bool) ([]string, error) {
+	configFileContent, err := osReadFile(configFilePath)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(configFileContent))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 1 {
+			continue
+		}
+		splitedLine := strings.Fields(line)
+		if splitedLine[0] == "AuthorizedKeysFile" && len(splitedLine) > 1 {
+			if readOnlyTheFirstAuthKeysFile {
+				return []string{splitedLine[1]}, nil
+			}
+			return splitedLine[1:], nil
+		}
+	}
+	return []string{".ssh/authorized_keys2"}, nil
+}
+
+func (t CompAuthkeys) expandPaths(paths []string, userName string) ([]string, error) {
+	expandedPaths := []string{}
+	user1, err := userLookup(userName)
+	if err != nil {
+		return []string{}, err
+	}
+	for _, path := range paths {
+		path = strings.Replace(path, "%u", userName, -1)
+		path = strings.Replace(path, "~", "~"+userName, -1)
+		path = strings.Replace(path, "%h", "~"+userName, -1)
+		if !strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "~") {
+			path = filepath.Join("~"+userName, path)
+		}
+		path = strings.Replace(path, "~"+userName, user1.HomeDir, -1)
+		expandedPaths = append(expandedPaths, path)
+	}
+	return expandedPaths, nil
+}
+
+func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error) {
+	if cacheAllowUsers != nil {
+		return cacheAllowUsers, nil
+	}
+	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 1 {
+			continue
+		}
+		splitedLine := strings.Fields(line)
+		if splitedLine[0] == "AllowUsers" {
+			cacheAllowUsers = splitedLine[1:]
+			return cacheAllowUsers, nil
+		}
+	}
+	t.VerboseInfof("no allowUsers field find in the sshd config \n")
+	cacheAllowUsers = []string{"\x00"}
+	return cacheAllowUsers, nil
+}
+
+func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error) {
+	if cacheAllowGroups != nil {
+		return cacheAllowGroups, nil
+	}
+	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 1 {
+			continue
+		}
+		splitedLine := strings.Fields(line)
+		if splitedLine[0] == "AllowGroups" {
+			cacheAllowGroups = splitedLine[1:]
+			return cacheAllowGroups, nil
+		}
+	}
+	t.VerboseInfof("no allowGroups field find in the sshd config \n")
+	cacheAllowGroups = []string{"\x00"}
+	return cacheAllowGroups, nil
+}
+
+func (t CompAuthkeys) getInstalledKeys(configFilePath string, userName string) ([]string, error) {
+	if _, ok := cacheInstalledKeys[userName]; ok == true {
+		return cacheInstalledKeys[userName], nil
+	}
+	installedKeys := []string{}
+	authKeysFiles, err := getAuthKeyFilesPaths(configFilePath, userName)
+	if err != nil {
+		return nil, err
+	}
+	for _, filePath := range authKeysFiles {
+		fileContent, err := osReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+		installedKeys = append(installedKeys, strings.Split(string(fileContent), "\n")...)
+	}
+	cacheInstalledKeys[userName] = installedKeys
+	return cacheInstalledKeys[userName], nil
+}
+
+func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
+	for _, elemS := range slice {
+		if elemS == elem {
+			return true
+		}
+	}
+	return false
+}
+
+func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
+	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
+	if err != nil {
+		t.Errorf("error when trying to read the authKeys :%s", err)
+		return ExitNok
+	}
+	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
+	if rule.Action == "add" {
+		if isKeyInstalled {
+			t.VerboseInfof("the key %s is installed and should be installed --> ok\n", t.truncateKey(rule.Key))
+			return ExitOk
+		}
+		t.VerboseInfof("the key %s is not installed and should be installed --> not ok\n", t.truncateKey(rule.Key))
+		return ExitNok
+	}
+	if isKeyInstalled {
+		t.VerboseInfof("the key %s is installed and should not be installed --> not ok\n", t.truncateKey(rule.Key))
+		return ExitNok
+	}
+	t.VerboseInfof("the key %s is not installed and should not be installed --> ok\n", t.truncateKey(rule.Key))
 	return ExitOk
 }
 
-func (t CompAuthkeys) CheckAuthkey(rule CompAuthKey) ExitCode {
+func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
+	allowGroups, err := t.getAllowGroups(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("error when trying to read allowGroups field in sshd config file :%s\n", err)
+		return ExitNok
+	}
+	if len(allowGroups) > 0 {
+		if allowGroups[0] == "\x00" {
+			return ExitOk
+		}
+	}
+	user1, err := userLookup(rule.User)
+	if err != nil {
+		t.Errorf("can't check the primary group of the user %s: %s\n", rule.User, err)
+		return ExitNok
+	}
+	primaryGroup, err := userLookupGroupId(user1.Gid)
+	if err != nil {
+		t.Errorf("can't check the primary group of the user %s: %s\n", rule.User, err)
+		return ExitNok
+	}
+	primaryGroupName := primaryGroup.Name
+	if t.isElemInSlice(primaryGroupName, allowGroups) {
+		t.VerboseInfof("the primary group of the user %s is in allowGroups in the sshd config file\n", rule.User)
+		return ExitOk
+	}
+	t.VerboseInfof("the primary group of the user %s is not in allowGroups in the sshd config file\n", rule.User)
+	return ExitNok
+}
 
+func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
+	allowUsers, err := t.getAllowUsers(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("error when trying to read allowUsers field in sshd config file :%s\n", err)
+		return ExitNok
+	}
+	if len(allowUsers) > 0 {
+		if allowUsers[0] == "\x00" {
+			return ExitOk
+		}
+	}
+	if t.isElemInSlice(rule.User, allowUsers) {
+		t.VerboseInfof("the user %s is in allowUsers in the sshd config file\n", rule.User)
+		return ExitOk
+	}
+	t.VerboseInfof("the user %s is not in allowUsers in the sshd config file\n", rule.User)
+	return ExitNok
+}
+
+func (t CompAuthkeys) CheckRule(rule CompAuthKey) ExitCode {
+	e := ExitOk
+	e = e.Merge(t.checkAuthKey(rule))
+	if rule.Action == "add" {
+		e = e.Merge(t.checkAllowGroups(rule))
+		e = e.Merge(t.checkAllowUsers(rule))
+	}
+	return e
 }
 
 func (t CompAuthkeys) Check() ExitCode {
@@ -310,7 +541,7 @@ func (t CompAuthkeys) Check() ExitCode {
 		e = e.Merge(o)
 	}
 	return e
-}*/
+}
 
 func (t CompAuthkeys) Fix() ExitCode {
 	/*t.SetVerbose(false)
