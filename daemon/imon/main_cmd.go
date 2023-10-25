@@ -26,15 +26,15 @@ import (
 func (o *imon) initRelationAvailStatus() {
 	config := instance.ConfigData.Get(o.path, o.localhost)
 	if config == nil {
-		o.log.Info().Msgf("daemon: imon: %s: Skip relations avail status cache init: no config cached yet", o.path)
+		o.log.Info().Msgf("daemon: imon: %s: skip relations avail status cache init: no config cached yet", o.path)
 		return
 	}
 	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
-			o.log.Warn().Err(err).Msgf("daemon: imon: %s: Init %s status cache: split %s", o.path, name, relation)
+			o.log.Warn().Err(err).Msgf("daemon: imon: %s: init %s status cache: split %s", o.path, name, relation)
 		} else if node == "" {
-			o.log.Info().Msgf("daemon: imon: %s: Subscribe to %s %s object avail status updates and deletes", o.path, name, objectPath)
+			o.log.Info().Msgf("daemon: imon: %s: subscribe to %s %s object avail status updates and deletes", o.path, name, objectPath)
 			o.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
 			o.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
 			if st := object.StatusData.Get(objectPath); st != nil {
@@ -45,7 +45,7 @@ func (o *imon) initRelationAvailStatus() {
 				cache[relationS] = status.Undef
 			}
 		} else {
-			o.log.Info().Msgf("daemon: imon: %s: Subscribe to %s %s@%s instance avail status updates and deletes", o.path, name, objectPath, node)
+			o.log.Info().Msgf("daemon: imon: %s: subscribe to %s %s@%s instance avail status updates and deletes", o.path, name, objectPath, node)
 			o.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
 			o.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
 			if st := instance.StatusData.Get(objectPath, node); st != nil {
@@ -181,7 +181,7 @@ func (o *imon) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Instance
 		if o.state.LocalExpect == instance.MonitorLocalExpectStarted {
 			return
 		}
-		o.log.Info().Msgf("daemon: imon: %s: This instance is now considered started, resource restart and monitoring are enabled", o.path)
+		o.log.Info().Msgf("daemon: imon: %s: this instance is now considered started, resource restart and monitoring are enabled", o.path)
 		o.state.LocalExpect = instance.MonitorLocalExpectStarted
 
 		// reset the last monitor action execution time, to rearm the next monitor action
@@ -209,7 +209,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		// delete the instStatus key for peers gone out of scope
 		for node := range o.instStatus {
 			if _, ok := cfgNodes[node]; !ok {
-				o.log.Debug().Msgf("daemon: imon: %s: Drop instance status cache for node %s (node no longer in the object's expanded node list)", o.path, node)
+				o.log.Debug().Msgf("daemon: imon: %s: drop instance status cache for node %s (node no longer in the object's expanded node list)", o.path, node)
 				delete(o.instStatus, node)
 			}
 		}
@@ -226,10 +226,10 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 			if _, ok := cache[relationS]; ok {
 				continue
 			} else if objectPath, node, err := relation.Split(); err != nil {
-				o.log.Warn().Err(err).Msgf("daemon: imon: %s: Janitor %s status cache: split %s: %s", o.path, name, relation, err)
+				o.log.Warn().Err(err).Msgf("daemon: imon: %s: janitor %s status cache: split %s: %s", o.path, name, relation, err)
 				continue
 			} else {
-				o.log.Info().Msgf("daemon: imon: %s: Subscribe to %s %s avail status updates and deletes", o.path, name, relationS)
+				o.log.Info().Msgf("daemon: imon: %s: subscribe to %s %s avail status updates and deletes", o.path, name, relationS)
 				if node == "" {
 					o.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
 					o.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
@@ -257,7 +257,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		}
 		for relationS := range cache {
 			if _, ok := m[relationS]; !ok {
-				o.log.Info().Msgf("daemon: imon: %s: Unsubscribe from %s %s avail status updates and deletes", o.path, name, relationS)
+				o.log.Info().Msgf("daemon: imon: %s: unsubscribe from %s %s avail status updates and deletes", o.path, name, relationS)
 				objectPath, node, _ := naming.Relation(relationS).Split()
 				if node == "" {
 					o.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
@@ -273,7 +273,7 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 	if srcCmd.Node == o.localhost {
 		defer func() {
 			if err := o.crmStatus(); err != nil {
-				o.log.Warn().Err(err).Msgf("daemon: imon: %s: Evaluate instance status via CRM: %s", o.path, err)
+				o.log.Warn().Err(err).Msgf("daemon: imon: %s: evaluate instance status via CRM: %s", o.path, err)
 			}
 		}()
 		o.instConfig = srcCmd.Value
@@ -283,12 +283,12 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceCo
 		janitorRelations(srcCmd.Value.Parents, "Parent", o.state.Parents)
 	}
 	o.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
-	o.log.Debug().Msgf("daemon: imon: %s: Updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", o.path, srcNode, srcCmd.Node, o.scopeNodes)
+	o.log.Debug().Msgf("daemon: imon: %s: updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", o.path, srcNode, srcCmd.Node, o.scopeNodes)
 }
 
 func (o *imon) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if _, ok := o.instStatus[c.Node]; ok {
-		o.log.Debug().Msgf("daemon: imon: %s: Drop deleted instance status from node %s", o.path, c.Node)
+		o.log.Debug().Msgf("daemon: imon: %s: drop deleted instance status from node %s", o.path, c.Node)
 		delete(o.instStatus, c.Node)
 	}
 }
@@ -328,7 +328,7 @@ func (o *imon) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		case *msgbus.InstanceMonitorDeleted:
 			if srcCmd.Node == o.localhost {
 				// this is not expected
-				o.log.Warn().Msgf("daemon: imon: %s: Unexpected received ObjectStatusUpdated from self InstanceMonitorDeleted", o.path)
+				o.log.Warn().Msgf("daemon: imon: %s: unexpected received ObjectStatusUpdated from self InstanceMonitorDeleted", o.path)
 			} else {
 				o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
 			}
@@ -366,7 +366,7 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		default:
 			return
 		}
-		o.log.Info().Msgf("daemon: imon: %s: This instance is no longer considered started, resource restart and monitoring are disabled", o.path)
+		o.log.Info().Msgf("daemon: imon: %s: this instance is no longer considered started, resource restart and monitoring are disabled", o.path)
 		o.change = true
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 	}
@@ -379,9 +379,9 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		case c.SessionId:
 			// pass
 		default:
-			o.log.Warn().Msgf("daemon: imon: %s: Received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.path, o.state.State, o.state.SessionId, c.State, c.SessionId)
+			o.log.Warn().Msgf("daemon: imon: %s: received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.path, o.state.State, o.state.SessionId, c.State, c.SessionId)
 		}
-		o.log.Info().Msgf("daemon: imon: %s: Set instance monitor state %s -> %s", o.path, o.state.State, c.State)
+		o.log.Info().Msgf("daemon: imon: %s: set instance monitor state %s -> %s", o.path, o.state.State, c.State)
 		o.change = true
 		o.state.State = c.State
 		if c.State == instance.MonitorStateIdle {
@@ -428,7 +428,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			o.log.Info().Msgf("daemon: imon: %s: %s", o.path, err)
 			return
 		}
-		o.log.Info().Msgf("daemon: imon: %s: Set instance monitor state %s -> %s", o.path, o.state.State, *c.Value.State)
+		o.log.Info().Msgf("daemon: imon: %s: set instance monitor state %s -> %s", o.path, o.state.State, *c.Value.State)
 		o.change = true
 		o.state.State = *c.Value.State
 	}
@@ -490,7 +490,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					globalExpectRefused()
 					return
 				} else if can != want[0] {
-					o.log.Info().Msgf("daemon: imon: %s: Change destination nodes from %s to %s", o.path, want, can)
+					o.log.Info().Msgf("daemon: imon: %s: change destination nodes from %s to %s", o.path, want, can)
 				}
 				options.Destination = []string{can}
 				c.Value.GlobalExpectOptions = options
@@ -557,7 +557,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			o.log.Info().Msgf("daemon: imon: %s: %s", o.path, err)
 			return
 		}
-		o.log.Info().Msgf("daemon: imon: %s: Set local expect %s -> %s", o.path, o.state.LocalExpect, target)
+		o.log.Info().Msgf("daemon: imon: %s: set local expect %s -> %s", o.path, o.state.LocalExpect, target)
 		o.change = true
 		o.state.LocalExpect = target
 	}
@@ -627,7 +627,7 @@ func (o *imon) onInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 func (o *imon) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instMon := c.Value
-	o.log.Debug().Msgf("daemon: imon: %s: Updated instance imon from peer node %s -> global expect:%s, state: %s", o.path, remote, instMon.GlobalExpect, instMon.State)
+	o.log.Debug().Msgf("daemon: imon: %s: updated instance imon from peer node %s -> global expect:%s, state: %s", o.path, remote, instMon.GlobalExpect, instMon.State)
 	o.instMonitor[remote] = instMon
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
@@ -641,7 +641,7 @@ func (o *imon) onInstanceMonitorDeletedFromNode(node string) {
 		o.log.Warn().Msgf("daemon: imon: %s: onInstanceMonitorDeletedFromNode should never be called from localhost", o.path)
 		return
 	}
-	o.log.Debug().Msgf("daemon: imon: %s: Delete remote instance imon from node %s", o.path, node)
+	o.log.Debug().Msgf("daemon: imon: %s: delete remote instance imon from node %s", o.path, node)
 	delete(o.instMonitor, node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
