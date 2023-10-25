@@ -108,7 +108,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	stageSRV := func(s string) {
 		expose, err := ParseExpose(s)
 		if err != nil {
-			t.log.Error().Err(err).Msgf("parse expose %s", s)
+			t.log.Errorf("parse expose %s: %s", s, err)
 			return
 		}
 		var weight int

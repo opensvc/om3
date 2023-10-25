@@ -68,7 +68,7 @@ func (t *dns) getAllDomains(b []byte) getAllDomainsResponse {
 func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	var req getDomainMetadata
 	if err := json.Unmarshal(b, &req); err != nil {
-		t.log.Error().Err(err).Msg("request parse")
+		t.log.Error().Err(err).Msgf("daemon: dns: request parse: %s", err)
 		return getDomainMetadataResponse{}
 	}
 	switch req.Parameters.Kind {
@@ -82,7 +82,7 @@ func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
 func (t *dns) lookup(b []byte) lookupResponse {
 	var req lookup
 	if err := json.Unmarshal(b, &req); err != nil {
-		t.log.Error().Err(err).Msg("request parse")
+		t.log.Errorf("request parse: %s", err)
 		return nil
 	}
 	return t.getRecords(req.Parameters.Type, req.Parameters.Name)
@@ -158,7 +158,7 @@ func (t *dns) sockChown() error {
 	} else if err := os.Chown(sockPath, sockUID, sockGID); err != nil {
 		return err
 	} else {
-		t.log.Info().Msgf("chown %d:%d %s", sockUID, sockGID, sockPath)
+		t.log.Infof("chown %d:%d %s", sockUID, sockGID, sockPath)
 		return nil
 	}
 }
@@ -189,12 +189,14 @@ func (t *dns) startUDSListener() error {
 
 	sendBytes := func(conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
-		t.log.Debug().Msgf("response: %s", string(b))
-		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+		t.log.Debugf("response: %s", string(b))
+		if err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			t.log.Warnf("can't set response write deadline: %s", err)
+		}
 		for {
 			n, err := conn.Write(b)
 			if err != nil {
-				t.log.Error().Err(err).Msg("response write")
+				t.log.Errorf("response write: %s", err)
 				return err
 			}
 			if n == 0 {
@@ -231,9 +233,11 @@ func (t *dns) startUDSListener() error {
 			req     request
 		)
 		defer conn.Close()
-		t.log.Debug().Msg("Client connected")
+		t.log.Debugf("client connected")
 		for {
-			conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+			if err := conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
+				t.log.Warnf("can't set client read deadline: %s", err)
+			}
 			buffer := make([]byte, 1024)
 
 			n, err := conn.Read(buffer)
@@ -244,7 +248,7 @@ func (t *dns) startUDSListener() error {
 			} else if errors.Is(err, io.EOF) {
 				// pass
 			} else if err != nil {
-				t.log.Error().Err(err).Msg("request read")
+				t.log.Errorf("request read: %s", err)
 				return
 			}
 
@@ -253,10 +257,10 @@ func (t *dns) startUDSListener() error {
 				return
 			}
 
-			t.log.Debug().Msgf("request: %s", string(message))
+			t.log.Debugf("request: %s", string(message))
 
 			if err := json.Unmarshal(message, &req); err != nil {
-				t.log.Error().Err(err).Msg("request parse")
+				t.log.Errorf("request parse: %s", err)
 				return
 			}
 			switch req.Method {
@@ -287,7 +291,7 @@ func (t *dns) startUDSListener() error {
 			if err != nil && errors.Is(err, net.ErrClosed) {
 				return
 			} else {
-				t.log.Error().Err(err).Msg("UDS accept")
+				t.log.Errorf("UDS accept: %s", err)
 			}
 			t.wg.Add(1)
 			go func() {
