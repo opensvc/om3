@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/goccy/go-json"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
@@ -25,12 +23,13 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
 	T struct {
-		log zerolog.Logger
+		log *plog.Logger
 		txs map[string]hbtype.Transmitter
 		rxs map[string]hbtype.Receiver
 
@@ -62,12 +61,15 @@ type (
 	}
 )
 
-func New(opts ...funcopt.O) *T {
-	t := &T{}
-	t.log = log.Logger.With().Str("sub", "hb").Logger()
+func New(ctx context.Context, opts ...funcopt.O) *T {
+	t := &T{
+		log: &plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb"),
+			Prefix: "daemon: hb: ",
+		},
+	}
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Error().Err(err).Msg("hb funcopt.Apply")
-		return nil
+		t.log.Warnf("funcopt apply: %s", err)
 	}
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
@@ -89,7 +91,7 @@ func New(opts ...funcopt.O) *T {
 // - the dispatcher of read messages from hb rx components to daemon data
 // - the goroutine responsible for hb drivers lifecycle
 func (t *T) Start(ctx context.Context) error {
-	t.log.Info().Msg("starting hb")
+	t.log.Infof("starting")
 
 	// we have to start controller routine first (it will be used by hb drivers)
 	// It uses main context ctx: it is the last go routine to stop (after t.cancel() & t.wg.Wait())
@@ -114,13 +116,13 @@ func (t *T) Start(ctx context.Context) error {
 	}()
 
 	t.janitor(ctx)
-	t.log.Info().Msg("started hb")
+	t.log.Infof("started")
 	return nil
 }
 
 func (t *T) Stop() error {
-	t.log.Info().Msg("stopping hb")
-	defer t.log.Info().Msg("stopped hb")
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
 
 	// this will cancel janitor, msgToTx, msgFromRx and hb drivers context
 	t.cancel()
@@ -135,7 +137,7 @@ func (t *T) Stop() error {
 	}
 	for _, hb := range hbToStop {
 		if err := t.stopHb(hb); err != nil {
-			t.log.Error().Err(err).Msgf("failure during stop %s", hb.Id())
+			t.log.Errorf("stop %s: %s", hb.Id(), err)
 			failedIds = append(failedIds, hb.Id())
 		}
 	}
@@ -147,7 +149,7 @@ func (t *T) Stop() error {
 
 	// We can now stop the controller
 	if err := t.ctrl.Stop(); err != nil {
-		t.log.Error().Err(err).Msgf("failure during stop hbctrl")
+		t.log.Errorf("stop hbctrl: %s", err)
 	}
 
 	return nil
@@ -186,7 +188,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id(), Type: hb.Type()}
 	localDataC := make(chan []byte)
 	if err := tx.Start(t.ctrlC, localDataC); err != nil {
-		t.log.Error().Err(err).Msgf("starting %s", tx.Id())
+		t.log.Errorf("start %s failed: %s", tx.Id(), err)
 		t.ctrlC <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
 		return err
 	}
@@ -207,7 +209,7 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
-		t.log.Error().Err(err).Msgf("starting %s", rx.Id())
+		t.log.Errorf("start %s failed: %s", rx.Id(), err)
 		return err
 	}
 	t.rxs[hb.Name()] = rx
@@ -261,7 +263,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if _, ok := ridSignatureNew[rid]; ok {
 			continue
 		}
-		t.log.Info().Msgf("heartbeat config deleted %s => stopping", rid)
+		t.log.Infof("heartbeat config deleted %s => stopping", rid)
 		if err := t.stopHbRid(rid); err == nil {
 			delete(t.ridSignature, rid)
 		} else {
@@ -273,7 +275,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 	for rid, newSig := range ridSignatureNew {
 		if sig, ok := t.ridSignature[rid]; ok {
 			if sig != newSig {
-				t.log.Info().Msgf("heartbeat config changed %s => stopping", rid)
+				t.log.Infof("heartbeat config changed %s => stopping", rid)
 				if err := t.stopHbRid(rid); err != nil {
 					errs = errors.Join(errs, err)
 					continue
@@ -283,7 +285,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		}
 	}
 	for rid, newSig := range stoppedRids {
-		t.log.Info().Msgf("heartbeat config changed %s => starting (from stoppped)", rid)
+		t.log.Infof("heartbeat config changed %s => starting (from stoppped)", rid)
 		if err := t.startHb(ridHb[rid]); err != nil {
 			errs = errors.Join(errs, err)
 		}
@@ -291,7 +293,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 	}
 	for rid, newSig := range ridSignatureNew {
 		if _, ok := t.ridSignature[rid]; !ok {
-			t.log.Info().Msgf("heartbeat config new %s => starting", rid)
+			t.log.Infof("heartbeat config new %s => starting", rid)
 			if err := t.startHb(ridHb[rid]); err != nil {
 				errs = errors.Join(errs, err)
 				continue
@@ -317,11 +319,11 @@ func (t *T) msgToTx(ctx context.Context) error {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		defer t.log.Info().Msg("multiplexer message to hb tx drivers stopped")
-		t.log.Info().Msg("multiplexer message to hb tx drivers started")
+		defer t.log.Infof("multiplexer message to hb tx drivers stopped")
+		t.log.Infof("multiplexer message to hb tx drivers started")
 		defer func() {
 			if err := databus.SetHBSendQ(nil); err != nil {
-				t.log.Error().Err(err).Msg("msgToTx can't unset daemondata HBSendQ")
+				t.log.Errorf("msgToTx can't unset daemondata HBSendQ: %s", err)
 			}
 		}()
 		registeredTxMsgQueue := make(map[string]chan []byte)
@@ -332,7 +334,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 				case <-tC:
 					return
 				case <-msgC:
-					t.log.Debug().Msgf("msgToTx drop msg (done context)")
+					t.log.Debugf("msgToTx drop msg (done context)")
 				case <-t.msgToTxRegister:
 				case <-t.msgToTxUnregister:
 				}
@@ -343,10 +345,10 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case c := <-t.msgToTxRegister:
-				t.log.Debug().Msgf("add %s to hb transmitters", c.id)
+				t.log.Debugf("add %s to hb transmitters", c.id)
 				registeredTxMsgQueue[c.id] = c.msgToSendQueue
 			case txId := <-t.msgToTxUnregister:
-				t.log.Debug().Msgf("remove %s from hb transmitters", txId)
+				t.log.Debugf("remove %s from hb transmitters", txId)
 				delete(registeredTxMsgQueue, txId)
 			case msg := <-msgC:
 				var rMsg *omcrypto.Message
@@ -382,8 +384,8 @@ func (t *T) msgToTx(ctx context.Context) error {
 //
 // It ends when ctx is done
 func (t *T) msgFromRx(ctx context.Context) {
-	defer t.log.Info().Msg("message receiver from hb rx drivers stopped")
-	t.log.Info().Msg("message receiver from hb rx drivers started")
+	defer t.log.Infof("message receiver from hb rx drivers stopped")
+	t.log.Infof("message receiver from hb rx drivers started")
 	count := 0.0
 	statTicker := time.NewTicker(60 * time.Second)
 	defer statTicker.Stop()
@@ -397,7 +399,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 			case <-tC:
 				return
 			case <-t.readMsgQueue:
-				t.log.Debug().Msgf("msgFromRx drop msg (done context)")
+				t.log.Debugf("msgFromRx drop msg (done context)")
 			}
 		}
 	}()
@@ -406,7 +408,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-statTicker.C:
-			t.log.Debug().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+			t.log.Debugf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 			count = 0
 			for peer, updated := range msgTimes {
 				if now.Sub(updated) > msgTimeDuration {
@@ -416,7 +418,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case msg := <-t.readMsgQueue:
 			peer := msg.Nodename
 			if msgTimes[peer].Equal(msg.UpdatedAt) {
-				t.log.Debug().Msgf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Debugf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				continue
 			}
 			select {
@@ -424,7 +426,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 				// don't hang up when context is done
 				return
 			case dataMsgRecvQ <- msg:
-				t.log.Debug().Msgf("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Debugf("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				msgTimes[peer] = msg.UpdatedAt
 				count++
 			}
@@ -451,7 +453,7 @@ func (t *T) janitor(ctx context.Context) {
 	started := make(chan bool)
 
 	if err := t.rescanHb(ctx); err != nil {
-		t.log.Error().Err(err).Msg("initial rescan on janitor hb start")
+		t.log.Errorf("initial rescan on janitor hb start: %s", err)
 	}
 
 	t.wg.Add(1)
@@ -460,7 +462,7 @@ func (t *T) janitor(ctx context.Context) {
 		started <- true
 		defer func() {
 			if err := t.sub.Stop(); err != nil {
-				t.log.Error().Err(err).Msg("subscription stop")
+				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
 		for {
@@ -473,9 +475,9 @@ func (t *T) janitor(ctx context.Context) {
 					if msg.Node != hostname.Hostname() {
 						continue
 					}
-					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
+					t.log.Infof("rescan heartbeat configurations (local cluster config changed)")
 					_ = t.rescanHb(t.ctx)
-					t.log.Info().Msg("rescan heartbeat configurations done")
+					t.log.Infof("rescan heartbeat configurations done")
 				case *msgbus.DaemonCtl:
 					hbId := msg.Component
 					action := msg.Action
@@ -502,22 +504,22 @@ func (t *T) daemonCtlStart(ctx context.Context, hbId string, action string) {
 	} else if strings.HasSuffix(hbId, ".tx") {
 		rid = strings.TrimSuffix(hbId, ".tx")
 	} else {
-		t.log.Info().Msgf("daemonctl %s found no component for %s", action, hbId)
+		t.log.Infof("daemonctl %s found no component for %s", action, hbId)
 		return
 	}
 	h, err := t.getHbConfiguredComponent(ctx, rid)
 	if err != nil {
-		t.log.Info().Msgf("daemonctl %s found no component for %s (rid: %s)", action, hbId, rid)
+		t.log.Infof("daemonctl %s found no component for %s (rid: %s): %s", action, hbId, rid, err)
 		return
 	}
 	if strings.HasSuffix(hbId, ".rx") {
 		if err := t.startHbRx(h); err != nil {
-			t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+			t.log.Errorf("daemonctl %s %s start rx failed: %s", action, hbId, err)
 			return
 		}
 	} else {
 		if err := t.startHbTx(h); err != nil {
-			t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+			t.log.Errorf("daemonctl %s %s start tx failed: %s", action, hbId, err)
 			return
 		}
 	}
@@ -529,20 +531,20 @@ func (t *T) daemonCtlStop(hbId string, action string) {
 	if strings.HasSuffix(hbId, ".rx") {
 		rid := strings.TrimSuffix(hbId, ".rx")
 		if hbI, found = t.rxs[rid]; !found {
-			t.log.Info().Msgf("daemonctl %s %s found no %s.rx component", action, hbId, rid)
+			t.log.Infof("daemonctl %s %s found no %s.rx component", action, hbId, rid)
 			return
 		}
 	} else if strings.HasSuffix(hbId, ".tx") {
 		rid := strings.TrimSuffix(hbId, ".tx")
 		if hbI, found = t.txs[rid]; !found {
-			t.log.Info().Msgf("daemonctl %s %s found no %s.tx component", action, hbId, rid)
+			t.log.Infof("daemonctl %s %s found no %s.tx component", action, hbId, rid)
 			return
 		}
 	} else {
-		t.log.Info().Msgf("daemonctl %s %s found no component", action, hbId)
+		t.log.Infof("daemonctl %s %s found no component", action, hbId)
 		return
 	}
-	t.log.Info().Msgf("ask to %s %s", action, hbId)
+	t.log.Infof("ask to %s %s", action, hbId)
 	switch hbI.(type) {
 	case hbtype.Transmitter:
 		select {
@@ -552,7 +554,7 @@ func (t *T) daemonCtlStop(hbId string, action string) {
 		}
 	}
 	if err := hbI.(hbtype.IdStopper).Stop(); err != nil {
-		t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+		t.log.Errorf("daemonctl %s %s stop failed: %s", action, hbId, err)
 	} else {
 		t.ctrlC <- hbctrl.CmdSetState{Id: hbI.(hbtype.IdStopper).Id(), State: "stopped"}
 	}
@@ -576,7 +578,7 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 	var node *clusterhb.T
 	node, err = clusterhb.New()
 	if err != nil {
-		t.log.Error().Err(err).Msgf("clusterhb.NewPath")
+		t.log.Errorf("clusterhb.NewPath: %s", err)
 		return
 	}
 	for _, h := range node.Hbs() {
