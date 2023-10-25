@@ -166,10 +166,10 @@ func (t T) addObjectNetNS() error {
 	}
 	nsPID := t.objectNSPID()
 	if t.hasNetNS() {
-		t.Log().Info().Msgf("netns %s already added", nsPID)
+		t.Infof("netns %s already added", nsPID)
 		return nil
 	}
-	t.Log().Info().Msgf("create new netns %s", nsPID)
+	t.Infof("create new netns %s", nsPID)
 	if _, err := netns.NewNamed(nsPID); err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (t T) delObjectNetNS() error {
 	}
 	nsPIDFile := t.objectNSPIDFile()
 	if !t.hasNetNS() {
-		t.Log().Info().Msgf("netns %s already deleted", nsPIDFile)
+		t.Infof("netns %s already deleted", nsPIDFile)
 		return nil
 	}
 	_ = netns.DeleteNamed(t.objectNSPID())
@@ -226,7 +226,7 @@ func (t T) purgeCNIVarFile(p string) error {
 		}
 	}
 	if err = os.Remove(p); err == nil {
-		t.Log().Info().Msgf("removed %s: %s no longer exist", p, line)
+		t.Infof("removed %s: %s no longer exist", p, line)
 	} else if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (t T) purgeCNIVarFileWithIP(ip net.IP) error {
 	err := os.Remove(p)
 	switch {
 	case err == nil:
-		t.Log().Info().Msgf("removed %s", p)
+		t.Infof("removed %s", p)
 		return nil
 	case errors.Is(err, os.ErrNotExist):
 		return nil
@@ -277,7 +277,7 @@ func (t T) ActionResourceDeps() []actionresdeps.Dep {
 
 func (t *T) Start(ctx context.Context) error {
 	if t.Status(ctx) == status.Up {
-		t.Log().Info().Msg("already up")
+		t.Infof("already up")
 		return nil
 	}
 	if err := t.addObjectNetNS(); err != nil {
@@ -300,7 +300,7 @@ func (t *T) Start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	if t.Status(ctx) == status.Down {
-		t.Log().Info().Msg("already down")
+		t.Infof("already down")
 		return nil
 	}
 	if err := t.stop(); err != nil {
@@ -470,6 +470,7 @@ func (t T) stop() error {
 		command.WithName(bin),
 		command.WithEnv(env),
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
 	)
@@ -484,20 +485,20 @@ func (t T) stop() error {
 		Stringer("cmd", cmd.Cmd()).
 		Str("input", string(stdinData)).
 		Strs("env", env).
-		Msg("run")
+		Msgf(t.Msgf("del cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev))
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
 		var resp response
 		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
 			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
-			t.Log().Error().Msg(msg)
+			t.Errorf(msg)
 			return fmt.Errorf(msg)
 		} else {
-			t.Log().Info().Msg(string(outB))
+			t.Infof(string(outB))
 		}
 	}
 	if errB := cmd.Stderr(); len(errB) > 0 {
-		t.Log().Info().Msg(string(errB))
+		t.Infof(string(errB))
 	}
 	if err != nil {
 		return err
@@ -548,6 +549,7 @@ func (t T) start() error {
 			command.WithName(bin),
 			command.WithEnv(env),
 			command.WithLogger(t.Log()),
+			command.WithLogPrefix(t.Msgf("")+": "),
 			command.WithBufferedStdout(),
 			command.WithBufferedStderr(),
 		)
@@ -555,7 +557,7 @@ func (t T) start() error {
 			Stringer("cmd", cmd.Cmd()).
 			Str("input", string(stdinData)).
 			Strs("env", env).
-			Msg("run")
+			Msgf(t.Msgf("add cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev))
 
 		cmd.Cmd().Stdin = bytes.NewReader(stdinData)
 		err := cmd.Run()
@@ -563,10 +565,10 @@ func (t T) start() error {
 		errB = cmd.Stderr()
 
 		if len(outB) > 0 {
-			t.Log().Info().Msg(string(outB))
+			t.Msgf(string(outB))
 		}
 		if len(errB) > 0 {
-			t.Log().Info().Msg(string(errB))
+			t.Msgf(string(errB))
 		}
 
 		var resp response
@@ -589,7 +591,7 @@ func (t T) start() error {
 	switch {
 	case err == nil:
 	case errors.Is(err, ErrNoIPAddrAvail), errors.Is(err, ErrDupIPAlloc):
-		t.Log().Info().Err(err).Msg("clean allocations and retry")
+		t.Infof("clean allocations and retry: %s", err)
 		t.purgeCNIVarDir()
 		t.stop() // clean run leftovers (container veth name provided (eth12) already exists)
 		err = run()

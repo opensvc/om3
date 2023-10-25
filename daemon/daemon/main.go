@@ -75,7 +75,7 @@ func (t *T) Start(ctx context.Context) error {
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
-	t.log.Info().Msg("daemon starting")
+	t.log.Info().Msg("daemon: main: starting")
 	go startProfiling()
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
@@ -88,9 +88,9 @@ func (t *T) Start(ctx context.Context) error {
 	t.bus = bus
 	t.stopFuncs = append(t.stopFuncs, func() error {
 		defer t.wg.Done()
-		t.log.Info().Msg("stop daemon pubsub bus")
+		t.log.Info().Msg("daemon: main: stop pubsub bus")
 		t.bus.Stop()
-		t.log.Info().Msg("stopped daemon pubsub bus")
+		t.log.Info().Msg("daemon: main: stopped pubsub bus")
 		return nil
 	})
 	localhost := hostname.Hostname()
@@ -107,7 +107,7 @@ func (t *T) Start(ctx context.Context) error {
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
 	t.stopFuncs = append(t.stopFuncs, func() error {
-		t.log.Debug().Msg("stop daemon data")
+		t.log.Debug().Msg("daemon: main: stop data manager")
 		dataCmdCancel()
 		return nil
 	})
@@ -149,7 +149,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
-	t.log.Info().Msg("daemon started")
+	t.log.Info().Msg("daemon: main: started")
 	return nil
 }
 
@@ -159,11 +159,11 @@ func (t *T) Stop() error {
 	}
 	var errs error
 	// stop goroutines without cancel context
-	defer t.log.Info().Msg("daemon stopped")
-	t.log.Info().Msg("daemon stopping")
+	defer t.log.Info().Msg("daemon: main: stopped")
+	t.log.Info().Msg("daemon: main: stopping")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
 		if err := t.stopFuncs[i](); err != nil {
-			t.log.Error().Err(err).Msgf("stop daemon component %d failed", i)
+			t.log.Error().Err(err).Msgf("daemon: main: stop component %d: %s", i, err)
 			errs = errors.Join(errs, errs)
 		}
 	}
@@ -205,24 +205,24 @@ func (t *T) stopWatcher() {
 		defer func() {
 			signalCancel()
 			_ = sub.Stop()
-			t.log.Info().Msg("daemon stop watcher done")
+			t.log.Info().Msg("daemon: main: stop watcher done")
 		}()
-		t.log.Info().Msg("daemon stop watcher started")
+		t.log.Info().Msg("daemon: main: stop watcher started")
 		started <- true
 		for {
 			select {
 			case <-t.ctx.Done():
-				t.log.Info().Msg("daemon stop watcher returns on context done")
+				t.log.Info().Msg("daemon: main: stop watcher returns on context done")
 				return
 			case <-signalCtx.Done():
-				t.log.Info().Msg("daemon stopping on signal")
+				t.log.Info().Msg("daemon: main: stopping on signal")
 				go func() { _ = t.Stop() }()
 				return
 			case i := <-sub.C:
 				switch m := i.(type) {
 				case *msgbus.DaemonCtl:
 					if m.Action == "stop" {
-						t.log.Info().Msg("daemon stopping on daemon ctl message")
+						t.log.Info().Msg("daemon: main: stopping on daemon ctl message")
 						go func() { _ = t.Stop() }()
 						return
 					}
@@ -245,7 +245,7 @@ func (t *T) startComponent(ctx context.Context, a startStopper) error {
 	t.stopFuncs = append(t.stopFuncs, func() error {
 		defer t.wg.Done()
 		if err := a.Stop(); err != nil {
-			t.log.Error().Err(err).Msg("stopping component failed")
+			t.log.Error().Err(err).Msgf("daemon: main: stopping component: %s", err)
 			return err
 		}
 		return nil
@@ -254,7 +254,7 @@ func (t *T) startComponent(ctx context.Context, a startStopper) error {
 }
 
 func (t *T) notifyWatchDogBus(ctx context.Context) {
-	defer t.log.Info().Msg("watch dog bus done")
+	defer t.log.Info().Msg("daemon: main: watch dog bus done")
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 	labels := []pubsub.Label{{"node", hostname.Hostname()}, {"bus", t.bus.Name()}}
@@ -285,13 +285,13 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 	}
 	i, err = converters.Duration.Convert(s + "us")
 	if err != nil {
-		t.log.Warn().Msgf("disable notify watchdog invalid WATCHDOG_USEC value: %s", s)
+		t.log.Warn().Msgf("daemon: main: disable notify watchdog invalid WATCHDOG_USEC value: %s", s)
 		return
 	}
 	d := i.(*time.Duration)
 	sendInterval := *d / 2
 	if sendInterval < time.Second {
-		t.log.Warn().Msgf("disable notify watchdog %s < 1 second ", sendInterval)
+		t.log.Warn().Msgf("daemon: main: disable notify watchdog %s < 1 second ", sendInterval)
 		return
 	}
 	i, err = daemonsys.New(ctx)
@@ -307,10 +307,10 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 		return
 	}
 	defer func() {
-		t.log.Info().Msg("notify watchdog sys done")
+		t.log.Info().Msg("daemon: main: notify watchdog sys done")
 		_ = o.Close()
 	}()
-	t.log.Info().Msg("notify watchdog sys started")
+	t.log.Info().Msg("daemon: main: notify watchdog sys started")
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 	for {
@@ -319,11 +319,11 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if ok, err := o.NotifyWatchdog(); err != nil {
-				t.log.Warn().Err(err).Msg("notifyWatchDogSys")
+				t.log.Warn().Err(err).Msgf("daemon: main: notifyWatchDogSys: %s", err)
 			} else if !ok {
-				t.log.Warn().Msg("notifyWatchDogSys not delivered")
+				t.log.Warn().Msg("daemon: main: notifyWatchDogSys not delivered")
 			} else {
-				t.log.Debug().Msg("notifyWatchDogSys delivered")
+				t.log.Debug().Msg("daemon: main: notifyWatchDogSys delivered")
 			}
 		}
 	}

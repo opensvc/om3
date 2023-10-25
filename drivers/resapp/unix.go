@@ -77,9 +77,12 @@ func (t T) SortKey() string {
 
 // CommonStop stops the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
-	t.Log().Debug().Msg("CommonStop()")
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
+		t.Errorf("prepare 'stop' command: %s", err)
+		if t.StatusLogKw {
+			t.StatusLog().Error("prepare cmd %s", err)
+		}
 		return err
 	}
 	if len(opts) == 0 {
@@ -88,6 +91,7 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
@@ -97,11 +101,11 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	appStatus := r.Status(ctx)
 	if appStatus == status.Down {
-		t.Log().Info().Msg("already down")
+		t.Infof("already down")
 		return nil
 	}
 
-	t.Log().Info().Stringer("cmd", cmd).Msg("run")
+	t.Infof("run: %s", cmd)
 	return cmd.Run()
 }
 
@@ -146,13 +150,12 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 
 // CommonStatus evaluates and display the Resource status and logs
 func (t *T) CommonStatus(ctx context.Context) status.T {
-	t.Log().Debug().Msg("status()")
 	var opts []funcopt.O
 	var err error
 	if opts, err = t.GetFuncOpts(t.CheckCmd, "check"); err != nil {
-		t.Log().Error().Err(err).Msg("GetFuncOpts")
+		t.Errorf("prepare 'status' command: %s", err)
 		if t.StatusLogKw {
-			t.StatusLog().Error("prepareXcmd %v", err.Error())
+			t.StatusLog().Error("prepare cmd %s", err)
 		}
 		return status.Undef
 	}
@@ -165,6 +168,7 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
 		command.WithTimeout(t.GetTimeout("check")),
@@ -176,19 +180,19 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	}
 	cmd := command.New(opts...)
 
-	t.Log().Debug().Msgf("Status() running %s", cmd.String())
+	t.Debugf("status running command: %s", cmd.String())
 	if err = cmd.Start(); err != nil {
 		return status.Undef
 	}
 	if err = cmd.Wait(); err != nil {
-		t.Log().Debug().Msg("status is down")
+		t.Debugf("status is down")
 		return status.Down
 	}
 	resultStatus, err := t.ExitCodeToStatus(cmd.ExitCode())
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 	}
-	t.Log().Debug().Msgf("status is %v", resultStatus)
+	t.Debugf("status result: %v", resultStatus)
 	return resultStatus
 }
 
@@ -211,7 +215,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Log().Debug().Msgf("no base command for action '%v'", action)
+		t.Debugf("no base command for action '%v'", action)
 		return nil, nil
 	}
 	return command.CmdArgsFromString(baseCommand)
@@ -220,7 +224,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 // CmdArgs returns the command argv of an action
 func (t T) CmdArgs(s string, action string) ([]string, error) {
 	if len(s) == 0 {
-		t.Log().Debug().Msgf("nothing to do for action '%v'", action)
+		t.Debugf("nothing to do for action '%v'", action)
 		return nil, nil
 	}
 	baseCommandSlice, err := t.BaseCmdArgs(s, action)
@@ -265,8 +269,6 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 }
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
-	t.Log().Debug().Msg("Info()")
-
 	durationToString := func(duration *time.Duration) string {
 		if duration == nil {
 			return ""
@@ -289,9 +291,9 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	var opts []funcopt.O
 	var err error
 	if opts, err = t.GetFuncOpts(t.InfoCmd, "info"); err != nil {
-		t.Log().Error().Err(err).Msg("GetFuncOpts")
+		t.Errorf("prepare 'info' command: %s", err)
 		if t.StatusLogKw {
-			t.StatusLog().Error("prepareXcmd %v", err.Error())
+			t.StatusLog().Error("prepare cmd %s", err)
 		}
 		return nil, err
 	}
@@ -301,6 +303,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithTimeout(t.GetTimeout("info")),
 		command.WithBufferedStdout(),
 	)
@@ -333,7 +336,7 @@ func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 		case true:
 			scriptValue := t.getScript()
 			if scriptValue == "" {
-				t.Log().Warn().Msgf("action '%v' as true value but 'script' keyword is empty", action)
+				t.Warnf("action '%v' as true value but 'script' keyword is empty", action)
 				return "", fmt.Errorf("unable to get script value")
 			}
 			return scriptValue + " " + action, nil

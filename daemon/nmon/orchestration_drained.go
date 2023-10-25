@@ -17,7 +17,7 @@ func (o *nmon) orchestrateDrained() {
 		o.state.State = node.MonitorStateIdle
 		o.state.LocalExpect = node.MonitorLocalExpectNone
 	default:
-		o.log.Warn().Msgf("orchestrate drained no solution from state %s", o.state.State)
+		o.log.Warn().Msgf("daemon: nmon: orchestrate drained no solution from state %s", o.state.State)
 		time.Sleep(unexpectedDelay)
 	}
 }
@@ -37,7 +37,7 @@ func (o *nmon) drainFromIdle() {
 	o.state.State = node.MonitorStateFreezing
 	o.updateIfChange()
 	go func() {
-		o.log.Info().Msg("run action freeze")
+		o.log.Info().Msg("daemon: nmon: run action freeze")
 		if err := o.crmFreeze(); err != nil {
 			o.cmdC <- cmdOrchestrate{state: node.MonitorStateFreezing, newState: node.MonitorStateFreezeFailed}
 		} else {
@@ -52,7 +52,7 @@ func (o *nmon) drainFromFrozen() {
 	o.state.State = node.MonitorStateDraining
 	o.updateIfChange()
 	go func() {
-		o.log.Info().Msg("run shutdown action on all local instances")
+		o.log.Info().Msg("daemon: nmon: run shutdown action on all local instances")
 		if err := o.crmDrain(); err != nil {
 			o.cmdC <- cmdOrchestrate{state: node.MonitorStateDraining, newState: node.MonitorStateDrainFailed}
 		} else {

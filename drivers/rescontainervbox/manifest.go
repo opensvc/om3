@@ -2,6 +2,7 @@ package rescontainervbox
 
 import (
 	"embed"
+
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/util/converters"
 
@@ -25,7 +26,7 @@ func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
-		manifest.ContextPath,
+		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
 		manifest.ContextPeers,
 		manifest.ContextDNS,

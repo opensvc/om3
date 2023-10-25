@@ -10,12 +10,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/ybbus/jsonrpc"
 
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/logging"
-	"github.com/opensvc/om3/util/xsession"
 )
 
 var (
@@ -52,7 +50,7 @@ func (c Client) NewPinger(d time.Duration) func() {
 func (c *Client) Ping() {
 	alive := Alive.Load()
 	_, err := c.Call("daemon_ping")
-	c.log.Debug().Bool("alive", alive).Msgf("ping collector: %s", err)
+	c.log.Debug().Bool("alive", alive).Err(err).Msgf("ping collector")
 	switch {
 	case (err != nil) && alive:
 		c.log.Info().Msgf("disable collector clients: %s", err)
@@ -182,20 +180,7 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 			},
 		}),
 		secret: secret,
-		log: logging.Configure(logging.Config{
-			ConsoleLoggingEnabled: false,
-			EncodeLogsAsJSON:      true,
-			FileLoggingEnabled:    true,
-			Directory:             rawconfig.Paths.Log,
-			Filename:              "rpc.log",
-			MaxSize:               5,
-			MaxBackups:            1,
-			MaxAge:                30,
-		}).
-			With().
-			Str("n", hostname.Hostname()).
-			Stringer("sid", xsession.ID).
-			Logger(),
+		log:    log.Logger.With().Str("name", "collector_rpc").Logger(),
 	}
 	return client, nil
 }
@@ -232,22 +217,23 @@ func LogSimpleResponse(response *jsonrpc.RPCResponse, log zerolog.Logger) {
 
 // Call executes a jsonrpc2 collector call and returns the response.
 func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
-	t.log.Info().Str("method", method).Interface("params", params).Msg("call")
 	response, err := t.client.Call(method, t.paramsWithAuth(params))
-	if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msg("call")
-	}
 	if response != nil && response.Error != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msg(response.Error.Message)
+		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msgf("%s: %s", response.Error.Message, response.Error.Data)
+	} else if err != nil {
+		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
+	} else {
+		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
 	}
 	return response, err
 }
 
 func (t Client) CallFor(out interface{}, method string, params ...interface{}) error {
-	t.log.Info().Str("method", method).Interface("params", params).Msg("call")
 	err := t.client.CallFor(out, method, t.paramsWithAuth(params))
 	if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msg("call")
+		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
+	} else {
+		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
 	}
 	return err
 }

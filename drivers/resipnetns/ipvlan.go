@@ -39,7 +39,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	if err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("ip link add link %s dev %s mode %s mtu %d", t.IpDev, tmpDev, t.Mode, mtu)
+	t.Infof("ip link add link %s dev %s mode %s mtu %d", t.IpDev, tmpDev, t.Mode, mtu)
 	link := &netlink.IPVlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        tmpDev,
@@ -52,7 +52,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	if err := netlink.LinkAdd(link); err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("ip link %s set netns %d", tmpDev, pid)
+	t.Infof("ip link %s set netns %d", tmpDev, pid)
 	if err := netlink.LinkSetNsPid(link, pid); err != nil {
 		return err
 	} else {
@@ -79,10 +79,10 @@ func (t *T) stopIPVLANDev(netns ns.NetNS, dev string) error {
 	if err := netns.Do(func(_ ns.NetNS) error {
 		link, err := netlink.LinkByName(dev)
 		if err != nil {
-			t.Log().Info().Msgf("container dev %s already deleted", dev)
+			t.Infof("container dev %s already deleted", dev)
 			return nil
 		}
-		t.Log().Info().Msgf("ip link del dev %s", dev)
+		t.Infof("ip link del dev %s", dev)
 		return netlink.LinkDel(link)
 	}); err != nil {
 		return err

@@ -32,11 +32,7 @@ func (t *CmdObjectSyncResync) Run(selector, kind string) error {
 		objectaction.WithRemoteAction("sync resync"),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Log != ""),
-				object.WithConsoleColor(t.Color != "no"),
-			)
-
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

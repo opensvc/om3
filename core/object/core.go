@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -13,10 +14,8 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/progress"
-	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -27,10 +26,8 @@ type (
 		path naming.Path
 
 		// private
-		volatile         bool
-		withConsoleLog   bool
-		withConsoleColor bool
-		log              zerolog.Logger
+		volatile bool
+		log      zerolog.Logger
 
 		// caches
 		id         uuid.UUID
@@ -87,6 +84,7 @@ func (t *core) List() (string, error) {
 }
 
 func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error {
+	t.log = logging.Logger()
 	if parsed, err := toPathType(id); err != nil {
 		return err
 	} else {
@@ -95,23 +93,12 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}
-	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: t.withConsoleLog,
-		ConsoleLoggingColor:   t.withConsoleColor,
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    !t.volatile,
-		Directory:             t.logDir(), // contains the ns/kind
-		Filename:              t.path.Name + ".log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
-	}).
-		With().
-		Stringer("o", t.path).
-		Str("n", hostname.Hostname()).
-		Stringer("sid", xsession.ID).
+	t.log = t.log.With().
+		Stringer("obj_path", t.path).
+		Stringer("obj_kind", t.path.Kind).
+		Str("obj_name", t.path.Name).
+		Str("obj_namespace", t.path.Namespace).
 		Logger()
-
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}
@@ -171,4 +158,8 @@ func (t core) Progress(ctx context.Context, cols ...any) {
 		key := t.ProgressKey()
 		view.Info(key, cols)
 	}
+}
+
+func (t core) Msgf(format string, args ...any) string {
+	return t.path.String() + ": " + fmt.Sprintf(format, args...)
 }

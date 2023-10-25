@@ -74,7 +74,7 @@ func New(drainDuration time.Duration) *ccfg {
 		cmdC:          make(chan any),
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
-		log:           log.Logger.With().Str("func", "ccfg").Logger(),
+		log:           log.Logger.With().Str("pkg", "ccfg").Logger(),
 		networkSigs:   make(map[string]string),
 	}
 	return o
@@ -100,7 +100,7 @@ func (o *ccfg) Start(parent context.Context) error {
 		defer func() {
 			draincommand.Do(o.cmdC, o.drainDuration)
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Warn().Err(err).Msg("subscription stop")
+				o.log.Warn().Err(err).Msgf("daemon: ccfg: subscription stop: %s", err)
 			}
 			o.wg.Done()
 		}()
@@ -128,7 +128,7 @@ func (o *ccfg) startSubscriptions() {
 
 // worker watch for local ccfg updates
 func (o *ccfg) worker() {
-	defer o.log.Debug().Msg("done")
+	defer o.log.Debug().Msg("daemon: ccfg: done")
 
 	o.startedAt = time.Now()
 

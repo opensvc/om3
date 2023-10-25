@@ -31,11 +31,7 @@ func (t *CmdObjectSetUnprovisioned) Run(selector, kind string) error {
 			"rid": t.RID,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Log != ""),
-				object.WithConsoleColor(t.Color != "no"),
-			)
-
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

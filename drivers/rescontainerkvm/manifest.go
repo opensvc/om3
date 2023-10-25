@@ -26,7 +26,7 @@ func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
-		manifest.ContextPath,
+		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
 		manifest.ContextPeers,
 		manifest.ContextDNS,

@@ -25,7 +25,7 @@ func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
 		manifest.ContextNodes,
-		manifest.ContextPath,
+		manifest.ContextObjectPath,
 		manifest.ContextTopology,
 		keywords.Keyword{
 			Option:   "name",

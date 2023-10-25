@@ -52,18 +52,18 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 		command.WithEnv(cmdEnv),
 		command.WithLogger(&o.log),
 	)
-	o.log.Debug().Msgf("-> exec %s %s", cmdPath, cmd)
+	o.log.Debug().Msgf("daemon: nmon: -> exec %s %s", cmdPath, cmd)
 	labels := []pubsub.Label{o.labelLocalhost, {"origin", "nmon"}}
 	o.bus.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "nmon"}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
 		o.bus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "nmon"}, labels...)
-		o.log.Error().Err(err).Msgf("failed %s", cmd)
+		o.log.Error().Err(err).Msgf("daemon: nmon: failed %s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	o.bus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "nmon"}, labels...)
-	o.log.Debug().Msgf("<- exec %s %s", cmdPath, cmd)
+	o.log.Debug().Msgf("daemon: nmon: <- exec %s %s", cmdPath, cmd)
 	return nil
 }

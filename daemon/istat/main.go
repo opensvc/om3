@@ -59,7 +59,7 @@ var (
 func New() *T {
 	localhost := hostname.Hostname()
 	return &T{
-		log:            log.Logger.With().Str("func", "istat").Logger(),
+		log:            log.Logger.With().Str("pkg", "istat").Logger(),
 		iStatusM:       make(map[string]instance.Status),
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},

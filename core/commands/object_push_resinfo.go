@@ -31,11 +31,7 @@ func (t *CmdObjectPushResInfo) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("push resinfo"),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
-			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Log != ""),
-				object.WithConsoleColor(t.Color != "no"),
-			)
-
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

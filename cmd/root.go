@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/version"
 	"github.com/opensvc/om3/util/xsession"
 
 	"github.com/mitchellh/go-homedir"
@@ -66,49 +67,27 @@ func listNodes() []string {
 	return nil
 }
 
-func configureLogger() {
+func configureLogger() error {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
 
-	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: logFlag != "" || foregroundFlag,
-		ConsoleLoggingColor:   colorFlag != "no",
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    true,
-		Directory:             rawconfig.Paths.Log,
-		Filename:              "node.log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
-	}).
-		With().
-		Str("n", hostname.Hostname()).
+	err := logging.Configure(logging.Config{
+		WithConsoleLog: logFlag != "" || foregroundFlag,
+		WithColor:      colorFlag != "no",
+		WithCaller:     callerFlag,
+		Level:          logFlag,
+	})
+	if err != nil {
+		return err
+	}
+	log.Logger = log.Logger.With().
+		Str("node", hostname.Hostname()).
+		Str("version", version.Version()).
 		Stringer("sid", xsession.ID).
 		Logger()
-
-	switch logFlag {
-	case "debug":
-		l = l.Level(zerolog.DebugLevel)
-	case "info":
-		l = l.Level(zerolog.InfoLevel)
-	case "warn", "warning":
-		l = l.Level(zerolog.WarnLevel)
-	case "error":
-		l = l.Level(zerolog.ErrorLevel)
-	case "fatal":
-		l = l.Level(zerolog.FatalLevel)
-	case "panic":
-		l = l.Level(zerolog.PanicLevel)
-	default:
-		l = l.Level(zerolog.InfoLevel)
-	}
-
-	if callerFlag {
-		l = l.With().Caller().Logger()
-	}
-	log.Logger = l
+	return nil
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
@@ -123,7 +102,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if err := hostname.Error(); err != nil {
 		return err
 	}
-	configureLogger()
+	if err := configureLogger(); err != nil {
+		return err
+	}
 	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
 			log.Logger.Debug().Err(err).Send()

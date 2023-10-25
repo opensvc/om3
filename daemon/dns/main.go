@@ -95,7 +95,7 @@ func New(d time.Duration) *dns {
 	return &dns{
 		cmdC:          make(chan any),
 		drainDuration: d,
-		log:           log.Logger.With().Str("func", "dns").Logger(),
+		log:           log.Logger.With().Str("pkg", "dns").Logger(),
 		state:         make(map[stateKey]Zone),
 		score:         make(map[string]uint64),
 	}

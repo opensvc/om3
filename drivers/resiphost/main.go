@@ -70,7 +70,7 @@ func (t *T) StatusInfo() map[string]interface{} {
 
 func (t *T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
-		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
+		t.Infof("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
 	}
 	if err := t.start(); err != nil {
@@ -90,7 +90,7 @@ func (t *T) Start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Down {
-		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
+		t.Infof("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
 	}
 	if err := t.stop(); err != nil {
@@ -134,7 +134,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Down
 	}
 	if !addrs.Has(ip) {
-		t.Log().Debug().Msg("ip not found on intf")
+		t.Debugf("ip not found on intf")
 		return status.Down
 	}
 	return status.Up
@@ -168,7 +168,7 @@ func (t T) Abort(ctx context.Context) bool {
 	}
 	if t.CheckCarrier {
 		if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
-			t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
+			t.Errorf("interface %s no-carrier.", t.IpDev)
 			return true
 		}
 	}
@@ -186,13 +186,13 @@ func (t T) abortPing() bool {
 	ip := t.ipaddr()
 	pinger, err := ping.NewPinger(ip.String())
 	if err != nil {
-		t.Log().Error().Err(err).Msg("abort: ping")
+		t.Errorf("abort: ping: %s", err)
 		return true
 	}
 	pinger.Count = 5
 	pinger.Timeout = 5 * time.Second
 	pinger.Interval = time.Second
-	t.Log().Info().Msgf("checking %s availability (5s)", ip)
+	t.Infof("checking %s availability (5s)", ip)
 	pinger.Run()
 	return pinger.Statistics().PacketsRecv > 0
 }
@@ -278,11 +278,11 @@ func (t T) getIPAddr() net.IP {
 		n := len(l)
 		switch n {
 		case 0:
-			t.Log().Error().Msgf("ipname %s is unresolvable", t.IpName)
+			t.Errorf("ipname %s is unresolvable", t.IpName)
 		case 1:
 			// ok
 		default:
-			t.Log().Debug().Msgf("ipname %s is resolvables to %d address. Using the first.", t.IpName, n)
+			t.Debugf("ipname %s is resolvables to %d address. Using the first.", t.IpName, n)
 		}
 		return l[0]
 	default:
@@ -352,22 +352,22 @@ func getIPBits(ip net.IP) (bits int) {
 func (t T) arpAnnounce() error {
 	ip := t.ipaddr()
 	if ip.IsLoopback() {
-		t.Log().Debug().Msgf("skip arp announce on loopback address %s", ip)
+		t.Debugf("skip arp announce on loopback address %s", ip)
 		return nil
 	}
 	if ip.IsLinkLocalUnicast() {
-		t.Log().Debug().Msgf("skip arp announce on link local unicast address %s", ip)
+		t.Debugf("skip arp announce on link local unicast address %s", ip)
 		return nil
 	}
 	if ip.To4() == nil {
-		t.Log().Debug().Msgf("skip arp announce on non-ip4 address %s", ip)
+		t.Debugf("skip arp announce on non-ip4 address %s", ip)
 		return nil
 	}
 	if i, err := t.netInterface(); err == nil && i.Flags&net.FlagLoopback != 0 {
-		t.Log().Debug().Msgf("skip arp announce on loopback interface %s", t.IpDev)
+		t.Debugf("skip arp announce on loopback interface %s", t.IpDev)
 		return nil
 	}
-	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
+	t.Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
 	return t.arpGratuitous()
 }
 
@@ -375,10 +375,10 @@ func (t *T) start() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Error().Err(err).Send()
+		t.Errorf("%s", err)
 		return err
 	}
-	t.Log().Info().Msgf("add %s to %s", ipnet, t.IpDev)
+	t.Infof("add %s to %s", ipnet, t.IpDev)
 	return netif.AddAddr(t.IpDev, ipnet)
 }
 
@@ -386,9 +386,9 @@ func (t *T) stop() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Error().Err(err).Send()
+		t.Errorf("%s", err)
 		return err
 	}
-	t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
+	t.Infof("delete %s from %s", t.ipnet(), t.IpDev)
 	return netif.DelAddr(t.IpDev, t.ipnet())
 }

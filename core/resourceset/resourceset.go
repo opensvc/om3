@@ -229,7 +229,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 			continue
 		}
 		if res.Error != nil {
-			res.Resource.Log().Error().Err(res.Error).Send()
+			res.Resource.Errorf("%s", res.Error)
 		}
 		errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 	}
@@ -255,7 +255,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case r.IsOptional():
 			continue
 		default:
-			r.Log().Error().Err(err).Send()
+			r.Errorf("%s", err)
 			return fmt.Errorf("%s: %w", rid, err)
 		}
 	}

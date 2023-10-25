@@ -6,8 +6,9 @@ import (
 
 type (
 	Filesystem struct {
-		Name string
-		Log  *zerolog.Logger
+		Name      string
+		Log       *zerolog.Logger
+		LogPrefix string
 	}
 	Filesystems []Filesystem
 )
@@ -26,4 +27,8 @@ func (t Filesystem) GetName() string {
 
 func (t Filesystem) GetLog() *zerolog.Logger {
 	return t.Log
+}
+
+func (t Filesystem) GetLogPrefix() string {
+	return t.LogPrefix
 }

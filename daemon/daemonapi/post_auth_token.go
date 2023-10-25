@@ -34,10 +34,11 @@ func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 
 		xClaims = make(map[string]interface{})
 	)
-	log := LogHandler(ctx, "PostAuthToken")
+	name := "PostAuthToken"
+	log := LogHandler(ctx, name)
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
-			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
+			log.Info().Err(err).Msgf("daemon: api: %s: invalid duration: %s: %s", name, *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
 		} else {
 			duration = *v.(*time.Duration)
@@ -53,18 +54,18 @@ func (a *DaemonApi) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		var err error
 		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
-			log.Error().Err(err).Msg("userXClaims")
+			log.Error().Err(err).Msgf("daemon: api: %s: userXClaims: %s", name, err)
 			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", username)
 		}
 	}
 
 	tk, expireAt, err := a.JWTcreator.CreateUserToken(user, duration, xClaims)
 	if err != nil {
-		log.Error().Err(err).Msg("can't create token")
+		log.Error().Err(err).Msgf("daemon: api: %s: can't create token: %s", name, err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
 	} else if tk == "" {
 		err := fmt.Errorf("create token error: jwt auth is not enabled")
-		log.Warn().Err(err).Send()
+		log.Warn().Err(err).Msgf("daemon: api: %s: %s", name, err)
 		return JSONProblemf(ctx, http.StatusNotImplemented, err.Error(), "")
 	}
 	return ctx.JSON(http.StatusOK, api.AuthToken{

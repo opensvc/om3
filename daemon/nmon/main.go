@@ -163,7 +163,7 @@ func New(drainDuration time.Duration) *nmon {
 		},
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),
-		log:         log.Logger.With().Str("func", "nmon").Logger(),
+		log:         log.Logger.With().Str("pkg", "nmon").Logger(),
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
@@ -181,7 +181,7 @@ func New(drainDuration time.Duration) *nmon {
 
 // Start launches the nmon worker goroutine
 func (o *nmon) Start(parent context.Context) error {
-	o.log.Info().Msg("omon starting")
+	o.log.Info().Msg("daemon: nmon: starting")
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.databus = daemondata.FromContext(o.ctx)
 	o.bus = pubsub.BusFromContext(o.ctx)
@@ -207,12 +207,12 @@ func (o *nmon) Start(parent context.Context) error {
 		if b, err := os.ReadFile(fileLastBootID); err == nil && len(b) > 0 {
 			lastBootID = string(b)
 			if lastBootID != bootID {
-				o.log.Info().Msgf("first daemon startup since node boot")
+				o.log.Info().Msgf("daemon: nmon: first daemon startup since node boot")
 				if osBootedWithOpensvcFreeze() {
-					o.log.Info().Msgf("will freeze node due to kernel cmdline flag")
+					o.log.Info().Msgf("daemon: nmon: will freeze node due to kernel cmdline flag")
 					err := o.crmFreeze()
 					if err != nil {
-						o.log.Error().Err(err).Msgf("freeze node due to kernel cmdline flag")
+						o.log.Error().Err(err).Msgf("daemon: nmon: freeze node due to kernel cmdline flag: %s", err)
 						return err
 					}
 				}
@@ -220,7 +220,7 @@ func (o *nmon) Start(parent context.Context) error {
 		}
 		if lastBootID != bootID {
 			if err := os.WriteFile(fileLastBootID, []byte(bootID), 0644); err != nil {
-				o.log.Error().Err(err).Msgf("unable to write %s '%s'", fileLastBootID, bootID)
+				o.log.Error().Err(err).Msgf("daemon: nmon: unable to write %s '%s': %s", fileLastBootID, bootID, err)
 			}
 		}
 	}
@@ -243,7 +243,7 @@ func (o *nmon) Start(parent context.Context) error {
 				}
 			}()
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("subscription stop")
+				o.log.Error().Err(err).Msg("daemon: nmon: subscription stop")
 			}
 		}()
 		o.worker()
@@ -267,13 +267,13 @@ func (o *nmon) Start(parent context.Context) error {
 		}()
 		o.poolWorker()
 	}()
-	o.log.Info().Msg("omon started")
+	o.log.Info().Msg("daemon: nmon: started")
 	return nil
 }
 
 func (o *nmon) Stop() error {
-	o.log.Info().Msg("nmon stopping")
-	defer o.log.Info().Msg("nmon stopped")
+	o.log.Info().Msg("daemon: nmon: stopping")
+	defer o.log.Info().Msg("daemon: nmon: stopped")
 	o.cancel()
 	o.wg.Wait()
 	return nil
@@ -322,7 +322,7 @@ func (o *nmon) startRejoin() {
 		// The onHbMessageTypeUpdated() event handler can stop it.
 		rejoinGracePeriod := o.nodeConfig.RejoinGracePeriod
 		o.rejoinTicker = time.NewTicker(rejoinGracePeriod)
-		o.log.Info().Msgf("rejoin grace period timer set to %s", rejoinGracePeriod)
+		o.log.Info().Msgf("daemon: nmon: rejoin grace period timer set to %s", rejoinGracePeriod)
 		o.transitionTo(node.MonitorStateRejoin)
 	}
 }
@@ -330,9 +330,9 @@ func (o *nmon) startRejoin() {
 func (o *nmon) touchLastShutdown() {
 	// remember the last shutdown date via a file mtime
 	if err := file.Touch(rawconfig.Paths.LastShutdown, time.Now()); err != nil {
-		o.log.Error().Err(err).Msgf("touch %s", rawconfig.Paths.LastShutdown)
+		o.log.Error().Err(err).Msgf("daemon: nmon: touch %s: %s", rawconfig.Paths.LastShutdown, err)
 	} else {
-		o.log.Info().Msgf("touch %s", rawconfig.Paths.LastShutdown)
+		o.log.Info().Msgf("daemon: nmon: touch %s", rawconfig.Paths.LastShutdown)
 	}
 }
 
@@ -353,7 +353,7 @@ func (o *nmon) poolWorker() {
 
 // worker watch for local nmon updates
 func (o *nmon) worker() {
-	defer o.log.Debug().Msg("done")
+	defer o.log.Debug().Msg("daemon: nmon: done")
 
 	o.startedAt = time.Now()
 
@@ -379,7 +379,7 @@ func (o *nmon) worker() {
 	} else {
 		o.rejoinTicker = time.NewTicker(time.Millisecond)
 		o.rejoinTicker.Stop()
-		o.log.Info().Msgf("single cluster node, transition to idle")
+		o.log.Info().Msgf("daemon: nmon: single cluster node, transition to idle")
 		o.transitionTo(node.MonitorStateIdle)
 	}
 
@@ -452,19 +452,19 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 	if frozen.Equal(time.Time{}) {
 		f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
 		if err != nil {
-			o.log.Error().Err(err).Msgf("rejoin grace period expired: freeze node")
+			o.log.Error().Err(err).Msgf("daemon: nmon: rejoin grace period expired: freeze node: %s", err)
 			o.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
-		o.log.Info().Msgf("rejoin grace period expired: freeze node")
+		o.log.Info().Msgf("daemon: nmon: rejoin grace period expired: freeze node")
 		if err := f.Close(); err != nil {
-			o.log.Error().Err(err).Msgf("rejoin grace period expired: freeze node")
+			o.log.Error().Err(err).Msgf("daemon: nmon: rejoin grace period expired: freeze node: %s", err)
 			o.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
 		o.transitionTo(node.MonitorStateIdle)
 	} else {
-		o.log.Info().Msgf("rejoin grace period expired: the node is already frozen")
+		o.log.Info().Msgf("daemon: nmon: rejoin grace period expired: the node is already frozen")
 		o.transitionTo(node.MonitorStateIdle)
 	}
 	o.rejoinTicker.Stop()
@@ -488,13 +488,13 @@ func (o *nmon) updateIfChange() {
 	previousVal := o.previousState
 	newVal := o.state
 	if newVal.State != previousVal.State {
-		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.State, newVal.State)
+		o.log.Info().Msgf("daemon: nmon: change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		o.log.Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
+		o.log.Info().Msgf("daemon: nmon: change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		o.log.Info().Msgf("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
+		o.log.Info().Msgf("daemon: nmon: change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	o.previousState = o.state
 	o.update()
@@ -566,7 +566,7 @@ func (o *nmon) getStats() (node.Stats, error) {
 func (o *nmon) updateStats() {
 	stats, err := o.getStats()
 	if err != nil {
-		o.log.Error().Err(err).Msg("get stats")
+		o.log.Error().Err(err).Msg("daemon: nmon: get stats")
 	}
 	node.StatsData.Set(o.localhost, stats.DeepCopy())
 	o.bus.Pub(&msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()}, o.labelLocalhost)
@@ -575,7 +575,7 @@ func (o *nmon) updateStats() {
 func (o *nmon) refreshSanPaths() {
 	paths, err := san.GetPaths()
 	if err != nil {
-		o.log.Error().Err(err).Msg("get san paths")
+		o.log.Error().Err(err).Msg("daemon: nmon: get san paths")
 		return
 	}
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
@@ -631,9 +631,9 @@ func (o *nmon) onNodeStatusGenUpdates(m *msgbus.NodeStatusGenUpdates) {
 
 func (o *nmon) saveNodesInfo() {
 	if err := nodesinfo.Save(o.cacheNodesInfo); err != nil {
-		o.log.Error().Err(err).Msg("save nodes info")
+		o.log.Error().Err(err).Msgf("daemon: nmon: save nodes info: %s", err)
 	} else {
-		o.log.Info().Msg("nodes info cache refreshed")
+		o.log.Info().Msg("daemon: nmon: nodes info cache refreshed")
 	}
 }
 
@@ -689,7 +689,7 @@ func (o *nmon) loadAndPublishConfig() error {
 func (o *nmon) loadPools() {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		o.log.Warn().Err(err).Msg("load pools status")
+		o.log.Warn().Err(err).Msgf("daemon: nmon: load pools status: %s", err)
 		return
 	}
 	renewed := make(map[string]any)

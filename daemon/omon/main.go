@@ -113,7 +113,7 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 		instConfig: make(map[string]instance.Config),
 
 		ctx:       ctx,
-		log:       log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
+		log:       log.Logger.With().Str("pkg", "omon").Stringer("object", p).Logger(),
 		labelNode: pubsub.Label{"node", localhost},
 		labelPath: pubsub.Label{"path", id},
 		localhost: localhost,

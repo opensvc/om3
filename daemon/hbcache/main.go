@@ -56,8 +56,8 @@ func (t *T) run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
 	heartbeats := make([]cluster.HeartbeatStream, 0)
 	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
-	log.Debug().Msg("started")
-	defer log.Debug().Msg("done")
+	log.Debug().Msg("daemon: hbcache: started")
+	defer log.Debug().Msg("daemon: hbcache: done")
 	defer draincommand.Do(cmdI, t.drainDuration)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	for {
@@ -88,7 +88,7 @@ func (t *T) run(ctx context.Context) {
 			case setHeartbeats:
 				heartbeats = cmd
 			default:
-				log.Error().Interface("cmd", i).Msg("invalid command")
+				log.Error().Interface("cmd", i).Msgf("daemon: hbcache: invalid command: %v", i)
 			}
 		}
 	}

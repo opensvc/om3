@@ -6,5 +6,6 @@ type (
 	Dataset interface {
 		GetName() string
 		GetLog() *zerolog.Logger
+		GetLogPrefix() string
 	}
 )

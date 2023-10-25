@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/api"
@@ -16,8 +15,10 @@ func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		Node:    params.Node,
 		Path:    params.Path,
 	}
+	name := "GetInstances"
+	log := LogHandler(ctx, name)
 	if err := meta.Expand(); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msgf("daemon: api: %s: %s", name, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := instance.ConfigData.GetAll()

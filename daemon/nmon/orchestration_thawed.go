@@ -8,7 +8,7 @@ func (o *nmon) orchestrateThawed() {
 		o.ThawedFromIdle()
 	case node.MonitorStateThawing:
 	default:
-		o.log.Warn().Msgf("don't know how to orchestrate %s from %s", o.state.GlobalExpect, o.state.State)
+		o.log.Warn().Msgf("daemon: nmon: don't know how to orchestrate %s from %s", o.state.GlobalExpect, o.state.State)
 	}
 }
 
@@ -17,7 +17,7 @@ func (o *nmon) ThawedFromIdle() {
 		return
 	}
 	o.transitionTo(node.MonitorStateThawing)
-	o.log.Info().Msg("run action unfreeze")
+	o.log.Info().Msg("daemon: nmon: run action unfreeze")
 	nextState := node.MonitorStateIdle
 	if err := o.crmUnfreeze(); err != nil {
 		nextState = node.MonitorStateThawedFailed
@@ -28,7 +28,7 @@ func (o *nmon) ThawedFromIdle() {
 
 func (o *nmon) thawedClearIfReached() bool {
 	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && nodeStatus.FrozenAt.IsZero() {
-		o.log.Info().Msg("instance state is thawed, unset global expect")
+		o.log.Info().Msg("daemon: nmon: instance state is thawed, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = node.MonitorGlobalExpectNone
 		o.clearPending()
