@@ -12,7 +12,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
@@ -38,6 +37,9 @@ type (
 
 var (
 	jwtAuth *jwtauth.JWTAuth
+
+	// jwtVerifyKeySign is the jwt verify key signature initialized during initAuthJWT
+	jwtVerifyKeySign string
 )
 
 func initJWT(i interface{}) (string, auth.Strategy, error) {
@@ -114,10 +116,9 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 		return nil, nil, fmt.Errorf("%w: parse RSA public key from verify key file content", err)
 	}
 	if pk, err := ssh.NewPublicKey(verifyKey); err != nil {
-		log.Logger.Info().Msgf("load verify key: %s", err)
+		jwtVerifyKeySign = fmt.Sprintf("can't read public key:%s", err)
 	} else {
-		finger := ssh.FingerprintLegacyMD5(pk)
-		log.Logger.Info().Msgf("verify key sig: %s", finger)
+		jwtVerifyKeySign = ssh.FingerprintLegacyMD5(pk)
 	}
 	return verifyKey, jwtauth.New("RS256", signKey, verifyKey), nil
 }

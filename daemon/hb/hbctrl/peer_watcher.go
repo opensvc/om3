@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/util/plog"
 )
 
 var (
@@ -45,8 +45,11 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 		staleTicker := time.NewTicker(timeout)
 		staleTicker.Stop()
 		defer staleTicker.Stop()
-		log := daemonlogctx.Logger(ctx).With().Str("Name", "peerWatch-"+hbId+"-"+nodename).Logger()
-		log.Info().Msg("watching")
+		log := plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hbctrl:peerWatch").With().Str("hb_peer_watch", hbId+"-"+nodename).Logger(),
+			Prefix: "daemon: hbctrl: peer watcher: " + hbId + "-" + nodename + ": ",
+		}
+		log.Info().Msg("started")
 		started <- true
 		setBeating := func(v bool) {
 			peer.IsBeating = v
@@ -56,10 +59,10 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("done watching")
+				log.Infof("done")
 				return
 			case <-c.ctx.Done():
-				log.Info().Msg("done watching (from ctrl done)")
+				log.Infof("done (from ctrl done)")
 				return
 			case beating := <-beatingC:
 				switch {

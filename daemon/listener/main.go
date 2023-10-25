@@ -73,7 +73,7 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.stopFunc = append(t.stopFunc, stopCertFS)
 	}
-	if strategies, err := daemonauth.InitStategies(&authOption{}); err != nil {
+	if strategies, err := daemonauth.InitStategies(ctx, &authOption{}); err != nil {
 		return err
 	} else {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)

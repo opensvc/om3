@@ -10,13 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -32,7 +30,7 @@ type (
 		assembly map[string]msgMap
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -49,7 +47,7 @@ func (t *rx) Id() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -58,7 +56,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -69,7 +67,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 	t.cancel = cancel
-	t.log.Info().Msg("starting")
+	t.log.Infof("starting")
 	t.assembly = make(assembly)
 	started := make(chan bool)
 	t.Add(1)
@@ -85,11 +83,11 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		}
 		listener, err := net.ListenMulticastUDP("udp", t.intf, t.udpAddr)
 		if err != nil {
-			t.log.Error().Err(err).Msgf("listen multicast udp %s", t.udpAddr)
+			t.log.Errorf("listen multicast udp %s: %s", t.udpAddr, err)
 			return
 		}
 		listener.SetReadBuffer(MaxDatagramSize)
-		t.log.Info().Msgf("listen on %s", t.udpAddr)
+		t.log.Infof("listen on %s", t.udpAddr)
 		defer listener.Close()
 
 		t.Add(1)
@@ -97,9 +95,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer t.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Debug().Msg("closing listener")
+				t.log.Debugf("closing listener")
 				_ = listener.Close()
-				t.log.Debug().Msg("closed listener")
+				t.log.Debugf("closed listener")
 				t.cancel()
 				return
 			}
@@ -110,19 +108,19 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			n, src, err := listener.ReadFromUDP(b)
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
-					t.log.Debug().Err(err).Msg("closed connection")
+					t.log.Debugf("closed connection: %s", err)
 					break
 				}
-				t.log.Info().Err(err).Msg("ReadFromUDP")
+				t.log.Infof("read: %s", err)
 				// avoid fast loop
 				time.Sleep(200 * time.Millisecond)
 			}
 			t.recv(src, n, b)
 		}
-		t.log.Info().Msg("stopped")
+		t.log.Infof("stopped")
 	}()
 	<-started
-	t.log.Info().Msg("started")
+	t.log.Infof("started")
 	return nil
 }
 
@@ -132,19 +130,19 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	b = b[:n]
 	//fmt.Println("xx <<<\n", hex.Dump(b))
 	if err := json.Unmarshal(b, &f); err != nil {
-		t.log.Warn().Err(err).Msgf("unmarshal fragment from src %s", s)
+		t.log.Warnf("unmarshal fragment from src %s: %s", s, err)
 		return
 	}
 
 	if f.MsgID == "" {
-		t.log.Debug().Msg("not a udp message frame")
+		t.log.Debugf("not a udp message frame")
 		return
 	}
 	// verify message DoS
 	if msgs, ok := t.assembly[s]; !ok {
 		t.assembly[s] = msgMap{}
 	} else if len(msgs) > MaxMessages {
-		t.log.Warn().Msgf("too many pending messages from src %s. purge", s)
+		t.log.Warnf("too many pending messages from src %s => purge", s)
 		t.assembly[s] = msgMap{}
 	}
 	msg := t.assembly[s]
@@ -152,13 +150,13 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	// verify fragment DoS
 	if f.Total > MaxFragments {
 		// fast drop (len(fragments) will exceed MaxFragments)
-		t.log.Warn().Msgf("too many  fragments from src %s msg %s. drop", s, f.MsgID)
+		t.log.Warnf("too many  fragments from src %s msg %s => drop", s, f.MsgID)
 		return
 	} else if fragments, ok := msg[f.MsgID]; !ok {
 		msg[f.MsgID] = dataMap{}
 		t.assembly[s] = msg
 	} else if len(fragments) > MaxFragments {
-		t.log.Warn().Msgf("too many pending message fragments from src %s msg %s. purge", s, f.MsgID)
+		t.log.Warnf("too many pending message fragments from src %s msg %s => purge", s, f.MsgID)
 		// TODO delete(msg, f.MsgID) ?
 		msg[f.MsgID] = dataMap{}
 		t.assembly[s] = msg
@@ -170,7 +168,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	msg[f.MsgID] = chunks
 	t.assembly[s] = msg
 
-	t.log.Debug().Msgf("recv: %d/%d", len(chunks), f.Total)
+	t.log.Debugf("recv: %d/%d", len(chunks), f.Total)
 	if len(chunks) < f.Total {
 		// more fragments to come
 		return
@@ -187,7 +185,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		for i := 1; i <= f.Total; i += 1 {
 			chunk, ok := chunks[i]
 			if !ok {
-				t.log.Warn().Msgf("missing fragment %d in msg %s from src %s. purge", i, f.MsgID, s)
+				t.log.Warnf("missing fragment %d in msg %s from src %s => purge", i, f.MsgID, s)
 				return
 			}
 			message = append(message, chunk...)
@@ -198,16 +196,16 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	}
 	b, _, err := encMsg.DecryptWithNode()
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("recv: decrypting msg from %s: %s", s, hex.Dump(encMsg.Data))
+		t.log.Debugf("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg.Data), err)
 		return
 	}
 	data := hbtype.Msg{}
 	if err := json.Unmarshal(b, &data); err != nil {
-		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", s)
+		t.log.Warnf("can't unmarshal msg from %s: %s", s, err)
 		return
 	}
 	if data.Nodename == hostname.Hostname() {
-		t.log.Debug().Msg("recv: drop msg from self")
+		t.log.Debugf("recv: drop msg from self")
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -220,7 +218,6 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 
 func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration) *rx {
 	id := name + ".rx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &rx{
 		ctx:     ctx,
 		id:      id,
@@ -228,6 +225,13 @@ func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAdd
 		udpAddr: udpAddr,
 		intf:    intf,
 		timeout: timeout,
-		log:     log,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().
+				Str("hb_func", "rx").
+				Str("hb_name", name).
+				Str("hb_id", id).
+				Logger(),
+			Prefix: "daemon: hb: mcast: rx: " + name + ": ",
+		},
 	}
 }

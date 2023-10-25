@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -50,13 +50,16 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := daemonlogctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbucast").With().Str("hb_name", t.Name()).Logger(),
+		Prefix: "daemon: hb: ucast: " + t.Name() + ": configure: ",
+	}
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 	portI := t.GetInt("port")
 	port := strconv.Itoa(portI)
@@ -66,7 +69,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debug().Msgf("Configure %s, timeout=%s interval=%s port=%s nodes=%s onodes=%s", t.Name(), timeout, interval,
+	log.Debugf("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
 		port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)

@@ -19,13 +19,12 @@ import (
 	"time"
 
 	"github.com/ncw/directio"
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -40,7 +39,7 @@ type (
 	base struct {
 		peerConfigs
 		device
-		log zerolog.Logger
+		log plog.Logger
 	}
 	peerConfigs map[string]peerConfig
 	peerConfig  struct {
@@ -132,13 +131,16 @@ func (d *device) open() error {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := daemonlogctx.Logger(ctx).With().Str("type", t.Name()).Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().Str("hb_name", t.Name()).Logger(),
+		Prefix: "daemon: hb: disk: " + t.Name() + ": configure:",
+	}
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 
 	nodes := t.GetStrings("nodes")
@@ -148,7 +150,7 @@ func (t *T) Configure(ctx context.Context) {
 	}
 	dev := t.GetString("dev")
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debug().Msgf("configure %s, timeout=%s interval=%s dev=%s nodes=%s onodes=%s", t.Name(), timeout, interval, dev, nodes, oNodes)
+	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s", timeout, interval, dev, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s", dev, nodes, timeout, interval)
@@ -288,7 +290,7 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 			errs = errors.Join(errs, fmt.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, data.Slot))
 			continue
 		}
-		t.log.Info().Msgf("detect slot %d for node %s", slot, nodename)
+		t.log.Infof("detect slot %d for node %s", slot, nodename)
 		data.Slot = slot
 		t.peerConfigs[nodename] = data
 	}

@@ -42,12 +42,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -134,7 +132,7 @@ type (
 		cmd    chan any
 		ctx    context.Context
 		cancel context.CancelFunc
-		log    zerolog.Logger
+		log    plog.Logger
 		wg     sync.WaitGroup
 	}
 )
@@ -159,7 +157,10 @@ func New() *C {
 //
 // The controller will die when ctx is done
 func (c *C) Start(ctx context.Context) chan<- any {
-	c.log = daemonlogctx.Logger(ctx).With().Str("Name", "hbctrl").Logger()
+	c.log = plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hbctrl"),
+		Prefix: "daemon: hbctrl: ",
+	}
 	respC := make(chan chan<- any)
 	c.wg.Add(1)
 	go func() {
@@ -180,12 +181,12 @@ func (c *C) Stop() error {
 }
 
 func (c *C) run() {
-	c.log.Info().Msg("start")
+	c.log.Infof("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	heartbeat := make(map[string]cluster.HeartbeatStream)
 	bus := pubsub.BusFromContext(c.ctx)
-	defer c.log.Info().Msgf("stopped: %v", events)
+	defer c.log.Infof("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
 
@@ -271,10 +272,10 @@ func (c *C) run() {
 				}
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
-					c.log.Warn().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				} else {
-					c.log.Info().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
@@ -282,7 +283,7 @@ func (c *C) run() {
 						switch o.Name {
 						case evBeating:
 							if remote.rxBeating == 0 {
-								c.log.Info().Msgf("beating node %s", o.Nodename)
+								c.log.Infof("beating node %s", o.Nodename)
 								bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
@@ -293,7 +294,7 @@ func (c *C) run() {
 							remote.rxBeating--
 						}
 						if remote.rxBeating == 0 {
-							c.log.Info().Msgf("stale node %s", o.Nodename)
+							c.log.Infof("stale node %s", o.Nodename)
 							bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
@@ -323,20 +324,20 @@ func (c *C) run() {
 					remote.cancel = make(map[string]func())
 				}
 				if _, registered := remote.cancel[hbId]; registered {
-					c.log.Error().Msgf("CmdAddWatcher already registered watcher %s %s", hbId, peerNode)
+					c.log.Errorf("watcher skipped: duplicate %s -> %s", hbId, peerNode)
 					continue
 				}
 				if _, ok := heartbeat[hbId]; ok {
 					heartbeat[hbId].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
 				} else {
-					c.log.Warn().Msgf("CmdAddWatcher %s %s called before CmdRegister", hbId, peerNode)
+					c.log.Warnf("watcher skipped: called before register %s -> %s", hbId, peerNode)
 					continue
 				}
+				c.log.Infof("watcher starting %s -> %s", hbId, peerNode)
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
 				remote.cancel[hbId] = cancel
 				remote.beatingChan[hbId] = beatingC
-				c.log.Info().Msgf("register watcher %s for %s", peerNode, hbId)
 				if strings.HasSuffix(hbId, ".rx") {
 					remote.rxCount++
 				} else {
@@ -353,10 +354,10 @@ func (c *C) run() {
 				if remote, ok := remotes[peerNode]; ok {
 					cancel, registered := remote.cancel[hbId]
 					if !registered {
-						c.log.Error().Msgf("CmdDelWatcher already unregistered watcher %s %s", hbId, peerNode)
+						c.log.Errorf("del watcher skipped: already unregistered %s -> %s", hbId, peerNode)
 						continue
 					}
-					c.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
+					c.log.Infof("del watcher %s -> %s", hbId, peerNode)
 					cancel()
 					delete(remote.cancel, hbId)
 					if strings.HasSuffix(hbId, ".rx") {

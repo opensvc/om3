@@ -6,20 +6,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/ccfg"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	tx struct {
 		sync.WaitGroup
+
 		ctx      context.Context
 		id       string
 		nodes    []string
@@ -31,7 +30,7 @@ type (
 		interval time.Duration
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -45,7 +44,7 @@ func (t *tx) Id() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -54,7 +53,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -66,8 +65,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Info().Msg("started")
-		defer t.log.Info().Msg("stopped")
+		t.log.Infof("started")
+		defer t.log.Infof("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -93,7 +92,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debug().Msg(reason)
+				t.log.Debugf(reason)
 				t.send(b)
 			}
 		}
@@ -109,7 +108,7 @@ func (t *tx) send(b []byte) {
 		client.WithInsecureSkipVerify(t.insecure),
 	)
 	if err != nil {
-		t.log.Debug().Err(err).Msg("send: new client")
+		t.log.Debugf("send: new client: %s", err)
 		return
 	}
 
@@ -122,10 +121,10 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Debug().Err(err).Msg("send: PostRelayMessage")
+		t.log.Debugf("send: PostRelayMessage: %s", err)
 		return
 	} else if resp.StatusCode != http.StatusOK {
-		t.log.Debug().Msgf("send: unexpected PostRelayMessage status: %s", resp.Status)
+		t.log.Debugf("send: unexpected PostRelayMessage status: %s", resp.Status)
 		return
 	}
 
@@ -140,7 +139,6 @@ func (t *tx) send(b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, relay, username, password string, insecure bool, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
 		ctx:      ctx,
 		id:       id,
@@ -151,6 +149,13 @@ func newTx(ctx context.Context, name string, nodes []string, relay, username, pa
 		insecure: insecure,
 		timeout:  timeout,
 		interval: interval,
-		log:      log,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb/hbrelay").With().
+				Str("hb_func", "tx").
+				Str("hb_name", name).
+				Str("hb_id", id).
+				Logger(),
+			Prefix: "daemon: hb: relay: tx: " + name + ": ",
+		},
 	}
 }

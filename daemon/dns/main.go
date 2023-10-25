@@ -13,14 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -55,7 +53,7 @@ type (
 		cancel    context.CancelFunc
 		cmdC      chan any
 		bus       *pubsub.Bus
-		log       zerolog.Logger
+		log       *plog.Logger
 		startedAt time.Time
 
 		pendingCtx    context.Context
@@ -95,7 +93,6 @@ func New(d time.Duration) *dns {
 	return &dns{
 		cmdC:          make(chan any),
 		drainDuration: d,
-		log:           log.Logger.With().Str("pkg", "dns").Logger(),
 		state:         make(map[stateKey]Zone),
 		score:         make(map[string]uint64),
 	}
@@ -103,7 +100,11 @@ func New(d time.Duration) *dns {
 
 // Start launches the dns worker goroutine
 func (t *dns) Start(parent context.Context) error {
-	t.log.Info().Msg("dns starting")
+	t.log = &plog.Logger{
+		Logger: plog.PkgLogger(parent, "daemon/dns"),
+		Prefix: "daemon: dns: ",
+	}
+	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.cluster = ccfg.Get()
 
@@ -120,7 +121,7 @@ func (t *dns) Start(parent context.Context) error {
 		t.wg.Done()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				t.log.Error().Err(err).Msg("subscription stop")
+				t.log.Errorf("subscription stop: %s", err)
 			}
 			draincommand.Do(t.cmdC, t.drainDuration)
 		}()
@@ -130,13 +131,13 @@ func (t *dns) Start(parent context.Context) error {
 	// start serving
 	cmdC = t.cmdC
 
-	t.log.Info().Msg("dns started")
+	t.log.Infof("started")
 	return nil
 }
 
 func (t *dns) Stop() error {
-	t.log.Info().Msg("dns stopping")
-	defer t.log.Info().Msg("dns stopped")
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
 	t.cancel()
 	t.wg.Wait()
 	return nil
@@ -154,7 +155,7 @@ func (t *dns) startSubscriptions() {
 
 // worker watch for local dns updates
 func (t *dns) worker() {
-	defer t.log.Debug().Msg("done")
+	defer t.log.Debugf("done")
 
 	for _, v := range instance.StatusData.GetAll() {
 		t.onInstanceStatusUpdated(&msgbus.InstanceStatusUpdated{Node: v.Node, Path: v.Path, Value: *v.Value})

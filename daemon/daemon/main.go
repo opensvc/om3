@@ -140,7 +140,7 @@ func (t *T) Start(ctx context.Context) error {
 		nmon.New(daemonenv.DrainChanDuration),
 		dns.New(daemonenv.DrainChanDuration),
 		discover.New(daemonenv.DrainChanDuration),
-		hb.New(),
+		hb.New(t.ctx),
 		scheduler.New(),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {

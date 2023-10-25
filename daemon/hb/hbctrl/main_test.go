@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -36,7 +37,10 @@ func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
 func setupCtrl(ctx context.Context) *C {
 	c := &C{
 		cmd: make(chan any),
-		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
+		log: plog.Logger{
+			Logger: log.Logger,
+			Prefix: "daemon: hbctrl: ",
+		},
 	}
 	c.Start(ctx)
 	return c
@@ -187,7 +191,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			sub := bus.Sub(name, pubsub.Timeout(time.Second))
 			sub.AddFilter(&msgbus.HbNodePing{}, pubsub.Label{"node", tNode})
 			sub.Start()
-			defer sub.Stop()
+			defer func() {
+				_ = sub.Stop()
+			}()
 
 			pingMsgC := make(chan []msgbus.HbNodePing)
 			go func() {
