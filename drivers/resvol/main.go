@@ -87,7 +87,7 @@ func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error 
 	ctx = actioncontext.WithForce(ctx, true)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
-		t.Log().Info().Msgf("Skip volume %s stop: active users: %s", volume.Path(), holders)
+		t.Infof("Skip volume %s stop: active users: %s", volume.Path(), holders)
 		return nil
 	}
 	return volume.Stop(ctx)
@@ -100,11 +100,11 @@ func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status
 func (t T) Start(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
-		t.Log().Error().Err(err).Send()
-		return fmt.Errorf("Volume %s does not exist (and no pool can create it)", t.name())
+		t.Errorf("%s", err)
+		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("Volume %s does not exist", t.name())
+		return fmt.Errorf("volume %s does not exist", t.name())
 	}
 	if err = t.startVolume(ctx, volume); err != nil {
 		return err
@@ -358,7 +358,7 @@ func (t T) ProvisionLeaded(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("Volume %s does not exists", volume.Path())
+		return fmt.Errorf("volume %s does not exists", volume.Path())
 	}
 	return volume.Provision(ctx)
 }
@@ -369,7 +369,7 @@ func (t T) UnprovisionLeaded(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		t.Log().Info().Msgf("Volume %s is already unprovisioned", volume.Path())
+		t.Infof("Volume %s is already unprovisioned", volume.Path())
 		return nil
 	}
 	return nil
@@ -390,7 +390,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 			return err
 		}
 	} else {
-		t.Log().Info().Msgf("Volume %s is already provisioned", volume.Path())
+		t.Infof("Volume %s is already provisioned", volume.Path())
 	}
 	return volume.Provision(ctx)
 }
@@ -401,7 +401,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		t.Log().Info().Msgf("Volume %s is already unprovisioned", volume.Path())
+		t.Infof("Volume %s is already unprovisioned", volume.Path())
 		return nil
 	}
 	// don't unprovision vol objects (independent lifecycle)

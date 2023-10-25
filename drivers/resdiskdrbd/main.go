@@ -211,14 +211,14 @@ func (t T) isConfigured() bool {
 
 func (t T) StopStandby(ctx context.Context) error {
 	if !t.isConfigured() {
-		t.Log().Info().Msgf("skip: resource not configured")
+		t.Infof("skip: resource not configured")
 		return nil
 	}
 	dev := t.drbd()
 	if ok, err := dev.IsDefined(); err != nil {
 		return err
 	} else if !ok {
-		t.Log().Info().Msgf("skip: resource not defined (for this host)")
+		t.Infof("skip: resource not defined (for this host)")
 		return nil
 	}
 	if err := t.StartConnection(ctx); err != nil {
@@ -244,7 +244,7 @@ func (t T) StartStandby(ctx context.Context) error {
 
 func (t T) Start(ctx context.Context) error {
 	if !t.isConfigured() {
-		t.Log().Info().Msgf("skip: resource not configured")
+		t.Infof("skip: resource not configured")
 		return nil
 	}
 	dev := t.drbd()
@@ -269,14 +269,14 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Stop(ctx context.Context) error {
 	if !t.isConfigured() {
-		t.Log().Info().Msgf("skip: resource not configured")
+		t.Infof("skip: resource not configured")
 		return nil
 	}
 	dev := t.drbd()
 	if ok, err := dev.IsDefined(); err != nil {
 		return err
 	} else if !ok {
-		t.Log().Info().Msgf("skip: resource not defined (for this host)")
+		t.Infof("skip: resource not defined (for this host)")
 		return nil
 	}
 	return t.Down(ctx)
@@ -284,14 +284,14 @@ func (t T) Stop(ctx context.Context) error {
 
 func (t T) Shutdown(ctx context.Context) error {
 	if !t.isConfigured() {
-		t.Log().Info().Msgf("skip: resource not configured")
+		t.Infof("skip: resource not configured")
 		return nil
 	}
 	dev := t.drbd()
 	if ok, err := dev.IsDefined(); err != nil {
 		return err
 	} else if !ok {
-		t.Log().Info().Msgf("skip: resource not defined (for this host)")
+		t.Infof("skip: resource not defined (for this host)")
 		return nil
 	}
 	return t.DownForce(ctx)
@@ -305,16 +305,16 @@ func (t T) StartConnection(ctx context.Context) error {
 	}
 	switch state {
 	case "Connected":
-		t.Log().Info().Msgf("drbd resource %s is already connected", t.Res)
+		t.Infof("drbd resource %s is already connected", t.Res)
 	case "Connecting":
-		t.Log().Info().Msgf("drbd resource %s is already connecting", t.Res)
+		t.Infof("drbd resource %s is already connecting", t.Res)
 	case "StandAlone":
 		t.Down(ctx)
 		t.Up(ctx)
 	case "WFConnection":
-		t.Log().Info().Msgf("drbd resource %s peer node is not listening", t.Res)
+		t.Infof("drbd resource %s peer node is not listening", t.Res)
 	default:
-		t.Log().Info().Msgf("cstate before connect: %s", state)
+		t.Infof("cstate before connect: %s", state)
 		t.Up(ctx)
 	}
 	return nil
@@ -533,7 +533,7 @@ func (t T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 	case 1:
 		// ok
 	default:
-		t.Log().Debug().Msgf("ipname %s is resolvables to %d address. Using the first.", nodename, n)
+		t.Debugf("ipname %s is resolvables to %d address. Using the first.", nodename, n)
 	}
 	return ips[0], nil
 
@@ -570,7 +570,7 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 func (t T) fetchConfig() error {
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
-		t.Log().Info().Msgf("%s already exists", cf)
+		t.Infof("%s already exists", cf)
 		return nil
 	}
 	for _, nodename := range t.Nodes {
@@ -590,7 +590,7 @@ func (t T) fetchConfig() error {
 func (t T) writeConfig(ctx context.Context) error {
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
-		t.Log().Info().Msgf("%s already exists", cf)
+		t.Infof("%s already exists", cf)
 		return nil
 	}
 	if err := t.lock(ctx); err != nil {
@@ -727,7 +727,7 @@ func (t T) WipeMD() error {
 	if v, err := t.drbd().HasMD(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("resource %s already has no metadata", t.Res)
+		t.Infof("resource %s already has no metadata", t.Res)
 		return nil
 	}
 	return t.drbd().WipeMD()
@@ -760,7 +760,7 @@ func (t T) CreateMD() error {
 	if v, err := t.drbd().HasMD(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("resource %s already has metadata", t.Res)
+		t.Infof("resource %s already has metadata", t.Res)
 		return nil
 	}
 	return t.drbd().CreateMD(t.maxPeers())
@@ -770,12 +770,12 @@ func (t T) deleteConfig() error {
 	cf := drbd.ResConfigFile(t.Res)
 	err := os.Remove(cf)
 	if os.IsNotExist(err) {
-		t.Log().Info().Msgf("%s already deleted", cf)
+		t.Infof("%s already deleted", cf)
 		return nil
 	} else if err != nil {
 		return err
 	} else {
-		t.Log().Info().Msgf("deleted %s", cf)
+		t.Infof("deleted %s", cf)
 		return nil
 	}
 }
@@ -801,7 +801,7 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 			return err
 		}
 	} else {
-		t.Log().Info().Msgf("resource already not defined")
+		t.Infof("resource already not defined")
 		return nil
 	}
 	if err := t.deleteConfig(); err != nil {
@@ -816,11 +816,11 @@ func (t T) Provisioned() (provisioned.T, error) {
 	}
 	hasMD, err := t.drbd().HasMD()
 	if err != nil {
-		t.Log().Debug().Msg("drbd res is not configured")
+		t.Debugf("drbd res is not configured")
 		return provisioned.Undef, err
 	}
 	if !hasMD {
-		t.Log().Debug().Msg("drbd disk has no metadata")
+		t.Debugf("drbd disk has no metadata")
 		return provisioned.False, nil
 	}
 	return provisioned.True, nil

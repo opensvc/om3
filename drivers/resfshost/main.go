@@ -78,7 +78,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s already umounted from %s", t.devpath(), t.mountPoint())
+		t.Infof("%s already umounted from %s", t.devpath(), t.mountPoint())
 		return nil
 	}
 	if err := t.fs().Umount(t.mountPoint()); err != nil {
@@ -174,7 +174,7 @@ func (t T) devpath() string {
 	if p, err := vpath.HostDevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
-		t.Log().Debug().Err(err).Msg("")
+		t.Debugf("resolve host devpath for device %s in namespace %s: %s", t.Device, t.Path.Namespace, err)
 	}
 	return ""
 }
@@ -189,7 +189,7 @@ func (t *T) mount(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s already mounted on %s", t.devpath(), t.mountPoint())
+		t.Infof("%s already mounted on %s", t.devpath(), t.mountPoint())
 		return nil
 	}
 	if err := t.createDevice(ctx); err != nil {
@@ -219,7 +219,7 @@ func (t *T) createDevice(ctx context.Context) error {
 	if file.Exists(p) {
 		return nil
 	}
-	t.Log().Info().Msgf("create missing device %s", p)
+	t.Infof("create missing device %s", p)
 	if err := os.MkdirAll(p, 0755); err != nil {
 		return fmt.Errorf("error creating device %s: %s", p, err)
 	}
@@ -235,7 +235,7 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if file.Exists(t.MountPoint) {
 		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.MountPoint)
 	}
-	t.Log().Info().Msgf("create missing mountpoint %s", t.MountPoint)
+	t.Infof("create missing mountpoint %s", t.MountPoint)
 	if err := os.MkdirAll(t.MountPoint, 0755); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %s", t.MountPoint, err)
 	}
@@ -292,7 +292,7 @@ func (t *T) SubDevices() device.L {
 		l = append(l, t.device())
 		return l
 	}
-	t.Log().Warn().Msg("TODO: multi dev SubDevices()")
+	t.Warnf("TODO: multi dev SubDevices()")
 	return l
 }
 
@@ -307,10 +307,10 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 			return err
 		}
 		if !currentRO {
-			t.Log().Debug().Stringer("dev", dev).Msgf("already read-write")
+			t.Debugf("device %s is already read-write", dev)
 			continue
 		}
-		t.Log().Info().Stringer("dev", dev).Msgf("promote read-write")
+		t.Infof("promote device %s read-write", dev)
 		if err := dev.SetReadWrite(); err != nil {
 			return err
 		}
@@ -330,11 +330,11 @@ func (t T) fs() filesystems.I {
 func (t *T) fsck() error {
 	fs := t.fs()
 	if !filesystems.HasFSCK(fs) {
-		t.Log().Debug().Msgf("skip fsck, not implemented for type %s", fs)
+		t.Debugf("skip fsck, not implemented for type %s", fs)
 		return nil
 	}
 	if err := filesystems.CanFSCK(fs); err != nil {
-		t.Log().Warn().Msgf("skip fsck: %s", err)
+		t.Warnf("skip fsck: %s", err)
 		return nil
 	}
 	return filesystems.DevicesFSCK(fs, t)
@@ -349,7 +349,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	fs := t.fs()
 	i1, ok := fs.(IsFormateder)
 	if !ok {
-		t.Log().Info().Msgf("skip mkfs, formatted detection is not implemented for type %s", fs)
+		t.Infof("skip mkfs, formatted detection is not implemented for type %s", fs)
 		return nil
 	}
 	devpath := t.devpath()
@@ -357,16 +357,16 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		return fmt.Errorf("%s real dev path is empty", t.Device)
 	}
 	if v, err := i1.IsFormated(devpath); err != nil {
-		t.Log().Warn().Msgf("skip mkfs: %s", err)
+		t.Warnf("skip mkfs: %s", err)
 	} else if v {
-		t.Log().Info().Msgf("%s is already formated", t.Device)
+		t.Infof("%s is already formated", t.Device)
 		return nil
 	}
 	i2, ok := fs.(filesystems.MKFSer)
 	if ok {
 		return i2.MKFS(t.Device, t.MKFSOptions)
 	}
-	t.Log().Info().Msgf("skip mkfs, not implemented for type %s", fs)
+	t.Infof("skip mkfs, not implemented for type %s", fs)
 	return nil
 }
 

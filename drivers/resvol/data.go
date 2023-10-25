@@ -232,7 +232,7 @@ func (t T) SendSignals() error {
 		if err := o.SignalResource(sd.RID, sd.Signum); err != nil {
 			return err
 		}
-		t.Log().Debug().Msgf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
+		t.Debugf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
 	}
 	return nil
 }
@@ -242,21 +242,21 @@ func (t T) InstallDataByKind(filter naming.Kind) (bool, error) {
 
 	for _, md := range t.getMetadataByKind(filter) {
 		if !md.FromStore.Exists() {
-			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
+			t.Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
 		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
-			t.Log().Warn().Msgf("store %s init error: %s", md.FromStore, err)
+			t.Warnf("store %s init error: %s", md.FromStore, err)
 		}
 		var matches []string
 		matches, err = keystore.MatchingKeys(md.FromKey)
 		if err != nil {
-			t.Log().Warn().Msgf("store %s keymatch %s: %s", md.FromStore, md.FromKey, err)
+			t.Warnf("store %s keymatch %s: %s", md.FromStore, md.FromKey, err)
 			continue
 		}
 		if len(matches) == 0 {
-			t.Log().Warn().Msgf("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromKey)
+			t.Warnf("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
 		for _, k := range matches {

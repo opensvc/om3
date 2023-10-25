@@ -24,8 +24,6 @@ func New() resource.Driver {
 
 // Start the Resource
 func (t T) Start(ctx context.Context) (err error) {
-	t.Log().Debug().Msg("Start()")
-
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StartCmd, "start"); err != nil {
 		return err
@@ -49,11 +47,11 @@ func (t T) Start(ctx context.Context) (err error) {
 
 	appStatus := t.Status(ctx)
 	if appStatus == status.Up {
-		t.Log().Info().Msg("already up")
+		t.Infof("already up")
 		return nil
 	}
 
-	t.Log().Info().Stringer("cmd", cmd).Msg("run")
+	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("run: %s", cmd))
 	err = cmd.Run()
 	if err == nil {
 		actionrollback.Register(ctx, func() error {
