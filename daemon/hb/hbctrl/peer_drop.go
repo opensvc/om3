@@ -8,9 +8,9 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -19,7 +19,10 @@ import (
 // The delayed <peer> node drop is canceled on msgbus.HbNodePing{isAlive: true, Node: <peer>}.
 func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
-	log := daemonlogctx.Logger(ctx).With().Str("Name", "peer-drop").Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hbctrl:peerDropWorker"),
+		Prefix: "daemon: hbctrl: peer drop: ",
+	}
 	bus := pubsub.BusFromContext(ctx)
 	sub := bus.Sub("peer-drop-worker")
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
@@ -61,23 +64,23 @@ func peerDropWorker(ctx context.Context) {
 			if drop, ok := dropM[peer]; ok {
 				drop.cancel()
 				delay = drop.at.Add(maintenanceGracePeriod).Sub(time.Now())
-				log.Info().Msgf("maintenance grace period timer reset to %s for %s", delay, peer)
+				log.Infof("maintenance grace period timer reset to %s for %s", delay, peer)
 			} else {
-				log.Info().Msgf("maintenance grace period timer set to %s for %s", delay, peer)
+				log.Infof("maintenance grace period timer set to %s for %s", delay, peer)
 			}
 			dropCtx, cancel := context.WithTimeout(ctx, delay)
 			dropM[peer] = dropCall{cancel: cancel, at: time.Now()}
-			log.Info().Msgf("all hb rx stale for %s in maintenance state => delay drop peer node %s data", peer, peer)
+			log.Infof("all hb rx stale for %s in maintenance state => delay drop peer node %s data", peer, peer)
 			go func(ctx context.Context, peer string) {
 				<-ctx.Done()
 				if ctx.Err() == context.Canceled {
 					return
 				}
-				log.Info().Msgf("all hb rx stale for %s and maintenance grace period expired => drop peer node %s data", peer, peer)
+				log.Infof("all hb rx stale for %s and maintenance grace period expired => drop peer node %s data", peer, peer)
 				dropPeer(peer)
 			}(dropCtx, peer)
 		} else {
-			log.Info().Msgf("all hb rx stale for %s => drop peer node %s data", peer, peer)
+			log.Infof("all hb rx stale for %s => drop peer node %s data", peer, peer)
 			dropPeer(peer)
 		}
 	}
