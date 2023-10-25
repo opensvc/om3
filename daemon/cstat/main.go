@@ -11,12 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -28,7 +26,7 @@ type (
 		cancel    context.CancelFunc
 		cmdC      chan any
 		bus       *pubsub.Bus
-		log       zerolog.Logger
+		log       *plog.Logger
 		startedAt time.Time
 
 		pendingCtx    context.Context
@@ -45,28 +43,34 @@ type (
 )
 
 func New() *cstat {
-	return &cstat{
-		log:        log.Logger.With().Str("pkg", "cstat").Logger(),
-		nodeStatus: make(map[string]node.Status),
-	}
+	return &cstat{nodeStatus: make(map[string]node.Status)}
 }
 
 // Start launches the cstat worker goroutine
 func (o *cstat) Start(parent context.Context) error {
+	o.log = &plog.Logger{
+		Logger: plog.PkgLogger(parent, "daemon.cstat"),
+		Prefix: "daemon: cstat: ",
+	}
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.bus = pubsub.BusFromContext(o.ctx)
 
 	o.startSubscriptions()
+	running := make(chan bool)
 	o.wg.Add(1)
 	go func() {
+		o.log.Debugf("start")
+		running <- true
+		defer o.log.Debugf("done")
 		defer o.wg.Done()
 		defer func() {
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("subscription stop")
+				o.log.Errorf("subscription stop error %s", err)
 			}
 		}()
 		o.worker()
 	}()
+	<-running
 	return nil
 }
 
@@ -85,8 +89,6 @@ func (o *cstat) startSubscriptions() {
 
 // worker watch for local cstat updates
 func (o *cstat) worker() {
-	defer o.log.Debug().Msg("done")
-
 	o.startedAt = time.Now()
 
 	for {
