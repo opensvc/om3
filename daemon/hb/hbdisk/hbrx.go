@@ -6,12 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -27,7 +25,7 @@ type (
 		last     time.Time
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- any
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -41,7 +39,7 @@ func (t *rx) Id() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -50,7 +48,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -79,8 +77,8 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Info().Msg("started")
-		defer t.log.Info().Msg("stopped")
+		t.log.Infof("started")
+		defer t.log.Infof("stopped")
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		for {
@@ -105,46 +103,45 @@ func (t *rx) onTick() {
 func (t *rx) recv(nodename string) {
 	meta, err := t.base.GetPeer(nodename)
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("recv: failed to allocate a slot for node %s", nodename)
+		t.log.Debugf("recv: failed to allocate a slot for node %s: %s", nodename, err)
 		return
 	}
 	c, err := t.base.ReadDataSlot(meta.Slot) // TODO read timeout?
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("recv: reading node %s data slot %d", nodename, meta.Slot)
+		t.log.Debugf("recv: reading node %s data slot %d: %s", nodename, meta.Slot, err)
 		return
 	}
 	if c.Updated.IsZero() {
-		t.log.Debug().Msgf("recv: node %s data slot %d has never been updated", nodename, meta.Slot)
+		t.log.Debugf("recv: node %s data slot %d has never been updated", nodename, meta.Slot)
 		return
 	}
 	if !t.last.IsZero() && c.Updated == t.last {
-		t.log.Debug().Msgf("recv: node %s data slot %d has not change since last read", nodename, meta.Slot)
+		t.log.Debugf("recv: node %s data slot %d has not change since last read", nodename, meta.Slot)
 		return
 	}
 	elapsed := time.Now().Sub(c.Updated)
 	if elapsed > t.timeout {
-		t.log.Debug().Msgf("recv: node %s data slot %d has not been updated for %s", nodename, meta.Slot, elapsed)
+		t.log.Debugf("recv: node %s data slot %d has not been updated for %s", nodename, meta.Slot, elapsed)
 		return
 	}
 	encMsg := omcrypto.NewMessage(c.Msg)
 	b, msgNodename, err := encMsg.DecryptWithNode()
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("recv: decrypting node %s data slot %d", nodename, meta.Slot)
+		t.log.Debugf("recv: decrypting node %s data slot %d: %s", nodename, meta.Slot, err)
 		return
 	}
 
 	if nodename != msgNodename {
-		t.log.Debug().Err(err).Msgf("recv: node %s data slot %d was written by unexpected node %s", nodename, meta.Slot, msgNodename)
+		t.log.Debugf("recv: node %s data slot %d was written by unexpected node %s", nodename, meta.Slot, msgNodename)
 		return
 	}
 
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(b, &msg); err != nil {
-		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
+		t.log.Warnf("can't unmarshal msg from %s: %s", nodename, err)
 		return
 	}
-	t.log.Debug().Msgf("recv: node %s", nodename)
-	//t.log.Debug().Msgf("recv: node %s unmarshaled %#v", nodename, msg)
+	t.log.Debugf("recv: node %s", nodename)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbId:     t.id,
@@ -156,7 +153,15 @@ func (t *rx) recv(nodename string) {
 
 func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *rx {
 	id := name + ".rx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().
+			Str("hb_func", "rx").
+			Str("hb_name", name).
+			Str("hb_id", id).
+			Logger(),
+		Prefix: "daemon: hb: disk: rx: " + name + ": ",
+	}
+
 	return &rx{
 		ctx:      ctx,
 		id:       id,

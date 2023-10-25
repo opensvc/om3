@@ -6,12 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -25,7 +23,7 @@ type (
 		interval time.Duration
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -39,7 +37,7 @@ func (t *tx) Id() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -48,7 +46,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -67,8 +65,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Info().Msg("started")
-		defer t.log.Info().Msg("stopped")
+		t.log.Infof("started")
+		defer t.log.Infof("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -96,7 +94,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			}
-			t.log.Debug().Msg(reason)
+			t.log.Debugf(reason)
 			t.send(b)
 		}
 	}()
@@ -106,14 +104,14 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 func (t *tx) send(b []byte) {
 	meta, err := t.base.GetPeer(hostname.Hostname())
 	if err != nil {
-		t.log.Debug().Err(err).Msg("write")
+		t.log.Debugf("send can't get peer for localhost: %s", err)
 		return
 	}
 	if t.base.WriteDataSlot(meta.Slot, b); err != nil { // TODO write timeout?
-		t.log.Debug().Err(err).Msg("write")
+		t.log.Debugf("send can't write data slot: %s", err)
 		return
 	} else {
-		t.log.Debug().Msgf("wrote to slot %d %s", meta.Slot, string(b))
+		t.log.Debugf("send wrote to slot %d %s", meta.Slot, string(b))
 	}
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -126,7 +124,14 @@ func (t *tx) send(b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().
+			Str("hb_func", "tx").
+			Str("hb_name", name).
+			Str("hb_id", id).
+			Logger(),
+		Prefix: "daemon: hb: disk: tx: " + name + ": ",
+	}
 	return &tx{
 		ctx:      ctx,
 		id:       id,
