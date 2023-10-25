@@ -12,9 +12,9 @@ import (
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -47,23 +47,26 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := daemonlogctx.Logger(ctx).With().Str("type", t.Name()).Logger()
+	log := plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/hb/hbrelay").With().Str("hb_name", t.Name()).Logger(),
+		Prefix: "daemon: hb: relay: " + t.Name() + ": ",
+	}
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 	relay := t.GetString("relay")
 	if relay == "" {
-		log.Error().Msgf("no %s.relay is not set in node.conf", t.Name())
+		log.Errorf("no %s.relay is not set in node.conf", t.Name())
 		return
 	}
 	username := t.GetString("username")
 	password, err := t.password()
 	if err != nil {
-		log.Error().Err(err).Msgf("no %s.password parsing", t.Name())
+		log.Errorf("no %s.password parsing: %s", t.Name(), err)
 		return
 	}
 	insecure := t.GetBool("insecure")
@@ -73,7 +76,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debug().Msgf("configure %s, timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", t.Name(), timeout, interval, relay, insecure, nodes, oNodes)
+	log.Debugf("configure %s, timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", t.Name(), timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s", nodes, relay, timeout, interval)
