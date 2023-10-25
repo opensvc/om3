@@ -9,16 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/encryptconn"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
-	// rx holds an hb unicast receiver
+	// rx holds a hb unicast receiver
 	rx struct {
 		sync.WaitGroup
 		ctx     context.Context
@@ -30,7 +28,7 @@ type (
 		timeout time.Duration
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -58,7 +56,7 @@ func (t *rx) Id() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -67,7 +65,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -80,10 +78,10 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 	t.cancel = cancel
-	t.log.Info().Msg("starting")
+	t.log.Infof("starting")
 	listener, err := net.Listen("tcp", t.addr+":"+t.port)
 	if err != nil {
-		t.log.Error().Err(err).Msg("listen failed")
+		t.log.Errorf("listen failed: %s", err)
 		return err
 	}
 	started := make(chan bool)
@@ -115,14 +113,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer t.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Debug().Msg("closing listener")
+				t.log.Debugf("closing listener")
 				_ = listener.Close()
-				t.log.Debug().Msg("closed listener")
+				t.log.Debugf("closed listener")
 				t.cancel()
 				return
 			}
 		}()
-		t.log.Info().Msgf("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIpL)
+		t.log.Infof("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIpL)
 		started <- true
 		for {
 			conn, err := listener.Accept()
@@ -130,30 +128,30 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				if errors.Is(err, net.ErrClosed) {
 					break
 				} else {
-					t.log.Error().Err(err).Msg("Accept")
+					t.log.Errorf("listener accept: %s", err)
 					continue
 				}
 			}
 			connAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
 			if _, ok := otherNodeIpM[connAddr]; !ok {
-				t.log.Warn().Msgf("drop message from unexpected connection from %s", connAddr)
+				t.log.Warnf("drop message from unexpected connection from %s", connAddr)
 				if err := conn.Close(); err != nil {
-					t.log.Warn().Err(err).Msgf("close unexpected connection from %s", connAddr)
+					t.log.Warnf("close unexpected connection from %s: %s", connAddr, err)
 				}
 				continue
 			}
 			if err := conn.SetDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
-				t.log.Info().Err(err).Msg("SetReadDeadline")
+				t.log.Infof("can't set read deadline for %s: %s", connAddr, err)
 				continue
 			}
 			clearConn := encryptconn.New(conn)
 			t.Add(1)
 			go t.handle(clearConn)
 		}
-		t.log.Info().Msg("stopped " + t.addr)
+		t.log.Infof("stopped %s", t.addr)
 	}()
 	<-started
-	t.log.Info().Msg("started " + t.addr)
+	t.log.Infof("started %s", t.addr)
 	return nil
 }
 
@@ -161,22 +159,22 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 	defer t.Done()
 	defer func() {
 		if err := conn.Close(); err != nil {
-			t.log.Warn().Err(err).Msgf("unexpected error while closing connection from %s", conn.RemoteAddr())
+			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
 		}
 	}()
 	data := <-msgBufferChan
 	defer func() { msgBufferChan <- data }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
-		t.log.Warn().Err(err).Msgf("read failed from %s", conn.RemoteAddr())
+		t.log.Warnf("read failed from %s: %s", conn.RemoteAddr(), err)
 		return
 	}
 	if i >= (msgMaxSize - 10000) {
-		t.log.Warn().Msgf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
+		t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
 	}
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(data[:i], &msg); err != nil {
-		t.log.Warn().Err(err).Msgf("unmarshal message failed from node %s:%s", nodename, conn.RemoteAddr())
+		t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -189,7 +187,6 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 
 func newRx(ctx context.Context, name string, nodes []string, addr, port, intf string, timeout time.Duration) *rx {
 	id := name + ".rx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &rx{
 		ctx:     ctx,
 		id:      id,
@@ -198,6 +195,13 @@ func newRx(ctx context.Context, name string, nodes []string, addr, port, intf st
 		port:    port,
 		intf:    intf,
 		timeout: timeout,
-		log:     log,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb/hbucast").With().
+				Str("hb_func", "rx").
+				Str("hb_name", name).
+				Str("hb_id", id).
+				Logger(),
+			Prefix: "daemon: hb: ucast: rx: " + name + ": ",
+		},
 	}
 }

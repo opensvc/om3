@@ -6,14 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
+	// tx holds a hb unicast transmitter
 	tx struct {
 		sync.WaitGroup
 		ctx      context.Context
@@ -25,7 +24,7 @@ type (
 		timeout  time.Duration
 
 		name   string
-		log    zerolog.Logger
+		log    plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -39,7 +38,7 @@ func (t *tx) Id() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debug().Msg("cancelling")
+	t.log.Debugf("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -48,7 +47,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debug().Msg("wait done")
+	t.log.Debugf("wait done")
 	return nil
 }
 
@@ -61,7 +60,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Info().Msg("starting")
+		t.log.Infof("starting")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -78,7 +77,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		for {
 			select {
 			case <-ctx.Done():
-				t.log.Info().Msg("stopped")
+				t.log.Infof("stopped")
 				return
 			case b = <-msgC:
 				reason = "send msg"
@@ -89,7 +88,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debug().Msg(reason)
+				t.log.Debugf(reason)
 				for _, node := range t.nodes {
 					go t.send(node, b)
 				}
@@ -97,28 +96,28 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		}
 	}()
 	<-started
-	t.log.Info().Msg("started")
+	t.log.Infof("started")
 	return nil
 }
 
 func (t *tx) send(node string, b []byte) {
 	conn, err := net.DialTimeout("tcp", node+":"+t.port, t.timeout)
 	if err != nil {
-		t.log.Debug().Err(err).Msg("DialTimeout")
+		t.log.Debugf("dial timeout %s:%s: %s", node, t.port, err)
 		return
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
 	if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-		t.log.Error().Err(err).Msg("SetDeadline")
+		t.log.Errorf("set deadline %s:%s: %s", node, t.port, err)
 		return
 	}
 	if n, err := conn.Write(b); err != nil {
-		t.log.Debug().Err(err).Msg("write")
+		t.log.Debugf("write %s: %s", node, err)
 		return
 	} else if n != len(b) {
-		t.log.Debug().Msgf("write %d instead of %d", n, len(b))
+		t.log.Debugf("write %d instead of %d", n, len(b))
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -130,7 +129,6 @@ func (t *tx) send(node string, b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
-	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
 		ctx:      ctx,
 		id:       id,
@@ -139,6 +137,13 @@ func newTx(ctx context.Context, name string, nodes []string, port, intf string, 
 		intf:     intf,
 		interval: interval,
 		timeout:  timeout,
-		log:      log,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/hb/hbucast").With().
+				Str("hb_func", "tx").
+				Str("hb_name", name).
+				Str("hb_id", id).
+				Logger(),
+			Prefix: "daemon: hb: ucast: tx: " + name + ": ",
+		},
 	}
 }
