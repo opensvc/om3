@@ -49,7 +49,7 @@ func New() *cstat {
 // Start launches the cstat worker goroutine
 func (o *cstat) Start(parent context.Context) error {
 	o.log = &plog.Logger{
-		Logger: plog.PkgLogger(parent, "daemon.cstat"),
+		Logger: plog.PkgLogger(parent, "daemon/cstat"),
 		Prefix: "daemon: cstat: ",
 	}
 	o.ctx, o.cancel = context.WithCancel(parent)
