@@ -34,7 +34,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -538,11 +537,11 @@ func (t *T) execViaInternalSSH(cmd string) error {
 	if err := session.Run(cmd); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		logger := plog.Logger{
-			Logger: t.Log().With().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Logger(),
-			Prefix: t.Log().Prefix,
-		}
-		logger.Debugf("rexec: %s on node %s exited with code %d", cmd, hn, ec)
+		t.Log().
+			Attr("exitcode", ec).
+			Attr("cmd", cmd).
+			Attr("host", hn).
+			Debugf("rexec: %s on node %s exited with code %d", cmd, hn, ec)
 		return err
 	}
 	return nil

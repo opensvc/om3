@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
-	"github.com/opensvc/om3/util/plog"
 
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -183,11 +182,11 @@ func (t *T) startVEthPair(ctx context.Context, netns ns.NetNS, hostDev, guestDev
 		return nil
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
-		logger := plog.Logger{
-			Logger: t.Log().With().Str("dev", hostDev).Str("peer", guestDev).Int("mtu", mtu).Logger(),
-			Prefix: t.Log().Prefix,
-		}
-		logger.Infof("create veth pair: %s-%s mtu %d", hostDev, guestDev, mtu)
+		t.Log().
+			Attr("dev", hostDev).
+			Attr("peer", guestDev).
+			Attr("mtu", mtu).
+			Infof("create veth pair: %s-%s mtu %d", hostDev, guestDev, mtu)
 		_, _, err := ip.SetupVethWithName(guestDev, hostDev, mtu, hostNS)
 		return err
 	}); err != nil {

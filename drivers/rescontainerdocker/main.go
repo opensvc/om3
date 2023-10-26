@@ -169,11 +169,7 @@ func (t T) pull(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logger := plog.Logger{
-		Logger: t.Log().With().Stringer("image", remote).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("pull image %s", remote)
+	t.Log().Attr("image", remote.String()).Infof("pull image %s", remote)
 	err = cli().ImageService().Pull(ctx, remote)
 	return err
 }
@@ -419,10 +415,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		}
 	}
 
-	logger := plog.Logger{
-		Logger: t.Log().With().Bytes("config", configStr).Bytes("hostConfig", hostConfigStr).Logger(),
-		Prefix: t.Log().Prefix,
-	}
+	logger := t.Log().Attr("config", configStr).Attr("hostConfig", hostConfigStr)
 	c, err := cli().ContainerService().Create(
 		ctx,
 		t.Image,

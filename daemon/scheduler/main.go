@@ -130,11 +130,7 @@ func (t *T) createJob(e schedule.Entry) {
 		return
 	}
 
-	logger := plog.Logger{
-		Logger: t.log.With().Str("action", e.Action).Stringer("obj_path", e.Path).Str("key", e.Key).Logger(),
-		Prefix: t.log.Prefix,
-	}
-
+	logger := t.log.Attr("action", e.Action).Attr("obj_path", e.Path.String()).Attr("key", e.Key)
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
