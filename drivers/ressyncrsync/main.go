@@ -28,7 +28,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/schedule"
@@ -422,11 +421,12 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 	}
 	t.progress(ctx, nodename, rawconfig.Colorize.Optimal("✓"), nil, nil)
 	stats.Close()
-	logger := plog.Logger{
-		Logger: t.Log().With().Float64("speed_bps", stats.SpeedBPS()).Dur("duration", stats.Duration()).Uint64("sent_b", stats.SentBytes).Uint64("received_b", stats.ReceivedBytes).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("sync stat")
+	t.Log().
+		Attr("speed_bps", stats.SpeedBPS()).
+		Attr("duration", stats.Duration()).
+		Attr("sent_b", stats.SentBytes).
+		Attr("received_b", stats.ReceivedBytes).
+		Infof("sync stat")
 
 	if t.peerSyncLastSyncFile(nodename); err != nil {
 		return err

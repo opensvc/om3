@@ -24,7 +24,6 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
 
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -481,11 +480,11 @@ func (t T) stop() error {
 		return err
 	}
 	cmd.Cmd().Stdin = bytes.NewReader(stdinData)
-	logger := plog.Logger{
-		Logger: t.Log().With().Stringer("cmd", cmd.Cmd()).Str("input", string(stdinData)).Strs("env", env).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("del cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
+	t.Log().
+		Attr("cmd", cmd.Cmd().String()).
+		Attr("input", string(stdinData)).
+		Attr("env", env).
+		Infof("del cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
 		var resp response
@@ -552,11 +551,11 @@ func (t T) start() error {
 			command.WithBufferedStdout(),
 			command.WithBufferedStderr(),
 		)
-		logger := plog.Logger{
-			Logger: t.Log().With().Stringer("cmd", cmd.Cmd()).Str("input", string(stdinData)).Strs("env", env).Logger(),
-			Prefix: t.Log().Prefix,
-		}
-		logger.Infof("add cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
+		t.Log().
+			Attr("cmd", cmd.Cmd().String()).
+			Attr("input", string(stdinData)).
+			Attr("env", env).
+			Infof("add cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
 
 		cmd.Cmd().Stdin = bytes.NewReader(stdinData)
 		err := cmd.Run()

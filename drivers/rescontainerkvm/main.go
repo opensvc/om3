@@ -32,7 +32,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -312,11 +311,7 @@ func (t T) Stop(ctx context.Context) error {
 }
 
 func (t T) waitForDown() error {
-	logger := plog.Logger{
-		Logger: t.Log().With().Dur("timeout", *t.StopTimeout).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("wait for %s shutdown (timeout %s)", t.Name, *t.StopTimeout)
+	t.Log().Attr("timeout", *t.StopTimeout).Infof("wait for %s shutdown (timeout %s)", t.Name, *t.StopTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isDown()
 		if err != nil {
@@ -327,11 +322,7 @@ func (t T) waitForDown() error {
 }
 
 func (t T) waitForUp() error {
-	logger := plog.Logger{
-		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("wait for %s up (timeout %s)", t.Name, *t.StartTimeout)
+	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s up (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isUp()
 		if err != nil {
@@ -343,11 +334,7 @@ func (t T) waitForUp() error {
 }
 
 func (t T) waitForPing() error {
-	logger := plog.Logger{
-		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("wait for %s ping (timeout %s)", t.Name, *t.StartTimeout)
+	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s ping (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isPinging()
 		if err != nil {
@@ -359,11 +346,7 @@ func (t T) waitForPing() error {
 }
 
 func (t T) waitForOperational() error {
-	logger := plog.Logger{
-		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
-		Prefix: t.Log().Prefix,
-	}
-	logger.Infof("wait for %s operational (timeout %s)", t.Name, *t.StartTimeout)
+	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s operational (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isOperational()
 		if err != nil {
@@ -735,11 +718,11 @@ func (t T) execViaInternalSSH(cmd string) error {
 	if err := session.Run(cmd); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		logger := plog.Logger{
-			Logger: t.Log().With().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Logger(),
-			Prefix: t.Log().Prefix,
-		}
-		logger.Debugf("rexec '%s' on host %s exited with code %d", cmd, hn, ec)
+		t.Log().
+			Attr("exitcode", ec).
+			Attr("cmd", cmd).
+			Attr("host", hn).
+			Debugf("rexec '%s' on host %s exited with code %d", cmd, hn, ec)
 		return err
 	}
 	return nil
