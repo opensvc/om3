@@ -49,10 +49,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/util/durationlog"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -147,7 +146,7 @@ type (
 		name        string
 		cmdC        chan any
 		cancel      func()
-		log         zerolog.Logger
+		log         plog.Logger
 		ctx         context.Context
 		subs        map[uuid.UUID]*Subscription
 		subMap      subscriptionMap
@@ -346,7 +345,12 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.log = log.Logger.With().Str("bus", name).Logger()
+	b.log = plog.Logger{
+		Logger: plog.GetPkgLogger("util/pubsub").With().
+			Str("bus_name", name).
+			Logger(),
+		Prefix: fmt.Sprintf("pubsub: %s: ", name),
+	}
 	b.drainChanDuration = defaultDrainChanDuration
 	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
@@ -407,7 +411,7 @@ func (b *Bus) Start(ctx context.Context) {
 		}
 	}()
 	b.started = <-started
-	b.log.Info().Msg("bus started")
+	b.log.Infof("bus started")
 }
 
 // SetDrainChanDuration overrides defaultDrainChanDuration for not yet started bus.
@@ -447,7 +451,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 	}
 	b.subs[id] = sub
 	c.resp <- sub
-	b.log.Debug().Msgf("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
+	b.log.Debugf("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
 	subscriptionTotal.With(prometheus.Labels{"operation": "create"}).Inc()
 }
 
@@ -465,7 +469,7 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 		c.err <- b.ctx.Err()
 	case c.err <- nil:
 	}
-	b.log.Debug().Msgf("unsubscribe %s", sub.name)
+	b.log.Debugf("unsubscribe %s", sub.name)
 	subscriptionTotal.With(prometheus.Labels{"operation": "delete"}).Inc()
 }
 
@@ -477,10 +481,10 @@ func (b *Bus) onPubCmd(c cmdPub) {
 				sub, ok := b.subs[subId]
 				if !ok {
 					// This should not happen
-					b.log.Warn().Msgf("filter key %s has a dead subscription %s", toFilterKey, subId)
+					b.log.Warnf("filter key %s has a dead subscription %s", toFilterKey, subId)
 					continue
 				}
-				b.log.Debug().Msgf("route %s to %s", c, sub)
+				b.log.Debugf("route %s to %s", c, sub)
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
 				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
@@ -493,13 +497,13 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					if left < inc {
 						// 3/4 full
 						level = "warn"
-						b.log.Error().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Errorf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					} else if left < sub.queuedSize/2 {
 						// 1/2 full
 						level = "info"
-						b.log.Warn().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Warnf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					} else {
-						b.log.Debug().Msgf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					}
 					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
@@ -510,9 +514,9 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					if left < sub.queuedSize/2 {
 						// 1/2 full
 						level = "info"
-						b.log.Info().Msgf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Infof("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					} else {
-						b.log.Debug().Msgf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					}
 					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
@@ -562,8 +566,8 @@ func (b *Bus) onSubDelFilter(c cmdSubDelFilter) {
 }
 
 func (b *Bus) drain() {
-	b.log.Info().Msg("draining the message bus")
-	defer b.log.Info().Msg("drained")
+	b.log.Infof("draining the message bus")
+	defer b.log.Infof("drained")
 	i := 0
 	tC := time.After(b.drainChanDuration)
 	for {
@@ -571,7 +575,7 @@ func (b *Bus) drain() {
 		case <-b.cmdC:
 			i += 1
 		case <-tC:
-			b.log.Info().Msgf("drained dropped %d pending messages from the bus on stop", i)
+			b.log.Infof("drained dropped %d pending messages from the bus on stop", i)
 			return
 		}
 	}
@@ -587,7 +591,7 @@ func (b *Bus) Stop() {
 		f()
 		b.Wait()
 		go b.drain()
-		b.log.Info().Msg("stopped")
+		b.log.Infof("stopped")
 	}
 }
 
@@ -711,7 +715,7 @@ func (b *Bus) warnExceededNotification(ctx context.Context, maxDuration time.Dur
 				if now.Sub(begin) > maxDuration {
 					duration := time.Now().Sub(begin).Seconds()
 					sub := b.subs[id]
-					b.log.Warn().Msgf("waited %.02fs over %s for %s", duration, maxDuration, sub)
+					b.log.Warnf("waited %.02fs over %s for %s", duration, maxDuration, sub)
 				}
 			}
 		}
@@ -936,12 +940,12 @@ func (sub *Subscription) Start() {
 				}
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
-					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
+					sub.bus.log.Warnf("%s error: %s. stop subscription", sub, err)
 					go sub.bus.Pub(&SubscriptionError{Name: sub.name, Id: sub.id, ErrS: err.Error()})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {
-							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
+							sub.bus.log.Warnf("stop %s: %s", sub, err)
 						}
 					}()
 					select {
