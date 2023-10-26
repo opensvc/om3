@@ -126,11 +126,11 @@ func (t T) Resync() error {
 	added := 0
 	removed := strings.Count(buff, "removed")
 	if removed == 0 {
-		t.log.Info().Msgf("skip: no removed device")
+		t.log.Infof("skip: no removed device")
 		return nil
 	}
 	if !strings.Contains(buff, "Raid Level : raid1") {
-		t.log.Info().Msgf("skip: non-raid1 md")
+		t.log.Infof("skip: non-raid1 md")
 		return nil
 	}
 	v, _, err := t.IsActive()
@@ -138,7 +138,7 @@ func (t T) Resync() error {
 		return err
 	}
 	if !v {
-		t.log.Info().Msgf("skip: non-assembed md")
+		t.log.Infof("skip: non-assembed md")
 		return nil
 	}
 	scanner := bufio.NewScanner(strings.NewReader(buff))
@@ -205,7 +205,7 @@ func (t T) IsActive() (bool, string, error) {
 			inactive = true
 		}
 		if inactive {
-			t.log.Debug().Msgf("status eval'ed down because: %s", s)
+			t.log.Debugf("status eval'ed down because: %s", s)
 			return false, msg, nil
 		}
 	}
@@ -307,10 +307,10 @@ func (t T) Deactivate() error {
 	filterStderrFunc := func(s string) {
 		switch {
 		case strings.Contains(s, "stopped"):
-			t.log.Info().Msg(s)
+			t.log.Infof(s)
 			return
 		}
-		t.log.Error().Msg(s)
+		t.log.Errorf(s)
 	}
 	args := []string{"--stop", t.devpathFromName()}
 	cmd := command.New(
@@ -339,10 +339,10 @@ func (t T) Activate() error {
 	filterStderrFunc := func(s string) {
 		switch {
 		case strings.Contains(s, "has been started"):
-			t.log.Info().Msg(s)
+			t.log.Infof(s)
 			return
 		}
-		t.log.Error().Msg(s)
+		t.log.Errorf(s)
 	}
 	args := []string{"--assemble", t.devpathFromName(), "-u", t.uuid}
 	cmd := command.New(
@@ -359,7 +359,7 @@ func (t T) Activate() error {
 	case 0:
 		// ok
 	case 2:
-		t.log.Info().Msg("no changes were made to the array")
+		t.log.Infof("no changes were made to the array")
 	default:
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -478,7 +478,7 @@ func (t T) DisableAutoActivation() error {
 		return nil
 	}
 	cf := mdadmConfigFile()
-	t.log.Info().Msgf("disable auto-assemble in %s", cf)
+	t.log.Infof("disable auto-assemble in %s", cf)
 	f, err := os.OpenFile(cf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err

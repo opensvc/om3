@@ -513,7 +513,7 @@ func (t T) WipeMD() error {
 			if strings.HasPrefix(s, "***") {
 				return
 			}
-			t.log.Error().Msg(s)
+			t.log.Errorf(s)
 		}),
 		command.WithIgnoredExitCodes(0, 20),
 	)

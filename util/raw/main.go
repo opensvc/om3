@@ -269,7 +269,7 @@ func (t T) UnbindBDevPath(bDevPath string) error {
 	}
 	b := binds.FromBDevPath(bDevPath)
 	if b == nil {
-		t.log.Info().Msgf("%s already unbound from its raw device", bDevPath)
+		t.log.Infof("%s already unbound from its raw device", bDevPath)
 		return nil
 	}
 	cDevPath := b.CDevPath()
