@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonauth"
@@ -16,11 +13,12 @@ import (
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
 	"github.com/opensvc/om3/daemon/listener/lsnrhttpux"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
-		log      zerolog.Logger
+		log      plog.Logger
 		stopFunc []func() error
 		cancel   context.CancelFunc
 	}
@@ -48,19 +46,22 @@ func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-func New(opts ...funcopt.O) *T {
+func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: log.Logger.With().Str("name", "listener").Logger(),
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/listener"),
+			Prefix: "daemon: listener: ",
+		},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Error().Err(err).Msg("listener funcopt.Apply")
+		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
 	return t
 }
 
 func (t *T) Start(ctx context.Context) error {
-	t.log.Info().Msg("listeners starting")
+	t.log.Infof("listeners starting")
 	ctx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
 	type startStopper interface {
@@ -68,8 +69,8 @@ func (t *T) Start(ctx context.Context) error {
 		Stop() error
 	}
 
-	if err := startCertFS(); err != nil {
-		t.log.Err(err).Msgf("start certificates volatile fs")
+	if err := t.startCertFS(); err != nil {
+		t.log.Errorf("start certificates volatile fs: %s", err)
 	} else {
 		t.stopFunc = append(t.stopFunc, stopCertFS)
 	}
@@ -96,18 +97,18 @@ func (t *T) Start(ctx context.Context) error {
 		t.stopFunc = append(t.stopFunc, lsnr.Stop)
 	}
 
-	t.log.Info().Msg("listeners started")
+	t.log.Infof("listeners started")
 	return nil
 }
 
 func (t *T) Stop() error {
-	t.log.Info().Msg("listeners stopping")
-	defer t.log.Info().Msg("listeners stopped")
+	t.log.Infof("listeners stopping")
+	defer t.log.Infof("listeners stopped")
 	var errs error
 	t.cancel()
 	for i, f := range t.stopFunc {
 		if err := f(); err != nil {
-			t.log.Error().Err(err).Msgf("stop listener %d", i)
+			t.log.Errorf("stop listener %d: %s", i, err)
 			errs = errors.Join(errs, errs)
 		}
 	}

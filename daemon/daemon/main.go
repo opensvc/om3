@@ -136,7 +136,7 @@ func (t *T) Start(ctx context.Context) error {
 		hbcache.New(2 * daemonenv.DrainChanDuration),
 		cstat.New(),
 		istat.New(),
-		listener.New(),
+		listener.New(t.ctx),
 		nmon.New(daemonenv.DrainChanDuration),
 		dns.New(daemonenv.DrainChanDuration),
 		discover.New(daemonenv.DrainChanDuration),
