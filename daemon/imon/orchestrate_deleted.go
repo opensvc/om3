@@ -5,7 +5,7 @@ import (
 )
 
 func (o *imon) orchestrateDeleted() {
-	o.log.Debug().Msgf("orchestrateDeleted starting from %s", o.state.State)
+	o.log.Debugf("orchestrateDeleted starting from %s", o.state.State)
 	switch o.state.State {
 	case instance.MonitorStateDeleted:
 		o.deletedFromDeleted()
@@ -22,7 +22,7 @@ func (o *imon) orchestrateDeleted() {
 		o.deletedFromWaitChildren()
 	case instance.MonitorStateDeleting:
 	default:
-		o.log.Warn().Msgf("orchestrateDeleted has no solution from state %s", o.state.State)
+		o.log.Warnf("orchestrateDeleted has no solution from state %s", o.state.State)
 	}
 }
 
@@ -35,7 +35,7 @@ func (o *imon) deletedFromIdle() {
 }
 
 func (o *imon) deletedFromDeleted() {
-	o.log.Warn().Msgf("have been deleted, we should die soon")
+	o.log.Warnf("have been deleted, we should die soon")
 }
 
 func (o *imon) deletedFromWaitChildren() {

@@ -13,7 +13,7 @@ func (o *imon) orchestrateFrozen() {
 		instance.MonitorStateReady:
 		o.frozenFromIdle()
 	default:
-		o.log.Warn().Msgf("daemon: imon: %s: orchestrateFrozen has no solution from state %s", o.path, o.state.State)
+		o.log.Warnf("orchestrateFrozen has no solution from state %s", o.state.State)
 	}
 }
 
@@ -26,7 +26,7 @@ func (o *imon) frozenFromIdle() {
 
 func (o *imon) frozenClearIfReached() bool {
 	if o.instStatus[o.localhost].IsFrozen() {
-		o.log.Info().Msgf("daemon: imon: %s: instance state is frozen -> set reached, clear local expect", o.path)
+		o.log.Infof("instance state is frozen -> set reached, clear local expect")
 		o.doneAndIdle()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()

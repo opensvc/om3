@@ -68,7 +68,7 @@ func (o *imon) hasNonLeaderProvisioned() bool {
 
 func (o *imon) unprovisionedClearIfReached() bool {
 	reached := func(msg string) bool {
-		o.log.Info().Msgf("daemon: imon: %s: "+msg, o.path)
+		o.log.Infof(msg)
 		o.doneAndIdle()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()
