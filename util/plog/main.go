@@ -17,29 +17,24 @@ type (
 	}
 )
 
-func (t *Logger) keepOrigin() *zerolog.Logger {
-	log := t.Logger.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
-	return &log
-}
-
 func (t *Logger) Msgf(format string, a ...any) string {
 	return fmt.Sprintf(t.Prefix+format, a...)
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.keepOrigin().Info().Msg(t.Msgf(format, a...))
+	t.Info().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Debugf(format string, a ...any) {
-	t.keepOrigin().Debug().Msg(t.Msgf(format, a...))
+	t.Debug().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
-	t.keepOrigin().Error().Msg(t.Msgf(format, a...))
+	t.Error().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Warnf(format string, a ...any) {
-	t.keepOrigin().Warn().Msg(t.Msgf(format, a...))
+	t.Warn().Msg(t.Msgf(format, a...))
 }
 
 // PkgLogger returns Logger from context with pkg attr set
