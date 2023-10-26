@@ -143,11 +143,11 @@ func (t *tx) send(b []byte) {
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {
-			t.log.Debugf("daemon: hbmcast.tx: marshal frame: %s", err)
+			t.log.Debugf("marshal frame: %s", err)
 			return
 		}
 		if _, err := c.Write(dgram); err != nil {
-			t.log.Debugf("daemon: hbmcast.tx: write in udp conn to %s: %s", t.udpAddr, err)
+			t.log.Debugf("write in udp conn to %s: %s", t.udpAddr, err)
 			return
 		}
 	}
