@@ -15,7 +15,7 @@ func (o *nmon) frozenFromIdle() {
 	}
 	o.state.State = node.MonitorStateFreezing
 	o.updateIfChange()
-	o.log.Info().Msg("daemon: nmon: run action freeze")
+	o.log.Infof("run action freeze")
 	nextState := node.MonitorStateIdle
 	if err := o.crmFreeze(); err != nil {
 		nextState = node.MonitorStateFreezeFailed
@@ -26,7 +26,7 @@ func (o *nmon) frozenFromIdle() {
 
 func (o *nmon) frozenClearIfReached() bool {
 	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
-		o.log.Info().Msg("daemon: nmon: instance state is frozen, unset global expect")
+		o.log.Infof("instance state is frozen, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = node.MonitorGlobalExpectNone
 		o.clearPending()

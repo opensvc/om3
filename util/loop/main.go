@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 
 type (
 	T struct {
-		log *zerolog.Logger
+		log *plog.Logger
 	}
 	Info struct {
 		LoopDevices []InfoEntry `json:"loopdevices"`
@@ -43,7 +44,7 @@ func New(opts ...funcopt.O) *T {
 	_ = funcopt.Apply(&t, opts...)
 	return &t
 }
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.log = log

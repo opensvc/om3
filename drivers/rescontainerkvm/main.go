@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -155,7 +156,7 @@ func (t T) checkCapabilities() bool {
 
 func (t T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
-		t.Debugf("isOperational: %s", err)
+		t.Log().Debugf("isOperational: %s", err)
 		return false, nil
 	}
 	return true, nil
@@ -182,7 +183,6 @@ func (t *T) define() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("define", t.configFile()),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -195,7 +195,6 @@ func (t *T) undefine() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("undefine", t.Name),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -208,7 +207,6 @@ func (t *T) start() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("start", t.Name),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -222,7 +220,6 @@ func (t *T) stop() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("shutdown", t.Name),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -236,7 +233,6 @@ func (t *T) destroy() error {
 		command.WithName("virsh"),
 		command.WithVarArgs("destroy", t.Name),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -281,7 +277,7 @@ func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Infof("container %s is already up", t.Name)
+		t.Log().Infof("container %s is already up", t.Name)
 		return nil
 	}
 	if err := t.containerStart(ctx); err != nil {
@@ -306,7 +302,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isDown(); err != nil {
 		return err
 	} else if v {
-		t.Infof("container %s is already down", t.Name)
+		t.Log().Infof("container %s is already down", t.Name)
 		return nil
 	}
 	if err := t.containerStop(ctx); err != nil {
@@ -316,7 +312,11 @@ func (t T) Stop(ctx context.Context) error {
 }
 
 func (t T) waitForDown() error {
-	t.Log().Info().Dur("timeout", *t.StopTimeout).Msg(t.Msgf("wait for %s shutdown (timeout %s)", t.Name, *t.StopTimeout))
+	logger := plog.Logger{
+		Logger: t.Log().With().Dur("timeout", *t.StopTimeout).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("wait for %s shutdown (timeout %s)", t.Name, *t.StopTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isDown()
 		if err != nil {
@@ -327,11 +327,15 @@ func (t T) waitForDown() error {
 }
 
 func (t T) waitForUp() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msg(t.Msgf("wait for %s up (timeout %s)", t.Name, *t.StartTimeout))
+	logger := plog.Logger{
+		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("wait for %s up (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isUp()
 		if err != nil {
-			t.Errorf("abort waiting for %s up: %s", t.Name, err)
+			t.Log().Errorf("abort waiting for %s up: %s", t.Name, err)
 			return true
 		}
 		return v
@@ -339,11 +343,15 @@ func (t T) waitForUp() error {
 }
 
 func (t T) waitForPing() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msg(t.Msgf("wait for %s ping (timeout %s)", t.Name, *t.StartTimeout))
+	logger := plog.Logger{
+		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("wait for %s ping (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isPinging()
 		if err != nil {
-			t.Errorf("abort waiting for %s ping: %s", t.Name, err)
+			t.Log().Errorf("abort waiting for %s ping: %s", t.Name, err)
 			return true
 		}
 		return v
@@ -351,11 +359,15 @@ func (t T) waitForPing() error {
 }
 
 func (t T) waitForOperational() error {
-	t.Log().Info().Dur("timeout", *t.StartTimeout).Msg(t.Msgf("wait for %s operational (timeout %s)", t.Name, *t.StartTimeout))
+	logger := plog.Logger{
+		Logger: t.Log().With().Dur("timeout", *t.StartTimeout).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("wait for %s operational (timeout %s)", t.Name, *t.StartTimeout)
 	return WaitFor(func() bool {
 		v, err := t.isOperational()
 		if err != nil {
-			t.Errorf("abort waiting for %s operational: %s", t.Name, err)
+			t.Log().Errorf("abort waiting for %s operational: %s", t.Name, err)
 			return true
 		}
 		return v
@@ -373,7 +385,7 @@ func (t T) containerStop(ctx context.Context) error {
 			return err
 		}
 		if err := t.waitForDown(); err != nil {
-			t.Warnf("waited too long for shutdown")
+			t.Log().Warnf("waited too long for shutdown")
 			if err := t.destroy(); err != nil {
 				return err
 			}
@@ -383,7 +395,7 @@ func (t T) containerStop(ctx context.Context) error {
 			return err
 		}
 	default:
-		t.Infof("skip stop, container state=%s", state)
+		t.Log().Infof("skip stop, container state=%s", state)
 		return nil
 	}
 	return nil
@@ -493,7 +505,7 @@ func (t T) setPartitions() error {
 	if n := root.SelectElement("//resource/partition"); n != nil {
 		p := n.InnerText()
 		if p != cgroupDir {
-			t.Infof("set text of //domain/resource/partition: %s", cgroupDir)
+			t.Log().Infof("set text of //domain/resource/partition: %s", cgroupDir)
 			partitionText := &xmlquery.Node{
 				Data: cgroupDir,
 				Type: xmlquery.TextNode,
@@ -501,7 +513,7 @@ func (t T) setPartitions() error {
 			n.FirstChild = partitionText
 		}
 	} else if resourceElem := root.SelectElement("//resource"); resourceElem != nil {
-		t.Infof("add to //domain/resource: <partition>%s</partition>", cgroupDir)
+		t.Log().Infof("add to //domain/resource: <partition>%s</partition>", cgroupDir)
 		partitionElem := &xmlquery.Node{
 			Data: "partition",
 			Type: xmlquery.ElementNode,
@@ -513,7 +525,7 @@ func (t T) setPartitions() error {
 		partitionElem.FirstChild = partitionText
 		xmlquery.AddChild(resourceElem, partitionElem)
 	} else {
-		t.Infof("add to //domain: <resource><partition>%s</partition></resource>", cgroupDir)
+		t.Log().Infof("add to //domain: <resource><partition>%s</partition></resource>", cgroupDir)
 		resourceElem := &xmlquery.Node{
 			Data: "resource",
 			Type: xmlquery.ElementNode,
@@ -548,7 +560,7 @@ func (t T) unsetPartitions() error {
 		return err
 	}
 	if n := xmlquery.FindOne(doc, "//domain/resource/partition"); n != nil {
-		t.Infof("remove //domain/resource/partition")
+		t.Log().Infof("remove //domain/resource/partition")
 		xmlquery.RemoveFromTree(n)
 	}
 	return nil
@@ -598,7 +610,7 @@ func (t T) provisioned() bool {
 
 func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	if !t.provisioned() {
-		t.Infof("skip kvm unprovision: container is not provisioned")
+		t.Log().Infof("skip kvm unprovision: container is not provisioned")
 		return nil
 	}
 	if t.hasConfigFile() {
@@ -618,7 +630,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 
 func (t T) ProvisionLeader(ctx context.Context) error {
 	if t.provisioned() {
-		t.Infof("skip kvm provision: container is provisioned")
+		t.Log().Infof("skip kvm provision: container is provisioned")
 		return nil
 	}
 	if len(t.VirtInst) == 0 {
@@ -628,7 +640,6 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		command.WithName("virtinst"),
 		command.WithArgs(t.VirtInst),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -724,7 +735,11 @@ func (t T) execViaInternalSSH(cmd string) error {
 	if err := session.Run(cmd); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		t.Log().Debug().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Msg(t.Msgf("rexec '%s' on host %s exited with code %d", cmd, hn, ec))
+		logger := plog.Logger{
+			Logger: t.Log().With().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Logger(),
+			Prefix: t.Log().Prefix,
+		}
+		logger.Debugf("rexec '%s' on host %s exited with code %d", cmd, hn, ec)
 		return err
 	}
 	return nil
@@ -735,7 +750,6 @@ func (t T) execViaRCmd(args []string) error {
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
@@ -841,7 +855,7 @@ func (t T) cgroupDir() string {
 
 func (t *T) Abort(ctx context.Context) bool {
 	if v, err := t.isUp(); err != nil {
-		t.Warnf("no-abort: %s", err)
+		t.Log().Warnf("no-abort: %s", err)
 		return false
 	} else if v {
 		// the local instance is already up.
@@ -855,22 +869,22 @@ func (t *T) Abort(ctx context.Context) bool {
 
 func (t *T) abortPing() bool {
 	hn := t.hostname()
-	t.Infof("abort test: ping %s", hn)
+	t.Log().Infof("abort test: ping %s", hn)
 
 	if pinger, err := ping.NewPinger(hn); err == nil {
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {
-			t.Warnf("no-abort: pinger err: %s", err)
+			t.Log().Warnf("no-abort: pinger err: %s", err)
 			return false
 		}
 		if pinger.Statistics().PacketsRecv > 0 {
-			t.Infof("abort: %s is alive", hn)
+			t.Log().Infof("abort: %s is alive", hn)
 			return true
 		}
 		return false
 	} else {
-		t.Debugf("disable ping abort check: %s", err)
+		t.Log().Debugf("disable ping abort check: %s", err)
 	}
 	return false
 }
@@ -879,7 +893,7 @@ func (t *T) abortPeerUp() bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Infof("abort: %s is up on %s", t.hostname(), n)
+		t.Log().Infof("abort: %s is up on %s", t.hostname(), n)
 		return true
 	}
 	return false
@@ -917,7 +931,7 @@ func (t T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Debugf("ssh abort check on %s: %s", n, err)
+			t.Log().Debugf("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil

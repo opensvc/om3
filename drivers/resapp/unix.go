@@ -79,7 +79,7 @@ func (t T) SortKey() string {
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
-		t.Errorf("prepare 'stop' command: %s", err)
+		t.Log().Errorf("prepare 'stop' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
 		}
@@ -91,7 +91,6 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
@@ -101,11 +100,11 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	appStatus := r.Status(ctx)
 	if appStatus == status.Down {
-		t.Infof("already down")
+		t.Log().Infof("already down")
 		return nil
 	}
 
-	t.Infof("run: %s", cmd)
+	t.Log().Infof("run: %s", cmd)
 	return cmd.Run()
 }
 
@@ -153,7 +152,7 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	var opts []funcopt.O
 	var err error
 	if opts, err = t.GetFuncOpts(t.CheckCmd, "check"); err != nil {
-		t.Errorf("prepare 'status' command: %s", err)
+		t.Log().Errorf("prepare 'status' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
 		}
@@ -168,7 +167,6 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
 		command.WithTimeout(t.GetTimeout("check")),
@@ -180,19 +178,19 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	}
 	cmd := command.New(opts...)
 
-	t.Debugf("status running command: %s", cmd.String())
+	t.Log().Debugf("status running command: %s", cmd.String())
 	if err = cmd.Start(); err != nil {
 		return status.Undef
 	}
 	if err = cmd.Wait(); err != nil {
-		t.Debugf("status is down")
+		t.Log().Debugf("status is down")
 		return status.Down
 	}
 	resultStatus, err := t.ExitCodeToStatus(cmd.ExitCode())
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 	}
-	t.Debugf("status result: %v", resultStatus)
+	t.Log().Debugf("status result: %v", resultStatus)
 	return resultStatus
 }
 
@@ -215,7 +213,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Debugf("no base command for action '%v'", action)
+		t.Log().Debugf("no base command for action '%v'", action)
 		return nil, nil
 	}
 	return command.CmdArgsFromString(baseCommand)
@@ -224,7 +222,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 // CmdArgs returns the command argv of an action
 func (t T) CmdArgs(s string, action string) ([]string, error) {
 	if len(s) == 0 {
-		t.Debugf("nothing to do for action '%v'", action)
+		t.Log().Debugf("nothing to do for action '%v'", action)
 		return nil, nil
 	}
 	baseCommandSlice, err := t.BaseCmdArgs(s, action)
@@ -291,7 +289,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	var opts []funcopt.O
 	var err error
 	if opts, err = t.GetFuncOpts(t.InfoCmd, "info"); err != nil {
-		t.Errorf("prepare 'info' command: %s", err)
+		t.Log().Errorf("prepare 'info' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
 		}
@@ -303,7 +301,6 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithTimeout(t.GetTimeout("info")),
 		command.WithBufferedStdout(),
 	)
@@ -336,7 +333,7 @@ func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 		case true:
 			scriptValue := t.getScript()
 			if scriptValue == "" {
-				t.Warnf("action '%v' as true value but 'script' keyword is empty", action)
+				t.Log().Warnf("action '%v' as true value but 'script' keyword is empty", action)
 				return "", fmt.Errorf("unable to get script value")
 			}
 			return scriptValue + " " + action, nil

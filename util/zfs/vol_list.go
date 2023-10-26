@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/rs/zerolog"
 )
 
@@ -15,7 +16,7 @@ type (
 	DatasetType      int32
 	ListDatasetsOpts struct {
 		Types []DatasetType
-		Log   *zerolog.Logger
+		Log   *plog.Logger
 	}
 )
 
@@ -46,7 +47,7 @@ func (t DatasetType) String() string {
 	return datasetTypeStrMap[t]
 }
 
-func ListDatasetsWithLogger(l *zerolog.Logger) funcopt.O {
+func ListDatasetsWithLogger(l *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*ListDatasetsOpts)
 		t.Log = l

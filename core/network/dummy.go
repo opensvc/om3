@@ -6,7 +6,7 @@ import "github.com/rs/zerolog"
 
 type (
 	logger interface {
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 	}
 )
 

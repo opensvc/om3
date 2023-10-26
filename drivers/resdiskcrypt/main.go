@@ -97,10 +97,10 @@ func (t T) forgetPassphrase() error {
 	}
 	keyname := t.passphraseKeyname()
 	if !t.ManagePassphrase {
-		t.Log().Info().Msgf("leave key %s in %s", keyname, sec.Path())
+		t.Log().Infof("leave key %s in %s", keyname, sec.Path())
 		return nil
 	}
-	t.Log().Info().Msgf("remove key %s in %s", keyname, sec.Path())
+	t.Log().Infof("remove key %s in %s", keyname, sec.Path())
 	return sec.RemoveKey(keyname)
 }
 
@@ -202,7 +202,6 @@ func (t T) activate() error {
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksOpen", devp, name, "-"),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -245,7 +244,6 @@ func (t T) deactivate(force bool) error {
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksClose", dev.String(), name),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -263,7 +261,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.exposedDevpath())
+		t.Log().Infof("%s is already up", t.exposedDevpath())
 		return nil
 	}
 	if err := t.activate(); err != nil {
@@ -279,7 +277,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.exposedDevpath())
+		t.Log().Infof("%s is already down", t.exposedDevpath())
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {
@@ -336,7 +334,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.exists(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already luks formated", dev)
+		t.Log().Infof("%s is already luks formated", dev)
 		return nil
 	}
 	if t.ManagePassphrase {
@@ -363,7 +361,6 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		command.WithName(cryptsetup),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -398,7 +395,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	if v, err := t.exists(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s already erased", dev)
+		t.Log().Infof("%s already erased", dev)
 		return nil
 	}
 	if err := t.erase(dev); err != nil {
@@ -413,7 +410,6 @@ func (t T) erase(dev string) error {
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksErase", "--batch-mode", dev),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),

@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/drivers/resapp"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
 )
 
@@ -24,6 +25,20 @@ type T struct {
 
 func New() resource.Driver {
 	return &T{}
+}
+
+func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Stringer("cmd", cmd).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+}
+
+func (t T) loggerWithProc(p proc.T) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Str("cmd", p.CommandLine()).Int("cmd_pid", p.PID()).Logger(),
+		Prefix: t.Log().Prefix,
+	}
 }
 
 // Start the Resource
@@ -37,7 +52,7 @@ func (t T) Start(ctx context.Context) (err error) {
 	}
 	appStatus := t.Status(ctx)
 	if appStatus == status.Up {
-		t.Infof("already up")
+		t.Log().Infof("already up")
 		return nil
 	}
 	if err := t.ApplyPGChain(ctx); err != nil {
@@ -45,11 +60,10 @@ func (t T) Start(ctx context.Context) (err error) {
 	}
 	opts = append(opts,
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 	)
 	cmd := command.New(opts...)
-	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("run: %s", cmd))
+	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	} else {
@@ -77,11 +91,11 @@ func (t *T) stop(ctx context.Context) error {
 		return err
 	}
 	if procs.Len() == 0 {
-		t.Infof("already stopped")
+		t.Log().Infof("already stopped")
 		return nil
 	}
 	for _, p := range procs.Procs() {
-		t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("send termination signal to process %d", p.PID()))
+		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())
 		p.Signal(syscall.SIGTERM)
 	}
 	prev := procs
@@ -92,7 +106,7 @@ func (t *T) stop(ctx context.Context) error {
 		}
 		for _, p := range prev.Procs() {
 			if !procs.HasPID(p.PID()) {
-				t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("process %d is now terminated", p.PID()))
+				t.loggerWithProc(p).Infof("process %d is now terminated", p.PID())
 			}
 		}
 		if procs.Len() == 0 {

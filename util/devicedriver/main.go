@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/rs/zerolog"
 )
 
@@ -17,10 +18,10 @@ type (
 		Path() string
 	}
 	setLogger interface {
-		SetLog(*zerolog.Logger)
+		SetLog(*plog.Logger)
 	}
 	logT struct {
-		log *zerolog.Logger
+		log *plog.Logger
 	}
 	Loop struct {
 		logT
@@ -34,11 +35,11 @@ var (
 	procDevicesCache map[uint32]string
 )
 
-func (t *logT) SetLog(log *zerolog.Logger) {
+func (t *logT) SetLog(log *plog.Logger) {
 	t.log = log
 }
 
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(setLogger)
 		t.SetLog(log)

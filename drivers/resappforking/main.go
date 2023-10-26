@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/drivers/resapp"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 // T is the driver structure.
@@ -20,6 +21,13 @@ type T struct {
 
 func New() resource.Driver {
 	return &T{}
+}
+
+func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Stringer("cmd", cmd).Logger(),
+		Prefix: t.Log().Prefix,
+	}
 }
 
 // Start the Resource
@@ -37,7 +45,6 @@ func (t T) Start(ctx context.Context) (err error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
@@ -47,11 +54,11 @@ func (t T) Start(ctx context.Context) (err error) {
 
 	appStatus := t.Status(ctx)
 	if appStatus == status.Up {
-		t.Infof("already up")
+		t.Log().Infof("already up")
 		return nil
 	}
 
-	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("run: %s", cmd))
+	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	err = cmd.Run()
 	if err == nil {
 		actionrollback.Register(ctx, func() error {

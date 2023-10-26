@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/confirmation"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
 )
 
@@ -60,6 +61,20 @@ func (t T) Run(ctx context.Context) error {
 	return err
 }
 
+func (t T) loggerWithProc(p proc.T) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Str("cmd", p.CommandLine()).Int("cmd_pid", p.PID()).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+}
+
+func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Stringer("cmd", cmd).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+}
+
 func (t T) lockedRun(ctx context.Context) (err error) {
 	if !env.HasDaemonOrigin() {
 		defer t.notifyRunDone()
@@ -80,7 +95,6 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	if t.LogOutputs {
 		opts = append(opts,
 			command.WithLogger(t.Log()),
-			command.WithLogPrefix(t.Msgf("")+": "),
 			command.WithStdoutLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.WarnLevel),
 		)
@@ -90,15 +104,15 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 		command.WithIgnoredExitCodes(),
 	)
 	cmd := command.New(opts...)
-	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("run %s", cmd))
+	t.loggerWithCmd(cmd).Infof("run %s", cmd)
 	err = cmd.Run()
 	if err := t.writeLastRun(cmd.ExitCode()); err != nil {
 		return err
 	}
 	if err != nil {
-		t.Log().Err(err).Msgf(t.Msgf("write last run: %s", err))
+		t.Log().Errorf("write last run: %s", err)
 		if err := t.onError(); err != nil {
-			t.Log().Warn().Msgf(t.Msgf("on error: %s", err))
+			t.Log().Warnf("on error: %s", err)
 		}
 	}
 	if s, err := t.ExitCodeToStatus(cmd.ExitCode()); err != nil {
@@ -118,7 +132,7 @@ func (t T) onError() error {
 		return nil
 	}
 	cmd := command.New(opts...)
-	t.Log().Info().Stringer("cmd", cmd).Msg(t.Msgf("on error run"))
+	t.loggerWithCmd(cmd).Infof("on error run")
 	return cmd.Run()
 }
 
@@ -139,11 +153,11 @@ func (t *T) stop(ctx context.Context) error {
 		return err
 	}
 	if procs.Len() == 0 {
-		t.Log().Info().Msg(t.Msgf("already stopped"))
+		t.Log().Infof("already stopped")
 		return nil
 	}
 	for _, p := range procs.Procs() {
-		t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("send termination signal to process %d", p.PID()))
+		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())
 		p.Signal(syscall.SIGTERM)
 	}
 	prev := procs
@@ -154,7 +168,7 @@ func (t *T) stop(ctx context.Context) error {
 		}
 		for _, p := range prev.Procs() {
 			if !procs.HasPID(p.PID()) {
-				t.Log().Info().Str("cmd", p.CommandLine()).Msg(t.Msgf("process %d is now terminated", p.PID()))
+				t.loggerWithProc(p).Infof("process %d is now terminated", p.PID())
 			}
 		}
 		if procs.Len() == 0 {
@@ -271,7 +285,7 @@ func (t T) handleConfirmation(ctx context.Context) error {
 		return nil
 	}
 	if actioncontext.IsConfirm(ctx) {
-		t.Log().Info().Msg(t.Msgf("run confirmed by --confirm command line option"))
+		t.Log().Infof("run confirmed by --confirm command line option")
 		return nil
 	}
 	if actioncontext.IsCron(ctx) {
@@ -289,7 +303,7 @@ Enter "yes" if you really want to run.`, t.RID())
 		return fmt.Errorf("read confirmation: %w", err)
 	}
 	if s == "yes" {
-		t.Log().Info().Msg(t.Msgf("run confirmed interactively"))
+		t.Log().Infof("run confirmed interactively")
 		return nil
 	}
 	return fmt.Errorf("run aborted")

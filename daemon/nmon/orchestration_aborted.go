@@ -3,7 +3,7 @@ package nmon
 import "github.com/opensvc/om3/core/node"
 
 func (o *nmon) orchestrateAborted() {
-	o.log.Info().Msg("daemon: nmon: abort orchestration: unset global expect")
+	o.log.Infof("abort orchestration: unset global expect")
 	o.change = true
 	o.state.GlobalExpect = node.MonitorGlobalExpectNone
 

@@ -1,11 +1,10 @@
 package zfs
 
-import "github.com/rs/zerolog"
+import "github.com/opensvc/om3/util/plog"
 
 type (
 	Dataset interface {
 		GetName() string
-		GetLog() *zerolog.Logger
-		GetLogPrefix() string
+		GetLog() *plog.Logger
 	}
 )

@@ -28,6 +28,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/schedule"
@@ -107,20 +108,20 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	isCron := actioncontext.IsCron(ctx)
 
 	if t.isFlexAndNotPrimary() {
-		t.Log().Error().Msgf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
+		t.Log().Errorf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
 	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
-		t.Log().Error().Msgf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+		t.Log().Errorf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
 	for _, nodename := range t.getTargetPeernames(target) {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
-				t.Log().Debug().Msgf("%s", err)
+				t.Log().Debugf("%s", err)
 			} else {
-				t.Log().Info().Msgf("%s", err)
+				t.Log().Infof("%s", err)
 			}
 			continue
 		}
@@ -353,7 +354,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 	if v, err := t.isDstFSMounted(nodename); err != nil {
 		return err
 	} else if !v {
-		t.Log().Error().Msgf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
+		t.Log().Errorf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
 		return fmt.Errorf("the destination fs %s is not mounted on node %s. refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
 	}
 	options := t.fullOptions()
@@ -377,7 +378,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
 			stats.SentBytes = i
 		} else {
-			t.Log().Warn().Msgf("error parsing rsync bytes sent: %s", err)
+			t.Log().Warnf("error parsing rsync bytes sent: %s", err)
 		}
 	}
 
@@ -394,7 +395,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
 			stats.ReceivedBytes = i
 		} else {
-			t.Log().Warn().Msgf("error parsing rsync bytes received: %s", err)
+			t.Log().Warnf("error parsing rsync bytes received: %s", err)
 		}
 	}
 
@@ -405,7 +406,6 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		command.WithArgs(args),
 		command.WithTimeout(timeout),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
@@ -422,12 +422,11 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 	}
 	t.progress(ctx, nodename, rawconfig.Colorize.Optimal("✓"), nil, nil)
 	stats.Close()
-	t.Log().Info().
-		Float64("speed_bps", stats.SpeedBPS()).
-		Dur("duration", stats.Duration()).
-		Uint64("sent_b", stats.SentBytes).
-		Uint64("received_b", stats.ReceivedBytes).
-		Msgf("sync stat")
+	logger := plog.Logger{
+		Logger: t.Log().With().Float64("speed_bps", stats.SpeedBPS()).Dur("duration", stats.Duration()).Uint64("sent_b", stats.SentBytes).Uint64("received_b", stats.ReceivedBytes).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("sync stat")
 
 	if t.peerSyncLastSyncFile(nodename); err != nil {
 		return err
@@ -458,7 +457,6 @@ func (t T) peerSyncLastSyncFile(nodename string) error {
 		command.WithArgs(args),
 		command.WithTimeout(10*time.Second),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),

@@ -23,7 +23,7 @@ func (t *T) startBridgePort(ctx context.Context, dev string) error {
 	actionrollback.Register(ctx, func() error {
 		return t.stopBridgePort(dev)
 	})
-	t.Infof("set %s master %s", dev, t.IpDev)
+	t.Log().Infof("set %s master %s", dev, t.IpDev)
 	return netlink.LinkSetMaster(link, masterLink)
 }
 
@@ -32,7 +32,7 @@ func (t *T) stopBridgePort(dev string) error {
 	if err != nil {
 		return nil
 	}
-	t.Infof("unset %s master %s", dev, t.IpDev)
+	t.Log().Infof("unset %s master %s", dev, t.IpDev)
 	return netlink.LinkSetMaster(link, nil)
 }
 

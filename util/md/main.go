@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -22,7 +23,7 @@ type (
 	T struct {
 		name string
 		uuid string
-		log  *zerolog.Logger
+		log  *plog.Logger
 	}
 )
 
@@ -38,7 +39,7 @@ func New(name string, uuid string, opts ...funcopt.O) *T {
 	_ = funcopt.Apply(&t, opts...)
 	return &t
 }
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.log = log

@@ -37,11 +37,11 @@ func (o *nmon) setArbitratorConfig() {
 			Insecure: o.config.GetBool(key.New(s, "insecure")),
 		}
 		if a.Uri == "" {
-			o.log.Debug().Msgf("daemon: nmon: arbitrator keyword 'name' is deprecated, use 'uri' instead")
+			o.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
 			a.Uri = o.config.GetString(key.New(s, "name"))
 		}
 		if a.Uri == "" {
-			o.log.Warn().Msgf("daemon: nmon: ignored arbitrator %s (empty uri)", s)
+			o.log.Warnf("ignored arbitrator %s (empty uri)", s)
 			continue
 		}
 		arbitrators[name] = a
@@ -70,8 +70,8 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 		url := o.arbitrators[name].Uri
 		aStatus := status.Up
 		if r.err != nil {
-			o.log.Warn().Msgf("daemon: nmon: arbitrator#%s is down", name)
-			o.log.Debug().Err(r.err).Msgf("daemon: nmon: arbitrator#%s is down: %s", name, r.err)
+			o.log.Warnf("arbitrator#%s is down", name)
+			o.log.Debugf("arbitrator#%s is down: %s", name, r.err)
 			aStatus = status.Down
 			o.bus.Pub(&msgbus.ArbitratorError{
 				Node: o.localhost,

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/rs/zerolog"
 )
 
@@ -51,7 +52,7 @@ func extIsFormated(s string) (bool, error) {
 	}
 }
 
-func xMKFS(x string, s string, xargs []string, log *zerolog.Logger) error {
+func xMKFS(x string, s string, xargs []string, log *plog.Logger) error {
 	if _, err := exec.LookPath(x); err != nil {
 		return fmt.Errorf("%s not found", x)
 	}

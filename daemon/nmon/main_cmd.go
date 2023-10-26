@@ -34,7 +34,7 @@ func (o *nmon) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	o.clusterConfig = c.Value
 
 	if err := o.loadAndPublishConfig(); err != nil {
-		o.log.Error().Err(err).Msgf("daemon: nmon: load and publish config from cluster config updated event: %s", err)
+		o.log.Errorf("load and publish config from cluster config updated event: %s", err)
 	}
 	o.setArbitratorConfig()
 
@@ -47,7 +47,7 @@ func (o *nmon) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 // they care about.
 func (o *nmon) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 	if err := o.loadAndPublishConfig(); err != nil {
-		o.log.Error().Err(err).Msgf("daemon: nmon: load and publish config from node config file updated event: %s", err)
+		o.log.Errorf("load and publish config from node config file updated event: %s", err)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (o *nmon) checkRejoinTicker() {
 		return
 	} else {
 		o.rejoinTicker.Reset(left)
-		o.log.Info().Msgf("daemon: nmon: rejoin grace period timer reset to %s", left)
+		o.log.Infof("rejoin grace period timer reset to %s", left)
 	}
 }
 
@@ -107,18 +107,18 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidState, *c.Value.State)
 			sendError(err)
-			o.log.Warn().Msgf("daemon: nmon: %s", err)
+			o.log.Warnf("%s", err)
 			return
 		}
 
 		if o.state.State == *c.Value.State {
 			err := fmt.Errorf("%w: state is already %s", node.ErrSameState, *c.Value.State)
 			sendError(err)
-			o.log.Info().Msgf("daemon: nmon: %s", err)
+			o.log.Infof("%s", err)
 			return
 		}
 
-		o.log.Info().Msgf("daemon: nmon: set state %s -> %s", o.state.State, *c.Value.State)
+		o.log.Infof("set state %s -> %s", o.state.State, *c.Value.State)
 		o.change = true
 		o.state.State = *c.Value.State
 	}
@@ -131,18 +131,18 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			sendError(err)
-			o.log.Warn().Msgf("daemon: nmon: %s", err)
+			o.log.Warnf("%s", err)
 			return
 		}
 
 		if o.state.LocalExpect == *c.Value.LocalExpect {
 			err := fmt.Errorf("%w: %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
 			sendError(err)
-			o.log.Info().Msgf("daemon: nmon: %s", err)
+			o.log.Infof("%s", err)
 			return
 		}
 
-		o.log.Info().Msgf("daemon: nmon: set local expect %s -> %s", o.state.LocalExpect, *c.Value.LocalExpect)
+		o.log.Infof("set local expect %s -> %s", o.state.LocalExpect, *c.Value.LocalExpect)
 		o.change = true
 		o.state.LocalExpect = *c.Value.LocalExpect
 	}
@@ -152,7 +152,7 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			return
 		}
 		if _, ok := node.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("daemon: nmon: invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
+			o.log.Warnf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
 			return
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
@@ -160,26 +160,26 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					sendError(err)
-					o.log.Info().Msgf("daemon: nmon: %s", err)
+					o.log.Infof("%s", err)
 					return
 				}
 				if !data.State.IsRankable() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					sendError(err)
-					o.log.Error().Msgf("daemon: nmon: %s", err)
+					o.log.Errorf("%s", err)
 					return
 				}
 				if data.State.IsDoing() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					sendError(err)
-					o.log.Error().Msgf("daemon: nmon: %s", err)
+					o.log.Errorf("%s", err)
 					return
 				}
 			}
 		}
 
 		if *c.Value.GlobalExpect != o.state.GlobalExpect {
-			o.log.Info().Msgf("daemon: nmon: set global expect %s -> %s", o.state.GlobalExpect, *c.Value.GlobalExpect)
+			o.log.Infof("set global expect %s -> %s", o.state.GlobalExpect, *c.Value.GlobalExpect)
 			o.change = true
 			o.state.GlobalExpect = *c.Value.GlobalExpect
 			o.state.GlobalExpectUpdatedAt = time.Now()
@@ -212,25 +212,25 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 	var forgetType string
 	if !stringslice.Has(c.Node, clusternode.Get()) {
 		forgetType = "removed"
-		o.log.Info().Msgf("daemon: nmon: forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+		o.log.Infof("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
 	} else {
 		forgetType = "lost"
-		o.log.Warn().Msgf("daemon: nmon: forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+		o.log.Warnf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
 	}
 
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Info().Msgf("daemon: nmon: forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
+		o.log.Infof("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
 		return
 	}
 	if !o.clusterConfig.Quorum {
-		o.log.Warn().Msgf("daemon: nmon: cluster is split, ignore as cluster.quorum is false")
+		o.log.Warnf("cluster is split, ignore as cluster.quorum is false")
 		return
 	}
 	if o.frozen {
-		o.log.Warn().Msgf("daemon: nmon: cluster is split, ignore as the node is frozen")
+		o.log.Warnf("cluster is split, ignore as the node is frozen")
 		return
 	}
-	o.log.Warn().Msgf("daemon: nmon: cluster is split, check for arbitrator votes")
+	o.log.Warnf("cluster is split, check for arbitrator votes")
 	total := len(o.clusterConfig.Nodes) + len(o.arbitrators)
 	arbitratorVotes := o.arbitratorVotes()
 	votes := len(o.livePeers) + len(arbitratorVotes)
@@ -239,11 +239,11 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 		livePeers = append(livePeers, k)
 	}
 	if votes > total/2 {
-		o.log.Warn().Msgf("daemon: nmon: cluster is split, we have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+		o.log.Warnf("cluster is split, we have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
 		return
 	}
 	action := o.nodeConfig.SplitAction
-	o.log.Warn().Msgf("daemon: nmon: cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+	o.log.Warnf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
 	o.bus.Pub(&msgbus.NodeSplitAction{
 		Node:            o.localhost,
 		Action:          action,
@@ -255,14 +255,14 @@ func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 
 	splitAction, ok := slitActions[action]
 	if !ok {
-		o.log.Error().Msgf("daemon: nmon: invalid split action %s", action)
+		o.log.Errorf("invalid split action %s", action)
 		return
 	}
-	o.log.Warn().Msgf("daemon: nmon: cluster is split, will call split action %s in %s", action, splitActionDelay)
+	o.log.Warnf("cluster is split, will call split action %s in %s", action, splitActionDelay)
 	time.Sleep(splitActionDelay)
-	o.log.Warn().Msgf("daemon: nmon: cluster is split, now calling split action %s", action)
+	o.log.Warnf("cluster is split, now calling split action %s", action)
 	if err := splitAction(); err != nil {
-		o.log.Error().Err(err).Msgf("daemon: nmon: split action %s failed", action)
+		o.log.Errorf("split action %s failed: %s", action, err)
 	}
 }
 
@@ -281,7 +281,7 @@ func (o *nmon) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 }
 
 func (o *nmon) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
-	o.log.Debug().Msgf("daemon: nmon: deleted nmon for node %s", c.Node)
+	o.log.Debugf("deleted nmon for node %s", c.Node)
 	delete(o.nodeMonitor, c.Node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
@@ -290,11 +290,11 @@ func (o *nmon) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 }
 
 func (o *nmon) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	o.log.Debug().Msgf("daemon: nmon: updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
+	o.log.Debugf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	o.nodeMonitor[c.Node] = c.Value
 	if _, ok := o.livePeers[c.Node]; !ok {
 		o.livePeers[c.Node] = true
-		o.log.Info().Msgf("daemon: nmon: new peer %s => new live peers: %v", c.Node, o.livePeers)
+		o.log.Infof("new peer %s => new live peers: %v", c.Node, o.livePeers)
 	}
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
@@ -324,7 +324,7 @@ func (o *nmon) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		return
 	}
 	if l := missingNodes(c.Nodes, c.JoinedNodes); len(l) > 0 {
-		o.log.Info().Msgf("daemon: nmon: preserve rejoin state, missing nodes %s", l)
+		o.log.Infof("preserve rejoin state, missing nodes %s", l)
 		return
 	}
 	o.rejoinTicker.Stop()
@@ -362,9 +362,9 @@ func (o *nmon) onNodeRejoin(c *msgbus.NodeRejoin) {
 		}
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
 			if err := o.crmFreeze(); err != nil {
-				o.log.Info().Err(err).Msgf("daemon: nmon: %s", err)
+				o.log.Infof("node freeze error: %s", err)
 			} else {
-				o.log.Info().Msgf("daemon: nmon: node freeze because peer %s was frozen while this daemon was down", peer)
+				o.log.Infof("node freeze because peer %s was frozen while this daemon was down", peer)
 			}
 			return
 		}

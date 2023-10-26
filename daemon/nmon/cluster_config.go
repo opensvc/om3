@@ -24,19 +24,19 @@ func (o *nmon) onJoinRequest(c *msgbus.JoinRequest) {
 		{"node", hostname.Hostname()},
 		{"join-node", node},
 	}
-	o.log.Info().Msgf("daemon: nmon: join request for node %s", node)
+	o.log.Infof("join request for node %s", node)
 	if stringslice.Has(node, nodes) {
-		o.log.Debug().Msgf("daemon: nmon: join request ignored already member")
+		o.log.Debugf("join request ignored already member")
 		o.bus.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
 	} else if err := o.addClusterNode(node); err != nil {
-		o.log.Warn().Err(err).Msgf("daemon: nmon: join request denied: %s", err)
+		o.log.Warnf("join request denied: %s", err)
 		o.bus.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 
 // addClusterNode adds node to cluster config
 func (o *nmon) addClusterNode(node string) error {
-	o.log.Debug().Msgf("daemon: nmon: adding cluster node %s", node)
+	o.log.Debugf("adding cluster node %s", node)
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
@@ -67,19 +67,19 @@ func (o *nmon) onLeaveRequest(c *msgbus.LeaveRequest) {
 		{"node", hostname.Hostname()},
 		{"leave-node", node},
 	}
-	o.log.Info().Msgf("daemon: nmon: leave request for node %s", node)
+	o.log.Infof("leave request for node %s", node)
 	if !stringslice.Has(node, nodes) {
-		o.log.Debug().Msgf("daemon: nmon: leave request ignored for not cluster member")
+		o.log.Debugf("leave request ignored for not cluster member")
 		o.bus.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
 	} else if err := o.removeClusterNode(node); err != nil {
-		o.log.Warn().Err(err).Msgf("daemon: nmon: leave request denied: %s", err)
+		o.log.Warnf("leave request denied: %s", err)
 		o.bus.Pub(&msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 
 // removeClusterNode removes node from cluster config
 func (o *nmon) removeClusterNode(node string) error {
-	o.log.Debug().Msgf("daemon: nmon: removing cluster node %s", node)
+	o.log.Debugf("removing cluster node %s", node)
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
