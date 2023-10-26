@@ -49,7 +49,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 			Logger: plog.PkgLogger(ctx, "daemon/hbctrl:peerWatch").With().Str("hb_peer_watch", hbId+"-"+nodename).Logger(),
 			Prefix: "daemon: hbctrl: peer watcher: " + hbId + "-" + nodename + ": ",
 		}
-		log.Info().Msg("started")
+		log.Infof("started")
 		started <- true
 		setBeating := func(v bool) {
 			peer.IsBeating = v
