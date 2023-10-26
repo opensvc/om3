@@ -15,9 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
@@ -25,6 +22,7 @@ import (
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -39,7 +37,7 @@ type (
 		cmdC          chan any
 		drainDuration time.Duration
 		bus           *pubsub.Bus
-		log           zerolog.Logger
+		log           plog.Logger
 		startedAt     time.Time
 
 		pendingCtx    context.Context
@@ -74,8 +72,11 @@ func New(drainDuration time.Duration) *ccfg {
 		cmdC:          make(chan any),
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
-		log:           log.Logger.With().Str("pkg", "ccfg").Logger(),
-		networkSigs:   make(map[string]string),
+		log: plog.Logger{
+			Logger: plog.GetPkgLogger("daemon/ccfg"),
+			Prefix: "daemon: ccfg: ",
+		},
+		networkSigs: make(map[string]string),
 	}
 	return o
 }
@@ -100,7 +101,7 @@ func (o *ccfg) Start(parent context.Context) error {
 		defer func() {
 			draincommand.Do(o.cmdC, o.drainDuration)
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Warn().Err(err).Msgf("daemon: ccfg: subscription stop: %s", err)
+				o.log.Warnf("subscription stop: %s", err)
 			}
 			o.wg.Done()
 		}()
@@ -128,7 +129,7 @@ func (o *ccfg) startSubscriptions() {
 
 // worker watch for local ccfg updates
 func (o *ccfg) worker() {
-	defer o.log.Debug().Msg("daemon: ccfg: done")
+	defer o.log.Debugf("done")
 
 	o.startedAt = time.Now()
 
