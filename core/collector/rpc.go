@@ -9,11 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/ybbus/jsonrpc"
 
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 )
 
 var (
@@ -24,7 +23,7 @@ var (
 type Client struct {
 	client jsonrpc.RPCClient
 	secret string
-	log    zerolog.Logger
+	log    plog.Logger
 }
 
 func (c Client) NewPinger(d time.Duration) func() {
@@ -50,13 +49,13 @@ func (c Client) NewPinger(d time.Duration) func() {
 func (c *Client) Ping() {
 	alive := Alive.Load()
 	_, err := c.Call("daemon_ping")
-	c.log.Debug().Bool("alive", alive).Err(err).Msgf("ping collector")
+	c.log.Attr("collector_alive", alive).Debugf("ping collector")
 	switch {
 	case (err != nil) && alive:
-		c.log.Info().Msgf("disable collector clients: %s", err)
+		c.log.Infof("disable collector clients: %s", err)
 		Alive.Store(false)
 	case (err == nil) && !alive:
-		c.log.Info().Msgf("enable collector clients")
+		c.log.Infof("enable collector clients")
 		Alive.Store(true)
 	}
 }
@@ -180,7 +179,10 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 			},
 		}),
 		secret: secret,
-		log:    log.Logger.With().Str("name", "collector_rpc").Logger(),
+		log:    plog.Logger{
+			Logger: plog.GetPkgLogger("core/collector/rpc"),
+			Prefix: "collector: rpc: ",
+		},
 	}
 	return client, nil
 }
@@ -189,26 +191,26 @@ func (t Client) paramsWithAuth(params []interface{}) []interface{} {
 	return append(params, []string{t.secret, hostname.Hostname()})
 }
 
-func LogSimpleResponse(response *jsonrpc.RPCResponse, log zerolog.Logger) {
+func LogSimpleResponse(response *jsonrpc.RPCResponse, log plog.Logger) {
 	switch m := response.Result.(type) {
 	case map[string]interface{}:
 		if info, ok := m["info"]; ok {
 			switch v := info.(type) {
 			case string:
-				log.Info().Msg(v)
+				log.Infof(v)
 			case []string:
 				for _, s := range v {
-					log.Info().Msg(s)
+					log.Infof(s)
 				}
 			}
 		}
 		if err, ok := m["error"]; ok {
 			switch v := err.(type) {
 			case string:
-				log.Error().Msg(v)
+				log.Errorf(v)
 			case []string:
 				for _, s := range v {
-					log.Error().Msg(s)
+					log.Errorf(s)
 				}
 			}
 		}
@@ -218,22 +220,26 @@ func LogSimpleResponse(response *jsonrpc.RPCResponse, log zerolog.Logger) {
 // Call executes a jsonrpc2 collector call and returns the response.
 func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
 	response, err := t.client.Call(method, t.paramsWithAuth(params))
+	l := t.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	if response != nil && response.Error != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msgf("%s: %s", response.Error.Message, response.Error.Data)
+		l.Attr("collector_rpc_response_data", response.Error.Data).
+			Attr("collector_rpc_response_code", response.Error.Code).
+			Errorf("call: %s: %s", response.Error.Message, response.Error.Data)
 	} else if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
+		l.Errorf("call: %s: %s", method, err)
 	} else {
-		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
+		l.Infof("call: %s", method)
 	}
 	return response, err
 }
 
 func (t Client) CallFor(out interface{}, method string, params ...interface{}) error {
+	l := t.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	err := t.client.CallFor(out, method, t.paramsWithAuth(params))
 	if err != nil {
-		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msgf("collector call: %s", method)
+		l.Errorf("call for: %s: %s", method, err)
 	} else {
-		t.log.Info().Str("method", method).Interface("params", params).Msgf("collector call: %s", method)
+		l.Infof("call for: %s", method)
 	}
 	return err
 }
