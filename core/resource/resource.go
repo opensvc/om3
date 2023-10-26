@@ -148,6 +148,7 @@ type (
 
 		statusLog    StatusLog
 		log          zerolog.Logger
+		logPrefix    string
 		object       any
 		objectDriver ObjectDriver
 		pg           *pg.Config
@@ -476,6 +477,7 @@ func (t *T) SetObject(o any) {
 	} else {
 		t.object = o
 		t.log = t.getLoggerFromObjectDriver(od)
+		t.logPrefix = fmt.Sprintf("%s: %s: ", o, t.RID())
 	}
 }
 
@@ -1309,7 +1311,7 @@ func (t Status) Unstructured() map[string]any {
 }
 
 func (t T) Msgf(format string, args ...any) string {
-	return t.GetObject().(fmt.Stringer).String() + ": " + t.RID() + ": " + fmt.Sprintf(format, args...)
+	return t.logPrefix + fmt.Sprintf(format, args...)
 }
 
 func (t T) Debugf(format string, args ...any) {

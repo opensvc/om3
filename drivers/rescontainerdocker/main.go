@@ -168,9 +168,7 @@ func (t T) pull(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	t.Log().Info().
-		Stringer("image", remote).
-		Msgf(t.Msgf("pull image %s", remote))
+	t.Log().Info().Stringer("image", remote).Msg(t.Msgf("pull image %s", remote))
 	err = cli().ImageService().Pull(ctx, remote)
 	return err
 }
