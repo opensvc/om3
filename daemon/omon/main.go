@@ -14,9 +14,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -27,6 +24,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -67,7 +65,7 @@ type (
 		srcEvent any
 
 		ctx context.Context
-		log zerolog.Logger
+		log plog.Logger
 
 		bus *pubsub.Bus
 		sub *pubsub.Subscription
@@ -112,8 +110,13 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 
 		instConfig: make(map[string]instance.Config),
 
-		ctx:       ctx,
-		log:       log.Logger.With().Str("pkg", "omon").Stringer("object", p).Logger(),
+		ctx: ctx,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/omon").With().
+				Str("object", p.String()).
+				Logger(),
+			Prefix: "daemon: omon: " + p.String() + ": ",
+		},
 		labelNode: pubsub.Label{"node", localhost},
 		labelPath: pubsub.Label{"path", id},
 		localhost: localhost,
@@ -125,7 +128,7 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 	go func() {
 		defer func() {
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Warn().Err(err).Msg("subscription stop")
+				o.log.Warnf("subscription stop: %s", err)
 			}
 		}()
 		o.worker()
@@ -153,8 +156,8 @@ func (o *T) startSubscriptions() {
 }
 
 func (o *T) worker() {
-	o.log.Info().Msg("started")
-	defer o.log.Info().Msg("done")
+	o.log.Infof("started")
+	defer o.log.Infof("done")
 
 	// Initiate cache
 	for n, v := range instance.MonitorData.GetByPath(o.path) {
@@ -176,7 +179,7 @@ func (o *T) worker() {
 		var err error
 		cancel, err := o.startInstanceMonitor(localCfg.Scope)
 		if err != nil {
-			o.log.Error().Err(err).Msg("initial startInstanceMonitor")
+			o.log.Errorf("initial startInstanceMonitor: %s", err)
 			cancel()
 		} else {
 			o.imonCancel = cancel
@@ -191,7 +194,7 @@ func (o *T) worker() {
 	}()
 	for {
 		if len(o.instConfig) == 0 {
-			o.log.Info().Msg("no more nodes")
+			o.log.Infof("no more nodes")
 			return
 		}
 		o.srcEvent = nil
@@ -241,7 +244,7 @@ func (o *T) worker() {
 					var err error
 					cancel, err := o.startInstanceMonitor(c.Value.Scope)
 					if err != nil {
-						o.log.Error().Err(err).Msgf("startInstanceMonitor from %+v", c.Value)
+						o.log.Errorf("startInstanceMonitor from %+v: %s", c.Value, err)
 						cancel()
 					} else {
 						o.imonCancel = cancel
@@ -251,7 +254,7 @@ func (o *T) worker() {
 
 			case *msgbus.InstanceConfigDeleted:
 				if c.Node == o.localhost && o.imonCancel != nil {
-					o.log.Info().Msg("local instance config deleted, cancel associated imon")
+					o.log.Infof("local instance config deleted => cancel associated imon")
 					o.imonCancel()
 					o.imonCancel = nil
 				}
@@ -387,7 +390,7 @@ func (o *T) delete() {
 func (o *T) update() {
 	o.status.UpdatedAt = time.Now()
 	value := o.status.DeepCopy()
-	o.log.Debug().Msgf("update avail %s", value.Avail)
+	o.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(o.path, o.status.DeepCopy())
 	o.bus.Pub(&msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
 		o.labelPath,
@@ -399,10 +402,10 @@ func (o *T) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {
 	if len(o.status.Scope) == 0 {
 		return nil, errors.New("can't call startInstanceMonitor with empty scope")
 	}
-	o.log.Info().Msgf("starting imon worker...")
+	o.log.Infof("starting imon worker...")
 	ctx, cancel := context.WithCancel(o.ctx)
 	if err := o.imonStarter.Start(ctx, o.path, scopes); err != nil {
-		o.log.Error().Err(err).Msg("failure during start imon worker")
+		o.log.Errorf("unable to start imon worker: %s", err)
 		return cancel, err
 	}
 	return cancel, nil
