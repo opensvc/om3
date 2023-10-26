@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
-		Log zerolog.Logger
+		Log plog.Logger
 	}
 
 	stringer interface {
@@ -49,9 +49,9 @@ func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-ch
 				duration := time.Now().Sub(startTime).Seconds()
 				switch c := cmd.(type) {
 				case stringer:
-					t.Log.Warn().Msgf("max duration exceeded %.02fs: %s: %s", duration, desc, c.String())
+					t.Log.Warnf("max duration exceeded %.02fs: %s: %s", duration, desc, c.String())
 				default:
-					t.Log.Warn().Msgf("max duration exceeded %.02fs: %s: %s", duration, desc, reflect.TypeOf(cmd).Name())
+					t.Log.Warnf("max duration exceeded %.02fs: %s: %s", duration, desc, reflect.TypeOf(cmd).Name())
 				}
 			}
 		}
