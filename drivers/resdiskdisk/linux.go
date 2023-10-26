@@ -65,13 +65,13 @@ func (t T) unconfigure() error {
 			if err := slave.Delete(); err != nil {
 				return fmt.Errorf("%s slave %s delete: %w", dev, slave, err)
 			} else {
-				t.Log().Info().Msgf("%s slave %s deleted", dev, slave)
+				t.Log().Infof("%s slave %s deleted", dev, slave)
 			}
 		}
 		if err := dev.RemoveMultipath(); err != nil {
 			return fmt.Errorf("%s multipath remove: %w", dev, err)
 		} else {
-			t.Log().Info().Msgf("%s multipath removed", dev)
+			t.Log().Infof("%s multipath removed", dev)
 		}
 	}
 	return nil
@@ -80,13 +80,13 @@ func (t T) unconfigure() error {
 func (t T) configure(force forceMode) error {
 	exposedDevices := t.ExposedDevices()
 	if force == preserve && len(exposedDevices) > 0 {
-		t.Log().Info().Msgf("system configuration: skip: device already exposed: %s", exposedDevices)
+		t.Log().Infof("system configuration: skip: device already exposed: %s", exposedDevices)
 		return nil
 	}
 	if t.DiskID == "" {
 		return fmt.Errorf("system configuration: disk_id is not set")
 	}
-	t.Log().Info().Msg("system configuration: scsi scan")
+	t.Log().Infof("system configuration: scsi scan")
 	if err := scsi.LockedScanAll(10 * time.Second); err != nil {
 		return fmt.Errorf("system configuration: %w", err)
 	}

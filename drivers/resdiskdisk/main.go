@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -80,7 +79,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		err   error
 	)
 	if t.DiskID != "" {
-		t.Log().Info().Msg("skip disk creation: the disk_id keyword is already set")
+		t.Log().Infof("skip disk creation: the disk_id keyword is already set")
 		return t.configure(preserve)
 	}
 	if disks, err = t.createDisk(); err != nil {
@@ -94,7 +93,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 
 func (t *T) UnprovisionLeader(ctx context.Context) error {
 	if t.DiskID == "" {
-		t.Log().Info().Msg("skip disk deletion: the disk_id keyword is not set")
+		t.Log().Infof("skip disk deletion: the disk_id keyword is not set")
 		return nil
 	}
 	if err := t.unconfigure(); err != nil {
@@ -169,15 +168,11 @@ func (t T) deleteDisk() ([]pool.Disk, error) {
 	}
 	diskName := t.diskName(p)
 	disks, err := p.DeleteDisk(diskName)
-	var ev *zerolog.Event
 	if err != nil {
-		ev = t.Log().Error().Err(err)
+		t.Log().Errorf("delete disk %s: %#v %s", disks, err)
 	} else {
-		ev = t.Log().Info()
+		t.Log().Infof("delete disk %s: %#v", disks)
 	}
-	ev.Str("name", diskName).
-		Interface("result", disks).
-		Msg("delete disk")
 	return disks, nil
 }
 
@@ -197,9 +192,9 @@ func (t T) createDisk() ([]pool.Disk, error) {
 	}
 	disks, err := p.CreateDisk(diskName, *t.Size, paths)
 	if err != nil {
-		t.Log().Error().Err(err).Str("name", diskName).Interface("disks", disks).Msg("create disk")
+		t.Log().Errorf("create disk %s: %#v %s", diskName, disks, err)
 	} else {
-		t.Log().Info().Str("name", diskName).Interface("disks", disks).Msg("create disk")
+		t.Log().Infof("create disk %s: %#v", diskName, disks)
 	}
 	return disks, err
 }
@@ -231,7 +226,7 @@ func (t *T) unsetDiskIDKeywords(ctx context.Context) error {
 			Value: obj.Config().GetString(k),
 		})
 	}
-	t.Log().Info().Msgf("unset %s", save)
+	t.Log().Infof("unset %s", save)
 	return obj.Unset(ctx, keys...)
 }
 
@@ -264,7 +259,7 @@ func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
 			done[node] = nil
 		}
 	}
-	t.Log().Info().Msgf("set %s", ops)
+	t.Log().Infof("set %s", ops)
 	if err := obj.Set(ctx, ops...); err != nil {
 		return err
 	}

@@ -272,7 +272,7 @@ func (t T) getIPAddr() net.IP {
 		)
 		l, err = net.LookupIP(t.IpName)
 		if err != nil {
-			t.Log().Error().Err(err)
+			t.Log().Errorf("%s", err)
 			return nil
 		}
 		n := len(l)

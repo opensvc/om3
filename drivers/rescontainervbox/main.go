@@ -34,6 +34,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -84,9 +85,9 @@ func New() resource.Driver {
 
 func (t *T) Abort(ctx context.Context) bool {
 	if isLocalUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
-		t.Log().Debug().Err(err).Send()
+		t.Log().Debugf("%s", err)
 	} else if err != nil {
-		t.Log().Error().Err(err).Send()
+		t.Log().Errorf("%s", err)
 	} else if isLocalUp {
 		// the local instance is already up.
 		// let the local start report the unecessary start steps
@@ -121,7 +122,7 @@ func (t *T) Start(ctx context.Context) error {
 	} else if err != nil {
 		return err
 	} else if isContainerUp {
-		t.Log().Info().Msgf("container %s is already up", t.Name)
+		t.Log().Infof("container %s is already up", t.Name)
 		return nil
 	}
 
@@ -136,7 +137,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	if _, err := net.LookupIP(t.hostname()); err != nil {
-		t.Log().Debug().Msgf("can not do dns resolution for : %s", t.Name)
+		t.Log().Debugf("can not do dns resolution for : %s", t.Name)
 		return nil
 	}
 	if err := t.waitForExpectation(ctx, "ping", true, t.isPinging); err != nil {
@@ -184,12 +185,12 @@ func (t *T) Status(ctx context.Context) status.T {
 
 func (t *T) Stop(ctx context.Context) error {
 	if isContainerDown, err := t.isDown(); errors.Is(err, ErrNotRegistered) {
-		t.Log().Info().Msgf("container %s is already down (not registered)", t.Name)
+		t.Log().Infof("container %s is already down (not registered)", t.Name)
 		return nil
 	} else if err != nil {
 		return err
 	} else if isContainerDown {
-		t.Log().Info().Msgf("container %s is already down", t.Name)
+		t.Log().Infof("container %s is already down", t.Name)
 		return nil
 	}
 	return t.containerStop(ctx)
@@ -199,18 +200,18 @@ func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
 	f, err := os.Open(t.configFile())
 	if err != nil {
-		t.Log().Error().Err(err).Send()
+		t.Log().Errorf("%s", err)
 		return l
 	}
 	defer f.Close()
 	doc, err := xmlquery.Parse(f)
 	if err != nil {
-		t.Log().Error().Err(err).Send()
+		t.Log().Errorf("%s", err)
 		return l
 	}
 	nodes, err := xmlquery.QueryAll(doc, "//VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk/Property")
 	if err != nil {
-		t.Log().Error().Err(err).Send()
+		t.Log().Errorf("%s", err)
 		return l
 	}
 	for _, v := range nodes {
@@ -228,7 +229,7 @@ func (t *T) Presync() error {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			t.Log().Error().Err(err).Msgf(vboxCfgFilePath+" %s", "defer close")
+			t.Log().Errorf("%s defered close: %s", vboxCfgFilePath, err)
 		}
 	}()
 	_, err = f.WriteString(t.configFile())
@@ -269,14 +270,14 @@ func (t *T) readConfigFileFromVarDir() (string, error) {
 }
 
 func (t *T) configFile() string {
-	t.Log().Info().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
+	t.Log().Infof("VBoxManage showvminfo --machinereadable %s", t.Name)
 	b, err := t.vBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
-		t.Log().Error().Msgf("can't find config file: %s", err)
+		t.Log().Errorf("can't find config file: %s", err)
 		return ""
 	}
 	if cfgFile, err := configFileFromReader(strings.NewReader(b)); err != nil {
-		t.Log().Error().Msgf("can't find cfgfile in showvminfo command: %s", err)
+		t.Log().Errorf("can't find cfgfile in showvminfo command: %s", err)
 		return ""
 	} else {
 		return cfgFile
@@ -313,7 +314,7 @@ func (t *T) checkCapabilities() bool {
 
 func (t *T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
-		t.Log().Debug().Err(err).Msgf("isOperational")
+		t.Log().Debugf("is operational: %s", err)
 		return false, nil
 	}
 	return true, nil
@@ -349,19 +350,19 @@ func (t *T) undefine() error {
 }
 
 func (t *T) start() error {
-	t.Log().Info().Msgf("VBoxManage startvm %s --type=headless", t.Name)
+	t.Log().Infof("VBoxManage startvm %s --type=headless", t.Name)
 	_, err := t.vBoxManageCommand("startvm", t.Name, "--type=headless")
 	return err
 }
 
 func (t *T) stop() error {
-	t.Log().Info().Msgf("VBoxManage controlvm %s acpipowerbutton", t.Name)
+	t.Log().Infof("VBoxManage controlvm %s acpipowerbutton", t.Name)
 	_, err := t.vBoxManageCommand("controlvm", t.Name, "acpipowerbutton")
 	return err
 }
 
 func (t *T) destroy() error {
-	t.Log().Info().Msgf("VBoxManage controlvm %s poweroff", t.Name)
+	t.Log().Infof("VBoxManage controlvm %s poweroff", t.Name)
 	_, err := t.vBoxManageCommand("controlvm", t.Name, "poweroff")
 	return err
 }
@@ -386,18 +387,18 @@ func (t *T) containerStop(ctx context.Context) error {
 			return err
 		}
 		if err := t.waitForExpectation(ctx, "shutdown", false, t.isDown); err != nil {
-			t.Log().Warn().Msg("waited too long for shutdown")
+			t.Log().Warnf("waited too long for shutdown")
 			return t.destroy()
 		}
 		return nil
 	case "stuck", "paused", "aborted":
 		return t.destroy()
 	case "poweroff":
-		t.Log().Info().Msgf("skip stop, container state=%s", state)
+		t.Log().Infof("skip stop, container state=%s", state)
 		return nil
 	default:
 		err := fmt.Errorf("container stop found unexpected state %s", state)
-		t.Log().Error().Err(err).Msgf("don't know how to stop vm")
+		t.Log().Errorf("don't know how to stop vm: %s", err)
 		return err
 	}
 }
@@ -410,13 +411,13 @@ func (t *T) registerVm() error {
 	if configFilePath == "" {
 		return fmt.Errorf("can't register: vm unknown config file path")
 	}
-	t.Log().Info().Msgf("VBoxManage registervm %s", configFilePath)
+	t.Log().Infof("VBoxManage registervm %s", configFilePath)
 	_, err = t.vBoxManageCommand("registervm", configFilePath)
 	return err
 }
 
 func (t *T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
-	t.Log().Info().Msgf("wait for %s %s", s, t.Name)
+	t.Log().Infof("wait for %s %s", s, t.Name)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -426,7 +427,7 @@ func (t *T) waitForExpectation(ctx context.Context, s string, logError bool, fn 
 		case <-ticker.C:
 			if ok, err := fn(); err != nil {
 				if logError {
-					t.Log().Error().Err(err).Msgf("abort waiting for %s %s", t.Name, s)
+					t.Log().Errorf("abort waiting for %s %s: %s", t.Name, s, err)
 				}
 				return nil
 			} else if ok {
@@ -476,7 +477,7 @@ func isAbortedFromState(state string) bool {
 }
 
 func (t *T) domState() (string, error) {
-	t.Log().Debug().Msgf("VBoxManage showvminfo --machinereadable %s", t.Name)
+	t.Log().Debugf("VBoxManage showvminfo --machinereadable %s", t.Name)
 	s, err := t.vBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
 		return "", err
@@ -537,7 +538,11 @@ func (t *T) execViaInternalSSH(cmd string) error {
 	if err := session.Run(cmd); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		t.Log().Debug().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Msg("rexec")
+		logger := plog.Logger{
+			Logger: t.Log().With().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Logger(),
+			Prefix: t.Log().Prefix,
+		}
+		logger.Debugf("rexec: %s on node %s exited with code %d", cmd, hn, ec)
 		return err
 	}
 	return nil
@@ -647,23 +652,23 @@ func (t *T) cgroupDir() string {
 
 func (t *T) abortPing() bool {
 	hn := t.hostname()
-	t.Log().Info().Msgf("abort test: ping %s", hn)
+	t.Log().Infof("abort test: ping %s", hn)
 
 	if pinger, err := ping.NewPinger(hn); err == nil {
 		pinger.SetPrivileged(true)
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {
-			t.Log().Warn().Msgf("no-abort: pinger err: %s", err)
+			t.Log().Warnf("no-abort: pinger err: %s", err)
 			return false
 		}
 		if pinger.Statistics().PacketsRecv > 0 {
-			t.Log().Info().Msgf("abort: %s is alive", hn)
+			t.Log().Infof("abort: %s is alive", hn)
 			return true
 		}
 		return false
 	} else {
-		t.Log().Debug().Msgf("disable ping abort check: %s", err)
+		t.Log().Debugf("disable ping abort check: %s", err)
 	}
 	return false
 }
@@ -672,7 +677,7 @@ func (t *T) abortPeerUp() bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Info().Msgf("abort: %s is up on %s", t.hostname(), n)
+		t.Log().Infof("abort: %s is up on %s", t.hostname(), n)
 		return true
 	}
 	return false
@@ -710,7 +715,7 @@ func (t *T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Log().Debug().Msgf("ssh abort check on %s: %s", n, err)
+			t.Log().Debugf("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil
