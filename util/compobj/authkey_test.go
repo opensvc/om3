@@ -439,5 +439,194 @@ func TestCheckAuthKey(t *testing.T) {
 			cacheInstalledKeys = map[string][]string{}
 		})
 	}
+}
 
+func TestAddAuthKey(t *testing.T) {
+	oriGetAuthKeyFilePath := getAuthKeyFilePath
+	defer func() { getAuthKeyFilePath = oriGetAuthKeyFilePath }()
+
+	makeEnvWithKeyToAdd := func(fileKeyToAddPath string) []string {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "tmpFileKeyToAdd")
+		f, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer func() {
+			err := f.Close()
+			require.NoError(t, err)
+		}()
+		fileContent, err := os.ReadFile(fileKeyToAddPath)
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+		return []string{filePath}
+	}
+	testCases := map[string]struct {
+		rule                   CompAuthKey
+		fileWithKeyToAdd       string
+		goldenAuthorizeKeyFile string
+	}{
+		"add a key in a authorized Key file ": {
+			rule: CompAuthKey{
+				Action:     "",
+				Authfile:   "",
+				User:       "",
+				Key:        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPiTjBH9tZI59YtzQiMQPMpUzLPfci3p0Eew+pB+pglhkHOxGiCV9abcZDAO8o6mBHlw== lala",
+				ConfigFile: "",
+			},
+			fileWithKeyToAdd:       "./testdata/authkey_authorizedKeyFile_with_key_to_add",
+			goldenAuthorizeKeyFile: "./testdata/authkey_sshd_authorizedKeyFile",
+		},
+	}
+	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			filePath := makeEnvWithKeyToAdd(c.fileWithKeyToAdd)
+			getAuthKeyFilePath = func(authFile string, configFilePath string, userName string) ([]string, error) {
+				return filePath, nil
+			}
+			obj.addAuthKey(c.rule)
+			currentFileContent, err := os.ReadFile(filePath[0])
+			require.NoError(t, err)
+			goldenFileContent, err := os.ReadFile(c.goldenAuthorizeKeyFile)
+			require.NoError(t, err)
+			require.Equal(t, string(goldenFileContent), string(currentFileContent))
+		})
+	}
+}
+
+func TestDelAuthKey(t *testing.T) {
+	oriGetAuthKeyFilesPaths := getAuthKeyFilesPaths
+	defer func() { getAuthKeyFilesPaths = oriGetAuthKeyFilesPaths }()
+
+	makeEnvWithKeyToDel := func(fileKeyToDelPath string) []string {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "tmpFileKeyToDel")
+		f, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer func() {
+			err := f.Close()
+			require.NoError(t, err)
+		}()
+		fileContent, err := os.ReadFile(fileKeyToDelPath)
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+		return []string{filePath}
+	}
+	testCases := map[string]struct {
+		rule                   CompAuthKey
+		fileWithKeyToDel       string
+		goldenAuthorizeKeyFile string
+	}{
+		"del a key in a authorized Key file when the key is at the end of the file": {
+			rule: CompAuthKey{
+				Action:     "",
+				Authfile:   "",
+				User:       "",
+				Key:        "ssh-rsa AAAAB3NzaC1yc2EAAdeldeldeldeldleldldkzdeleldldeleldledl== delMe",
+				ConfigFile: "",
+			},
+			fileWithKeyToDel:       "./testdata/authkey_authorizedKeyFile_with_key_to_del_end",
+			goldenAuthorizeKeyFile: "./testdata/authkey_sshd_authorizedKeyFile",
+		},
+
+		"del a key in a authorized Key file when the key is at the middle of the file": {
+			rule: CompAuthKey{
+				Action:     "",
+				Authfile:   "",
+				User:       "",
+				Key:        "ssh-rsa AAAAB3NzaC1yc2EAAdeldeldeldeldleldldkzdeleldldeleldledl== delMe",
+				ConfigFile: "",
+			},
+			fileWithKeyToDel:       "./testdata/authkey_authorizedKeyFile_with_key_to_del_middle",
+			goldenAuthorizeKeyFile: "./testdata/authkey_sshd_authorizedKeyFile",
+		},
+	}
+	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			filePath := makeEnvWithKeyToDel(c.fileWithKeyToDel)
+			getAuthKeyFilesPaths = func(configFilePath string, userName string) ([]string, error) {
+				return filePath, nil
+			}
+			obj.delAuthKey(c.rule)
+			currentFileContent, err := os.ReadFile(filePath[0])
+			require.NoError(t, err)
+			goldenFileContent, err := os.ReadFile(c.goldenAuthorizeKeyFile)
+			require.NoError(t, err)
+			require.Equal(t, string(goldenFileContent), string(currentFileContent))
+		})
+	}
+}
+
+func TestAddAllowGroup(t *testing.T) {
+
+	oriUserLookGroupId := userLookupGroupId
+	defer func() { userLookupGroupId = oriUserLookGroupId }()
+
+	oriUserLookup := userLookup
+	defer func() { userLookup = oriUserLookup }()
+
+	makeEnvWithAllowsToAdd := func(fileAllowsToAddPath string) string {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "tmpFileAllowsToAdd")
+		f, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer func() {
+			err := f.Close()
+			require.NoError(t, err)
+		}()
+		fileContent, err := os.ReadFile(fileAllowsToAddPath)
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+		return filePath
+	}
+
+	testCases := map[string]struct {
+		rule                CompAuthKey
+		fileWithAllowsToAdd string
+		goldenAllows        string
+	}{
+		"with user toto and group totoGroup to be added in sshd config file": {
+			rule: CompAuthKey{
+				Action:     "",
+				Authfile:   "",
+				User:       "toto",
+				Key:        "",
+				ConfigFile: "",
+			},
+			fileWithAllowsToAdd: "./testdata/authkey_sshd_config_toto_and_totoGroup_to_be_added",
+			goldenAllows:        "./testdata/authkey_sshd_config_golden",
+		},
+	}
+
+	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			userLookupGroupId = func(gid string) (*user.Group, error) {
+				group := &user.Group{
+					Gid:  "1000",
+					Name: "totoGroup",
+				}
+				return group, nil
+			}
+
+			userLookup = func(username string) (*user.User, error) {
+				user1 := &user.User{
+					Uid:      "1000",
+					Gid:      "1000",
+					Username: "toto",
+					Name:     "toto zozo",
+					HomeDir:  "/home/toto",
+				}
+				return user1, nil
+			}
+			c.rule.ConfigFile = makeEnvWithAllowsToAdd(c.fileWithAllowsToAdd)
+			obj.addAllowGroups(c.rule)
+			obj.addAllowUsers(c.rule)
+			currentFileContent, err := os.ReadFile(c.rule.ConfigFile)
+			require.NoError(t, err)
+			goldenFileContent, err := os.ReadFile(c.goldenAllows)
+			require.NoError(t, err)
+			require.Equal(t, string(goldenFileContent), string(currentFileContent))
+		})
+	}
 }

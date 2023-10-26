@@ -36,6 +36,7 @@ var (
 	userLookup           = user.Lookup
 	userLookupGroupId    = user.LookupGroupId
 	getAuthKeyFilesPaths = CompAuthkeys{}.getAuthKeyFilesPaths
+	getAuthKeyFilePath   = CompAuthkeys{}.getAuthKeyFilePath
 
 	compAuthKeyInfo = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_AUTHKEY_",
@@ -218,10 +219,10 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 				if err != nil {
 					return nil, err
 				}
-				splitedLink := strings.Split(link, "[")
-				if splitedLink[0] == "socket:" && len(splitedLink) == 2 {
-					if len(splitedLink[1]) > 1 {
-						inode, err := strconv.Atoi(splitedLink[1][:len(splitedLink[1])-2])
+				splitLink := strings.Split(link, "[")
+				if splitLink[0] == "socket:" && len(splitLink) == 2 {
+					if len(splitLink[1]) > 1 {
+						inode, err := strconv.Atoi(splitLink[1][:len(splitLink[1])-2])
 						if err != nil {
 							return nil, err
 						}
@@ -275,20 +276,20 @@ func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
 func (t CompAuthkeys) getInodeFromTcpFileContent(port int, content []byte) (int, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	for scanner.Scan() {
-		splitedLine := strings.Fields(scanner.Text())
-		if len(splitedLine) < 10 {
+		splitLine := strings.Fields(scanner.Text())
+		if len(splitLine) < 10 {
 			continue
 		}
-		splitedAdress := strings.Split(splitedLine[1], ":")
-		if len(splitedAdress) != 2 {
+		splitAdress := strings.Split(splitLine[1], ":")
+		if len(splitAdress) != 2 {
 			continue
 		}
-		portUsed, err := strconv.ParseInt(splitedAdress[1], 16, 64)
+		portUsed, err := strconv.ParseInt(splitAdress[1], 16, 64)
 		if err != nil {
 			return -1, err
 		}
 		if int(portUsed) == port {
-			inode, err := strconv.Atoi(splitedLine[9])
+			inode, err := strconv.Atoi(splitLine[9])
 			if err != nil {
 				return -1, err
 			}
@@ -338,12 +339,12 @@ func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, read
 		if len(line) < 1 {
 			continue
 		}
-		splitedLine := strings.Fields(line)
-		if splitedLine[0] == "AuthorizedKeysFile" && len(splitedLine) > 1 {
+		splitLine := strings.Fields(line)
+		if splitLine[0] == "AuthorizedKeysFile" && len(splitLine) > 1 {
 			if readOnlyTheFirstAuthKeysFile {
-				return []string{splitedLine[1]}, nil
+				return []string{splitLine[1]}, nil
 			}
-			return splitedLine[1:], nil
+			return splitLine[1:], nil
 		}
 	}
 	return []string{".ssh/authorized_keys2"}, nil
@@ -404,9 +405,9 @@ func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error)
 		if len(line) < 1 {
 			continue
 		}
-		splitedLine := strings.Fields(line)
-		if splitedLine[0] == "AllowUsers" {
-			cacheAllowUsers = splitedLine[1:]
+		splitLine := strings.Fields(line)
+		if splitLine[0] == "AllowUsers" {
+			cacheAllowUsers = splitLine[1:]
 			return cacheAllowUsers, nil
 		}
 	}
@@ -429,9 +430,9 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 		if len(line) < 1 {
 			continue
 		}
-		splitedLine := strings.Fields(line)
-		if splitedLine[0] == "AllowGroups" {
-			cacheAllowGroups = splitedLine[1:]
+		splitLine := strings.Fields(line)
+		if splitLine[0] == "AllowGroups" {
+			cacheAllowGroups = splitLine[1:]
 			return cacheAllowGroups, nil
 		}
 	}
@@ -551,7 +552,7 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 }
 
 func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
-	authKeyFilePath, err := t.getAuthKeyFilePath(rule.Authfile, rule.ConfigFile, rule.User)
+	authKeyFilePath, err := getAuthKeyFilePath(rule.Authfile, rule.ConfigFile, rule.User)
 	if err != nil {
 		t.Errorf("error when trying to get the authorized keys file path\n")
 		return ExitNok
@@ -596,6 +597,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 			continue
 		}
 		configFileNewContent = append(configFileNewContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, []byte("\n")...)
 	}
 	f, err := os.Create(authKeyFilePath)
 	if err != nil {
@@ -615,7 +617,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 }
 
 func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
-	authKeysFiles, err := t.getAuthKeyFilesPaths(rule.ConfigFile, rule.User)
+	authKeysFiles, err := getAuthKeyFilesPaths(rule.ConfigFile, rule.User)
 	if err != nil {
 		t.Errorf("error when trying to get the authKey files paths\n")
 		return ExitNok
@@ -649,23 +651,25 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
 	for scanner.Scan() {
 		line := scanner.Text()
-		splitedLine := strings.Fields(line)
-		if len(splitedLine) > 1 {
-			if splitedLine[0] == "AllowGroups" {
+		splitLine := strings.Fields(line)
+		if len(splitLine) > 1 {
+			if splitLine[0] == "AllowGroups" {
 				primaryGroupName, err = t.getPrimaryGroupName(rule.User)
 				if err != nil {
 					t.Errorf("can't get the primary group of the user %s :%s\n", rule.User, err)
 					return ExitNok
 				}
-				splitedLine = append(splitedLine, primaryGroupName)
-				for _, elem := range splitedLine {
-					configFileNewContent = append(configFileNewContent, []byte(elem+" ")...)
+				splitLine = append(splitLine, primaryGroupName)
+				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
+				for _, elem := range splitLine[1:] {
+					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
 				}
 				configFileNewContent = append(configFileNewContent, []byte("\n")...)
 				continue
 			}
 		}
-		configFileNewContent = append(configFileOldContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, []byte("\n")...)
 	}
 	f, err := os.Create(rule.ConfigFile)
 	if err != nil {
@@ -694,18 +698,20 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
 	for scanner.Scan() {
 		line := scanner.Text()
-		splitedLine := strings.Fields(line)
-		if len(splitedLine) > 1 {
-			if splitedLine[0] == "AllowUsers" {
-				splitedLine = append(splitedLine, rule.User)
-				for _, elem := range splitedLine {
-					configFileNewContent = append(configFileNewContent, []byte(elem+" ")...)
+		splitLine := strings.Fields(line)
+		if len(splitLine) > 1 {
+			if splitLine[0] == "AllowUsers" {
+				splitLine = append(splitLine, rule.User)
+				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
+				for _, elem := range splitLine[1:] {
+					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
 				}
 				configFileNewContent = append(configFileNewContent, []byte("\n")...)
 				continue
 			}
 		}
-		configFileNewContent = append(configFileOldContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, []byte("\n")...)
 	}
 	f, err := os.Create(rule.ConfigFile)
 	if err != nil {
