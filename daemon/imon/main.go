@@ -445,26 +445,10 @@ func (o *imon) clearPending() {
 }
 
 func (o *imon) loggerWithState() *plog.Logger {
-	ctx := o.log.Logger.With()
-	if o.state.GlobalExpect != instance.MonitorGlobalExpectZero {
-		ctx.Str("imon_global_expect", o.state.GlobalExpect.String())
-	} else {
-		ctx.Str("imon_global_expect", "<zero>")
-	}
-	if o.state.LocalExpect != instance.MonitorLocalExpectZero {
-		ctx.Str("imon_local_expect", o.state.LocalExpect.String())
-	} else {
-		ctx.Str("imon_local_expect", "<zero>")
-	}
-	if o.state.State != instance.MonitorStateZero {
-		ctx.Str("imon_state", o.state.State.String())
-	} else {
-		ctx.Str("imon_state", "<zero>")
-	}
-	return &plog.Logger{
-		Logger: ctx.Logger(),
-		Prefix: o.log.Prefix,
-	}
+	return o.log.
+		Attr("imon_global_expect", o.state.GlobalExpect.String()).
+		Attr("imon_local_expect", o.state.LocalExpect.String()).
+		Attr("imon_state", o.state.State.String())
 }
 
 func lastBootIDFile(p naming.Path) string {
