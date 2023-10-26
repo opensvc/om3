@@ -8,12 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -38,7 +36,7 @@ type (
 		//    msgbus.InstanceStatusUpdated.
 		iStatusM map[string]instance.Status
 
-		log zerolog.Logger
+		log plog.Logger
 
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -59,7 +57,6 @@ var (
 func New() *T {
 	localhost := hostname.Hostname()
 	return &T{
-		log:            log.Logger.With().Str("pkg", "istat").Logger(),
 		iStatusM:       make(map[string]instance.Status),
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},
@@ -67,11 +64,16 @@ func New() *T {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	t.log = plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/istat").With().
+			Logger(),
+		Prefix: "daemon: istat: ",
+	}
 	err := make(chan error)
 	t.wg.Add(1)
 	go func(errC chan<- error) {
 		defer t.wg.Done()
-		defer t.log.Info().Msg("stopped")
+		defer t.log.Infof("stopped")
 
 		t.ctx, t.cancel = context.WithCancel(ctx)
 		t.bus = pubsub.BusFromContext(t.ctx)
@@ -86,10 +88,10 @@ func (t *T) Start(ctx context.Context) error {
 
 		defer func() {
 			if err := sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				t.log.Warn().Err(err).Msg("subscription stop")
+				t.log.Warnf("subscription stop: %s", err)
 			}
 		}()
-		t.log.Info().Msg("started")
+		t.log.Infof("started")
 		errC <- nil
 		t.worker()
 	}(err)
@@ -133,9 +135,9 @@ func (t *T) onInstanceConfigDeleted(m *msgbus.InstanceConfigDeleted) {
 	)
 }
 
-func (o *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRemoved) {
+func (t *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRemoved) {
 	s := fileRemoved.Path.String()
-	iStatus, ok := o.iStatusM[s]
+	iStatus, ok := t.iStatusM[s]
 	if !ok {
 		// no instance status to update
 		return
@@ -148,18 +150,18 @@ func (o *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRe
 	if iStatus.UpdatedAt.Before(fileRemoved.At) {
 		iStatus.UpdatedAt = fileRemoved.At
 	}
-	o.iStatusM[s] = iStatus
-	instance.StatusData.Set(fileRemoved.Path, o.localhost, iStatus.DeepCopy())
-	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
-		o.labelLocalhost,
+	t.iStatusM[s] = iStatus
+	instance.StatusData.Set(fileRemoved.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
 }
 
-func (o *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated) {
+func (t *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated) {
 	s := frozen.Path.String()
 
-	iStatus, ok := o.iStatusM[s]
+	iStatus, ok := t.iStatusM[s]
 	if !ok {
 		// no instance status to update
 		return
@@ -173,19 +175,19 @@ func (o *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated
 	if frozen.At.After(iStatus.UpdatedAt) {
 		iStatus.UpdatedAt = frozen.At
 	}
-	o.iStatusM[s] = iStatus
-	instance.StatusData.Set(frozen.Path, o.localhost, iStatus.DeepCopy())
-	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
-		o.labelLocalhost,
+	t.iStatusM[s] = iStatus
+	instance.StatusData.Set(frozen.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
 }
 
-func (o *T) onInstanceStatusPost(post *msgbus.InstanceStatusPost) {
+func (t *T) onInstanceStatusPost(post *msgbus.InstanceStatusPost) {
 	s := post.Path.String()
-	o.iStatusM[s] = post.Value
+	t.iStatusM[s] = post.Value
 	instance.StatusData.Set(post.Path, post.Node, post.Value.DeepCopy())
-	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
-		o.labelLocalhost,
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
+		t.labelLocalhost,
 		pubsub.Label{"path", s})
 }
