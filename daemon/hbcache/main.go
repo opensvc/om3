@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/draincommand"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -55,9 +55,12 @@ func (t *T) Stop() error {
 func (t *T) run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
 	heartbeats := make([]cluster.HeartbeatStream, 0)
-	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
-	log.Debug().Msg("daemon: hbcache: started")
-	defer log.Debug().Msg("daemon: hbcache: done")
+	log := plog.Logger{
+		Logger: plog.GetPkgLogger("daemon/hbcache"),
+		Prefix: "daemon: hbcache: ",
+	}
+	log.Debugf("started")
+	defer log.Debugf("done")
 	defer draincommand.Do(cmdI, t.drainDuration)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	for {
@@ -88,7 +91,7 @@ func (t *T) run(ctx context.Context) {
 			case setHeartbeats:
 				heartbeats = cmd
 			default:
-				log.Error().Interface("cmd", i).Msgf("daemon: hbcache: invalid command: %v", i)
+				log.Errorf("invalid command: %i", i)
 			}
 		}
 	}
