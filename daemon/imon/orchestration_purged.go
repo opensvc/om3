@@ -7,7 +7,7 @@ import (
 )
 
 func (o *imon) orchestratePurged() {
-	o.log.Debug().Msgf("daemon: imon: %s: orchestratePurged starting from %s", o.path, o.state.State)
+	o.log.Debugf("orchestratePurged starting from %s", o.state.State)
 	switch o.state.State {
 	case instance.MonitorStateDeleted:
 		o.purgedFromDeleted()
@@ -25,7 +25,7 @@ func (o *imon) orchestratePurged() {
 		instance.MonitorStateDeleting,
 		instance.MonitorStateStopping:
 	default:
-		o.log.Warn().Msgf("daemon: imon: %s: orchestratePurged has no solution from state %s", o.path, o.state.State)
+		o.log.Warnf("orchestratePurged has no solution from state %s", o.state.State)
 	}
 }
 
@@ -44,11 +44,11 @@ func (o *imon) purgedFromIdle() {
 
 func (o *imon) purgedFromStopped() {
 	if o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn) {
-		o.log.Debug().Msgf("daemon: imon: %s: purgedFromStopped return on o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn)", o.path)
+		o.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn)")
 		return
 	}
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		o.log.Debug().Msgf("daemon: imon: %s: purgedFromStopped return on o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)", o.path)
+		o.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)")
 		o.purgedFromIdleProvisioned()
 		return
 	}

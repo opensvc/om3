@@ -35,7 +35,7 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Info().Msgf("fetch global expect from node %s -> %s orchestration id %s updated at %s",
+		o.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
 			mostRecentNode, strVal, o.state.OrchestrationId, mostRecentUpdated)
 	}
 }
@@ -45,11 +45,11 @@ func (o *imon) isConvergedGlobalExpect() bool {
 	for s, v := range o.instMonitor {
 		if s == o.localhost {
 			err := fmt.Errorf("bug: isConvergedGlobalExpect detect unexpected localhost in internal instance monitor cache keys")
-			o.log.Error().Err(err).Msgf("isConvergedGlobalExpect")
+			o.log.Errorf("isConvergedGlobalExpect: %s", err)
 			panic(err)
 		}
 		if localUpdated.After(v.GlobalExpectUpdatedAt) {
-			o.log.Debug().Msgf("wait GlobalExpect propagation on %s", s)
+			o.log.Debugf("wait GlobalExpect propagation on %s", s)
 			return false
 		}
 	}

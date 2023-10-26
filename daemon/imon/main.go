@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
@@ -152,7 +151,7 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		databus:       databus,
 		pubsubBus:     pubsub.BusFromContext(ctx),
 		log: plog.Logger{
-			Logger: log.Logger.With().Str("pkg", "imon").Stringer("object", p).Logger(),
+			Logger: plog.GetPkgLogger("daemon/imon").With().Stringer("object", p).Logger(),
 			Prefix: fmt.Sprintf("daemon: imon: %s: ", p),
 		},
 		instStatus:    make(map[string]instance.Status),
@@ -446,21 +445,10 @@ func (o *imon) clearPending() {
 }
 
 func (o *imon) loggerWithState() *plog.Logger {
-	ctx := o.log.With()
-	if o.state.GlobalExpect != instance.MonitorGlobalExpectZero {
-		ctx.Str("global_expect", o.state.GlobalExpect.String())
-	} else {
-		ctx.Str("global_expect", "<zero>")
-	}
-	if o.state.LocalExpect != instance.MonitorLocalExpectZero {
-		ctx.Str("local_expect", o.state.LocalExpect.String())
-	} else {
-		ctx.Str("local_expect", "<zero>")
-	}
-	return &plog.Logger{
-		Logger: ctx.Logger(),
-		Prefix: o.log.Prefix,
-	}
+	return o.log.
+		Attr("imon_global_expect", o.state.GlobalExpect.String()).
+		Attr("imon_local_expect", o.state.LocalExpect.String()).
+		Attr("imon_state", o.state.State.String())
 }
 
 func lastBootIDFile(p naming.Path) string {

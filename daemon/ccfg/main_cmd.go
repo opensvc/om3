@@ -19,7 +19,7 @@ import (
 // they care about.
 func (o *ccfg) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
-		o.log.Error().Err(err).Msgf("daemon: ccfg: can't create volatile cluster object on config file updated: %s", err)
+		o.log.Errorf("can't create volatile cluster object on config file updated: %s", err)
 	} else {
 		o.clusterConfig = n.Config()
 	}
@@ -34,10 +34,10 @@ func (o *ccfg) pubClusterConfig() {
 
 	removed, added := stringslice.Diff(previousNodes, state.Nodes)
 	if len(added) > 0 {
-		o.log.Debug().Msgf("daemon: ccfg: added nodes: %s", added)
+		o.log.Debugf("added nodes: %s", added)
 	}
 	if len(removed) > 0 {
-		o.log.Debug().Msgf("daemon: ccfg: removed nodes: %s", removed)
+		o.log.Debugf("removed nodes: %s", removed)
 	}
 	cluster.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)
@@ -81,12 +81,12 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 
 	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
 	if v, err := o.clusterConfig.Eval(keyListenerAddr); err != nil {
-		o.log.Error().Err(err).Msg("daemon: ccfg: eval listener port")
+		o.log.Errorf("eval listener addr: %s", err)
 	} else {
 		cfg.Listener.Addr = v.(string)
 	}
 	if v, err := o.clusterConfig.Eval(keyListenerPort); err != nil {
-		o.log.Error().Err(err).Msg("daemon: ccfg: eval listener port")
+		o.log.Errorf("eval listener port: %s", err)
 	} else {
 		cfg.Listener.Port = v.(int)
 	}
@@ -102,16 +102,16 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 			sig := o.clusterConfig.SectionSig(name)
 			if sig != lastSig {
 				change = true
-				o.log.Info().Msgf("daemon: ccfg: %s configuration changed (sig %s => %s)", name, lastSig, sig)
+				o.log.Infof("configuration section %s changed (sig %s => %s)", name, lastSig, sig)
 				o.networkSigs[name] = sig
 			}
 		}
 	}
 	if change {
 		if n, err := object.NewNode(); err != nil {
-			o.log.Error().Err(err).Msgf("daemon: ccfg: allocate Node for network setup: %s", err)
+			o.log.Errorf("allocate Node for network setup: %s", err)
 		} else {
-			o.log.Info().Msgf("daemon: ccfg: reconfigure networks")
+			o.log.Infof("reconfigure networks")
 			network.Setup(n)
 		}
 	}

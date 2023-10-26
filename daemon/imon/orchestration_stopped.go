@@ -34,7 +34,7 @@ func (o *imon) freezeStop() {
 	case instance.MonitorStateWaitChildren:
 		o.setWaitChildren()
 	default:
-		o.log.Error().Msgf("daemon: imon: %s: don't know how to freeze and stop from %s", o.path, o.state.State)
+		o.log.Errorf("don't know how to freeze and stop from %s", o.state.State)
 	}
 }
 
@@ -58,7 +58,7 @@ func (o *imon) stop() {
 	case instance.MonitorStateStartFailed:
 		o.stoppedFromFailed()
 	default:
-		o.log.Error().Msgf("daemon: imon: %s: don't know how to stop from %s", o.path, o.state.State)
+		o.log.Errorf("don't know how to stop from %s", o.state.State)
 	}
 }
 
@@ -98,7 +98,7 @@ func (o *imon) doStop() {
 }
 
 func (o *imon) stoppedFromReady() {
-	o.log.Info().Msgf("daemon: imon: %s: reset ready state global expect is stopped", o.path)
+	o.log.Infof("reset ready state global expect is stopped")
 	o.clearPending()
 	o.change = true
 	o.state.State = instance.MonitorStateIdle
@@ -106,7 +106,7 @@ func (o *imon) stoppedFromReady() {
 }
 
 func (o *imon) stoppedFromFailed() {
-	o.log.Info().Msgf("daemon: imon: %s: reset %s state global expect is stopped", o.path)
+	o.log.Infof("reset %s state global expect is stopped")
 	o.change = true
 	o.state.State = instance.MonitorStateIdle
 	o.stoppedClearIfReached()
@@ -122,7 +122,7 @@ func (o *imon) stoppedFromAny() {
 func (o *imon) stoppedClearIfReached() bool {
 	if o.isLocalStopped() {
 		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Info().Msgf("daemon: imon: %s: instance state is stopped -> set done and idle, clear local expect", o.path)
+			o.loggerWithState().Infof("instance state is stopped -> set done and idle, clear local expect")
 			o.doneAndIdle()
 			o.state.LocalExpect = instance.MonitorLocalExpectNone
 			o.clearPending()

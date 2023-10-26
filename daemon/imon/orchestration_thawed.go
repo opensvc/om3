@@ -30,7 +30,7 @@ func (o *imon) ThawedFromIdle() {
 
 func (o *imon) thawedClearIfReached() bool {
 	if o.instStatus[o.localhost].IsThawed() {
-		o.log.Info().Msgf("daemon: imon: %s: instance state is thawed -> set reached, clear local expect", o.path)
+		o.log.Infof("instance state is thawed -> set reached, clear local expect")
 		o.doneAndIdle()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()

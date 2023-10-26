@@ -36,7 +36,7 @@ func (o *imon) orchestrateHAStart() {
 		// to transition state: started -> idle
 		// It prevents unexpected transition state -> ready
 		if o.isLocalStarted() {
-			o.log.Info().Msgf("daemon: imon: %s: instance is now started, enable resource restart", o.path)
+			o.log.Infof("instance is now started, enable resource restart")
 			o.state.LocalExpect = instance.MonitorLocalExpectStarted
 			o.transitionTo(instance.MonitorStateIdle)
 		}
@@ -44,7 +44,7 @@ func (o *imon) orchestrateHAStart() {
 	}
 	if v, reason := o.isStartable(); !v {
 		if o.pendingCancel != nil && o.state.State == instance.MonitorStateReady {
-			o.log.Info().Msgf("daemon: imon: %s: instance is not startable, clear the ready state: %s", o.path, reason)
+			o.log.Infof("instance is not startable, clear the ready state: %s", reason)
 			o.clearPending()
 			o.transitionTo(instance.MonitorStateIdle)
 		}
@@ -78,8 +78,8 @@ func (o *imon) clearBootFailed() {
 			return
 		}
 	}
-	o.log.Info().Msgf("daemon: imon: %s: clear instance %s: local instance avail is %s, object avail is %s",
-		o.path, o.state.State, o.instStatus[o.localhost].Avail, o.objStatus.Avail)
+	o.log.Infof("clear instance %s: local instance avail is %s, object avail is %s",
+		o.state.State, o.instStatus[o.localhost].Avail, o.objStatus.Avail)
 	o.transitionTo(instance.MonitorStateIdle)
 }
 
@@ -97,6 +97,6 @@ func (o *imon) clearStartFailed() {
 			return
 		}
 	}
-	o.log.Info().Msgf("daemon: imon: %s: clear instance start failed: the object is up", o.path)
+	o.log.Infof("clear instance start failed: the object is up")
 	o.transitionTo(instance.MonitorStateIdle)
 }

@@ -121,39 +121,24 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 	)
 	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}}
 	if title != "" {
-		o.loggerWithState().Info().Stringer("state", o.state.State).Msgf(
-			"daemon: imon: %s: -> exec %s",
-			o.path, append([]string{cmdPath}, cmdArgs...),
-		)
+		o.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		o.loggerWithState().Debug().Stringer("state", o.state.State).Msgf(
-			"daemon: imon: %s: -> exec %s",
-			o.path, append([]string{cmdPath}, cmdArgs...),
-		)
+		o.loggerWithState().Debugf("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	o.pubsubBus.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
 		o.pubsubBus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
-		o.loggerWithState().Error().Err(err).Msgf(
-			"daemon: imon: %s: <- exec %s: %s",
-			o.path, append([]string{cmdPath}, cmdArgs...), err,
-		)
+		o.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	o.pubsubBus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "imon", Title: title}, labels...)
 	if title != "" {
-		o.loggerWithState().Info().Stringer("state", o.state.State).Msgf(
-			"daemon: imon: %s: <- exec %s",
-			o.path, append([]string{cmdPath}, cmdArgs...),
-		)
+		o.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		o.loggerWithState().Debug().Msgf(
-			"daemon: imon: %s: <- exec %s",
-			o.path, append([]string{cmdPath}, cmdArgs...),
-		)
+		o.loggerWithState().Debugf("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	return nil
 }

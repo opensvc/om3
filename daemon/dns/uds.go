@@ -68,7 +68,7 @@ func (t *dns) getAllDomains(b []byte) getAllDomainsResponse {
 func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	var req getDomainMetadata
 	if err := json.Unmarshal(b, &req); err != nil {
-		t.log.Error().Err(err).Msgf("daemon: dns: request parse: %s", err)
+		t.log.Errorf("request parse: %s", err)
 		return getDomainMetadataResponse{}
 	}
 	switch req.Parameters.Kind {

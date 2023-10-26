@@ -19,20 +19,20 @@ func (o *imon) getFrozen() time.Time {
 func (o *imon) freeze() error {
 	frozen := o.getFrozen()
 
-	o.log.Info().Msg("daemon action freeze")
+	o.log.Infof("daemon action freeze")
 	p := filepath.Join(o.path.VarDir(), "frozen")
 
 	if !file.Exists(p) {
 		d := filepath.Dir(p)
 		if !file.Exists(d) {
 			if err := os.MkdirAll(d, os.ModePerm); err != nil {
-				o.log.Error().Err(err).Msg("freeze")
+				o.log.Errorf("freeze: %s", err)
 				return err
 			}
 		}
 		f, err := os.Create(p)
 		if err != nil {
-			o.log.Error().Err(err).Msg("freeze")
+			o.log.Errorf("freeze: %s", err)
 			return err
 		}
 		_ = f.Close()
@@ -44,7 +44,7 @@ func (o *imon) freeze() error {
 	}
 	if frozen.IsZero() {
 		err := fmt.Errorf("unexpected frozen reset on %s", p)
-		o.log.Error().Err(err).Msg("freeze")
+		o.log.Errorf("freeze: %s", err)
 		return err
 	}
 	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileUpdated{Path: o.path, At: frozen},
@@ -57,14 +57,14 @@ func (o *imon) freeze() error {
 // freeze removes instance frozen flag file, and publish InstanceFrozenFileUpdated
 // local instance status cache frozen value is updated with value read from file system
 func (o *imon) unfreeze() error {
-	o.log.Info().Msg("daemon action unfreeze")
+	o.log.Infof("daemon action unfreeze")
 	p := filepath.Join(o.path.VarDir(), "frozen")
 	if !file.Exists(p) {
-		o.log.Info().Msg("already thawed")
+		o.log.Infof("already thawed")
 	} else {
 		err := os.Remove(p)
 		if err != nil {
-			o.log.Error().Err(err).Msg("unfreeze")
+			o.log.Errorf("unfreeze: %s", err)
 			return err
 		}
 	}
