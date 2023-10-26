@@ -9,44 +9,53 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
 		listener *net.Listener
-		log      zerolog.Logger
+		log      plog.Logger
 		addr     string
 		wg       sync.WaitGroup
 	}
 )
 
-func New(opts ...funcopt.O) *T {
-	t := &T{}
+func New(ctx context.Context, opts ...funcopt.O) *T {
+	t := &T{
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpux").With().
+				Str("lsnr_type", "http_ux").
+				Logger(),
+			Prefix: "daemon: listener: http_ux: ",
+		},
+	}
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Error().Err(err).Msg("listener funcopt.Apply")
+		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-ux").Logger()
+	t.log = plog.Logger{
+		Logger: t.log.Logger.With().Str("lsnr_addr", t.addr).Logger(),
+		Prefix: t.log.Prefix + t.addr + ": ",
+	}
 	return t
 }
 
 func (t *T) Start(ctx context.Context) error {
 	errC := make(chan error)
-	t.log.Info().Msg("listener starting")
+	t.log.Infof("starting")
 	if err := os.RemoveAll(t.addr); err != nil {
-		t.log.Error().Err(err).Msg("RemoveAll")
+		t.log.Errorf("remove file: %s", err)
 		return err
 	}
 	if listener, err := net.Listen("unix", t.addr); err != nil {
-		t.log.Error().Err(err).Msg("listen failed")
+		t.log.Errorf("listen failed: %s", err)
 		return err
 	} else {
 		t.listener = &listener
@@ -59,29 +68,29 @@ func (t *T) Start(ctx context.Context) error {
 		s := &http2.Server{}
 		server := http.Server{
 			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
-			ErrorLog: golog.New(t.log, "", 0),
+			ErrorLog: golog.New(t.log.Logger, "", 0),
 		}
-		t.log.Info().Msg("listener started")
+		t.log.Infof("started")
 		errC <- nil
 		if err := server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-			t.log.Debug().Err(err).Msg("http listener ends with unexpected error")
+			t.log.Debugf("serve ends with unexpected error: %s", err)
 		}
-		t.log.Info().Msg("listener stopped")
+		t.log.Infof("serve stopped")
 	}(errC)
 
 	return <-errC
 }
 
 func (t *T) Stop() error {
-	t.log.Info().Msgf("listener stopping %s", t.addr)
-	defer t.log.Info().Msgf("listener stopped %s", t.addr)
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
 	if t.listener == nil {
-		t.log.Info().Msg("listener already closed")
+		t.log.Infof("listener already closed")
 		return nil
 	}
 	err := (*t.listener).Close()
 	if err != nil {
-		t.log.Error().Err(err).Msg("listener Close failure")
+		t.log.Errorf("listener Close failure: %s", err)
 	}
 	t.wg.Wait()
 	return err
