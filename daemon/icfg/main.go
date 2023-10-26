@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -35,6 +32,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
@@ -44,7 +42,7 @@ type (
 		path                     naming.Path
 		configure                object.Configurer
 		filename                 string
-		log                      zerolog.Logger
+		log                      plog.Logger
 		lastMtime                time.Time
 		localhost                string
 		forceRefresh             bool
@@ -92,11 +90,16 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
-		log:            log.Logger.With().Str("pkg", "icfg").Stringer("object", p).Logger(),
-		localhost:      localhost,
-		forceRefresh:   false,
-		bus:            pubsub.BusFromContext(ctx),
-		filename:       filename,
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/icfg").With().
+				Str("object", p.String()).
+				Logger(),
+			Prefix: "daemon: icfg: " + p.String() + ": ",
+		},
+		localhost:    localhost,
+		forceRefresh: false,
+		bus:          pubsub.BusFromContext(ctx),
+		filename:     filename,
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -109,11 +112,11 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	o.startSubscriptions()
 
 	go func() {
-		defer o.log.Debug().Msg("stopped")
+		defer o.log.Debugf("stopped")
 		defer func() {
 			cancel()
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("subscription stop")
+				o.log.Errorf("subscription stop: %s", err)
 			}
 			o.done(parent, svcDiscoverCmd)
 		}()
@@ -152,17 +155,17 @@ func (o *T) startSubscriptions() {
 
 // worker watch for local instConfig config file updates until file is removed
 func (o *T) worker() {
-	defer o.log.Debug().Msg("done")
-	o.log.Debug().Msg("starting")
+	defer o.log.Debugf("done")
+	o.log.Debugf("starting")
 
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := o.configFileCheck(); err != nil {
-		o.log.Warn().Err(err).Msg("initial configFileCheck")
+		o.log.Warnf("initial configFileCheck: %s", err)
 		return
 	}
 	defer o.delete()
 
-	o.log.Debug().Msg("started")
+	o.log.Debugf("started")
 	for {
 		select {
 		case <-o.ctx.Done():
@@ -188,24 +191,24 @@ func (o *T) configFileCheckRefresh(force bool) error {
 	}
 	err := o.configFileCheck()
 	if err != nil {
-		o.log.Error().Err(err).Msg("configFileCheck error")
+		o.log.Errorf("configFileCheck: %s", err)
 		o.cancel()
 	}
 	return err
 }
 
 func (o *T) onClusterConfigUpdated() {
-	o.log.Info().Msg("cluster config updated => refresh")
+	o.log.Infof("cluster config updated => refresh")
 	_ = o.configFileCheckRefresh(true)
 }
 
 func (o *T) onConfigFileUpdated() {
-	o.log.Info().Msgf("config file changed => refresh")
+	o.log.Infof("config file changed => refresh")
 	_ = o.configFileCheckRefresh(false)
 }
 
 func (o *T) onLocalClusterInstanceConfigUpdated() {
-	o.log.Info().Msg("cluster instance config changed => refresh")
+	o.log.Infof("cluster instance config changed => refresh")
 	_ = o.configFileCheckRefresh(true)
 }
 
@@ -216,7 +219,7 @@ func (o *T) onConfigFileRemoved() {
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
 func (o *T) updateConfig(newConfig *instance.Config) {
 	if instance.ConfigEqual(&o.instanceConfig, newConfig) {
-		o.log.Debug().Msg("no update required")
+		o.log.Debugf("no update required")
 		return
 	}
 	o.instanceConfig = *newConfig
@@ -239,16 +242,16 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 func (o *T) configFileCheck() error {
 	mtime := file.ModTime(o.filename)
 	if mtime.IsZero() {
-		o.log.Info().Msgf("configFile no mtime %s", o.filename)
+		o.log.Infof("configFile no mtime %s", o.filename)
 		return configFileCheckError
 	}
 	if mtime.Equal(o.lastMtime) && !o.forceRefresh {
-		o.log.Debug().Msg("same mtime, skip")
+		o.log.Debugf("same mtime, skip")
 		return nil
 	}
 	checksum, err := file.MD5(o.filename)
 	if err != nil {
-		o.log.Info().Msgf("configFile no present(md5sum)")
+		o.log.Infof("configFile no present(md5sum)")
 		return configFileCheckError
 	}
 	if err := o.setConfigure(); err != nil {
@@ -258,24 +261,24 @@ func (o *T) configFileCheck() error {
 	cf := o.configure.Config()
 	scope, err := o.getScope(cf)
 	if err != nil {
-		o.log.Error().Err(err).Msgf("can't get scope")
+		o.log.Errorf("can't get scope: %s", err)
 		return configFileCheckError
 	}
 	if len(scope) == 0 {
-		o.log.Info().Msg("empty scope")
+		o.log.Infof("empty scope")
 		return configFileCheckError
 	}
 	newMtime := file.ModTime(o.filename)
 	if newMtime.IsZero() {
-		o.log.Info().Msgf("configFile no more mtime %s", o.filename)
+		o.log.Infof("configFile no more mtime %s", o.filename)
 		return configFileCheckError
 	}
 	if !newMtime.Equal(mtime) {
-		o.log.Info().Msg("configFile changed(wait next evaluation)")
+		o.log.Infof("configFile changed(wait next evaluation)")
 		return nil
 	}
 	if !stringslice.Has(o.localhost, scope) {
-		o.log.Info().Msg("localhost not anymore an instance node")
+		o.log.Infof("localhost not anymore an instance node")
 		return configFileCheckError
 	}
 
@@ -327,7 +330,7 @@ func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 		var evalNodes interface{}
 		evalNodes, err = cf.Eval(keyNodes)
 		if err != nil {
-			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
+			o.log.Errorf("eval DEFAULT.nodes: %s", err)
 			return
 		}
 		scope = evalNodes.([]string)
@@ -445,7 +448,7 @@ func (o *T) getFlexMax(cf *xconfig.T) int {
 func (o *T) setConfigure() error {
 	configure, err := object.NewConfigurer(o.path)
 	if err != nil {
-		o.log.Warn().Err(err).Msg("NewConfigurer failure")
+		o.log.Warnf("configure failed: %s", err)
 		return err
 	}
 	o.configure = configure
