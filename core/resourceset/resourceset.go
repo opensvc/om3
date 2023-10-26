@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -23,7 +24,7 @@ type (
 		PG             *pg.Config
 		ResourceLister ResourceLister
 
-		log *zerolog.Logger
+		log *plog.Logger
 	}
 
 	L []*T
@@ -86,21 +87,24 @@ func New() *T {
 }
 
 // Log returns the resource logger
-func (t *T) Log() *zerolog.Logger {
+func (t *T) Log() *plog.Logger {
 	if t.log == nil {
-		log := zerolog.New(nil)
-		return &log
+		return &plog.Logger{
+			Logger: zerolog.New(nil),
+		}
 	}
 	return t.log
 }
 
-// SetLogger configures a logger from a parent logger, adding the "rs" metadata key
-func (t *T) SetLogger(parent *zerolog.Logger) {
+// SetLogger configures a logger from a parent logger, adding the "subset" attribute
+func (t *T) SetLogger(parent *plog.Logger) {
 	if parent == nil {
 		return
 	}
-	log := parent.With().Str("rs", t.Name).Logger()
-	t.log = &log
+	t.log = &plog.Logger{
+		Logger: parent.Logger.With().Str("subset", t.Name).Logger(),
+		Prefix: parent.Prefix + t.Name + ": ",
+	}
 }
 
 // Generic allocates and initializes a new resourceset for a given
@@ -229,7 +233,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 			continue
 		}
 		if res.Error != nil {
-			res.Resource.Errorf("%s", res.Error)
+			res.Resource.Log().Errorf("%s", res.Error)
 		}
 		errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 	}
@@ -255,7 +259,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case r.IsOptional():
 			continue
 		default:
-			r.Errorf("%s", err)
+			r.Log().Errorf("%s", err)
 			return fmt.Errorf("%s: %w", rid, err)
 		}
 	}

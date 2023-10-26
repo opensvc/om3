@@ -90,7 +90,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("md %s is already assembled", t.Label())
+		t.Log().Infof("md %s is already assembled", t.Label())
 		return nil
 	}
 	if err := dev.Activate(); err != nil {
@@ -108,7 +108,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label())
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {
@@ -174,7 +174,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Info().Msgf("md is already created")
+		t.Log().Infof("md is already created")
 		return nil
 	}
 	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk); err != nil {
@@ -183,7 +183,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return devIntf.Remove()
 	})
-	t.Log().Info().Msgf("md uuid is %s", dev.UUID())
+	t.Log().Infof("md uuid is %s", dev.UUID())
 	if err := t.SetUUID(ctx, dev.UUID()); err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !exists {
-		t.Log().Info().Msgf("already unprovisioned")
+		t.Log().Infof("already unprovisioned")
 		return nil
 	}
 	devIntf, ok := dev.(MDDriverProvisioner)
@@ -279,7 +279,7 @@ func (t T) ExposedDevices() device.L {
 
 func (t T) SubDevices() device.L {
 	if l, err := t.md().Devices(); err != nil {
-		t.Log().Debug().Err(err).Send()
+		t.Log().Debugf("%s", err)
 		return device.L{}
 	} else {
 		return l
@@ -368,6 +368,6 @@ func (t T) downStateAlerts() error {
 	if err != nil {
 		return err
 	}
-	t.Log().Debug().Msgf("loaded disk ids from cache: %s", dids)
+	t.Log().Debugf("loaded disk ids from cache: %s", dids)
 	return nil
 }

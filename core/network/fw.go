@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
-	"github.com/rs/zerolog"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -23,7 +23,7 @@ type (
 		BackendDevName() string
 	}
 	logger interface {
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 	}
 )
 
@@ -254,7 +254,7 @@ func setupFW(n logger, nws []Networker) error {
 	h.AddRuleDestinationReturn("224.0.0.0/8")
 	h.AddRuleMasq()
 	for _, m := range h.Messages() {
-		n.Log().Info().Msg(m)
+		n.Log().Infof(m)
 	}
 	return h.Flush()
 }

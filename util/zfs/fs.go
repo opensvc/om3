@@ -1,14 +1,11 @@
 package zfs
 
-import (
-	"github.com/rs/zerolog"
-)
+import "github.com/opensvc/om3/util/plog"
 
 type (
 	Filesystem struct {
-		Name      string
-		Log       *zerolog.Logger
-		LogPrefix string
+		Name string
+		Log  *plog.Logger
 	}
 	Filesystems []Filesystem
 )
@@ -25,10 +22,6 @@ func (t Filesystem) GetName() string {
 	return t.Name
 }
 
-func (t Filesystem) GetLog() *zerolog.Logger {
+func (t Filesystem) GetLog() *plog.Logger {
 	return t.Log
-}
-
-func (t Filesystem) GetLogPrefix() string {
-	return t.LogPrefix
 }

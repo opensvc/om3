@@ -12,12 +12,13 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
 		res string
-		log *zerolog.Logger
+		log *plog.Logger
 	}
 
 	Config struct {
@@ -114,7 +115,7 @@ func New(res string, opts ...funcopt.O) *T {
 	_ = funcopt.Apply(&t, opts...)
 	return &t
 }
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.log = log
@@ -512,7 +513,7 @@ func (t T) WipeMD() error {
 			if strings.HasPrefix(s, "***") {
 				return
 			}
-			t.log.Error().Msg(s)
+			t.log.Errorf(s)
 		}),
 		command.WithIgnoredExitCodes(0, 20),
 	)

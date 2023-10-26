@@ -136,10 +136,10 @@ func (t T) delRoutes(routes []*types.Route) error {
 			continue
 		}
 		if err := ip.ValidateExpectedRoute([]*types.Route{route}); err != nil {
-			t.Infof("route to %s dev %s already down", route.Dst.String(), dev.Attrs().Name)
+			t.Log().Infof("route to %s dev %s already down", route.Dst.String(), dev.Attrs().Name)
 			return nil
 		}
-		t.Infof("del route to %s dev %s", route.Dst.String(), dev.Attrs().Name)
+		t.Log().Infof("del route to %s dev %s", route.Dst.String(), dev.Attrs().Name)
 		return delRoute(&route.Dst, route.GW, dev)
 	}
 	return nil
@@ -155,10 +155,10 @@ func (t T) addRoutes(routes []*types.Route) error {
 			continue
 		}
 		if err := ip.ValidateExpectedRoute([]*types.Route{route}); err == nil {
-			t.Infof("route to %s dev %s already up", route.Dst.String(), dev.Attrs().Name)
+			t.Log().Infof("route to %s dev %s already up", route.Dst.String(), dev.Attrs().Name)
 			return nil
 		}
-		t.Infof("add route to %s dev %s", route.Dst, dev.Attrs().Name)
+		t.Log().Infof("add route to %s dev %s", route.Dst, dev.Attrs().Name)
 		return ip.AddRoute(&route.Dst, route.GW, dev)
 	}
 	return nil

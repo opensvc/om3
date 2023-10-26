@@ -10,11 +10,12 @@ import (
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	driver struct {
-		log *zerolog.Logger
+		log *plog.Logger
 	}
 	ShowData struct {
 		Report []LVReport `json:"report"`
@@ -33,17 +34,17 @@ func (t driver) DriverName() string {
 	return "lvm2"
 }
 
-func (t *driver) SetLog(log *zerolog.Logger) {
+func (t *driver) SetLog(log *plog.Logger) {
 	t.log = log
 }
 
-func (t *driver) Log() *zerolog.Logger {
+func (t *driver) Log() *plog.Logger {
 	return t.log
 }
 
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	type setLoger interface {
-		SetLog(*zerolog.Logger)
+		SetLog(*plog.Logger)
 	}
 	return funcopt.F(func(i interface{}) error {
 		t := i.(setLoger)
@@ -70,7 +71,7 @@ func hasMetad() bool {
 	return true
 }
 
-func pvscan(log *zerolog.Logger) error {
+func pvscan(log *plog.Logger) error {
 	args := make([]string, 0)
 	if hasMetad() {
 		args = append(args, "--cache")

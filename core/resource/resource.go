@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/colorstatus"
@@ -31,6 +32,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/scsi"
 	"github.com/opensvc/om3/util/xsession"
@@ -38,7 +40,7 @@ import (
 
 type (
 	ObjectDriver interface {
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 		VarDir() string
 		ResourceByID(string) Driver
 		ResourcesByDrivergroups([]driver.Group) Drivers
@@ -77,7 +79,7 @@ type (
 		IsStandby() bool
 		IsStatusDisabled() bool
 		Label() string
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 		Manifest() *manifest.T
 		MatchRID(string) bool
 		MatchSubset(string) bool
@@ -96,11 +98,6 @@ type (
 		TagSet() TagSet
 		Trigger(context.Context, trigger.Blocking, trigger.Hook, trigger.Action) error
 		VarDir() string
-
-		Debugf(string, ...any)
-		Infof(string, ...any)
-		Warnf(string, ...any)
-		Errorf(string, ...any)
 	}
 
 	// T is the resource type, embedded in each drivers type
@@ -147,7 +144,7 @@ type (
 		EnableUnprovision       bool
 
 		statusLog    StatusLog
-		log          zerolog.Logger
+		log          plog.Logger
 		object       any
 		objectDriver ObjectDriver
 		pg           *pg.Config
@@ -463,7 +460,7 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		if run.Err != nil {
 			return run.Err
 		} else {
-			t.Infof("applied %s", run.Config)
+			t.Log().Infof("applied %s", run.Config)
 		}
 	}
 	return nil
@@ -471,11 +468,12 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 
 // SetObject holds the useful interface of the parent object of the resource.
 func (t *T) SetObject(o any) {
-	if _, ok := o.(ObjectDriver); !ok {
+	if od, ok := o.(ObjectDriver); !ok {
 		panic("SetObject accepts only ObjectDriver")
+	} else {
+		t.object = o
+		t.log = t.getLoggerFromObjectDriver(od)
 	}
-	t.object = o
-	t.log = t.getLogger()
 }
 
 // GetObject returns the object interface set by SetObjectriver upon configure.
@@ -488,16 +486,19 @@ func (t *T) GetObjectDriver() ObjectDriver {
 	return t.object.(ObjectDriver)
 }
 
-func (t *T) getLogger() zerolog.Logger {
-	l := t.object.(ObjectDriver).Log().With().Stringer("rid", t.ResourceID)
+func (t *T) getLoggerFromObjectDriver(o ObjectDriver) plog.Logger {
+	l := log.Logger.With().Stringer("rid", t.ResourceID)
 	if t.Subset != "" {
-		l = l.Str("rs", t.Subset)
+		l = l.Str("subset", t.Subset)
 	}
-	return l.Logger()
+	return plog.Logger{
+		Logger: l.Logger(),
+		Prefix: fmt.Sprintf("%s: %s: ", o, t.ResourceID),
+	}
 }
 
 // Log returns the resource logger
-func (t *T) Log() *zerolog.Logger {
+func (t *T) Log() *plog.Logger {
 	return &t.log
 }
 
@@ -612,7 +613,7 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 	if cmd == "" {
 		return nil
 	}
-	t.Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
+	t.Log().Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
 	t.Progress(ctx, "▶ "+hookId)
 	return t.trigger(ctx, cmd)
 }
@@ -679,7 +680,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 		if state == status.Undef {
 			return fmt.Errorf("invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
 		}
-		r.Infof("action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
+		r.Log().Infof("action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
@@ -692,7 +693,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 		}
 		switch props.Name {
 		case "start", "stop", "provision", "unprovision", "deploy", "purge":
-			r.Infof("requirement not met yet. wait %s", timeout.Round(time.Second))
+			r.Log().Infof("requirement not met yet. wait %s", timeout.Round(time.Second))
 			state = sb.Wait(rid, timeout)
 			if reqStates.Has(state) {
 				continue // requirement met
@@ -729,7 +730,7 @@ func Run(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	r.Progress(ctx, "▶ run")
 	if err := runner.Run(ctx); err != nil {
@@ -739,7 +740,7 @@ func Run(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	return nil
 }
@@ -804,7 +805,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -817,7 +818,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	return nil
 }
@@ -841,7 +842,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
-		r.Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -854,7 +855,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
-		r.Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
 	}
 	return nil
 }
@@ -979,7 +980,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	r.Progress(ctx, "▶ shutdown")
 	if err := fn(ctx); err != nil {
@@ -992,7 +993,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Shutdown); err != nil {
-		r.Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
 	}
 	return nil
 }
@@ -1033,7 +1034,7 @@ func stop(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	r.Progress(ctx, "▶ "+progressAction)
 	if err := fn(ctx); err != nil {
@@ -1046,7 +1047,7 @@ func stop(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
-		r.Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	return nil
 }
@@ -1084,11 +1085,11 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
-		r.Debugf("resource does not implement reservable disks listing")
+		r.Log().Debugf("resource does not implement reservable disks listing")
 		return nil
 	}
 	if !o.IsSCSIPersistentReservationEnabled() {
-		r.Debugf("scsi pr is not enabled")
+		r.Log().Debugf("scsi pr is not enabled")
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{
@@ -1188,7 +1189,7 @@ func Action(ctx context.Context, r Driver) error {
 }
 
 // SetLoggerForTest can be used to set resource log for testing purpose
-func (t *T) SetLoggerForTest(l zerolog.Logger) {
+func (t *T) SetLoggerForTest(l plog.Logger) {
 	t.log = l
 }
 
@@ -1305,28 +1306,4 @@ func (t Status) Unstructured() map[string]any {
 		m["info"] = t.Info
 	}
 	return m
-}
-
-func (t T) Msgf(format string, args ...any) string {
-	return t.GetObject().(fmt.Stringer).String() + ": " + t.RID() + ": " + fmt.Sprintf(format, args...)
-}
-
-func (t T) Debugf(format string, args ...any) {
-	msg := t.Msgf(format, args...)
-	t.log.Debug().Msg(msg)
-}
-
-func (t T) Infof(format string, args ...any) {
-	msg := t.Msgf(format, args...)
-	t.log.Info().Msg(msg)
-}
-
-func (t T) Warnf(format string, args ...any) {
-	msg := t.Msgf(format, args...)
-	t.log.Warn().Msg(msg)
-}
-
-func (t T) Errorf(format string, args ...any) {
-	msg := t.Msgf(format, args...)
-	t.log.Error().Msg(msg)
 }

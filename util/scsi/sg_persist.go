@@ -11,11 +11,12 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	SGPersistDriver struct {
-		Log *zerolog.Logger
+		Log *plog.Logger
 	}
 )
 

@@ -14,8 +14,8 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -27,13 +27,13 @@ type (
 		needCommit        bool
 		allowEmptyNetwork bool
 
-		log   *zerolog.Logger
+		log   *plog.Logger
 		noder Noder
 	}
 
 	Noder interface {
 		MergedConfig() *xconfig.T
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 		Nodes() ([]string, error)
 	}
 	Networker interface {
@@ -95,7 +95,7 @@ type (
 
 		// Log returns a zerolog Logger configured to add the network
 		// name to log entries.
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 
 		// Nodes is a wrapper for the noder Nodes, which returns the
 		// list of cluster nodes to make the network available on.
@@ -112,15 +112,17 @@ type (
 	}
 )
 
-func (t *T) Log() *zerolog.Logger {
+func (t *T) Log() *plog.Logger {
 	if t.log == nil {
-		log := t.noder.Log().With().
-			Str("netName", t.name).
-			Str("netDriver", t.driver).
-			Str("netNetwork", t.network).
-			Bool("netImplicit", t.isImplicit).
-			Logger()
-		t.log = &log
+		t.log = &plog.Logger{
+			Logger: t.noder.Log().With().
+				Str("netName", t.name).
+				Str("netDriver", t.driver).
+				Str("netNetwork", t.network).
+				Bool("netImplicit", t.isImplicit).
+				Logger(),
+			Prefix: t.name,
+		}
 	}
 	return t.log
 }
@@ -338,7 +340,7 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
 	} else if ipnet != nil {
-		t.Log().Debug().Msgf("node %s subnet %s read from config", nodename, ipnet)
+		t.Log().Debugf("node %s subnet %s read from config", nodename, ipnet)
 		return ipnet, nil
 	}
 
@@ -369,9 +371,9 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 		Mask: mask,
 	}
 	if err := t.Set("subnet@"+nodename, subnetIPNet.String()); err != nil {
-		t.Log().Warn().Err(err).Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
+		t.Log().Warnf("assign subnet %s to node %s: %s", subnetIPNet, nodename, err)
 	} else {
-		t.Log().Info().Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
+		t.Log().Infof("assign subnet %s to node %s", subnetIPNet, nodename)
 	}
 	return subnetIPNet, nil
 }

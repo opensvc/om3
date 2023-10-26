@@ -3,7 +3,7 @@ package zfs
 import (
 	"fmt"
 
-	"github.com/rs/zerolog"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -11,8 +11,7 @@ type (
 		Name      string
 		Size      uint64
 		BlockSize uint64
-		Log       *zerolog.Logger
-		LogPrefix string
+		Log       *plog.Logger
 	}
 	Vols []Vol
 )
@@ -29,12 +28,8 @@ func (t Vol) GetName() string {
 	return t.Name
 }
 
-func (t Vol) GetLog() *zerolog.Logger {
+func (t Vol) GetLog() *plog.Logger {
 	return t.Log
-}
-
-func (t Vol) GetLogPrefix() string {
-	return t.LogPrefix
 }
 
 func (t Vols) Paths() []string {

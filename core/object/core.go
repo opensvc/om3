@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/progress"
 )
 
@@ -27,7 +27,7 @@ type (
 
 		// private
 		volatile bool
-		log      zerolog.Logger
+		log      plog.Logger
 
 		// caches
 		id         uuid.UUID
@@ -84,7 +84,6 @@ func (t *core) List() (string, error) {
 }
 
 func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error {
-	t.log = logging.Logger()
 	if parsed, err := toPathType(id); err != nil {
 		return err
 	} else {
@@ -93,12 +92,15 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}
-	t.log = t.log.With().
-		Stringer("obj_path", t.path).
-		Stringer("obj_kind", t.path.Kind).
-		Str("obj_name", t.path.Name).
-		Str("obj_namespace", t.path.Namespace).
-		Logger()
+	t.log = plog.Logger{
+		Logger: log.Logger.With().
+			Stringer("obj_path", t.path).
+			Stringer("obj_kind", t.path.Kind).
+			Str("obj_name", t.path.Name).
+			Str("obj_namespace", t.path.Namespace).
+			Logger(),
+		Prefix: fmt.Sprintf("%s: ", t.path),
+	}
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}
@@ -144,7 +146,7 @@ func (t *core) Node() (*Node, error) {
 	}
 }
 
-func (t core) Log() *zerolog.Logger {
+func (t core) Log() *plog.Logger {
 	return &t.log
 }
 
@@ -162,4 +164,20 @@ func (t core) Progress(ctx context.Context, cols ...any) {
 
 func (t core) Msgf(format string, args ...any) string {
 	return t.path.String() + ": " + fmt.Sprintf(format, args...)
+}
+
+func (t core) Debugf(format string, args ...any) {
+	t.log.Debug().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Infof(format string, args ...any) {
+	t.log.Info().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Warnf(format string, args ...any) {
+	t.log.Warn().Msg(t.Msgf(format, args...))
+}
+
+func (t core) Errorf(format string, args ...any) {
+	t.log.Error().Msg(t.Msgf(format, args...))
 }

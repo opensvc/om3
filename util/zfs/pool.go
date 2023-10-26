@@ -6,12 +6,13 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	Pool struct {
 		Name      string
-		Log       *zerolog.Logger
+		Log       *plog.Logger
 		LogPrefix string
 	}
 )
@@ -21,7 +22,6 @@ func (t *Pool) Exists() (bool, error) {
 		command.WithName("zpool"),
 		command.WithVarArgs("list", t.Name),
 		command.WithLogger(t.Log),
-		command.WithLogPrefix(t.LogPrefix),
 		command.WithBufferedStderr(),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
 	)

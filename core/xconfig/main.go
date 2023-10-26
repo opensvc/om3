@@ -15,8 +15,6 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
@@ -25,6 +23,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xstrings"
 )
@@ -48,7 +47,7 @@ type (
 	Referrer interface {
 		KeywordLookup(key.T, string) keywords.Keyword
 		IsVolatile() bool
-		Log() *zerolog.Logger
+		Log() *plog.Logger
 		Config() *T
 
 		// for reference private to the referrer. ex: path for an object
@@ -1226,11 +1225,6 @@ func setKeys(cf *T, kops ...keyop.T) error {
 		if op.IsZero() {
 			return fmt.Errorf("invalid set expression: %s", op)
 		}
-		log.Debug().
-			Stringer("key", op.Key).
-			Stringer("op", op.Op).
-			Str("val", op.Value).
-			Msg("set")
 		if err := cf.Set(op); err != nil {
 			return err
 		}

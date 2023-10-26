@@ -46,7 +46,7 @@ func (t T) Start(ctx context.Context) error {
 		return err
 	}
 	if t.status() == status.Up {
-		t.Log().Info().Msg("already up")
+		t.Log().Infof("already up")
 		return nil
 	}
 	if err := t.start(ctx); err != nil {
@@ -64,7 +64,7 @@ func (t T) Stop(ctx context.Context) error {
 		return err
 	}
 	if t.status() == status.Down {
-		t.Log().Info().Msg("already down")
+		t.Log().Infof("already down")
 		return nil
 	}
 	if err := t.stop(); err != nil {

@@ -126,7 +126,7 @@ func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("container %s is already up", t.Name)
+		t.Log().Infof("container %s is already up", t.Name)
 		return nil
 	}
 	if err := t.startCgroup(); err != nil {
@@ -148,7 +148,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("container %s is already down", t.Name)
+		t.Log().Infof("container %s is already down", t.Name)
 		return nil
 	}
 	links := t.getLinks()
@@ -228,7 +228,7 @@ func (t *T) purgeConfigFile() error {
 	if !file.Exists(p) {
 		return nil
 	}
-	t.Log().Info().Msgf("remove %s", p)
+	t.Log().Infof("remove %s", p)
 	if err := os.Remove(p); err != nil {
 		return err
 	}
@@ -238,19 +238,19 @@ func (t *T) purgeConfigFile() error {
 func (t *T) purgeLxcVar() error {
 	p := t.lxcPath()
 	if p == "" {
-		t.Log().Debug().Msg("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
+		t.Log().Debugf("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
 		return nil
 	}
 	p = filepath.Join(p, t.Name)
 	if !file.Exists(p) {
-		t.Log().Info().Msgf("%s is already cleaned up", p)
+		t.Log().Infof("%s is already cleaned up", p)
 		return nil
 	}
 	if file.IsProtected(p) {
-		t.Log().Warn().Msgf("refuse to remove %s", p)
+		t.Log().Warnf("refuse to remove %s", p)
 		return nil
 	}
-	t.Log().Info().Msgf("remove %s", p)
+	t.Log().Infof("remove %s", p)
 	if err := os.RemoveAll(p); err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (t *T) purgeLxcVar() error {
 
 func (t T) ProvisionLeader(ctx context.Context) error {
 	if t.exists() {
-		t.Log().Info().Msgf("container %s is already created", t.Name)
+		t.Log().Infof("container %s is already created", t.Name)
 		return nil
 	}
 	args := []string{"--name", t.Name}
@@ -303,7 +303,6 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		command.WithName("lxc-create"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -457,7 +456,7 @@ func (t T) hostname() string {
 
 func (t *T) setHostname() error {
 	if err := t.checkHostname(); err != nil {
-		t.Log().Info().Msg("container hostname already set")
+		t.Log().Infof("container hostname already set")
 		return nil
 	}
 	p, err := t.hostnameFile()
@@ -468,7 +467,7 @@ func (t *T) setHostname() error {
 	if err := os.WriteFile(p, []byte(h+"\n"), 0644); err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("container hostname set to %s", h)
+	t.Log().Infof("container hostname set to %s", h)
 	return nil
 }
 
@@ -804,7 +803,7 @@ func (t *T) ContainerHead() (string, error) {
 func (t *T) cpusetDir() string {
 	path := ""
 	if !file.Exists(cpusetDir) {
-		t.Log().Debug().Msgf("startCgroup: %s does not exist", cpusetDir)
+		t.Log().Debugf("startCgroup: %s does not exist", cpusetDir)
 		return ""
 	}
 	if t.cgroupDirCapable() {
@@ -828,7 +827,7 @@ func (t T) setCpusetCloneChildren() error {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return fmt.Errorf("set clone_children for container %s: %w", t.Name, err)
 		} else {
-			t.Log().Info().Msgf("%s created", path)
+			t.Log().Infof("%s created", path)
 		}
 	}
 	paths := make([]string, 0)
@@ -840,18 +839,18 @@ func (t T) setCpusetCloneChildren() error {
 	setFile := func(p string, v []byte) error {
 		b, err := os.ReadFile(p)
 		if err != nil {
-			t.Log().Debug().Msgf("%s does not exist", p)
+			t.Log().Debugf("%s does not exist", p)
 			return nil
 		}
 		if bytes.Compare(b, v) == 0 {
-			t.Log().Debug().Msgf("%s already set to %s", p, v)
+			t.Log().Debugf("%s already set to %s", p, v)
 			return nil
 		}
 		err = os.WriteFile(p, v, 0644)
 		if err != nil {
 			return err
 		}
-		t.Log().Info().Msgf("%s set to %s", p, v)
+		t.Log().Infof("%s set to %s", p, v)
 		return nil
 	}
 	alignFile := func(p string) error {
@@ -859,7 +858,7 @@ func (t T) setCpusetCloneChildren() error {
 		ref := filepath.Join(cpusetDir, base)
 		b, err := os.ReadFile(ref)
 		if err != nil {
-			t.Log().Debug().Msgf("%s does not exist", ref)
+			t.Log().Debugf("%s does not exist", ref)
 			return nil
 		}
 		return setFile(p, b)
@@ -896,13 +895,13 @@ func (t T) cgroupDirCapable() bool {
 
 func (t T) createCgroup(p string) error {
 	if file.Exists(p) {
-		t.Log().Debug().Msgf("%s already exists", p)
+		t.Log().Debugf("%s already exists", p)
 		return nil
 	}
 	if err := os.MkdirAll(p, 0755); err != nil {
 		return fmt.Errorf("create %s: %w", p, err)
 	}
-	t.Log().Info().Msgf("%s created", p)
+	t.Log().Infof("%s created", p)
 	return nil
 }
 
@@ -923,9 +922,9 @@ func (t T) cleanupCgroup(p string) error {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 	for _, path := range paths {
-		t.Log().Info().Msgf("remove %s", path)
+		t.Log().Infof("remove %s", path)
 		if err := os.Remove(path); err != nil {
-			t.Log().Warn().Msgf("%s", err)
+			t.Log().Warnf("%s", err)
 		}
 	}
 	return nil
@@ -938,7 +937,7 @@ func (t T) installCF() error {
 	}
 	nativeCF := t.nativeConfigFile()
 	if nativeCF == "" {
-		t.Log().Debug().Msg("could not determine the config file standard hosting directory")
+		t.Log().Debugf("could not determine the config file standard hosting directory")
 		return nil
 	}
 	if cf == nativeCF {
@@ -953,7 +952,7 @@ func (t T) installCF() error {
 	if err := file.Copy(cf, nativeCF); err != nil {
 		return fmt.Errorf("install %s as %s: %w", cf, nativeCF, err)
 	}
-	t.Log().Info().Msgf("%s installed as %s", cf, nativeCF)
+	t.Log().Infof("%s installed as %s", cf, nativeCF)
 	return err
 }
 
@@ -997,14 +996,14 @@ func (t *T) exists() bool {
 func (t *T) cleanupLink(s string) error {
 	link, err := netlink.LinkByName(s)
 	if err != nil {
-		t.Log().Debug().Msgf("link %s already deleted", s)
+		t.Log().Debugf("link %s already deleted", s)
 		return nil
 	}
 	if err := netlink.LinkDel(link); err != nil {
 		return fmt.Errorf("link %s delete: %w", s, err)
 	}
 
-	t.Log().Info().Msgf("link %s deleted", s)
+	t.Log().Infof("link %s deleted", s)
 	return nil
 }
 
@@ -1110,7 +1109,6 @@ func (t T) start(ctx context.Context) error {
 		command.WithName("lxc-start"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -1126,7 +1124,7 @@ func (t T) stopOrKill(ctx context.Context) error {
 	if err := t.stop(); err == nil {
 		return err
 	} else {
-		t.Log().Warn().Msgf("stop: %s", err)
+		t.Log().Warnf("stop: %s", err)
 	}
 	return t.kill()
 }
@@ -1138,7 +1136,6 @@ func (t T) stop() error {
 		command.WithName("lxc-stop"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -1154,7 +1151,6 @@ func (t T) kill() error {
 		command.WithName("lxc-stop"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -1171,7 +1167,7 @@ func (t T) LinkNames() []string {
 
 func (t *T) Abort(ctx context.Context) bool {
 	if v, err := t.isUp(); err != nil {
-		t.Log().Warn().Msgf("no-abort: %s", err)
+		t.Log().Warnf("no-abort: %s", err)
 		return false
 	} else if v {
 		// the local instance is already up.
@@ -1179,27 +1175,27 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	}
 	hn := t.hostname()
-	t.Log().Info().Msgf("abort test: ping %s", hn)
+	t.Log().Infof("abort test: ping %s", hn)
 
 	if pinger, err := ping.NewPinger(t.hostname()); err == nil {
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {
-			t.Log().Warn().Msgf("no-abort: pinger err: %s", err)
+			t.Log().Warnf("no-abort: pinger err: %s", err)
 			return false
 		}
 		if pinger.Statistics().PacketsRecv > 0 {
-			t.Log().Info().Msgf("abort: %s is alive", hn)
+			t.Log().Infof("abort: %s is alive", hn)
 			return true
 		}
 		return false
 	} else {
-		t.Log().Debug().Msgf("disable ping abort check: %s", err)
+		t.Log().Debugf("disable ping abort check: %s", err)
 	}
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Info().Msgf("abort: %s is up on %s", hn, n)
+		t.Log().Infof("abort: %s is up on %s", hn, n)
 		return true
 	}
 	return false
@@ -1233,7 +1229,7 @@ func (t T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Log().Debug().Msgf("ssh abort check on %s: %s", n, err)
+			t.Log().Debugf("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil

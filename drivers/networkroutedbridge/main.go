@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -174,7 +175,7 @@ func (t T) allocateSubnets() error {
 			Op:    keyop.Set,
 			Value: subnet,
 		})
-		t.Log().Info().Msgf("assign subnet %s to node %s", subnet, nodename)
+		t.Log().Infof("assign subnet %s to node %s", subnet, nodename)
 	}
 	return t.Config().SetKeys(kops...)
 }
@@ -278,7 +279,7 @@ func (t T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if _, ipnet, err := network.IPReachableFrom(peerIP); err != nil {
 		return false, err
 	} else if ipnet != nil {
-		t.Log().Debug().Msgf("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
+		t.Log().Debugf("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
 		return false, nil
 	}
 	return true, nil
@@ -292,10 +293,10 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
-			t.Log().Info().Msgf("tunnel to %s is already setup", nodename)
+			t.Log().Infof("tunnel to %s is already setup", nodename)
 			return nil
 		} else {
-			t.Log().Info().Msgf("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
+			t.Log().Infof("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
 			if err := netlink.LinkDel(link); err != nil {
 				return err
 			}
@@ -316,7 +317,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 			return fmt.Errorf("add tunnel: %w", err)
 		}
 	case link != nil && t.isSameTunnel(link, localIP, peerIP):
-		t.Log().Info().Msgf("tunnel to %s is already configured", nodename)
+		t.Log().Infof("tunnel to %s is already configured", nodename)
 		return nil
 	default:
 		if err := t.modTunnel(name, localIP, peerIP); err != nil {
@@ -330,7 +331,7 @@ func (t *T) setupNodeTunnelLinkUp(name string) error {
 	if link, err := netlink.LinkByName(name); err != nil {
 		return fmt.Errorf("link up: %w", err)
 	} else if link != nil {
-		t.Log().Info().Msgf("link up %s", name)
+		t.Log().Infof("link up %s", name)
 		netlink.LinkSetUp(link)
 	}
 
@@ -365,25 +366,25 @@ func (t T) isSameTunnel(link netlink.Link, localIP, peerIP net.IP) bool {
 	switch tun := link.(type) {
 	case *netlink.Iptun:
 		if localIP.To4() == nil {
-			t.Log().Info().Msgf("link %s is not a ipip tunnel", name)
+			t.Log().Infof("link %s is not a ipip tunnel", name)
 			return false
 		}
 		local = tun.Local
 		remote = tun.Remote
 	case *netlink.Ip6tnl:
 		if localIP.To4() != nil {
-			t.Log().Info().Msgf("link %s is not a ip6ip6 tunnel", name)
+			t.Log().Infof("link %s is not a ip6ip6 tunnel", name)
 			return false
 		}
 		local = tun.Local
 		remote = tun.Remote
 	}
 	if !local.Equal(localIP) {
-		t.Log().Info().Msgf("tunnel %s local ip is %s, should be %s", name, local, localIP)
+		t.Log().Infof("tunnel %s local ip is %s, should be %s", name, local, localIP)
 		return false
 	}
 	if !remote.Equal(peerIP) {
-		t.Log().Info().Msgf("tunnel %s remote ip is %s, should be %s", name, remote, peerIP)
+		t.Log().Infof("tunnel %s remote ip is %s, should be %s", name, remote, peerIP)
 		return false
 	}
 	return true
@@ -405,6 +406,13 @@ func (t T) addTunnel(name string, localIP, peerIP net.IP) error {
 	}
 }
 
+func (t T) loggerWithLink(link any) *plog.Logger {
+	return &plog.Logger{
+		Logger: t.Log().With().Interface("link", link).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+}
+
 func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
@@ -414,7 +422,7 @@ func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {
 		Local:  localIP,
 		Remote: peerIP,
 	}
-	t.Log().Info().Interface("link", link).Msgf("modify ipip tun %s", name)
+	t.loggerWithLink(link).Infof("modify ipip tun %s", name)
 	if h, err := netlink.NewHandle(); err != nil {
 		defer h.Delete()
 		return h.LinkModify(link)
@@ -432,7 +440,7 @@ func (t T) modTunnel4(name string, localIP, peerIP net.IP) error {
 		Local:  localIP,
 		Remote: peerIP,
 	}
-	t.Log().Info().Interface("link", link).Msgf("modify ipip tun %s", name)
+	t.loggerWithLink(link).Infof("modify ipip tun %s", name)
 	if h, err := netlink.NewHandle(); err != nil {
 		defer h.Delete()
 		return h.LinkModify(link)
@@ -450,7 +458,7 @@ func (t T) addTunnel6(name string, localIP, peerIP net.IP) error {
 		Local:  localIP,
 		Remote: peerIP,
 	}
-	t.Log().Info().Interface("link", link).Msgf("add ipip tun %s", name)
+	t.loggerWithLink(link).Infof("add ipip tun %s", name)
 	return netlink.LinkAdd(link)
 }
 
@@ -463,7 +471,7 @@ func (t T) addTunnel4(name string, localIP, peerIP net.IP) error {
 		Local:  localIP,
 		Remote: peerIP,
 	}
-	t.Log().Info().Interface("link", link).Msgf("add ipip tun %s", name)
+	t.loggerWithLink(link).Infof("add ipip tun %s", name)
 	return netlink.LinkAdd(link)
 }
 
@@ -485,7 +493,7 @@ func (t T) setupBridge() (netlink.Link, error) {
 	case err != nil:
 		return nil, err
 	case link != nil:
-		t.Log().Info().Msgf("bridge link %s already exists", la.Name)
+		t.Log().Infof("bridge link %s already exists", la.Name)
 		return link, nil
 	}
 	br := &netlink.Bridge{LinkAttrs: la}
@@ -493,7 +501,7 @@ func (t T) setupBridge() (netlink.Link, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
-	t.Log().Info().Msgf("added bridge link %s", la.Name)
+	t.Log().Infof("added bridge link %s", la.Name)
 	return br, nil
 }
 
@@ -537,10 +545,10 @@ func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 		return err
 	}
 	if br.Attrs().HardwareAddr.String() == mac.String() {
-		t.Log().Info().Msgf("bridge %s mac is already %s", br.Attrs().Name, mac)
+		t.Log().Infof("bridge %s mac is already %s", br.Attrs().Name, mac)
 		return nil
 	}
-	t.Log().Info().Msgf("bridge %s set mac to %s", br.Attrs().Name, mac)
+	t.Log().Infof("bridge %s set mac to %s", br.Attrs().Name, mac)
 	return netlink.LinkSetHardwareAddr(br, mac)
 }
 
@@ -564,7 +572,7 @@ func (t T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 	} else {
 		for _, addr := range addrs {
 			if addr.String() == ipnetStr {
-				t.Log().Info().Msgf("bridge ip %s already added to %s", ipnet, brName)
+				t.Log().Infof("bridge ip %s already added to %s", ipnet, brName)
 				return nil
 			}
 		}
@@ -573,7 +581,7 @@ func (t T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 	if err := netlink.AddrAdd(br, addr); err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("added ip %s to bridge %s", ipnet, brName)
+	t.Log().Infof("added ip %s to bridge %s", ipnet, brName)
 	return nil
 }
 
@@ -612,7 +620,7 @@ func (t T) getAF() (af string) {
 func (t *T) setupNodeRoutes(route network.Route) error {
 	for _, table := range t.Tables() {
 		route.Table = table
-		t.Log().Info().Msgf("route add %s", route)
+		t.Log().Infof("route add %s", route)
 		if err := route.Add(); err != nil {
 			return fmt.Errorf("route add %s: %w", route, err)
 		}

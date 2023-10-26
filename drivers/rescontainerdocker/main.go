@@ -33,6 +33,7 @@ import (
 	"github.com/opensvc/om3/util/envprovider"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -168,9 +169,11 @@ func (t T) pull(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	t.Log().Info().
-		Stringer("image", remote).
-		Msg("pull image")
+	logger := plog.Logger{
+		Logger: t.Log().With().Stringer("image", remote).Logger(),
+		Prefix: t.Log().Prefix,
+	}
+	logger.Infof("pull image %s", remote)
 	err = cli().ImageService().Pull(ctx, remote)
 	return err
 }
@@ -259,11 +262,11 @@ func (t T) Start(ctx context.Context) error {
 	inspect, err := cs.Inspect(ctx, name)
 	if err == nil {
 		if inspect.State.Running {
-			t.Log().Info().Msg("already running")
+			t.Log().Infof("container %s is already running", name)
 			return nil
 		} else {
 			if t.needPreStartRemove() {
-				t.Log().Info().Str("name", name).Msgf("remove leftover container")
+				t.Log().Infof("remove leftover container %s", name)
 				if err := cs.Remove(ctx, name); err != nil {
 					return err
 				}
@@ -278,7 +281,7 @@ func (t T) Start(ctx context.Context) error {
 				}
 				return t.start(ctx, c)
 			} else {
-				t.Log().Info().Str("name", name).Str("id", inspect.ID).Msg("start container")
+				t.Log().Infof("reuse container %s with id %s", name, inspect.ID)
 				c := cs.NewContainer(ctx, inspect.ID)
 				return t.start(ctx, c)
 			}
@@ -304,7 +307,7 @@ func (t T) Start(ctx context.Context) error {
 func (t T) start(ctx context.Context, c *container.Container) error {
 	errs := make(chan error, 1)
 	go func() {
-		t.Log().Info().Msgf("start container (timeout %s)", t.StartTimeout)
+		t.Log().Infof("start container (timeout %s)", t.StartTimeout)
 		if err := c.Start(ctx); err != nil {
 			errs <- err
 			return
@@ -410,17 +413,16 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		if file.Exists(m.Source) {
 			continue
 		}
-		t.Log().Info().Str("path", m.Source).Msg("create missing mount source")
+		t.Log().Infof("create missing mount source %s", m.Source)
 		if err := os.MkdirAll(m.Source, os.ModePerm); err != nil {
 			return nil, err
 		}
 	}
 
-	t.Log().Info().
-		Str("name", name).
-		Bytes("config", configStr).
-		Bytes("hostConfig", hostConfigStr).
-		Msg("create container")
+	logger := plog.Logger{
+		Logger: t.Log().With().Bytes("config", configStr).Bytes("hostConfig", hostConfigStr).Logger(),
+		Prefix: t.Log().Prefix,
+	}
 	c, err := cli().ContainerService().Create(
 		ctx,
 		t.Image,
@@ -429,8 +431,10 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		container.WithCreateHostConfig(hostConfig),
 	)
 	if err != nil {
+		logger.Errorf("create container %s: %s", name, err)
 		return nil, err
 	}
+	logger.Infof("created container %s with id %s", name, c.ID())
 	return c, nil
 }
 
@@ -439,36 +443,36 @@ func (t T) Stop(ctx context.Context) error {
 	inspect, err := cli().ContainerService().Inspect(ctx, name)
 	c := cli().ContainerService().NewContainer(ctx, inspect.ID)
 	if (err == nil && !inspect.State.Running) || errdefs.IsNotFound(err) {
-		t.Log().Info().Str("name", name).Msg("already stopped")
+		t.Log().Infof("container %s is already stopped", name)
 	} else {
-		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop container (timeout %s)", t.StopTimeout)
+		t.Log().Infof("stop container %s with id %s (timeout %s)", name, inspect.ID, t.StopTimeout)
 		err = c.Stop(ctx, container.WithStopTimeout(*t.StopTimeout))
 		switch {
 		case errdefs.IsNotFound(err):
-			t.Log().Info().Str("name", name).Msg("stopped while requesting stop")
+			t.Log().Infof("stopped while requesting container %s stop", name)
 		case err != nil:
 			return err
 		}
-		t.Log().Debug().Err(err).Msgf("stopped container")
+		t.Log().Debugf("stop container %s: %s", name, err)
 	}
 	if t.Remove && !errdefs.IsNotFound(err) {
 		if !inspect.HostConfig.AutoRemove {
-			t.Log().Info().Str("name", name).Msg("remove container")
+			t.Log().Infof("remove container %s", name)
 			return cli().ContainerService().Remove(ctx, name)
 		}
-		t.Log().Debug().Msgf("wait removed condition")
+		t.Log().Debugf("wait removed condition")
 		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
 		switch {
 		case errdefs.IsNotFound(err):
-			t.Log().Info().Str("name", name).Msg("stopped while requesting stop")
+			t.Log().Infof("container %s stopped while requesting stop", name)
 		case err != nil:
 			return err
 		default:
 			xc, _ := xs.ExitCode()
-			t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xc)
+			t.Log().Debugf("wait removed condition ended with exit code %d", xc)
 		}
 	} else {
-		t.Log().Info().Msg("already removed")
+		t.Log().Infof("container %s is already removed", name)
 	}
 	return nil
 }
@@ -491,6 +495,15 @@ func (t *T) NetNSPath() (string, error) {
 	}
 }
 
+func (t *T) Configure() error {
+	l := plog.Logger{
+		Logger: t.T.Log().With().Str("name", t.ContainerName()).Logger(),
+		Prefix: t.T.Log().Prefix,
+	}
+	t.SetLoggerForTest(l)
+	return nil
+}
+
 // PID implements the resource.PIDer optional interface.
 // Used by ip.netns to name the veth pair devices.
 func (t *T) PID() int {
@@ -508,7 +521,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	if err := t.isDockerdPinging(ctx); err != nil {
-		t.Log().Debug().Err(err).Msg("ping")
+		t.Log().Debugf("ping: %s", err)
 		t.StatusLog().Info("docker daemon is not running")
 		return status.Down
 	}
@@ -585,9 +598,9 @@ func (t *T) statusInspectNS(ctx context.Context, attr, current, target string) {
 		tgt2 := "container:" + containerID(ctx, name)
 		switch {
 		case tgt1 == current:
-			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, tgt1, current)
+			t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgt1, current)
 		case tgt2 == current:
-			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, tgt2, current)
+			t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgt2, current)
 		default:
 			t.warnAttrDiff(attr, current, tgt1)
 		}
@@ -748,16 +761,16 @@ func (t T) Signal(sig syscall.Signal) error {
 	switch {
 	case err == nil:
 	case errdefs.IsNotFound(err):
-		t.Log().Info().Msgf("skip signal: container not found")
+		t.Log().Infof("skip signal: container %s not found", name)
 		return nil
 	default:
 		return err
 	}
 	if !inspect.State.Running {
-		t.Log().Info().Msgf("skip signal: container not running")
+		t.Log().Infof("skip signal: container %s not running", name)
 		return nil
 	}
-	t.Log().Info().Int("pid", inspect.State.Pid).Str("signal", unix.SignalName(sig)).Msg("signal container")
+	t.Log().Infof("send %s signal to container %s (pid %d)", unix.SignalName(sig), name, inspect.State.Pid)
 	return syscall.Kill(inspect.State.Pid, sig)
 }
 

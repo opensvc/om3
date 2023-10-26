@@ -8,8 +8,8 @@ import (
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/xmap"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -19,7 +19,7 @@ type (
 		isMultiDevice bool
 		isFileBacked  bool
 		isVirtual     bool
-		log           *zerolog.Logger
+		log           *plog.Logger
 	}
 
 	subDeviceLister interface {
@@ -36,8 +36,8 @@ type (
 		IsMultiDevice() bool
 		Mount(string, string, string) error
 		Umount(string) error
-		Log() *zerolog.Logger
-		SetLog(*zerolog.Logger)
+		Log() *plog.Logger
+		SetLog(*plog.Logger)
 	}
 	FSCKer interface {
 		FSCK(string) error
@@ -139,11 +139,11 @@ func (t T) IsMultiDevice() bool {
 	return t.isMultiDevice
 }
 
-func (t T) Log() *zerolog.Logger {
+func (t T) Log() *plog.Logger {
 	return t.log
 }
 
-func (t *T) SetLog(log *zerolog.Logger) {
+func (t *T) SetLog(log *plog.Logger) {
 	t.log = log
 }
 

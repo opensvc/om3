@@ -43,7 +43,7 @@ func (t T) BackendDevName() string {
 //	{
 //	  "bridge": "cni0",
 //	  "cniVersion": "0.3.0",
-//	  "ipMasq": true,
+//	  "ipMasq": false,
 //	  "name": "mynet",
 //	  "ipam": {
 //	    "routes": [
@@ -62,7 +62,7 @@ func (t T) CNIConfigData() (interface{}, error) {
 		"type":       "bridge",
 		"bridge":     t.brName(),
 		"isGateway":  true,
-		"ipMasq":     true,
+		"ipMasq":     false,
 		"ipam": map[string]interface{}{
 			"type": "host-local",
 			"routes": []map[string]interface{}{

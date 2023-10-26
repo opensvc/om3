@@ -59,11 +59,11 @@ func getKeysDecoder(name, ns, kd string) (decoder, error) {
 	if p, err := naming.NewPathFromStrings(ns, kd, name); err != nil {
 		return nil, err
 	} else if !p.Exists() {
-		return nil, fmt.Errorf("'%s' doesn't exists", p)
+		return nil, fmt.Errorf("object %s does not exists", p)
 	} else if o, err := object.New(p); err != nil {
 		return nil, err
 	} else if do, ok := o.(decoder); !ok {
-		return nil, fmt.Errorf("unable to get decoder ns:'%v', kind:'%v', name:'%v'", ns, kd, name)
+		return nil, fmt.Errorf("object %s is not a decoder", p)
 	} else {
 		return do, nil
 	}
@@ -80,7 +80,7 @@ func getKeys(name, ns, kd, match string) (s []string, err error) {
 		return nil, err
 	}
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("no key found matching '%v' on object '%v'", match, o)
+		return nil, fmt.Errorf("object %s has no key matching '%s'", o, match)
 
 	}
 	for _, key := range keys {
@@ -103,7 +103,7 @@ func getKey(name, ns, kd, key string) (string, error) {
 func decodeKey(o decoder, key string) (s string, err error) {
 	var b []byte
 	if b, err = o.DecodeKey(key); err != nil {
-		return "", fmt.Errorf("env decode from %s: %w", o, err)
+		return "", fmt.Errorf("object %s key %s decode: %w", o, key, err)
 	}
 	return string(b), nil
 }

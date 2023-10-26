@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -35,7 +35,7 @@ type (
 		Key                         string
 		Devices                     device.L
 		NoPreemptAbort              bool
-		Log                         *zerolog.Logger
+		Log                         *plog.Logger
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
 	}

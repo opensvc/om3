@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -37,8 +38,7 @@ type (
 		onStderrLine func(string)
 		okExitCodes  []int
 
-		log                   *zerolog.Logger
-		logPrefix             string
+		log                   *plog.Logger
 		logLevel              zerolog.Level
 		commandLogLevel       zerolog.Level
 		errorExitCodeLogLevel zerolog.Level
@@ -134,7 +134,7 @@ func (t *T) Start() (err error) {
 		var r io.ReadCloser
 		if r, err = cmd.StdoutPipe(); err != nil {
 			if t.log != nil {
-				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.logPrefix + "command.Start() -> StdoutPipe()")
+				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "command.Start() -> StdoutPipe()")
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -143,7 +143,7 @@ func (t *T) Start() (err error) {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
 				if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-					t.log.WithLevel(t.stdoutLogLevel).Str("out", s.Text()).Int("pid", t.pid).Msg(t.logPrefix + "stdout: " + s.Text())
+					t.log.WithLevel(t.stdoutLogLevel).Str("out", s.Text()).Int("pid", t.pid).Msg(t.log.Prefix + "stdout: " + s.Text())
 				}
 				if t.onStdoutLine != nil {
 					t.onStdoutLine(s.Text())
@@ -159,7 +159,7 @@ func (t *T) Start() (err error) {
 		var r io.ReadCloser
 		if r, err = cmd.StderrPipe(); err != nil {
 			if t.log != nil {
-				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.logPrefix + "command.Start() -> StderrPipe()")
+				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "command.Start() -> StderrPipe()")
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -168,7 +168,7 @@ func (t *T) Start() (err error) {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
 				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-					t.log.WithLevel(t.stderrLogLevel).Str("err", s.Text()).Int("pid", t.pid).Msg(t.logPrefix + "stderr: " + s.Text())
+					t.log.WithLevel(t.stderrLogLevel).Str("err", s.Text()).Int("pid", t.pid).Msg(t.log.Prefix + "stderr: " + s.Text())
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s.Text())
@@ -185,7 +185,7 @@ func (t *T) Start() (err error) {
 		t.ctx = ctx
 		t.cancel = cancel
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Msgf(t.logPrefix+"use context %v", ctx)
+			t.log.WithLevel(t.logLevel).Msgf(t.log.Prefix+"use context %v", ctx)
 		}
 		t.goroutine = append(t.goroutine, func() {
 			select {
@@ -194,7 +194,7 @@ func (t *T) Start() (err error) {
 				if err == context.DeadlineExceeded {
 					if cmd.Process == nil {
 						if t.log != nil {
-							t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Msg(t.logPrefix + "DeadlineExceeded, but cmd.Process is nil")
+							t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Msg(t.log.Prefix + "DeadlineExceeded, but cmd.Process is nil")
 						}
 						// don't need to wait on other go routines
 						for i := 0; i < len(t.goroutine); i++ {
@@ -206,16 +206,16 @@ func (t *T) Start() (err error) {
 						t.onStderrLine("DeadlineExceeded")
 					}
 					if t.stderrLogLevel != zerolog.Disabled {
-						t.log.WithLevel(t.stderrLogLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.logPrefix+"deadline exceeded pid %s", t.pid)
+						t.log.WithLevel(t.stderrLogLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.log.Prefix+"deadline exceeded pid %s", t.pid)
 					} else if t.log != nil {
-						t.log.WithLevel(t.logLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.logPrefix+"deadline exceeded pid %d", t.pid)
+						t.log.WithLevel(t.logLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.log.Prefix+"deadline exceeded pid %d", t.pid)
 					}
 					if t.log != nil {
-						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.logPrefix+"kill deadline exceeded pid %d", t.pid)
+						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.log.Prefix+"kill deadline exceeded pid %d", t.pid)
 					}
 					err := cmd.Process.Kill()
 					if err != nil && t.log != nil {
-						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.logPrefix+"kill deadline exceeded pid %d: %s", t.pid, err)
+						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.log.Prefix+"kill deadline exceeded pid %d: %s", t.pid, err)
 					}
 				}
 			}
@@ -227,14 +227,14 @@ func (t *T) Start() (err error) {
 	}
 	if t.log != nil {
 		if t.commandLogLevel != zerolog.Disabled && t.commandLogLevel > t.logLevel {
-			t.log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg(t.logPrefix + "run")
+			t.log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
 		} else {
-			t.log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg(t.logPrefix + "run")
+			t.log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
 		}
 	}
 	if err = cmd.Start(); err != nil {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg(t.logPrefix + "run")
+			t.log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
 		}
 		return fmt.Errorf("%w", err)
 	}
@@ -274,7 +274,7 @@ func (t *T) Wait() (err error) {
 	// wait for of goroutines
 	for i := 0; i < waitCount; i++ {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Msgf(t.logPrefix+"end of goroutine %v", <-t.done)
+			t.log.WithLevel(t.logLevel).Msgf(t.log.Prefix+"end of goroutine %v", <-t.done)
 		} else {
 			<-t.done
 		}
@@ -285,7 +285,7 @@ func (t *T) Wait() (err error) {
 			return t.checkExitCode(exitError.ExitCode())
 		}
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.logPrefix + "cmd.Wait()")
+			t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "cmd.Wait()")
 		}
 		return err
 	}
@@ -318,13 +318,13 @@ func (e *ErrExitCode) Error() string {
 
 func (t T) logExitCode(exitCode int) {
 	if t.log != nil {
-		t.log.WithLevel(t.logLevel).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.logPrefix+"pid %d exited with code %d", t.pid, exitCode)
+		t.log.WithLevel(t.logLevel).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.log.Prefix+"pid %d exited with code %d", t.pid, exitCode)
 	}
 }
 
 func (t T) logErrorExitCode(exitCode int, err error) {
 	if t.log != nil {
-		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.logPrefix+"pid %d exited with code %d", t.pid, exitCode)
+		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.log.Prefix+"pid %d exited with code %d", t.pid, exitCode)
 	}
 }
 
@@ -343,7 +343,7 @@ func (t *T) update() error {
 	}
 	if credential, err := credential(t.user, t.group); err != nil {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Msgf(t.logPrefix+"unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
+			t.log.WithLevel(t.logLevel).Err(err).Msgf(t.log.Prefix+"unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
 		}
 		return err
 	} else if credential != nil {

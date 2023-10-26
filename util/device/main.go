@@ -6,15 +6,14 @@ import (
 	"errors"
 	"syscall"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
 		path string
-		log  *zerolog.Logger
+		log  *plog.Logger
 	}
 	L []T
 )
@@ -32,7 +31,7 @@ func New(path string, opts ...funcopt.O) T {
 	return t
 }
 
-func WithLogger(log *zerolog.Logger) funcopt.O {
+func WithLogger(log *plog.Logger) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.log = log

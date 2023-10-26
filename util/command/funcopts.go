@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/plog"
 )
 
 // WithName sets the process args[0]
@@ -36,19 +37,10 @@ func WithVarArgs(args ...string) funcopt.O {
 }
 
 // WithLogger defines the Logger that will receive this pkg logs and process outputs
-func WithLogger(l *zerolog.Logger) funcopt.O {
+func WithLogger(l *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.log = l
-		return nil
-	})
-}
-
-// WithLogPrefix defines the string to prepend to every log message
-func WithLogPrefix(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
-		t := i.(*T)
-		t.logPrefix = s
 		return nil
 	})
 }

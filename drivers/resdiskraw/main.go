@@ -80,10 +80,10 @@ func (t T) stopBlockDevice(ctx context.Context, pair DevPair) error {
 	}
 	p := pair.Dst.Path()
 	if !file.Exists(p) {
-		t.Log().Info().Msgf("block device %s already removed", p)
+		t.Log().Infof("block device %s already removed", p)
 		return nil
 	}
-	t.Log().Info().Msgf("remove block device %s", p)
+	t.Log().Infof("remove block device %s", p)
 	return os.Remove(p)
 }
 
@@ -195,11 +195,11 @@ func (t T) setOwnership(ctx context.Context, p string) error {
 		return err
 	}
 	if uid != t.uid() {
-		t.Log().Info().Msgf("set %s user to %d (%s)", p, t.uid(), t.User.Username)
+		t.Log().Infof("set %s user to %d (%s)", p, t.uid(), t.User.Username)
 		newUID = t.uid()
 	}
 	if gid != t.gid() {
-		t.Log().Info().Msgf("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
+		t.Log().Infof("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
 		newGID = t.gid()
 	}
 	if newUID != -1 || newGID != -1 {
@@ -207,8 +207,8 @@ func (t T) setOwnership(ctx context.Context, p string) error {
 			return err
 		}
 		actionrollback.Register(ctx, func() error {
-			t.Log().Info().Msgf("set %s group back to %d", p, gid)
-			t.Log().Info().Msgf("set %s user back to %d", p, uid)
+			t.Log().Infof("set %s group back to %d", p, gid)
+			t.Log().Infof("set %s user back to %d", p, uid)
 			return os.Chown(p, uid, gid)
 		})
 	}
@@ -301,12 +301,12 @@ func (t T) setMode(ctx context.Context, p string) error {
 		return nil
 	}
 	mode := (currentMode & os.ModeType) | *t.Perm
-	t.Log().Info().Msgf("set %s mode to %s", p, mode)
+	t.Log().Infof("set %s mode to %s", p, mode)
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		t.Log().Info().Msgf("set %s mode back to %s", p, mode)
+		t.Log().Infof("set %s mode back to %s", p, mode)
 		return os.Chmod(p, currentMode&os.ModeType)
 	})
 	return nil
@@ -329,7 +329,7 @@ func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 		if majorCur, minorCur, err := pair.Dst.MajorMinor(); err == nil {
 			switch {
 			case majorCur == major && minorCur == minor:
-				t.Log().Info().Msgf("block device %s %d:%d already exists", p, major, minor)
+				t.Log().Infof("block device %s %d:%d already exists", p, major, minor)
 				return nil
 			default:
 				return fmt.Errorf("block device %s already exists, but is %d:%d instead of %d:%d", p,
@@ -338,17 +338,17 @@ func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 				)
 			}
 		} else {
-			t.Log().Info().Msgf("block device %s already exists", p)
-			t.Log().Warn().Msgf("failed to verify current major:minor of %s: %s", p, err)
+			t.Log().Infof("block device %s already exists", p)
+			t.Log().Warnf("failed to verify current major:minor of %s: %s", p, err)
 			return nil
 		}
 	}
 	if err = pair.Dst.MknodBlock(major, minor); err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("create block device %s %d:%d", p, major, minor)
+	t.Log().Infof("create block device %s %d:%d", p, major, minor)
 	actionrollback.Register(ctx, func() error {
-		t.Log().Info().Msgf("remove block device %s %d:%d", p, major, minor)
+		t.Log().Infof("remove block device %s %d:%d", p, major, minor)
 		return os.Remove(p)
 	})
 	return nil
@@ -384,7 +384,7 @@ func (t T) startCharDevices(ctx context.Context) error {
 		minor, err := ra.Bind(pair.Src.Path())
 		switch {
 		case errors.Is(err, raw.ErrExist):
-			t.Log().Info().Msgf("%s", err)
+			t.Log().Infof("%s", err)
 			return nil
 		case err != nil:
 			return err

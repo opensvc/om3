@@ -6,7 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/rs/zerolog"
+	"github.com/opensvc/om3/util/plog"
 )
 
 // WithConfigFile sets a non-standard configuration location.
@@ -38,7 +38,7 @@ func WithVolatile(s bool) funcopt.O {
 }
 
 // WithLogger let the factory user decide what kind of logging he wants
-func WithLogger(s zerolog.Logger) funcopt.O {
+func WithLogger(s plog.Logger) funcopt.O {
 	return funcopt.F(func(t any) error {
 		o := t.(*core)
 		o.log = s

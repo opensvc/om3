@@ -52,7 +52,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.Label())
+		t.Log().Infof("%s is already up", t.Label())
 		return nil
 	}
 	if err := t.lv().Activate(); err != nil {
@@ -76,7 +76,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label())
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {
@@ -127,7 +127,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Info().Msgf("%s is already provisioned", lv.FQN())
+		t.Log().Infof("%s is already provisioned", lv.FQN())
 		return nil
 	}
 	if lvi.Create(t.Size, t.CreateOptions); err != nil {
@@ -150,13 +150,13 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !exists {
-		t.Log().Info().Msgf("%s is already unprovisioned", lv.FQN())
+		t.Log().Infof("%s is already unprovisioned", lv.FQN())
 		return nil
 	}
 	if lvi, ok := lv.(LVDriverWiper); ok {
 		_ = lvi.Wipe()
 	} else {
-		t.Log().Info().Msgf("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())
+		t.Log().Infof("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())
 	}
 	lvi, ok := lv.(LVDriverUnprovisioner)
 	if !ok {
@@ -184,7 +184,7 @@ func (t T) ExposedDevices() device.L {
 
 func (t T) SubDevices() device.L {
 	if l, err := t.lv().Devices(); err != nil {
-		t.Log().Debug().Err(err).Send()
+		t.Log().Debugf("%s", err)
 		return device.L{}
 	} else {
 		return l

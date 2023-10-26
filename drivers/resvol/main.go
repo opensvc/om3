@@ -26,7 +26,7 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
@@ -41,7 +41,7 @@ import (
 	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -87,7 +87,7 @@ func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error 
 	ctx = actioncontext.WithForce(ctx, true)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
-		t.Log().Info().Msgf("Skip volume %s stop: active users: %s", volume.Path(), holders)
+		t.Log().Infof("skip volume %s stop: active users: %s", volume.Path(), holders)
 		return nil
 	}
 	return volume.Stop(ctx)
@@ -100,11 +100,11 @@ func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status
 func (t T) Start(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
-		t.Log().Error().Err(err).Send()
-		return fmt.Errorf("Volume %s does not exist (and no pool can create it)", t.name())
+		t.Log().Errorf("%s", err)
+		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("Volume %s does not exist", t.name())
+		return fmt.Errorf("volume %s does not exist", t.name())
 	}
 	if err = t.startVolume(ctx, volume); err != nil {
 		return err
@@ -247,11 +247,10 @@ func (t T) access() volaccess.T {
 
 // volumeLogger returns a logger that hints about this resource and object
 // as the volume origin.
-func (t *T) volumeLogger() zerolog.Logger {
-	return logging.Logger().With().
-		Stringer("from_obj_path", t.Path).
-		Stringer("from_rid", t.ResourceID).
-		Logger()
+func (t *T) volumeLogger() plog.Logger {
+	return plog.Logger{
+		Logger: log.Logger.With().Stringer("from_obj_path", t.Path).Stringer("from_rid", t.ResourceID).Logger(),
+	}
 }
 
 func (t *T) Volume() (object.Vol, error) {
@@ -358,7 +357,7 @@ func (t T) ProvisionLeaded(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("Volume %s does not exists", volume.Path())
+		return fmt.Errorf("volume %s does not exists", volume.Path())
 	}
 	return volume.Provision(ctx)
 }
@@ -369,7 +368,7 @@ func (t T) UnprovisionLeaded(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		t.Log().Info().Msgf("Volume %s is already unprovisioned", volume.Path())
+		t.Log().Infof("volume %s is already unprovisioned", volume.Path())
 		return nil
 	}
 	return nil
@@ -390,7 +389,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 			return err
 		}
 	} else {
-		t.Log().Info().Msgf("Volume %s is already provisioned", volume.Path())
+		t.Log().Infof("volume %s is already provisioned", volume.Path())
 	}
 	return volume.Provision(ctx)
 }
@@ -401,7 +400,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		t.Log().Info().Msgf("Volume %s is already unprovisioned", volume.Path())
+		t.Log().Infof("volume %s is already unprovisioned", volume.Path())
 		return nil
 	}
 	// don't unprovision vol objects (independent lifecycle)

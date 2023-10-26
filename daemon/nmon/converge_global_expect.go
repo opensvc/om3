@@ -34,8 +34,7 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Info().Msgf("daemon: nmon: fetch global expect from node %s -> %s updated at %s",
-			mostRecentNode, strVal, mostRecentUpdated)
+		o.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
 	}
 }
 
@@ -46,7 +45,7 @@ func (o *nmon) isConvergedGlobalExpect() bool {
 			continue
 		}
 		if localUpdated.After(data.GlobalExpectUpdatedAt) {
-			o.log.Debug().Msgf("daemon: nmon: wait global expect propagation on %s", s)
+			o.log.Debugf("wait global expect propagation on %s", s)
 			return false
 		}
 	}

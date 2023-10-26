@@ -41,7 +41,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label())
 		return nil
 	}
 	if err := t.setStartedProp("false"); err != nil {
@@ -54,7 +54,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.Label())
+		t.Log().Infof("%s is already up", t.Label())
 		return nil
 	}
 	if err := t.setStartedProp("true"); err != nil {
@@ -153,7 +153,7 @@ func (t T) provision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already provisioned", t.Name)
+		t.Log().Infof("%s is already provisioned", t.Name)
 		return nil
 	}
 	return t.zvolCreate()
@@ -163,7 +163,7 @@ func (t T) unprovision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already unprovisioned", t.Name)
+		t.Log().Infof("%s is already unprovisioned", t.Name)
 		return nil
 	}
 	return t.zvolDestroy()

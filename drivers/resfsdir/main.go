@@ -61,7 +61,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if !v {
-		t.Log().Debug().Msgf("dir does not exist: %s", p)
+		t.Log().Debugf("dir does not exist: %s", p)
 		return status.Down
 	}
 	ok := t.checkOwnership()
@@ -99,7 +99,7 @@ func (t T) create(ctx context.Context) error {
 	} else if v {
 		return nil
 	}
-	t.Log().Info().Msgf("create directory %s", p)
+	t.Log().Infof("create directory %s", p)
 	var perm os.FileMode
 	if t.Perm != nil {
 		perm = *t.Perm
@@ -110,7 +110,7 @@ func (t T) create(ctx context.Context) error {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		t.Log().Info().Msgf("remove directory %s", p)
+		t.Log().Infof("remove directory %s", p)
 		return os.RemoveAll(p)
 	})
 	return nil
@@ -150,11 +150,11 @@ func (t T) setOwnership(ctx context.Context) error {
 		return err
 	}
 	if uid != t.uid() {
-		t.Log().Info().Msgf("set %s user to %d (%s)", p, t.uid(), t.User.Username)
+		t.Log().Infof("set %s user to %d (%s)", p, t.uid(), t.User.Username)
 		newUID = t.uid()
 	}
 	if gid != t.gid() {
-		t.Log().Info().Msgf("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
+		t.Log().Infof("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
 		newGID = t.gid()
 	}
 	if newUID != -1 || newGID != -1 {
@@ -162,8 +162,8 @@ func (t T) setOwnership(ctx context.Context) error {
 			return err
 		}
 		actionrollback.Register(ctx, func() error {
-			t.Log().Info().Msgf("set %s group back to %s", p, gid)
-			t.Log().Info().Msgf("set %s user back to %s", p, uid)
+			t.Log().Infof("set %s group back to %s", p, gid)
+			t.Log().Infof("set %s user back to %s", p, uid)
 			return os.Chown(p, uid, gid)
 		})
 	}
@@ -219,12 +219,12 @@ func (t T) setMode(ctx context.Context) error {
 	if currentExtMode == mode {
 		return nil
 	}
-	t.Log().Info().Msgf("set %s mode to %s", p, mode)
+	t.Log().Infof("set %s mode to %s", p, mode)
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		t.Log().Info().Msgf("set %s mode back to %s", p, mode)
+		t.Log().Infof("set %s mode back to %s", p, mode)
 		return os.Chmod(p, currentMode)
 	})
 	return nil

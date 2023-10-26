@@ -64,7 +64,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("Volume group %s is already up", t.Label())
+		t.Log().Infof("Volume group %s is already up", t.Label())
 		return nil
 	}
 	if err := t.vg().Activate(); err != nil {
@@ -87,7 +87,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("Volume group %s is already down", t.Label())
+		t.Log().Infof("Volume group %s is already down", t.Label())
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {
@@ -145,7 +145,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Info().Msgf("Volume group %s is already provisioned", vg.FQN())
+		t.Log().Infof("Volume group %s is already provisioned", vg.FQN())
 		return nil
 	}
 	if pvs, err := vpath.HostDevpaths(t.PVs, t.Path.Namespace); err != nil {
@@ -162,13 +162,13 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		return err
 	}
 	if !exists {
-		t.Log().Info().Msgf("Volume group %s is already unprovisioned", vg.FQN())
+		t.Log().Infof("Volume group %s is already unprovisioned", vg.FQN())
 		return nil
 	}
 	if vgi, ok := vg.(VGDriverWiper); ok {
 		_ = vgi.Wipe()
 	} else {
-		t.Log().Info().Msgf("Volume group %s wipe skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
+		t.Log().Infof("Volume group %s wipe skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
 	vgi, ok := vg.(VGDriverUnprovisioner)
 	if !ok {
@@ -201,7 +201,7 @@ func (t *T) ReservableDevices() device.L {
 
 func (t T) SubDevices() device.L {
 	if l, err := t.vg().PVs(); err != nil {
-		t.Log().Debug().Err(err).Send()
+		t.Log().Debugf("%s", err)
 		return device.L{}
 	} else {
 		return l

@@ -141,7 +141,7 @@ func (t T) setMultihost() error {
 		return err
 	}
 	if current == value {
-		t.Log().Info().Msgf("multihost property is already %s", value)
+		t.Log().Infof("multihost property is already %s", value)
 		return nil
 	}
 	return t.pool().SetProperty("multihost", value)
@@ -151,7 +151,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.Label())
+		t.Log().Infof("%s is already up", t.Label())
 		return nil
 	}
 	if err := t.doHostID(); err != nil {
@@ -191,13 +191,12 @@ func (t T) genHostID() error {
 	}
 	p, err := exec.LookPath("zgenhostid")
 	if err != nil {
-		t.Log().Warn().Msg("/etc/hostid does not exist and zgenhostid is not installed")
+		t.Log().Warnf("/etc/hostid does not exist and zgenhostid is not installed")
 		return nil
 	}
 	cmd := command.New(
 		command.WithName(p),
 		command.WithLogger(t.Log()),
-		command.WithLogPrefix(t.Msgf("")+": "),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -210,7 +209,7 @@ func (t T) genHostID() error {
 // imports anyway, but if we don't export unecessary export/import is
 // saved.
 func (t T) UnprovisionStop(ctx context.Context) error {
-	t.Log().Debug().Msg("bypass export for unprovision")
+	t.Log().Debugf("bypass export for unprovision")
 	return nil
 }
 
@@ -218,7 +217,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label())
 		return nil
 	}
 	if err := t.poolExport(); err != nil {
@@ -379,7 +378,7 @@ func (t T) provision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already provisioned", t.Name)
+		t.Log().Infof("%s is already provisioned", t.Name)
 		return nil
 	}
 	return t.poolCreate()
@@ -390,7 +389,7 @@ func (t T) unprovision(ctx context.Context) error {
 		return err
 	} else if !v {
 		if err := t.poolImportTryDevice(true); err != nil {
-			t.Log().Debug().Err(err).Msg("try import before destroy")
+			t.Log().Debugf("try import before destroy: %s", err)
 			return nil
 		}
 	}
@@ -417,10 +416,10 @@ func (t T) SubDevices() device.L {
 	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
-		t.Log().Debug().Err(errUpd).Msg("update sub devs cache")
+		t.Log().Debugf("update sub devs cache: %s", errUpd)
 		return t.toDevices(l)
 	} else {
-		t.Log().Debug().Err(errLoad).Msg("load sub devs cache")
+		t.Log().Debugf("load sub devs cache: %s", errLoad)
 		return device.L{}
 	}
 }
