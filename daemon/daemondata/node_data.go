@@ -77,14 +77,14 @@ func (o opGetClusterNodeData) call(ctx context.Context, d *data) error {
 // It publish ForgetPeer
 func (d *data) dropPeer(peer string) {
 	// TODO: document CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
-	d.log.Info().Msgf("drop peer node %s", peer)
+	d.log.Infof("drop peer node %s", peer)
 	peerLabels := []pubsub.Label{{"node", peer}, {"from", "peer"}}
 
 	hbcache.DropPeer(peer)
 
 	// unset and publish deleted <peer> components instance and node (found from
 	// instance and node data holders).
-	d.log.Info().Msgf("unset and publish deleted peer %s components", peer)
+	d.log.Infof("unset and publish deleted peer %s components", peer)
 	for p := range instance.ConfigData.GetByNode(peer) {
 		instance.ConfigData.Unset(p, peer)
 		d.bus.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)

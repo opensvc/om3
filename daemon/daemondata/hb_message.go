@@ -46,7 +46,7 @@ func (t T) SetHBSendQ(hbSendQ chan<- hbtype.Msg) error {
 func (d *data) queueNewHbMsg(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		d.log.Debug().Msg("abort queue new hb message (context is done)")
+		d.log.Debugf("abort queue new hb message (context is done)")
 	default:
 	}
 	if msg, err := d.getHbMessage(); err != nil {
@@ -58,10 +58,10 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 		}
 		d.msgLocalGen = msgLocalGen
 		if d.hbSendQ != nil {
-			d.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
+			d.log.Debugf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
 			select {
 			case <-ctx.Done():
-				d.log.Debug().Msgf("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
+				d.log.Debugf("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
 			case d.hbSendQ <- msg:
 			}
 		}
@@ -76,7 +76,7 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 //	"full", "ping" or len <msg.delta> (patch)
 func (d *data) getHbMessage() (hbtype.Msg, error) {
 	d.statCount[idGetHbMessage]++
-	d.log.Debug().Msg("getHbMessage")
+	d.log.Debugf("getHbMessage")
 	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{
@@ -90,7 +90,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	case "patch":
 		events, err := d.eventQueue.deepCopy()
 		if err != nil {
-			d.log.Error().Err(err).Msg("can't create events for hb patch message")
+			d.log.Errorf("can't create events for hb patch message: %s", err)
 			return msg, err
 		}
 		msg.Events = events
@@ -99,7 +99,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	case "full":
 		events, err := d.eventQueue.deepCopy()
 		if err != nil {
-			d.log.Error().Err(err).Msg("can't create events for hb patch message")
+			d.log.Errorf("can't create events for hb patch message: %s", err)
 			return msg, err
 		} else {
 			msg.Events = events
@@ -113,7 +113,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMessageType)
-		d.log.Error().Err(err).Msg("opGetHbMessage")
+		d.log.Errorf("opGetHbMessage: %s", err)
 		return msg, err
 	}
 }
@@ -154,7 +154,7 @@ func (d *data) setNextMsgType() {
 			if _, ok := d.clusterNodes[node]; !ok {
 				err := fmt.Errorf("bug: d.hbGens[%s] exists without d.clusterNodes[%s]", node, node)
 				// TODO: replace with panic(err) ?
-				d.log.Error().Err(err).Msgf("setNextMsgType cleanup unexpected hb gens %s", node)
+				d.log.Errorf("setNextMsgType cleanup unexpected hb gens %s: %s", node, err)
 				delete(d.hbGens, node)
 				continue
 			}
@@ -175,10 +175,10 @@ func (d *data) setNextMsgType() {
 	if messageType != d.hbMessageType {
 		if messageType == "full" && len(remoteNeedFull) > 0 {
 			sort.Strings(remoteNeedFull)
-			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, need full:[%v], gens:%v)",
+			d.log.Infof("hb message type change %s -> %s (gen:%d, need full:[%v], gens:%v)",
 				d.hbMessageType, messageType, d.gen, strings.Join(remoteNeedFull, ", "), d.hbGens)
 		} else {
-			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, gens:%v)",
+			d.log.Infof("hb message type change %s -> %s (gen:%d, gens:%v)",
 				d.hbMessageType, messageType, d.gen, d.hbGens)
 		}
 		d.hbMessageType = messageType

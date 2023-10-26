@@ -11,9 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
@@ -21,6 +18,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -28,7 +26,7 @@ type (
 	T struct {
 		bus      *pubsub.Bus
 		listener *http.Server
-		log      zerolog.Logger
+		log      plog.Logger
 		addr     string
 		certFile string
 		keyFile  string
@@ -36,25 +34,35 @@ type (
 	}
 )
 
-func New(opts ...funcopt.O) *T {
-	t := &T{}
+func New(ctx context.Context, opts ...funcopt.O) *T {
+	t := &T{
+		log: plog.Logger{
+			Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpinet").With().
+				Str("lsnr_type", "http_inet").
+				Logger(),
+			Prefix: "daemon: listener: http_inet: ",
+		},
+	}
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Error().Err(err).Msg("listener funcopt.Apply")
+		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-inet").Logger()
+	t.log = plog.Logger{
+		Logger: t.log.Logger.With().Str("lsnr_addr", t.addr).Logger(),
+		Prefix: t.log.Prefix + t.addr + ": ",
+	}
 	return t
 }
 
 func (t *T) Stop() error {
-	t.log.Info().Msg("listener stopping")
-	defer t.log.Info().Msg("listener stopped")
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
 	if t.listener == nil {
 		return nil
 	}
 	err := (*t.listener).Close()
 	if err != nil {
-		t.log.Error().Err(err).Msg("listener close failure")
+		t.log.Errorf("listener close failure: %s", err)
 	}
 	t.wg.Wait()
 	return err
@@ -77,7 +85,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 
-	t.log.Info().Msg("listener starting")
+	t.log.Infof("starting")
 	for _, fname := range []string{t.certFile, t.keyFile} {
 		if !file.Exists(fname) {
 			errC <- fmt.Errorf("can't listen: %s does not exist", fname)
@@ -90,18 +98,18 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.NoClientCert,
 		},
-		ErrorLog: golog.New(t.log, "", 0),
+		ErrorLog: golog.New(t.log.Logger, "", 0),
 	}
 
 	lsnr, err := net.Listen("tcp", t.addr)
 	if err != nil {
-		t.log.Error().Err(err).Msg("listen failure")
+		t.log.Errorf("listen failure: %s", err)
 		errC <- err
 		return
 	}
 	defer func(lsnr net.Listener) {
 		if err := lsnr.Close(); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-			t.log.Error().Err(err).Msg("listener close failure")
+			t.log.Errorf("listener close failure: %s", err)
 		}
 	}(lsnr)
 
@@ -121,20 +129,20 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		t.bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{UpdatedAt: now}},
 			labelLocalhost)
 	}()
-	t.log.Info().Msg("listener started")
+	t.log.Infof("started")
 	errC <- nil
 	if err := t.listener.ServeTLS(lsnr, t.certFile, t.keyFile); err != nil {
 		if errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) {
-			t.log.Debug().Msg("listener ends with expected error")
+			t.log.Debugf("listener serve ends with expected error")
 		} else {
-			t.log.Error().Err(err).Msg("listener ends with unexpected error")
+			t.log.Errorf("listener serve ends with unexpected error: %s", err)
 		}
 	}
 	if t.listener != nil {
 		if err := t.listener.Close(); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-			t.log.Error().Err(err).Msg("listener close")
+			t.log.Errorf("listener close: %s", err)
 		}
-		t.log.Info().Msg("listener closed")
+		t.log.Infof("listener closed")
 	}
 }
 
@@ -150,14 +158,14 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
-			t.log.Error().Err(err).Msg("subscription stop")
+			t.log.Errorf("subscription stop: %s", err)
 		}
 	}()
 
 	stop := func() {
-		t.log.Info().Msg("stopping")
+		t.log.Infof("janitor ask for stop")
 		if err := t.Stop(); err != nil {
-			t.log.Error().Err(err).Msg("stop failed")
+			t.log.Errorf("stop failed: %s", err)
 			return
 		}
 		started = false
@@ -166,15 +174,15 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	start := func() error {
 		if started {
 			err := fmt.Errorf("can't start already started listener")
-			t.log.Error().Err(err).Msg("start")
+			t.log.Errorf("start: %s", err)
 			return err
 		}
-		t.log.Info().Msg("starting")
+		t.log.Infof("janitor ask for start")
 		errC := make(chan error)
 		go t.start(ctx, errC)
 		err := <-errC
 		if err != nil {
-			t.log.Error().Err(err).Msg("start failed")
+			t.log.Errorf("start failed: %s", err)
 			return err
 		}
 		started = true
@@ -190,13 +198,13 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.DaemonCtl:
-				t.log.Info().Msgf("daemon control %s asked", m.Action)
+				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {
 				case "stop":
 					stop()
 				case "start":
 					if err := start(); err != nil {
-						t.log.Error().Err(err).Msgf("on daemon control %s start failed", m.Action)
+						t.log.Errorf("on daemon control %s start failed: %s", m.Action, err)
 					}
 				case "restart":
 					stop()
@@ -206,7 +214,7 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					default:
 					}
 					if err := start(); err != nil {
-						t.log.Error().Err(err).Msgf("on daemon control %s start failed", m.Action)
+						t.log.Errorf("on daemon control %s start failed: %s", m.Action, err)
 					}
 				}
 			case *msgbus.ClusterConfigUpdated:
@@ -218,7 +226,7 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				clusterConfig := m.Value
 				newAddr := fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)
 				if t.addr != newAddr {
-					t.log.Info().Msgf("listener will restart: addr changed %s -> %s", t.addr, newAddr)
+					t.log.Infof("will restart: addr changed %s -> %s", t.addr, newAddr)
 					stop()
 					select {
 					case <-ctx.Done():
@@ -226,11 +234,18 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					default:
 					}
 					t.addr = newAddr
-					t.log = log.Logger.With().Str("addr", t.addr).Str("sub", "lsnr-http-inet").Logger()
-					if err := start(); err != nil {
-						t.log.Error().Err(err).Msgf("on addr changed start failed")
+
+					t.log = plog.Logger{
+						Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpinet").With().
+							Str("lsnr_type", "http_inet").
+							Str("lsnr_addr", t.addr).
+							Logger(),
+						Prefix: fmt.Sprintf("daemon: listener: http_inet: %s: ", t.addr),
 					}
-					t.log.Info().Msgf("restarted on new addr %s", t.addr)
+					if err := start(); err != nil {
+						t.log.Errorf("on addr changed start failed: %s", err)
+					}
+					t.log.Infof("restarted on new addr %s", t.addr)
 				}
 			}
 		}

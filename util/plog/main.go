@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
@@ -44,4 +45,9 @@ func (t *Logger) Warnf(format string, a ...any) {
 // PkgLogger returns Logger from context with pkg attr set
 func PkgLogger(ctx context.Context, pkg string) zerolog.Logger {
 	return daemonlogctx.Logger(ctx).With().Str("pkg", pkg).Logger()
+}
+
+// GetPkgLogger returns Logger with pkg attr set
+func GetPkgLogger(pkg string) zerolog.Logger {
+	return log.Logger.With().Str("pkg", pkg).Logger()
 }

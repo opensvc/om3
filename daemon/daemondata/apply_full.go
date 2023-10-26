@@ -17,7 +17,7 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 	remote := msg.Nodename
 	peerLabel := pubsub.Label{"node", remote}
 	local := d.localNode
-	d.log.Debug().Msgf("applyNodeData %s", remote)
+	d.log.Debugf("applyNodeData %s", remote)
 
 	d.clusterData.Cluster.Node[remote] = msg.NodeData
 	d.hbGens[local][remote] = msg.NodeData.Status.Gen[remote]
@@ -32,7 +32,7 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 	if prev, ok := d.previousRemoteInfo[peer]; ok {
 		if prev.gen == d.clusterData.Cluster.Node[peer].Status.Gen[peer] {
-			d.log.Debug().Msgf("refreshPreviousUpdated skipped (already computed gen %d)", prev.gen)
+			d.log.Debugf("refreshPreviousUpdated skipped (already computed gen %d)", prev.gen)
 			return nil
 		}
 	}

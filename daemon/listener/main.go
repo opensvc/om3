@@ -83,9 +83,11 @@ func (t *T) Start(ctx context.Context) error {
 	clusterConfig := ccfg.Get()
 	for _, lsnr := range []startStopper{
 		lsnrhttpux.New(
+			ctx,
 			lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
 		),
 		lsnrhttpinet.New(
+			ctx,
 			lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
 			lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 			lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
