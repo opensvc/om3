@@ -9,33 +9,33 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 	case "patch":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, len(msg.Events), msg.Gen)
 		if err := d.applyMsgEvents(msg); err != nil {
-			d.log.Error().Err(err).Msgf("apply message %s events from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+			d.log.Errorf("apply message %s events from %s gens: %v: %s", msg.Kind, msg.Nodename, msg.Gen, err)
 		}
 	case "full":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
 			// already have most recent version of peer
-			d.log.Debug().Msgf("onReceiveHbMsg skipped %s from %s gens: %v (already have peer gen applied)", msg.Kind, msg.Nodename, msg.Gen)
+			d.log.Debugf("onReceiveHbMsg skipped %s from %s gens: %v (already have peer gen applied)", msg.Kind, msg.Nodename, msg.Gen)
 			return
 		}
 		if d.hbGens[d.localNode][msg.Nodename]+uint64(len(msg.Events)) >= msg.Gen[msg.Nodename] {
 			// We can apply events instead of full
 			previouslyApplied := d.hbGens[d.localNode][msg.Nodename]
 			if err := d.applyMsgEvents(msg); err != nil {
-				d.log.Error().Err(err).Msgf("apply message %s events from %s gens: %v (previously applied peer gen %d, local gens: %+v)",
+				d.log.Errorf("apply message %s events from %s gens: %v (previously applied peer gen %d, local gens: %+v): %s",
 					msg.Kind, msg.Nodename, msg.Gen,
-					previouslyApplied, d.hbGens)
+					previouslyApplied, d.hbGens, err)
 			}
 			if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
 				// the events have been applied => node data not needed
-				d.log.Debug().Msgf("apply message %s events from %s gens: %v succeed (previously applied peer %d now %d)",
+				d.log.Debugf("apply message %s events from %s gens: %v succeed (previously applied peer %d now %d)",
 					msg.Kind, msg.Nodename, msg.Gen,
 					previouslyApplied, msg.Gen[msg.Nodename])
 				return
 			}
 		}
 		if err := d.applyNodeData(msg); err != nil {
-			d.log.Error().Err(err).Msgf("apply message %s node data from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+			d.log.Errorf("apply message %s node data from %s gens: %v: %s", msg.Kind, msg.Nodename, msg.Gen, err)
 		}
 	case "ping":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)

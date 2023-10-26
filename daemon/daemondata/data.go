@@ -8,14 +8,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/durationlog"
+	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -49,7 +47,7 @@ type (
 
 		// statCount is a map[<stat id>] to track number of <id> calls
 		statCount map[int]uint64
-		log       zerolog.Logger
+		log       plog.Logger
 		bus       *pubsub.Bus
 		sub       *pubsub.Subscription
 
@@ -208,9 +206,12 @@ func PropagationInterval() time.Duration {
 //	        return
 //	     }
 func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
-	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
-	d.log.Info().Msg("starting")
-	defer d.log.Info().Msg("stopped")
+	d.log = plog.Logger{
+		Logger: plog.PkgLogger(ctx, "daemon/daemondata"),
+		Prefix: "daemon: data: ",
+	}
+	d.log.Infof("starting")
+	defer d.log.Infof("stopped")
 	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
@@ -233,8 +234,8 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 	defer countRoutineTicker.Stop()
 
 	doDrain := func() {
-		d.log.Debug().Msg("draining")
-		defer d.log.Debug().Msg("drained")
+		d.log.Debugf("draining")
+		defer d.log.Debugf("drained")
 
 		tC := time.After(drainDuration)
 		for {
@@ -244,7 +245,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			case c := <-cmdC:
 				c.SetError(ErrDrained)
 			case <-tC:
-				d.log.Debug().Msg("drop clusterData cmds done")
+				d.log.Debugf("drop clusterData cmds done")
 				return
 			}
 		}
@@ -289,12 +290,12 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				return
 			case <-subHbRefreshTicker.C:
 				d.setDaemonHb()
-				d.log.Debug().Msgf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
+				d.log.Debugf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
 					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
 					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
-					d.log.Debug().Msgf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+					d.log.Debugf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 				}
 			default:
 			}
@@ -311,12 +312,12 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 					return
 				}
 				if err := d.queueNewHbMsg(ctx); err != nil {
-					d.log.Error().Err(err).Msg("queue hb message")
+					d.log.Errorf("queue hb message: %s: %s", err)
 				} else {
 					d.needMsg = false
 					if hbMsgType != d.hbMessageType {
 						subHbRefreshAdaptiveInterval = propagationInterval
-						d.log.Debug().Msgf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+						d.log.Debugf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 						hbMsgType = d.hbMessageType
 					}
@@ -330,7 +331,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			if _, ok := d.clusterNodes[msg.Nodename]; ok {
 				d.onReceiveHbMsg(msg)
 			} else {
-				d.log.Warn().Msgf("drop rx message message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
+				d.log.Warnf("drop rx message message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
 			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
@@ -348,12 +349,12 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				case endCmd <- true:
 				}
 			} else {
-				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
+				d.log.Debugf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				d.statCount[idUndef]++
 			}
 		case i := <-d.sub.C:
 			if err := d.onSubEvent(i); err != nil {
-				d.log.Error().Err(err).Msgf("onSubEvent %s", reflect.TypeOf(i))
+				d.log.Errorf("onSubEvent %s: %s", reflect.TypeOf(i), err)
 			}
 		}
 	}
@@ -433,7 +434,7 @@ func (d *data) onSubEvent(i interface{}) error {
 			d.clusterNodes[v] = struct{}{}
 		}
 		for _, v := range c.NodesRemoved {
-			d.log.Info().Msgf("removed cluster node => drop peer node %s data", v)
+			d.log.Infof("removed cluster node => drop peer node %s data", v)
 			delete(d.clusterNodes, v)
 			d.dropPeer(v)
 		}
