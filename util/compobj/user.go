@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/opensvc/om3/util/file"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -32,8 +33,89 @@ var (
 	shadowFileContent []byte
 	passwdFileContent []byte
 
+	blackList = []string{
+		"root",
+		"bin",
+		"daemon",
+		"adm",
+		"lp",
+		"sync",
+		"shutdown",
+		"halt",
+		"mail",
+		"news",
+		"uucp",
+		"operator",
+		"nobody",
+		"nscd",
+		"vcsa",
+		"pcap",
+		"mailnull",
+		"smmsp",
+		"sshd",
+		"rpc",
+		"avahi",
+		"rpcuser",
+		"nfsnobody",
+		"haldaemon",
+		"avahi-autoipd",
+		"ntp",
+	}
+
+	loadFiles = func(t CompUsers) ExitCode {
+		var err error
+		if !t.checkFilesNsswitch() {
+			t.Errorf("shadow or passwd are not using files (in /etc/Nsswitch)")
+			return ExitNok
+		}
+		shadowFileContent, err = os.ReadFile("/etc/shadow")
+		if err != nil {
+			t.Errorf("can't open /etc/shadow : %s", err)
+			return ExitNok
+		}
+
+		passwdFileContent, err = os.ReadFile("/etc/passwd")
+		if err != nil {
+			t.Errorf("can't open /etc/passwd : %s", err)
+			return ExitNok
+		}
+		return ExitOk
+	}
+
+	execChUserGid = func(user string, gid int) *exec.Cmd {
+		return exec.Command("usermod", "-g", fmt.Sprintf("%d", gid), user)
+	}
+
+	execChUid = func(user string, uid int) *exec.Cmd {
+		return exec.Command("usermod", "-u", fmt.Sprintf("%d", uid), user)
+	}
+
+	execDelCommand = func(user string) *exec.Cmd {
+		return exec.Command(`userdel`, user)
+	}
+
+	execAddCommand = func(args []string) *exec.Cmd {
+		return exec.Command("useradd", args...)
+	}
+
 	getHomeDir = func(userInfos []string) string {
 		return userInfos[5]
+	}
+
+	execAddHomeCommand = func(home string, user string) *exec.Cmd {
+		return exec.Command("usermod", "-d", home, user)
+	}
+
+	execShellCommand = func(shell string) *exec.Cmd {
+		return exec.Command("chsh", "-s", shell)
+	}
+
+	execPasswordHashCommand = func(user string, password string) *exec.Cmd {
+		return exec.Command(`echo "` + user + `:` + password + `" | chpasswd -e`)
+	}
+
+	execGecosCommand = func(gecos string, user string) *exec.Cmd {
+		return exec.Command(`echo "` + gecos + `" | chfn ` + user)
 	}
 
 	osReadFile = os.ReadFile
@@ -154,15 +236,18 @@ func (t *CompUsers) Add(s string) error {
 			return fmt.Errorf("name should be in the dict: %s\n", s)
 		}
 
-		if rule.Uid == nil {
-			t.Errorf("uid should be in the dict: %s\n", s)
-			return fmt.Errorf("uid should be in the dict: %s\n", s)
+		if !strings.HasPrefix(name, "-") {
+			if rule.Uid == nil {
+				t.Errorf("uid should be in the dict: %s\n", s)
+				return fmt.Errorf("uid should be in the dict: %s\n", s)
+			}
+
+			if rule.Gid == nil {
+				t.Errorf("gid should be in the dict: %s\n", s)
+				return fmt.Errorf("gid should be in the dict: %s\n", s)
+			}
 		}
 
-		if rule.Gid == nil {
-			t.Errorf("gid should be in the dict: %s\n", s)
-			return fmt.Errorf("gid should be in the dict: %s\n", s)
-		}
 		i, b := t.hasUserRule(name)
 		if b {
 			u := t.rules[i].(CompUser)
@@ -202,26 +287,12 @@ func (t *CompUsers) hasUserRule(userName string) (int, bool) {
 	return -1, false
 }
 
-func (t CompUsers) Check() ExitCode {
+func (t *CompUsers) Check() ExitCode {
 	t.SetVerbose(true)
-	if !t.checkFilesNsswitch() {
-		t.Errorf("shadow or passwd are not using files")
-		return ExitNok
+	e := loadFiles(*t)
+	if e != ExitOk {
+		return e
 	}
-	var err error
-	shadowFileContent, err = os.ReadFile("/etc/shadow")
-	if err != nil {
-		t.Errorf("can't open /etc/shadow : %s", err)
-		return ExitNok
-	}
-
-	passwdFileContent, err = os.ReadFile("/etc/passwd")
-	if err != nil {
-		t.Errorf("can't open /etc/passwd : %s", err)
-		return ExitNok
-	}
-
-	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompUser)
 		o := t.checkRule(rule)
@@ -264,21 +335,27 @@ func (t CompUsers) checkFilesNsswitch() bool {
 }
 
 func (t CompUsers) checkRule(rule CompUser) ExitCode {
-	userInfos, err := t.getUserInfos(rule.User, passwdFileContent)
-
-	if err != nil {
-		t.VerboseInfof("user %s missing in /etc/passwd %s \n", rule.User, err)
-		return ExitNok
+	if strings.HasPrefix(rule.User, "-") {
+		_, e := t.checkUserExistence(rule.User, passwdFileContent)
+		return e
 	}
 
-	e := ExitOk
+	userInfos, e := t.checkUserExistence(rule.User, passwdFileContent)
 
-	e = e.Merge(t.checkUserIds(rule, userInfos))
+	if e == ExitNok {
+		return e
+	}
+
+	e = e.Merge(t.checkUserGid(rule, userInfos))
+	e = e.Merge(t.checkUserUid(rule, userInfos))
 	if rule.Shell != "" {
 		e = e.Merge(t.checkUserShell(rule, userInfos))
 	}
 	if rule.Home != "" {
-		e = e.Merge(t.checkUserHome(rule, userInfos))
+		e = e.Merge(t.checkUserHomeDir(rule, userInfos))
+	}
+	if rule.CheckHome == "yes" {
+		e = e.Merge(t.checkUserHomeDirOwnerShip(rule, userInfos))
 	}
 	if rule.Password != "" {
 		e = e.Merge(t.checkHash(rule, shadowFileContent))
@@ -290,29 +367,33 @@ func (t CompUsers) checkRule(rule CompUser) ExitCode {
 	return e
 }
 
-func (t CompUsers) checkUserIds(rule CompUser, userInfos []string) ExitCode {
-
-	gid, err := t.getGid(userInfos)
+func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
+	uid, err := t.getGid(userInfos)
 	if err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
 
-	t.Infof("gid = %d target = %d \n", gid, *rule.Gid)
-	if gid != *rule.Gid {
+	t.VerboseInfof("gid = %d target = %d \n", uid, *rule.Uid)
+	if uid != *rule.Uid {
 		t.Infof("gid not ok \n")
 		return ExitNok
 	}
 
-	uid, err := t.getUid(userInfos)
+	return ExitOk
+}
+
+func (t CompUsers) checkUserUid(rule CompUser, userInfos []string) ExitCode {
+
+	gid, err := t.getUid(userInfos)
 	if err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
 
-	t.Infof("uid = %d target = %d \n", uid, *rule.Uid)
-	if uid != *rule.Uid {
-		t.Infof("uid not ok \n")
+	t.VerboseInfof("gid = %d target = %d \n", gid, *rule.Gid)
+	if gid != *rule.Gid {
+		t.Infof("gid not ok \n")
 		return ExitNok
 	}
 
@@ -329,30 +410,39 @@ func (t CompUsers) checkUserShell(rule CompUser, userInfos []string) ExitCode {
 	return ExitOk
 }
 
-func (t CompUsers) checkUserHome(rule CompUser, userInfos []string) ExitCode {
+func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode {
 	home := getHomeDir(userInfos)
-	t.Infof("user home dir = %s target = %s \n", home, rule.Home)
-	if home != rule.Home {
-		t.Infof("user home not ok \n")
+	t.VerboseInfof("user home dir = %s target = %s \n", home, rule.Home)
+	if !file.Exists(home) {
+		t.VerboseInfof("user home dir does not exist --> not ok\n")
 		return ExitNok
 	}
+	if home != rule.Home {
+		t.VerboseInfof("user home not ok \n")
+		return ExitNok
+	}
+	return ExitOk
+}
 
-	if rule.CheckHome == "yes" {
-		uid, _, _ := file.Ownership(rule.Home)
-		t.Infof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
-		if uid != *rule.Uid {
-			t.Infof("user home ownership not ok \n")
-			return ExitNok
-		}
+func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) ExitCode {
+	uid, _, err := file.Ownership(getHomeDir(userInfos))
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	t.VerboseInfof("user home dir owner = %d target = %d \n", uid, *rule.Uid)
+	if uid != *rule.Uid {
+		t.VerboseErrorf("user home ownership not ok \n")
+		return ExitNok
 	}
 	return ExitOk
 }
 
 func (t CompUsers) checkUserGecos(rule CompUser, userInfos []string) ExitCode {
 	gecos := t.getGecos(userInfos)
-	t.Infof("user gecos = %s target = %s \n", gecos, rule.Gecos)
+	t.VerboseInfof("user gecos = %s target = %s \n", gecos, rule.Gecos)
 	if gecos != rule.Gecos {
-		t.Infof("user gecos not ok \n")
+		t.VerboseInfof("user gecos not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -364,15 +454,15 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 		line := scanner.Text()
 		splitedLine := strings.SplitN(line, ":", 3)
 		if splitedLine[0] == rule.User {
-			t.Infof("user password hash = %s target = %s \n", splitedLine[1], rule.Password)
+			t.VerboseInfof("user password hash = %s target = %s \n", splitedLine[1], rule.Password)
 			if splitedLine[1] == rule.Password {
 				return ExitOk
 			}
-			t.Infof("user password hash not ok \n")
+			t.VerboseInfof("user password hash not ok \n")
 			return ExitNok
 		}
 	}
-	t.Infof("not found in /etc/shadow \n")
+	t.VerboseInfof("not found in /etc/shadow \n")
 	return ExitNok
 }
 
@@ -385,34 +475,250 @@ func (t CompUsers) getGid(userInfos []string) (int, error) {
 }
 
 func (t CompUsers) getGecos(userInfos []string) string {
-	return userInfos[4][:len(userInfos[4])-3]
+	return userInfos[4]
 }
 
 func (t CompUsers) getShell(userInfos []string) string {
 	return userInfos[6]
 }
 
-func (t CompUsers) getUserInfos(userName string, passwdFile []byte) ([]string, error) {
+func (t CompUsers) checkUserExistence(userName string, passwdFile []byte) ([]string, ExitCode) {
 	scanner := bufio.NewScanner((bytes.NewReader(passwdFile)))
+	checkDel := false
+	if strings.HasPrefix(userName, "-") {
+		checkDel = true
+		userName = userName[1:]
+	}
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitedLine := strings.Split(line, ":")
 		if splitedLine[0] == userName {
-			return splitedLine, nil
+			if checkDel {
+				t.VerboseInfof("user %s exist and should not --> not ok\n", userName)
+				return splitedLine, ExitNok
+			}
+			return splitedLine, ExitOk
 		}
 	}
-	return []string{}, fmt.Errorf("can't find user %s", userName)
+
+	if checkDel {
+		t.VerboseInfof("user %s doesn't exist --> ok\n", userName)
+		return []string{}, ExitOk
+	}
+	t.VerboseInfof("user %s missing in /etc/passwd \n", userName)
+	return []string{}, ExitNok
 }
 
-func (t CompUsers) Fix() ExitCode {
+func (t *CompUsers) Fix() ExitCode {
 	t.SetVerbose(false)
-	/*
-		for _, i := range t.Rules() {
-			rule := i.(CompSymlink)
-			/*if e := t.FixSymlink(rule); e == ExitNok {
+	for _, i := range t.Rules() {
+		rule := i.(CompUser)
+		if e := t.fixRule(rule); e == ExitNok {
+			return ExitNok
+		}
+	}
+	return ExitOk
+}
+
+func (t *CompUsers) fixRule(rule CompUser) ExitCode {
+	if loadFiles(*t) == ExitNok {
+		return ExitNok
+	}
+	if strings.HasPrefix(rule.User, "-") {
+		_, e := t.checkUserExistence(rule.User, passwdFileContent)
+		if e == ExitNok {
+			if t.fixUserDel(rule) == ExitNok {
 				return ExitNok
 			}
-		}*/
+			return ExitOk
+		}
+		return ExitOk
+	}
+
+	userInfos, e := t.checkUserExistence(rule.User, passwdFileContent)
+
+	if e == ExitNok {
+		if t.fixUserExistence(rule) == ExitNok {
+			return ExitNok
+		}
+		if loadFiles(*t) == ExitNok {
+			return ExitNok
+		}
+		userInfos, e = t.checkUserExistence(rule.User, passwdFileContent)
+	}
+
+	if t.checkUserGid(rule, userInfos) == ExitNok {
+		if t.fixGid(rule) == ExitNok {
+			return ExitNok
+		}
+	}
+
+	if t.checkUserUid(rule, userInfos) == ExitNok {
+		if t.fixUid(rule) == ExitNok {
+			return ExitNok
+		}
+	}
+
+	if rule.Home != "" {
+		if t.checkUserHomeDir(rule, userInfos) == ExitNok {
+			if t.fixHomeDir(rule) == ExitNok {
+				return ExitNok
+			}
+			if loadFiles(*t) == ExitNok {
+				return ExitNok
+			}
+		}
+	}
+
+	if rule.CheckHome == "yes" {
+		if t.checkUserHomeDirOwnerShip(rule, userInfos) == ExitNok {
+			if t.fixHomeOwnerShip(rule, userInfos) == ExitNok {
+				return ExitNok
+			}
+		}
+	}
+
+	if rule.Shell != "" {
+		if t.checkUserShell(rule, userInfos) == ExitNok {
+			if t.fixShell(rule) == ExitNok {
+				return ExitNok
+			}
+		}
+	}
+
+	if rule.Password != "" {
+		if t.checkHash(rule, shadowFileContent) == ExitNok {
+			if t.fixPasswordHash(rule) == ExitNok {
+				return ExitNok
+			}
+		}
+	}
+
+	if rule.Gecos != "" {
+		if t.checkUserGecos(rule, userInfos) == ExitNok {
+			if t.fixGecos(rule) == ExitNok {
+				return ExitNok
+			}
+		}
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixGid(rule CompUser) ExitCode {
+	cmd := execChUserGid(rule.User, *rule.Gid)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s", err, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixUid(rule CompUser) ExitCode {
+	cmd := execChUid(rule.User, *rule.Uid)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s", err, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
+	cmdArgs := []string{"-u", fmt.Sprintf("%d", *rule.Uid), "-g", fmt.Sprintf("%d", *rule.Gid)}
+
+	if rule.Home != "" {
+		cmdArgs = append(cmdArgs, "--home", rule.Home, "--create-home")
+	}
+	cmdArgs = append(cmdArgs, rule.User)
+	cmd := execAddCommand(cmdArgs)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s", err, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixHomeOwnerShip(rule CompUser, userInfos []string) ExitCode {
+	err := os.Chown(getHomeDir(userInfos), *rule.Uid, -1)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
+	err := os.MkdirAll(rule.Home, 0755)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if file.Exists("/etc/skel") {
+		cmd := exec.Command("cp", "-R", "/etc/skel/*", rule.Home)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Errorf("%s:%s", err, output)
+		}
+	}
+
+	cmd := execAddHomeCommand(rule.Home, rule.User)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s", err, output)
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixShell(rule CompUser) ExitCode {
+
+	cmd := execShellCommand(rule.Shell)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s", err, output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixPasswordHash(rule CompUser) ExitCode {
+	cmd := execPasswordHashCommand(rule.User, rule.Password)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s", output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixGecos(rule CompUser) ExitCode {
+	cmd := execGecosCommand(rule.Gecos, rule.User)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s", output)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
+	rule.User = rule.User[1:]
+	for _, usrBlackList := range blackList {
+		if usrBlackList == rule.User {
+			t.Errorf("cowardly refusing to delete user : %s", rule.User)
+			return ExitNok
+		}
+	}
+
+	cmd := execDelCommand(rule.User)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("%s:%s\n", err, output)
+		return ExitNok
+	}
 	return ExitOk
 }
 
@@ -421,5 +727,5 @@ func (t CompUsers) Fixable() ExitCode {
 }
 
 func (t CompUsers) Info() ObjInfo {
-	return compSymlinkInfo
+	return compUserInfo
 }

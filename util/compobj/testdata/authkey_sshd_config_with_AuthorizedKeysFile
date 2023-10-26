@@ -1,0 +1,9 @@
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+
+#AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+
+AuthorizedKeysFile .ssh/authorized_keys2 ~/testTilde %h/testH /normal/path /home/%u/testU
+
+#AuthorizedKeysCommandUser nobody

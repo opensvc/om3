@@ -1,0 +1,16 @@
+Include /etc/ssh/sshd_config.d/*.conf
+
+# Ciphers and keying
+#RekeyLimit default none
+
+# Logging
+#SyslogFacility AUTH
+#LogLevel INFO
+
+# Authentication:
+
+AllowUsers root lalaal toto
+AllowGroups root lalaal totoGroup
+
+#LoginGraceTime 2m
+UsePAM yes
