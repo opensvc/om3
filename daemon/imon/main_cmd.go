@@ -570,6 +570,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	sendError(nil)
 
 	if o.change {
+		if o.state.OrchestrationId.String() != c.Value.CandidateOrchestrationId.String() {
+			o.log = o.newLogger(c.Value.CandidateOrchestrationId)
+		}
 		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
 		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationId
 		o.updateIsLeader()
