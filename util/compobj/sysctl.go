@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -129,16 +130,16 @@ func (t *CompSysctls) Add(s string) error {
 	return nil
 }
 
-/*func (t CompSysctls) Check() ExitCode {
+func (t CompSysctls) Check() ExitCode {
 	t.SetVerbose(true)
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSysctl)
-		o := t.CheckSymlink(rule)
+		o := t.checkRule(rule)
 		e = e.Merge(o)
 	}
 	return e
-}*/
+}
 
 func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 	values, err := t.getValues(rule, false)
@@ -219,29 +220,143 @@ func (t CompSysctls) getValues(rule CompSysctl, checkLive bool) ([]string, error
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
-		splitLine := strings.Fields(line)
-		if len(splitLine) > 1 {
-			if splitLine[0] == rule.Key {
-				if splitLine[1] != "=" {
-					continue
-				}
-				return splitLine[2:], nil
-			}
+		splitLine := strings.Split(line, "=")
+		if len(splitLine) != 2 {
+			continue
+		}
+		if strings.TrimSpace(splitLine[0]) == rule.Key {
+			return strings.Fields(splitLine[1]), nil
 		}
 	}
 	return nil, nil
 }
 
-/*func (t CompSysctls) Fix() ExitCode {
+func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
+	changeDone := false
+	configFileOldContent, err := os.ReadFile("/etc/sysctl.conf")
+	configFileNewContent := []byte{}
+	if err != nil {
+		return false, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		splitLine := strings.Split(line, "=")
+		if len(splitLine) != 2 {
+			continue
+		}
+		if strings.TrimSpace(splitLine[0]) == rule.Key {
+			if changeDone {
+				t.Infof("sysctl: remove redundant key %s", rule.Key)
+				continue
+			}
+			values := strings.Fields(splitLine[1])
+			if len(values) > *rule.Index {
+				if _, ok := rule.Value.(string); !ok {
+					rule.Value = strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64)
+				}
+				values[*rule.Index] = rule.Value.(string)
+				changeDone = true
+			}
+			line = strings.TrimSpace(splitLine[0]) + " ="
+			for _, value := range values {
+				line += " " + value
+			}
+		}
+		configFileOldContent = append(configFileNewContent, []byte(line)...)
+		configFileNewContent = append(configFileNewContent, byte('\n'))
+	}
+	if !changeDone {
+		return changeDone, nil
+	}
+	f, err := os.Create("/etc/sysctl.conf")
+	if err != nil {
+		t.Errorf("can't open the file %s in write mode :%s\n", "/etc/sysctl.conf", err)
+		return false, err
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			t.Errorf("error when trying to close file %s :%s\n", "/etc/sysctl.conf", err)
+		}
+	}()
+	_, err = f.Write(configFileNewContent)
+	if err != nil {
+		t.Errorf("error when trying to write in %s :%s\n", "/etc/sysctl.conf", err)
+		return false, err
+	}
+	return changeDone, nil
+}
+
+func (t CompSysctls) addKeyInConfFile(rule CompSysctl) error {
+	values, err := t.getValues(rule, true)
+	if err != nil {
+		return err
+	}
+	if values == nil {
+		return fmt.Errorf("error can't find the key %s in the list of kernel parameter (/etc/sysctl.conf and live", rule.Key)
+	}
+	if len(values) < *rule.Index {
+		return fmt.Errorf("can't modify the key %s index %d out of range", rule.Key, *rule.Index)
+	}
+	if _, ok := rule.Value.(string); !ok {
+		rule.Value = strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64)
+	}
+	values[*rule.Index] = rule.Value.(string)
+	lineToAdd := rule.Key
+	for _, value := range values {
+		lineToAdd += " " + value
+	}
+	lineToAdd += "\n"
+	f, err := os.OpenFile("/etc/sysctl.conf", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			t.Errorf("error when trying to close file %s :%s\n", "/etc/sysctl.conf", err)
+		}
+	}()
+	_, err = f.Write([]byte(lineToAdd))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t CompSysctls) fixRule(rule CompSysctl) ExitCode {
+	if t.checkRule(rule) == ExitNok {
+		changeDone, err := t.modifyKeyInConfFile(rule)
+		if err != nil {
+			t.Errorf("error when trying to modify /etc/sysctl.conf :", err)
+			return ExitNok
+		}
+		if !changeDone {
+			t.Infof("did not find key in /etc/sysctl.conf, trying to read live parameters and to add the new parameters in /etc/sysctl.conf")
+			err = t.addKeyInConfFile(rule)
+			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+		}
+	}
+	return ExitOk
+}
+
+func (t CompSysctls) Fix() ExitCode {
 	t.SetVerbose(false)
 	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		if e := t.FixSymlink(rule); e == ExitNok {
+		rule := i.(CompSysctl)
+		if e := t.fixRule(rule); e == ExitNok {
 			return ExitNok
 		}
 	}
 	return ExitOk
-}*/
+}
 
 func (t CompSysctls) Fixable() ExitCode {
 	return ExitNotApplicable

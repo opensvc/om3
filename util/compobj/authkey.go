@@ -597,7 +597,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 			continue
 		}
 		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, []byte("\n")...)
+		configFileNewContent = append(configFileNewContent, byte('\n'))
 	}
 	f, err := os.Create(authKeyFilePath)
 	if err != nil {
