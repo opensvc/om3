@@ -150,7 +150,6 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		cmdC:          make(chan any),
 		databus:       databus,
 		pubsubBus:     pubsub.BusFromContext(ctx),
-		log:           plog.NewDefaultLogger().Attr("pkg", "daemon/imon").Attr("obj_path", p.String()).WithPrefix(fmt.Sprintf("daemon: imon: %s: ", p)),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
 		nodeMonitor:   make(map[string]node.Monitor),
@@ -171,6 +170,7 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		labelPath:      pubsub.Label{"path", id},
 	}
 
+	o.log = o.newLogger(uuid.Nil)
 	o.startSubscriptions()
 
 	go func() {
@@ -178,6 +178,15 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 	}()
 
 	return nil
+}
+
+func (o *imon) newLogger(i uuid.UUID) *plog.Logger {
+	p := o.path.String()
+	return plog.NewDefaultLogger().
+		Attr("pkg", "daemon/imon").
+		Attr("obj_path", p).
+		Attr("orchestration_id", i.String()).
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", p))
 }
 
 func (o *imon) startSubscriptions() {

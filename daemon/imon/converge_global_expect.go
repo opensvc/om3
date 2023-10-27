@@ -37,6 +37,7 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 		}
 		o.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
 			mostRecentNode, strVal, o.state.OrchestrationId, mostRecentUpdated)
+		o.log = o.newLogger(o.state.OrchestrationId)
 	}
 }
 

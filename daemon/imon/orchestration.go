@@ -153,6 +153,7 @@ func (o *imon) endOrchestration() {
 			o.labelLocalhost,
 		)
 		o.acceptedOrchestrationId = uuid.UUID{}
+		o.log = o.newLogger(o.state.OrchestrationId)
 	}
 }
 
