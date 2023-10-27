@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/colorstatus"
@@ -144,7 +143,7 @@ type (
 		EnableUnprovision       bool
 
 		statusLog    StatusLog
-		log          plog.Logger
+		log          *plog.Logger
 		object       any
 		objectDriver ObjectDriver
 		pg           *pg.Config
@@ -486,20 +485,18 @@ func (t *T) GetObjectDriver() ObjectDriver {
 	return t.object.(ObjectDriver)
 }
 
-func (t *T) getLoggerFromObjectDriver(o ObjectDriver) plog.Logger {
-	l := log.Logger.With().Stringer("rid", t.ResourceID)
+func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
+	prefix := fmt.Sprintf("%s: %s: ", o, t.ResourceID)
+	l := plog.NewDefaultLogger().WithPrefix(prefix).Attr("rid", t.ResourceID)
 	if t.Subset != "" {
-		l = l.Str("subset", t.Subset)
+		l = l.Attr("subset", t.Subset)
 	}
-	return plog.Logger{
-		Logger: l.Logger(),
-		Prefix: fmt.Sprintf("%s: %s: ", o, t.ResourceID),
-	}
+	return l
 }
 
 // Log returns the resource logger
 func (t *T) Log() *plog.Logger {
-	return &t.log
+	return t.log
 }
 
 // MatchRID returns true if:
@@ -553,7 +550,7 @@ func (t T) trigger(ctx context.Context, s string) error {
 	cmd := command.New(
 		command.WithName(cmdArgs[0]),
 		command.WithVarArgs(cmdArgs[1:]...),
-		command.WithLogger(&t.log),
+		command.WithLogger(t.log),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel))
 	return cmd.Run()
@@ -1189,7 +1186,7 @@ func Action(ctx context.Context, r Driver) error {
 }
 
 // SetLoggerForTest can be used to set resource log for testing purpose
-func (t *T) SetLoggerForTest(l plog.Logger) {
+func (t *T) SetLoggerForTest(l *plog.Logger) {
 	t.log = l
 }
 

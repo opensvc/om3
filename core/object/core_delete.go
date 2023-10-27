@@ -45,7 +45,7 @@ func (t core) deleteInstance() error {
 		return err
 	}
 	if err := t.setPurgeCollectorTag(); err != nil {
-		t.log.Warn().Err(err).Send()
+		t.log.Warnf("%s", err)
 		return nil
 	}
 	return nil
@@ -62,7 +62,7 @@ func (t core) deleteInstanceFiles() error {
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			t.log.Warn().Err(err).Str("pattern", pattern).Msg("expand glob for delete")
+			t.log.Attr("pattern", pattern).Warnf("expand glob for delete: %s", err)
 			continue
 		}
 		for _, fpath := range matches {
@@ -75,14 +75,14 @@ func (t core) deleteInstanceFiles() error {
 
 func (t core) tryDeleteInstanceFile(fpath string) bool {
 	if file.IsProtected(fpath) {
-		t.log.Warn().Str("path", fpath).Msg("block attempt to remove a protected file")
+		t.log.Attr("path", fpath).Warnf("block attempt to remove the protected file %s", fpath)
 		return false
 	}
 	if err := os.RemoveAll(fpath); err != nil {
-		t.log.Warn().Err(err).Str("path", fpath).Msg("removing")
+		t.log.Attr("path", fpath).Warnf("removing %s: %s", fpath, err)
 		return false
 	}
-	t.log.Info().Str("path", fpath).Msg("removed")
+	t.log.Attr("path", fpath).Infof("removed %s", fpath)
 	return true
 }
 

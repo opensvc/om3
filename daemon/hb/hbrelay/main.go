@@ -47,10 +47,7 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hb/hbrelay").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: relay: " + t.Name() + ": configure: ",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: relay: " + t.Name() + ": configure: ")
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {

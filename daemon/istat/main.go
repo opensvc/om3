@@ -36,7 +36,7 @@ type (
 		//    msgbus.InstanceStatusUpdated.
 		iStatusM map[string]instance.Status
 
-		log plog.Logger
+		log *plog.Logger
 
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -64,11 +64,7 @@ func New() *T {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	t.log = plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/istat").With().
-			Logger(),
-		Prefix: "daemon: istat: ",
-	}
+	t.log = plog.NewDefaultLogger().WithPrefix("daemon: istat: ").Attr("pkg", "daemon/istat")
 	err := make(chan error)
 	t.wg.Add(1)
 	go func(errC chan<- error) {

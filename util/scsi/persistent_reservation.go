@@ -200,7 +200,7 @@ func (t *PersistentReservationHandle) Start() error {
 	}
 	for _, dev := range t.Devices {
 		if s := t.DeviceStatus(dev); s == status.Up {
-			t.Log.Info().Msgf("%s is already registered and reserved", dev)
+			t.Log.Infof("%s is already registered and reserved", dev)
 			continue
 		}
 		if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
@@ -239,7 +239,7 @@ func (t *PersistentReservationHandle) Stop() error {
 	}
 	for _, dev := range t.Devices {
 		if s := t.DeviceStatus(dev); s == status.Down {
-			t.Log.Info().Msgf("%s is already unregistered and unreserved", dev)
+			t.Log.Infof("%s is already unregistered and unreserved", dev)
 			continue
 		}
 		if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {

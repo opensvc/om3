@@ -75,7 +75,7 @@ func (t *core) ID() uuid.UUID {
 	}
 	_ = t.config.Set(op)
 	if err := t.config.Commit(); err != nil {
-		t.log.Error().Err(err).Send()
+		t.log.Errorf("%s", err)
 	}
 	return t.id
 }
@@ -145,7 +145,7 @@ func (t core) Children() []naming.Relation {
 	k := key.Parse("children")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
-		t.log.Error().Err(err).Send()
+		t.log.Errorf("%s", err)
 		return data
 	}
 	for _, e := range l {
@@ -159,7 +159,7 @@ func (t core) Parents() []naming.Relation {
 	k := key.Parse("parents")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
-		t.log.Error().Err(err).Send()
+		t.log.Errorf("%s", err)
 		return data
 	}
 	for _, e := range l {

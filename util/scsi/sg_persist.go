@@ -239,7 +239,7 @@ func (t SGPersistDriver) env(val string) []string {
 // ackUnitAttention does a --in command to acknowledge a unit attention, likely
 // caused by the previous --out command.
 func (t SGPersistDriver) ackUnitAttention(dev device.T) {
-	t.Log.Debug().Msgf("ack Unit Attention on %s.", dev)
+	t.Log.Debugf("ack Unit Attention on %s.", dev)
 	_, _ = t.readReservation(dev)
 }
 
@@ -261,25 +261,25 @@ func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O
 		err := cmd.Run()
 		if err == nil {
 			// all good
-			t.Log.Debug().Str("out", string(cmd.Stdout())).Send()
+			t.Log.Attr("out", string(cmd.Stdout())).Debugf("")
 			return err
 		}
 		if cmd.ExitCode() == 6 {
 			if countdown == 1 {
-				t.Log.Warn().Msgf("Unit Attention received from %s. max retries exhausted", dev)
-				t.Log.Info().Str("out", string(cmd.Stdout())).Send()
-				t.Log.Error().Str("err", string(cmd.Stderr())).Send()
+				t.Log.Warnf("Unit Attention received from %s. max retries exhausted", dev)
+				t.Log.Attr("out", string(cmd.Stdout())).Infof("")
+				t.Log.Attr("err", string(cmd.Stderr())).Errorf("")
 				return err
 			}
-			t.Log.Warn().Msgf("Unit Attention received from %s. ack and retry in 0.1s", dev)
+			t.Log.Warnf("Unit Attention received from %s. ack and retry in 0.1s", dev)
 			countdown -= 1
 			time.Sleep(100 * time.Millisecond)
 			t.ackUnitAttention(dev)
 			continue
 		}
 		// other exit codes are not retryable
-		t.Log.Info().Str("out", string(cmd.Stdout())).Send()
-		t.Log.Error().Str("err", string(cmd.Stderr())).Send()
+		t.Log.Attr("out", string(cmd.Stdout())).Infof("")
+		t.Log.Attr("err", string(cmd.Stderr())).Errorf("")
 		return err
 
 	}

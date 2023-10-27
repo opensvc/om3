@@ -89,9 +89,7 @@ func New() *T {
 // Log returns the resource logger
 func (t *T) Log() *plog.Logger {
 	if t.log == nil {
-		return &plog.Logger{
-			Logger: zerolog.New(nil),
-		}
+		return plog.NewLogger(zerolog.New(nil))
 	}
 	return t.log
 }
@@ -101,10 +99,8 @@ func (t *T) SetLogger(parent *plog.Logger) {
 	if parent == nil {
 		return
 	}
-	t.log = &plog.Logger{
-		Logger: parent.Logger.With().Str("subset", t.Name).Logger(),
-		Prefix: parent.Prefix + t.Name + ": ",
-	}
+	prefix := parent.Prefix() + t.Name + ": "
+	t.log = parent.Attr("subset", t.Name).WithPrefix(prefix)
 }
 
 // Generic allocates and initializes a new resourceset for a given

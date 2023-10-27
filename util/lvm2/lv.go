@@ -271,7 +271,7 @@ func (t *LV) Create(size string, args []string) error {
 func (t *LV) Wipe() error {
 	path := t.DevPath()
 	if !file.Exists(path) {
-		t.Log().Info().Msgf("skip wipe: %s does not exist", path)
+		t.Log().Infof("skip wipe: %s does not exist", path)
 		return nil
 	}
 	dev := device.New(path, device.WithLogger(t.Log()))

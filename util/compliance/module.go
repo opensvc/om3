@@ -82,7 +82,7 @@ func (t T) lookupModule(s string) (string, error) {
 		}
 		for _, path := range locations {
 			if err := validatePath(path); err != nil {
-				t.log.Debug().Msgf("%s discard: %s", path, err)
+				t.log.Debugf("%s discard: %s", path, err)
 				continue
 			}
 			hits = append(hits, path)

@@ -109,22 +109,22 @@ func (t *Pool) Import(fopts ...funcopt.O) error {
 	if err != nil && opts.Quiet {
 		return err
 	}
-	t.Log.Info().Stringer("cmd", cmd).Msg("run")
+	t.Log.Attr("cmd", cmd.String()).Infof("run")
 	stdout := string(cmd.Stdout())
 	stderr := string(cmd.Stderr())
 	if err != nil {
 		if stdout != "" {
-			t.Log.Info().Msg(stdout)
+			t.Log.Infof(stdout)
 		}
 		if stderr != "" {
-			t.Log.Error().Msg(stderr)
+			t.Log.Errorf(stderr)
 		}
 	} else {
 		if stdout != "" {
-			t.Log.Info().Msg(stdout)
+			t.Log.Infof(stdout)
 		}
 		if stderr != "" {
-			t.Log.Error().Msg(stderr)
+			t.Log.Errorf(stderr)
 		}
 	}
 	return err

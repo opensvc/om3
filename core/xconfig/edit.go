@@ -53,7 +53,7 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 				return err
 			}
 		case EditModeRecover:
-			ref.Log().Debug().Str("dst", dst).Msg("recover existing configuration temporary copy")
+			ref.Log().Attr("dst", dst).Debugf("recover existing configuration temporary copy")
 		default:
 			diff, _ := Diff(src, dst)
 			return fmt.Errorf("%w: %s", ErrEditPending, diff)

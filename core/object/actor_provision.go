@@ -41,7 +41,7 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 
 func (t *actor) masterProvision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("provision resource")
+		t.log.Attr("rid", r.RID()).Debugf("provision resource")
 		leader := actioncontext.IsLeader(ctx)
 		return resource.Provision(ctx, r, leader)
 	})

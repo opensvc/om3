@@ -7,14 +7,13 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/rs/zerolog/log"
 )
 
 type (
 	// Node is the node struct.
 	Node struct {
 		//private
-		log      plog.Logger
+		log      *plog.Logger
 		volatile bool
 
 		// caches
@@ -40,10 +39,7 @@ func (t *Node) init(opts ...funcopt.O) error {
 		return err
 	}
 
-	// log.Logger is configured in cmd/root.go
-	t.log = plog.Logger{
-		Logger: log.Logger,
-	}
+	t.log = plog.NewDefaultLogger()
 
 	if err := t.loadConfig(); err != nil {
 		return err

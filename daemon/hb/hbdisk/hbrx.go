@@ -25,7 +25,7 @@ type (
 		last     time.Time
 
 		name   string
-		log    plog.Logger
+		log    *plog.Logger
 		cmdC   chan<- any
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -153,14 +153,11 @@ func (t *rx) recv(nodename string) {
 
 func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *rx {
 	id := name + ".rx"
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().
-			Str("hb_func", "rx").
-			Str("hb_name", name).
-			Str("hb_id", id).
-			Logger(),
-		Prefix: "daemon: hb: disk: rx: " + name + ": ",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").
+		Attr("hb_func", "rx").
+		Attr("hb_name", name).
+		Attr("hb_id", id).
+		WithPrefix("daemon: hb: disk: rx: " + name + ": ")
 
 	return &rx{
 		ctx:      ctx,

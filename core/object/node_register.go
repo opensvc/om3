@@ -53,22 +53,22 @@ func (t Node) Register(user, password, app string) error {
 	if _, err := t.PushAsset(); err != nil {
 		return err
 	} else {
-		t.Log().Info().Msg("sent initial asset discovery")
+		t.Log().Infof("sent initial asset discovery")
 	}
 	if data, err := t.Checks(); err != nil {
 		return err
 	} else {
-		t.Log().Info().Msgf("sent initial checks (%d)", data.Len())
+		t.Log().Infof("sent initial checks (%d)", data.Len())
 	}
 	if data, err := t.PushPkg(); err != nil {
 		return err
 	} else {
-		t.Log().Info().Msgf("sent initial package inventory (%d)", len(data))
+		t.Log().Infof("sent initial package inventory (%d)", len(data))
 	}
 	if data, err := t.PushPatch(); err != nil {
 		return err
 	} else {
-		t.Log().Info().Msgf("sent initial patch inventory (%d)", len(data))
+		t.Log().Infof("sent initial patch inventory (%d)", len(data))
 	}
 	if _, err := t.PushDisks(); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (t Node) registerAsUser(user, password, app string) error {
 		return fmt.Errorf(data.Error)
 	}
 	if data.Info != "" {
-		t.Log().Info().Msg(data.Info)
+		t.Log().Infof("%s", data.Info)
 	}
 	return t.writeUUID(data.Data.UUID)
 }
@@ -161,7 +161,7 @@ func (t Node) registerAsNode() error {
 					continue
 				}
 				if strings.Contains(s, "already") {
-					t.Log().Info().Msg(s)
+					t.Log().Infof(s)
 				} else {
 					return fmt.Errorf(s)
 				}

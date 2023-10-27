@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/prometheus/procfs"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
@@ -74,7 +73,7 @@ type (
 		poolC        chan any
 		databus      *daemondata.T
 		bus          *pubsub.Bus
-		log          plog.Logger
+		log          *plog.Logger
 		rejoinTicker *time.Ticker
 		startedAt    time.Time
 
@@ -161,12 +160,9 @@ func New(drainDuration time.Duration) *nmon {
 			GlobalExpect: node.MonitorGlobalExpectNone,
 			State:        node.MonitorStateZero,
 		},
-		cmdC:  make(chan any),
-		poolC: make(chan any, 1),
-		log: plog.Logger{
-			Logger: log.Logger.With().Str("pkg", "daemon/nmon").Logger(),
-			Prefix: "daemon: nmon: ",
-		},
+		cmdC:        make(chan any),
+		poolC:       make(chan any, 1),
+		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),

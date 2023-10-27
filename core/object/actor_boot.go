@@ -24,7 +24,7 @@ func (t *actor) Boot(ctx context.Context) error {
 
 func (t *actor) lockedBoot(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("boot resource")
+		t.log.Attr("rid", r.RID()).Debugf("boot resource")
 		return resource.Boot(ctx, r)
 	})
 }

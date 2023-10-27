@@ -18,7 +18,7 @@ import (
 
 type (
 	T struct {
-		log      plog.Logger
+		log      *plog.Logger
 		stopFunc []func() error
 		cancel   context.CancelFunc
 	}
@@ -48,10 +48,7 @@ func (a *authOption) VerifyKeyFile() string {
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/listener"),
-			Prefix: "daemon: listener: ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener").WithPrefix("daemon: listener: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)

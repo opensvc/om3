@@ -34,7 +34,7 @@ func (t *actor) lockedPRStart(ctx context.Context) error {
 
 func (t *actor) masterPRStart(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
+		t.log.Attr("rid", r.RID()).Debugf("start resource")
 		return resource.PRStart(ctx, r)
 	})
 }

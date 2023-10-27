@@ -17,7 +17,7 @@ func (t *actor) Enter(ctx context.Context, rid string) error {
 	for _, r := range rs.Resources() {
 		i, ok := r.(enterer)
 		if !ok {
-			t.Log().Debug().Msgf("skip %s: not enterer", r.RID())
+			t.Log().Debugf("skip %s: not enterer", r.RID())
 			continue
 		}
 		return i.Enter()

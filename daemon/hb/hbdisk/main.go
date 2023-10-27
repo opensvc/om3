@@ -39,7 +39,7 @@ type (
 	base struct {
 		peerConfigs
 		device
-		log plog.Logger
+		log *plog.Logger
 	}
 	peerConfigs map[string]peerConfig
 	peerConfig  struct {
@@ -131,10 +131,7 @@ func (d *device) open() error {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hb/hbdisk").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: disk: " + t.Name() + ": configure:",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: disk: " + t.Name() + ": configure:")
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {

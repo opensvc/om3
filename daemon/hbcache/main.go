@@ -55,10 +55,7 @@ func (t *T) Stop() error {
 func (t *T) run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
 	heartbeats := make([]cluster.HeartbeatStream, 0)
-	log := plog.Logger{
-		Logger: plog.GetPkgLogger("daemon/hbcache"),
-		Prefix: "daemon: hbcache: ",
-	}
+	log := plog.NewDefaultLogger().WithPrefix("daemon: hbcache: ").Attr("pkg", "daemon/hbcache")
 	log.Debugf("started")
 	defer log.Debugf("done")
 	defer draincommand.Do(cmdI, t.drainDuration)

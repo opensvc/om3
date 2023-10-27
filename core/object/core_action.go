@@ -83,35 +83,35 @@ func (t *actor) preAction(ctx context.Context) error {
 
 func (t *actor) needRollback(ctx context.Context) bool {
 	if actionrollback.Len(ctx) == 0 {
-		t.Log().Debug().Msg(t.Msgf("skip rollback: Empty stack"))
+		t.Log().Debugf("skip rollback: Empty stack")
 		return false
 	}
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
-		t.Log().Debug().Msg(t.Msgf("skip rollback: Not demanded by the %s action", action.Name))
+		t.Log().Debugf("skip rollback: Not demanded by the %s action", action.Name)
 		return false
 	}
 	if actioncontext.IsRollbackDisabled(ctx) {
-		t.Log().Debug().Msg(t.Msgf("skip rollback: Disabled via the command flag"))
+		t.Log().Debugf("skip rollback: Disabled via the command flag")
 		return false
 	}
 	k := key.Parse("rollback")
 	if !t.Config().GetBool(k) {
-		t.Log().Debug().Msg(t.Msgf("skip rollback: Disabled via configuration keyword"))
+		t.Log().Debugf("skip rollback: Disabled via configuration keyword")
 		return false
 	}
 	return true
 }
 
 func (t *actor) rollback(ctx context.Context) error {
-	t.Log().Info().Msg(t.Msgf("rollback"))
+	t.Log().Infof("rollback")
 	return actionrollback.Rollback(ctx)
 }
 
 func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
 	props := actioncontext.Props(ctx)
 	timeout, source := t.actionTimeout(props.TimeoutKeywords)
-	t.log.Debug().Msg(t.Msgf("action timeout set to %s from keyword %s", timeout, source))
+	t.log.Debugf("action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
 	}
@@ -138,7 +138,7 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 	}
 	r.Progress(ctx, "▶ run abort tests")
 	if a.Abort(ctx) {
-		t.log.Error().Str("rid", r.RID()).Msg(t.Msgf("resource %s denied start", r.RID()))
+		t.log.Attr("rid", r.RID()).Errorf("resource %s denied start", r.RID())
 		r.Progress(ctx, rawconfig.Colorize.Error("deny start"))
 		q <- true
 		return
@@ -169,17 +169,17 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	})
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		t.log.Debug().Msg(t.Msgf("skip announce progress: The daemon is not running"))
+		t.log.Debugf("skip announce progress: The daemon is not running")
 		return nil
 	case err != nil:
-		t.log.Error().Err(err).Msg(t.Msgf("announce %s state: %s", progress, err))
+		t.log.Errorf("announce %s state: %s", progress, err)
 		return err
 	case resp.StatusCode != http.StatusOK:
 		err := fmt.Errorf("unexpected post object progress status %s", resp.Status)
-		t.log.Error().Err(err).Msg(t.Msgf("announce %s state: %s", progress, err))
+		t.log.Errorf("announce %s state: %s", progress, err)
 		return err
 	}
-	t.Infof("announce %s state", progress)
+	t.Log().Infof("announce %s state", progress)
 	return nil
 }
 
@@ -280,21 +280,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)
-	t.log.Info().
-		Strs("argv", os.Args).
-		Str("cwd", wd).
-		Str("action", action.Name).
-		Str("origin", env.Origin()).
-		Msg(t.Msgf("do %s (origin %s)", os.Args, env.Origin()))
+	logger := t.log.
+		Attr("argv", os.Args).
+		Attr("cwd", wd).
+		Attr("action", action.Name).
+		Attr("origin", env.Origin())
+	logger.Infof("do %s (origin %s)", os.Args, env.Origin())
 	beginTime := time.Now()
 	defer func() {
-		t.log.Info().
-			Strs("argv", os.Args).
-			Str("cwd", wd).
-			Str("action", action.Name).
-			Str("origin", env.Origin()).
-			Dur("duration", time.Now().Sub(beginTime)).
-			Msg(t.Msgf("done %s in %s", os.Args, time.Now().Sub(beginTime)))
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("done %s in %s", os.Args, time.Now().Sub(beginTime))
 	}()
 
 	// daemon instance monitor updates
@@ -317,7 +311,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
-			l := t.log.With().Str("rid", r.RID()).Logger()
+			l := t.log.Attr("rid", r.RID())
 			ctx = l.WithContext(ctx)
 			err := fn(ctx, r)
 			switch {
@@ -394,7 +388,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
-				t.Log().Err(errRollback).Msg(t.Msgf("rollback"))
+				t.Log().Errorf("rollback: %s", err)
 			}
 		}
 		return err
@@ -438,15 +432,15 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		return nil
 	}
 	if !resourceselector.FromContext(ctx, nil).IsZero() {
-		t.log.Debug().Msg(t.Msgf("skip freeze: Resource selection"))
+		t.log.Debugf("skip freeze: Resource selection")
 		return nil
 	}
 	if !t.orchestrateWantsFreeze() {
-		t.log.Debug().Msg(t.Msgf("skip freeze: Orchestrate value"))
+		t.log.Debugf("skip freeze: Orchestrate value")
 		return nil
 	}
 	if env.HasDaemonOrigin() {
-		t.log.Debug().Msg(t.Msgf("skip freeze: Action has daemon origin"))
+		t.log.Debugf("skip freeze: Action has daemon origin")
 		return nil
 	}
 	return t.Freeze(ctx)

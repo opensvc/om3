@@ -407,10 +407,7 @@ func (t T) addTunnel(name string, localIP, peerIP net.IP) error {
 }
 
 func (t T) loggerWithLink(link any) *plog.Logger {
-	return &plog.Logger{
-		Logger: t.Log().With().Interface("link", link).Logger(),
-		Prefix: t.Log().Prefix,
-	}
+	return t.Log().Attr("link", link)
 }
 
 func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {

@@ -24,7 +24,7 @@ type (
 		timeout  time.Duration
 
 		name   string
-		log    plog.Logger
+		log    *plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -137,13 +137,10 @@ func newTx(ctx context.Context, name string, nodes []string, port, intf string, 
 		intf:     intf,
 		interval: interval,
 		timeout:  timeout,
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/hb/hbucast").With().
-				Str("hb_func", "tx").
-				Str("hb_name", name).
-				Str("hb_id", id).
-				Logger(),
-			Prefix: "daemon: hb: ucast: tx: " + name + ": ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbucast").
+			Attr("hb_func", "tx").
+			Attr("hb_name", name).
+			Attr("hb_id", id).
+			WithPrefix("daemon: hb: ucast: tx: " + name + ": "),
 	}
 }

@@ -131,7 +131,7 @@ func (t *actor) ResourceSets() resourceset.L {
 		parallelKey := key.New(k, "parallel")
 		rset.Parallel = t.config.GetBool(parallelKey)
 		rset.PG = t.pgConfig(k)
-		rset.SetLogger(&t.log)
+		rset.SetLogger(t.log)
 		done[id] = rset
 		l = append(l, rset)
 		return rset
@@ -163,10 +163,10 @@ func (t *actor) ResourceSets() resourceset.L {
 		}
 		if rset, err := resourceset.Generic(k); err == nil {
 			rset.ResourceLister = t
-			rset.SetLogger(&t.log)
+			rset.SetLogger(t.log)
 			l = append(l, rset)
 		} else {
-			t.log.Debug().Err(err)
+			t.log.Debugf("%s", err)
 		}
 	}
 	sort.Sort(l)
@@ -251,7 +251,7 @@ func (t *actor) ConfigureResources() {
 		}
 		driverGroup := rid.DriverGroup()
 		if driverGroup == driver.GroupUnknown {
-			t.log.Debug().Str("rid", k).Str("f", "listResources").Msgf("%s: unknown driver group in rid %s", t.path, k)
+			t.log.Attr("rid", k).Attr("f", "listResources").Debugf("%s: unknown driver group in rid %s", t.path, k)
 			continue
 		}
 		typeKey := key.New(k, "type")
@@ -259,7 +259,7 @@ func (t *actor) ConfigureResources() {
 		driverID := driver.NewID(driverGroup, driverName)
 		factory := resource.NewResourceFunc(driverID)
 		if factory == nil {
-			t.log.Debug().Stringer("driver", driverID).Msgf("%s: unknown driver %s", t.path, driverID)
+			t.log.Attr("driver", driverID.String()).Debugf("%s: unknown driver %s", t.path, driverID)
 			continue
 		}
 		r := factory()
@@ -272,30 +272,30 @@ func (t *actor) ConfigureResources() {
 				}
 				postponed[o.RID] = append(postponed[o.RID], r)
 			default:
-				t.log.Error().Str("rid", k).Msgf("%s: configure resource %s: %s", t.path, k, err)
+				t.log.Attr("rid", k).Errorf("%s: configure resource %s: %s", t.path, k, err)
 			}
 			continue
 		}
 		dur := time.Now().Sub(rBegin)
-		t.log.Debug().Str("rid", k).Dur("duration", dur).Msgf("%s: resource %s configured in %s", t.path, k, dur)
+		t.log.Attr("rid", k).Attr("duration", dur).Debugf("%s: resource %s configured in %s", t.path, k, dur)
 		t._resources = append(t._resources, r)
 	}
 	for _, resources := range postponed {
 		for _, r := range resources {
 			rBegin := time.Now()
 			if err := t.ReconfigureResource(r); err != nil {
-				t.log.Error().Str("rid", r.RID()).Msgf("%s: configure postponed resource %s: %s", t.path, r.RID(), err)
+				t.log.Attr("rid", r.RID()).Errorf("%s: configure postponed resource %s: %s", t.path, r.RID(), err)
 				continue
 			}
 			dur := time.Now().Sub(rBegin)
-			t.log.Debug().Str("rid", r.RID()).Dur("duration", dur).Msgf("%s: postponed resource %s configured in %s", t.path, r.RID(), dur)
+			t.log.Attr("rid", r.RID()).Attr("duration", dur).Debugf("%s: postponed resource %s configured in %s", t.path, r.RID(), dur)
 			t._resources = append(t._resources, r)
 		}
 	}
 	t.resources = t._resources
 	t._resources = nil
 	dur := time.Now().Sub(begin)
-	t.log.Debug().Dur("duration", dur).Msgf("%s: all resources configured in %s", t.path, dur)
+	t.log.Attr("duration", dur).Debugf("%s: all resources configured in %s", t.path, dur)
 	return
 }
 
@@ -390,7 +390,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				if o.Required {
 					return err
 				}
-				r.Log().Debug().Msgf("%s: %s keyword eval: %s", t.path, k, err)
+				r.Log().Debugf("%s: %s keyword eval: %s", t.path, k, err)
 				continue
 			}
 			if err := o.SetValue(r, val); err != nil {

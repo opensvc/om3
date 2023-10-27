@@ -21,7 +21,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/findmnt"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/opensvc/om3/util/zfs"
 	"github.com/rs/zerolog"
@@ -283,20 +282,14 @@ func (t *T) createMountPoint(ctx context.Context) error {
 
 func (t T) fs() *zfs.Filesystem {
 	return &zfs.Filesystem{
-		Log: &plog.Logger{
-			Logger: t.Log().With().Str("device", t.Device).Logger(),
-			Prefix: t.Log().Prefix + t.Device + ": ",
-		},
+		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
 		Name: t.Device,
 	}
 }
 
 func (t T) pool() *zfs.Pool {
 	return &zfs.Pool{
-		Log: &plog.Logger{
-			Logger: t.Log().With().Str("device", t.Device).Logger(),
-			Prefix: t.Log().Prefix + t.Device + ": ",
-		},
+		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
 		Name: t.poolName(),
 	}
 }

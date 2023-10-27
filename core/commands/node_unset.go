@@ -42,7 +42,7 @@ func (t *CmdNodeUnset) Run() error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			kws := key.ParseStrings(t.Keywords)
 			if len(kws) > 0 {
-				n.Log().Debug().Msgf("unsetting node keywords: %s", kws)
+				n.Log().Debugf("unsetting node keywords: %s", kws)
 				if err = n.Unset(ctx, kws...); err != nil {
 					return nil, err
 				}
@@ -54,7 +54,7 @@ func (t *CmdNodeUnset) Run() error {
 				}
 			}
 			if len(sections) > 0 {
-				n.Log().Debug().Msgf("deleting node sections: %s", sections)
+				n.Log().Debugf("deleting node sections: %s", sections)
 				if err = n.DeleteSection(sections...); err != nil {
 					return nil, err
 				}

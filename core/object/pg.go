@@ -96,9 +96,9 @@ func (t *core) CleanPG(ctx context.Context) {
 	}
 	for _, run := range mgr.Clean() {
 		if run.Err != nil {
-			t.log.Error().Err(run.Err).Msgf("clean pg %s", run.Config.ID)
+			t.log.Errorf("clean pg %s: %s", run.Config.ID, run.Err)
 		} else if run.Changed {
-			t.log.Info().Msgf("clean pg %s", run.Config.ID)
+			t.log.Infof("clean pg %s", run.Config.ID)
 		}
 	}
 }

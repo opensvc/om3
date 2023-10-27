@@ -45,7 +45,7 @@ func (t *actor) Status(ctx context.Context) (instance.Status, error) {
 
 func (t *actor) postActionStatusEval(ctx context.Context) {
 	if _, err := t.statusEval(ctx); err != nil {
-		t.log.Debug().Err(err).Msg("a status refresh is already in progress")
+		t.log.Debugf("a status refresh is already in progress: %s", err)
 	}
 }
 

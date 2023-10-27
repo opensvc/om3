@@ -316,10 +316,7 @@ func (d *discover) newDaemonClient(node, port string) (*client.T, error) {
 
 func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
 	id := p.String() + "@" + node
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/discover:cfg.fetch").With().Str("id", id).Logger(),
-		Prefix: "daemon: discover: cfg: fetch: ",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover:cfg.fetch").Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
 
 	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
 	if err != nil {
