@@ -325,6 +325,16 @@ func (t CompSysctls) addKeyInConfFile(rule CompSysctl) error {
 	return nil
 }
 
+func (t CompSysctls) reloadSysctl() ExitCode {
+	cmd := exec.Command("sysctl", "-e", "-p")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("error when trying to reload sysctl: %s:%s", err, out)
+		return ExitNok
+	}
+	return ExitOk
+}
+
 func (t CompSysctls) fixRule(rule CompSysctl) ExitCode {
 	if t.checkRule(rule) == ExitNok {
 		changeDone, err := t.modifyKeyInConfFile(rule)
@@ -352,7 +362,7 @@ func (t CompSysctls) Fix() ExitCode {
 			return ExitNok
 		}
 	}
-	return ExitOk
+	return t.reloadSysctl()
 }
 
 func (t CompSysctls) Fixable() ExitCode {
