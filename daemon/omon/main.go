@@ -110,8 +110,14 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 
 		instConfig: make(map[string]instance.Config),
 
-		ctx:       ctx,
-		log:       plog.NewDefaultLogger().Attr("pkg", "daemon/omon").Attr("obj_path", p.String()).WithPrefix("daemon: omon: " + p.String() + ": "),
+		ctx: ctx,
+		log: plog.NewDefaultLogger().
+			Attr("pkg", "daemon/omon").
+			Attr("obj_path", p.String()).
+			Attr("obj_name", p.Name).
+			Attr("obj_namespace", p.Namespace).
+			Attr("obj_kind", p.Kind.String()).
+			WithPrefix("daemon: omon: " + p.String() + ": "),
 		labelNode: pubsub.Label{"node", localhost},
 		labelPath: pubsub.Label{"path", id},
 		localhost: localhost,
