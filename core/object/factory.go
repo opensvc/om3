@@ -40,8 +40,12 @@ func WithVolatile(s bool) funcopt.O {
 // WithLogger let the factory user decide what kind of logging he wants
 func WithLogger(s *plog.Logger) funcopt.O {
 	return funcopt.F(func(t any) error {
-		o := t.(*core)
-		o.log = s
+		switch o := t.(type) {
+		case *core:
+			o.log = s
+		case *Node:
+			o.log = s
+		}
 		return nil
 	})
 }
