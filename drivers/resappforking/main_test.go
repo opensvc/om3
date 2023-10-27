@@ -20,10 +20,14 @@ import (
 	"github.com/opensvc/om3/drivers/resapp"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
 )
 
 var (
-	log = zerolog.New(os.Stdout).With().Timestamp().Logger()
+	log = plog.Logger{
+		Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
+		Prefix: "driver: resappforking: ",
+	}
 )
 
 func prepareConfig(t *testing.T) (td string, cleanup func()) {

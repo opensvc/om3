@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/plog"
 
 	_ "github.com/opensvc/om3/core/driverdb"
 	"github.com/opensvc/om3/core/naming"
@@ -58,17 +58,22 @@ func TestAppStart(t *testing.T) {
 		p, err := naming.ParsePath("conf1")
 		assert.NoError(t, err)
 
-		logger := objectlogger.New(p, objectlogger.WithLogFile(true))
+		logger := plog.Logger{
+			Logger: plog.GetPkgLogger("core/object"),
+			Prefix: "core: object: test: ",
+		}
 		s, err := object.NewSvc(p,
 			object.WithConfigData(conf),
 			object.WithLogger(logger),
 		)
 		assert.NoError(t, err)
 
-		fpath := s.Config().GetString(key.T{"env", "flag0"})
+		fpath := s.Config().GetString(key.T{Section: "env", Option: "flag0"})
 		assert.NotEqual(t, fpath, "")
 
-		defer os.RemoveAll(fpath)
+		defer func() {
+			_ = os.RemoveAll(fpath)
+		}()
 
 		require.NoErrorf(t, os.RemoveAll(fpath), "%s should not exist before start", fpath)
 

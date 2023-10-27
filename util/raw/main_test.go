@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/plog"
 )
 
 func TestRaw(t *testing.T) {
@@ -22,7 +22,10 @@ func TestRaw(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
-	log := &zerolog.Logger{}
+	log := &plog.Logger{
+		Logger: plog.GetPkgLogger("util/raw"),
+		Prefix: "util: raw: ",
+	}
 	ra := New(
 		WithLogger(log),
 	)

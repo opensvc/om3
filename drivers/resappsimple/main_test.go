@@ -17,10 +17,14 @@ import (
 	"github.com/opensvc/om3/drivers/resapp"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
 )
 
 var (
-	log = zerolog.New(os.Stdout).With().Timestamp().Logger()
+	log = plog.Logger{
+		Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
+		Prefix: "driver: resappsimple: ",
+	}
 )
 
 func prepareConfig(t *testing.T) (td string, cleanup func()) {
@@ -37,9 +41,12 @@ func getActionContext() (ctx context.Context, cancel context.CancelFunc) {
 	ctx = actionrollback.NewContext(ctx)
 	return
 }
+
 func WithLoggerAndPgApp(app T) T {
 	app.SetLoggerForTest(log)
-	app.SetRID("foo")
+	if err := app.SetRID("foo"); err != nil {
+		panic(err)
+	}
 	app.SetPG(&pg.Config{})
 	o, err := object.NewSvc(naming.Path{Kind: naming.KindSvc, Name: "ooo"}, object.WithVolatile(true))
 	if err != nil {
