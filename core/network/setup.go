@@ -53,7 +53,7 @@ func Setup(n *object.Node) error {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("network setup: %d failed", len(errs))
+		return fmt.Errorf("network setup: %s", errs)
 	}
 	return nil
 }
