@@ -33,12 +33,12 @@ func Setup(n *object.Node) error {
 	needCommit := make([]string, 0)
 	for _, nw := range nws {
 		if err := checkOverlap(nw, nws); err != nil {
-			nw.Log().Error().Err(err).Msgf("network setup")
+			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
 			continue
 		}
 		if err := setupNetwork(n, nw, dir); err != nil {
-			nw.Log().Error().Err(err).Msgf("network setup")
+			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
 		}
 		if nw.NeedCommit() {
@@ -46,7 +46,7 @@ func Setup(n *object.Node) error {
 		}
 	}
 	if len(needCommit) > 0 {
-		n.Log().Info().Msgf("network setup: commit config changes on %s", strings.Join(needCommit, ","))
+		n.Log().Infof("network setup: commit config changes on %s", strings.Join(needCommit, ","))
 		n.MergedConfig().Commit()
 	}
 	if err := setupFW(n, nws); err != nil {
@@ -90,11 +90,11 @@ func checkOverlap(nw Networker, nws []Networker) error {
 
 func setupNetwork(n *object.Node, nw Networker, dir string) error {
 	if IsDisabled(nw) {
-		nw.Log().Debug().Msgf("network setup: skip disabled network")
+		nw.Log().Debugf("network setup: skip disabled network")
 		return nil
 	}
 	if !IsValid(nw) {
-		nw.Log().Info().Msgf("network setup: skip invalid network")
+		nw.Log().Infof("network setup: skip invalid network")
 		return nil
 	}
 	if i, ok := nw.(Setuper); ok {
@@ -136,7 +136,7 @@ func setupNetworkCNI(n *object.Node, dir string, nw Networker) error {
 		return err
 	}
 	p := CNIConfigFile(dir, nw)
-	nw.Log().Info().Msgf("cni %s write", p)
+	nw.Log().Infof("cni %s write", p)
 	return writeCNIConfig(p, data)
 }
 

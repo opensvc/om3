@@ -134,7 +134,7 @@ func (t *T) Start() (err error) {
 		var r io.ReadCloser
 		if r, err = cmd.StdoutPipe(); err != nil {
 			if t.log != nil {
-				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "command.Start() -> StdoutPipe()")
+				t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command.Start() -> StdoutPipe(): %s", err)
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -143,7 +143,7 @@ func (t *T) Start() (err error) {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
 				if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-					t.log.WithLevel(t.stdoutLogLevel).Str("out", s.Text()).Int("pid", t.pid).Msg(t.log.Prefix + "stdout: " + s.Text())
+					t.log.Attr("out", s.Text()).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: "+s.Text())
 				}
 				if t.onStdoutLine != nil {
 					t.onStdoutLine(s.Text())
@@ -159,7 +159,7 @@ func (t *T) Start() (err error) {
 		var r io.ReadCloser
 		if r, err = cmd.StderrPipe(); err != nil {
 			if t.log != nil {
-				t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "command.Start() -> StderrPipe()")
+				t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command.Start() -> StderrPipe(): %s", err)
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -168,7 +168,7 @@ func (t *T) Start() (err error) {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
 				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-					t.log.WithLevel(t.stderrLogLevel).Str("err", s.Text()).Int("pid", t.pid).Msg(t.log.Prefix + "stderr: " + s.Text())
+					t.log.Attr("err", s.Text()).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stderr: "+s.Text())
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s.Text())
@@ -185,7 +185,7 @@ func (t *T) Start() (err error) {
 		t.ctx = ctx
 		t.cancel = cancel
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Msgf(t.log.Prefix+"use context %v", ctx)
+			t.log.Levelf(t.logLevel, "use context %v", ctx)
 		}
 		t.goroutine = append(t.goroutine, func() {
 			select {
@@ -194,7 +194,7 @@ func (t *T) Start() (err error) {
 				if err == context.DeadlineExceeded {
 					if cmd.Process == nil {
 						if t.log != nil {
-							t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Msg(t.log.Prefix + "DeadlineExceeded, but cmd.Process is nil")
+							t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "deadlineExceeded, but cmd.Process is nil")
 						}
 						// don't need to wait on other go routines
 						for i := 0; i < len(t.goroutine); i++ {
@@ -206,16 +206,16 @@ func (t *T) Start() (err error) {
 						t.onStderrLine("DeadlineExceeded")
 					}
 					if t.stderrLogLevel != zerolog.Disabled {
-						t.log.WithLevel(t.stderrLogLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.log.Prefix+"deadline exceeded pid %s", t.pid)
+						t.log.Attr("pid", t.pid).Levelf(t.stderrLogLevel, "deadlineExceeded, pid is %d", t.pid)
 					} else if t.log != nil {
-						t.log.WithLevel(t.logLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Msgf(t.log.Prefix+"deadline exceeded pid %d", t.pid)
+						t.log.Attr("pid", t.pid).Levelf(t.logLevel, "deadlineExceeded, pid is %d", t.pid)
 					}
 					if t.log != nil {
-						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.log.Prefix+"kill deadline exceeded pid %d", t.pid)
+						t.log.Attr("cmd", t.cmd.String()).Attr("pid", t.pid).Levelf(t.logLevel, "kill deadline exceeded pid %d", t.pid)
 					}
 					err := cmd.Process.Kill()
 					if err != nil && t.log != nil {
-						t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msgf(t.log.Prefix+"kill deadline exceeded pid %d: %s", t.pid, err)
+						t.log.Attr("cmd", t.cmd.String()).Attr("pid", t.pid).Levelf(t.logLevel, "kill deadline exceeded pid %d: %s", t.pid, err)
 					}
 				}
 			}
@@ -227,14 +227,14 @@ func (t *T) Start() (err error) {
 	}
 	if t.log != nil {
 		if t.commandLogLevel != zerolog.Disabled && t.commandLogLevel > t.logLevel {
-			t.log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
+			t.log.Attr("cmd", t.cmd.String()).Levelf(t.commandLogLevel, "run %s", t.cmd)
 		} else {
-			t.log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
+			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s", t.cmd)
 		}
 	}
 	if err = cmd.Start(); err != nil {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg(t.log.Prefix + "run")
+			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s: %s", t.cmd, err)
 		}
 		return fmt.Errorf("%w", err)
 	}
@@ -274,7 +274,7 @@ func (t *T) Wait() (err error) {
 	// wait for of goroutines
 	for i := 0; i < waitCount; i++ {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Msgf(t.log.Prefix+"end of goroutine %v", <-t.done)
+			t.log.Levelf(t.logLevel, "end of goroutine %v", <-t.done)
 		} else {
 			<-t.done
 		}
@@ -285,7 +285,7 @@ func (t *T) Wait() (err error) {
 			return t.checkExitCode(exitError.ExitCode())
 		}
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg(t.log.Prefix + "cmd.Wait()")
+			t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "cmd.Wait(): %s", err)
 		}
 		return err
 	}
@@ -318,13 +318,13 @@ func (e *ErrExitCode) Error() string {
 
 func (t T) logExitCode(exitCode int) {
 	if t.log != nil {
-		t.log.WithLevel(t.logLevel).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.log.Prefix+"pid %d exited with code %d", t.pid, exitCode)
+		t.log.Attr("cmd", t.cmd.String()).Attr("exit_code", exitCode).Levelf(t.logLevel, "pid %d exited with code %d", t.pid, exitCode)
 	}
 }
 
 func (t T) logErrorExitCode(exitCode int, err error) {
 	if t.log != nil {
-		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msgf(t.log.Prefix+"pid %d exited with code %d", t.pid, exitCode)
+		t.log.Attr("cmd", t.cmd.String()).Attr("exit_code", exitCode).Levelf(t.errorExitCodeLogLevel, "pid %d exited with code %d", t.pid, exitCode)
 	}
 }
 
@@ -343,7 +343,7 @@ func (t *T) update() error {
 	}
 	if credential, err := credential(t.user, t.group); err != nil {
 		if t.log != nil {
-			t.log.WithLevel(t.logLevel).Err(err).Msgf(t.log.Prefix+"unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
+			t.log.Levelf(t.logLevel, "unable to set credential from user '%v', group '%v' for action '%v': %s", t.user, t.group, t.label, err)
 		}
 		return err
 	} else if credential != nil {

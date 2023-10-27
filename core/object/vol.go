@@ -133,7 +133,7 @@ func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) naming.Paths {
 		}
 		i, err := New(p, WithVolatile(true))
 		if err != nil {
-			t.log.Error().Err(err).Send()
+			t.log.Errorf("%s", err)
 			continue
 		}
 		o, ok := i.(resourceLister)

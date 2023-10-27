@@ -132,7 +132,7 @@ type (
 		cmd    chan any
 		ctx    context.Context
 		cancel context.CancelFunc
-		log    plog.Logger
+		log    *plog.Logger
 		wg     sync.WaitGroup
 	}
 )
@@ -157,10 +157,7 @@ func New() *C {
 //
 // The controller will die when ctx is done
 func (c *C) Start(ctx context.Context) chan<- any {
-	c.log = plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hbctrl"),
-		Prefix: "daemon: hbctrl: ",
-	}
+	c.log = plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl").WithPrefix("daemon: hbctrl: ")
 	respC := make(chan chan<- any)
 	c.wg.Add(1)
 	go func() {

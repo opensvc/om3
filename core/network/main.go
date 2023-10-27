@@ -114,15 +114,12 @@ type (
 
 func (t *T) Log() *plog.Logger {
 	if t.log == nil {
-		t.log = &plog.Logger{
-			Logger: t.noder.Log().With().
-				Str("netName", t.name).
-				Str("netDriver", t.driver).
-				Str("netNetwork", t.network).
-				Bool("netImplicit", t.isImplicit).
-				Logger(),
-			Prefix: t.name,
-		}
+		t.log = t.noder.Log().
+			Attr("netName", t.name).
+			Attr("netDriver", t.driver).
+			Attr("netNetwork", t.network).
+			Attr("netImplicit", t.isImplicit).
+			WithPrefix(t.name)
 	}
 	return t.log
 }

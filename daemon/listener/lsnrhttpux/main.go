@@ -21,7 +21,7 @@ import (
 type (
 	T struct {
 		listener *net.Listener
-		log      plog.Logger
+		log      *plog.Logger
 		addr     string
 		wg       sync.WaitGroup
 	}
@@ -29,21 +29,13 @@ type (
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpux").With().
-				Str("lsnr_type", "http_ux").
-				Logger(),
-			Prefix: "daemon: listener: http_ux: ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpux").Attr("lsnr_type", "http_ux").WithPrefix("daemon: listener: http_ux: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = plog.Logger{
-		Logger: t.log.Logger.With().Str("lsnr_addr", t.addr).Logger(),
-		Prefix: t.log.Prefix + t.addr + ": ",
-	}
+	t.log = t.log.Attr("lsnr_addr", t.addr).WithPrefix(t.log.Prefix() + t.addr + ": ")
 	return t
 }
 
@@ -68,7 +60,7 @@ func (t *T) Start(ctx context.Context) error {
 		s := &http2.Server{}
 		server := http.Server{
 			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
-			ErrorLog: golog.New(t.log.Logger, "", 0),
+			ErrorLog: golog.New(t.log.Logger(), "", 0),
 		}
 		t.log.Infof("started")
 		errC <- nil

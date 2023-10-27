@@ -66,10 +66,7 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().Str("hb_name", t.Name()).Logger(),
-		Prefix: "daemon: hb: mcast: " + t.Name() + ": configure: ",
-	}
+	log := plog.NewDefaultLogger().Attr("ctx", "daemon/hb/hbmcast").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: mcast: " + t.Name() + ": configure: ")
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
 	intf := t.GetString("intf")

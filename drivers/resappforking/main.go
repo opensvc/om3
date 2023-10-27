@@ -24,10 +24,7 @@ func New() resource.Driver {
 }
 
 func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
-	return &plog.Logger{
-		Logger: t.Log().With().Stringer("cmd", cmd).Logger(),
-		Prefix: t.Log().Prefix,
-	}
+	return t.Log().Attr("cmd", cmd.String())
 }
 
 // Start the Resource

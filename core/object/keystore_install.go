@@ -136,9 +136,9 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 		return false, err
 	}
 	if v, err := file.ExistsAndDir(dst); err != nil {
-		t.Log().Error().Err(err).Msgf("install %s key=%s directory at location %s", t, vk.Key, dst)
+		t.Log().Errorf("install %s key=%s directory at location %s: %s", t, vk.Key, dst, err)
 	} else if v {
-		t.Log().Info().Msgf("remove %s key=%s directory at location %s", t, vk.Key, dst)
+		t.Log().Infof("remove %s key=%s directory at location %s", t, vk.Key, dst)
 		if err := os.RemoveAll(dst); err != nil {
 			return false, err
 		}
@@ -147,7 +147,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	info, err := os.Stat(vdir)
 	switch {
 	case os.IsNotExist(err):
-		t.Log().Info().Msgf("create directory %s to host %s key=%s", vdir, t, vk.Key)
+		t.Log().Infof("create directory %s to host %s key=%s", vdir, t, vk.Key)
 		if err := os.MkdirAll(vdir, *dirmode); err != nil {
 			return false, err
 		}
@@ -155,7 +155,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	case err != nil:
 		return false, err
 	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
-		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
+		t.Log().Infof("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
 		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
@@ -234,11 +234,11 @@ func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 			return false, err
 		}
 		if string(currentMD5) == string(targetMD5) {
-			t.log.Debug().Msgf("%s/%s in %s already installed and same md5: set access and modification times to %s", t.path.Name, vk.Key, dst, mtime)
+			t.log.Debugf("%s/%s in %s already installed and same md5: set access and modification times to %s", t.path.Name, vk.Key, dst, mtime)
 			return false, os.Chtimes(dst, mtime, mtime)
 		}
 	}
-	t.log.Info().Msgf("install %s/%s in %s", t.path.Name, vk.Key, dst)
+	t.log.Infof("install %s/%s in %s", t.path.Name, vk.Key, dst)
 	fmt.Printf("install %s/%s in %s\n", t.path.Name, vk.Key, dst)
 	perm := os.ModePerm
 	if mode != nil {
@@ -258,7 +258,7 @@ func (t keystore) InstallKey(keyName string) error {
 }
 
 func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
-	t.log.Debug().Msgf("Install %s key %s to %s", t.path, keyName, dst)
+	t.log.Debugf("install %s key %s to %s", t.path, keyName, dst)
 	keys, err := t.resolveKey(keyName)
 	if err != nil {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, keyName, err)
@@ -305,13 +305,13 @@ func (t keystore) postInstall(k string) error {
 			}
 			vol, err := v.Volume()
 			if err != nil {
-				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
 			ctx := context.Background()
 			st, err := vol.Status(ctx)
 			if err != nil {
-				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
 			if st.Avail != status.Up {
@@ -327,9 +327,9 @@ func (t keystore) postInstall(k string) error {
 			if _, ok := changedVolumes[vol.Path()]; !ok {
 				continue
 			}
-			t.log.Debug().Msgf("signal %s %s referrer: %s (%s)", t.path, k, p, r.RID())
+			t.log.Debugf("signal %s %s referrer: %s (%s)", t.path, k, p, r.RID())
 			if err := v.SendSignals(); err != nil {
-				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
 		}

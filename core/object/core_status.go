@@ -93,19 +93,19 @@ func (t *core) statusDump(data instance.Status) error {
 	enc := json.NewEncoder(jsonFile)
 	err = enc.Encode(data)
 	if err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Msg(t.Msgf("json-encode instance status in %s: %s", tmp, err))
+		t.log.Attr("file", tmp).Errorf("json-encode instance status in %s: %s", tmp, err)
 		return err
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		t.log.Error().Str("file", tmp).Err(err).Msg(t.Msgf("install new %s: %s", p, err))
+		t.log.Attr("file", tmp).Errorf("install new %s: %s", p, err)
 		return err
 	}
-	t.log.Debug().Msgf("%s: %s dumped", t.path, p)
+	t.log.Debugf("%s: %s dumped", t.path, p)
 	if err := t.postInstanceStatus(data); err != nil {
 		// daemon can be down
-		t.log.Debug().Err(err).Msgf(t.Msgf("post instance status error: %s", err))
+		t.log.Debugf("post instance status error: %s", err)
 	} else {
-		t.log.Debug().Msg(t.Msgf("posted instance status"))
+		t.log.Debugf("posted instance status")
 	}
 	return nil
 }
@@ -164,10 +164,7 @@ func (t *core) statusLoad() (instance.Status, error) {
 	dec := json.NewDecoder(jsonFile)
 	err = dec.Decode(&data)
 	if err != nil {
-		t.log.Error().
-			Str("file", p).
-			Err(err).
-			Send()
+		t.log.Attr("file", p).Errorf("%s", err)
 		return data, err
 	}
 	return data, err

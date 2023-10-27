@@ -26,7 +26,7 @@ type (
 	T struct {
 		bus      *pubsub.Bus
 		listener *http.Server
-		log      plog.Logger
+		log      *plog.Logger
 		addr     string
 		certFile string
 		keyFile  string
@@ -36,21 +36,13 @@ type (
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpinet").With().
-				Str("lsnr_type", "http_inet").
-				Logger(),
-			Prefix: "daemon: listener: http_inet: ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpinet").Attr("lsnr_type", "http_inet").WithPrefix("daemon: listener: http_inet: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = plog.Logger{
-		Logger: t.log.Logger.With().Str("lsnr_addr", t.addr).Logger(),
-		Prefix: t.log.Prefix + t.addr + ": ",
-	}
+	t.log = t.log.Attr("lsnr_addr", t.addr).WithPrefix(t.log.Prefix() + t.addr + ": ")
 	return t
 }
 
@@ -98,7 +90,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.NoClientCert,
 		},
-		ErrorLog: golog.New(t.log.Logger, "", 0),
+		ErrorLog: golog.New(t.log.Logger(), "", 0),
 	}
 
 	lsnr, err := net.Listen("tcp", t.addr)
@@ -235,13 +227,10 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					}
 					t.addr = newAddr
 
-					t.log = plog.Logger{
-						Logger: plog.PkgLogger(ctx, "daemon/listener/lsnrhttpinet").With().
-							Str("lsnr_type", "http_inet").
-							Str("lsnr_addr", t.addr).
-							Logger(),
-						Prefix: fmt.Sprintf("daemon: listener: http_inet: %s: ", t.addr),
-					}
+					t.log = plog.Ctx(ctx).Attr("pkg", "daemon/listener/lsnrhttpinet").
+						Attr("lsnr_type", "http_inet").
+						Attr("lsnr_addr", t.addr).
+						WithPrefix(fmt.Sprintf("daemon: listener: http_inet: %s: ", t.addr))
 					if err := start(); err != nil {
 						t.log.Errorf("on addr changed start failed: %s", err)
 					}

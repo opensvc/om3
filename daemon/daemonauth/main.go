@@ -8,6 +8,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
 	"github.com/shaj13/libcache"
 
+	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -55,10 +56,7 @@ func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	if err := initCache(); err != nil {
 		return nil, err
 	}
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon.auth"),
-		Prefix: "daemon: auth: ",
-	}
+	log := plog.NewLogger(daemonlogctx.Logger(ctx)).WithPrefix("daemon: auth: ").Attr("pkg", "daemon/auth")
 	l := make([]auth.Strategy, 0)
 	for _, fn := range []func(i interface{}) (string, auth.Strategy, error){
 		initUX,

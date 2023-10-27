@@ -33,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/envprovider"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -489,10 +488,7 @@ func (t *T) NetNSPath() (string, error) {
 }
 
 func (t *T) Configure() error {
-	l := plog.Logger{
-		Logger: t.T.Log().With().Str("name", t.ContainerName()).Logger(),
-		Prefix: t.T.Log().Prefix,
-	}
+	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
 	return nil
 }

@@ -38,7 +38,7 @@ func WithVolatile(s bool) funcopt.O {
 }
 
 // WithLogger let the factory user decide what kind of logging he wants
-func WithLogger(s plog.Logger) funcopt.O {
+func WithLogger(s *plog.Logger) funcopt.O {
 	return funcopt.F(func(t any) error {
 		o := t.(*core)
 		o.log = s

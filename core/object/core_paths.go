@@ -15,7 +15,7 @@ func (t *core) varDir() string {
 	t.paths.varDir = t.path.VarDir()
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.varDir, os.ModePerm); err != nil {
-			t.log.Error().Msgf("%s", err)
+			t.log.Errorf("%s", err)
 		}
 	}
 	return t.paths.varDir
@@ -32,7 +32,7 @@ func (t *core) logDir() string {
 	t.paths.logDir = t.path.LogDir()
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.logDir, os.ModePerm); err != nil {
-			t.log.Error().Msgf("%s", err)
+			t.log.Errorf("%s", err)
 		}
 	}
 	return t.paths.logDir
@@ -49,7 +49,7 @@ func (t *core) tmpDir() string {
 	t.paths.tmpDir = t.path.TmpDir()
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
-			t.log.Error().Msgf("%s", err)
+			t.log.Errorf("%s", err)
 		}
 	}
 	return t.paths.tmpDir

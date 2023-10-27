@@ -30,7 +30,7 @@ type (
 		assembly map[string]msgMap
 
 		name   string
-		log    plog.Logger
+		log    *plog.Logger
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -225,13 +225,10 @@ func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAdd
 		udpAddr: udpAddr,
 		intf:    intf,
 		timeout: timeout,
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/hb/hbmcast").With().
-				Str("hb_func", "rx").
-				Str("hb_name", name).
-				Str("hb_id", id).
-				Logger(),
-			Prefix: "daemon: hb: mcast: rx: " + name + ": ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbmcast").
+			Attr("hb_func", "rx").
+			Attr("hb_name", name).
+			Attr("hb_id", id).
+			WithPrefix("daemon: hb: mcast: rx: " + name + ": "),
 	}
 }

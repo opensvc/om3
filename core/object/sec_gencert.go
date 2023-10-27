@@ -33,7 +33,7 @@ func (t *sec) GenCert() error {
 }
 
 func (t *sec) genSelfSigned() error {
-	t.log.Debug().Msg("generate a self-signed certificate")
+	t.log.Debugf("generate a self-signed certificate")
 	priv, err := t.getPriv()
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (t *sec) genSelfSigned() error {
 }
 
 func (t *sec) genCASigned(ca string) error {
-	t.log.Debug().Msgf("generate a certificate signed by the %s CA", ca)
+	t.log.Debugf("generate a certificate signed by the %s CA", ca)
 	priv, err := t.getPriv()
 	if err != nil {
 		return err
@@ -296,7 +296,7 @@ func (t *sec) getPriv() (*rsa.PrivateKey, error) {
 
 func (t *sec) genPriv() (*rsa.PrivateKey, error) {
 	bits := t.CertInfoBits()
-	t.log.Info().Int("bits", bits).Msg("generate new private key")
+	t.log.Attr("bits", bits).Infof("generate new private key")
 	priv, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err

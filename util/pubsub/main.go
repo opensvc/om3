@@ -146,7 +146,7 @@ type (
 		name        string
 		cmdC        chan any
 		cancel      func()
-		log         plog.Logger
+		log         *plog.Logger
 		ctx         context.Context
 		subs        map[uuid.UUID]*Subscription
 		subMap      subscriptionMap
@@ -345,12 +345,7 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.log = plog.Logger{
-		Logger: plog.GetPkgLogger("util/pubsub").With().
-			Str("bus_name", name).
-			Logger(),
-		Prefix: fmt.Sprintf("pubsub: %s: ", name),
-	}
+	b.log = plog.NewDefaultLogger().WithPrefix("pubsub: "+name).Attr("pkg", "util/pubsub").Attr("bus_name", name)
 	b.drainChanDuration = defaultDrainChanDuration
 	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
@@ -370,7 +365,7 @@ func (b *Bus) Start(ctx context.Context) {
 	go func() {
 		defer b.Done()
 
-		watchDuration := &durationlog.T{Log: b.log}
+		watchDuration := &durationlog.T{Log: *b.log}
 		watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 		defer watchDurationCancel()
 		var beginCmd = make(chan any)

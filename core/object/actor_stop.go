@@ -34,7 +34,7 @@ func (t *actor) lockedStop(ctx context.Context) error {
 
 func (t *actor) masterStop(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
+		t.log.Attr("rid", r.RID()).Debugf("stop resource")
 		return resource.Stop(ctx, r)
 	})
 }

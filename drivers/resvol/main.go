@@ -26,7 +26,6 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
@@ -247,10 +246,8 @@ func (t T) access() volaccess.T {
 
 // volumeLogger returns a logger that hints about this resource and object
 // as the volume origin.
-func (t *T) volumeLogger() plog.Logger {
-	return plog.Logger{
-		Logger: log.Logger.With().Stringer("from_obj_path", t.Path).Stringer("from_rid", t.ResourceID).Logger(),
-	}
+func (t *T) volumeLogger() *plog.Logger {
+	return plog.NewDefaultLogger().Attr("from_obj_path", t.Path.String()).Attr("from_rid", t.ResourceID.String())
 }
 
 func (t *T) Volume() (object.Vol, error) {

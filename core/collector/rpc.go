@@ -23,7 +23,7 @@ var (
 type Client struct {
 	client jsonrpc.RPCClient
 	secret string
-	log    plog.Logger
+	log    *plog.Logger
 }
 
 func (c Client) NewPinger(d time.Duration) func() {
@@ -179,10 +179,7 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 			},
 		}),
 		secret: secret,
-		log:    plog.Logger{
-			Logger: plog.GetPkgLogger("core/collector/rpc"),
-			Prefix: "collector: rpc: ",
-		},
+		log:    plog.NewDefaultLogger().WithPrefix("collector: rpc: ").Attr("pkg", "core/collector/rpc"),
 	}
 	return client, nil
 }
@@ -191,7 +188,7 @@ func (t Client) paramsWithAuth(params []interface{}) []interface{} {
 	return append(params, []string{t.secret, hostname.Hostname()})
 }
 
-func LogSimpleResponse(response *jsonrpc.RPCResponse, log plog.Logger) {
+func LogSimpleResponse(response *jsonrpc.RPCResponse, log *plog.Logger) {
 	switch m := response.Result.(type) {
 	case map[string]interface{}:
 		if info, ok := m["info"]; ok {

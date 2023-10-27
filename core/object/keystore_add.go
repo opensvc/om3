@@ -140,7 +140,7 @@ func (t *keystore) addKey(name string, b []byte) error {
 		return err
 	}
 	if t.config.Changed() {
-		t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
+		t.log.Attr("key", name).Attr("len", len(s)).Infof("set key %s", name)
 	}
 	return nil
 }

@@ -42,7 +42,7 @@ type (
 		path                     naming.Path
 		configure                object.Configurer
 		filename                 string
-		log                      plog.Logger
+		log                      *plog.Logger
 		lastMtime                time.Time
 		localhost                string
 		forceRefresh             bool
@@ -90,16 +90,11 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
-		log: plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/icfg").With().
-				Str("object", p.String()).
-				Logger(),
-			Prefix: "daemon: icfg: " + p.String() + ": ",
-		},
-		localhost:    localhost,
-		forceRefresh: false,
-		bus:          pubsub.BusFromContext(ctx),
-		filename:     filename,
+		log:            plog.NewDefaultLogger().WithPrefix("daemon: icfg: "+p.String()+": ").Attr("pkg", "daemon/icfg").Attr("obj_path", p.String()),
+		localhost:      localhost,
+		forceRefresh:   false,
+		bus:            pubsub.BusFromContext(ctx),
+		filename:       filename,
 
 		ctx:    ctx,
 		cancel: cancel,

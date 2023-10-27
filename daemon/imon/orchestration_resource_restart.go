@@ -70,7 +70,7 @@ func (o *imon) orchestrateResourceRestart() {
 		cmd := command.New(
 			command.WithName(cmdArgs[0]),
 			command.WithVarArgs(cmdArgs[1:]...),
-			command.WithLogger(&o.log),
+			command.WithLogger(o.log),
 			command.WithStdoutLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.ErrorLevel),
 			command.WithTimeout(60*time.Second),

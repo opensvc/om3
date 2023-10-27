@@ -7,79 +7,129 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
 type (
 	Logger struct {
-		zerolog.Logger
-		Prefix string
+		logger zerolog.Logger
+		prefix string
 	}
+	ctxKey struct{}
 )
 
+func NewDefaultLogger() *Logger {
+	return &Logger{
+		logger: log.Logger,
+	}
+}
+
+func NewLogger(logger zerolog.Logger) *Logger {
+	return &Logger{
+		logger: logger,
+	}
+}
+
+func (t *Logger) WithPrefix(prefix string) *Logger {
+	t.prefix = prefix
+	return t
+}
+
+func (t *Logger) Prefix() string {
+	return t.prefix
+}
+
 func (t *Logger) Msgf(format string, a ...any) string {
-	return fmt.Sprintf(t.Prefix+format, a...)
+	return fmt.Sprintf(t.prefix+format, a...)
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.Info().Msg(t.Msgf(format, a...))
+	t.logger.Info().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Debugf(format string, a ...any) {
-	t.Debug().Msg(t.Msgf(format, a...))
+	t.logger.Debug().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
-	t.Error().Msg(t.Msgf(format, a...))
+	t.logger.Error().Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Warnf(format string, a ...any) {
-	t.Warn().Msg(t.Msgf(format, a...))
+	t.logger.Warn().Msg(t.Msgf(format, a...))
+}
+
+func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
+	switch level {
+	case zerolog.DebugLevel:
+		t.logger.Debug().Msg(t.Msgf(format, a...))
+	case zerolog.InfoLevel:
+		t.logger.Info().Msg(t.Msgf(format, a...))
+	case zerolog.WarnLevel:
+		t.logger.Warn().Msg(t.Msgf(format, a...))
+	case zerolog.ErrorLevel:
+		t.logger.Error().Msg(t.Msgf(format, a...))
+	}
 }
 
 func (t *Logger) Attr(k string, v any) *Logger {
 	logger := Logger{
-		Logger: t.Logger,
-		Prefix: t.Prefix,
+		logger: t.logger,
+		prefix: t.prefix,
 	}
 	switch i := v.(type) {
 	case string:
-		logger.Logger = t.Logger.With().Str(k, i).Logger()
+		logger.logger = t.logger.With().Str(k, i).Logger()
 	case []string:
-		logger.Logger = t.Logger.With().Strs(k, i).Logger()
+		logger.logger = t.logger.With().Strs(k, i).Logger()
 	case []byte:
-		logger.Logger = t.Logger.With().Bytes(k, i).Logger()
+		logger.logger = t.logger.With().Bytes(k, i).Logger()
 	case float32:
-		logger.Logger = t.Logger.With().Float32(k, i).Logger()
+		logger.logger = t.logger.With().Float32(k, i).Logger()
 	case float64:
-		logger.Logger = t.Logger.With().Float64(k, i).Logger()
+		logger.logger = t.logger.With().Float64(k, i).Logger()
+	case bool:
+		logger.logger = t.logger.With().Bool(k, i).Logger()
 	case int:
-		logger.Logger = t.Logger.With().Int(k, i).Logger()
+		logger.logger = t.logger.With().Int(k, i).Logger()
 	case int32:
-		logger.Logger = t.Logger.With().Int32(k, i).Logger()
+		logger.logger = t.logger.With().Int32(k, i).Logger()
 	case int64:
-		logger.Logger = t.Logger.With().Int64(k, i).Logger()
+		logger.logger = t.logger.With().Int64(k, i).Logger()
 	case uint:
-		logger.Logger = t.Logger.With().Uint(k, i).Logger()
+		logger.logger = t.logger.With().Uint(k, i).Logger()
 	case uint32:
-		logger.Logger = t.Logger.With().Uint32(k, i).Logger()
+		logger.logger = t.logger.With().Uint32(k, i).Logger()
 	case uint64:
-		logger.Logger = t.Logger.With().Uint64(k, i).Logger()
+		logger.logger = t.logger.With().Uint64(k, i).Logger()
 	case time.Duration:
-		logger.Logger = t.Logger.With().Dur(k, i).Logger()
+		logger.logger = t.logger.With().Dur(k, i).Logger()
 	default:
-		logger.Logger = t.Logger.With().Interface(k, v).Logger()
+		logger.logger = t.logger.With().Interface(k, v).Logger()
 	}
 	return &logger
 }
 
-// PkgLogger returns Logger from context with pkg attr set
-func PkgLogger(ctx context.Context, pkg string) zerolog.Logger {
-	return daemonlogctx.Logger(ctx).With().Str("pkg", pkg).Logger()
+func (t *Logger) GetLevel() zerolog.Level {
+	return t.logger.GetLevel()
 }
 
-// GetPkgLogger returns Logger with pkg attr set
-func GetPkgLogger(pkg string) zerolog.Logger {
-	return log.Logger.With().Str("pkg", pkg).Logger()
+func (t *Logger) Logger() zerolog.Logger {
+	return t.logger
+}
+
+func (l *Logger) WithContext(ctx context.Context) context.Context {
+	if lp, ok := ctx.Value(ctxKey{}).(*Logger); ok {
+		if lp == l {
+			// Do not store same logger.
+			return ctx
+		}
+	}
+	return context.WithValue(ctx, ctxKey{}, l)
+}
+
+func Ctx(ctx context.Context) *Logger {
+	if l, ok := ctx.Value(ctxKey{}).(*Logger); ok {
+		return l
+	}
+	return nil
 }

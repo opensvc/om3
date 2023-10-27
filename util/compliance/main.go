@@ -7,15 +7,13 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/plog"
-
-	"github.com/rs/zerolog"
 )
 
 type (
 	T struct {
 		collectorClient *collector.Client
 		objectPath      naming.Path
-		log             plog.Logger
+		log             *plog.Logger
 		varDir          string
 
 		// variable
@@ -25,17 +23,14 @@ type (
 
 func New() *T {
 	t := &T{
-		log:    plog.Logger{
-			Logger: plog.GetPkgLogger("compliance"),
-			Prefix: "compliance: ",
-		},
+		log:    plog.NewDefaultLogger().WithPrefix("compliance: ").Attr("pkg", "util/compliance"),
 		varDir: filepath.Join(rawconfig.Paths.Var, "compliance"),
 	}
 	return t
 }
 
-func (t *T) SetLogger(v zerolog.Logger) {
-	t.log.Logger = v.With().Str("pkg", "compliance").Logger()
+func (t *T) SetLogger(v *plog.Logger) {
+	t.log = v
 }
 
 func (t *T) SetCollectorClient(c *collector.Client) {

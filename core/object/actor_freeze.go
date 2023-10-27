@@ -24,7 +24,7 @@ func (t *actor) Freeze(ctx context.Context) error {
 	if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 		return err
 	}
-	t.log.Info().Msg("now frozen")
+	t.log.Infof("now frozen")
 	return nil
 }
 
@@ -38,6 +38,6 @@ func (t *actor) Unfreeze(ctx context.Context) error {
 	if err := freeze.Unfreeze(t.path.FrozenFile()); err != nil {
 		return err
 	}
-	t.log.Info().Msg("now unfrozen")
+	t.log.Infof("now unfrozen")
 	return nil
 }

@@ -251,7 +251,7 @@ func SetProvisioned(ctx context.Context, r Driver) error {
 	if err := setProvisionedValue(true, r); err != nil {
 		return err
 	}
-	r.Log().Info().Msg("set provisioned")
+	r.Log().Infof("set provisioned")
 	return nil
 }
 
@@ -260,6 +260,6 @@ func SetUnprovisioned(ctx context.Context, r Driver) error {
 	if err := setProvisionedValue(false, r); err != nil {
 		return err
 	}
-	r.Log().Info().Msg("set unprovisioned")
+	r.Log().Infof("set unprovisioned")
 	return nil
 }

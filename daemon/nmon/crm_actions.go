@@ -50,7 +50,7 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithEnv(cmdEnv),
-		command.WithLogger(&o.log),
+		command.WithLogger(o.log),
 	)
 	o.log.Debugf("-> exec %s %s", cmdPath, cmd)
 	labels := []pubsub.Label{o.labelLocalhost, {"origin", "nmon"}}

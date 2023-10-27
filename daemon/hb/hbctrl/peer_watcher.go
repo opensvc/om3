@@ -45,10 +45,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 		staleTicker := time.NewTicker(timeout)
 		staleTicker.Stop()
 		defer staleTicker.Stop()
-		log := plog.Logger{
-			Logger: plog.PkgLogger(ctx, "daemon/hbctrl:peerWatch").With().Str("hb_peer_watch", hbId+"-"+nodename).Logger(),
-			Prefix: "daemon: hbctrl: peer watcher: " + hbId + "-" + nodename + ": ",
-		}
+		log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerWatch").Attr("hb_peer_watch", hbId+"-"+nodename).WithPrefix("daemon: hbctrl: peer watcher: " + hbId + "-" + nodename + ": ")
 		log.Infof("started")
 		started <- true
 		setBeating := func(v bool) {

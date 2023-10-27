@@ -108,10 +108,7 @@ func New(drainDuration time.Duration) *discover {
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create.
 func (d *discover) Start(ctx context.Context) (err error) {
-	d.log = &plog.Logger{
-		Logger: plog.PkgLogger(d.ctx, "daemon/discover"),
-		Prefix: "daemon: discover: ",
-	}
+	d.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
 	d.log.Infof("discover starting")
 
 	d.ctx, d.cancel = context.WithCancel(ctx)

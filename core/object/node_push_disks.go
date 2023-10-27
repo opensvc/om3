@@ -28,7 +28,7 @@ func (t Node) PushDisks() (disks.Disks, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.Log().Debug().Interface("claims", claims).Msg("PushDisks")
+	t.Log().Attr("claims", claims).Debugf("PushDisks %s", claims)
 	l, err := disks.GetDisks(claims)
 	if err != nil {
 		return l, err

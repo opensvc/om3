@@ -15,7 +15,7 @@ import (
 )
 
 func (t Node) Log() *plog.Logger {
-	return &t.log
+	return t.log
 }
 
 func (t Node) Exists() bool {
@@ -75,7 +75,7 @@ func (t Node) ID() uuid.UUID {
 	}
 	_ = t.config.Set(op)
 	if err := t.config.Commit(); err != nil {
-		t.log.Error().Err(err).Send()
+		t.log.Errorf("%s", err)
 	}
 	return t.id
 }

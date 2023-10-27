@@ -37,7 +37,7 @@ type (
 		cmdC          chan any
 		drainDuration time.Duration
 		bus           *pubsub.Bus
-		log           plog.Logger
+		log           *plog.Logger
 		startedAt     time.Time
 
 		pendingCtx    context.Context
@@ -72,11 +72,8 @@ func New(drainDuration time.Duration) *ccfg {
 		cmdC:          make(chan any),
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
-		log: plog.Logger{
-			Logger: plog.GetPkgLogger("daemon/ccfg"),
-			Prefix: "daemon: ccfg: ",
-		},
-		networkSigs: make(map[string]string),
+		log:           plog.NewDefaultLogger().WithPrefix("daemon: ccfg: ").Attr("pkg", "daemon/ccfg"),
+		networkSigs:   make(map[string]string),
 	}
 	return o
 }

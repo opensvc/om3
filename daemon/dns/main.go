@@ -100,10 +100,7 @@ func New(d time.Duration) *dns {
 
 // Start launches the dns worker goroutine
 func (t *dns) Start(parent context.Context) error {
-	t.log = &plog.Logger{
-		Logger: plog.PkgLogger(parent, "daemon/dns"),
-		Prefix: "daemon: dns: ",
-	}
+	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.cluster = ccfg.Get()

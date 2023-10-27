@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -26,7 +24,7 @@ type (
 	T struct {
 		ctx       context.Context
 		cancel    context.CancelFunc
-		log       plog.Logger
+		log       *plog.Logger
 		localhost string
 		databus   *daemondata.T
 		pubsub    *pubsub.Bus
@@ -67,17 +65,14 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.Logger{
-			Logger: log.Logger.With().Str("pkg", "daemon/scheduler").Logger(),
-			Prefix: "daemon: scheduler: ",
-		},
+		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
 		localhost:   hostname.Hostname(),
 		events:      make(chan any),
 		jobs:        make(Jobs),
 		provisioned: make(map[naming.Path]bool),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Errorf("daemon: scheduler: init: %s", err)
+		t.log.Errorf("init: %s", err)
 		return nil
 	}
 	return t
@@ -134,7 +129,7 @@ func (t *T) createJob(e schedule.Entry) {
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
-		logger.Error().Err(err).Str("definition", e.Definition).Msgf("daemon: scheduler: get next %s %s %s schedule: %s", e.Path, e.Key, e.Action, err)
+		logger.Attr("definition", e.Definition).Errorf("get next %s %s %s schedule: %s", e.Path, e.Key, e.Action, err)
 		t.jobs.Del(e)
 		return
 	}
@@ -150,7 +145,7 @@ func (t *T) createJob(e schedule.Entry) {
 	} else {
 		obj = "object " + e.Path.String()
 	}
-	logger.Info().Msgf("daemon: scheduler: next %s %s at %s (in %s)", obj, e.Key, next, delay)
+	logger.Infof("next %s %s at %s (in %s)", obj, e.Key, next, delay)
 	tmr := time.AfterFunc(delay, func() {
 		begin := time.Now()
 		if begin.Sub(next) < 500*time.Millisecond {
@@ -158,20 +153,20 @@ func (t *T) createJob(e schedule.Entry) {
 			begin = next
 		}
 		if e.RequireCollector && !collector.Alive.Load() {
-			logger.Debug().Msg("daemon: scheduler: The collector is not alive")
+			logger.Debugf("The collector is not alive")
 		} else if err := t.action(e); err != nil {
-			logger.Error().Err(err).Msgf("daemon: scheduler: on exec %s %s: %s", obj, e.Key, err)
+			logger.Errorf("scheduler: on exec %s %s: %s", obj, e.Key, err)
 		}
 
 		// remember last run, to not run the job too soon after a daemon restart
 		if err := e.SetLastRun(begin); err != nil {
-			logger.Error().Err(err).Msgf("daemon: scheduler: on update last run %s %s: %s", obj, e.Key, err)
+			logger.Errorf("on update last run %s %s: %s", obj, e.Key, err)
 		}
 
 		// remember last success, for users benefit
 		if err == nil {
 			if err := e.SetLastSuccess(begin); err != nil {
-				logger.Error().Err(err).Msgf("daemon: scheduler: on update last success %s %s: %s", obj, e.Key, err)
+				logger.Errorf("on update last success %s %s: %s", obj, e.Key, err)
 			}
 		}
 
@@ -203,7 +198,7 @@ func (t *T) Start(ctx context.Context) error {
 	go func(errC chan<- error) {
 		defer t.wg.Done()
 		if stopFeeder, err := t.startFeederPinger(); err != nil {
-			t.log.Errorf("daemon: scheduler: start collector pinger: %s", err)
+			t.log.Errorf("start collector pinger: %s", err)
 			errC <- err
 			return
 		} else {
@@ -217,8 +212,8 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop() error {
-	t.log.Infof("daemon: scheduler: Stopping")
-	defer t.log.Infof("daemon: scheduler: Stopped")
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
 	t.cancel()
 	t.wg.Wait()
 	return nil
@@ -239,12 +234,12 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 }
 
 func (t *T) loop() {
-	t.log.Debugf("daemon: scheduler: Loop started")
+	t.log.Debugf("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
 	sub := t.startSubscriptions()
 	defer func() {
 		if err := sub.Stop(); err != nil {
-			t.log.Errorf("daemon: scheduler: Subscription stop: %s", err)
+			t.log.Errorf("subscription stop: %s", err)
 		}
 	}()
 
@@ -271,7 +266,7 @@ func (t *T) loop() {
 				// reschedule
 				t.createJob(c.schedule)
 			default:
-				t.log.Errorf("daemon: scheduler: received an unsupported event: %#v", c)
+				t.log.Errorf("received an unsupported event: %#v", c)
 			}
 		case <-t.ctx.Done():
 			t.jobs.Purge()
@@ -299,16 +294,13 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 }
 
 func (t *T) loggerWithPath(p naming.Path) *plog.Logger {
-	return &plog.Logger{
-		Logger: t.log.With().Stringer("obj_path", p).Logger(),
-		Prefix: t.log.Prefix,
-	}
+	return t.log.Attr("obj_path", p.String())
 }
 
 func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	switch {
 	case t.enabled:
-		t.loggerWithPath(c.Path).Infof("daemon: scheduler: update %s schedules", c.Path)
+		t.loggerWithPath(c.Path).Infof("update %s schedules", c.Path)
 		t.unschedule(c.Path)
 		t.scheduleObject(c.Path)
 	}
@@ -317,7 +309,7 @@ func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	switch {
 	case t.enabled:
-		t.log.Infof("daemon: scheduler: Update node schedules")
+		t.log.Infof("update node schedules")
 		t.unschedule(naming.Path{})
 		t.scheduleNode()
 	}
@@ -327,11 +319,11 @@ func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	_, incompatible := incompatibleNodeMonitorStatus[c.Value.State]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Infof("daemon: scheduler: disable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("disable scheduling (node monitor status is now %s)", c.Value.State)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Infof("daemon: scheduler: enable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("enable scheduling (node monitor status is now %s)", c.Value.State)
 		t.enabled = true
 		t.scheduleAll()
 	}
@@ -367,7 +359,7 @@ func (t *T) schedule(p naming.Path) {
 func (t *T) scheduleNode() {
 	o, err := object.NewNode()
 	if err != nil {
-		t.log.Errorf("daemon: scheduler: schedule node: %s", err)
+		t.log.Errorf("schedule node: %s", err)
 		return
 	}
 	for _, e := range o.PrintSchedule() {
@@ -377,15 +369,15 @@ func (t *T) scheduleNode() {
 
 func (t *T) scheduleObject(p naming.Path) {
 	if isProvisioned, ok := t.provisioned[p]; !ok {
-		t.log.Debugf("daemon: scheduler: schedule object %s: provisioned state has not been discovered yet", p)
+		t.log.Debugf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
 	} else if !isProvisioned {
-		t.log.Infof("daemon: scheduler: schedule object %s: not provisioned", p)
+		t.log.Infof("schedule object %s: not provisioned", p)
 		return
 	}
 	i, err := object.New(p, object.WithVolatile(true))
 	if err != nil {
-		t.log.Errorf("daemon: scheduler: schedule object %s: %s", p, err)
+		t.log.Errorf("schedule object %s: %s", p, err)
 		return
 	}
 	o, ok := i.(object.Actor)

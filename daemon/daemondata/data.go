@@ -47,7 +47,7 @@ type (
 
 		// statCount is a map[<stat id>] to track number of <id> calls
 		statCount map[int]uint64
-		log       plog.Logger
+		log       *plog.Logger
 		bus       *pubsub.Bus
 		sub       *pubsub.Subscription
 
@@ -206,13 +206,10 @@ func PropagationInterval() time.Duration {
 //	        return
 //	     }
 func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
-	d.log = plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/daemondata"),
-		Prefix: "daemon: data: ",
-	}
+	d.log = plog.NewDefaultLogger().WithPrefix("daemon: data: ").Attr("pkg", "daemon/daemondata")
 	d.log.Infof("starting")
 	defer d.log.Infof("stopped")
-	watchCmd := &durationlog.T{Log: d.log}
+	watchCmd := &durationlog.T{Log: *d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
 	var beginCmd = make(chan interface{})

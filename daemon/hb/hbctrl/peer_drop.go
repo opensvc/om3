@@ -19,10 +19,7 @@ import (
 // The delayed <peer> node drop is canceled on msgbus.HbNodePing{isAlive: true, Node: <peer>}.
 func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
-	log := plog.Logger{
-		Logger: plog.PkgLogger(ctx, "daemon/hbctrl:peerDropWorker"),
-		Prefix: "daemon: hbctrl: peer drop: ",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
 	bus := pubsub.BusFromContext(ctx)
 	sub := bus.Sub("peer-drop-worker")
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
@@ -54,7 +51,7 @@ func peerDropWorker(ctx context.Context) {
 	dropPeer := func(peer string) {
 		err := databus.DropPeerNode(peer)
 		if err != nil {
-			log.Error().Err(err).Msgf("drop peer node %s data", peer)
+			log.Errorf("drop peer node %s data: %s", peer, err)
 		}
 	}
 

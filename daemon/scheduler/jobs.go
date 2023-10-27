@@ -58,7 +58,7 @@ func (o T) action(e schedule.Entry) error {
 	//case "rotate_root_pw":
 	//	cmdArgs = append(cmdArgs, "rotate", "root", "pw", "--local")
 	default:
-		o.log.Error().Str("action", e.Action).Stringer("path", e.Path).Msg("unknown scheduler action")
+		o.log.Attr("action", e.Action).Attr("path", e.Path.String()).Errorf("unknown scheduler action")
 		return fmt.Errorf("unknown scheduler action")
 	}
 	var cmdEnv []string
@@ -71,20 +71,20 @@ func (o T) action(e schedule.Entry) error {
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs(cmdArgs),
-		command.WithLogger(&o.log),
+		command.WithLogger(o.log),
 		command.WithEnv(cmdEnv),
 	)
-	o.log.Debug().Msgf("-> exec %s", cmd)
+	o.log.Debugf("-> exec %s", cmd)
 	o.pubsub.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler"}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
 		o.pubsub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler"}, labels...)
-		o.log.Error().Err(err).Stringer("cmd", cmd).Msg("exec error")
+		o.log.Attr("cmd", cmd.String()).Errorf("exec error: %s", err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	o.pubsub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler"}, labels...)
-	o.log.Debug().Msgf("<- exec %s", cmd)
+	o.log.Debugf("<- exec %s", cmd)
 	return nil
 }
