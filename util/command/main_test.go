@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/util/plog"
 )
 
 func TestString(t *testing.T) {
@@ -82,7 +83,10 @@ func TestUpdate(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Run("WithLogger", func(t *testing.T) {
-		log := zerolog.Logger{}
+		log := plog.Logger{
+			Logger: plog.GetPkgLogger("util/command"),
+			Prefix: "util: command: ",
+		}
 		c := New(WithLogger(&log))
 		assert.Equal(t, &log, c.log)
 	})

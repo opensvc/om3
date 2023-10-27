@@ -12,15 +12,13 @@ import (
 	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectlogger"
 	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/plog"
 
 	_ "github.com/opensvc/om3/core/driverdb"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/xsession"
 )
 
 var sectionApp0 = []byte(`
@@ -58,17 +56,22 @@ func TestAppStart(t *testing.T) {
 		p, err := naming.ParsePath("conf1")
 		assert.NoError(t, err)
 
-		logger := objectlogger.New(p, objectlogger.WithLogFile(true))
+		logger := plog.Logger{
+			Logger: plog.GetPkgLogger("core/object"),
+			Prefix: "core: object: test: ",
+		}
 		s, err := object.NewSvc(p,
 			object.WithConfigData(conf),
 			object.WithLogger(logger),
 		)
 		assert.NoError(t, err)
 
-		fpath := s.Config().GetString(key.T{"env", "flag0"})
+		fpath := s.Config().GetString(key.T{Section: "env", Option: "flag0"})
 		assert.NotEqual(t, fpath, "")
 
-		defer os.RemoveAll(fpath)
+		defer func() {
+			_ = os.RemoveAll(fpath)
+		}()
 
 		require.NoErrorf(t, os.RemoveAll(fpath), "%s should not exist before start", fpath)
 
@@ -78,13 +81,14 @@ func TestAppStart(t *testing.T) {
 		err = s.Start(ctx)
 		assert.NoErrorf(t, err, "Start() should not err")
 		require.True(t, file.Exists(fpath), "%s should exist after start", fpath)
-		events, err := streamlog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
-		assert.NoError(t, err)
-		assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
+		// TODO: need dedicated test with log action (no more explicit object log)
+		//events, err := streamlog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
+		//assert.NoError(t, err)
+		//assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
 	})
 }
 
-// TestWithConfigData exercizes different data types passed to object.WithConfigData(any)
+// TestWithConfigData exercises different data types passed to object.WithConfigData(any)
 func TestWithConfigData(t *testing.T) {
 	testhelper.Setup(t)
 	t.Run("conf1", func(t *testing.T) {

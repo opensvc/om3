@@ -12,7 +12,7 @@ import (
 )
 
 func newRun(name string) *Bus {
-	bus := NewBus(nil, name)
+	bus := NewBus(name)
 	bus.SetDefaultSubscriptionQueueSize(200)
 	bus.Start(context.Background())
 	return bus

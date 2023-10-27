@@ -98,6 +98,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
 	}
+	if flag := cmd.Flags().Lookup("color"); flag != nil {
+		colorFlag = flag.Value.String()
+	}
 	logging.WithCaller = callerFlag
 	if err := hostname.Error(); err != nil {
 		return err
