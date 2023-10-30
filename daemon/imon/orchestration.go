@@ -153,8 +153,8 @@ func (o *imon) endOrchestration() {
 			o.labelLocalhost,
 		)
 		o.acceptedOrchestrationId = uuid.UUID{}
-		o.log = o.newLogger(o.state.OrchestrationId)
 	}
+	o.log = o.newLogger(uuid.Nil)
 }
 
 // doneAndIdle marks the orchestration as done on the local instance and
