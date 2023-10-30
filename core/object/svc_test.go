@@ -56,10 +56,7 @@ func TestAppStart(t *testing.T) {
 		p, err := naming.ParsePath("conf1")
 		assert.NoError(t, err)
 
-		logger := plog.Logger{
-			Logger: plog.GetPkgLogger("core/object"),
-			Prefix: "core: object: test: ",
-		}
+		logger := plog.NewDefaultLogger().Attr("pkg", "core/object").WithPrefix("core: object: test: ")
 		s, err := object.NewSvc(p,
 			object.WithConfigData(conf),
 			object.WithLogger(logger),

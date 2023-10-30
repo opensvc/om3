@@ -22,10 +22,7 @@ func TestRaw(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
-	log := &plog.Logger{
-		Logger: plog.GetPkgLogger("util/raw"),
-		Prefix: "util: raw: ",
-	}
+	log := plog.NewDefaultLogger().Attr("pkg", "util/raw").WithPrefix("util: raw: ")
 	ra := New(
 		WithLogger(log),
 	)

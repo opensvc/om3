@@ -185,6 +185,9 @@ func (o *imon) newLogger(i uuid.UUID) *plog.Logger {
 	return plog.NewDefaultLogger().
 		Attr("pkg", "daemon/imon").
 		Attr("obj_path", p).
+		Attr("obj_name", o.path.Name).
+		Attr("obj_namespace", o.path.Namespace).
+		Attr("obj_kind", o.path.Kind.String()).
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", p))
 }

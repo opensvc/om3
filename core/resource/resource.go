@@ -143,7 +143,7 @@ type (
 		EnableUnprovision       bool
 
 		statusLog    StatusLog
-		log          *plog.Logger
+		log          plog.Logger
 		object       any
 		objectDriver ObjectDriver
 		pg           *pg.Config
@@ -471,7 +471,7 @@ func (t *T) SetObject(o any) {
 		panic("SetObject accepts only ObjectDriver")
 	} else {
 		t.object = o
-		t.log = t.getLoggerFromObjectDriver(od)
+		t.log = *t.getLoggerFromObjectDriver(od)
 	}
 }
 
@@ -496,7 +496,7 @@ func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
 
 // Log returns the resource logger
 func (t *T) Log() *plog.Logger {
-	return t.log
+	return &t.log
 }
 
 // MatchRID returns true if:
@@ -550,7 +550,7 @@ func (t T) trigger(ctx context.Context, s string) error {
 	cmd := command.New(
 		command.WithName(cmdArgs[0]),
 		command.WithVarArgs(cmdArgs[1:]...),
-		command.WithLogger(t.log),
+		command.WithLogger(&t.log),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel))
 	return cmd.Run()
@@ -1187,7 +1187,7 @@ func Action(ctx context.Context, r Driver) error {
 
 // SetLoggerForTest can be used to set resource log for testing purpose
 func (t *T) SetLoggerForTest(l *plog.Logger) {
-	t.log = l
+	t.log = *l
 }
 
 func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f func() error) error {

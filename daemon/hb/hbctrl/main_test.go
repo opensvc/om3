@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -37,10 +36,7 @@ func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
 func setupCtrl(ctx context.Context) *C {
 	c := &C{
 		cmd: make(chan any),
-		log: plog.Logger{
-			Logger: log.Logger,
-			Prefix: "daemon: hbctrl: ",
-		},
+		log: plog.NewDefaultLogger().Attr("pkg", "daemin/hbctrl").WithPrefix("daemon: hbctrl: "),
 	}
 	c.Start(ctx)
 	return c

@@ -108,7 +108,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 		}
 	}
 	if change {
-		if n, err := object.NewNode(); err != nil {
+		if n, err := object.NewNode(object.WithLogger(o.log)); err != nil {
 			o.log.Errorf("allocate Node for network setup: %s", err)
 		} else {
 			o.log.Infof("reconfigure networks")

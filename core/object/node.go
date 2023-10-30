@@ -39,7 +39,9 @@ func (t *Node) init(opts ...funcopt.O) error {
 		return err
 	}
 
-	t.log = plog.NewDefaultLogger()
+	if t.log == nil {
+		t.log = plog.NewDefaultLogger()
+	}
 
 	if err := t.loadConfig(); err != nil {
 		return err
