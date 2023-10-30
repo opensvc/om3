@@ -83,12 +83,10 @@ func TestUpdate(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Run("WithLogger", func(t *testing.T) {
-		log := plog.Logger{
-			Logger: plog.GetPkgLogger("util/command"),
-			Prefix: "util: command: ",
-		}
-		c := New(WithLogger(&log))
-		assert.Equal(t, &log, c.log)
+		prefix := "test"
+		log := plog.NewDefaultLogger().Attr("pkg", "util/command").WithPrefix(prefix)
+		c := New(WithLogger(log))
+		assert.Equal(t, prefix, c.log.Prefix())
 	})
 }
 

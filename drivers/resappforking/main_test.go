@@ -24,10 +24,7 @@ import (
 )
 
 var (
-	log = plog.Logger{
-		Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
-		Prefix: "driver: resappforking: ",
-	}
+	log = plog.NewLogger(zerolog.New(os.Stdout).With().Timestamp().Logger()).WithPrefix("driver: resappforking:")
 )
 
 func prepareConfig(t *testing.T) (td string, cleanup func()) {
