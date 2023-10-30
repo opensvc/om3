@@ -227,10 +227,11 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					}
 					t.addr = newAddr
 
-					t.log = plog.Ctx(ctx).Attr("pkg", "daemon/listener/lsnrhttpinet").
+					t.log = plog.NewDefaultLogger().
+						Attr("pkg", "daemon/listener/lsnrhttpinet").
 						Attr("lsnr_type", "http_inet").
 						Attr("lsnr_addr", t.addr).
-						WithPrefix(fmt.Sprintf("daemon: listener: http_inet: %s: ", t.addr))
+						WithPrefix(fmt.Sprintf("daemon: listener: http_inet: %s:", t.addr))
 					if err := start(); err != nil {
 						t.log.Errorf("on addr changed start failed: %s", err)
 					}
