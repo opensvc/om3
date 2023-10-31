@@ -1,9 +1,7 @@
 package streamlog
 
 import (
-	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,46 +9,48 @@ import (
 	"sort"
 
 	"github.com/fatih/color"
-	"github.com/hpcloud/tail"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/command"
+	"github.com/rs/zerolog"
 )
 
 type (
 	Stream struct {
-		tails    []*tail.Tail
-		controls []chan bool
-		q        chan Event
+		cmd  *command.T
+		q    chan Event
+		errs chan error
+	}
+	StreamConfig struct {
+		Follow  bool
+		Lines   int
+		Matches []string
 	}
 	Event struct {
 		B []byte
-		M map[string]interface{}
+		M map[string]any
 	}
 	Events []Event
 )
 
-func (event Event) Map() map[string]interface{} {
+func (event Event) Map() map[string]any {
 	return event.M
 }
 
-func (event Event) IsMatching(filters map[string]interface{}) bool {
-	for k, v := range filters {
-		if current, ok := event.M[k]; !ok || (current != v) {
-			return false
-		}
-	}
-	return true
+func (event Event) IsZero() bool {
+	return event.M == nil
 }
 
 func (event Event) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
-	_, _ = w.Write(event.B)
+	w.FormatMessage = func(i any) string {
+		return rawconfig.Colorize.Bold(i)
+	}
+	switch s := event.M["JSON"].(type) {
+	case string:
+		_, _ = w.Write([]byte(s))
+	}
 }
 
 func (event Event) RenderData() {
@@ -90,135 +90,9 @@ func (events Events) Render(format string) {
 	}
 }
 
-func NewEvent(b []byte) (Event, error) {
-	var m map[string]interface{}
-	if err := json.Unmarshal(b, &m); err != nil {
-		return Event{}, err
-	} else {
-		return Event{B: b, M: m}, nil
-	}
-}
-
-func GetEventsFromFile(fpath string, filters map[string]interface{}) (Events, error) {
-	f, err := os.Open(fpath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	events := make(Events, 0)
-	var errs error
-	for scanner.Scan() {
-		b := []byte(scanner.Text())
-		if event, err := NewEvent(b); err != nil {
-			errors.Join(errs, err)
-			continue
-		} else if event.IsMatching(filters) {
-			events = append(events, event)
-		}
-	}
-	return events, errs
-}
-
-func NewStream() *Stream {
-	return &Stream{
-		q:        make(chan Event),
-		tails:    make([]*tail.Tail, 0),
-		controls: make([]chan bool, 0),
-	}
-}
-
-func (stream Stream) Events() chan Event {
-	return stream.q
-}
-
-func (stream *Stream) Stop() error {
-	var errs error
-	for _, control := range stream.controls {
-		control <- true
-	}
-	for _, t := range stream.tails {
-		if err := t.Stop(); err != nil {
-			errors.Join(errs, err)
-		}
-	}
-	return errs
-}
-
-func (stream *Stream) Follow(fpath string) error {
-	t, err := tail.TailFile(fpath, tail.Config{
-		Follow: true,
-		ReOpen: true,
-		Logger: logging.StandardLogger(log.Logger),
-	})
-	if err != nil {
-		return err
-	}
-	control := make(chan bool)
-	stream.controls = append(stream.controls, control)
-	stream.tails = append(stream.tails, t)
-	go func() {
-		for {
-			select {
-			case line := <-t.Lines:
-				if event, err := NewEvent([]byte(line.Text)); err == nil {
-					stream.q <- event
-				}
-			case _ = <-control:
-				return
-			}
-		}
-	}()
-	return nil
-}
-
-func GetEventStreamFromNode(filters map[string]interface{}) (*Stream, error) {
-	files := []string{filepath.Join(rawconfig.Paths.Log, "node.log")}
-	return GetEventStreamFromFiles(files, filters)
-}
-
-func GetEventStreamFromObjects(paths []naming.Path, filters map[string]interface{}) (*Stream, error) {
-	files := make([]string, len(paths))
-	for i := 0; i < len(paths); i += 1 {
-		files[i] = paths[i].LogFile()
-	}
-	return GetEventStreamFromFiles(files, filters)
-}
-
-func GetEventStreamFromFiles(files []string, filters map[string]interface{}) (*Stream, error) {
-	stream := NewStream()
-	var errs error
-	for _, p := range files {
-		if err := stream.Follow(p); err != nil {
-			errors.Join(errs, err)
-		}
-	}
-	return stream, errs
-}
-
-func GetEventsFromNode(filters map[string]interface{}) (Events, error) {
-	file := filepath.Join(rawconfig.Paths.Log, "node.log")
-	return GetEventsFromFile(file, filters)
-}
-
-func GetEventsFromObjects(paths []naming.Path, filters map[string]interface{}) (Events, error) {
-	events := make(Events, 0)
-	var errs error
-	for _, p := range paths {
-		fpath := p.LogFile()
-		more, err := GetEventsFromFile(fpath, filters)
-		if err != nil {
-			errors.Join(errs, err)
-		}
-		events = append(events, more...)
-	}
-	events.Sort()
-	return events, errs
-}
-
 func (events Events) Sort() {
 	sort.Slice(events, func(i, j int) bool {
-		var ts1, ts2 interface{}
+		var ts1, ts2 any
 		var ok bool
 		if ts1, ok = events[i].M["t"]; !ok {
 			return false
@@ -254,4 +128,68 @@ func (t Events) MatchString(key, pattern string) bool {
 		}
 	}
 	return false
+}
+func NewEvent(b []byte) (Event, error) {
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return Event{}, err
+	} else {
+		return Event{B: b, M: m}, nil
+	}
+}
+
+func NewStream() *Stream {
+	return &Stream{
+		q:    make(chan Event),
+		errs: make(chan error),
+	}
+}
+
+func (stream Stream) Errors() chan error {
+	return stream.errs
+}
+
+func (stream Stream) Events() chan Event {
+	return stream.q
+}
+
+func (stream *Stream) Stop() error {
+	if c := stream.cmd.Cmd(); c != nil {
+		c.Process.Kill()
+	}
+	return nil
+}
+
+func (stream *Stream) Start(streamConfig StreamConfig) error {
+	comm, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	var args []string
+	comm = filepath.Base(comm)
+	args = append(args, "-o", "json", "_COMM="+comm)
+	args = append(args, streamConfig.Matches...)
+	args = append(args, "-n", fmt.Sprint(streamConfig.Lines))
+	if streamConfig.Follow {
+		args = append(args, "-f")
+	}
+	stream.cmd = command.New(
+		command.WithName("journalctl"),
+		command.WithArgs(args),
+		command.WithOnStdoutLine(func(line string) {
+			if event, err := NewEvent([]byte(line)); err != nil {
+				stream.errs <- err
+			} else {
+				stream.q <- event
+			}
+		}),
+	)
+	if err := stream.cmd.Start(); err != nil {
+		return err
+	}
+	go func() {
+		stream.cmd.Wait()
+		stream.errs <- nil // signal client we are done sending
+	}()
+	return nil
 }

@@ -1107,6 +1107,7 @@ func newCmdNodeLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagLogsFollow(flags, &options.Follow)
+	addFlagLogsLines(flags, &options.Lines)
 	addFlagLogsFilter(flags, &filter)
 	return cmd
 }
@@ -2062,6 +2063,7 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagLogsFollow(flags, &options.Follow)
+	addFlagLogsLines(flags, &options.Lines)
 	addFlagLogsFilter(flags, &filter)
 	return cmd
 }

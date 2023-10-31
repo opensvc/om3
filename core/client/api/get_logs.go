@@ -16,6 +16,8 @@ type GetLogs struct {
 	client  api.ClientInterface
 	Filters *[]string
 	Paths   *[]string
+	Lines   *int
+	Follow  *bool
 }
 
 func (t *GetLogs) SetPaths(l *[]string) *GetLogs {
@@ -25,6 +27,16 @@ func (t *GetLogs) SetPaths(l *[]string) *GetLogs {
 
 func (t *GetLogs) SetFilters(filters *[]string) *GetLogs {
 	t.Filters = filters
+	return t
+}
+
+func (t *GetLogs) SetLines(n *int) *GetLogs {
+	t.Lines = n
+	return t
+}
+
+func (t *GetLogs) SetFollow(n *bool) *GetLogs {
+	t.Follow = n
 	return t
 }
 
@@ -88,12 +100,16 @@ func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 	if t.Paths != nil {
 		params := api.GetInstancesLogsParams{
 			Filter: t.Filters,
+			Follow: t.Follow,
+			Lines:  t.Lines,
 			Paths:  *t.Paths,
 		}
 		resp, err = t.client.GetInstancesLogs(context.Background(), &params)
 	} else {
 		params := api.GetNodeLogsParams{
 			Filter: t.Filters,
+			Follow: t.Follow,
+			Lines:  t.Lines,
 		}
 		resp, err = t.client.GetNodeLogs(context.Background(), &params)
 	}

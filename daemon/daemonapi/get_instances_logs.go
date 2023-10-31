@@ -22,7 +22,20 @@ func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, namespace string, kind nam
 	return a.GetInstancesLogs(ctx, api.GetInstancesLogsParams{
 		Paths:  naming.Paths{p}.StrSlice(),
 		Filter: params.Filter,
+		Follow: params.Follow,
+		Lines:  params.Lines,
 	})
+}
+
+func filtersFromPaths(paths naming.Paths) (filters []string) {
+	last := len(paths) - 1
+	for i, path := range paths {
+		filters = append(filters, "OBJ_PATH="+path.String())
+		if i > 0 && i < last {
+			filters = append(filters, "+")
+		}
+	}
+	return
 }
 
 // GetInstancesLogs feeds publications in rss format.
@@ -36,7 +49,7 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
 
-	filters, err := parseLogFilters(params.Filter)
+	matches, err := parseLogFilters(params.Filter)
 	if err != nil {
 		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
@@ -52,8 +65,23 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}
-	stream, err := streamlog.GetEventStreamFromObjects(paths, filters)
-	if err != nil {
+
+	matches = append(matches, filtersFromPaths(paths)...)
+	stream := streamlog.NewStream()
+	var follow bool
+	if params.Follow != nil {
+		follow = *params.Follow
+	}
+	lines := 50
+	if params.Lines != nil {
+		lines = *params.Lines
+	}
+	streamConfig := streamlog.StreamConfig{
+		Follow:  follow,
+		Lines:   lines,
+		Matches: matches,
+	}
+	if err := stream.Start(streamConfig); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
 	defer func() {
@@ -66,13 +94,20 @@ func (a *DaemonApi) GetInstancesLogs(ctx echo.Context, params api.GetInstancesLo
 	// don't wait first event to flush response
 	w.Flush()
 
-	eventC := stream.Events()
 	sseWriter := sseevent.NewWriter(w)
-	for ev := range eventC {
-		if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
-			break
+	for {
+		select {
+		case ev := <-stream.Events():
+			if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
+				break
+			}
+			w.Flush()
+		case err := <-stream.Errors():
+			if err == nil {
+				return nil
+			}
+			log.Debug().Err(err).Msgf("stream.Error")
 		}
-		w.Flush()
 	}
 	return nil
 }

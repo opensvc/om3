@@ -1,12 +1,11 @@
 package commands
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sync"
-
-	"github.com/goccy/go-json"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
@@ -14,7 +13,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/streamlog"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -23,10 +21,12 @@ type (
 	CmdObjectLogs struct {
 		OptsGlobal
 		Follow bool
+		Lines  int
 		Filter *[]string
 	}
 )
 
+/*
 func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (streamlog.Events, error) {
 	events := make(streamlog.Events, 0)
 	c, err := client.New(client.WithURL(node))
@@ -43,6 +43,7 @@ func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (streamlog.Even
 	}
 	return events, nil
 }
+*/
 
 func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
@@ -53,6 +54,8 @@ func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 	l := paths.StrSlice()
 	reader, err := c.NewGetLogs().
 		SetFilters(t.Filter).
+		SetLines(&t.Lines).
+		SetFollow(&t.Follow).
 		SetPaths(&l).
 		GetReader()
 	if err != nil {
@@ -63,7 +66,9 @@ func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 
 	for {
 		event, err := reader.Read()
-		if err != nil {
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			break
 		}
@@ -112,11 +117,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 		return err
 	}
 	if t.NodeSelector != "" {
-		nodeSelector := nodeselector.New(
-			t.NodeSelector,
-			nodeselector.WithLocal(true),
-		)
-		nodes, err = nodeSelector.Expand()
+		nodes, err = nodeselector.Expand(t.NodeSelector)
 		if err != nil {
 			return err
 		}
@@ -126,27 +127,13 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 			return err
 		}
 	}
-	events := make(streamlog.Events, 0)
-	for _, node := range nodes {
-		if more, err := t.backlog(node, paths); err != nil {
-			fmt.Fprintln(os.Stderr, "backlog fetch error:", err)
-		} else {
-			events = append(events, more...)
-		}
-	}
-	events.Sort()
-	events.Render(t.Output)
-
-	if !t.Follow {
-		return nil
-	}
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
 	for _, node := range nodes {
-		go func() {
+		go func(n string) {
 			defer wg.Done()
-			t.stream(node, paths)
-		}()
+			t.stream(n, paths)
+		}(node)
 	}
 	wg.Wait()
 	return nil
@@ -161,19 +148,34 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	if err != nil {
 		return err
 	}
-	filters := filterMap(t.Filter)
-	if events, err := streamlog.GetEventsFromObjects(paths, filters); err == nil {
-		events.Render(t.Output)
-	} else {
+	matches := parseFilters(t.Filter)
+	last := len(paths) - 1
+	for i, path := range paths {
+		matches = append(matches, "OBJ_PATH="+path.String())
+		if i > 0 && i < last {
+			matches = append(matches, "+")
+		}
+	}
+	stream := streamlog.NewStream()
+	streamConfig := streamlog.StreamConfig{
+		Follow:  t.Follow,
+		Lines:   t.Lines,
+		Matches: matches,
+	}
+	if err := stream.Start(streamConfig); err != nil {
 		return err
 	}
-	if t.Follow {
-		stream, err := streamlog.GetEventStreamFromObjects(paths, filters)
-		if err != nil {
-			return err
-		}
-		for event := range stream.Events() {
-			event.Render(t.Output)
+	defer stream.Stop()
+	for {
+		select {
+		case err := <-stream.Errors():
+			fmt.Fprintln(os.Stderr, err)
+			if err == nil {
+				// The sender has stopped sending
+				return nil
+			}
+		case ev := <-stream.Events():
+			ev.Render(t.Output)
 		}
 	}
 	return nil

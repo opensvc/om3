@@ -1,10 +1,7 @@
 package nodeselector
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 
@@ -14,24 +11,17 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/xmap"
 )
 
 type (
 	T struct {
 		SelectorExpression string
-		hasClient          bool
-		client             *client.T
-		local              bool
 		nodes              []string
-		server             string
 		knownNodes         []string
 		knownNodesSet      *orderedset.OrderedSet
 		info               node.NodesInfo
@@ -60,32 +50,11 @@ func New(selector string, opts ...funcopt.O) *T {
 	return t
 }
 
-// WithClient sets the client struct key
-func WithClient(client *client.T) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.client = client
-		t.hasClient = true
-		return nil
-	})
-}
-
 // WithLogger sets the logger
 func WithLogger(log zerolog.Logger) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.log = log
-		return nil
-	})
-}
-
-// WithLocal forces the selection to be expanded without asking the
-// daemon, which might result in an sub-selection of what the
-// daemon would expand the selector to.
-func WithLocal(v bool) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.local = v
 		return nil
 	})
 }
@@ -100,26 +69,16 @@ func WithNodesInfo(v node.NodesInfo) funcopt.O {
 	})
 }
 
-// WithServer sets the server struct key
-func WithServer(server string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.server = server
-		return nil
-	})
-}
-
 func (t T) String() string {
 	return fmt.Sprintf("NodeSelector{%s}", t.SelectorExpression)
 }
 
-// LocalExpand resolves a selector expression into a list of object paths
-// without asking the daemon for nodes information.
-func LocalExpand(s string) ([]string, error) {
-	return New(s, WithLocal(true)).Expand()
+// Expand resolves a selector expression into a list of object paths
+func Expand(s string) ([]string, error) {
+	return New(s).Expand()
 }
 
-// Expand resolves a selector expression into a list of object paths.
+// Expand resolves a selector expression into a list of nodes.
 //
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
@@ -157,31 +116,7 @@ func (t *T) add(node string) {
 	t.nodes = append(t.nodes, node)
 }
 
-func (t *T) mustHaveClient() error {
-	if t.hasClient {
-		return nil
-	}
-	c, err := client.New(
-		client.WithURL(t.server),
-	)
-	if err != nil {
-		return err
-	}
-	t.client = c
-	t.hasClient = true
-	return nil
-}
-
 func (t *T) expand() error {
-	if !t.local {
-		if err := t.mustHaveClient(); err != nil {
-			if clientcontext.IsSet() {
-				return err
-			} else {
-				t.log.Debug().Msgf("%s daemon expansion error: %s", t, err)
-			}
-		}
-	}
 	selector := t.SelectorExpression
 	for _, s := range strings.Fields(selector) {
 		pset, err := t.expandOne(s)
@@ -291,13 +226,6 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
-	if t.local {
-		return t.localKnownNodes()
-	}
-	return t.daemonKnownNodes()
-}
-
-func (t T) localKnownNodes() ([]string, error) {
 	l := clusternode.Get()
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])
@@ -305,55 +233,14 @@ func (t T) localKnownNodes() ([]string, error) {
 	return l, nil
 }
 
-func (t T) daemonKnownNodes() ([]string, error) {
-	if data, err := t.getNodesInfo(); err != nil {
-		return []string{}, err
-	} else {
-		return xmap.Keys(data), nil
-	}
-}
-
-func ReqWithClient(c *client.T) (node.NodesInfo, error) {
-	if c == nil {
-		panic("nodesinfo.ReqWithClient(nil): no client")
-	}
-	resp, err := c.GetNodesInfo(context.Background())
-	if err != nil {
-		return nil, err
-	} else if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected get nodes info status code %s", resp.Status)
-	}
-	var data node.NodesInfo
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	return data, err
-}
-
 func (t *T) getNodesInfo() (node.NodesInfo, error) {
-	var err error
 	if t.info != nil {
 		return t.info, nil
 	}
-	if t.local {
-		if t.info, err = nodesinfo.Load(); err == nil {
-			return t.info, nil
-		}
-		if t.client == nil {
-			// no fallback possible
-			return nil, err
-		}
-		if t.info, err = ReqWithClient(t.client); err == nil {
-			return t.info, nil
-		}
+	if info, err := nodesinfo.Load(); err != nil {
 		return nil, err
-	}
-	if t.info, err = ReqWithClient(t.client); err == nil {
-		return t.info, nil
-	} else if clientcontext.IsSet() {
-		return nil, err
-	}
-	if t.info, err = nodesinfo.Load(); err != nil {
-		return nil, err
+	} else {
+		t.info = info
 	}
 	return t.info, nil
 }

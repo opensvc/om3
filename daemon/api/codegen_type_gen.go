@@ -737,6 +737,12 @@ type Limit = int64
 // LogFilter defines model for LogFilter.
 type LogFilter = []string
 
+// LogFollow defines model for LogFollow.
+type LogFollow = bool
+
+// LogLines defines model for LogLines.
+type LogLines = int
+
 // NamespaceOptional defines model for NamespaceOptional.
 type NamespaceOptional = string
 
@@ -851,19 +857,16 @@ type GetInstancesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// GetInstancesBacklogsParams defines parameters for GetInstancesBacklogs.
-type GetInstancesBacklogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
-}
-
 // GetInstancesLogsParams defines parameters for GetInstancesLogs.
 type GetInstancesLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
@@ -878,16 +881,16 @@ type GetObjectConfigParams struct {
 	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
-// GetInstanceBacklogsParams defines parameters for GetInstanceBacklogs.
-type GetInstanceBacklogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-}
-
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.
@@ -900,15 +903,6 @@ type GetNetworkIpParams struct {
 type GetNetworksParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
-}
-
-// GetNodeBacklogsParams defines parameters for GetNodeBacklogs.
-type GetNodeBacklogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -927,6 +921,12 @@ type PostNodeDRBDConfigParams struct {
 type GetNodeLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`

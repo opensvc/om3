@@ -28,7 +28,7 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
 
-	filters, err := parseLogFilters(params.Filter)
+	matches, err := parseLogFilters(params.Filter)
 	if err != nil {
 		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
@@ -45,8 +45,21 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
-	stream, err := streamlog.GetEventStreamFromNode(filters)
-	if err != nil {
+	stream := streamlog.NewStream()
+	var follow bool
+	if params.Follow != nil {
+		follow = *params.Follow
+	}
+	lines := 50
+	if params.Lines != nil {
+		lines = *params.Lines
+	}
+	streamConfig := streamlog.StreamConfig{
+		Follow:  follow,
+		Lines:   lines,
+		Matches: matches,
+	}
+	if err := stream.Start(streamConfig); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
 	defer func() {
@@ -59,29 +72,36 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 	// don't wait first event to flush response
 	w.Flush()
 
-	eventC := stream.Events()
 	sseWriter := sseevent.NewWriter(w)
-	for ev := range eventC {
-		if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
-			break
+	for {
+		select {
+		case ev := <-stream.Events():
+			if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
+				break
+			}
+			w.Flush()
+		case err := <-stream.Errors():
+			if err == nil {
+				return nil
+			}
+			log.Debug().Err(err).Msgf("stream.Error")
 		}
-		w.Flush()
 	}
 	return nil
 }
 
 // parseLogFilters return filters from b.Filter
-func parseLogFilters(l *[]string) (map[string]any, error) {
-	filters := make(map[string]any)
+func parseLogFilters(l *[]string) ([]string, error) {
+	filters := make([]string, 0)
 	if l == nil {
 		return filters, nil
 	}
 	for _, s := range *l {
-		k, v, err := parseLogFilter(s)
+		_, _, err := parseLogFilter(s)
 		if err != nil {
 			return nil, err
 		}
-		filters[k] = v
+		filters = append(filters, s)
 	}
 	return filters, nil
 }

@@ -658,32 +658,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /node/backlogs:
-    get:
-      operationId: GetNodeBacklogs
-      tags:
-        - nodes
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve recent logs
-      parameters:
-        - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/Paths'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LogList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
   /node/logs:
     get:
       operationId: GetNodeLogs
@@ -696,6 +670,8 @@ paths:
         Serve new logs
       parameters:
         - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
         - $ref: '#/components/parameters/Paths'
       responses:
         200:
@@ -758,32 +734,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /instances/backlogs:
-    get:
-      operationId: GetInstancesBacklogs
-      tags:
-        - instances
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve recent logs
-      parameters:
-        - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/Paths'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LogList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
   /instances/logs:
     get:
       operationId: GetInstancesLogs
@@ -796,44 +746,14 @@ paths:
         Serve new logs
       parameters:
         - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
         - $ref: '#/components/parameters/Paths'
       responses:
         200:
           description: OK
           content:
             text/event-stream:
-              schema:
-                $ref: '#/components/schemas/LogList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /namespaces/{namespace}/{kind}/{name}/instance/backlogs:
-    get:
-      operationId: GetInstanceBacklogs
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve recent logs
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/LogFilter'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
               schema:
                 $ref: '#/components/schemas/LogList'
         401:
@@ -861,6 +781,8 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
       responses:
         200:
           description: OK
@@ -3067,6 +2989,18 @@ components:
           type: string
           description: "a filter expression: label=value[,label=value]..."
           example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
+    LogFollow:
+      name: follow
+      in: query
+      description: follow the logs
+      schema:
+        type: boolean
+    LogLines:
+      name: lines
+      in: query
+      description: report this number of past last log entries
+      schema:
+        type: integer
     EventFilter:
       name: filter
       in: query

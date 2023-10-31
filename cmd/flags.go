@@ -172,7 +172,11 @@ func addFlagLocal(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagLogsFollow(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "logs-follow", "f", false, "Follow the log feed.")
+	flagSet.BoolVarP(p, "follow", "f", false, "Follow the log feed.")
+}
+
+func addFlagLogsLines(flagSet *pflag.FlagSet, p *int) {
+	flagSet.IntVarP(p, "lines", "n", 50, "Report the last n log entries.")
 }
 
 func addFlagLogsFilter(flagSet *pflag.FlagSet, p *[]string) {
