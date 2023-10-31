@@ -29,17 +29,19 @@ type (
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpux").Attr("lsnr_type", "http_ux").WithPrefix("daemon: listener: http_ux: "),
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpux").Attr("lsnr_type", "http_ux").WithPrefix("daemon: listener: ux: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = t.log.Attr("lsnr_addr", t.addr).WithPrefix(t.log.Prefix() + t.addr + ": ")
+	t.log = t.log.Attr("lsnr_addr", t.addr)
 	return t
 }
 
 func (t *T) Start(ctx context.Context) error {
+	ctx = daemonctx.WithLsnrType(ctx, "ux")
+
 	errC := make(chan error)
 	t.log.Infof("starting")
 	if err := os.RemoveAll(t.addr); err != nil {

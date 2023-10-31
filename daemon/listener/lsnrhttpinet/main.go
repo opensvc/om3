@@ -36,13 +36,13 @@ type (
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpinet").Attr("lsnr_type", "http_inet").WithPrefix("daemon: listener: http_inet: "),
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpinet").Attr("lsnr_type", "inet").WithPrefix("daemon: listener: inet: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
 		return nil
 	}
-	t.log = t.log.Attr("lsnr_addr", t.addr).WithPrefix(t.log.Prefix() + t.addr + ": ")
+	t.log = t.log.Attr("lsnr_addr", t.addr)
 	return t
 }
 
@@ -62,6 +62,8 @@ func (t *T) Stop() error {
 
 // Start startup the inet http janitor. janitor startup initial inet http listener.
 func (t *T) Start(ctx context.Context) error {
+	ctx = daemonctx.WithLsnrType(ctx, "inet")
+
 	t.bus = pubsub.BusFromContext(ctx)
 
 	errC := make(chan error)
@@ -229,9 +231,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 
 					t.log = plog.NewDefaultLogger().
 						Attr("pkg", "daemon/listener/lsnrhttpinet").
-						Attr("lsnr_type", "http_inet").
+						Attr("lsnr_type", "inet").
 						Attr("lsnr_addr", t.addr).
-						WithPrefix(fmt.Sprintf("daemon: listener: http_inet: %s:", t.addr))
+						WithPrefix("daemon: listener: inet: ")
 					if err := start(); err != nil {
 						t.log.Errorf("on addr changed start failed: %s", err)
 					}
