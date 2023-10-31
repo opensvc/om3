@@ -25,12 +25,12 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 		handlerName = "GetNodeLogs"
 	)
 	log := LogHandler(ctx, handlerName)
-	log.Debug().Msg("starting")
-	defer log.Debug().Msg("done")
+	log.Debugf("starting")
+	defer log.Debugf("done")
 
 	matches, err := parseLogFilters(params.Filter)
 	if err != nil {
-		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
+		log.Infof("Invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 
@@ -64,7 +64,7 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 	}
 	defer func() {
 		if err := stream.Stop(); err != nil {
-			log.Debug().Err(err).Msgf("stream.Stop")
+			log.Debugf("stream.Stop: %s", err)
 		}
 	}()
 	w.WriteHeader(http.StatusOK)
@@ -84,7 +84,7 @@ func (a *DaemonApi) GetNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) 
 			if err == nil {
 				return nil
 			}
-			log.Debug().Err(err).Msgf("stream.Error")
+			log.Debugf("stream.Error: %s", err)
 		}
 	}
 	return nil

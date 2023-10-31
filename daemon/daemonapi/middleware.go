@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,8 +13,8 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -35,18 +36,22 @@ var (
 
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	addr := daemonctx.ListenAddr(parent)
-	log := daemonlogctx.Logger(parent)
+	family := daemonctx.LsnrType(parent)
+	log := plog.NewDefaultLogger().
+		Attr("pkg", "daemon/daemonapi").
+		Attr("lsnr_type", family).
+		Attr("lsnr_addr", addr).
+		WithPrefix(fmt.Sprintf("daemon: api: %s: ", family))
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUuid := uuid.New()
 			r := c.Request()
-			log := log.With().
-				Str("request_uuid", reqUuid.String()).
-				Str("method", r.Method).
-				Str("path", r.URL.Path).
-				Str("remote", r.RemoteAddr).
-				Str("addr", addr).Logger()
-			c.Set("logger", &log)
+			log := log.
+				Attr("request_uuid", reqUuid.String()).
+				Attr("method", r.Method).
+				Attr("path", r.URL.Path)
+			c.Set("logger", log)
 			c.Set("uuid", reqUuid)
 			return next(c)
 		}
@@ -85,11 +90,11 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
-				log.Error().Err(err).Str("remote", r.RemoteAddr).Msgf("daemon: api: error authenticating request from %s: %s", r.RemoteAddr, err)
+				log.Errorf("authenticating request from %s: %s", r.RemoteAddr, err)
 				code := http.StatusUnauthorized
 				return JSONProblem(c, code, http.StatusText(code), err.Error())
 			}
-			log.Debug().Msgf("daemon: api: user %s authenticated", user.GetUserName())
+			log.Debugf("user %s authenticated", user.GetUserName())
 			c.Set("user", user)
 			c.Set("grants", rbac.NewGrants(user.GetExtensions()["grant"]...))
 			return next(c)
@@ -102,12 +107,12 @@ func LogUserMiddleware(parent context.Context) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			authUser := c.Get("user").(auth.Info)
 			extensions := authUser.GetExtensions()
-			log := c.Get("logger").(*zerolog.Logger).With().
-				Str("auth_user", authUser.GetUserName()).
-				Strs("auth_grant", extensions.Values("grant")).
-				Str("auth_strategy", extensions.Get("strategy")).
-				Logger()
-			c.Set("logger", &log)
+			log := GetLogger(c).
+				Attr("auth_user", authUser.GetUserName()).
+				Attr("auth_grant", extensions.Values("grant")).
+				Attr("auth_strategy", extensions.Get("strategy"))
+
+			c.Set("logger", log)
 			return next(c)
 		}
 	}
@@ -121,7 +126,14 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 				level = l
 			}
 			if level != zerolog.NoLevel {
-				GetLogger(c).WithLevel(level).Msgf("daemon: api: new request %s: %s %s from user %s address %s", c.Get("uuid"), c.Request().Method, c.Path(), userFromContext(c).GetUserName(), c.Request().RemoteAddr)
+				GetLogger(c).Levelf(
+					level,
+					"new request %s: %s %s from user %s address %s",
+					c.Get("uuid"),
+					c.Request().Method,
+					c.Path(),
+					userFromContext(c).GetUserName(),
+					c.Request().RemoteAddr)
 			}
 			return next(c)
 		}
@@ -139,8 +151,8 @@ func UiMiddleware(_ context.Context) echo.MiddlewareFunc {
 	}
 }
 
-func GetLogger(c echo.Context) *zerolog.Logger {
-	return c.Get("logger").(*zerolog.Logger)
+func GetLogger(c echo.Context) *plog.Logger {
+	return c.Get("logger").(*plog.Logger)
 }
 
 // userFromContext returns the logged-in userFromContext information stored in the request context.
@@ -152,7 +164,6 @@ func grantsFromContext(ctx echo.Context) rbac.Grants {
 	return ctx.Get("grants").(rbac.Grants)
 }
 
-func LogHandler(c echo.Context, name string) *zerolog.Logger {
-	l := c.Get("logger").(*zerolog.Logger).With().Str("handler", name).Logger()
-	return &l
+func LogHandler(c echo.Context, name string) *plog.Logger {
+	return c.Get("logger").(*plog.Logger).Attr("handler", name)
 }

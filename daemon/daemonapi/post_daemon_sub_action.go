@@ -12,13 +12,13 @@ import (
 
 func (a *DaemonApi) PostDaemonSubAction(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonSubAction")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 
 	var (
 		payload api.PostDaemonSubAction
 	)
 	if err := ctx.Bind(&payload); err != nil {
-		log.Warn().Err(err).Msgf("invalid body")
+		log.Warnf("invalid body: %s", err)
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid body", err.Error())
 	}
 	action := string(payload.Action)
@@ -35,9 +35,9 @@ func (a *DaemonApi) PostDaemonSubAction(ctx echo.Context) error {
 	if len(subs) == 0 {
 		return JSONProblemf(ctx, http.StatusOK, "Daemon routine not found", "No daemon routine to %s", action)
 	}
-	log.Info().Msgf("asking to %s sub components: %s", action, subs)
+	log.Infof("asking to %s sub components: %s", action, subs)
 	for _, sub := range payload.Subs {
-		log.Info().Msgf("ask to %s sub component: %s", action, sub)
+		log.Infof("ask to %s sub component: %s", action, sub)
 		a.EventBus.Pub(&msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub}, labelApi)
 	}
 	return JSONProblemf(ctx, http.StatusOK, "daemon routines action queued", "%s %s", action, subs)

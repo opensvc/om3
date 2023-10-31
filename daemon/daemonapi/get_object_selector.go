@@ -12,7 +12,7 @@ import (
 
 func (a *DaemonApi) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsParams) error {
 	log := LogHandler(ctx, "GetObjectPaths")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 	paths := object.StatusData.GetPaths()
 	selection := objectselector.NewSelection(
 		params.Path,
@@ -21,7 +21,7 @@ func (a *DaemonApi) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 	)
 	matchedPaths, err := selection.Expand()
 	if err != nil {
-		log.Error().Err(err).Msgf("expand selection from param selector %s", params.Path)
+		log.Errorf("expand selection from param selector %s: %s", params.Path, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	result := api.ObjectPaths{}

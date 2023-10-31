@@ -14,11 +14,11 @@ import (
 func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	logName := "GetObjectFile"
 	log := LogHandler(ctx, logName)
-	log.Debug().Msgf("daemon: api: %s: starting", logName)
+	log.Debugf("log.Errorf%s: starting", logName)
 
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		log.Warn().Err(err).Msgf("daemon: api: %s: %s", logName, err)
+		log.Warnf("log.Errorf%s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 
@@ -26,7 +26,7 @@ func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind namin
 
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
-		log.Info().Msgf("daemon: api: %s: configFile no present(mtime) %s %s", logName, filename, mtime)
+		log.Infof("log.Errorf%s: configFile no present(mtime) %s %s", logName, filename, mtime)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s", filename, mtime)
 	}
 	resp := api.ObjectFile{
@@ -35,11 +35,11 @@ func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind namin
 	resp.Data, err = os.ReadFile(filename)
 
 	if err != nil {
-		log.Info().Err(err).Msgf("daemon: api: %s: readfile %s %s (may be deleted): %s", logName, objPath, filename, err)
+		log.Infof("log.Errorf%s: readfile %s %s (may be deleted): %s", logName, objPath, filename, err)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "readfile %s %s (may be deleted)", objPath, filename)
 	}
 	if file.ModTime(filename) != resp.Mtime {
-		log.Info().Msgf("daemon: api: %s: file has changed %s", logName, filename)
+		log.Infof("log.Errorf%s: file has changed %s", logName, filename)
 		return JSONProblemf(ctx, http.StatusTooEarly, "Too early", "file has changed %s", filename)
 	}
 

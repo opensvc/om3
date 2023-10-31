@@ -15,10 +15,10 @@ import (
 
 func (a *DaemonApi) PostDaemonStop(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonStop")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 
 	maintenance := func() {
-		log.Info().Msg("announce maintenance state")
+		log.Infof("announce maintenance state")
 		state := node.MonitorStateMaintenance
 		a.EventBus.Pub(&msgbus.SetNodeMonitor{
 			Node: hostname.Hostname(),
