@@ -345,7 +345,7 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.log = plog.NewDefaultLogger().WithPrefix("pubsub: "+name).Attr("pkg", "util/pubsub").Attr("bus_name", name)
+	b.log = plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("pubsub: %s: ", name)).Attr("pkg", "util/pubsub").Attr("bus_name", name)
 	b.drainChanDuration = defaultDrainChanDuration
 	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
