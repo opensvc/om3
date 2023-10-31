@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -292,11 +293,7 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInsta
 		d.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
 	}
 
-	peerPort := fmt.Sprintf("%d", daemonenv.HttpPort)
-	if lsnr := node.LsnrData.Get(peer); lsnr != nil {
-		peerPort = lsnr.Port
-	}
-	cli, err := d.newDaemonClient(peer, peerPort)
+	cli, err := newDaemonClient(peer)
 	if err != nil {
 		d.log.Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
@@ -304,27 +301,31 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInsta
 	go fetch(ctx, cli, p, peer, d.cfgCmdC, remoteInstanceConfig)
 }
 
-func (d *discover) newDaemonClient(node, port string) (*client.T, error) {
-	// TODO add WithRootCa to avoid send password to wrong url ?
-	return client.New(
-		client.WithURL(daemonenv.UrlHttpNodeAndPort(node, port)),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(d.clusterConfig.Secret()),
-		client.WithCertificate(daemonenv.CertChainFile()),
-	)
-}
-
-func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
-	id := p.String() + "@" + node
+func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
+	id := p.String() + "@" + peer
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover:cfg.fetch").Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
 
 	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
 	if err != nil {
-		log.Infof("unable to retrieve %s: %s", id, err)
-		return
+		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)
+		time.Sleep(250 * time.Millisecond)
+		url := peerUrl(peer)
+		if url == cli.URL() {
+			return
+		} else {
+			log.Infof("detected updated %s url: recreate client to fetch %s", peer, id)
+			if cli, err = newDaemonClient(peer); err != nil {
+				log.Errorf("unable to recreate client: %s", err)
+				return
+			}
+			if tmpFilename, updated, err = remoteconfig.FetchObjectFile(cli, p); err != nil {
+				log.Infof("unable to retrieve %s from outdated url %s: %s", id, cli.URL(), err)
+				return
+			}
+		}
 	}
 	defer func() {
-		log.Debugf("routine done for instance %s@%s", p, node)
+		log.Debugf("routine done for instance %s@%s", p, peer)
 		_ = os.Remove(tmpFilename)
 	}()
 	configure, err := object.NewConfigurer(p, object.WithConfigFile(tmpFilename), object.WithVolatile(true))
@@ -360,7 +361,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC 
 		err := make(chan error)
 		cmdC <- &msgbus.RemoteFileConfig{
 			Path:      p,
-			Node:      node,
+			Node:      peer,
 			File:      tmpFilename,
 			Freeze:    freeze,
 			UpdatedAt: updated,
@@ -369,4 +370,28 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, node string, cmdC 
 		}
 		<-err
 	}
+}
+
+func newDaemonClient(n string) (*client.T, error) {
+	// TODO add WithRootCa to avoid send password to wrong url ?
+	return client.New(
+		client.WithURL(peerUrl(n)),
+		client.WithUsername(hostname.Hostname()),
+		client.WithPassword(ccfg.Get().Secret()),
+		client.WithCertificate(daemonenv.CertChainFile()),
+	)
+}
+
+func peerUrl(s string) string {
+	addr := s
+	port := fmt.Sprintf("%d", daemonenv.HttpPort)
+	if lsnr := node.LsnrData.Get(s); lsnr != nil {
+		if lsnr.Port != "" {
+			port = lsnr.Port
+		}
+		if lsnr.Addr != "::" && lsnr.Addr != "" {
+			addr = lsnr.Addr
+		}
+	}
+	return daemonenv.UrlHttpNodeAndPort(addr, port)
 }
