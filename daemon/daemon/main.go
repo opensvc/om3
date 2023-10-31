@@ -206,14 +206,14 @@ func (t *T) stopWatcher() {
 		defer func() {
 			signalCancel()
 			_ = sub.Stop()
-			t.log.Infof("stop watcher done")
+			t.log.Debugf("stop watcher terminated")
 		}()
-		t.log.Infof("stop watcher started")
+		t.log.Debugf("stop watcher running")
 		started <- true
 		for {
 			select {
 			case <-t.ctx.Done():
-				t.log.Infof("stop watcher returns on context done")
+				t.log.Debugf("stop watcher returns on context done")
 				return
 			case <-signalCtx.Done():
 				t.log.Infof("stopping on signal")
