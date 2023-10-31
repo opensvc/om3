@@ -10,7 +10,7 @@ import (
 
 func (a *DaemonApi) GetNodesInfo(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodesInfo")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 	// TODO returned value should be cached
 	data := node.GetNodesInfo()
 	return ctx.JSON(http.StatusOK, data)

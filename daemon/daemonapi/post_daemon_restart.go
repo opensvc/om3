@@ -11,7 +11,7 @@ import (
 
 func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonRestart")
-	log.Info().Msg("starting")
+	log.Infof("starting")
 
 	execname, err := os.Executable()
 	if err != nil {
@@ -25,9 +25,9 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
 
 	err = cmd.Start()
 	if err != nil {
-		log.Error().Err(err).Msgf("called StartProcess")
+		log.Errorf("called StartProcess: %s", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "daemon restart failed: %s", err)
 	}
-	log.Info().Msgf("called daemon restart")
+	log.Infof("called daemon restart")
 	return JSONProblem(ctx, http.StatusOK, "background daemon restart has been called", "")
 }

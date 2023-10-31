@@ -16,7 +16,7 @@ func (a *DaemonApi) PostRelayMessage(ctx echo.Context) error {
 		value   api.RelayMessage
 	)
 	log := LogHandler(ctx, "PostRelayMessage")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
@@ -30,6 +30,6 @@ func (a *DaemonApi) PostRelayMessage(ctx echo.Context) error {
 	value.Addr = ctx.Request().RemoteAddr
 
 	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
-	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
+	log.Debugf("stored %s %s", payload.ClusterId, payload.Nodename)
 	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.UpdatedAt, value.Addr)
 }

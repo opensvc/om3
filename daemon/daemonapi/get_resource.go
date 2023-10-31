@@ -19,7 +19,7 @@ func (a *DaemonApi) GetResources(ctx echo.Context, params api.GetResourcesParams
 		Path:    params.Path,
 	}
 	if err := meta.Expand(); err != nil {
-		log.Error().Err(err).Msgf("daemon: api: %s: %s", name, err)
+		log.Errorf("log.Errorf%s: %s", name, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := instance.ConfigData.GetAll()

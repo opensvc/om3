@@ -22,10 +22,10 @@ func (a *DaemonApi) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinPa
 	node := params.Node
 	// TODO verify is node value is a valid nodename
 	if node == "" {
-		log.Warn().Msgf("invalid node value: '%s'", node)
+		log.Warnf("invalid node value: '%s'", node)
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
 	}
-	log.Info().Msgf("publish join request for node %s", node)
+	log.Infof("publish join request for node %s", node)
 	a.EventBus.Pub(&msgbus.JoinRequest{Node: node}, labelApi, a.LabelNode)
 	return ctx.JSON(http.StatusOK, nil)
 }

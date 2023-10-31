@@ -28,11 +28,11 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	var data *orderedmap.OrderedMap
 	logName := "GetObjectConfig"
 	log := LogHandler(ctx, logName)
-	log.Debug().Msgf("daemon: api: %s: starting", logName)
+	log.Debugf("log.Errorf%s: starting", logName)
 
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		log.Info().Err(err).Msgf("daemon: api: %s: %s", logName, err)
+		log.Infof("log.Errorf%s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	if impersonate != "" && !evaluate {
@@ -42,17 +42,17 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	filename := objPath.ConfigFile()
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
-		log.Error().Msgf("configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
+		log.Errorf("configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
 	}
 
 	data, err = configData(objPath, evaluate, impersonate)
 	if err != nil {
-		log.Error().Err(err).Msgf("can't get configData for %s %s", objPath, filename)
+		log.Errorf("can't get configData for %s %s", objPath, filename)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "can't get configData for %s %s", objPath, filename)
 	}
 	if file.ModTime(filename) != mtime {
-		log.Error().Msgf("file has changed %s", filename)
+		log.Errorf("file has changed %s", filename)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "file has changed %s", filename)
 	}
 	respData := make(map[string]interface{})

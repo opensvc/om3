@@ -43,15 +43,15 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 		cancel context.CancelFunc
 	)
 	log := LogHandler(ctx, handlerName)
-	log.Debug().Msg("starting")
-	defer log.Debug().Msg("done")
+	log.Debugf("starting")
+	defer log.Debugf("done")
 
 	if params.Limit != nil {
 		limit = uint64(*params.Limit)
 	}
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
-			log.Info().Err(err).Msgf("Invalid parameter: field 'duration' with value '%s' validation error", *params.Duration)
+			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			evCtx, cancel = context.WithTimeout(evCtx, timeout)
@@ -61,7 +61,7 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 
 	filters, err := parseFilters(params)
 	if err != nil {
-		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
+		log.Infof("Invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 
@@ -83,11 +83,11 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 
 	for _, filter := range filters {
 		if filter.Kind == nil {
-			log.Debug().Msgf("filtering %v %v", filter.Kind, filter.Labels)
+			log.Debugf("filtering %v %v", filter.Kind, filter.Labels)
 		} else if kind, ok := filter.Kind.(event.Kinder); ok {
-			log.Debug().Msgf("filtering %s %v", kind.Kind(), filter.Labels)
+			log.Debugf("filtering %s %v", kind.Kind(), filter.Labels)
 		} else {
-			log.Warn().Msgf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
+			log.Warnf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
 			continue
 		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
@@ -96,7 +96,7 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
-			log.Debug().Err(err).Msgf("sub.Stop")
+			log.Debugf("sub.Stop: %s", err)
 		}
 	}()
 
@@ -108,9 +108,9 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	eventC := event.ChanFromAny(evCtx, sub.C)
 	sseWriter := sseevent.NewWriter(w)
 	for ev := range eventC {
-		log.Debug().Msgf("write event %s", ev.Kind)
+		log.Debugf("write event %s", ev.Kind)
 		if _, err := sseWriter.Write(ev); err != nil {
-			log.Debug().Err(err).Msgf("write event %s", ev.Kind)
+			log.Debugf("write event %s: %s", ev.Kind, err)
 			break
 		}
 		w.Flush()

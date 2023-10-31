@@ -12,10 +12,10 @@ import (
 
 func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, params api.GetNodeDRBDConfigParams) error {
 	log := LogHandler(ctx, "GetNodeDRBDConfig")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 
 	if params.Name == "" {
-		log.Warn().Msgf("invalid file name: %s", params.Name)
+		log.Warnf("invalid file name: %s", params.Name)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid file name: %s", params.Name)
 	}
 
@@ -23,7 +23,7 @@ func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, params api.GetNodeDRBDCo
 	resp := api.DRBDConfig{}
 
 	if data, err := os.ReadFile(filename); err != nil {
-		log.Info().Err(err).Msgf("ReadFile %s (may be deleted)", filename)
+		log.Infof("ReadFile %s (may be deleted): %s", filename, err)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "ReadFile %s (may be deleted)", filename)
 	} else {
 		resp.Data = data

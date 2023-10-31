@@ -74,7 +74,7 @@ func init() {
 
 func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodeDRBDAllocation")
-	log.Debug().Msg("starting")
+	log.Debugf("starting")
 
 	pendingDRBDAllocations.Lock()
 	defer pendingDRBDAllocations.Unlock()
@@ -87,23 +87,23 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
 
 	digest, err := drbd.GetDigest()
 	if err != nil {
-		detail := "get drbd dump digest"
-		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
+		detail := "get drbd dump digest: %s"
+		log.Errorf(detail, err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail, err)
 	}
 
 	if minor, err := digest.FreeMinor(pendingDRBDAllocations.minors()); err != nil {
-		detail := "get free minor from drbd dump digest"
-		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
+		detail := "get free minor from drbd dump digest: %s"
+		log.Errorf(detail, err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail, err)
 	} else {
 		resp.Minor = minor
 	}
 
 	if port, err := digest.FreePort(pendingDRBDAllocations.ports()); err != nil {
-		detail := "get free port from drbd dump digest"
-		log.Error().Err(err).Msgf(detail)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail)
+		detail := "get free port from drbd dump digest: %s"
+		log.Errorf(detail, err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Get Node DRBD allocation", detail, err)
 	} else {
 		resp.Port = port
 	}
