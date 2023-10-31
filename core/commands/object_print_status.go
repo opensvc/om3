@@ -175,11 +175,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		Colorize: rawconfig.Colorize,
 	}
 	if t.NodeSelector != "" {
-		sel := nodeselector.New(
-			t.NodeSelector,
-			nodeselector.WithClient(c),
-		)
-		nodes, err := sel.Expand()
+		nodes, err := nodeselector.Expand(t.NodeSelector)
 		if err != nil {
 			return fmt.Errorf("expand node selection: %w", err)
 		}

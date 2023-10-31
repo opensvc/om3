@@ -69,10 +69,6 @@ func listNodes() []string {
 
 func configureLogger() error {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	zerolog.TimestampFieldName = "t"
-	zerolog.LevelFieldName = "l"
-	zerolog.MessageFieldName = "m"
-
 	err := logging.Configure(logging.Config{
 		WithConsoleLog: logFlag != "" || foregroundFlag,
 		WithColor:      colorFlag != "no",

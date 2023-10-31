@@ -26,7 +26,7 @@ func (t TNodesConverter) String() string {
 }
 
 func (t TNodesConverter) Convert(s string) (interface{}, error) {
-	l, err := nodeselector.LocalExpand(s)
+	l, err := nodeselector.Expand(s)
 	if err != nil {
 		return nil, err
 	}
@@ -41,5 +41,5 @@ func (t TOtherNodesConverter) String() string {
 }
 
 func (t TOtherNodesConverter) Convert(s string) (interface{}, error) {
-	return nodeselector.LocalExpand(s)
+	return nodeselector.Expand(s)
 }

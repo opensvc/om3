@@ -82,10 +82,7 @@ func (m *Meta) expandNode() error {
 	} else {
 		node = *m.Node
 	}
-	selection := nodeselector.New(
-		node,
-		nodeselector.WithLocal(true),
-	)
+	selection := nodeselector.New(node)
 	if nodeMap, err := selection.ExpandMap(); err != nil {
 		return fmt.Errorf("expand node selection %s: %w", node, err)
 	} else {

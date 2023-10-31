@@ -858,7 +858,7 @@ func (o *imon) sortWithNodesOrderPolicy(candidates []string) []string {
 func (o *imon) nextPlacedAtCandidates(want []string) (string, error) {
 	expr := strings.Join(want, " ")
 	var wantNodes []string
-	nodes, err := nodeselector.LocalExpand(expr)
+	nodes, err := nodeselector.Expand(expr)
 	if err != nil {
 		return "", err
 	}
