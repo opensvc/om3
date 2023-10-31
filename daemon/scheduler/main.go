@@ -203,9 +203,7 @@ func (t *T) Start(ctx context.Context) error {
 	go func(errC chan<- error) {
 		defer t.wg.Done()
 		if stopFeeder, err := t.startFeederPinger(); err != nil {
-			t.log.Errorf("start collector pinger: %s", err)
-			errC <- err
-			return
+			t.log.Infof("collector pinger is not started: %s", err)
 		} else {
 			defer stopFeeder()
 		}

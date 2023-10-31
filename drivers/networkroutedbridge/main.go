@@ -157,7 +157,7 @@ func (t T) allocateSubnets() error {
 	subnetOnes := int(math.Log2(float64(maxIpsPerNodes)))
 	maxIpsPerNodes = 1 << subnetOnes
 	if ipsPerNode > maxIpsPerNodes {
-		return fmt.Errorf("ips_per_node must be <%d (%d ips in %s divided by %d nodes)", maxIpsPerNodes, maxIps, network, len(nodes))
+		return fmt.Errorf("ips_per_node=%d must be <=%d (%s has %d ips to distribute to %d nodes)", ipsPerNode, maxIpsPerNodes, network, maxIps, len(nodes))
 	}
 	addr, err := netip.ParseAddr(ip.String())
 	if err != nil {
