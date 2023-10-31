@@ -96,7 +96,7 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 		Attr("obj_kind", t.path.Kind.String()).
 		Attr("obj_name", t.path.Name).
 		Attr("obj_namespace", t.path.Namespace).
-		WithPrefix(fmt.Sprintf("%s: ", t.path))
+		WithPrefix(fmt.Sprintf("instance: %s: ", t.path))
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}

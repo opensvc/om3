@@ -63,6 +63,8 @@ func (c *Client) Ping() {
 func ComplianceURL(s string) (*url.URL, error) {
 	if url, err := BaseURL(s); err != nil {
 		return nil, err
+	} else if url.Host == "" {
+		return nil, fmt.Errorf("collector compliance url host is empty")
 	} else {
 		// default path
 		if url.Path == "" {
@@ -76,6 +78,8 @@ func ComplianceURL(s string) (*url.URL, error) {
 func InitURL(s string) (*url.URL, error) {
 	if url, err := BaseURL(s); err != nil {
 		return nil, err
+	} else if url.Host == "" {
+		return nil, fmt.Errorf("collector url host is empty")
 	} else {
 		// default path
 		if url.Path == "" {
@@ -89,6 +93,8 @@ func InitURL(s string) (*url.URL, error) {
 func FeedURL(s string) (*url.URL, error) {
 	if url, err := BaseURL(s); err != nil {
 		return nil, err
+	} else if url.Host == "" {
+		return nil, fmt.Errorf("collector feed url host is empty")
 	} else {
 		// default path
 		if url.Path == "" {

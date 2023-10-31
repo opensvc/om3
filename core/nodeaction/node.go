@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"
 
 	"github.com/opensvc/om3/core/actionrouter"
@@ -23,6 +22,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -181,12 +181,13 @@ func (t T) Options() actionrouter.T {
 
 func (t T) DoLocal() error {
 	r := nodeDo(t.Func)
+	log := plog.NewDefaultLogger().WithPrefix("nodeaction: ")
 	human := func() string {
 		if r.Error != nil {
-			log.Error().Msgf("%s", r.Error)
+			log.Errorf("%s", r.Error)
 		}
 		if r.Panic != nil {
-			log.Fatal().Msgf("%s", r.Panic)
+			log.Errorf("%s", r.Panic)
 		}
 		s := ""
 		if r.HumanRenderer != nil {
@@ -404,9 +405,6 @@ func nodeDo(fn func() (any, error)) actionrouter.Result {
 	}
 	result.Data = data
 	result.Error = err
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("do")
-	}
 	return result
 }
 
@@ -422,13 +420,14 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 		err      error
 		evReader event.ReadCloser
 	)
+	log := plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("nodeaction: wait %s: ", exp))
 	switch exp.(type) {
 	case node.MonitorState:
 		filters = []string{"NodeMonitorUpdated,node=" + hostname.Hostname()}
 	case node.MonitorGlobalExpect:
 		filters = []string{"NodeMonitorUpdated"}
 	}
-	log.Debug().Msgf("get event with filters: %+v", filters)
+	log.Debugf("get event with filters: %+v", filters)
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
@@ -476,27 +475,27 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 				if err != nil {
 					return
 				}
-				log.Debug().Msgf("NodeMonitorUpdated %+v", msg)
+				log.Debugf("NodeMonitorUpdated %+v", msg)
 				nmon := msg.Value
 				switch v := exp.(type) {
 				case node.MonitorState:
 					if nmon.State == v {
 						reached[msg.Node] = true
-						log.Debug().Msgf("NodeMonitorUpdated reached state %s", v)
+						log.Debugf("NodeMonitorUpdated reached state %s", v)
 					} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
-						log.Debug().Msgf("NodeMonitorUpdated reached state %s unset", v)
+						log.Debugf("NodeMonitorUpdated reached state %s unset", v)
 						return
 					}
 				case node.MonitorGlobalExpect:
 					if nmon.GlobalExpect == v {
 						reached[msg.Node] = true
-						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s", v)
+						log.Debugf("NodeMonitorUpdated reached global expect %s", v)
 					} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectNone {
 						reachedUnset[msg.Node] = true
-						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
+						log.Debugf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
 					}
 					if len(reached) > 0 && len(reached) == len(reachedUnset) {
-						log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
+						log.Debugf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
 						return
 					}
 				}
