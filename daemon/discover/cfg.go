@@ -133,7 +133,7 @@ func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	s := c.Path.String()
 	mtime := file.ModTime(c.File)
 	if mtime.IsZero() {
-		d.log.Infof("cfg: config file %s mtime is zero", c.File)
+		d.objectLogger(c.Path).Infof("cfg: config file %s mtime is zero", c.File)
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
@@ -170,7 +170,7 @@ func (d *discover) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 
 func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
 	s := p.String()
-
+	log := d.objectLogger(p)
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	// Never drop local cluster config, ignore remote config older that local
@@ -178,9 +178,9 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInsta
 		d.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
-			d.log.Infof("cfg: remove local config %s (localnode not in node %s config scope)", s, node)
+			log.Infof("cfg: remove local config %s (localnode not in node %s config scope)", s, node)
 			if err := os.Remove(cfgFile); err != nil {
-				d.log.Debugf("cfg: remove %s: %s", cfgFile, err)
+				log.Debugf("cfg: remove %s: %s", cfgFile, err)
 			}
 		}
 		return
@@ -197,14 +197,14 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInsta
 	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required
 		if remoteInstanceConfig.UpdatedAt.After(remoteFetcherUpdated) {
-			d.log.Warnf("cfg: cancel pending remote cfg fetcher, a more recent %s config is available on node %s", s, node)
+			log.Warnf("cfg: cancel pending remote cfg fetcher, a more recent %s config is available on node %s", s, node)
 			d.cancelFetcher(s)
 		} else {
 			// let running fetcher does its job
 			return
 		}
 	}
-	d.log.Infof("cfg: fetch %s config from node %s", s, node)
+	log.Infof("cfg: fetch %s config from node %s", s, node)
 	d.fetchConfigFromRemote(p, node, remoteInstanceConfig)
 }
 
@@ -215,13 +215,14 @@ func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 	s := c.Path.String()
 	if fetchFrom, ok := d.fetcherFrom[s]; ok {
 		if fetchFrom == c.Node {
-			d.log.Infof("cfg: cancel pending remote cfg fetcher, instance %s@%s is no longer present", s, c.Node)
+			d.objectLogger(c.Path).Infof("cfg: cancel pending remote cfg fetcher, instance %s@%s is no longer present", s, c.Node)
 			d.cancelFetcher(s)
 		}
 	}
 }
 
 func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
+	log := d.objectLogger(c.Path)
 
 	freezeIfOrchestrateHA := func(confFile string) error {
 		if !c.Freeze {
@@ -231,7 +232,7 @@ func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			d.log.Errorf("cfg: can't freeze instance before installing %s config fetched from node %s: %s", c.Path, c.Node, err)
 			return err
 		}
-		d.log.Infof("cfg: freeze instance before installing %s config fetched from node %s", c.Path, c.Node)
+		log.Infof("cfg: freeze instance before installing %s config fetched from node %s", c.Path, c.Node)
 		return nil
 	}
 
@@ -246,10 +247,10 @@ func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			return
 		}
 		if err := os.Rename(c.File, confFile); err != nil {
-			d.log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
+			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
 			c.Err <- err
 		} else {
-			d.log.Infof("cfg: install %s config fetched from node %s", c.Path, c.Node)
+			log.Infof("cfg: install %s config fetched from node %s", c.Path, c.Node)
 		}
 		c.Err <- nil
 	}
@@ -280,7 +281,7 @@ func (d *discover) cancelFetcher(s string) {
 func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
-		d.log.Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
+		d.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
 		return
 	}
 	ctx, cancel := context.WithCancel(d.ctx)
@@ -295,7 +296,7 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInsta
 
 	cli, err := newDaemonClient(peer)
 	if err != nil {
-		d.log.Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
+		d.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
 	}
 	go fetch(ctx, cli, p, peer, d.cfgCmdC, remoteInstanceConfig)
@@ -303,8 +304,8 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInsta
 
 func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
 	id := p.String() + "@" + peer
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover:cfg.fetch").Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
-
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
+	log = objectLogger(log, p)
 	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)

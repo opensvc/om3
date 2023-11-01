@@ -21,6 +21,7 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -168,4 +169,16 @@ func (d *discover) Stop() error {
 	d.cancel() // stop cfg and omon via context cancel
 	d.wg.Wait()
 	return nil
+}
+
+func (d *discover) objectLogger(p naming.Path) *plog.Logger {
+	return objectLogger(d.log, p)
+}
+
+func objectLogger(l *plog.Logger, p naming.Path) *plog.Logger {
+	return l.
+		Attr("obj_path", p).
+		Attr("obj_name", p.Name).
+		Attr("obj_namespace", p.Namespace).
+		Attr("obj_kind", p.Kind.String())
 }
