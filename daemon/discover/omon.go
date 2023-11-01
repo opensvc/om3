@@ -15,7 +15,7 @@ var (
 )
 
 func (d *discover) omon(started chan<- bool) {
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover:omon").WithPrefix("daemon: discover: omon: ")
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: omon: ")
 	log.Infof("started")
 	defer log.Infof("stopped")
 	bus := pubsub.BusFromContext(d.ctx)
