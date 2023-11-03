@@ -202,11 +202,6 @@ func (t *T) Start(ctx context.Context) error {
 	t.wg.Add(1)
 	go func(errC chan<- error) {
 		defer t.wg.Done()
-		if stopFeeder, err := t.startFeederPinger(); err != nil {
-			t.log.Infof("collector pinger is not started: %s", err)
-		} else {
-			defer stopFeeder()
-		}
 		errC <- nil
 		t.loop()
 	}(errC)
@@ -398,17 +393,4 @@ func (t *T) scheduleObject(p naming.Path) {
 
 func (t *T) unschedule(p naming.Path) {
 	t.jobs.DelPath(p)
-}
-
-func (t *T) startFeederPinger() (func(), error) {
-	o, err := object.NewNode()
-	if err != nil {
-		return func() {}, err
-	}
-	client, err := o.CollectorFeedClient()
-	if err != nil {
-		return func() {}, err
-	}
-	client.Ping()
-	return client.NewPinger(5 * time.Second), nil
 }
