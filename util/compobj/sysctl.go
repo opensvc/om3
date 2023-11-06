@@ -143,23 +143,25 @@ func (t CompSysctls) Check() ExitCode {
 }
 
 func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
-	values, err := t.getValues(rule, false)
+	currentValues, err := t.getValues(rule, false)
 	if err != nil {
 		t.Errorf("error can't read in file /etc/sysctl.conf :%s\n", err)
 		return ExitNok
 	}
-	if values == nil {
-		values, err = t.getValues(rule, true)
-	}
-	if values == nil {
-		t.Errorf("error can't find the key %s in the list of kernel parameter (/etc/sysctl.conf and live)\n", rule.Key)
+	if currentValues == nil {
+		t.Errorf("error can't find the key %s in the list of kernel parameter (/etc/sysctl.conf)\n", rule.Key)
 		return ExitNok
 	}
-	if len(values) <= *rule.Index {
+	liveValues, err := t.getValues(rule, true)
+	if err != nil {
+		t.Errorf("error can't read live values for the key %s :%s\n", rule.Key, err)
+		return ExitNok
+	}
+	if len(currentValues) <= *rule.Index {
 		t.VerboseInfof("index %d is out of range for key %s--> not ok\n", *rule.Index, rule.Key)
 		return ExitNok
 	}
-	value := values[*rule.Index]
+	value := currentValues[*rule.Index]
 	switch rule.Value.(type) {
 	case float64:
 		newValue, err := strconv.ParseFloat(value, 64)
@@ -167,16 +169,16 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 			t.Errorf("the value given is an int but can't convert the value %s found in /etc/sysctl.conf or in live for key %s\n", value, rule.Key)
 			return ExitNok
 		}
-		if testOperator(newValue, rule.Value.(float64), rule.Op) {
+		if testOperatorFloat64(newValue, rule.Value.(float64), rule.Op) {
 			t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
-			return ExitOk
+			break
 		}
 		t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> not ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
 		return ExitNok
 	case string:
-		if testOperator(value, rule.Value.(string), rule.Op) {
+		if testOperatorString(value, rule.Value.(string), rule.Op) {
 			t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
-			return ExitOk
+			break
 		}
 		t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> not ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
 		return ExitNok
@@ -184,9 +186,69 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 		t.Errorf("type of %s is not float64 or string\n", rule.Value)
 		return ExitNok
 	}
+
+	if liveValues != nil {
+		if len(liveValues) <= *rule.Index {
+			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different--> not ok\n", rule.Key)
+			return ExitNok
+		}
+		if liveValues[*rule.Index] != currentValues[*rule.Index] {
+			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different--> not ok\n", rule.Key)
+			return ExitNok
+		}
+	}
+	return ExitOk
 }
 
-func testOperator[T float64 | string](value T, ruleValue T, operator string) bool {
+func (t CompSysctls) checkRuleForFix(rule CompSysctl) (ExitCode, bool) {
+	values, err := t.getValues(rule, false)
+	if err != nil {
+		t.Errorf("error can't read in file /etc/sysctl.conf :%s\n", err)
+		return ExitNok, false
+	}
+	if values == nil {
+		values, err = t.getValues(rule, true)
+	}
+	if err != nil {
+		t.Errorf("error can't read in live parameters :%s\n", err)
+		return ExitNok, false
+	}
+	if values == nil {
+		t.Errorf("error can't find the key %s in the list of kernel parameter (/etc/sysctl.conf and live)\n", rule.Key)
+		return ExitNok, false
+	}
+	if len(values) <= *rule.Index {
+		t.VerboseInfof("index %d is out of range for key %s--> not ok\n", *rule.Index, rule.Key)
+		return ExitNok, true
+	}
+	value := values[*rule.Index]
+	switch rule.Value.(type) {
+	case float64:
+		newValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			t.Errorf("the value given is an int but can't convert the value %s found in /etc/sysctl.conf or in live for key %s\n", value, rule.Key)
+			return ExitNok, true
+		}
+		if testOperatorFloat64(newValue, rule.Value.(float64), rule.Op) {
+			t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+			return ExitOk, true
+		}
+		t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> not ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+		return ExitNok, true
+	case string:
+		if testOperatorString(value, rule.Value.(string), rule.Op) {
+			t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+			return ExitOk, true
+		}
+		t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> not ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+		return ExitNok, true
+	default:
+		t.Errorf("type of %s is not float64 or string\n", rule.Value)
+		return ExitNok, true
+	}
+}
+
+func testOperatorFloat64(value float64, ruleValue float64, operator string) bool {
 	switch operator {
 	case "=":
 		return value == ruleValue
@@ -199,9 +261,16 @@ func testOperator[T float64 | string](value T, ruleValue T, operator string) boo
 	}
 }
 
-func (t CompSysctls) getValues(rule CompSysctl, checkLive bool) ([]string, error) {
+func testOperatorString(value string, ruleValue string, operator string) bool {
+	if operator == "=" {
+		return value == ruleValue
+	}
+	return true
+}
+
+func (t CompSysctls) getValues(rule CompSysctl, getLiveValue bool) ([]string, error) {
 	var content []byte
-	if checkLive {
+	if getLiveValue {
 		cmd := execSysctl(rule.Key)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -335,34 +404,45 @@ func (t CompSysctls) reloadSysctl() ExitCode {
 	return ExitOk
 }
 
-func (t CompSysctls) fixRule(rule CompSysctl) ExitCode {
-	if t.checkRule(rule) == ExitNok {
+func (t CompSysctls) fixRule(rule CompSysctl) (ExitCode, bool) {
+	needReload := false
+	e, isKeyPresent := t.checkRuleForFix(rule)
+	if !isKeyPresent {
+		return ExitNok, false
+	}
+	if e == ExitNok {
 		changeDone, err := t.modifyKeyInConfFile(rule)
 		if err != nil {
 			t.Errorf("error when trying to modify /etc/sysctl.conf :%s\n", err)
-			return ExitNok
+			return ExitNok, false
 		}
 		if !changeDone {
 			t.Infof("did not find key in /etc/sysctl.conf, trying to read live parameters and to add the new parameters in /etc/sysctl.conf\n")
 			err = t.addKeyInConfFile(rule)
 			if err != nil {
 				t.Errorf("%s", err)
-				return ExitNok
+				return ExitNok, false
 			}
 		}
+		needReload = true
 	}
-	return ExitOk
+	return ExitOk, needReload
 }
 
 func (t CompSysctls) Fix() ExitCode {
 	t.SetVerbose(false)
+	needReload := false
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSysctl)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		eTmp, reload := t.fixRule(rule)
+		e = e.Merge(eTmp)
+		needReload = needReload || reload
 	}
-	return t.reloadSysctl()
+	if needReload {
+		return e.Merge(t.reloadSysctl())
+	}
+	return e
 }
 
 func (t CompSysctls) Fixable() ExitCode {

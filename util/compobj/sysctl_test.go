@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
@@ -110,16 +111,16 @@ func TestSysctlCheck(t *testing.T) {
 			expectedCheckResult: ExitOk,
 		},
 
-		"with a key that is present in live": {
+		"with a key that respect the rule in the config file but that is not the same in live parameters": {
 			rule: CompSysctl{
-				Key:   "net.ipv4.tcp_l3mdev_accept",
+				Key:   "iamnotthesameinlive",
 				Index: pti(0),
 				Op:    "=",
 				Value: float64(0),
 			},
 			sysctlConfigFile:    "./testdata/sysctl_config_file_golden",
 			sysctlOutput:        "./testdata/sysctl.out",
-			expectedCheckResult: ExitOk,
+			expectedCheckResult: ExitNok,
 		},
 
 		"with an index that is out of range": {
@@ -441,6 +442,179 @@ func TestAddKeyInConfFile(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, string(goldenContent), string(content))
 			}
+		})
+	}
+}
+
+func TestSysctlCheckForFix(t *testing.T) {
+	oriOsReadFile := osReadFile
+	defer func() { osReadFile = oriOsReadFile }()
+
+	oriExecSysctl := execSysctl
+	defer func() { execSysctl = oriExecSysctl }()
+	testCases := map[string]struct {
+		rule                       CompSysctl
+		sysctlConfigFile           string
+		sysctlOutput               string
+		expectedCheckResult        ExitCode
+		expectedIsKeyPresentResult bool
+	}{
+		"with a key that is not present": {
+			rule: CompSysctl{
+				Key:   "i.am.not.present",
+				Index: pti(3),
+				Op:    "=",
+				Value: 0,
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitNok,
+			expectedIsKeyPresentResult: false,
+		},
+
+		"with a key that is present in the conf": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(0),
+				Op:    "=",
+				Value: float64(3),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a key that is present in live": {
+			rule: CompSysctl{
+				Key:   "net.ipv4.tcp_l3mdev_accept",
+				Index: pti(0),
+				Op:    "=",
+				Value: float64(0),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with an index that is out of range": {
+			rule: CompSysctl{
+				Key:   "net.ipv4.tcp_l3mdev_accept",
+				Index: pti(89),
+				Op:    "=",
+				Value: float64(0),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitNok,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with an index that is not 0": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    "=",
+				Value: float64(1),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a wrong value and operator =": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    "=",
+				Value: float64(9),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitNok,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a wrong value and operator <=": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    "<=",
+				Value: float64(0),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitNok,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a wrong value and operator >=": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    ">=",
+				Value: float64(2),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitNok,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a true rule and operator <=": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    "<=",
+				Value: float64(2),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with a true rule and operator >=": {
+			rule: CompSysctl{
+				Key:   "kernel.printk",
+				Index: pti(2),
+				Op:    ">=",
+				Value: float64(0),
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+
+		"with value equal to a string and operator =": {
+			rule: CompSysctl{
+				Key:   "kernel.domainname",
+				Index: pti(0),
+				Op:    "=",
+				Value: "example.com",
+			},
+			sysctlConfigFile:           "./testdata/sysctl_config_file_golden",
+			sysctlOutput:               "./testdata/sysctl.out",
+			expectedCheckResult:        ExitOk,
+			expectedIsKeyPresentResult: true,
+		},
+	}
+	obj := CompSysctls{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			osReadFile = func(name string) ([]byte, error) {
+				return os.ReadFile(c.sysctlConfigFile)
+			}
+			execSysctl = func(key string) *exec.Cmd {
+				return exec.Command("cat", c.sysctlOutput)
+			}
+			e, isKeyPresent := obj.checkRuleForFix(c.rule)
+			require.Equal(t, c.expectedCheckResult, e)
+			require.Equal(t, c.expectedIsKeyPresentResult, isKeyPresent)
+			fmt.Println(isKeyPresent)
 		})
 	}
 }
