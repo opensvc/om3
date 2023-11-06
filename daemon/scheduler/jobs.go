@@ -64,7 +64,7 @@ func (o T) action(e schedule.Entry) error {
 	var cmdEnv []string
 	cmdEnv = append(
 		cmdEnv,
-		env.DaemonOriginSetenvArg(),
+		env.OriginSetenvArg(env.ActionOriginDaemonScheduler),
 		env.ParentSessionIDSetenvArg(),
 	)
 

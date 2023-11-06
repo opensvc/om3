@@ -44,7 +44,7 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 	var cmdEnv []string
 	cmdEnv = append(
 		cmdEnv,
-		env.DaemonOriginSetenvArg(),
+		env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
 	)
 	cmd := command.New(
 		command.WithName(cmdPath),
