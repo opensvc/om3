@@ -35,6 +35,7 @@ type (
 	ObjInfo struct {
 		DefaultPrefix  string      `json:"default_prefix"`
 		ExampleValue   interface{} `json:"example_value"`
+		ExampleEnv     interface{} `json:"example_env"`
 		Description    string      `json:"description"`
 		FormDefinition string      `json:"form_definition"`
 	}
@@ -96,12 +97,27 @@ func (t ObjInfo) MarkDown() string {
 	}
 	b, _ := json.MarshalIndent(t.ExampleValue, "", "    ")
 	example := string(b)
+	env, _ := json.MarshalIndent(t.ExampleEnv, "", "    ")
+	exampleEnv := string(env)
 	s := ""
+	s += "Environment variables\n"
+	s += "===========\n"
+	s += "\n"
+	s += "default prefix : "
+	s += indent(t.DefaultPrefix) + "\n"
+	s += "\n"
 	s += "Description\n"
 	s += "===========\n"
 	s += "\n"
 	s += indent(t.Description) + "\n"
 	s += "\n"
+	if exampleEnv != "null" {
+		s += "Example environment\n"
+		s += "============\n"
+		s += "\n::\n\n"
+		s += indent(exampleEnv) + "\n"
+		s += "\n"
+	}
 	s += "Example rule\n"
 	s += "============\n"
 	s += "\n::\n\n"
