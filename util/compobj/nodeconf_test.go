@@ -1,8 +1,9 @@
 package main
 
 import (
-	"context"
+	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/key"
 	"github.com/stretchr/testify/require"
 	"os/user"
 	"testing"
@@ -20,7 +21,7 @@ func TestNodeConfAdd(t *testing.T) {
 			expectedRules: []any{CompNodeconf{
 				Key:   "test",
 				Op:    "=",
-				Value: float64(5),
+				Value: "5",
 			}},
 		},
 
@@ -60,11 +61,11 @@ func TestNodeConfAdd(t *testing.T) {
 			expectedRules: []any{CompNodeconf{
 				Key:   "test",
 				Op:    "=",
-				Value: float64(5),
+				Value: "5",
 			}, CompNodeconf{
 				Key:   "test2",
 				Op:    ">=",
-				Value: float64(3),
+				Value: "3",
 			}},
 		},
 
@@ -92,118 +93,114 @@ func TestNodeConfAdd(t *testing.T) {
 		})
 	}
 }
-func TestNodeConfCheckRule(t *testing.T) {
-	oriOmGet := omGet
-	defer func() { omGet = oriOmGet }()
-
+func TestNodeConfCheckRuleFixRule(t *testing.T) {
 	testCases := map[string]struct {
 		rule                CompNodeconf
 		needRoot            bool
-		omGetOutput         string
+		keys                []string
 		expectedCheckResult ExitCode
 	}{
-		"with a true unset rule": {
+		"with a true = rule (string)": {
 			rule: CompNodeconf{
-				Key:   "test",
-				Op:    "unset",
-				Value: "",
+				Key:   "section.test",
+				Op:    "=",
+				Value: "0",
 			},
 			needRoot:            true,
-			omGetOutput:         "",
+			keys:                []string{`section.test="0"`},
+			expectedCheckResult: ExitOk,
+		},
+
+		"with a false = rule (string)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    "=",
+				Value: "9",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test="0"`},
+			expectedCheckResult: ExitNok,
+		},
+
+		"with a true = rule (int)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    "=",
+				Value: "0",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test=0`},
+			expectedCheckResult: ExitOk,
+		},
+
+		"with a true <= rule (int)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    "<=",
+				Value: "0",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test="-2"`},
+			expectedCheckResult: ExitOk,
+		},
+
+		"with a false <= rule (int)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    "<=",
+				Value: "0",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test="7"`},
+			expectedCheckResult: ExitNok,
+		},
+
+		"with a false >= rule (int)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    ">=",
+				Value: "0",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test="-4"`},
+			expectedCheckResult: ExitNok,
+		},
+
+		"with a true >= rule (int)": {
+			rule: CompNodeconf{
+				Key:   "section.test",
+				Op:    ">=",
+				Value: "0",
+			},
+			needRoot:            true,
+			keys:                []string{`section.test="4"`},
 			expectedCheckResult: ExitOk,
 		},
 
 		"with a false unset rule": {
 			rule: CompNodeconf{
-				Key:   "test",
+				Key:   "section.test",
 				Op:    "unset",
-				Value: "",
+				Value: nil,
 			},
 			needRoot:            true,
-			omGetOutput:         "laala",
+			keys:                []string{`section.test="-64"`},
 			expectedCheckResult: ExitNok,
 		},
 
-		"with a true = rule": {
+		"with a true unset rule": {
 			rule: CompNodeconf{
-				Key:   "test",
-				Op:    "=",
-				Value: "val",
+				Key:   "section.test",
+				Op:    "unset",
+				Value: nil,
 			},
 			needRoot:            true,
-			omGetOutput:         "val",
-			expectedCheckResult: ExitOk,
-		},
-
-		"with a false = rule": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    "=",
-				Value: "valee",
-			},
-			needRoot:            true,
-			omGetOutput:         "val",
-			expectedCheckResult: ExitNok,
-		},
-
-		"a >= rule with a string": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    ">=",
-				Value: "val",
-			},
-			needRoot:            true,
-			omGetOutput:         "val",
-			expectedCheckResult: ExitNok,
-		},
-
-		"a <= rule with a string": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    ">=",
-				Value: "val",
-			},
-			needRoot:            true,
-			omGetOutput:         "val",
-			expectedCheckResult: ExitNok,
-		},
-
-		"a >= true rule with an int": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    ">=",
-				Value: float64(3),
-			},
-			needRoot:            true,
-			omGetOutput:         "5",
-			expectedCheckResult: ExitOk,
-		},
-
-		"a >= false rule with an int": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    ">=",
-				Value: float64(8),
-			},
-			needRoot:            true,
-			omGetOutput:         "5",
-			expectedCheckResult: ExitNok,
-		},
-
-		"a true = rule for an int": {
-			rule: CompNodeconf{
-				Key:   "test",
-				Op:    "=",
-				Value: float64(5),
-			},
-			needRoot:            true,
-			omGetOutput:         "5",
+			keys:                []string{},
 			expectedCheckResult: ExitOk,
 		},
 	}
 
 	obj := CompNodeconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
-
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
 			if c.needRoot {
@@ -213,10 +210,16 @@ func TestNodeConfCheckRule(t *testing.T) {
 					t.Skip("need root")
 				}
 			}
-			omGet = func(node *object.Node, ctx context.Context, kw string) (interface{}, error) {
-				return c.omGetOutput, nil
+			o, err := object.NewNode()
+			require.NoError(t, err)
+			for _, k := range c.keys {
+				require.NoError(t, o.Config().SetKeys(*keyop.Parse(k)))
 			}
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
+			o.Config().Unset(key.New("section", "test"))
+			require.Equal(t, ExitOk, obj.fixRule(c.rule))
+			require.Equal(t, ExitOk, obj.checkRule(c.rule))
+			require.NoError(t, o.Config().Commit())
 		})
 	}
 }
