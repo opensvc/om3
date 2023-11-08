@@ -369,7 +369,7 @@ func (t T) DoAsync() error {
 		t.ObjectSelector,
 		objectselector.SelectionWithClient(c),
 	)
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
@@ -719,7 +719,7 @@ func (t T) Do() error {
 func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, naming.Path) (any, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)
 
-	paths, err := selection.Expand()
+	paths, err := selection.MustExpand()
 	if err != nil {
 		return results, err
 	}

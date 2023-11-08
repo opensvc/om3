@@ -30,6 +30,9 @@ func (t *CmdObjectLs) Run(selector, kind string) error {
 	}
 	switch resp.StatusCode() {
 	case 200:
+		if len(resp.JSON200.Items) == 0 {
+			return fmt.Errorf("%s: no such object", mergedSelector)
+		}
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
 			Output:        t.Output,

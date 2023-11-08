@@ -3,6 +3,7 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -44,6 +45,7 @@ const (
 var (
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
+	ErrExist               = errors.New("no such object")
 )
 
 // NewSelection allocates a new object selection
@@ -113,6 +115,16 @@ func (t *Selection) Expand() (naming.Paths, error) {
 	err := t.expand()
 	log.Debug().Msgf("%d objects selected", len(t.paths))
 	return t.paths, err
+}
+
+func (t *Selection) MustExpand() (naming.Paths, error) {
+	if paths, err := t.Expand(); err != nil {
+		return paths, err
+	} else if len(paths) == 0 {
+		return paths, fmt.Errorf("%s: %w", t.SelectorExpression, ErrExist)
+	} else {
+		return paths, nil
+	}
 }
 
 // ExpandSet returns a set of the paths returned by Expand. Usually to
