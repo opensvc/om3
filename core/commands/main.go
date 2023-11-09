@@ -10,7 +10,7 @@ func mergeSelector(selector string, subsysSelector string, kind string, defaultS
 	default:
 		s = defaultSelector
 	}
-	if kind != "" {
+	if (subsysSelector != "") && (kind != "") {
 		kindSelector := "*/" + kind + "/*"
 		if s == "" {
 			s = kindSelector
