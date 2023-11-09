@@ -24,6 +24,7 @@ var (
 	defPathDoc          = filepath.FromSlash(fmt.Sprintf("/usr/share/doc/%s", Program))
 	defPathHTML         = filepath.FromSlash(fmt.Sprintf("/usr/share/%s/html", Program))
 	defPathDrivers      = filepath.FromSlash(fmt.Sprintf("/usr/libexec/%s", Program))
+	defPathCompliance   = filepath.FromSlash(fmt.Sprintf("/usr/share/%s/compliance", Program))
 )
 
 type (
@@ -47,6 +48,7 @@ type (
 		Doc          string `mapstructure:"doc"`
 		HTML         string `mapstructure:"html"`
 		Drivers      string `mapstructure:"drivers"`
+		Compliance   string `mapstructure:"compliance"`
 	}
 )
 
