@@ -117,7 +117,10 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(o.log),
-		command.WithVarEnv(env.OriginSetenvArg(env.ActionOriginDaemonMonitor)),
+		command.WithVarEnv(
+			env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
+			env.ActionOrchestrationIdVar+"="+o.state.OrchestrationId.String(),
+		),
 	)
 	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}}
 	if title != "" {

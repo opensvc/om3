@@ -12,6 +12,7 @@ type (
 )
 
 var (
+	ActionOrchestrationIdVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
 	ActionOriginVar                          = "OSVC_ACTION_ORIGIN"
 	ActionOriginUser            ActionOrigin = "user"
 	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
