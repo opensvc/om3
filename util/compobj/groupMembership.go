@@ -80,7 +80,7 @@ Inputs:
 )
 
 func init() {
-	m["groupmembership"] = NewCompGroupsMemberShips
+	m["group_membership"] = NewCompGroupsMemberShips
 }
 
 func NewCompGroupsMemberShips() interface{} {
