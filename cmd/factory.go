@@ -165,6 +165,22 @@ func newCmdClusterFreeze() *cobra.Command {
 	return cmd
 }
 
+func newCmdClusterLogs() *cobra.Command {
+	var options commands.CmdClusterLogs
+	cmd := &cobra.Command{
+		Use:     "logs",
+		Aliases: []string{"logs", "log", "lo"},
+		Short:   "show all nodes logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLogs(flags, &options.OptsLogs)
+	return cmd
+}
+
 func newCmdClusterThaw() *cobra.Command {
 	var options commands.CmdClusterUnfreeze
 	cmd := &cobra.Command{
@@ -1092,23 +1108,17 @@ func newCmdNodeGet() *cobra.Command {
 
 func newCmdNodeLogs() *cobra.Command {
 	var options commands.CmdNodeLogs
-	var filter []string
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
-		Short:   "Filter and format logs",
+		Short:   "show this node logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("filter").Changed {
-				options.Filter = &filter
-			}
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagLogsFollow(flags, &options.Follow)
-	addFlagLogsLines(flags, &options.Lines)
-	addFlagLogsFilter(flags, &filter)
+	addFlagsLogs(flags, &options.OptsLogs)
 	return cmd
 }
 
@@ -2048,23 +2058,17 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 
 func newCmdObjectLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectLogs
-	var filter []string
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
-		Short:   "filter and format logs",
+		Short:   "show object logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("filter").Changed {
-				options.Filter = &filter
-			}
 			return options.Run(selectorFlag, kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagLogsFollow(flags, &options.Follow)
-	addFlagLogsLines(flags, &options.Lines)
-	addFlagLogsFilter(flags, &filter)
+	addFlagsLogs(flags, &options.OptsLogs)
 	return cmd
 }
 

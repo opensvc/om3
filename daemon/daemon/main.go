@@ -19,6 +19,7 @@ import (
 
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/collector"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -142,6 +143,7 @@ func (t *T) Start(ctx context.Context) error {
 		dns.New(daemonenv.DrainChanDuration),
 		discover.New(daemonenv.DrainChanDuration),
 		hb.New(t.ctx),
+		collector.New(),
 		scheduler.New(),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {

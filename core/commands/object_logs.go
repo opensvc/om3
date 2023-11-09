@@ -20,9 +20,7 @@ import (
 type (
 	CmdObjectLogs struct {
 		OptsGlobal
-		Follow bool
-		Lines  int
-		Filter *[]string
+		OptsLogs
 	}
 )
 
@@ -53,7 +51,7 @@ func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 	}
 	l := paths.StrSlice()
 	reader, err := c.NewGetLogs().
-		SetFilters(t.Filter).
+		SetFilters(&t.Filter).
 		SetLines(&t.Lines).
 		SetFollow(&t.Follow).
 		SetPaths(&l).
@@ -148,7 +146,7 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	if err != nil {
 		return err
 	}
-	matches := parseFilters(t.Filter)
+	matches := parseFilters(&t.Filter)
 	last := len(paths) - 1
 	for i, path := range paths {
 		matches = append(matches, "OBJ_PATH="+path.String())

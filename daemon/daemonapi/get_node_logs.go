@@ -97,6 +97,9 @@ func parseLogFilters(l *[]string) ([]string, error) {
 		return filters, nil
 	}
 	for _, s := range *l {
+		if s == "" {
+			continue
+		}
 		_, _, err := parseLogFilter(s)
 		if err != nil {
 			return nil, err

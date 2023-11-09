@@ -1,15 +1,22 @@
 package env
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/opensvc/om3/util/xsession"
 )
 
+type (
+	ActionOrigin string
+)
+
 var (
-	ActionOriginVar    = "OSVC_ACTION_ORIGIN"
-	ActionOriginUser   = "user"
-	ActionOriginDaemon = "daemon"
+	ActionOrchestrationIdVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
+	ActionOriginVar                          = "OSVC_ACTION_ORIGIN"
+	ActionOriginUser            ActionOrigin = "user"
+	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
+	ActionOriginDaemonScheduler ActionOrigin = "daemon/scheduler"
 
 	ParentSessionIDVar = "OSVC_PARENT_SESSION_UUID"
 	NameVar            = "OSVC_NAME"
@@ -22,24 +29,29 @@ var (
 // is set to "daemon". The opensvc daemon sets this variable on every command
 // it executes.
 func HasDaemonOrigin() bool {
-	return os.Getenv(ActionOriginVar) == ActionOriginDaemon
+	switch Origin() {
+	case ActionOriginDaemonMonitor, ActionOriginDaemonScheduler:
+		return true
+	default:
+		return false
+	}
 }
 
 // Origin returns the action origin using a env var that the daemon sets when
-// executing a CRM action. The only possible return values are "daemon" or "user".
-func Origin() string {
+// executing a CRM action.
+func Origin() ActionOrigin {
 	s := os.Getenv(ActionOriginVar)
 	if s == "" {
-		s = ActionOriginUser
+		return ActionOriginUser
 	}
-	return s
+	return ActionOrigin(s)
 }
 
-// DaemonOriginSetenvArg returns the arg to pass to environment variable
+// OriginSetenvArg returns the arg to pass to environment variable
 // setter functions to hint the called CRM command was launched from a daemon
 // policy.
-func DaemonOriginSetenvArg() string {
-	return ActionOriginVar + "=" + ActionOriginDaemon
+func OriginSetenvArg(s ActionOrigin) string {
+	return fmt.Sprintf("%s=%s", ActionOriginVar, s)
 }
 
 // ParentSessionIDSetenvArg returns the arg to pass to environment variable

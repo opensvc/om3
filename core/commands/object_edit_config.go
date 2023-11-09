@@ -28,7 +28,7 @@ type (
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := objectselector.NewSelection(selector)
 	wc := clientcontext.IsSet()
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}

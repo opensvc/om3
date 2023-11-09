@@ -142,6 +142,7 @@ const (
 	MonitorGlobalExpectPlacedAt
 	MonitorGlobalExpectProvisioned
 	MonitorGlobalExpectPurged
+	MonitorGlobalExpectRestarted
 	MonitorGlobalExpectStarted
 	MonitorGlobalExpectStopped
 	MonitorGlobalExpectThawed
@@ -242,6 +243,7 @@ var (
 		MonitorGlobalExpectPlacedAt:      "placed@",
 		MonitorGlobalExpectProvisioned:   "provisioned",
 		MonitorGlobalExpectPurged:        "purged",
+		MonitorGlobalExpectRestarted:     "restarted",
 		MonitorGlobalExpectStarted:       "started",
 		MonitorGlobalExpectStopped:       "stopped",
 		MonitorGlobalExpectThawed:        "thawed",
@@ -257,6 +259,7 @@ var (
 		"placed@":       MonitorGlobalExpectPlacedAt,
 		"provisioned":   MonitorGlobalExpectProvisioned,
 		"purged":        MonitorGlobalExpectPurged,
+		"restarted":     MonitorGlobalExpectRestarted,
 		"started":       MonitorGlobalExpectStarted,
 		"stopped":       MonitorGlobalExpectStopped,
 		"thawed":        MonitorGlobalExpectThawed,

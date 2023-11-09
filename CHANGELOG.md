@@ -124,6 +124,8 @@
 
 * **breaking change:** "om ... set|unset" no longer accept --param and --value. Use --kw instead, which was also supported in v2.
 
+* **breaking change:** "om node logs" now display only local logs. A new "om cluster logs" command displays all cluster nodes logs.
+
 * "unset" now accepts "--section <name>" to remove an cluster, node or object configuration section.
 
 * "om monitor" instance availability icons changes:
@@ -201,6 +203,14 @@
 * **breaking change:** replace relay heartbeat secret keyword with username and password.
 
 	The password value is the sec object path containing the actual relay password encoded in the password key.
+
+#### logging
+
+* **breaking change** OpenSVC no longer logs to private log files. It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
+
+* The **sc** log entries attribute is replaced with **origin=daemon/scheduler**.
+
+* The **origin=daemon** log entries attribute is replaced with **origin=daemon/monitor**
 
 #### arbitrator
 

@@ -37,6 +37,12 @@ func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 
 }
 
+func addFlagsLogs(flagSet *pflag.FlagSet, p *commands.OptsLogs) {
+	flagSet.BoolVarP(&p.Follow, "follow", "f", false, "Follow the log feed.")
+	flagSet.IntVarP(&p.Lines, "lines", "n", 50, "Report the last n log entries.")
+	flagSet.StringArrayVar(&p.Filter, "filter", []string{}, "Report only log entries matching labels (path=svc1).")
+}
+
 func addFlagsLock(flagSet *pflag.FlagSet, p *commands.OptsLock) {
 	addFlagNoLock(flagSet, &p.Disable)
 	addFlagWaitLock(flagSet, &p.Timeout)
@@ -169,18 +175,6 @@ func addFlagLeader(flagSet *pflag.FlagSet, p *bool) {
 
 func addFlagLocal(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "local", false, "Inline action on local instance.")
-}
-
-func addFlagLogsFollow(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "follow", "f", false, "Follow the log feed.")
-}
-
-func addFlagLogsLines(flagSet *pflag.FlagSet, p *int) {
-	flagSet.IntVarP(p, "lines", "n", 50, "Report the last n log entries.")
-}
-
-func addFlagLogsFilter(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringArrayVar(p, "filter", []string{}, "Request only logs matching labels (path=svc1).")
 }
 
 func addFlagMatch(flagSet *pflag.FlagSet, p *string) {

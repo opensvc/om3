@@ -17,6 +17,14 @@ type (
 		Server         string
 	}
 
+	// OptsLog contains options used by all log commands:
+	// node logs, cluster logs, object logs
+	OptsLogs struct {
+		Follow bool
+		Lines  int
+		Filter []string
+	}
+
 	// OptsAsync contains options accepted by all actions having an orchestration
 	OptsAsync struct {
 		Watch bool

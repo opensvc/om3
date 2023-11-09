@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ybbus/jsonrpc"
 
 	"github.com/opensvc/om3/util/hostname"
@@ -19,44 +21,82 @@ var (
 	Alive atomic.Bool
 )
 
-// Client exposes the jsonrpc2 Call function wrapped to add the auth arg
-type Client struct {
-	client jsonrpc.RPCClient
-	secret string
-	log    *plog.Logger
+type (
+	// Client exposes the jsonrpc2 Call function wrapped to add the auth arg
+	Client struct {
+		client   jsonrpc.RPCClient
+		endpoint string
+		secret   string
+		log      *plog.Logger
+	}
+	Pinger struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+		client *Client
+		id     uuid.UUID
+	}
+
+	// pinger command channel messages
+	pingerStop    struct{}
+	pingerStopped struct{}
+)
+
+func (c Client) String() string {
+	return c.endpoint
 }
 
-func (c Client) NewPinger(d time.Duration) func() {
-	stop := make(chan bool)
+func (c *Client) SetLogger(log *plog.Logger) {
+	c.log = log
+}
+
+func (c *Client) NewPinger() *Pinger {
+	pinger := Pinger{
+		id:     uuid.New(),
+		client: c,
+	}
+	return &pinger
+}
+
+func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
+	ctx, cancel := context.WithCancel(ctx)
+	t.ctx = ctx
+	t.cancel = cancel
 	go func() {
-		ticker := time.NewTicker(d)
+		t.client.log.Infof("collector pinger %s started", t.id)
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {
-			case <-stop:
-				return
 			case <-ticker.C:
-				c.Ping()
+				if !Alive.Load() {
+					if t.client.Ping() {
+						t.client.log.Infof("enable collector clients")
+						Alive.Store(true)
+					}
+				}
+			case <-t.ctx.Done():
+				t.client.log.Infof("collector pinger %s stopped", t.id)
+				return
 			}
 		}
 	}()
-	stopFunc := func() {
-		stop <- true
-	}
-	return stopFunc
 }
 
-func (c *Client) Ping() {
-	alive := Alive.Load()
+func (t *Pinger) Stop() {
+	if t.cancel != nil {
+		t.cancel()
+	}
+	t.cancel = nil
+	t.ctx = nil
+}
+
+func (c *Client) Ping() bool {
 	_, err := c.Call("daemon_ping")
-	c.log.Attr("collector_alive", alive).Debugf("ping collector")
 	switch {
-	case (err != nil) && alive:
-		c.log.Infof("disable collector clients: %s", err)
-		Alive.Store(false)
-	case (err == nil) && !alive:
-		c.log.Infof("enable collector clients")
-		Alive.Store(true)
+	case err == nil:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -184,8 +224,9 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 				},
 			},
 		}),
-		secret: secret,
-		log:    plog.NewDefaultLogger().WithPrefix("collector: rpc: ").Attr("pkg", "core/collector/rpc"),
+		endpoint: url.String(),
+		secret:   secret,
+		log:      plog.NewDefaultLogger().WithPrefix("collector: rpc: ").Attr("pkg", "core/collector/rpc"),
 	}
 	return client, nil
 }
@@ -225,11 +266,12 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	response, err := t.client.Call(method, t.paramsWithAuth(params))
 	l := t.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	if response != nil && response.Error != nil {
-		l.Attr("collector_rpc_response_data", response.Error.Data).
-			Attr("collector_rpc_response_code", response.Error.Code).
-			Errorf("call: %s: %s", response.Error.Message, response.Error.Data)
+		l.Attr("collector_rpc_response_data", response.Error.Data).Attr("collector_rpc_response_code", response.Error.Code).Debugf("call: %s: %s", response.Error.Message, response.Error.Data)
 	} else if err != nil {
-		l.Errorf("call: %s: %s", method, err)
+		if Alive.Load() {
+			l.Errorf("disable collector clients: call: %s: %s", method, err)
+			Alive.Store(false)
+		}
 	} else {
 		l.Infof("call: %s", method)
 	}

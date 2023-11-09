@@ -3,10 +3,12 @@ package object
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -97,6 +99,9 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 		Attr("obj_name", t.path.Name).
 		Attr("obj_namespace", t.path.Namespace).
 		WithPrefix(fmt.Sprintf("instance: %s: ", t.path))
+	if v := os.Getenv(env.ActionOrchestrationIdVar); v != "" {
+		t.log = t.log.Attr("ORCHESTRATION_ID", v)
+	}
 	if err := t.loadConfig(referrer); err != nil {
 		return err
 	}
