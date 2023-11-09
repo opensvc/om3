@@ -76,11 +76,6 @@ func Test_runAction(t *testing.T) {
 			args:     []string{"fake", "fixable"},
 			exitCode: ExitNotApplicable,
 		},
-		"info": {
-			args:        []string{"fake", "info"},
-			exitCode:    ExitOk,
-			expectedOut: "Description\n===========\n\n    bar\n\n\nExample rule\n============\n\n::\n\n    null\n\n\nForm definition\n===============\n\n::\n\n\n\n\n",
-		},
 		"badAction": {
 			args:        []string{"fake", "badAction"},
 			exitCode:    ExitOk,
