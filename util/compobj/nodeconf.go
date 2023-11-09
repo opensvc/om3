@@ -119,7 +119,6 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 		return ExitNok
 	}
 	currentVal := n.Config().Get(key.Parse(rule.Key))
-	fmt.Println("val :", currentVal)
 	if currentVal == "" {
 		if rule.Op == "unset" {
 			t.VerboseInfof("the key %s is unset and should be unset --> ok\n", rule.Key)
