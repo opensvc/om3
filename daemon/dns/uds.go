@@ -289,9 +289,8 @@ func (t *dns) startUDSListener() error {
 		for {
 			conn, err := l.Accept()
 			if err != nil && errors.Is(err, net.ErrClosed) {
-				return
-			} else {
 				t.log.Errorf("UDS accept: %s", err)
+				return
 			}
 			t.wg.Add(1)
 			go func() {
