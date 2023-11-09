@@ -186,6 +186,7 @@ func setDefaults(root string) {
 		nodeViper.SetDefault("paths.etcns", defPathEtcNs)
 		nodeViper.SetDefault("paths.tmp", defPathTmp)
 		nodeViper.SetDefault("paths.doc", defPathDoc)
+		nodeViper.SetDefault("paths.compliance", defPathCompliance)
 		nodeViper.SetDefault("paths.html", defPathHTML)
 		nodeViper.SetDefault("paths.drivers", defPathDrivers)
 	} else {
@@ -204,6 +205,7 @@ func setDefaults(root string) {
 		nodeViper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
 		nodeViper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
 		nodeViper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
+		nodeViper.SetDefault("paths.compliance", filepath.Join(root, "share", "compliance"))
 		nodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
 		nodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
 	}

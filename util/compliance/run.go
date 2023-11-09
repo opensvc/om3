@@ -330,10 +330,10 @@ func (t *Run) getObjectFunc(class string) objectExecFunc {
 }
 
 func (t *Run) objectExec(action Action, v Var, env []string, ma *ModuleAction) int {
-	path := filepath.Join(t.main.varDir, "com.opensvc", v.Class+".py")
+	//path := filepath.Join(t.main.varDir, "com.opensvc", v.Class+".py")
 	cmd := command.New(
-		command.WithName(rawconfig.Paths.Python),
-		command.WithVarArgs(path, v.EnvName(), string(action)),
+		command.WithName(filepath.Join(rawconfig.Paths.Compliance, v.Class)),
+		command.WithVarArgs(v.EnvName(), string(action)),
 		command.WithIgnoredExitCodes(),
 		command.WithEnv(env),
 		command.WithOnStdoutLine(func(s string) {
