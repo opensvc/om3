@@ -331,6 +331,21 @@ func newCmdDaemonRunning() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonShutdown() *cobra.Command {
+	var options commands.CmdDaemonShutdown
+	cmd := &cobra.Command{
+		Use:   "shutdown",
+		Short: "Shutdown all local svc and vol objects then shutdown the daemon.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagDuration(flags, &options.Timeout)
+	return cmd
+}
+
 func newCmdDaemonStart() *cobra.Command {
 	var options commands.CmdDaemonStart
 	cmd := &cobra.Command{
