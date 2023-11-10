@@ -380,18 +380,18 @@ func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
 	if strings.HasPrefix(rule.Path, "/") {
 		err := os.Mkdir(rule.Path, 0666)
 		if err != nil {
-			t.VerboseErrorf("can't create the file :%s\n", rule.Path)
+			t.VerboseErrorf("can't create the file: %s\n", rule.Path)
 			return ExitNok
 		}
 		return ExitOk
 	}
 	f, err := os.Create(rule.Path)
 	if err != nil {
-		t.VerboseErrorf("can't create the file :%s\n", rule.Path)
+		t.VerboseErrorf("can't create the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	if err = f.Close(); err != nil {
-		t.VerboseErrorf("can't close the file :%s\n", rule.Path)
+		t.VerboseErrorf("can't close the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	return ExitOk

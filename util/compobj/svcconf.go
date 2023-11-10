@@ -181,7 +181,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	o, err := object.NewConfigurer(svcName)
 	var op, leftFilter, rightFilter string
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s\n", err)
+		t.Errorf("error can't create an configurer obj: %s\n", err)
 		return false
 	}
 
@@ -211,7 +211,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 func (t CompSvcconfs) checkValue(resourceName string, key string, value string, op string) bool {
 	o, err := object.NewConfigurer(svcName)
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s\n", err)
+		t.Errorf("error can't create an configurer obj: %s\n", err)
 		return false
 	}
 	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + key + op + value))
@@ -261,7 +261,7 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s --> not ok need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
 		o, err := object.NewConfigurer(svcName)
 		if err != nil {
-			t.Errorf("error can't create an configurer obj : %s\n", err)
+			t.Errorf("error can't create an configurer obj: %s\n", err)
 			return ExitNok
 		}
 		_, _, variable := t.getKeyParts(rule)

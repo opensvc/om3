@@ -70,13 +70,13 @@ var (
 		}
 		shadowFileContent, err = os.ReadFile("/etc/shadow")
 		if err != nil {
-			t.Errorf("can't open /etc/shadow : %s\n", err)
+			t.Errorf("can't open /etc/shadow: %s\n", err)
 			return ExitNok
 		}
 
 		passwdFileContent, err = os.ReadFile("/etc/passwd")
 		if err != nil {
-			t.Errorf("can't open /etc/passwd : %s\n", err)
+			t.Errorf("can't open /etc/passwd: %s\n", err)
 			return ExitNok
 		}
 		return ExitOk
@@ -305,7 +305,7 @@ func (t CompUsers) checkFilesNsswitch() bool {
 	nsswitchFileContent, err := osReadFile("/etc/nsswitch.conf")
 	var isPasswordInFiles, isShadowInFiles bool
 	if err != nil {
-		t.Errorf("can't open /etc/nsswitch to check if shadow and password are using files :%s\n", err)
+		t.Errorf("can't open /etc/nsswitch to check if shadow and password are using files: %s\n", err)
 		return false
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(nsswitchFileContent))
@@ -609,7 +609,7 @@ func (t CompUsers) fixGid(rule CompUser) ExitCode {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
 	return ExitOk
@@ -620,7 +620,7 @@ func (t CompUsers) fixUid(rule CompUser) ExitCode {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
 	return ExitOk
@@ -661,14 +661,14 @@ func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
 		cmd := exec.Command("cp", "-R", "/etc/skel/*", rule.Home)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Errorf("%s:%s", err, output)
+			t.Errorf("%s: %s", err, output)
 		}
 	}
 
 	cmd := execAddHomeCommand(rule.Home, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 	}
 	return ExitOk
 }
@@ -678,7 +678,7 @@ func (t CompUsers) fixShell(rule CompUser) ExitCode {
 	cmd := execShellCommand(rule.Shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
 	return ExitOk
@@ -708,7 +708,7 @@ func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 	rule.User = rule.User[1:]
 	for _, usrBlackList := range blackList {
 		if usrBlackList == rule.User {
-			t.Errorf("cowardly refusing to delete user : %s\n", rule.User)
+			t.Errorf("cowardly refusing to delete user: %s\n", rule.User)
 			return ExitNok
 		}
 	}
@@ -716,7 +716,7 @@ func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 	cmd := execDelCommand(rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s\n", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	return ExitOk
