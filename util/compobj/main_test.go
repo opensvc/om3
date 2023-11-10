@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type (
@@ -101,7 +102,7 @@ func Test_runAction(t *testing.T) {
 			if tc.expectedErr != "" {
 				wErr = bytes.NewBuffer(bErr)
 			}
-			require.Equal(t, tc.exitCode, mainArgs(tc.args, wOut, wErr))
+			require.Equal(t, tc.exitCode, objMain(tc.args, wOut, wErr))
 
 			if tc.expectedOut != "" {
 				b := make([]byte, len(tc.expectedOut)+1000)

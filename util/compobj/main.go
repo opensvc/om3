@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -166,34 +168,87 @@ func (t Obj) Infof(format string, va ...interface{}) {
 }
 
 func syntax() {
-	fmt.Fprintf(os.Stderr, `syntax:
-%s <ENV VARS PREFIX> check|fix|fixable
-%s test|info
-`, os.Args[0], os.Args[0])
+	fmt.Fprintf(os.Stderr, `Usage of %s:
+  <ENV VARS PREFIX> check     report system non-compliance issues with the rules pointed by <ENV VARS PREFIX>
+  <ENV VARS PREFIX> fix       fix issues reported by check
+  <ENV VARS PREFIX> fixable   report if issues are fixable
+  info                        print the compobj manifest
+  test                        run the compobj test
+`, os.Args[0])
 }
 
-func links(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "The compliance objects in this collection must be called via a symlink.")
-	_, _ = fmt.Fprintln(w, "Collection content:")
+func fprintHelp(w io.Writer) {
+	_, _ = fmt.Fprint(w, "The compliance objects in this bundle must be called via a symlink.\n\n")
+	_, _ = fmt.Fprint(w, "Bundle content:\n")
 	for k := range m {
 		_, _ = fmt.Fprintf(w, "  %s\n", k)
 	}
+	_, _ = fmt.Fprint(w, "\n")
 }
 func (t exitCodePair) is(e0 ExitCode, e1 ExitCode) bool {
 	return (t[0] == e0 && t[1] == e1) || (t[1] == e0 && t[0] == e1)
 }
 
 func main() {
-	e := mainArgs(os.Args, os.Stdout, os.Stderr)
-	e.Exit()
+	if p, err := os.Readlink(os.Args[0]); err != nil || filepath.Base(p) == filepath.Base(os.Args[0]) {
+		if err := bundleMain(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	} else {
+		objMain(os.Args, os.Stdout, os.Stderr).Exit()
+	}
+}
+func symlink(oldname, newname string) error {
+	err := os.Symlink(oldname, newname)
+	switch {
+	case errors.Is(err, os.ErrExist):
+		if tgt, err := os.Readlink(newname); err != nil {
+			return err
+		} else if tgt == oldname {
+			fmt.Printf("symlink %s %s: already exists\n", oldname, newname)
+		} else {
+			fmt.Printf("remove symlink %s %s\n", tgt, newname)
+			if err := os.Remove(newname); err != nil {
+				return err
+			}
+
+			if err := symlink(oldname, newname); err != nil {
+				return err
+			}
+		}
+	case err != nil:
+		return err
+	default:
+		fmt.Printf("symlink %s %s\n", oldname, newname)
+	}
+	return nil
 }
 
-func mainArgs(osArgs []string, wOut, wErr io.Writer) ExitCode {
-	objName := filepath.Base(osArgs[0])
-	if p, err := os.Readlink(osArgs[0]); err != nil || filepath.Base(p) == objName {
-		links(wErr)
-		return ExitOk
+func bundleMain() error {
+	installPtr := flag.String("i", "", "install bundled comp objs as symlinks in a directory")
+	flag.Parse()
+	switch {
+	case *installPtr != "":
+		oldname, err := filepath.Abs(os.Args[0])
+		if err != nil {
+			return err
+		}
+		for k := range m {
+			newname := filepath.Join(*installPtr, k)
+			if err := symlink(oldname, newname); err != nil {
+				return err
+			}
+		}
+	default:
+		fprintHelp(os.Stderr)
+		flag.Usage()
 	}
+	return nil
+}
+
+func objMain(osArgs []string, wOut, wErr io.Writer) ExitCode {
+	objName := filepath.Base(osArgs[0])
 	newObj, ok := m[objName]
 	if !ok {
 		fmt.Fprintf(wErr, "%s compliance object not found in the core collection\n", objName)
