@@ -49,8 +49,9 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 			r := c.Request()
 			log := log.
 				Attr("request_uuid", reqUuid.String()).
-				Attr("method", r.Method).
-				Attr("path", r.URL.Path)
+				Attr("request_method", r.Method).
+				Attr("request_path", r.URL.Path).
+				WithPrefix(fmt.Sprintf("%s%s %s: ", log.Prefix(), r.Method, r.URL.Path))
 			c.Set("logger", log)
 			c.Set("uuid", reqUuid)
 			return next(c)
