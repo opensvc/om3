@@ -107,6 +107,8 @@ const (
 	MonitorStateProvisionFailed
 	MonitorStatePurgeFailed
 	MonitorStateReady
+	MonitorStateShutdownFailed
+	MonitorStateShutdown
 	MonitorStateShutting
 	MonitorStateStarted
 	MonitorStateStartFailed
@@ -130,6 +132,7 @@ const (
 	MonitorLocalExpectZero MonitorLocalExpect = iota
 	MonitorLocalExpectNone
 	MonitorLocalExpectStarted
+	MonitorLocalExpectShutdown
 )
 
 const (
@@ -166,6 +169,8 @@ var (
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
 		MonitorStateReady:             "ready",
+		MonitorStateShutdown:          "shutdown",
+		MonitorStateShutdownFailed:    "shutdown failed",
 		MonitorStateShutting:          "shutting",
 		MonitorStateStarted:           "started",
 		MonitorStateStartFailed:       "start failed",
@@ -202,6 +207,8 @@ var (
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
 		"ready":              MonitorStateReady,
+		"shutdown":           MonitorStateShutdown,
+		"shutdown failed":    MonitorStateShutdownFailed,
 		"shutting":           MonitorStateShutting,
 		"started":            MonitorStateStarted,
 		"start failed":       MonitorStateStartFailed,
@@ -222,15 +229,17 @@ var (
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
-		MonitorLocalExpectStarted: "started",
-		MonitorLocalExpectNone:    "none",
-		MonitorLocalExpectZero:    "",
+		MonitorLocalExpectStarted:  "started",
+		MonitorLocalExpectShutdown: "shutdown",
+		MonitorLocalExpectNone:     "none",
+		MonitorLocalExpectZero:     "",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
-		"started": MonitorLocalExpectStarted,
-		"none":    MonitorLocalExpectNone,
-		"":        MonitorLocalExpectZero,
+		"shutdown": MonitorLocalExpectShutdown,
+		"started":  MonitorLocalExpectStarted,
+		"none":     MonitorLocalExpectNone,
+		"":         MonitorLocalExpectZero,
 	}
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
