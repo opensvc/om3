@@ -70,15 +70,22 @@ func (o *imon) onRelationObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 		// Can't relate to self.
 		return
 	}
+	changes := false
 	do := func(relation string, name string, cache map[string]status.T) {
 		if v, ok := cache[relation]; ok && v != status.Undef {
 			o.log.Infof("update relation %s %s avail status change %s -> %s (deleted object)", name, relation, cache[relation], status.Undef)
 			cache[relation] = status.Undef
-			o.change = true
+			changes = true
 		}
 	}
 	do(c.Path.String(), "Child", o.state.Children)
 	do(c.Path.String(), "Parent", o.state.Parents)
+	if changes {
+		o.change = true
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
+	}
 }
 
 func (o *imon) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
@@ -86,15 +93,23 @@ func (o *imon) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) 
 		// Can't relate to self.
 		return
 	}
+	changes := false
 	do := func(relation string, name string, cache map[string]status.T) {
 		if _, ok := cache[relation]; ok {
 			o.log.Infof("update relation %s %s avail status change %s -> %s (deleted instance)", name, relation, cache[relation], status.Undef)
 			cache[relation] = status.Undef
-			o.change = true
+			changes = true
 		}
 	}
 	do(c.Path.String()+"@"+c.Node, "Child", o.state.Children)
 	do(c.Path.String()+"@"+c.Node, "Parent", o.state.Parents)
+
+	if changes {
+		o.change = true
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
+	}
 }
 
 func (o *imon) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
@@ -121,8 +136,6 @@ func (o *imon) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 	if changes {
 		o.change = true
-
-		o.objStatus = c.Value
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
@@ -134,6 +147,7 @@ func (o *imon) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) 
 		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
 		return
 	}
+	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
 		if cache[relation] != c.Value.Avail {
@@ -142,13 +156,19 @@ func (o *imon) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) 
 			o.log.Debugf("update relation %s %s avail status unchanged", name, relation)
 		}
 		cache[relation] = c.Value.Avail
-		o.change = true
+		changes = true
 	}
 	if _, ok := o.state.Children[relation]; ok {
 		do(relation, "Child", o.state.Children)
 	}
 	if _, ok := o.state.Parents[relation]; ok {
 		do(relation, "Parent", o.state.Parents)
+	}
+	if changes {
+		o.change = true
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
 	}
 }
 
