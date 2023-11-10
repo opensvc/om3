@@ -65,18 +65,18 @@ var (
 	loadFiles = func(t CompUsers) ExitCode {
 		var err error
 		if !t.checkFilesNsswitch() {
-			t.Errorf("shadow or passwd are not using files (in /etc/Nsswitch)")
+			t.Errorf("shadow or passwd are not using files (in /etc/Nsswitch)\n")
 			return ExitNok
 		}
 		shadowFileContent, err = os.ReadFile("/etc/shadow")
 		if err != nil {
-			t.Errorf("can't open /etc/shadow : %s", err)
+			t.Errorf("can't open /etc/shadow : %s\n", err)
 			return ExitNok
 		}
 
 		passwdFileContent, err = os.ReadFile("/etc/passwd")
 		if err != nil {
-			t.Errorf("can't open /etc/passwd : %s", err)
+			t.Errorf("can't open /etc/passwd : %s\n", err)
 			return ExitNok
 		}
 		return ExitOk
@@ -305,7 +305,7 @@ func (t CompUsers) checkFilesNsswitch() bool {
 	nsswitchFileContent, err := osReadFile("/etc/nsswitch.conf")
 	var isPasswordInFiles, isShadowInFiles bool
 	if err != nil {
-		t.Errorf("can't open /etc/nsswitch to check if shadow and password are using files :%s", err)
+		t.Errorf("can't open /etc/nsswitch to check if shadow and password are using files :%s\n", err)
 		return false
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(nsswitchFileContent))
@@ -376,7 +376,7 @@ func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
 
 	t.VerboseInfof("gid = %d target = %d \n", uid, *rule.Uid)
 	if uid != *rule.Uid {
-		t.Infof("gid not ok \n")
+		t.VerboseErrorf("gid not ok \n")
 		return ExitNok
 	}
 
@@ -393,7 +393,7 @@ func (t CompUsers) checkUserUid(rule CompUser, userInfos []string) ExitCode {
 
 	t.VerboseInfof("gid = %d target = %d \n", gid, *rule.Gid)
 	if gid != *rule.Gid {
-		t.Infof("gid not ok \n")
+		t.VerboseErrorf("gid not ok \n")
 		return ExitNok
 	}
 
@@ -404,7 +404,7 @@ func (t CompUsers) checkUserShell(rule CompUser, userInfos []string) ExitCode {
 	shell := t.getShell(userInfos)
 	t.Infof("user shell = %s target = %s \n", shell, rule.Shell)
 	if shell != rule.Shell {
-		t.Infof("user shell not ok \n")
+		t.VerboseErrorf("user shell not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -414,11 +414,11 @@ func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode 
 	home := getHomeDir(userInfos)
 	t.VerboseInfof("user home dir = %s target = %s \n", home, rule.Home)
 	if !file.Exists(home) {
-		t.VerboseInfof("user home dir does not exist --> not ok\n")
+		t.VerboseErrorf("user home dir does not exist --> not ok\n")
 		return ExitNok
 	}
 	if home != rule.Home {
-		t.VerboseInfof("user home not ok \n")
+		t.VerboseErrorf("user home not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -442,7 +442,7 @@ func (t CompUsers) checkUserGecos(rule CompUser, userInfos []string) ExitCode {
 	gecos := t.getGecos(userInfos)
 	t.VerboseInfof("user gecos = %s target = %s \n", gecos, rule.Gecos)
 	if gecos != rule.Gecos {
-		t.VerboseInfof("user gecos not ok \n")
+		t.VerboseErrorf("user gecos not ok \n")
 		return ExitNok
 	}
 	return ExitOk
@@ -458,7 +458,7 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 			if splitedLine[1] == rule.Password {
 				return ExitOk
 			}
-			t.VerboseInfof("user password hash not ok \n")
+			t.VerboseErrorf("user password hash not ok \n")
 			return ExitNok
 		}
 	}
@@ -494,7 +494,7 @@ func (t CompUsers) checkUserExistence(userName string, passwdFile []byte) ([]str
 		splitedLine := strings.Split(line, ":")
 		if splitedLine[0] == userName {
 			if checkDel {
-				t.VerboseInfof("user %s exist and should not --> not ok\n", userName)
+				t.VerboseErrorf("user %s exist and should not --> not ok\n", userName)
 				return splitedLine, ExitNok
 			}
 			return splitedLine, ExitOk
@@ -708,7 +708,7 @@ func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 	rule.User = rule.User[1:]
 	for _, usrBlackList := range blackList {
 		if usrBlackList == rule.User {
-			t.Errorf("cowardly refusing to delete user : %s", rule.User)
+			t.Errorf("cowardly refusing to delete user : %s\n", rule.User)
 			return ExitNok
 		}
 	}
