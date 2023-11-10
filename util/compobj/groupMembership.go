@@ -160,7 +160,7 @@ func (t CompGroupsMemberships) checkMember(groupMembers map[string]any, member s
 		return false
 	} else if primaryGroup == groupName {
 		if delMember {
-			t.VerboseInfof("user %s has the group %s as primary group and should not be present in the group --> not ok\n", member, groupName)
+			t.VerboseErrorf("user %s has the group %s as primary group and should not be present in the group --> not ok\n", member, groupName)
 			return false
 		}
 		t.VerboseInfof("user %s has the group %s as primary group and should be present in the group --> ok\n", member, groupName)
@@ -168,7 +168,7 @@ func (t CompGroupsMemberships) checkMember(groupMembers map[string]any, member s
 	}
 	if _, ok := groupMembers[member]; ok {
 		if delMember {
-			t.VerboseInfof("user %s is present in the group %s and should not be present --> not ok\n", member, groupName)
+			t.VerboseErrorf("user %s is present in the group %s and should not be present --> not ok\n", member, groupName)
 			return false
 		}
 		t.VerboseInfof("user %s is present in the group %s and should be present --> ok\n", member, groupName)
@@ -179,7 +179,7 @@ func (t CompGroupsMemberships) checkMember(groupMembers map[string]any, member s
 		t.VerboseInfof("user %s is not present in the group %s and should not be present -->  ok\n", member, groupName)
 		return true
 	}
-	t.VerboseInfof("user %s is not present in the group %s and should be present --> not ok\n", member, groupName)
+	t.VerboseErrorf("user %s is not present in the group %s and should be present --> not ok\n", member, groupName)
 	return false
 }
 

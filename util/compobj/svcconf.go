@@ -120,7 +120,7 @@ func (t *CompSvcconfs) Add(s string) error {
 	var exists bool
 	svcName, exists = os.LookupEnv("OSVC_COMP_SERVICES_SVCNAME")
 	if !exists {
-		return fmt.Errorf("the environment variable SERVICES_SVCNAME is not set in the os")
+		return fmt.Errorf("the environment variable SERVICES_SVCNAME is not set in the os\n")
 	}
 	p, err := naming.ParsePath(svcName)
 	if err != nil {
@@ -181,7 +181,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	o, err := object.NewConfigurer(svcName)
 	var op, leftFilter, rightFilter string
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s", err)
+		t.Errorf("error can't create an configurer obj : %s\n", err)
 		return false
 	}
 
@@ -211,7 +211,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 func (t CompSvcconfs) checkValue(resourceName string, key string, value string, op string) bool {
 	o, err := object.NewConfigurer(svcName)
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s", err)
+		t.Errorf("error can't create an configurer obj : %s\n", err)
 		return false
 	}
 	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + key + op + value))
@@ -233,7 +233,7 @@ func (t CompSvcconfs) checkRule(rule CompSvcconf) ExitCode {
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseInfof("the resource %s does not respect the rule %s%s%s --> not ok\n", resourceName, rule.Key, rule.Op, rule.Value)
+		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s --> not ok\n", resourceName, rule.Key, rule.Op, rule.Value)
 		e = e.Merge(ExitNok)
 	}
 	return e
@@ -258,10 +258,10 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseInfof("the resource %s does not respect the rule %s%s%s --> not ok need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
+		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s --> not ok need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
 		o, err := object.NewConfigurer(svcName)
 		if err != nil {
-			t.Errorf("error can't create an configurer obj : %s", err)
+			t.Errorf("error can't create an configurer obj : %s\n", err)
 			return ExitNok
 		}
 		_, _, variable := t.getKeyParts(rule)

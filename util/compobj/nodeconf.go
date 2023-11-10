@@ -124,11 +124,11 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 			t.VerboseInfof("the key %s is unset and should be unset --> ok\n", rule.Key)
 			return ExitOk
 		}
-		t.VerboseInfof("the key %s is unset and should not be unset --> not ok\n", rule.Key)
+		t.VerboseErrorf("the key %s is unset and should not be unset --> not ok\n", rule.Key)
 		return ExitNok
 	}
 	if rule.Op == "unset" {
-		t.VerboseInfof("the key %s in not unset and should not be unset\n", rule.Key)
+		t.VerboseErrorf("the key %s in not unset and should not be unset\n", rule.Key)
 		return ExitNok
 	}
 
@@ -136,7 +136,7 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 		t.VerboseInfof("the rule for the key %s , operator %s, value %s is respected --> ok\n", rule.Key, rule.Op, rule.Value.(string))
 		return ExitOk
 	}
-	t.VerboseInfof("the rule for the key %s , operator %s, value %s is not respected --> not ok\n", rule.Key, rule.Op, rule.Value.(string))
+	t.VerboseErrorf("the rule for the key %s , operator %s, value %s is not respected --> not ok\n", rule.Key, rule.Op, rule.Value.(string))
 	return ExitNok
 }
 
@@ -157,14 +157,14 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 	}
 	n, err := object.NewNode()
 	if err != nil {
-		t.Errorf("error can't open a new node obj to fix the rule")
+		t.Errorf("error can't open a new node obj to fix the rule\n")
 		return ExitNok
 	}
 	if rule.Op == "unset" {
 		n.Config().Unset(key.Parse(rule.Key))
 		err = n.Config().Commit()
 		if err != nil {
-			t.Errorf("error when trying to commit the unset")
+			t.Errorf("error when trying to commit the unset\n")
 			return ExitNok
 		}
 		return ExitOk

@@ -476,7 +476,7 @@ func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
 func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
 	if err != nil {
-		t.Errorf("error when trying to read the authKeys :%s", err)
+		t.Errorf("error when trying to read the authKeys :%s\n", err)
 		return ExitNok
 	}
 	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
@@ -485,11 +485,11 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 			t.VerboseInfof("the key %s is installed and should be installed --> ok\n", t.truncateKey(rule.Key))
 			return ExitOk
 		}
-		t.VerboseInfof("the key %s is not installed and should be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is not installed and should be installed --> not ok\n", t.truncateKey(rule.Key))
 		return ExitNok
 	}
 	if isKeyInstalled {
-		t.VerboseInfof("the key %s is installed and should not be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is installed and should not be installed --> not ok\n", t.truncateKey(rule.Key))
 		return ExitNok
 	}
 	t.VerboseInfof("the key %s is not installed and should not be installed --> ok\n", t.truncateKey(rule.Key))
@@ -516,7 +516,7 @@ func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 		t.VerboseInfof("the primary group of the user %s is in allowGroups in the sshd config file\n", rule.User)
 		return ExitOk
 	}
-	t.VerboseInfof("the primary group of the user %s is not in allowGroups in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the primary group of the user %s is not in allowGroups in the sshd config file\n", rule.User)
 	return ExitNok
 }
 
@@ -547,7 +547,7 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 		t.VerboseInfof("the user %s is in allowUsers in the sshd config file\n", rule.User)
 		return ExitOk
 	}
-	t.VerboseInfof("the user %s is not in allowUsers in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the user %s is not in allowUsers in the sshd config file\n", rule.User)
 	return ExitNok
 }
 
@@ -720,12 +720,12 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s", rule.ConfigFile, err)
+			t.Errorf("error when trying to close file %s :%s\n", rule.ConfigFile, err)
 		}
 	}()
 	_, err = f.Write(configFileNewContent)
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s", rule.ConfigFile, err)
+		t.Errorf("error when trying to write in %s :%s\n", rule.ConfigFile, err)
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
 	return ExitOk
