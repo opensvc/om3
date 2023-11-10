@@ -186,12 +186,11 @@ func (t CompGroups) checkGroup(rule CompGroup) ExitCode {
 			t.VerboseErrorf("group %s does not exist and should exist --> not ok\n", rule.Group)
 			return ExitNok
 		}
-		t.VerboseInfof("group : %s gid = %d target = %d\n", rule.Group, gid, *rule.Gid)
 		if gid != *rule.Gid {
-			t.VerboseInfof("gid not ok\n")
+			t.VerboseErrorf("group : %s gid = %d target = %d --> gid not ok\n", rule.Group, gid, *rule.Gid)
 			return ExitNok
 		}
-		t.VerboseInfof("gid ok\n")
+		t.VerboseInfof("\"group : %s gid = %d target = %d --> gid ok\n", rule.Group, gid, *rule.Gid)
 		return ExitOk
 	}
 }

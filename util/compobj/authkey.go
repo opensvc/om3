@@ -482,17 +482,17 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
 	if rule.Action == "add" {
 		if isKeyInstalled {
-			t.VerboseInfof("the key %s is installed and should be installed --> ok\n", t.truncateKey(rule.Key))
+			t.VerboseInfof("the key %s is installed and should be installed for the user %s --> ok\n", t.truncateKey(rule.Key), rule.User)
 			return ExitOk
 		}
-		t.VerboseErrorf("the key %s is not installed and should be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is not installed and should be installed for the user %s --> not ok\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
 	if isKeyInstalled {
-		t.VerboseErrorf("the key %s is installed and should not be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is installed and should not be installed for the user %s --> not ok\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
-	t.VerboseInfof("the key %s is not installed and should not be installed --> ok\n", t.truncateKey(rule.Key))
+	t.VerboseInfof("the key %s is not installed and should not be installed for the user %s --> ok\n", t.truncateKey(rule.Key), rule.User)
 	return ExitOk
 }
 
