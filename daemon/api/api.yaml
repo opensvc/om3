@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.9.1
+  version: 3.10.0
 #servers:
 #  - url: https://localhost:1215
 paths:
@@ -330,6 +330,26 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /daemon/shutdown:
+    post:
+      operationId: PostDaemonShutdown
+      description: Shutdown all local svc and vol objects then shutdown the daemon
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Duration'
       responses:
         200:
           $ref: '#/components/responses/200'
