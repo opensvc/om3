@@ -211,7 +211,7 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 		if file.IsDir() && err == nil {
 			fds, err := osReadDir(filepath.Join("proc", file.Name(), "fd"))
 			if err != nil {
-				t.Errorf("error:%s can't read proc %s \n", err.Error(), file.Name())
+				t.Errorf("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			for _, fd := range fds {
@@ -244,12 +244,12 @@ func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
 		if file.IsDir() && err == nil {
 			tcpFileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp"))
 			if err != nil {
-				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
+				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			tcp6FileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp6"))
 			if err != nil {
-				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
+				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 
@@ -476,7 +476,7 @@ func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
 func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
 	if err != nil {
-		t.Errorf("error when trying to read the authKeys :%s\n", err)
+		t.Errorf("error when trying to read the authKeys: %s\n", err)
 		return ExitNok
 	}
 	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
@@ -499,7 +499,7 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 	allowGroups, err := t.getAllowGroups(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowGroups field in sshd config file :%s\n", err)
+		t.Errorf("error when trying to read allowGroups field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowGroups) > 0 {
@@ -535,7 +535,7 @@ func (t CompAuthkeys) getPrimaryGroupName(userName string) (string, error) {
 func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 	allowUsers, err := t.getAllowUsers(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowUsers field in sshd config file :%s\n", err)
+		t.Errorf("error when trying to read allowUsers field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowUsers) > 0 {
@@ -563,7 +563,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	}
 	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		t.Errorf("error when trying to open : %s to add the key : %s\n", authKeyFilePath[0], t.truncateKey(rule.Key))
+		t.Errorf("error when trying to open : %s to add the key: %s\n", authKeyFilePath[0], t.truncateKey(rule.Key))
 		return ExitNok
 	}
 	defer func() {
@@ -574,7 +574,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	}()
 	_, err = f.Write([]byte(rule.Key + "\n"))
 	if err != nil {
-		t.Errorf("error when trying to write the key : %s in the file : %s\n", t.truncateKey(rule.Key), authKeyFilePath[0])
+		t.Errorf("error when trying to write the key : %s in the file: %s\n", t.truncateKey(rule.Key), authKeyFilePath[0])
 		return ExitNok
 	}
 	if _, ok := cacheInstalledKeys[rule.User]; ok {
@@ -587,7 +587,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	configFileNewContent := []byte{}
 	configFileOldContent, err := os.ReadFile(authKeyFilePath)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", authKeyFilePath, err)
+		t.Errorf("error when trying to read content of %s: %s\n", authKeyFilePath, err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
 	for scanner.Scan() {
@@ -601,17 +601,17 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	}
 	f, err := os.Create(authKeyFilePath)
 	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", authKeyFilePath, err)
+		t.Errorf("can't open the file %s in write mode: %s\n", authKeyFilePath, err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", authKeyFilePath, err)
+			t.Errorf("error when trying to close file %s: %s\n", authKeyFilePath, err)
 		}
 	}()
 	_, err = f.Write(configFileNewContent)
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", authKeyFilePath, err)
+		t.Errorf("error when trying to write in %s: %s\n", authKeyFilePath, err)
 	}
 	return ExitOk
 }
@@ -646,7 +646,7 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
 	configFileNewContent := []byte{}
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("error when trying to read content of %s: %s\n", rule.ConfigFile, err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
 	for scanner.Scan() {
@@ -656,7 +656,7 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 			if splitLine[0] == "AllowGroups" {
 				primaryGroupName, err = t.getPrimaryGroupName(rule.User)
 				if err != nil {
-					t.Errorf("can't get the primary group of the user %s :%s\n", rule.User, err)
+					t.Errorf("can't get the primary group of the user %s: %s\n", rule.User, err)
 					return ExitNok
 				}
 				splitLine = append(splitLine, primaryGroupName)
@@ -673,17 +673,17 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 	}
 	f, err := os.Create(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", rule.ConfigFile, err)
+		t.Errorf("can't open the file %s in write mode: %s\n", rule.ConfigFile, err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", rule.ConfigFile, err)
+			t.Errorf("error when trying to close file %s: %s\n", rule.ConfigFile, err)
 		}
 	}()
 	_, err = f.Write(configFileNewContent)
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("error when trying to write in %s: %s\n", rule.ConfigFile, err)
 	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
 	return ExitOk
@@ -693,7 +693,7 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
 	configFileNewContent := []byte{}
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("error when trying to read content of %s: %s\n", rule.ConfigFile, err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
 	for scanner.Scan() {
@@ -715,17 +715,17 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 	}
 	f, err := os.Create(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", rule.ConfigFile, err)
+		t.Errorf("can't open the file %s in write mode: %s\n", rule.ConfigFile, err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", rule.ConfigFile, err)
+			t.Errorf("error when trying to close file %s: %s\n", rule.ConfigFile, err)
 		}
 	}()
 	_, err = f.Write(configFileNewContent)
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("error when trying to write in %s: %s\n", rule.ConfigFile, err)
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
 	return ExitOk
@@ -772,12 +772,12 @@ func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
 	}
 	port, err := t.getPortFromConfigFile(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to get the port of sshd :%s\n", err)
+		t.Errorf("error when trying to get the port of sshd: %s\n", err)
 	} else {
 		err = t.reloadSshd(port)
 	}
 	if err != nil {
-		t.Errorf("error when trying to reload sshd :%s\n", err)
+		t.Errorf("error when trying to reload sshd: %s\n", err)
 	}
 	return e
 }

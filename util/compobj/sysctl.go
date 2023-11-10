@@ -145,7 +145,7 @@ func (t CompSysctls) Check() ExitCode {
 func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 	currentValues, err := t.getValues(rule, false)
 	if err != nil {
-		t.Errorf("error can't read in file /etc/sysctl.conf :%s\n", err)
+		t.Errorf("error can't read in file /etc/sysctl.conf: %s\n", err)
 		return ExitNok
 	}
 	if currentValues == nil {
@@ -154,7 +154,7 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 	}
 	liveValues, err := t.getValues(rule, true)
 	if err != nil {
-		t.Errorf("error can't read live values for the key %s :%s\n", rule.Key, err)
+		t.Errorf("error can't read live values for the key %s: %s\n", rule.Key, err)
 		return ExitNok
 	}
 	if len(currentValues) <= *rule.Index {
@@ -203,14 +203,14 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 func (t CompSysctls) checkRuleForFix(rule CompSysctl) (ExitCode, bool) {
 	values, err := t.getValues(rule, false)
 	if err != nil {
-		t.Errorf("error can't read in file /etc/sysctl.conf :%s\n", err)
+		t.Errorf("error can't read in file /etc/sysctl.conf: %s\n", err)
 		return ExitNok, false
 	}
 	if values == nil {
 		values, err = t.getValues(rule, true)
 	}
 	if err != nil {
-		t.Errorf("error can't read in live parameters :%s\n", err)
+		t.Errorf("error can't read in live parameters: %s\n", err)
 		return ExitNok, false
 	}
 	if values == nil {
@@ -340,18 +340,18 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 	}
 	f, err := os.Create(sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", "/etc/sysctl.conf", err)
+		t.Errorf("can't open the file %s in write mode: %s\n", "/etc/sysctl.conf", err)
 		return false, err
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", "/etc/sysctl.conf", err)
+			t.Errorf("error when trying to close file %s: %s\n", "/etc/sysctl.conf", err)
 		}
 	}()
 	_, err = f.Write(configFileNewContent)
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", "/etc/sysctl.conf", err)
+		t.Errorf("error when trying to write in %s: %s\n", "/etc/sysctl.conf", err)
 		return false, err
 	}
 	return changeDone, nil
@@ -384,7 +384,7 @@ func (t CompSysctls) addKeyInConfFile(rule CompSysctl) error {
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", "/etc/sysctl.conf", err)
+			t.Errorf("error when trying to close file %s: %s\n", "/etc/sysctl.conf", err)
 		}
 	}()
 	_, err = f.Write([]byte(lineToAdd))
@@ -398,7 +398,7 @@ func (t CompSysctls) reloadSysctl() ExitCode {
 	cmd := exec.Command("sysctl", "-e", "-p")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("error when trying to reload sysctl: %s:%s\n", err, out)
+		t.Errorf("error when trying to reload sysctl: %s: %s\n", err, out)
 		return ExitNok
 	}
 	return ExitOk
@@ -413,7 +413,7 @@ func (t CompSysctls) fixRule(rule CompSysctl) (ExitCode, bool) {
 	if e == ExitNok {
 		changeDone, err := t.modifyKeyInConfFile(rule)
 		if err != nil {
-			t.Errorf("error when trying to modify /etc/sysctl.conf :%s\n", err)
+			t.Errorf("error when trying to modify /etc/sysctl.conf: %s\n", err)
 			return ExitNok, false
 		}
 		if !changeDone {

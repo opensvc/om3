@@ -122,7 +122,7 @@ func (t CompGroupsMemberships) locatePresenceInRules(groupName string) int {
 func (t CompGroupsMemberships) checkRule(rule CompGroupMembership) ExitCode {
 	isGroupPresent, err := t.isGroupExisting(rule.Group)
 	if err != nil {
-		t.Errorf("can't check if group exist :%s\n", err)
+		t.Errorf("can't check if group exist: %s\n", err)
 		return ExitNok
 	}
 	if !isGroupPresent {
@@ -218,7 +218,7 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 	for _, member := range members {
 		isMissing, err := t.isUserMissing(member)
 		if err != nil {
-			t.Errorf("error when trying to look if user %s exist :%s \n", member, err)
+			t.Errorf("error when trying to look if user %s exist: %s \n", member, err)
 			return ExitNok
 		}
 
