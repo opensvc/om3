@@ -76,9 +76,9 @@ Inputs:
 var (
 	packages = map[string]interface{}{}
 	hasItMap = map[string]bool{}
-	osVendor = os.Getenv("OSVC_COMP_NODES_OS_VENDOR")
-	osName   = os.Getenv("OSVC_COMP_NODES_OS_NAME")
-	osArch   = os.Getenv("OSVC_COMP_NODES_OS_ARCH")
+	osVendor = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_VENDOR"))
+	osName   = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_NAME"))
+	osArch   = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_ARCH"))
 )
 
 func init() {
@@ -87,11 +87,11 @@ func init() {
 
 func hasDpkg() bool {
 	return hasIt("dpkg", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Ubuntu", "Debian":
+		case "ubuntu", "debian":
 			// pass
 		default:
 			return false
@@ -103,11 +103,11 @@ func hasDpkg() bool {
 
 func hasYum() bool {
 	return hasIt("yum", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle":
+		case "hed hat", "redhat", "centOS", "oracle":
 			// pass
 		default:
 			return false
@@ -123,7 +123,7 @@ func hasDnf() bool {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle":
+		case "red hat", "redhat", "centOS", "oracle":
 			// pass
 		default:
 			return false
@@ -135,11 +135,11 @@ func hasDnf() bool {
 
 func hasRpm() bool {
 	return hasIt("rpm", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle", "SuSE":
+		case "red hat", "redhat", "centOS", "oracle", "suse":
 			// pass
 		default:
 			return false
@@ -151,11 +151,11 @@ func hasRpm() bool {
 
 func hasZypper() bool {
 	return hasIt("zypper", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "SuSE":
+		case "suse":
 			// pass
 		default:
 			return false
@@ -167,7 +167,7 @@ func hasZypper() bool {
 
 func hasPkgadd() bool {
 	return hasIt("pkgadd", func() bool {
-		if osName != "SunOS" {
+		if osName != "sunos" {
 			return false
 		}
 		p, err := execLookPath("pkgadd")
@@ -177,11 +177,11 @@ func hasPkgadd() bool {
 
 func hasApt() bool {
 	return hasIt("apt", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Ubuntu", "Debian":
+		case "ubuntu", "debian":
 			// pass
 		default:
 			return false
@@ -193,7 +193,7 @@ func hasApt() bool {
 
 func hasFreebsdPkg() bool {
 	return hasIt("freebsdpkg", func() bool {
-		if osName != "FreeBSD" {
+		if osName != "freeBSD" {
 			return false
 		}
 		p, err := execLookPath("pkg")
@@ -203,11 +203,11 @@ func hasFreebsdPkg() bool {
 
 func hasApk() bool {
 	return hasIt("apk", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Alpine":
+		case "alpine":
 			// pass
 		default:
 			return false
