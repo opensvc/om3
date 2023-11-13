@@ -54,8 +54,10 @@ var (
 
 	reWildcardHostname      = regexp.MustCompile(`%%HOSTNAME%%`)
 	reWildcardShortHostname = regexp.MustCompile(`%%SHORT_HOSTNAME%%`)
-	reWildcardEnvVar1       = regexp.MustCompile(`%%ENV:.+%%`)
-	reWildcardEnvVar2       = regexp.MustCompile(`(%%ENV:)(.+)(%%)`)
+	reWildcardEnvVar1       = regexp.MustCompile(`%%ENV:[A-Z_]{1,}[A-Z0-9_]*%%`)
+	reWildcardEnvVar2       = regexp.MustCompile(`(%%ENV:)([A-Z_]{1,}[A-Z0-9_]*)(%%)`)
+
+	varNamePrefix = "OSVC_COMP_"
 )
 
 func (t ExitCode) Exit() {
@@ -276,6 +278,7 @@ func objMain(osArgs []string, wOut, wErr io.Writer) ExitCode {
 		if !strings.HasPrefix(k, prefix) {
 			continue
 		}
+		v = string(subst([]byte(v)))
 		if err := obj.Add(v); err != nil {
 			_, _ = fmt.Fprintf(wErr, "incompatible data:  %s: %+v\n", err, v)
 			continue
@@ -332,7 +335,11 @@ func subst(b []byte) []byte {
 	b = reWildcardShortHostname.ReplaceAll(b, []byte(shn))
 	b = reWildcardEnvVar1.ReplaceAllFunc(b, func(m []byte) []byte {
 		parts := reWildcardEnvVar2.FindSubmatch(m)
-		val := os.Getenv("OSVC_COMP_" + string(parts[2]))
+		varName := string(parts[2])
+		if !strings.HasPrefix(varName, "OSVC_") {
+			varName = varNamePrefix + varName
+		}
+		val := os.Getenv(varName)
 		return []byte(val)
 	})
 	return b
