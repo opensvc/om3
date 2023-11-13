@@ -46,7 +46,7 @@ Inputs:
 )
 
 func init() {
-	m["removefile"] = NewCompRemoveFiles
+	m["remove_files"] = NewCompRemoveFiles
 }
 
 func NewCompRemoveFiles() interface{} {
