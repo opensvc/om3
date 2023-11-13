@@ -124,11 +124,11 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 			t.VerboseInfof("the key %s is unset and should be unset --> ok\n", rule.Key)
 			return ExitOk
 		}
-		t.VerboseErrorf("the key %s is unset and should not be unset --> not ok\n", rule.Key)
+		t.VerboseErrorf("the key %s is unset and should be set --> not ok\n", rule.Key)
 		return ExitNok
 	}
 	if rule.Op == "unset" {
-		t.VerboseErrorf("the key %s in not unset and should not be unset\n", rule.Key)
+		t.VerboseErrorf("the key %s is set and should be unset\n", rule.Key)
 		return ExitNok
 	}
 

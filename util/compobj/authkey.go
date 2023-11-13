@@ -411,7 +411,7 @@ func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error)
 			return cacheAllowUsers, nil
 		}
 	}
-	t.VerboseInfof("no allowUsers field find in the sshd config \n")
+	//t.VerboseInfof("keyword allowUsers not found \n")
 	cacheAllowUsers = []string{"\x00"}
 	return cacheAllowUsers, nil
 }
@@ -436,7 +436,7 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 			return cacheAllowGroups, nil
 		}
 	}
-	t.VerboseInfof("no allowGroups field find in the sshd config \n")
+	//t.VerboseInfof("keyword allowGroups not found \n")
 	cacheAllowGroups = []string{"\x00"}
 	return cacheAllowGroups, nil
 }
