@@ -564,6 +564,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		switch *c.Value.LocalExpect {
 		case instance.MonitorLocalExpectNone:
 		case instance.MonitorLocalExpectStarted:
+		case instance.MonitorLocalExpectShutdown:
 		default:
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			sendError(err)
