@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (a *DaemonApi) PostClusterActionAbort(ctx echo.Context) error {
@@ -30,15 +29,15 @@ func (a *DaemonApi) PostClusterAction(ctx echo.Context, globalExpect node.Monito
 	var (
 		value = node.MonitorUpdate{}
 	)
-	if mon := node.MonitorData.Get(hostname.Hostname()); mon == nil {
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "node monitor not found: %s", hostname.Hostname())
+	if mon := node.MonitorData.Get(a.localhost); mon == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "node monitor not found: %s", a.localhost)
 	}
 	value = node.MonitorUpdate{
 		GlobalExpect:             &globalExpect,
 		CandidateOrchestrationId: uuid.New(),
 	}
 	msg := msgbus.SetNodeMonitor{
-		Node:  hostname.Hostname(),
+		Node:  a.localhost,
 		Value: value,
 		Err:   make(chan error),
 	}

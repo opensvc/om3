@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -23,7 +22,7 @@ func (a *DaemonApi) PostInstanceClear(ctx echo.Context, namespace string, kind n
 	}
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,
-		Node:  hostname.Hostname(),
+		Node:  a.localhost,
 		Value: instMonitor,
 	}
 	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)

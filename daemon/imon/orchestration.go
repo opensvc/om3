@@ -55,11 +55,18 @@ func (o *imon) orchestrate() {
 		o.log.Debugf("orchestrate return on isDone()")
 		return
 	}
-	if nodeMonitor, ok := o.nodeMonitor[o.localhost]; !ok {
-		o.log.Debugf("orchestrate return on no nodeMonitor localhost")
+	switch o.nodeMonitor[o.localhost].State {
+	case node.MonitorStateIdle:
+		// default orchestrate
+	case node.MonitorStateShutting:
+		// accept only local expect shutdown orchestration
+		switch o.state.LocalExpect {
+		case instance.MonitorLocalExpectShutdown:
+			o.orchestrateLocalExpectShutdown()
+		}
 		return
-	} else if nodeMonitor.State != node.MonitorStateIdle {
-		o.log.Debugf("orchestrate return on nodeMonitor.State != node.MonitorStateIdle")
+	default:
+		o.log.Debugf("orchestrate return on nodeMonitor.State: %s", o.nodeMonitor[o.localhost].State)
 		return
 	}
 
@@ -115,6 +122,7 @@ func (o *imon) setWaitParents() bool {
 	return false
 }
 
+// setWaitChildren set or reset wait children, return true is state is wait children
 func (o *imon) setWaitChildren() bool {
 	for relation, availStatus := range o.state.Children {
 		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef, status.NotApplicable) {

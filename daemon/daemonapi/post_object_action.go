@@ -12,7 +12,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -65,7 +64,7 @@ func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace string, kind na
 	if p, err = naming.NewPath(namespace, kind, name); err != nil {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
-	if instMon := instance.MonitorData.Get(p, hostname.Hostname()); instMon == nil {
+	if instMon := instance.MonitorData.Get(p, a.localhost); instMon == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", p)
 	}
 	value = instance.MonitorUpdate{
@@ -74,7 +73,7 @@ func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace string, kind na
 	}
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,
-		Node:  hostname.Hostname(),
+		Node:  a.localhost,
 		Value: value,
 		Err:   make(chan error),
 	}

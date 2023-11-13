@@ -33,6 +33,7 @@ func init() {
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
 		newCmdDaemonRunning(),
+		newCmdDaemonShutdown(),
 		newCmdDaemonStart(),
 		newCmdDaemonStats(),
 		newCmdDaemonStatus(),

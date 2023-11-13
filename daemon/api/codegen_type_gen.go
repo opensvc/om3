@@ -839,6 +839,12 @@ type PostDaemonLeaveParams struct {
 	Node string `form:"node" json:"node"`
 }
 
+// PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
+type PostDaemonShutdownParams struct {
+	// Duration max duration
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+}
+
 // GetDaemonStatusParams defines parameters for GetDaemonStatus.
 type GetDaemonStatusParams struct {
 	// Namespace namespace

@@ -54,7 +54,16 @@ const (
 	MonitorStateFreezing
 	MonitorStateFrozen
 	MonitorStateThawing
+
+	// MonitorStateShutdown is the node monitor state on successfully shutdown
+	MonitorStateShutdown
+
+	// MonitorStateShutdownFailed is the node monitor state on failed shutdown
+	MonitorStateShutdownFailed
+
+	// MonitorStateShutting is the node monitor state during a shutdown in progress
 	MonitorStateShutting
+
 	MonitorStateMaintenance
 	MonitorStateUpgrade
 	MonitorStateRejoin
@@ -76,20 +85,22 @@ const (
 
 var (
 	MonitorStateStrings = map[MonitorState]string{
-		MonitorStateDraining:     "draining",
-		MonitorStateDrainFailed:  "drain failed",
-		MonitorStateDrained:      "drained",
-		MonitorStateIdle:         "idle",
-		MonitorStateThawedFailed: "unfreeze failed",
-		MonitorStateFreezeFailed: "freeze failed",
-		MonitorStateFreezing:     "freezing",
-		MonitorStateFrozen:       "frozen",
-		MonitorStateThawing:      "thawing",
-		MonitorStateShutting:     "shutting",
-		MonitorStateMaintenance:  "maintenance",
-		MonitorStateZero:         "",
-		MonitorStateUpgrade:      "upgrade",
-		MonitorStateRejoin:       "rejoin",
+		MonitorStateDraining:       "draining",
+		MonitorStateDrainFailed:    "drain failed",
+		MonitorStateDrained:        "drained",
+		MonitorStateIdle:           "idle",
+		MonitorStateThawedFailed:   "unfreeze failed",
+		MonitorStateFreezeFailed:   "freeze failed",
+		MonitorStateFreezing:       "freezing",
+		MonitorStateFrozen:         "frozen",
+		MonitorStateThawing:        "thawing",
+		MonitorStateShutdown:       "shutdown",
+		MonitorStateShutdownFailed: "shutdown failed",
+		MonitorStateShutting:       "shutting",
+		MonitorStateMaintenance:    "maintenance",
+		MonitorStateZero:           "",
+		MonitorStateUpgrade:        "upgrade",
+		MonitorStateRejoin:         "rejoin",
 	}
 
 	MonitorStateValues = map[string]MonitorState{
@@ -102,6 +113,8 @@ var (
 		"freezing":        MonitorStateFreezing,
 		"frozen":          MonitorStateFrozen,
 		"thawing":         MonitorStateThawing,
+		"shutdown":        MonitorStateShutdown,
+		"shutdown failed": MonitorStateShutdownFailed,
 		"shutting":        MonitorStateShutting,
 		"maintenance":     MonitorStateMaintenance,
 		"":                MonitorStateZero,
@@ -139,11 +152,13 @@ var (
 
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
-		MonitorStateMaintenance: nil,
-		MonitorStateUpgrade:     nil,
-		MonitorStateZero:        nil,
-		MonitorStateShutting:    nil,
-		MonitorStateRejoin:      nil,
+		MonitorStateMaintenance:    nil,
+		MonitorStateUpgrade:        nil,
+		MonitorStateZero:           nil,
+		MonitorStateShutdown:       nil,
+		MonitorStateShutdownFailed: nil,
+		MonitorStateShutting:       nil,
+		MonitorStateRejoin:         nil,
 	}
 
 	ErrInvalidGlobalExpect = errors.New("invalid node monitor global expect")

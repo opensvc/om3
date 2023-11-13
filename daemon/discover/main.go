@@ -172,13 +172,5 @@ func (d *discover) Stop() error {
 }
 
 func (d *discover) objectLogger(p naming.Path) *plog.Logger {
-	return objectLogger(d.log, p)
-}
-
-func objectLogger(l *plog.Logger, p naming.Path) *plog.Logger {
-	return l.
-		Attr("obj_path", p).
-		Attr("obj_name", p.Name).
-		Attr("obj_namespace", p.Namespace).
-		Attr("obj_kind", p.Kind.String())
+	return naming.LogWithPath(d.log, p)
 }

@@ -15,9 +15,6 @@ import (
 
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonapi"
-	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
@@ -42,22 +39,11 @@ func New(ctx context.Context, enableUi bool) *T {
 	e.Use(daemonapi.AuthMiddleware(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
-	api.RegisterHandlers(e, &daemonapi.DaemonApi{
-		Daemondata: daemondata.FromContext(ctx),
-		EventBus:   pubsub.BusFromContext(ctx),
-		JWTcreator: ctx.Value("JWTCreator").(daemonapi.JWTCreater),
-		LabelNode:  pubsub.Label{"node", hostname.Hostname()},
-	})
+	api.RegisterHandlers(e, daemonapi.New(ctx))
 	g := e.Group("/public/ui")
 	if enableUi {
 		g.Use(daemonapi.UiMiddleware(ctx))
 	}
-
-	// TODO convert to echo + openapi
-	//mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
-	//mux.Get("/node_log", daemonhandler.GetNodeLog)
-	//mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
-	//mux.Get("/objects_log", objecthandler.GetObjectsLog)
 
 	return &T{mux: e}
 }

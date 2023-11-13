@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -25,12 +27,25 @@ type (
 		JWTcreator JWTCreater
 
 		LabelNode pubsub.Label
+
+		localhost string
 	}
 )
 
 var (
 	labelApi = pubsub.Label{"origin", "api"}
 )
+
+func New(ctx context.Context) *DaemonApi {
+	localhost := hostname.Hostname()
+	return &DaemonApi{
+		Daemondata: daemondata.FromContext(ctx),
+		EventBus:   pubsub.BusFromContext(ctx),
+		JWTcreator: ctx.Value("JWTCreator").(JWTCreater),
+		LabelNode:  pubsub.Label{"node", localhost},
+		localhost:  localhost,
+	}
+}
 
 func JSONProblem(ctx echo.Context, code int, title, detail string) error {
 	return ctx.JSON(code, api.Problem{
