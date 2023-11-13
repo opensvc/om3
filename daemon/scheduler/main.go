@@ -125,12 +125,7 @@ func (t *T) createJob(e schedule.Entry) {
 		return
 	}
 
-	logger := t.log.Attr("action", e.Action).
-		Attr("obj_path", e.Path.String()).
-		Attr("obj_name", e.Path.Name).
-		Attr("obj_namespace", e.Path.Namespace).
-		Attr("obj_kind", e.Path.Kind.String()).
-		Attr("key", e.Key)
+	logger := naming.LogWithPath(t.log, e.Path).Attr("action", e.Action).Attr("key", e.Key)
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
@@ -292,10 +287,7 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 }
 
 func (t *T) loggerWithPath(p naming.Path) *plog.Logger {
-	return t.log.Attr("obj_path", p.String()).
-		Attr("obj_name", p.Name).
-		Attr("obj_namespace", p.Namespace).
-		Attr("obj_kind", p.Kind.String())
+	return naming.LogWithPath(t.log, p)
 }
 
 func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {

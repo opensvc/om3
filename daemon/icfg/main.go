@@ -90,19 +90,17 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
-		log: plog.NewDefaultLogger().WithPrefix("daemon: icfg: "+p.String()+": ").
-			Attr("pkg", "daemon/icfg").
-			Attr("obj_path", p.String()).
-			Attr("obj_name", p.Name).
-			Attr("obj_namespace", p.Namespace).
-			Attr("obj_kind", p.Kind.String()),
-		localhost:    localhost,
-		forceRefresh: false,
-		bus:          pubsub.BusFromContext(ctx),
-		filename:     filename,
+		localhost:      localhost,
+		forceRefresh:   false,
+		bus:            pubsub.BusFromContext(ctx),
+		filename:       filename,
 
 		ctx:    ctx,
 		cancel: cancel,
+
+		log: naming.LogWithPath(plog.NewDefaultLogger(), p).
+			Attr("pkg", "daemon/icfg").
+			WithPrefix("daemon: icfg: " + p.String() + ": "),
 	}
 
 	if err := o.setConfigure(); err != nil {

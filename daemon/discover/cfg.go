@@ -304,8 +304,9 @@ func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInsta
 
 func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
 	id := p.String() + "@" + peer
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
-	log = objectLogger(log, p)
+	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
+		Attr("pkg", "daemon/discover").
+		Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
 	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)

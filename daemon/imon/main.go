@@ -181,15 +181,10 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 }
 
 func (o *imon) newLogger(i uuid.UUID) *plog.Logger {
-	p := o.path.String()
-	return plog.NewDefaultLogger().
+	return naming.LogWithPath(plog.NewDefaultLogger(), o.path).
 		Attr("pkg", "daemon/imon").
-		Attr("obj_path", p).
-		Attr("obj_name", o.path.Name).
-		Attr("obj_namespace", o.path.Namespace).
-		Attr("obj_kind", o.path.Kind.String()).
 		Attr("orchestration_id", i.String()).
-		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", p))
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", o.path.String()))
 }
 
 func (o *imon) startSubscriptions() {

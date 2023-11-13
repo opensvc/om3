@@ -89,10 +89,11 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 			for k := range toWait {
 				waiting = append(waiting, k.String())
 			}
+			logP := naming.LogWithPath(log, e.Path)
 			if len(waiting) > 0 {
-				log.Infof("%s now shutdown, remaining: %s", e.Path, waiting)
+				logP.Infof("object '%s' has now state shutdown, remaining objects to wait: %s", e.Path, waiting)
 			} else {
-				log.Infof("%s now shutdown", e.Path)
+				logP.Infof("object '%s' has now state shutdown", e.Path)
 			}
 		} else {
 			toWait[e.Path] = e.Value.State
@@ -113,18 +114,19 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 		}
 	}
 
-	log.Infof("prepare objects shutdown")
+	log.Infof("prepare objects to accept local expect shutdown")
 	for p, state := range getMonitorStates() {
 		if state.Is(instance.MonitorStateIdle) {
+			logP := naming.LogWithPath(log, p)
 			sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode, pubsub.Label{"path", p.String()})
 			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
-			log.Infof("ask shutdown for %s with state %s", p, state)
+			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 			value := instance.MonitorUpdate{
 				CandidateOrchestrationId: orchestrationId,
 				LocalExpect:              &monitorLocalExpectShutdown,
 			}
 			if err := setInstanceMonitor(p, value); err != nil {
-				log.Errorf("failed: %s refused local expect shutdown: %s", p, err)
+				logP.Errorf("failed: %s refused local expect shutdown: %s", p, err)
 				a.announceNodeState(log, node.MonitorStateShutdownFailed)
 				revertOnError()
 				return JSONProblemf(ctx, http.StatusInternalServerError, "daemon shutdown failed",
@@ -133,7 +135,7 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 		}
 	}
 
-	log.Infof("wait for objects shutdown")
+	log.Infof("wait for objects to reach state shutdown")
 	for {
 		select {
 		case i := <-sub.C:
@@ -141,7 +143,7 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 			case *msgbus.InstanceMonitorUpdated:
 				onInstanceMonitorUpdated(e)
 				if len(toWait) == 0 {
-					log.Infof("all objects are now shutdown")
+					log.Infof("all objects have state shutdown")
 					a.announceNodeState(log, node.MonitorStateShutdown)
 					log.Infof("ask daemon do stop")
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
