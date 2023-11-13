@@ -190,8 +190,6 @@ func (t CompFile) FileMode() (os.FileMode, error) {
 
 func (t CompFiles) checkPathExistance(rule CompFile) ExitCode {
 	_, err := os.Lstat(rule.Path)
-	m, _ := file.Mode(rule.Path)
-	t.VerboseErrorf(m.String())
 	if err != nil {
 		if os.IsNotExist(err) {
 			t.VerboseErrorf("the file %s does not exist\n", rule.Path)
