@@ -97,16 +97,19 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
 	if err := t.SetNodeFeedClient(); err != nil {
-		return err
+		t.log.Infof("the collector routine is dormant: %s", err)
+	} else {
+		t.log.Infof("feeding %s", t.feedClient)
 	}
-	t.log.Infof("feeding %s", t.feedClient)
 
 	t.wg.Add(1)
 	go func(errC chan<- error) {
 		defer t.wg.Done()
-		t.feedPinger = t.feedClient.NewPinger()
-		t.feedPinger.Start(t.ctx, FeedPingerInterval)
-		defer t.feedPinger.Stop()
+		if t.feedClient != nil {
+			t.feedPinger = t.feedClient.NewPinger()
+			t.feedPinger.Start(t.ctx, FeedPingerInterval)
+			defer t.feedPinger.Stop()
+		}
 		errC <- nil
 		t.loop()
 	}(errC)
