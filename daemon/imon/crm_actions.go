@@ -77,6 +77,10 @@ func (o *imon) crmResourceStart(rids []string) error {
 	return o.crmAction("start", o.path.String(), "start", "--local", "--rid", s)
 }
 
+func (o *imon) crmShutdown() error {
+	return o.crmAction("shutdown", o.path.String(), "shutdown")
+}
+
 func (o *imon) crmStart() error {
 	return o.crmAction("start", o.path.String(), "start", "--local")
 }
