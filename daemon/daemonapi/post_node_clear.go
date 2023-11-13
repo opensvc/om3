@@ -7,12 +7,11 @@ import (
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (a *DaemonApi) PostNodeClear(ctx echo.Context) error {
 	state := node.MonitorStateIdle
-	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: node.MonitorUpdate{State: &state}},
+	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}},
 		labelApi)
 	return ctx.JSON(http.StatusOK, nil)
 }

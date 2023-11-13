@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -32,9 +31,8 @@ func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Meta.Object, err)
 		return err
 	}
-	localhost := hostname.Hostname()
-	if payload.Meta.Node != localhost {
-		err := fmt.Errorf("meta node is %s: expecting %s", payload.Meta.Node, localhost)
+	if payload.Meta.Node != a.localhost {
+		err := fmt.Errorf("meta node is %s: expecting %s", payload.Meta.Node, a.localhost)
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 		return err
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -21,7 +20,7 @@ func (a *DaemonApi) PostDaemonStop(ctx echo.Context) error {
 		log.Infof("announce maintenance state")
 		state := node.MonitorStateMaintenance
 		a.EventBus.Pub(&msgbus.SetNodeMonitor{
-			Node: hostname.Hostname(),
+			Node: a.localhost,
 			Value: node.MonitorUpdate{
 				State: &state,
 			},
