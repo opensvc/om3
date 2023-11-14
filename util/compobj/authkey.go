@@ -482,24 +482,24 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
 	if rule.Action == "add" {
 		if isKeyInstalled {
-			t.VerboseInfof("the key %s is installed and should be installed for the user %s --> ok\n", t.truncateKey(rule.Key), rule.User)
+			t.VerboseInfof("the key %s is installed and should be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 			return ExitOk
 		}
-		t.VerboseErrorf("the key %s is not installed and should be installed for the user %s --> not ok\n", t.truncateKey(rule.Key), rule.User)
+		t.VerboseErrorf("the key %s is not installed and should be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
 	if isKeyInstalled {
-		t.VerboseErrorf("the key %s is installed and should not be installed for the user %s --> not ok\n", t.truncateKey(rule.Key), rule.User)
+		t.VerboseErrorf("the key %s is installed and should not be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
-	t.VerboseInfof("the key %s is not installed and should not be installed for the user %s --> ok\n", t.truncateKey(rule.Key), rule.User)
+	t.VerboseInfof("the key %s is not installed and should not be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 	return ExitOk
 }
 
 func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 	allowGroups, err := t.getAllowGroups(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowGroups field in sshd config file: %s\n", err)
+		t.Errorf("error when trying to read AllowGroups field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowGroups) > 0 {
@@ -513,10 +513,10 @@ func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	if t.isElemInSlice(primaryGroupName, allowGroups) {
-		t.VerboseInfof("the primary group of the user %s is in allowGroups in the sshd config file\n", rule.User)
+		t.VerboseInfof("the primary group of the user %s is in AllowGroups in the sshd config file\n", rule.User)
 		return ExitOk
 	}
-	t.VerboseErrorf("the primary group of the user %s is not in allowGroups in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the primary group of the user %s is not in AllowGroups in the sshd config file\n", rule.User)
 	return ExitNok
 }
 
@@ -535,7 +535,7 @@ func (t CompAuthkeys) getPrimaryGroupName(userName string) (string, error) {
 func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 	allowUsers, err := t.getAllowUsers(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowUsers field in sshd config file: %s\n", err)
+		t.Errorf("error when trying to read AllowUsers field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowUsers) > 0 {
@@ -544,10 +544,10 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 		}
 	}
 	if t.isElemInSlice(rule.User, allowUsers) {
-		t.VerboseInfof("the user %s is in allowUsers in the sshd config file\n", rule.User)
+		t.VerboseInfof("the user %s is in AllowUsers in the sshd config file\n", rule.User)
 		return ExitOk
 	}
-	t.VerboseErrorf("the user %s is not in allowUsers in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the user %s is not in AllowUsers in the sshd config file\n", rule.User)
 	return ExitNok
 }
 
@@ -732,6 +732,15 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 }
 
 func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
+	_, err := user.Lookup(rule.User)
+	if err != nil {
+		if _, ok := err.(user.UnknownUserError); ok {
+			t.Errorf("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+		} else {
+			t.Errorf("%s \n", err)
+		}
+		return ExitNok
+	}
 	e := ExitOk
 	e = e.Merge(t.checkAuthKey(rule))
 	if rule.Action == "add" {

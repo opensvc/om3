@@ -121,22 +121,22 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 	currentVal := n.Config().Get(key.Parse(rule.Key))
 	if currentVal == "" {
 		if rule.Op == "unset" {
-			t.VerboseInfof("the key %s is unset and should be unset --> ok\n", rule.Key)
+			t.VerboseInfof("the node key %s is unset and should be unset\n", rule.Key)
 			return ExitOk
 		}
-		t.VerboseErrorf("the key %s is unset and should be set --> not ok\n", rule.Key)
+		t.VerboseErrorf("the node key %s is unset and should be set\n", rule.Key)
 		return ExitNok
 	}
 	if rule.Op == "unset" {
-		t.VerboseErrorf("the key %s is set and should be unset\n", rule.Key)
+		t.VerboseErrorf("the node key %s is set and should be unset\n", rule.Key)
 		return ExitNok
 	}
 
 	if n.Config().HasKeyMatchingOp(*keyop.Parse(rule.Key + rule.Op + rule.Value.(string))) {
-		t.VerboseInfof("the rule for the key %s , operator %s, value %s is respected --> ok\n", rule.Key, rule.Op, rule.Value.(string))
+		t.VerboseInfof("the rule for the node key %s , operator %s, value %s is respected\n", rule.Key, rule.Op, rule.Value.(string))
 		return ExitOk
 	}
-	t.VerboseErrorf("the rule for the key %s , operator %s, value %s is not respected --> not ok\n", rule.Key, rule.Op, rule.Value.(string))
+	t.VerboseErrorf("the rule for the node key %s , operator %s, value %s is not respected\n", rule.Key, rule.Op, rule.Value.(string))
 	return ExitNok
 }
 
@@ -164,7 +164,7 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 		n.Config().Unset(key.Parse(rule.Key))
 		err = n.Config().Commit()
 		if err != nil {
-			t.Errorf("error when trying to commit the unset\n")
+			t.Errorf("error when trying to commit the unset for the rule %s\n", rule)
 			return ExitNok
 		}
 		return ExitOk

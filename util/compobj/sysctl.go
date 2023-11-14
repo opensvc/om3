@@ -158,7 +158,7 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 		return ExitNok
 	}
 	if len(currentValues) <= *rule.Index {
-		t.VerboseErrorf("index %d is out of range for key %s--> not ok\n", *rule.Index, rule.Key)
+		t.VerboseErrorf("index %d is out of range for key %s\n", *rule.Index, rule.Key)
 		return ExitNok
 	}
 	value := currentValues[*rule.Index]
@@ -170,17 +170,17 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 			return ExitNok
 		}
 		if testOperatorFloat64(newValue, rule.Value.(float64), rule.Op) {
-			t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+			t.VerboseInfof("%s[%d] = %f target: %f operator: %s\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
 			break
 		}
-		t.VerboseErrorf("%s[%d] = %f target: %f operator: %s --> not ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+		t.VerboseErrorf("%s[%d] = %f target: %f operator: %s\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
 		return ExitNok
 	case string:
 		if testOperatorString(value, rule.Value.(string), rule.Op) {
-			t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+			t.VerboseInfof("%s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
 			break
 		}
-		t.VerboseErrorf("%s[%d] = %s target: %s operator: %s --> not ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+		t.VerboseErrorf("%s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
 		return ExitNok
 	default:
 		t.Errorf("type of %s is not float64 or string\n", rule.Value)
@@ -189,11 +189,11 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 
 	if liveValues != nil {
 		if len(liveValues) <= *rule.Index {
-			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different--> not ok\n", rule.Key)
+			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different\n", rule.Key)
 			return ExitNok
 		}
 		if liveValues[*rule.Index] != currentValues[*rule.Index] {
-			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different--> not ok\n", rule.Key)
+			t.VerboseInfof("sysctl err: %s on target in sysctl.conf but kernel value is different\n", rule.Key)
 			return ExitNok
 		}
 	}
@@ -218,7 +218,7 @@ func (t CompSysctls) checkRuleForFix(rule CompSysctl) (ExitCode, bool) {
 		return ExitNok, false
 	}
 	if len(values) <= *rule.Index {
-		t.VerboseErrorf("index %d is out of range for key %s--> not ok\n", *rule.Index, rule.Key)
+		t.VerboseErrorf("index %d is out of range for key %s\n", *rule.Index, rule.Key)
 		return ExitNok, true
 	}
 	value := values[*rule.Index]
@@ -230,17 +230,17 @@ func (t CompSysctls) checkRuleForFix(rule CompSysctl) (ExitCode, bool) {
 			return ExitNok, true
 		}
 		if testOperatorFloat64(newValue, rule.Value.(float64), rule.Op) {
-			t.VerboseInfof("%s[%d] = %f target: %f operator: %s --> ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+			t.VerboseInfof("%s[%d] = %f target: %f operator: %s\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
 			return ExitOk, true
 		}
-		t.VerboseErrorf("%s[%d] = %f target: %f operator: %s --> not ok\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
+		t.VerboseErrorf("%s[%d] = %f target: %f operator: %s\n", rule.Key, *rule.Index, newValue, rule.Value, rule.Op)
 		return ExitNok, true
 	case string:
 		if testOperatorString(value, rule.Value.(string), rule.Op) {
-			t.VerboseInfof("%s[%d] = %s target: %s operator: %s --> ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+			t.VerboseInfof("%s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
 			return ExitOk, true
 		}
-		t.VerboseErrorf("%s[%d] = %s target: %s operator: %s --> not ok\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
+		t.VerboseErrorf("%s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
 		return ExitNok, true
 	default:
 		t.Errorf("type of %s is not float64 or string\n", rule.Value)

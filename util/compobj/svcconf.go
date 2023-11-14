@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/key"
 	"os"
 	"regexp"
 	"strings"
@@ -218,9 +219,19 @@ func (t CompSvcconfs) checkValue(resourceName string, key string, value string, 
 }
 
 func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
+	o, err := object.NewConfigurer(svcName)
+	if err != nil {
+		t.Errorf("error can't create an configurer obj: %s\n", err)
+		return false
+	}
 	ruleSection, filter, keyName := t.getKeyParts(rule)
 	if t.checkRessourceName(resourceName, ruleSection) && t.checkFilter(resourceName, filter) {
-		return t.checkValue(resourceName, keyName, rule.Value.(string), rule.Op)
+		if t.checkValue(resourceName, keyName, rule.Value.(string), rule.Op) {
+			t.VerboseInfof("the resource %s of the svc %s respect the rule the current value is %s and should be %s%s\n", resourceName, svcName, o.Config().Get(key.Parse(rule.Key)), rule.Op, rule.Value)
+			return true
+		}
+		t.VerboseInfof("the resource %s of the svc %s does not respect the rule the current value is %s and should be %s%s\n", resourceName, svcName, o.Config().Get(key.Parse(rule.Key)), rule.Op, rule.Value)
+		return false
 	}
 	return true
 }
@@ -229,11 +240,9 @@ func (t CompSvcconfs) checkRule(rule CompSvcconf) ExitCode {
 	e := ExitOk
 	for _, resourceName := range svcRessourcesNames {
 		if t.checkSection(resourceName, rule) {
-			t.VerboseInfof("the resource %s respect the rule %s%s%s (or is not concerned by the section filter) --> ok\n", resourceName, rule.Key, rule.Op, rule.Value)
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s --> not ok\n", resourceName, rule.Key, rule.Op, rule.Value)
 		e = e.Merge(ExitNok)
 	}
 	return e
@@ -254,11 +263,11 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 	e := ExitOk
 	for _, resourceName := range svcRessourcesNames {
 		if t.checkSection(resourceName, rule) {
-			t.VerboseInfof("the resource %s respect the rule %s%s%s --> ok no need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
+			t.VerboseInfof("the resource %s respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s --> not ok need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
+		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
 		o, err := object.NewConfigurer(svcName)
 		if err != nil {
 			t.Errorf("error can't create an configurer obj: %s\n", err)
