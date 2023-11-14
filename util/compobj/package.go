@@ -193,7 +193,7 @@ func hasApt() bool {
 
 func hasFreebsdPkg() bool {
 	return hasIt("freebsdpkg", func() bool {
-		if osName != "freeBSD" {
+		if osName != "freebsd" {
 			return false
 		}
 		p, err := execLookPath("pkg")
