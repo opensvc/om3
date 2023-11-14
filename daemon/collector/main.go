@@ -177,7 +177,9 @@ func (t *T) onConfigUpdated() {
 		t.log.Warnf("reconfigure: %s", err)
 	}
 	t.log.Infof("feeding %s", t.feedClient)
-	t.feedPinger.Stop()
+	if t.feedPinger != nil {
+		t.feedPinger.Stop()
+	}
 	t.feedPinger = t.feedClient.NewPinger()
 	time.Sleep(time.Microsecond * 10)
 	t.feedPinger.Start(t.ctx, FeedPingerInterval)

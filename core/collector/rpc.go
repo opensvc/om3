@@ -58,10 +58,9 @@ func (c *Client) NewPinger() *Pinger {
 }
 
 func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
-	ctx, cancel := context.WithCancel(ctx)
-	t.ctx = ctx
-	t.cancel = cancel
+	t.ctx, t.cancel = context.WithCancel(ctx)
 	go func() {
+		defer t.cancel()
 		t.client.log.Infof("collector pinger %s started", t.id)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -83,6 +82,9 @@ func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (t *Pinger) Stop() {
+	if t == nil {
+		return
+	}
 	if t.cancel != nil {
 		t.cancel()
 	}
