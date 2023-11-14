@@ -375,10 +375,10 @@ func (t CompUsers) checkUserUid(rule CompUser, userInfos []string) ExitCode {
 	}
 
 	if uid != *rule.Uid {
-		t.VerboseErrorf("for user %s: uid = %d target = %d --> uid not ok \n", rule.User, uid, *rule.Uid)
+		t.VerboseErrorf("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.Uid)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: uid = %d target = %d --> uid ok \n", rule.User, uid, *rule.Uid)
+	t.VerboseInfof("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.Uid)
 	return ExitOk
 }
 
@@ -391,34 +391,34 @@ func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
 	}
 
 	if gid != *rule.Gid {
-		t.VerboseErrorf("for user %s: gid = %d target = %d --> gid not ok \n", rule.User, gid, *rule.Gid)
+		t.VerboseErrorf("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.Gid)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: gid = %d target = %d --> gid ok \n", rule.User, gid, *rule.Gid)
+	t.VerboseInfof("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.Gid)
 	return ExitOk
 }
 
 func (t CompUsers) checkUserShell(rule CompUser, userInfos []string) ExitCode {
 	shell := t.getShell(userInfos)
 	if shell != rule.Shell {
-		t.VerboseErrorf("for user %s: user shell = %s target = %s --> user shell not ok \n", rule.User, shell, rule.Shell)
+		t.VerboseErrorf("for the user %s the shell is %s and should be %s\n", rule.User, shell, rule.Shell)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: user shell = %s target = %s --> user shell ok \n", rule.User, shell, rule.Shell)
+	t.VerboseInfof("for the user %s the shell is %s and should be %s\n", rule.User, shell, rule.Shell)
 	return ExitOk
 }
 
 func (t CompUsers) checkUserHomeDir(rule CompUser, userInfos []string) ExitCode {
 	home := getHomeDir(userInfos)
 	if !file.Exists(home) {
-		t.VerboseErrorf("for user %s: user home dir does not exist --> not ok\n", rule.User)
+		t.VerboseErrorf("the home dir of the user %s does not exist\n", rule.User)
 		return ExitNok
 	}
 	if home != rule.Home {
-		t.VerboseErrorf("for user %s: user home dir = %s target = %s --> user home not ok \n", rule.User, home, rule.Home)
+		t.VerboseErrorf("for the user %s the home dir is %s and should be %s\n", rule.User, home, rule.Home)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: user home dir = %s target = %s --> user home ok \n", rule.User, home, rule.Home)
+	t.VerboseInfof("for the user %s the home dir is %s and should be %s\n", rule.User, home, rule.Home)
 	return ExitOk
 }
 
@@ -429,20 +429,20 @@ func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) 
 		return ExitNok
 	}
 	if uid != *rule.Uid {
-		t.VerboseErrorf("for user %s: user home dir owner = %d target = %d --> user home ownership not ok \n", rule.User, uid, *rule.Uid)
+		t.VerboseErrorf("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.Uid)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: user home dir owner = %d target = %d --> user home ownership ok \n", rule.User, uid, *rule.Uid)
+	t.VerboseInfof("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.Uid)
 	return ExitOk
 }
 
 func (t CompUsers) checkUserGecos(rule CompUser, userInfos []string) ExitCode {
 	gecos := t.getGecos(userInfos)
 	if gecos != rule.Gecos {
-		t.VerboseErrorf("for user %s: user gecos = %s target = %s --> user gecos not ok \n", rule.User, gecos, rule.Gecos)
+		t.VerboseErrorf("for the user %s the gecos is %s and should be %s\n", rule.User, gecos, rule.Gecos)
 		return ExitNok
 	}
-	t.VerboseInfof("for user %s: user gecos = %s target = %s --> user gecos ok \n", rule.User, gecos, rule.Gecos)
+	t.VerboseInfof("for the user %s the gecos is %s and should be %s\n", rule.User, gecos, rule.Gecos)
 	return ExitOk
 }
 
@@ -452,15 +452,15 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 		line := scanner.Text()
 		splitedLine := strings.SplitN(line, ":", 3)
 		if splitedLine[0] == rule.User {
-			t.VerboseInfof("user password hash = %s target = %s \n", splitedLine[1], rule.Password)
 			if splitedLine[1] == rule.Password {
+				t.VerboseInfof("for the user %s the hash of the password is %s and should be %s\n", rule.User, splitedLine[1], rule.Password)
 				return ExitOk
 			}
-			t.VerboseErrorf("for user %s: user password hash not ok \n", rule.User)
+			t.VerboseErrorf("for the user %s the hash of the password is %s and should be %s\n", rule.User, splitedLine[1], rule.Password)
 			return ExitNok
 		}
 	}
-	t.VerboseInfof("not found in /etc/shadow \n")
+	t.VerboseErrorf("hash of the password for the user %s not found in /etc/shadow \n", rule.User)
 	return ExitNok
 }
 
@@ -492,7 +492,7 @@ func (t CompUsers) checkUserExistence(userName string, passwdFile []byte) ([]str
 		splitedLine := strings.Split(line, ":")
 		if splitedLine[0] == userName {
 			if checkDel {
-				t.VerboseErrorf("user %s exist and should not --> not ok\n", userName)
+				t.VerboseErrorf("user %s exist and should not\n", userName)
 				return splitedLine, ExitNok
 			}
 			return splitedLine, ExitOk
@@ -500,7 +500,7 @@ func (t CompUsers) checkUserExistence(userName string, passwdFile []byte) ([]str
 	}
 
 	if checkDel {
-		t.VerboseInfof("user %s doesn't exist --> ok\n", userName)
+		t.VerboseInfof("user %s doesn't exist\n", userName)
 		return []string{}, ExitOk
 	}
 	t.VerboseErrorf("user %s missing in /etc/passwd \n", userName)
