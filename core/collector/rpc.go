@@ -231,8 +231,8 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 	return client, nil
 }
 
-func (t Client) paramsWithAuth(params []interface{}) []interface{} {
-	return append(params, []string{t.secret, hostname.Hostname()})
+func (c Client) paramsWithAuth(params []interface{}) []interface{} {
+	return append(params, []string{c.secret, hostname.Hostname()})
 }
 
 func LogSimpleResponse(response *jsonrpc.RPCResponse, log *plog.Logger) {
@@ -262,9 +262,9 @@ func LogSimpleResponse(response *jsonrpc.RPCResponse, log *plog.Logger) {
 }
 
 // Call executes a jsonrpc2 collector call and returns the response.
-func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
-	response, err := t.client.Call(method, t.paramsWithAuth(params))
-	l := t.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
+func (c Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
+	response, err := c.client.Call(method, c.paramsWithAuth(params))
+	l := c.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	if response != nil && response.Error != nil {
 		l.Attr("collector_rpc_response_data", response.Error.Data).Attr("collector_rpc_response_code", response.Error.Code).Debugf("call: %s: %s", response.Error.Message, response.Error.Data)
 	} else if err != nil {
@@ -278,9 +278,9 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	return response, err
 }
 
-func (t Client) CallFor(out interface{}, method string, params ...interface{}) error {
-	l := t.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
-	err := t.client.CallFor(out, method, t.paramsWithAuth(params))
+func (c Client) CallFor(out interface{}, method string, params ...interface{}) error {
+	l := c.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
+	err := c.client.CallFor(out, method, c.paramsWithAuth(params))
 	if err != nil {
 		l.Errorf("call for: %s: %s", method, err)
 	} else {
