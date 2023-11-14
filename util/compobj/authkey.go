@@ -735,11 +735,18 @@ func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
 	_, err := user.Lookup(rule.User)
 	if err != nil {
 		if _, ok := err.(user.UnknownUserError); ok {
-			t.Errorf("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+			switch rule.Action {
+			case "add":
+				t.VerboseErrorf("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+				return ExitNok
+			case "del":
+				t.VerboseInfof("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+				return ExitOk
+			}
 		} else {
 			t.Errorf("%s \n", err)
+			return ExitNok
 		}
-		return ExitNok
 	}
 	e := ExitOk
 	e = e.Merge(t.checkAuthKey(rule))
