@@ -13,8 +13,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	dpkgEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "Ubuntu"
-		osName = "Linux"
+		osVendor = "ubuntu"
+		osName = "linux"
 
 		cmdRun = func(r commandInterface) error {
 			return nil
@@ -35,8 +35,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	rpmEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "RedHat"
-		osName = "Linux"
+		osVendor = "redhat"
+		osName = "linux"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
@@ -57,8 +57,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	pkgaddEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "Solaris"
-		osName = "SunOS"
+		osVendor = "solaris"
+		osName = "sunos"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
@@ -78,8 +78,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	freebsdpkgEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "FreeBsd"
-		osName = "FreeBSD"
+		osVendor = "freebsd"
+		osName = "freebsd"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
