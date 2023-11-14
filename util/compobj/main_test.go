@@ -62,8 +62,8 @@ func Test_runAction(t *testing.T) {
 	}{
 		"badModule": {
 			args:        []string{"badModule", "fix"},
-			exitCode:    ExitOk,
-			expectedErr: "The compliance objects in this collection must be called via a symlink.\nCollection content:\n  fake\n",
+			exitCode:    ExitNok,
+			expectedErr: "badModule compliance object not found in the core collection\n",
 		},
 		"fix": {
 			args:     []string{"fake", "fix"},
