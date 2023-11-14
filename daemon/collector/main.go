@@ -80,7 +80,7 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-func (t *T) SetNodeFeedClient() error {
+func (t *T) setNodeFeedClient() error {
 	if node, err := object.NewNode(); err != nil {
 		return err
 	} else if client, err := node.CollectorFeedClient(); err != nil {
@@ -96,16 +96,13 @@ func (t *T) Start(ctx context.Context) error {
 	errC := make(chan error)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
-	if err := t.SetNodeFeedClient(); err != nil {
-		t.log.Infof("the collector routine is dormant: %s", err)
-	} else {
-		t.log.Infof("feeding %s", t.feedClient)
-	}
-
 	t.wg.Add(1)
 	go func(errC chan<- error) {
 		defer t.wg.Done()
-		if t.feedClient != nil {
+		if err := t.setNodeFeedClient(); err != nil {
+			t.log.Infof("the collector routine is dormant: %s", err)
+		} else {
+			t.log.Infof("feeding %s", t.feedClient)
 			t.feedPinger = t.feedClient.NewPinger()
 			t.feedPinger.Start(t.ctx, FeedPingerInterval)
 			defer t.feedPinger.Stop()
@@ -173,14 +170,18 @@ func (t *T) onConfigUpdated() {
 		t.log.Infof("disable collector clients")
 		collector.Alive.Store(false)
 	}
-	if err := t.SetNodeFeedClient(); err != nil {
-		t.log.Warnf("reconfigure: %s", err)
+	err := t.setNodeFeedClient()
+	if t.feedPinger != nil {
+		t.feedPinger.Stop()
 	}
-	t.log.Infof("feeding %s", t.feedClient)
-	t.feedPinger.Stop()
-	t.feedPinger = t.feedClient.NewPinger()
-	time.Sleep(time.Microsecond * 10)
-	t.feedPinger.Start(t.ctx, FeedPingerInterval)
+	if err != nil {
+		t.log.Infof("the collector routine is dormant: %s", err)
+	} else {
+		t.log.Infof("feeding %s", t.feedClient)
+		t.feedPinger = t.feedClient.NewPinger()
+		time.Sleep(time.Microsecond * 10)
+		t.feedPinger.Start(t.ctx, FeedPingerInterval)
+	}
 }
 
 func (t *T) sendBeginAction(data []string) {
