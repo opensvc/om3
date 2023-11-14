@@ -41,7 +41,7 @@ type (
 	pingerStopped struct{}
 )
 
-func (c Client) String() string {
+func (c *Client) String() string {
 	return c.endpoint
 }
 
@@ -231,7 +231,7 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 	return client, nil
 }
 
-func (c Client) paramsWithAuth(params []interface{}) []interface{} {
+func (c *Client) paramsWithAuth(params []interface{}) []interface{} {
 	return append(params, []string{c.secret, hostname.Hostname()})
 }
 
@@ -262,7 +262,7 @@ func LogSimpleResponse(response *jsonrpc.RPCResponse, log *plog.Logger) {
 }
 
 // Call executes a jsonrpc2 collector call and returns the response.
-func (c Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
+func (c *Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
 	response, err := c.client.Call(method, c.paramsWithAuth(params))
 	l := c.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	if response != nil && response.Error != nil {
@@ -278,7 +278,7 @@ func (c Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	return response, err
 }
 
-func (c Client) CallFor(out interface{}, method string, params ...interface{}) error {
+func (c *Client) CallFor(out interface{}, method string, params ...interface{}) error {
 	l := c.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	err := c.client.CallFor(out, method, c.paramsWithAuth(params))
 	if err != nil {
