@@ -11,73 +11,105 @@ import (
 
 func TestAuthkeyAdd(t *testing.T) {
 	testCases := map[string]struct {
-		json         string
-		expecteError bool
-		expectedRule CompAuthKey
+		json                []string
+		expectError         bool
+		expectBlacklistUser bool
+		expectedRule        []CompAuthKey
 	}{
 		"with a full add action rule and authfile equal to authorized_keys": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`,
-			expecteError: false,
-			expectedRule: CompAuthKey{
-				Action:     "add",
-				Authfile:   "authorized_keys",
-				User:       "toto",
-				Key:        "totokey",
-				ConfigFile: "/cf",
+			json:        []string{`{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`},
+			expectError: false,
+			expectedRule: []CompAuthKey{
+				{
+					Action:     "add",
+					Authfile:   "authorized_keys",
+					User:       "toto",
+					Key:        "totokey",
+					ConfigFile: "/cf",
+				},
 			},
 		},
 
 		"with a full del action rule authfile equal to authorized_keys2": {
-			json:         `{"action":"del", "authfile":"authorized_keys2", "user":"toto", "key":"totokey","port":22,"configfile":"/cf"}`,
-			expecteError: false,
-			expectedRule: CompAuthKey{
+			json:        []string{`{"action":"del", "authfile":"authorized_keys2", "user":"toto", "key":"totokey","port":22,"configfile":"/cf"}`},
+			expectError: false,
+			expectedRule: []CompAuthKey{{
 				Action:     "del",
 				Authfile:   "authorized_keys2",
 				User:       "toto",
 				Key:        "totokey",
 				ConfigFile: "/cf",
-			},
+			}},
 		},
 
 		"with an action that is not correct (not del or add)": {
-			json:         `{"action":"lalaal", "authfile":"authorized_keys", "user":"toto", "key":"totokey"}`,
-			expecteError: true,
-			expectedRule: CompAuthKey{},
+			json:         []string{`{"action":"lalaal", "authfile":"authorized_keys", "user":"toto", "key":"totokey"}`},
+			expectError:  true,
+			expectedRule: []CompAuthKey{{}},
 		},
 
 		"json rule with no authfile": {
-			json:         `{"action":"add", "authfile":"", "user":"toto", "key":"totokey"}`,
-			expecteError: true,
-			expectedRule: CompAuthKey{},
+			json:         []string{`{"action":"add", "authfile":"", "user":"toto", "key":"totokey"}`},
+			expectError:  true,
+			expectedRule: []CompAuthKey{{}},
 		},
 
 		"json rule with no user": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "user":"", "key":"totokey"}`,
-			expecteError: true,
-			expectedRule: CompAuthKey{},
+			json:         []string{`{"action":"add", "authfile":"authorized_keys", "user":"", "key":"totokey"}`},
+			expectError:  true,
+			expectedRule: []CompAuthKey{{}},
 		},
 
 		"json rule with no key": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":""}`,
-			expecteError: true,
-			expectedRule: CompAuthKey{},
+			json:         []string{`{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":""}`},
+			expectError:  true,
+			expectedRule: []CompAuthKey{{}},
 		},
 
 		"json rule with a false authfile field (not equal to authorized_keys or authorized_keys2": {
-			json:         `{"action":"add", "authfile":"lalala", "user":"", "key":"totokey"}`,
-			expecteError: true,
-			expectedRule: CompAuthKey{},
+			json:         []string{`{"action":"add", "authfile":"lalala", "user":"", "key":"totokey"}`},
+			expectError:  true,
+			expectedRule: []CompAuthKey{{}},
 		},
 
 		"json rule with no cf precised": {
-			json:         `{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey"}`,
-			expecteError: false,
-			expectedRule: CompAuthKey{
+			json:        []string{`{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey"}`},
+			expectError: false,
+			expectedRule: []CompAuthKey{{
 				Action:     "add",
 				Authfile:   "authorized_keys",
 				User:       "toto",
 				Key:        "totokey",
 				ConfigFile: "/etc/ssh/sshd_config",
+			}},
+		},
+
+		"with two same rules ": {
+			json:        []string{`{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`, `{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`},
+			expectError: false,
+			expectedRule: []CompAuthKey{
+				{
+					Action:     "add",
+					Authfile:   "authorized_keys",
+					User:       "toto",
+					Key:        "totokey",
+					ConfigFile: "/cf",
+				},
+			},
+		},
+
+		"with with one add rule and one del rule for the same key and the same user": {
+			json:                []string{`{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`, `{"action":"del", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"}`},
+			expectError:         false,
+			expectBlacklistUser: true,
+			expectedRule: []CompAuthKey{
+				{
+					Action:     "add",
+					Authfile:   "authorized_keys",
+					User:       "toto",
+					Key:        "totokey",
+					ConfigFile: "/cf",
+				},
 			},
 		},
 	}
@@ -85,14 +117,25 @@ func TestAuthkeyAdd(t *testing.T) {
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
 			obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
-			err := obj.Add(c.json)
-			if c.expecteError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, 1, len(obj.rules))
-				require.Equal(t, c.expectedRule, obj.rules[0])
+			for _, jsonRule := range c.json {
+				err := obj.Add(jsonRule)
+				if c.expectError {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 			}
+			if c.expectBlacklistUser {
+				require.Equal(t, false, userValidityMap[c.expectedRule[0].User])
+			}
+			if !c.expectError && !c.expectBlacklistUser {
+				for i := range c.expectedRule {
+					require.Equal(t, c.expectedRule[i], obj.rules[i])
+				}
+			}
+			checkAllowsUsersCfgFile = map[[2]string]any{}
+			userValidityMap = map[string]bool{}
+			actionKeyUserMap = map[[3]string]any{}
 		})
 	}
 }
