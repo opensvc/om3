@@ -28,15 +28,18 @@ type (
 )
 
 var (
-	cacheAllowUsers      []string
-	cacheAllowGroups     []string
-	cacheInstalledKeys   = map[string][]string{}
-	osReadDir            = os.ReadDir
-	osReadLink           = os.Readlink
-	userLookup           = user.Lookup
-	userLookupGroupId    = user.LookupGroupId
-	getAuthKeyFilesPaths = CompAuthkeys{}.getAuthKeyFilesPaths
-	getAuthKeyFilePath   = CompAuthkeys{}.getAuthKeyFilePath
+	checkAllowsUsersCfgFile = map[[2]string]any{}
+	userValidityMap         = map[string]bool{}
+	actionKeyUserMap        = map[[3]string]any{}
+	cacheAllowUsers         []string
+	cacheAllowGroups        []string
+	cacheInstalledKeys      = map[string][]string{}
+	osReadDir               = os.ReadDir
+	osReadLink              = os.Readlink
+	userLookup              = user.Lookup
+	userLookupGroupId       = user.LookupGroupId
+	getAuthKeyFilesPaths    = CompAuthkeys{}.getAuthKeyFilesPaths
+	getAuthKeyFilePath      = CompAuthkeys{}.getAuthKeyFilePath
 
 	compAuthKeyInfo = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_AUTHKEY_",
@@ -154,8 +157,45 @@ func (t *CompAuthkeys) Add(s string) error {
 	if data.ConfigFile == "" {
 		data.ConfigFile = "/etc/ssh/sshd_config"
 	}
-	t.Obj.Add(data)
+	if t.verifyBeforeAdd(data) {
+		t.Obj.Add(data)
+	}
 	return nil
+}
+
+func (t CompAuthkeys) verifyBeforeAdd(rule CompAuthKey) bool {
+	if v, ok := userValidityMap[rule.User]; ok {
+		if !v {
+			return false
+		}
+	}
+	userValidityMap[rule.User] = true
+	switch rule.Action {
+	case "add":
+		_, ok := actionKeyUserMap[[3]string{"del", rule.Key, rule.User}]
+		if ok {
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix", rule.User)
+			userValidityMap[rule.User] = false
+			return false
+		}
+		_, ok = actionKeyUserMap[[3]string{"add", rule.Key, rule.User}]
+		if ok {
+			return false
+		}
+	case "del":
+		_, ok := actionKeyUserMap[[3]string{"add", rule.Key, rule.User}]
+		if ok {
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix", rule.User)
+			userValidityMap[rule.User] = false
+			return false
+		}
+		_, ok = actionKeyUserMap[[3]string{"del", rule.Key, rule.User}]
+		if ok {
+			return false
+		}
+	}
+	actionKeyUserMap[[3]string{rule.Action, rule.Key, rule.User}] = nil
+	return true
 }
 
 func (t CompAuthkeys) truncateKey(key string) string {
@@ -513,10 +553,10 @@ func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	if t.isElemInSlice(primaryGroupName, allowGroups) {
-		t.VerboseInfof("the primary group of the user %s is in AllowGroups in the sshd config file\n", rule.User)
+		t.VerboseInfof("the primary group of the user %s is in AllowGroups in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 		return ExitOk
 	}
-	t.VerboseErrorf("the primary group of the user %s is not in AllowGroups in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the primary group of the user %s is not in AllowGroups in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitNok
 }
 
@@ -544,10 +584,10 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 		}
 	}
 	if t.isElemInSlice(rule.User, allowUsers) {
-		t.VerboseInfof("the user %s is in AllowUsers in the sshd config file\n", rule.User)
+		t.VerboseInfof("the user %s is in AllowUsers in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 		return ExitOk
 	}
-	t.VerboseErrorf("the user %s is not in AllowUsers in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the user %s is not in AllowUsers in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitNok
 }
 
@@ -732,6 +772,9 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 }
 
 func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
+	if !userValidityMap[rule.User] {
+		return ExitNok
+	}
 	_, err := user.Lookup(rule.User)
 	if err != nil {
 		if _, ok := err.(user.UnknownUserError); ok {
@@ -750,9 +793,28 @@ func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
 	}
 	e := ExitOk
 	e = e.Merge(t.checkAuthKey(rule))
-	if rule.Action == "add" {
-		e = e.Merge(t.checkAllowGroups(rule))
-		e = e.Merge(t.checkAllowUsers(rule))
+	return e
+}
+
+func (t CompAuthkeys) checkAllows() ExitCode {
+	e := ExitOk
+	for _, i := range t.Rules() {
+		rule := i.(CompAuthKey)
+		_, err := user.Lookup(rule.User)
+		if err != nil {
+			if _, ok := err.(user.UnknownUserError); !ok {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+			continue
+		}
+		if rule.Action == "add" {
+			if _, ok := checkAllowsUsersCfgFile[[2]string{rule.User, rule.ConfigFile}]; !ok {
+				checkAllowsUsersCfgFile[[2]string{rule.User, rule.ConfigFile}] = nil
+				e = e.Merge(t.checkAllowGroups(rule))
+				e = e.Merge(t.checkAllowUsers(rule))
+			}
+		}
 	}
 	return e
 }
@@ -765,10 +827,15 @@ func (t CompAuthkeys) Check() ExitCode {
 		o := t.checkRule(rule)
 		e = e.Merge(o)
 	}
+	e.Merge(t.checkAllows())
 	return e
 }
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
+	if !userValidityMap[rule.User] {
+		t.Errorf("the user %s is blacklisted can't fix the rule", rule.User)
+		return ExitNok
+	}
 	e := ExitOk
 	if t.checkAuthKey(rule) == ExitNok {
 		switch rule.Action {
@@ -800,13 +867,12 @@ func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
 
 func (t CompAuthkeys) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompAuthKey)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompAuthkeys) Fixable() ExitCode {
