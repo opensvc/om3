@@ -62,6 +62,7 @@ func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
 	go func() {
 		defer t.cancel()
 		t.client.log.Infof("collector pinger %s started", t.id)
+		defer t.client.log.Infof("collector pinger %s stopped", t.id)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -74,7 +75,6 @@ func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
 					}
 				}
 			case <-t.ctx.Done():
-				t.client.log.Infof("collector pinger %s stopped", t.id)
 				return
 			}
 		}
@@ -88,8 +88,6 @@ func (t *Pinger) Stop() {
 	if t.cancel != nil {
 		t.cancel()
 	}
-	t.cancel = nil
-	t.ctx = nil
 }
 
 func (c *Client) Ping() bool {
