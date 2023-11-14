@@ -174,7 +174,7 @@ func (t CompAuthkeys) verifyBeforeAdd(rule CompAuthKey) bool {
 	case "add":
 		_, ok := actionKeyUserMap[[3]string{"del", rule.Key, rule.User}]
 		if ok {
-			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix", rule.User)
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix\n", rule.User)
 			userValidityMap[rule.User] = false
 			return false
 		}
@@ -185,7 +185,7 @@ func (t CompAuthkeys) verifyBeforeAdd(rule CompAuthKey) bool {
 	case "del":
 		_, ok := actionKeyUserMap[[3]string{"add", rule.Key, rule.User}]
 		if ok {
-			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix", rule.User)
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix\n", rule.User)
 			userValidityMap[rule.User] = false
 			return false
 		}
