@@ -336,3 +336,37 @@ func TestPackage_expand(t *testing.T) {
 		})
 	}
 }
+
+func TestAdd(t *testing.T) {
+	testCases := map[string]struct {
+		jsonRules     []string
+		expectedRules []interface{}
+	}{
+		"with a simple rule": {
+			jsonRules:     []string{`["lalal","yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal", "yoyo"}},
+		},
+		"with a two simple rules": {
+			jsonRules:     []string{`["lalal","yoyo"]`, `["toto"]`},
+			expectedRules: []interface{}{CompPackage{"lalal", "yoyo"}, CompPackage{"toto"}},
+		},
+		"with a simple rule and contradictions": {
+			jsonRules:     []string{`["lalal","yoyo","-yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal"}},
+		},
+		"with a simple rule and contradictions in two different rules": {
+			jsonRules:     []string{`["lalal","yoyo"]`, `["-yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal"}, CompPackage{}},
+		},
+	}
+
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			obj := CompPackages{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+			for _, rule := range c.jsonRules {
+				require.NoError(t, obj.Add(rule))
+			}
+			require.Equal(t, c.expectedRules, obj.rules)
+		})
+	}
+}

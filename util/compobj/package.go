@@ -26,7 +26,9 @@ type (
 )
 
 var (
-	cmdRun = func(r commandInterface) error {
+	rulePackages        = map[string]any{}
+	blacklistedPackages = map[string]any{}
+	cmdRun              = func(r commandInterface) error {
 		return r.Run()
 	}
 
@@ -237,8 +239,61 @@ func (t *CompPackages) Add(s string) error {
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
+	t.aggregateBlacklist(data)
 	t.Obj.Add(data)
+	t.filterPackagesUsingBlacklist()
 	return nil
+}
+
+func (t *CompPackages) aggregateBlacklist(rule CompPackage) {
+	for _, s := range rule {
+		if len(s) == 0 {
+			t.Errorf("one of the package name is empty\n")
+			continue
+		}
+		switch s[0] {
+		case '-':
+			if _, ok := blacklistedPackages[s[1:]]; ok {
+				continue
+			}
+			if _, ok := rulePackages[s[1:]]; ok {
+				t.Errorf("conflict with the package %s: trying to add the package and del the package at the same time the package is now blacklisted\n", s[1:])
+				blacklistedPackages[s[1:]] = nil
+			}
+			rulePackages[s] = nil
+		default:
+			if _, ok := blacklistedPackages[s]; ok {
+				continue
+			}
+			if _, ok := rulePackages["-"+s]; ok {
+				t.Errorf("conflict with the package %s: trying to add the package and del the package at the same time the package is now blacklisted\n", s)
+				blacklistedPackages[s] = nil
+			}
+			rulePackages[s] = nil
+		}
+	}
+}
+
+func (t *CompPackages) filterPackagesUsingBlacklist() {
+	newobj := NewCompPackages().(*CompPackages)
+
+	for _, rule := range t.rules {
+		newRule := CompPackage{}
+		for _, s := range rule.(CompPackage) {
+			if len(s) == 0 {
+				continue
+			}
+			searchName := s
+			if s[0] == '-' {
+				searchName = s[1:]
+			}
+			if _, ok := blacklistedPackages[searchName]; !ok {
+				newRule = append(newRule, s)
+			}
+		}
+		newobj.Obj.Add(newRule)
+	}
+	*t = *newobj
 }
 
 func loadInstalledPackages() error {
@@ -764,6 +819,10 @@ func (t *CompPackages) Check() ExitCode {
 		o := t.CheckRule(rule)
 		e = e.Merge(o)
 	}
+	if len(blacklistedPackages) != 0 {
+		t.Errorf("some packages are blacklisted can't do a full check")
+		e = e.Merge(ExitNok)
+	}
 	return e
 }
 
@@ -813,6 +872,10 @@ func (t *CompPackages) Fix() ExitCode {
 	if len(adds) > 0 {
 		o := t.fixPkgAdd(adds)
 		e = e.Merge(o)
+	}
+	if len(blacklistedPackages) != 0 {
+		t.Errorf("some packages are blacklisted can't do a full fix")
+		e = e.Merge(ExitNok)
 	}
 	return e
 }
