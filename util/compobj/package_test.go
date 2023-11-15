@@ -367,6 +367,8 @@ func TestAdd(t *testing.T) {
 				require.NoError(t, obj.Add(rule))
 			}
 			require.Equal(t, c.expectedRules, obj.rules)
+			rulePackages = map[string]any{}
+			blacklistedPackages = map[string]any{}
 		})
 	}
 }
