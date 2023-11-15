@@ -20,7 +20,9 @@ type (
 )
 
 var (
-	compNodeconfInfo = ObjInfo{
+	ruleNodeConf        = map[string]CompNodeconf{}
+	blacklistedNodeConf = map[string]any{}
+	compNodeconfInfo    = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_NODECONF_",
 		ExampleValue: []CompNodeconf{
 			{
@@ -108,10 +110,47 @@ func (t *CompNodeconfs) Add(s string) error {
 		} else {
 			rule.Value = fmt.Sprint(rule.Value)
 		}
+		t.aggregateBlacklist(rule)
 		t.Obj.Add(rule)
 	}
+	t.filterNodeConfUsingBlacklist()
 	return nil
 }
+
+func (t *CompNodeconfs) aggregateBlacklist(rule CompNodeconf) {
+	if _, ok := blacklistedNodeConf[rule.Key]; ok {
+		return
+	}
+	objRule, ok := ruleNodeConf[rule.Key]
+	if !ok {
+		ruleNodeConf[rule.Key] = rule
+		return
+	}
+	switch rule.Op {
+	case "unset":
+		if objRule.Op != "unset" {
+			t.Errorf("conflict with the key %s: trying to unset and to compare a value at the same time the key is now blacklisted\n", rule.Key)
+			blacklistedNodeConf[rule.Key] = nil
+		}
+	default:
+		if objRule.Op == "unset" {
+			t.Errorf("conflict with the key %s: trying to unset and to compare a value at the same time the key is now blacklisted\n", rule.Key)
+			blacklistedNodeConf[rule.Key] = nil
+		}
+	}
+}
+
+func (t *CompNodeconfs) filterNodeConfUsingBlacklist() {
+	newobj := NewCompNodeConfs().(*CompNodeconfs)
+	for _, rule := range t.rules {
+		rule := rule.(CompNodeconf)
+		if _, ok := blacklistedNodeConf[rule.Key]; !ok {
+			newobj.Obj.Add(rule)
+		}
+	}
+	*t = *newobj
+}
+
 func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 	n, err := object.NewNode()
 	if err != nil {
