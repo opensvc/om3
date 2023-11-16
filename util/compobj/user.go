@@ -106,8 +106,8 @@ var (
 		return exec.Command("usermod", "-d", home, user)
 	}
 
-	execShellCommand = func(shell string) *exec.Cmd {
-		return exec.Command("chsh", "-s", shell)
+	execShellCommand = func(shell string, username string) *exec.Cmd {
+		return exec.Command("usermod", "-s", shell, username)
 	}
 
 	execPasswordHashCommand = func(user string, password string) *exec.Cmd {
@@ -115,7 +115,7 @@ var (
 	}
 
 	execGecosCommand = func(gecos string, user string) *exec.Cmd {
-		return exec.Command(`echo "` + gecos + `" | chfn ` + user)
+		return exec.Command(`echo`, `"`+gecos+`" | chfn `+user)
 	}
 
 	osReadFile = os.ReadFile
@@ -673,7 +673,7 @@ func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
 
 func (t CompUsers) fixShell(rule CompUser) ExitCode {
 
-	cmd := execShellCommand(rule.Shell)
+	cmd := execShellCommand(rule.Shell, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("%s: %s", err, output)
@@ -696,7 +696,7 @@ func (t CompUsers) fixGecos(rule CompUser) ExitCode {
 	cmd := execGecosCommand(rule.Gecos, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s", output)
+		t.Errorf("error when trying to change the gecos of the user %s: %s", rule.User, output)
 		return ExitNok
 	}
 	return ExitOk
