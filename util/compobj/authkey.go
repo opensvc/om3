@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/opensvc/om3/util/file"
 	"github.com/pbar1/pkill-go"
 	"os"
 	"os/user"
@@ -218,6 +219,9 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 	if err != nil {
 		return err
 	}
+	if pid <= 1 {
+		panic("arggg")
+	}
 	err = syscall.Kill(pid, syscall.SIGHUP)
 	if err != nil {
 		return err
@@ -234,7 +238,36 @@ func (t CompAuthkeys) getSshdPid(port int) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	return socketMap[inode], nil
+	return t.getParentPid(socketMap[inode])
+}
+
+func (t CompAuthkeys) getParentPid(pid int) (int, error) {
+	strPid := strconv.Itoa(pid)
+	statContent, err := os.ReadFile(filepath.Join("/proc", strPid, "stat"))
+	if err != nil {
+		return -1, err
+	}
+	splitLine := strings.Fields(string(statContent))
+	if len(splitLine) < 4 {
+		return -1, fmt.Errorf("the stat file of the pid %s, is in the wrong format", strPid)
+	}
+	strPpid := splitLine[3]
+	md5pid, err := file.MD5(filepath.Join("/proc", strPid, "exe"))
+	if err != nil {
+		return -1, err
+	}
+	md5Ppid, err := file.MD5(filepath.Join("/proc", strPpid, "exe"))
+	if err != nil {
+		return -1, err
+	}
+	if string(md5pid) == string(md5Ppid) {
+		ppid, err := strconv.Atoi(strPpid)
+		if err != nil {
+			return -1, err
+		}
+		return t.getParentPid(ppid)
+	}
+	return pid, nil
 }
 
 func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
@@ -244,25 +277,31 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 		return nil, err
 	}
 	for _, file := range files {
-		pid, err := strconv.Atoi(file.Name())
-		if err != nil {
-			t.VerboseInfof("info can't convert %s in int in /proc: %s \n", file.Name(), err)
+		pid, _ := strconv.Atoi(file.Name())
+		if pid == 1 {
+			continue
 		}
 		if file.IsDir() && err == nil {
-			fds, err := osReadDir(filepath.Join("proc", file.Name(), "fd"))
+			fds, err := osReadDir(filepath.Join("/proc", file.Name(), "fd"))
 			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
 				t.Errorf("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			for _, fd := range fds {
-				link, err := osReadLink(filepath.Join("proc", file.Name(), "fd", fd.Name()))
+				link, err := osReadLink(filepath.Join("/proc", file.Name(), "fd", fd.Name()))
 				if err != nil {
-					return nil, err
+					if !os.IsNotExist(err) {
+						return nil, err
+					}
+					//return nil, err
 				}
 				splitLink := strings.Split(link, "[")
 				if splitLink[0] == "socket:" && len(splitLink) == 2 {
 					if len(splitLink[1]) > 1 {
-						inode, err := strconv.Atoi(splitLink[1][:len(splitLink[1])-2])
+						inode, err := strconv.Atoi(splitLink[1][:len(splitLink[1])-1])
 						if err != nil {
 							return nil, err
 						}
@@ -282,12 +321,12 @@ func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
 	}
 	for _, file := range files {
 		if file.IsDir() && err == nil {
-			tcpFileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp"))
+			tcpFileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp"))
 			if err != nil {
 				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
-			tcp6FileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp6"))
+			tcp6FileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp6"))
 			if err != nil {
 				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
 				continue
