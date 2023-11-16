@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/opensvc/om3/util/file"
 	"github.com/pbar1/pkill-go"
@@ -553,6 +554,27 @@ func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
 }
 
 func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
+	_, err := user.Lookup(rule.User)
+	if err != nil {
+		switch rule.Action {
+		case "add":
+			var unknownUserError user.UnknownUserError
+			if errors.As(err, &unknownUserError) {
+				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+			} else {
+				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+			}
+			return ExitNok
+		default:
+			var unknownUserError user.UnknownUserError
+			if errors.As(err, &unknownUserError) {
+				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+			} else {
+				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+			}
+			return ExitOk
+		}
+	}
 	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
 	if err != nil {
 		t.Errorf("error when trying to read the authKeys: %s\n", err)
@@ -633,16 +655,33 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	authKeyFilePath, err := getAuthKeyFilePath(rule.Authfile, rule.ConfigFile, rule.User)
 	if err != nil {
-		t.Errorf("error when trying to get the authorized keys file path\n")
+		t.Errorf("error when trying to get the authorized keys file path: %s\n", err)
 		return ExitNok
 	}
 	if len(authKeyFilePath) < 1 {
 		t.Errorf("error when trying to get the authorized keys file path\n")
 		return ExitNok
 	}
+	if _, err = os.Stat(authKeyFilePath[0]); err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(filepath.Dir(authKeyFilePath[0]), 0666)
+			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+			_, err = os.Create(authKeyFilePath[0])
+			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+		} else {
+			t.Errorf("%s", err)
+			return ExitNok
+		}
+	}
 	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		t.Errorf("error when trying to open : %s to add the key: %s\n", authKeyFilePath[0], t.truncateKey(rule.Key))
+		t.Errorf("error when trying to open : %s to add the key: %s:%s\n", authKeyFilePath[0], t.truncateKey(rule.Key), err)
 		return ExitNok
 	}
 	defer func() {
@@ -653,7 +692,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	}()
 	_, err = f.Write([]byte(rule.Key + "\n"))
 	if err != nil {
-		t.Errorf("error when trying to write the key : %s in the file: %s\n", t.truncateKey(rule.Key), authKeyFilePath[0])
+		t.Errorf("error when trying to write the key : %s in the file: %s: %s\n", t.truncateKey(rule.Key), authKeyFilePath[0], err)
 		return ExitNok
 	}
 	if _, ok := cacheInstalledKeys[rule.User]; ok {
