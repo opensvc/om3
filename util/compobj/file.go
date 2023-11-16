@@ -374,22 +374,29 @@ func (t CompFiles) fixContent(rule CompFile) ExitCode {
 	t.Infof("file %s rewritten\n", rule.Path)
 	return ExitOk
 }
-func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
-	if strings.HasPrefix(rule.Path, "/") {
+
+func (t CompFiles) fixPathExistence(rule CompFile) ExitCode {
+	if strings.HasSuffix(rule.Path, "/") {
 		err := os.Mkdir(rule.Path, 0666)
 		if err != nil {
-			t.VerboseErrorf("can't create the file: %s\n", rule.Path)
+			t.Errorf("can't create the dir: %s\n", rule.Path)
 			return ExitNok
 		}
 		return ExitOk
 	}
+
+	err := os.MkdirAll(filepath.Dir(rule.Path), 0666)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
 	f, err := os.Create(rule.Path)
 	if err != nil {
-		t.VerboseErrorf("can't create the file: %s\n", rule.Path)
+		t.Errorf("can't create the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	if err = f.Close(); err != nil {
-		t.VerboseErrorf("can't close the file: %s\n", rule.Path)
+		t.Errorf("can't close the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	return ExitOk
@@ -397,7 +404,7 @@ func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
 
 func (t CompFiles) FixRule(rule CompFile) ExitCode {
 	if e := t.checkPathExistance(rule); e == ExitNok {
-		if e := t.fixPathExistance(rule); e == ExitNok {
+		if e := t.fixPathExistence(rule); e == ExitNok {
 			return ExitNok
 		}
 	}

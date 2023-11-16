@@ -109,7 +109,7 @@ func (t CompFilesProps) FixRule(rule CompFileProp) ExitCode {
 		Ref:  "",
 	}
 	if e := fileobj.checkPathExistance(rulefile); e == ExitNok {
-		if e := fileobj.fixPathExistance(rulefile); e == ExitNok {
+		if e := fileobj.fixPathExistence(rulefile); e == ExitNok {
 			return ExitNok
 		}
 	}
