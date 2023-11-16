@@ -453,10 +453,10 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 		splitedLine := strings.SplitN(line, ":", 3)
 		if splitedLine[0] == rule.User {
 			if splitedLine[1] == rule.Password {
-				t.VerboseInfof("for the user %s the hash of the password is %s and should be %s\n", rule.User, splitedLine[1], rule.Password)
+				t.VerboseInfof("for the user %s the hash of the password match expected value\n", rule.User)
 				return ExitOk
 			}
-			t.VerboseErrorf("for the user %s the hash of the password is %s and should be %s\n", rule.User, splitedLine[1], rule.Password)
+			t.VerboseErrorf("for the user %s the hash of the password doesn't match expected value\n", rule.User)
 			return ExitNok
 		}
 	}
