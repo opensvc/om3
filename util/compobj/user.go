@@ -111,11 +111,11 @@ var (
 	}
 
 	execPasswordHashCommand = func(user string, password string) *exec.Cmd {
-		return exec.Command(`echo "` + user + `:` + password + `" | chpasswd -e`)
+		return exec.Command(`bash`, "-c", `"`, `echo "`+user+`:`+password+`" | chpasswd -e`, `"`)
 	}
 
 	execGecosCommand = func(gecos string, user string) *exec.Cmd {
-		return exec.Command(`echo`, `"`+gecos+`" | chfn `+user)
+		return exec.Command("usermod", "-c", gecos, user)
 	}
 
 	osReadFile = os.ReadFile
