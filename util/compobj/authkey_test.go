@@ -149,19 +149,19 @@ func TestAuthkeyGetSshdPid(t *testing.T) {
 		"the listening tcp and the socket are in the same pid": {
 			testDir:     "./testdata/authkey_procDir_with_listening_tcp_in_the_same_pid",
 			expectError: false,
-			expectedPid: 1,
+			expectedPid: 5,
 		},
 
 		"the listening tcp and the socket are not in the same pid": {
 			testDir:     "./testdata/authkey_procDir_with_listening_tcp_in_not_the_same_pid",
 			expectError: false,
-			expectedPid: 1,
+			expectedPid: 5,
 		},
 
 		"the listening tcp and the socket are not in the same pid but using tcp6": {
 			testDir:     "./testdata/authkey_procDir_with_listening_tcp6_in_the_same_pid",
 			expectError: false,
-			expectedPid: 1,
+			expectedPid: 5,
 		},
 
 		"no listening tcp": {
@@ -192,6 +192,10 @@ func TestAuthkeyGetSshdPid(t *testing.T) {
 
 			osReadDir = func(name string) ([]os.DirEntry, error) {
 				return os.ReadDir(filepath.Join(c.testDir, name))
+			}
+
+			tgetParentPid = func(pid int) (int, error) {
+				return pid, nil
 			}
 
 			pid, err := obj.getSshdPid(22)
@@ -355,7 +359,8 @@ func TestGetAuthKeyFilesPaths(t *testing.T) {
 			osReadFile = func(name string) ([]byte, error) {
 				return os.ReadFile(c.sshdConfigFilePath)
 			}
-			paths, err := obj.getAuthKeyFilesPaths(c.filepath, "toto")
+			// ça ne peut pas marcher
+			paths, err := obj.getAuthKeyFilesPaths(c.sshdConfigFilePath, "toto", c.filepath)
 			require.NoError(t, err)
 			require.Equal(t, c.expectedOutput, paths)
 		})
@@ -368,6 +373,13 @@ func TestCheckAuthKey(t *testing.T) {
 
 	oriGetAuthKeyFilesPaths := getAuthKeyFilesPaths
 	defer func() { getAuthKeyFilesPaths = oriGetAuthKeyFilesPaths }()
+
+	oriUserLookup := userLookup
+	defer func() { userLookup = oriUserLookup }()
+
+	userLookup = func(username string) (*user.User, error) {
+		return nil, nil
+	}
 
 	testCases := map[string]struct {
 		rule                CompAuthKey
@@ -474,10 +486,9 @@ func TestCheckAuthKey(t *testing.T) {
 	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
-			getAuthKeyFilesPaths = func(configFilePath string, userName string) ([]string, error) {
+			getAuthKeyFilesPaths = func(configFilePath string, userName string, authFile string) ([]string, error) {
 				return c.authorizedKeysFiles, nil
 			}
-
 			require.Equal(t, c.expectedOutput, obj.checkAuthKey(c.rule))
 			cacheInstalledKeys = map[string][]string{}
 		})
@@ -587,7 +598,7 @@ func TestDelAuthKey(t *testing.T) {
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
 			filePath := makeEnvWithKeyToDel(c.fileWithKeyToDel)
-			getAuthKeyFilesPaths = func(configFilePath string, userName string) ([]string, error) {
+			getAuthKeyFilesPaths = func(configFilePath string, userName string, authFile string) ([]string, error) {
 				return filePath, nil
 			}
 			obj.delAuthKey(c.rule)

@@ -30,6 +30,7 @@ type (
 )
 
 var (
+	tgetParentPid           = CompAuthkeys{}.getParentPid
 	checkAllowsUsersCfgFile = map[[2]string]any{}
 	userValidityMap         = map[string]bool{}
 	actionKeyUserMap        = map[[3]string]any{}
@@ -239,7 +240,7 @@ func (t CompAuthkeys) getSshdPid(port int) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	return t.getParentPid(socketMap[inode])
+	return tgetParentPid(socketMap[inode])
 }
 
 func (t CompAuthkeys) getParentPid(pid int) (int, error) {
@@ -297,7 +298,6 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 					if !os.IsNotExist(err) {
 						return nil, err
 					}
-					//return nil, err
 				}
 				splitLink := strings.Split(link, "[")
 				if splitLink[0] == "socket:" && len(splitLink) == 2 {
@@ -385,13 +385,11 @@ func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName strin
 	if err != nil {
 		return nil, err
 	}
-	if authFile == "authorized_keys2" {
-		authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
-		if err != nil {
-			return []string{}, err
-		}
-		paths = append(paths, authKeyList2...)
+	authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
+	if err != nil {
+		return []string{}, err
 	}
+	paths = append(paths, authKeyList2...)
 	paths = append(paths, authKeyList1...)
 	return t.expandPaths(paths, userName)
 }
@@ -557,7 +555,7 @@ func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
 }
 
 func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
-	_, err := user.Lookup(rule.User)
+	_, err := userLookup(rule.User)
 	if err != nil {
 		switch rule.Action {
 		case "add":
