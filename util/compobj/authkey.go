@@ -288,7 +288,7 @@ func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
 				if os.IsNotExist(err) {
 					continue
 				}
-				t.Errorf("error: %s can't read proc %s \n", err.Error(), file.Name())
+				t.Errorf("%s: can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			for _, fd := range fds {
@@ -324,12 +324,12 @@ func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
 		if file.IsDir() && err == nil {
 			tcpFileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp"))
 			if err != nil {
-				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
+				t.Infof("%s: can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 			tcp6FileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp6"))
 			if err != nil {
-				t.Infof("error: %s can't read proc %s \n", err.Error(), file.Name())
+				t.Infof("%s: can't read proc %s \n", err.Error(), file.Name())
 				continue
 			}
 
