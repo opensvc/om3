@@ -30,6 +30,7 @@ type (
 )
 
 var (
+	fileMD5                 = file.MD5
 	tgetParentPid           = CompAuthkeys{}.getParentPid
 	checkAllowsUsersCfgFile = map[[2]string]any{}
 	userValidityMap         = map[string]bool{}
@@ -245,7 +246,7 @@ func (t CompAuthkeys) getSshdPid(port int) (int, error) {
 
 func (t CompAuthkeys) getParentPid(pid int) (int, error) {
 	strPid := strconv.Itoa(pid)
-	statContent, err := os.ReadFile(filepath.Join("/proc", strPid, "stat"))
+	statContent, err := osReadFile(filepath.Join("/proc", strPid, "stat"))
 	if err != nil {
 		return -1, err
 	}
@@ -254,11 +255,11 @@ func (t CompAuthkeys) getParentPid(pid int) (int, error) {
 		return -1, fmt.Errorf("the stat file of the pid %s, is in the wrong format", strPid)
 	}
 	strPpid := splitLine[3]
-	md5pid, err := file.MD5(filepath.Join("/proc", strPid, "exe"))
+	md5pid, err := fileMD5(filepath.Join("/proc", strPid, "exe"))
 	if err != nil {
 		return -1, err
 	}
-	md5Ppid, err := file.MD5(filepath.Join("/proc", strPpid, "exe"))
+	md5Ppid, err := fileMD5(filepath.Join("/proc", strPpid, "exe"))
 	if err != nil {
 		return -1, err
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/opensvc/om3/util/file"
 	"github.com/stretchr/testify/require"
 	"os"
 	"os/user"
@@ -681,6 +682,49 @@ func TestAddAllowGroup(t *testing.T) {
 			goldenFileContent, err := os.ReadFile(c.goldenAllows)
 			require.NoError(t, err)
 			require.Equal(t, string(goldenFileContent), string(currentFileContent))
+		})
+	}
+}
+
+func TestGetParentPid(t *testing.T) {
+	oriOsReadFile := osReadFile
+	defer func() { osReadFile = oriOsReadFile }()
+
+	oriFileMD5 := fileMD5
+	defer func() { fileMD5 = oriFileMD5 }()
+
+	testCases := map[string]struct {
+		testDirPath  string
+		oriPid       int
+		expectedPpid int
+	}{
+		"with pid that is the ppid": {
+			testDirPath:  "./testdata/authkey_procDir_getParentPid",
+			oriPid:       2,
+			expectedPpid: 2,
+		},
+
+		"with pid that is not the ppid": {
+			testDirPath:  "./testdata/authkey_procDir_getParentPid",
+			oriPid:       4,
+			expectedPpid: 2,
+		},
+	}
+
+	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			osReadFile = func(name string) ([]byte, error) {
+				return os.ReadFile(filepath.Join(c.testDirPath, name))
+			}
+
+			fileMD5 = func(p string) ([]byte, error) {
+				return file.MD5(filepath.Join(c.testDirPath, p))
+			}
+
+			ppid, err := obj.getParentPid(c.oriPid)
+			require.NoError(t, err)
+			require.Equal(t, c.expectedPpid, ppid)
 		})
 	}
 }
