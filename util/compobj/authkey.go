@@ -379,13 +379,13 @@ func (t CompAuthkeys) getInodeFromTcpFileContent(port int, content []byte) (int,
 	return -1, nil
 }
 
-func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string) ([]string, error) {
+func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string, authFile string) ([]string, error) {
 	paths := []string{}
 	authKeyList1, err := t.getAuthKeyFilePath("authorized_keys", configFilePath, userName)
 	if err != nil {
 		return nil, err
 	}
-	if configFilePath == "authorized_keys" {
+	if authFile == "authorized_keys2" {
 		authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
 		if err != nil {
 			return []string{}, err
@@ -426,6 +426,9 @@ func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, read
 			}
 			return splitLine[1:], nil
 		}
+	}
+	if readOnlyTheFirstAuthKeysFile {
+		return []string{".ssh/authorized_keys"}, nil
 	}
 	return []string{".ssh/authorized_keys2"}, nil
 }
@@ -521,12 +524,12 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 	return cacheAllowGroups, nil
 }
 
-func (t CompAuthkeys) getInstalledKeys(configFilePath string, userName string) ([]string, error) {
+func (t CompAuthkeys) getInstalledKeys(configFilePath string, userName string, authFile string) ([]string, error) {
 	if _, ok := cacheInstalledKeys[userName]; ok == true {
 		return cacheInstalledKeys[userName], nil
 	}
 	installedKeys := []string{}
-	authKeysFiles, err := getAuthKeyFilesPaths(configFilePath, userName)
+	authKeysFiles, err := getAuthKeyFilesPaths(configFilePath, userName, authFile)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +578,7 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 			return ExitOk
 		}
 	}
-	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
+	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User, rule.Authfile)
 	if err != nil {
 		t.Errorf("error when trying to read the authKeys: %s\n", err)
 		return ExitNok
@@ -664,13 +667,17 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	}
 	if _, err = os.Stat(authKeyFilePath[0]); err != nil {
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(filepath.Dir(authKeyFilePath[0]), 0666)
+			err = os.MkdirAll(filepath.Dir(authKeyFilePath[0]), 0700)
 			if err != nil {
 				t.Errorf("%s", err)
 				return ExitNok
 			}
-			_, err = os.Create(authKeyFilePath[0])
+			_, err := os.Create(authKeyFilePath[0])
 			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+			if err := os.Chmod(authKeyFilePath[0], 0600); err != nil {
 				t.Errorf("%s", err)
 				return ExitNok
 			}
@@ -679,7 +686,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 			return ExitNok
 		}
 	}
-	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		t.Errorf("error when trying to open : %s to add the key: %s:%s\n", authKeyFilePath[0], t.truncateKey(rule.Key), err)
 		return ExitNok
@@ -721,6 +728,10 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	if err != nil {
 		t.Errorf("can't open the file %s in write mode: %s\n", authKeyFilePath, err)
 	}
+	if err := os.Chmod(authKeyFilePath, 0600); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
@@ -735,7 +746,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 }
 
 func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
-	authKeysFiles, err := getAuthKeyFilesPaths(rule.ConfigFile, rule.User)
+	authKeysFiles, err := getAuthKeyFilesPaths(rule.ConfigFile, rule.User, rule.Authfile)
 	if err != nil {
 		t.Errorf("error when trying to get the authKey files paths\n")
 		return ExitNok
