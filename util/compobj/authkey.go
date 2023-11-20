@@ -66,7 +66,7 @@ Outputs:
   -
     Dest: compliance variable
     Type: json
-    Format: dict
+    Format: list of dict
     Class: authkey
 
 Inputs:
