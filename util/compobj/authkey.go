@@ -129,6 +129,7 @@ Inputs:
 
 func init() {
 	m["authkey"] = NewCompAutkey
+	m["authkey_list"] = NewCompAutkey
 }
 
 func NewCompAutkey() interface{} {
@@ -138,31 +139,42 @@ func NewCompAutkey() interface{} {
 }
 
 func (t *CompAuthkeys) Add(s string) error {
-	var data CompAuthKey
-	if err := json.Unmarshal([]byte(s), &data); err != nil {
-		return err
+	var data = []CompAuthKey{{}}
+	if err1 := json.Unmarshal([]byte(s), &data[0]); err1 != nil {
+		if err2 := json.Unmarshal([]byte(s), &data); err2 != nil {
+			return fmt.Errorf("%w: %w", err1, err2)
+		}
 	}
-	if !(data.Action == "add" || data.Action == "del") {
-		t.Errorf("action should be equal to add or del in the dict: %s\n", s)
-		return fmt.Errorf("action should be equal to add or del in the dict: %s\n", s)
+	for _, rule := range data {
+		if err := t.addASingleCompauthkey(rule); err != nil {
+			return err
+		}
 	}
-	if !(data.Authfile == "authorized_keys" || data.Authfile == "authorized_keys2") {
-		t.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", s)
-		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", s)
+	return nil
+}
+
+func (t *CompAuthkeys) addASingleCompauthkey(rule CompAuthKey) error {
+	if !(rule.Action == "add" || rule.Action == "del") {
+		t.Errorf("action should be equal to add or del in the dict: %s\n", rule)
+		return fmt.Errorf("action should be equal to add or del in the dict: %s\n", rule)
 	}
-	if data.User == "" {
-		t.Errorf("user should be in the dict: %s\n", s)
-		return fmt.Errorf("user should be in the dict: %s\n", s)
+	if !(rule.Authfile == "authorized_keys" || rule.Authfile == "authorized_keys2") {
+		t.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
+		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
 	}
-	if data.Key == "" {
-		t.Errorf("key should be in the dict: %s\n", s)
-		return fmt.Errorf("user should be in the dict: %s\n", s)
+	if rule.User == "" {
+		t.Errorf("user should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s\n", rule)
 	}
-	if data.ConfigFile == "" {
-		data.ConfigFile = "/etc/ssh/sshd_config"
+	if rule.Key == "" {
+		t.Errorf("key should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s\n", rule)
 	}
-	if t.verifyBeforeAdd(data) {
-		t.Obj.Add(data)
+	if rule.ConfigFile == "" {
+		rule.ConfigFile = "/etc/ssh/sshd_config"
+	}
+	if t.verifyBeforeAdd(rule) {
+		t.Obj.Add(rule)
 	}
 	return nil
 }

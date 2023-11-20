@@ -113,6 +113,26 @@ func TestAuthkeyAdd(t *testing.T) {
 				},
 			},
 		},
+
+		"with a json that is a list of rules": {
+			json:        []string{`[{"action":"add", "authfile":"authorized_keys", "user":"toto", "key":"totokey","configfile":"/cf"},{"action":"add", "authfile":"authorized_keys", "user":"toto2", "key":"totokey","configfile":"/cf"}]`},
+			expectError: false,
+			expectedRule: []CompAuthKey{
+				{
+					Action:     "add",
+					Authfile:   "authorized_keys",
+					User:       "toto",
+					Key:        "totokey",
+					ConfigFile: "/cf",
+				}, {
+					Action:     "add",
+					Authfile:   "authorized_keys",
+					User:       "toto2",
+					Key:        "totokey",
+					ConfigFile: "/cf",
+				},
+			},
+		},
 	}
 
 	for name, c := range testCases {
