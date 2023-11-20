@@ -70,7 +70,7 @@ func (t CompRemovefiles) checkRule(rule CompRemovefile) ExitCode {
 	_, err := os.Stat(string(rule))
 	switch {
 	case err == nil:
-		t.VerboseInfof("the file %s exist and should not exist\n", rule)
+		t.VerboseErrorf("the file %s exist and should not exist\n", rule)
 		return ExitNok
 	case os.IsNotExist(err):
 		t.VerboseInfof("the file %s does not exist and should not exist\n", rule)

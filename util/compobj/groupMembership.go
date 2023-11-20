@@ -228,7 +228,6 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 		t.Errorf("error : some members are not present in the current os\n")
 		return ExitNok
 	}
-	t.VerboseInfof("all the members are user in the current os\n")
 	return ExitOk
 }
 
