@@ -114,7 +114,7 @@ func NewCompSvcConfs() interface{} {
 }
 
 func (t *CompSvcconfs) Add(s string) error {
-	var data []CompNodeconf
+	var data []CompSvcconf
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (t *CompSvcconfs) Add(s string) error {
 		return fmt.Errorf("error can't create an configurer obj : %s", err)
 	}
 	svcRessourcesNames = o.Config().SectionStrings()
-
+	svcRessourcesNames = t.addEnvInRessourcesNamesIfNotPresent(svcRessourcesNames)
 	for _, rule := range data {
 		if rule.Key == "" {
 			return fmt.Errorf("key is mandatory in dict : %s \n", s)
@@ -150,6 +150,15 @@ func (t *CompSvcconfs) Add(s string) error {
 		t.Obj.Add(rule)
 	}
 	return nil
+}
+
+func (t CompSvcconfs) addEnvInRessourcesNamesIfNotPresent(ressourcesNames []string) []string {
+	for _, ressource := range ressourcesNames {
+		if ressource == "env" {
+			return ressourcesNames
+		}
+	}
+	return append(ressourcesNames, "env")
 }
 
 func (t *CompSvcconfs) getKeyParts(rule CompSvcconf) (string, string, string) {
