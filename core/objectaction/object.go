@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"runtime/debug"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +22,7 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -42,7 +42,8 @@ type (
 	// method implementation differ.
 	T struct {
 		actionrouter.T
-		Func func(context.Context, naming.Path) (any, error)
+		LocalFunc  func(context.Context, naming.Path) (any, error)
+		RemoteFunc func(context.Context, naming.Path, string) (any, error)
 	}
 )
 
@@ -52,6 +53,9 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
+	if t.NodeSelector != "" && t.DefaultOutput == "" {
+		t.DefaultOutput = "tab=OBJECT:path,NODE:nodename,SID:data.session_id"
+	}
 	return t
 }
 
@@ -246,7 +250,16 @@ func WithServer(s string) funcopt.O {
 func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Func = f
+		t.LocalFunc = f
+		return nil
+	})
+}
+
+// WithRemoteRun sets a function to run if the action is local
+func WithRemoteRun(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.RemoteFunc = f
 		return nil
 	})
 }
@@ -254,6 +267,69 @@ func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 // Options returns the base Action struct
 func (t T) Options() actionrouter.T {
 	return t.T
+}
+
+func rsHumanRender(rs []actionrouter.Result) string {
+	var (
+		rsTree *tree.Tree
+		rsNode *tree.Node
+	)
+	type treeProvider interface {
+		Tree() *tree.Tree
+	}
+	s := ""
+	manyResults := len(rs) > 1
+	for i, r := range rs {
+		switch {
+		case errors.Is(r.Error, object.ErrDisabled):
+			if manyResults {
+				fmt.Printf("%s: %s\n", r.Path, r.Error)
+			} else {
+				fmt.Printf("%s\n", r.Error)
+			}
+			rs[i].Error = nil
+		case (r.Error != nil) && fmt.Sprint(r.Error) != "":
+			log.Error().Msgf("%s: %s", r.Path, r.Error)
+		case r.Panic != nil:
+			switch err := r.Panic.(type) {
+			case error:
+				log.Fatal().Stack().Msgf("%s: %s", r.Path, err)
+			default:
+				log.Fatal().Msgf("%s: %s", r.Path, err)
+			}
+		}
+		if i, ok := r.Data.(treeProvider); ok {
+			if rsTree == nil {
+				rsTree = tree.New()
+			}
+			branch := i.Tree()
+			if !branch.IsEmpty() {
+				rsNode = rsTree.AddNode()
+				rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
+				rsNode.PlugTree(branch)
+			}
+			continue
+		}
+		switch {
+		case r.HumanRenderer != nil:
+			s += r.HumanRenderer()
+		case r.Data != nil:
+			switch v := r.Data.(type) {
+			case string:
+				s += fmt.Sprintln(v)
+			case []string:
+				for _, e := range v {
+					s += fmt.Sprintln(e)
+				}
+			default:
+				log.Error().Msgf("%s: unimplemented default renderer for local action result of type %s", r.Path, reflect.TypeOf(v))
+			}
+		}
+	}
+	if rsTree != nil {
+		return rsTree.Render()
+	}
+	return s
 }
 
 func (t T) DoLocal() error {
@@ -265,92 +341,51 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		objectselector.SelectionWithLocal(true),
 	)
-	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
-		fmt.Printf("sid=%s\n", xsession.ID)
-	}
-	rs, err := t.selectionDo(sel, t.Func)
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
-	human := func() string {
-		var (
-			rsTree *tree.Tree
-			rsNode *tree.Node
-		)
-		type treeProvider interface {
-			Tree() *tree.Tree
+	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
+		fmt.Printf("sid=%s\n", xsession.ID)
+	}
+	var errs error
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	done := 0
+	todo := len(paths)
+	if todo == 0 {
+		return nil
+	}
+	ctx := context.Background()
+	ctx = actioncontext.WithRID(ctx, t.RID)
+	ctx = actioncontext.WithTag(ctx, t.Tag)
+	ctx = actioncontext.WithSubset(ctx, t.Subset)
+	if t.WithProgress {
+		progressView := progress.NewView()
+		progressView.Start()
+		defer progressView.Stop()
+		ctx = progress.ContextWithView(ctx, progressView)
+	}
+
+	if err := t.selectionDo(ctx, resultQ, hostname.Hostname(), paths, t.LocalFunc); err != nil {
+		return err
+	}
+	for {
+		result := <-resultQ
+		results = append(results, result)
+		done += 1
+		if done >= todo {
+			break
 		}
-		s := ""
-		manyResults := len(rs) > 1
-		for i, r := range rs {
-			switch {
-			case errors.Is(r.Error, object.ErrDisabled):
-				if manyResults {
-					fmt.Printf("%s: %s\n", r.Path, r.Error)
-				} else {
-					fmt.Printf("%s\n", r.Error)
-				}
-				rs[i].Error = nil
-			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
-				log.Error().Msgf("%s: %s", r.Path, r.Error)
-			case r.Panic != nil:
-				switch err := r.Panic.(type) {
-				case error:
-					log.Fatal().Stack().Msgf("%s: %s", r.Path, err)
-				default:
-					log.Fatal().Msgf("%s: %s", r.Path, err)
-				}
-			}
-			if i, ok := r.Data.(treeProvider); ok {
-				if rsTree == nil {
-					rsTree = tree.New()
-				}
-				branch := i.Tree()
-				if !branch.IsEmpty() {
-					rsNode = rsTree.AddNode()
-					rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
-					rsNode.PlugTree(branch)
-				}
-				continue
-			}
-			switch {
-			case r.HumanRenderer != nil:
-				s += r.HumanRenderer()
-			case r.Data != nil:
-				switch v := r.Data.(type) {
-				case string:
-					s += fmt.Sprintln(v)
-				case []string:
-					for _, e := range v {
-						s += fmt.Sprintln(e)
-					}
-				default:
-					log.Error().Msgf("%s: unimplemented default renderer for local action result of type %s", r.Path, reflect.TypeOf(v))
-				}
-			}
-		}
-		if rsTree != nil {
-			return rsTree.Render()
-		}
-		return s
 	}
 	output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          rs,
-		HumanRenderer: human,
+		Data:          results,
+		HumanRenderer: func() string { return rsHumanRender(results) },
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	var errs error
-	for _, ar := range rs {
-		switch {
-		case ar.Panic != nil:
-			errs = errors.Join(errs, fmt.Errorf("%s: %s", ar.Path, ar.Panic))
-		case ar.Error != nil:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", ar.Path, ar.Error))
-		}
-	}
 	return errs
 }
 
@@ -707,7 +742,65 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	return fmt.Errorf("todo")
+	sel := objectselector.NewSelection(
+		t.ObjectSelector,
+		objectselector.SelectionWithLocal(true),
+	)
+	paths, err := sel.MustExpand()
+	if err != nil {
+		return err
+	}
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	if err != nil {
+		return err
+	}
+
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	done := 0
+	todo := len(nodenames) * len(paths)
+	if todo == 0 {
+		return nil
+	}
+
+	var errs error
+
+	ctx := context.Background()
+
+	for _, nodename := range nodenames {
+		n := nodename
+		err := t.selectionDo(ctx, resultQ, n, paths, func(ctx context.Context, p naming.Path) (any, error) {
+			return t.RemoteFunc(ctx, p, n)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	for {
+		result := <-resultQ
+		switch {
+		case result.Panic != nil:
+			fmt.Fprintln(os.Stderr, result.Panic)
+			errs = errors.New("remote action error")
+		case result.Error != nil:
+			fmt.Fprintln(os.Stderr, result.Error)
+			errs = errors.New("remote action error")
+		}
+		results = append(results, result)
+		done += 1
+		if done >= todo {
+			break
+		}
+	}
+	output.Renderer{
+		DefaultOutput: t.DefaultOutput,
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          results,
+		HumanRenderer: func() string { return rsHumanRender(results) },
+		Colorize:      rawconfig.Colorize,
+	}.Print()
+	return errs
 }
 
 func (t T) Do() error {
@@ -716,58 +809,34 @@ func (t T) Do() error {
 
 // selectionDo executes in parallel the action on all selected objects supporting
 // the action.
-func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, naming.Path) (any, error)) ([]actionrouter.Result, error) {
-	results := make([]actionrouter.Result, 0)
-
-	paths, err := selection.MustExpand()
-	if err != nil {
-		return results, err
-	}
-
-	ctx := context.Background()
-	ctx = actioncontext.WithRID(ctx, t.RID)
-	ctx = actioncontext.WithTag(ctx, t.Tag)
-	ctx = actioncontext.WithSubset(ctx, t.Subset)
-
+func (t T) selectionDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, paths naming.Paths, fn func(context.Context, naming.Path) (any, error)) error {
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
-	if t.WithProgress {
-		progressView := progress.NewView()
-		progressView.Start()
-		defer progressView.Stop()
-		ctx = progress.ContextWithView(ctx, progressView)
-	}
-
-	q := make(chan actionrouter.Result, len(paths))
-	started := 0
 
 	for _, p := range paths {
 		go func(p naming.Path) {
 			result := actionrouter.Result{
 				Path:     p,
-				Nodename: hostname.Hostname(),
+				Nodename: nodename,
 			}
-			defer func() {
-				if r := recover(); r != nil {
-					result.Panic = r
-					fmt.Println(string(debug.Stack()))
-					q <- result
-				}
-			}()
+			/*
+				defer func() {
+					if r := recover(); r != nil {
+						result.Panic = r
+						fmt.Println(string(debug.Stack()))
+						resultQ <- result
+					}
+				}()
+			*/
 			data, err := fn(ctx, p)
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
-			q <- result
+			resultQ <- result
 		}(p)
-		started++
 	}
 
-	for i := 0; i < started; i++ {
-		r := <-q
-		results = append(results, r)
-	}
-	return results, nil
+	return nil
 }
 
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached

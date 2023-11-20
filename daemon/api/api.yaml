@@ -868,6 +868,39 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/start:
+    post:
+      operationId: PostInstanceActionStart
+      tags:
+        - object / svc
+        - object / vol
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Start the object instance.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/paths:
     get:
       operationId: GetObjectPaths
@@ -2313,6 +2346,14 @@ components:
         - no
         - start
       default: no
+    InstanceActionAccepted:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+      required:
+        - session_id
     OrchestrationQueued:
       type: object
       properties:
@@ -2968,6 +3009,37 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Kind'
+
+    inQueryDisableRollback:
+      in: query
+      name: disable_rollback
+      schema:
+        type: boolean
+    inQueryForce:
+      in: query
+      name: force
+      schema:
+        type: boolean
+    inQueryRid:
+      in: query
+      name: rid
+      schema:
+        type: string
+    inQuerySubset:
+      in: query
+      name: subset
+      schema:
+        type: string
+    inQueryTag:
+      in: query
+      name: tag
+      schema:
+        type: string
+    inQueryTo:
+      in: query
+      name: to
+      schema:
+        type: string
 
     Evaluate:
       name: evaluate

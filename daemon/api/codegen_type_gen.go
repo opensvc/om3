@@ -257,6 +257,11 @@ type Instance struct {
 	Status  *InstanceStatus  `json:"status,omitempty"`
 }
 
+// InstanceActionAccepted defines model for InstanceActionAccepted.
+type InstanceActionAccepted struct {
+	SessionId openapi_types.UUID `json:"session_id"`
+}
+
 // InstanceConfig defines model for InstanceConfig.
 type InstanceConfig = instance.Config
 
@@ -782,6 +787,24 @@ type InPathName = string
 // InPathNamespace defines model for inPathNamespace.
 type InPathNamespace = string
 
+// InQueryDisableRollback defines model for inQueryDisableRollback.
+type InQueryDisableRollback = bool
+
+// InQueryForce defines model for inQueryForce.
+type InQueryForce = bool
+
+// InQueryRid defines model for inQueryRid.
+type InQueryRid = string
+
+// InQuerySubset defines model for inQuerySubset.
+type InQuerySubset = string
+
+// InQueryTag defines model for inQueryTag.
+type InQueryTag = string
+
+// InQueryTo defines model for inQueryTo.
+type InQueryTo = string
+
 // N200 defines model for 200.
 type N200 = Problem
 
@@ -897,6 +920,16 @@ type GetInstanceLogsParams struct {
 
 	// Lines report this number of past last log entries
 	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
+// PostInstanceActionStartParams defines parameters for PostInstanceActionStart.
+type PostInstanceActionStartParams struct {
+	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
+	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.
