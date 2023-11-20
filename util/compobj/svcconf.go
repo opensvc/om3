@@ -254,40 +254,40 @@ func (t CompSvcconfs) displayLogs(svcName, resourceName, currentValue, ruleValue
 	switch operator {
 	case "=":
 		if isRuleRespected {
-			t.VerboseInfof("the resource %s of the svc %s is supposed to be equal to %s and is equal to %s", resourceName, svcName, ruleValue, currentValue)
+			t.VerboseInfof("the resource %s of the svc %s is supposed to be equal to %s and is equal to %s\n", resourceName, svcName, ruleValue, currentValue)
 			return
 		}
 		if currentValue == "" {
-			t.Errorf("the resource %s of the svc %s is supposed to be equal to %s but is unset", resourceName, svcName, ruleValue)
+			t.VerboseErrorf("the resource %s of the svc %s is supposed to be equal to %s but is unset\n", resourceName, svcName, ruleValue)
 			return
 		}
-		t.Errorf("the resource %s of the svc %s is supposed to be equal to %s but is equal to %s", resourceName, svcName, ruleValue, currentValue)
+		t.Errorf("the resource %s of the svc %s is supposed to be equal to %s but is equal to %s\n", resourceName, svcName, ruleValue, currentValue)
 	case "<=":
 		if isRuleRespected {
-			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be less or equal to %s", resourceName, svcName, currentValue, ruleValue)
+			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be less or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
 			return
 		}
 		if currentValue == "" {
-			t.VerboseErrorf("the resource %s of the svc %s is unset and should be less or equal to %s", resourceName, svcName, ruleValue)
+			t.VerboseErrorf("the resource %s of the svc %s is unset and should be less or equal to %s\n", resourceName, svcName, ruleValue)
 			return
 		}
-		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be less or equal to %s", resourceName, svcName, currentValue, ruleValue)
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be less or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
 	case ">=":
 		if isRuleRespected {
-			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be greater or equal to %s", resourceName, svcName, currentValue, ruleValue)
+			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be greater or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
 			return
 		}
 		if currentValue == "" {
-			t.VerboseErrorf("the resource %s of the svc %s is unset and should be greater or equal to %s", resourceName, svcName, ruleValue)
+			t.VerboseErrorf("the resource %s of the svc %s is unset and should be greater or equal to %s\n", resourceName, svcName, ruleValue)
 			return
 		}
-		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be greater or equal to %s", resourceName, svcName, currentValue, ruleValue)
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be greater or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
 	default:
 		if isRuleRespected {
-			t.VerboseInfof("the resource %s of the svc %s is unset and should be unset", resourceName, svcName)
+			t.VerboseInfof("the resource %s of the svc %s is unset and should be unset\n", resourceName, svcName)
 			return
 		}
-		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be unset", resourceName, svcName, currentValue)
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be unset\n", resourceName, svcName, currentValue)
 	}
 }
 
