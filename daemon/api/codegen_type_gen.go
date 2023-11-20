@@ -932,6 +932,15 @@ type PostInstanceActionStartParams struct {
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionStopParams defines parameters for PostInstanceActionStop.
+type PostInstanceActionStopParams struct {
+	Force  *InQueryForce  `form:"force,omitempty" json:"force,omitempty"`
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // GetNetworkIpParams defines parameters for GetNetworkIp.
 type GetNetworkIpParams struct {
 	// Name the name of a cluster backend network
