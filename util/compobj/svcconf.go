@@ -90,6 +90,7 @@ Inputs:
       - "="
       - ">="
       - "<="
+      - "unset"
     Help: The comparison operator to use to check the parameter value.
   -
     Id: value
@@ -140,11 +141,15 @@ func (t *CompSvcconfs) Add(s string) error {
 		if rule.Op == "" {
 			rule.Op = "="
 		}
-		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
+		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "unset") {
 			return fmt.Errorf("op must be in =, >=, <= in dict : %s \n", s)
 		}
 		if rule.Value == nil {
-			return fmt.Errorf("value is mandatory in dict : %s \n", s)
+			if rule.Op == "unset" {
+				rule.Value = "nil"
+			} else {
+				return fmt.Errorf("value is mandatory in dict : %s \n", s)
+			}
 		}
 		rule.Value = fmt.Sprint(rule.Value)
 		t.Obj.Add(rule)
@@ -218,13 +223,16 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	}
 }
 
-func (t CompSvcconfs) checkValue(resourceName string, key string, value string, op string) bool {
+func (t CompSvcconfs) checkValue(resourceName string, keyName string, value string, op string) bool {
 	o, err := object.NewConfigurer(svcName)
 	if err != nil {
 		t.Errorf("can't create an configurer obj: %s\n", err)
 		return false
 	}
-	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + key + op + value))
+	if op == "unset" {
+		return !o.Config().HasKey(key.New(resourceName, keyName))
+	}
+	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + keyName + op + value))
 }
 
 func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
@@ -238,7 +246,6 @@ func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
 		isRuleRespected := t.checkValue(resourceName, keyName, rule.Value.(string), rule.Op)
 		t.displayLogs(svcName, resourceName, o.Config().Get(key.Parse(rule.Key)), fmt.Sprintf("%s", rule.Value), rule.Op, isRuleRespected)
 		return isRuleRespected
-
 	}
 	return true
 }
@@ -265,7 +272,7 @@ func (t CompSvcconfs) displayLogs(svcName, resourceName, currentValue, ruleValue
 			return
 		}
 		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be less or equal to %s", resourceName, svcName, currentValue, ruleValue)
-	default:
+	case ">=":
 		if isRuleRespected {
 			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be greater or equal to %s", resourceName, svcName, currentValue, ruleValue)
 			return
@@ -275,6 +282,12 @@ func (t CompSvcconfs) displayLogs(svcName, resourceName, currentValue, ruleValue
 			return
 		}
 		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be greater or equal to %s", resourceName, svcName, currentValue, ruleValue)
+	default:
+		if isRuleRespected {
+			t.VerboseInfof("the resource %s of the svc %s is unset and should be unset", resourceName, svcName)
+			return
+		}
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be unset", resourceName, svcName, currentValue)
 	}
 }
 
@@ -316,16 +329,21 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 			return ExitNok
 		}
 		_, _, variable := t.getKeyParts(rule)
-		if err := o.Config().Set(*keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))); err != nil {
-			t.Errorf("%s", err)
-			e = e.Merge(ExitNok)
-			continue
+		if rule.Op == "unset" {
+			if i := o.Config().Unset(key.New(resourceName, variable)); i == 0 {
+				return e.Merge(ExitNok)
+			}
+		} else {
+			if err := o.Config().Set(*keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))); err != nil {
+				t.Errorf("%s", err)
+				e = e.Merge(ExitNok)
+				continue
+			}
 		}
 		if err := o.Config().Commit(); err != nil {
 			t.Errorf("%s", err)
 			e = e.Merge(ExitNok)
 		}
-		e = e.Merge(ExitOk)
 	}
 	return e
 }
