@@ -58,7 +58,11 @@ func TestSysctlAdd(t *testing.T) {
 			expectError: true,
 		},
 		"add with wrong op": {
-			jsonRules:   `[{"key" : "k","index" : 1,"op": ">>","value": 256}}]`,
+			jsonRules:   `[{"key" : "k","index" : 1,"op": ">>","value": 256}]`,
+			expectError: true,
+		},
+		"add with wrong op ff": {
+			jsonRules:   `[{"key" : "k","index" : 1,"op": ">=","value": 256.9}]`,
 			expectError: true,
 		},
 	}
