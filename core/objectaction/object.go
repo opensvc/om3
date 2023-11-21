@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
@@ -367,8 +368,8 @@ func (t T) DoLocal() error {
 		ctx = progress.ContextWithView(ctx, progressView)
 	}
 
-	if err := t.selectionDo(ctx, resultQ, hostname.Hostname(), paths, t.LocalFunc); err != nil {
-		return err
+	for _, path := range paths {
+		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, t.LocalFunc)
 	}
 	for {
 		result := <-resultQ
@@ -742,39 +743,63 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	sel := objectselector.NewSelection(
-		t.ObjectSelector,
-		objectselector.SelectionWithLocal(true),
-	)
-	paths, err := sel.MustExpand()
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	params := api.GetObjectsParams{Path: &t.ObjectSelector}
+	resp, err := c.GetObjectsWithResponse(context.Background(), &params)
 	if err != nil {
+		return fmt.Errorf("api: %w", err)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("unexpected GET /objects status: %s", resp.Status())
+	}
+
+	nodenames := make(map[string]any)
+	if l, err := nodeselector.Expand(t.NodeSelector); err != nil {
 		return err
+	} else {
+		for _, s := range l {
+			nodenames[s] = nil
+		}
 	}
 
 	results := make([]actionrouter.Result, 0)
 	resultQ := make(chan actionrouter.Result)
 	done := 0
-	todo := len(nodenames) * len(paths)
-	if todo == 0 {
-		return nil
-	}
+	todo := 0
 
 	var errs error
 
 	ctx := context.Background()
 
-	for _, nodename := range nodenames {
-		n := nodename
-		err := t.selectionDo(ctx, resultQ, n, paths, func(ctx context.Context, p naming.Path) (any, error) {
-			return t.RemoteFunc(ctx, p, n)
-		})
-		if err != nil {
-			return err
+	for i, item := range resp.JSON200.Items {
+		selectedInstances := make(api.InstanceMap)
+		for n, i := range item.Data.Instances {
+			if _, ok := nodenames[n]; ok {
+				selectedInstances[n] = i
+			}
 		}
+		if t.Target == "started" && (string(item.Data.Topology) == topology.Failover.String()) && len(selectedInstances) > 1 {
+			return fmt.Errorf("%s: cowardly refusing to start multiple instances: topology is failover", item.Meta.Object)
+		}
+		resp.JSON200.Items[i].Data.Instances = selectedInstances
+	}
+	for _, item := range resp.JSON200.Items {
+		for n, _ := range item.Data.Instances {
+			p, err := naming.ParsePath(item.Meta.Object)
+			if err != nil {
+				return err
+			}
+			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, p naming.Path) (any, error) {
+				return t.RemoteFunc(ctx, p, n)
+			})
+			todo += 1
+		}
+	}
+	if todo == 0 {
+		return nil
 	}
 	for {
 		result := <-resultQ
@@ -807,36 +832,31 @@ func (t T) Do() error {
 	return actionrouter.Do(t)
 }
 
-// selectionDo executes in parallel the action on all selected objects supporting
-// the action.
-func (t T) selectionDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, paths naming.Paths, fn func(context.Context, naming.Path) (any, error)) error {
+// instanceDo executes the action in a goroutine
+func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, naming.Path) (any, error)) {
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
 
-	for _, p := range paths {
-		go func(p naming.Path) {
-			result := actionrouter.Result{
-				Path:     p,
-				Nodename: nodename,
-			}
-			/*
-				defer func() {
-					if r := recover(); r != nil {
-						result.Panic = r
-						fmt.Println(string(debug.Stack()))
-						resultQ <- result
-					}
-				}()
-			*/
-			data, err := fn(ctx, p)
-			result.Data = data
-			result.Error = err
-			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
-			resultQ <- result
-		}(p)
-	}
-
-	return nil
+	go func(p naming.Path) {
+		result := actionrouter.Result{
+			Path:     p,
+			Nodename: nodename,
+		}
+		/*
+			defer func() {
+				if r := recover(); r != nil {
+					result.Panic = r
+					fmt.Println(string(debug.Stack()))
+					resultQ <- result
+				}
+			}()
+		*/
+		data, err := fn(ctx, p)
+		result.Data = data
+		result.Error = err
+		result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
+		resultQ <- result
+	}(path)
 }
 
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
