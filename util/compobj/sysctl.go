@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -325,13 +326,28 @@ func (t CompSysctls) getValues(rule CompSysctl, getLiveValue bool) ([]string, er
 }
 
 func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
+	oldConfigFileStat, err := os.Stat(sysctlConfigFilePath)
+	if err != nil {
+		t.Errorf("%s", err)
+		return false, err
+	}
 	changeDone := false
-	configFileOldContent, err := os.ReadFile(sysctlConfigFilePath)
-	configFileNewContent := []byte{}
+	oldConfigFile, err := os.Open(sysctlConfigFilePath)
+	if err != nil {
+		t.Errorf("%s", err)
+		return false, err
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(sysctlConfigFilePath), "newSysctlConf")
+	if err != nil {
+		t.Errorf("%s", err)
+		return false, err
+	}
+	newConfigFilePath := newConfigFile.Name()
+
 	if err != nil {
 		return false, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitLine := strings.Split(line, "=")
@@ -355,26 +371,28 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 				}
 			}
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, byte('\n'))
+		line += "\n"
+		if _, err := newConfigFile.Write([]byte(line)); err != nil {
+			return false, err
+		}
 	}
 	if !changeDone {
 		return changeDone, nil
 	}
-	f, err := os.Create(sysctlConfigFilePath)
+
+	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("can't open the file %s in write mode: %s\n", "/etc/sysctl.conf", err)
-		return false, err
+		t.Errorf("can't close file %s: %s\n", newConfigFile.Name(), err)
 	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			t.Errorf("can't close file %s: %s\n", "/etc/sysctl.conf", err)
-		}
-	}()
-	_, err = f.Write(configFileNewContent)
+	err = oldConfigFile.Close()
 	if err != nil {
-		t.Errorf("can't write in %s: %s\n", "/etc/sysctl.conf", err)
+		t.Errorf("can't close file %s: %s\n", "/etc/sysctl.conf", err)
+	}
+	err = os.Rename(newConfigFilePath, sysctlConfigFilePath)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if err := os.Chmod(sysctlConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		return false, err
 	}
 	return changeDone, nil

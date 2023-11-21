@@ -305,8 +305,8 @@ func TestAuthkeyCheckAllowGroupsCheckAllowUsers(t *testing.T) {
 	oriUserLookGroupId := userLookupGroupId
 	defer func() { userLookupGroupId = oriUserLookGroupId }()
 
-	oriOsReadFile := osReadFile
-	defer func() { osReadFile = oriOsReadFile }()
+	oriOsOpen := osOpen
+	defer func() { osOpen = oriOsOpen }()
 
 	userLookup = func(username string) (*user.User, error) {
 		user1 := &user.User{
@@ -334,8 +334,8 @@ func TestAuthkeyCheckAllowGroupsCheckAllowUsers(t *testing.T) {
 	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
-			osReadFile = func(name string) ([]byte, error) {
-				return os.ReadFile(c.sshdConfigFilePath)
+			osOpen = func(name string) (*os.File, error) {
+				return os.Open(c.sshdConfigFilePath)
 			}
 			require.Equal(t, c.expectedOutput, obj.checkAllowUsers(c.rule))
 			require.Equal(t, c.expectedOutput, obj.checkAllowGroups(c.rule))

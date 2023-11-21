@@ -30,6 +30,7 @@ type (
 )
 
 var (
+	osOpen                  = os.Open
 	fileMD5                 = file.MD5
 	tgetParentPid           = CompAuthkeys{}.getParentPid
 	checkAllowsUsersCfgFile = map[[2]string]any{}
@@ -420,11 +421,11 @@ func (t CompAuthkeys) getAuthKeyFilePath(authFile string, configFilePath string,
 }
 
 func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, readOnlyTheFirstAuthKeysFile bool) ([]string, error) {
-	configFileContent, err := osReadFile(configFilePath)
+	configFile, err := osOpen(configFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileContent))
+	scanner := bufio.NewScanner(configFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -489,11 +490,11 @@ func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error)
 	if cacheAllowUsers != nil {
 		return cacheAllowUsers, nil
 	}
-	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	sshdConfigFile, err := osOpen(sshdConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	scanner := bufio.NewScanner(sshdConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -514,11 +515,11 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 	if cacheAllowGroups != nil {
 		return cacheAllowGroups, nil
 	}
-	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	sshdConfigFile, err := osOpen(sshdConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	scanner := bufio.NewScanner(sshdConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -720,38 +721,53 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 }
 
 func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode {
-	configFileNewContent := []byte{}
-	configFileOldContent, err := os.ReadFile(authKeyFilePath)
+	oldConfigFileStat, err := os.Stat(authKeyFilePath)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s: %s\n", authKeyFilePath, err)
+		t.Errorf("%s", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	newConfigFile, err := os.CreateTemp(filepath.Dir(authKeyFilePath), "newAuthKey")
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	oldConfigFile, err := os.Open(authKeyFilePath)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineKey := strings.TrimSpace(line)
 		if lineKey == key {
 			continue
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, byte('\n'))
+		line += "\n"
+		_, err = newConfigFile.Write([]byte(line))
+		if err != nil {
+			t.Errorf("%s", err)
+			return ExitNok
+		}
 	}
-	f, err := os.Create(authKeyFilePath)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode: %s\n", authKeyFilePath, err)
-	}
-	if err := os.Chmod(authKeyFilePath, 0600); err != nil {
+	if err := os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			t.Errorf("error when trying to close file %s: %s\n", authKeyFilePath, err)
-		}
-	}()
-	_, err = f.Write(configFileNewContent)
+	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("error when trying to write in %s: %s\n", authKeyFilePath, err)
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	err = oldConfigFile.Close()
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	err = os.Rename(newConfigFilePath, authKeyFilePath)
+	if err != nil {
+		t.Errorf("%s", err)
 	}
 	return ExitOk
 }
@@ -782,13 +798,24 @@ func delKeyFromCache(delKey string, keys []string) []string {
 }
 
 func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
-	primaryGroupName := ""
-	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
-	configFileNewContent := []byte{}
+	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s: %s\n", rule.ConfigFile, err)
+		t.Errorf("%s", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	primaryGroupName := ""
+	oldConfigFile, err := os.Open(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitLine := strings.Fields(line)
@@ -800,72 +827,113 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 					return ExitNok
 				}
 				splitLine = append(splitLine, primaryGroupName)
-				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
-				for _, elem := range splitLine[1:] {
-					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
+				_, err = newConfigFile.Write([]byte(splitLine[0]))
+				if err != nil {
+					t.Errorf("%s", err)
+					return ExitNok
 				}
-				configFileNewContent = append(configFileNewContent, []byte("\n")...)
+				for _, elem := range splitLine[1:] {
+					_, err = newConfigFile.Write([]byte(" " + elem))
+					if err != nil {
+						t.Errorf("%s", err)
+						return ExitNok
+					}
+				}
+				_, err = newConfigFile.Write([]byte("\n"))
+				if err != nil {
+					t.Errorf("%s", err)
+					return ExitNok
+				}
 				continue
 			}
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, []byte("\n")...)
-	}
-	f, err := os.Create(rule.ConfigFile)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode: %s\n", rule.ConfigFile, err)
-	}
-	defer func() {
-		err := f.Close()
+		_, err = newConfigFile.Write([]byte(line + "\n"))
 		if err != nil {
-			t.Errorf("error when trying to close file %s: %s\n", rule.ConfigFile, err)
+			t.Errorf("%s", err)
+			return ExitNok
 		}
-	}()
-	_, err = f.Write(configFileNewContent)
-	if err != nil {
-		t.Errorf("error when trying to write in %s: %s\n", rule.ConfigFile, err)
+	}
+	if err = newConfigFile.Close(); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err = oldConfigFile.Close(); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err := os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
 	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
 	return ExitOk
 }
 
 func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
-	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
-	configFileNewContent := []byte{}
+	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s: %s\n", rule.ConfigFile, err)
+		t.Errorf("%s", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	oldConfigFile, err := os.Open(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitLine := strings.Fields(line)
 		if len(splitLine) > 1 {
 			if splitLine[0] == "AllowUsers" {
 				splitLine = append(splitLine, rule.User)
-				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
-				for _, elem := range splitLine[1:] {
-					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
+				if _, err = newConfigFile.Write([]byte(splitLine[0])); err != nil {
+					t.Errorf("%s", err)
+					return ExitNok
 				}
-				configFileNewContent = append(configFileNewContent, []byte("\n")...)
+				for _, elem := range splitLine[1:] {
+					if _, err = newConfigFile.Write([]byte(" " + elem)); err != nil {
+						t.Errorf("%s", err)
+						return ExitNok
+					}
+				}
+				if _, err = newConfigFile.Write([]byte("\n")); err != nil {
+					t.Errorf("%s", err)
+					return ExitNok
+				}
 				continue
 			}
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, []byte("\n")...)
-	}
-	f, err := os.Create(rule.ConfigFile)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode: %s\n", rule.ConfigFile, err)
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			t.Errorf("error when trying to close file %s: %s\n", rule.ConfigFile, err)
+		if _, err = newConfigFile.Write([]byte(line + "\n")); err != nil {
+			t.Errorf("%s", err)
+			return ExitNok
 		}
-	}()
-	_, err = f.Write(configFileNewContent)
-	if err != nil {
-		t.Errorf("error when trying to write in %s: %s\n", rule.ConfigFile, err)
+	}
+	if err = oldConfigFile.Close(); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err = newConfigFile.Close(); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err = os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	if err = os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
 	return ExitOk
