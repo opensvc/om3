@@ -122,7 +122,7 @@ func (t *CompSvcconfs) Add(s string) error {
 	var exists bool
 	svcName, exists = os.LookupEnv("OSVC_COMP_SERVICES_SVCNAME")
 	if !exists {
-		return fmt.Errorf("the environment variable SERVICES_SVCNAME is not set in the os\n")
+		return fmt.Errorf("the environment variable SERVICES_SVCNAME is not set in the os")
 	}
 	p, err := naming.ParsePath(svcName)
 	if err != nil {
@@ -130,7 +130,7 @@ func (t *CompSvcconfs) Add(s string) error {
 	}
 	o, err := object.NewSvc(p)
 	if err != nil {
-		return fmt.Errorf("error can't create an configurer obj : %s", err)
+		return fmt.Errorf("error can't create an configurer obj: %s", err)
 	}
 	svcRessourcesNames = o.Config().SectionStrings()
 	svcRessourcesNames = t.addEnvInRessourcesNamesIfNotPresent(svcRessourcesNames)
@@ -142,7 +142,7 @@ func (t *CompSvcconfs) Add(s string) error {
 			rule.Op = "="
 		}
 		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "unset") {
-			return fmt.Errorf("op must be in =, >=, <= in dict : %s \n", s)
+			return fmt.Errorf("op must be in =, >=, <= in dict: %s", s)
 		}
 		if rule.Value == nil {
 			if rule.Op == "unset" {

@@ -280,7 +280,7 @@ func objMain(osArgs []string, wOut, wErr io.Writer) ExitCode {
 		}
 		v = string(subst([]byte(v)))
 		if err := obj.Add(v); err != nil {
-			_, _ = fmt.Fprintf(wErr, "incompatible data:  %s: %+v\n", err, v)
+			_, _ = fmt.Fprintf(wErr, "incompatible data:  %s", err)
 			continue
 		}
 	}
