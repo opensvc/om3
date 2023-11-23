@@ -408,7 +408,7 @@ func (t Run) Push() error {
 		v := []interface{}{
 			hn,
 			ma.Module,
-			ma.Status(),
+			ma.ExitCode,
 			ma.Log.RenderForCollector(),
 			ma.Action,
 			md5sum,
