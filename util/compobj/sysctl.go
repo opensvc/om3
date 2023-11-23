@@ -184,7 +184,7 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 			}
 			break
 		}
-		if *rule.Index == 0 {
+		if *rule.Index == 0 && len(currentValues) == 1 {
 			t.VerboseErrorf("sysctl %s = %s target: %s operator: %s\n", rule.Key, strconv.FormatFloat(newValue, 'f', -1, 64), strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64), rule.Op)
 		} else {
 			t.VerboseErrorf("sysctl %s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, strconv.FormatFloat(newValue, 'f', -1, 64), strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64), rule.Op)
@@ -199,7 +199,7 @@ func (t CompSysctls) checkRule(rule CompSysctl) ExitCode {
 			}
 			break
 		}
-		if *rule.Index == 0 {
+		if *rule.Index == 0 && len(currentValues) == 1 {
 			t.VerboseErrorf("%s = %s target: %s operator: %s\n", rule.Key, value, rule.Value, rule.Op)
 		} else {
 			t.VerboseErrorf("%s[%d] = %s target: %s operator: %s\n", rule.Key, *rule.Index, value, rule.Value, rule.Op)
