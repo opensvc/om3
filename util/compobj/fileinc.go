@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/goccy/go-json"
+	"os"
+	"regexp"
+	"strings"
 )
 
 type (
@@ -19,14 +24,18 @@ type (
 	}
 )
 
-var compFileincInfo = ObjInfo{
-	DefaultPrefix: "OSVC_COMP_FILEINC_",
-	ExampleValue: CompFileinc{
-		Path:  "/tmp/foo",
-		Check: ".*some pattern.*",
-		Fmt:   "full added content with %%HOSTNAME%%@corp.com: some pattern into the file",
-	},
-	Description: `* Verify or Change file content.
+const MAXSZ = 8 * 1024 * 1024
+
+var (
+	fileContentCache = map[string][]byte{}
+	compFileincInfo  = ObjInfo{
+		DefaultPrefix: "OSVC_COMP_FILEINC_",
+		ExampleValue: CompFileinc{
+			Path:  "/tmp/foo",
+			Check: ".*some pattern.*",
+			Fmt:   "full added content with %%HOSTNAME%%@corp.com: some pattern into the file",
+		},
+		Description: `* Verify or Change file content.
 * The collector provides the format with wildcards.
 * The module replace the wildcards with contextual values.
 * The fmt must match the check pattern ['check' statement]
@@ -37,7 +46,7 @@ Wildcards:
 %%HOSTNAME%%		Hostname
 %%SHORT_HOSTNAME%%	Short hostname
 `,
-	FormDefinition: `
+		FormDefinition: `
 Desc: |
   A fileinc rule, fed to the 'fileinc' compliance object to verify a line matching the 'check' regular expression is present in the specified file. Alternatively, the 'replace' statement can be used to substitute any matching expression by string provided by 'fmt' or 'ref' content.
 Css: comp48
@@ -97,7 +106,8 @@ Inputs:
     Help: An URL pointing to a file containing the line installed if the check pattern is not found in the file.
     Type: string
 `,
-}
+	}
+)
 
 func init() {
 	m["fileinc"] = NewCompFileincs
@@ -114,7 +124,7 @@ func (t *CompFileincs) Add(s string) error {
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
-	if data.Path == "" {
+	if strings.TrimSpace(data.Path) == "" {
 		return fmt.Errorf("path should be in the dict: %s", s)
 	}
 	if data.Check == "" && data.Replace == "" {
@@ -126,15 +136,106 @@ func (t *CompFileincs) Add(s string) error {
 	if data.Fmt != "" && data.Ref != "" {
 		return fmt.Errorf("fmt and ref can't be both in the same dict: %s", s)
 	}
+	data.Path = strings.TrimSpace(data.Path)
 	t.Obj.Add(data)
 	return nil
 }
 
-func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
+func (t CompFileincs) loadFileContentCache(path string) error {
+	if _, ok := fileContentCache[path]; ok {
+		return nil
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	fileContentCache[path] = content
+	return nil
+}
+
+/*func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
+	info, err := os.Stat(rule.Path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			t.VerboseErrorf("the path %s does not exist\n", rule.Path)
+			return ExitNok
+		}
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if info.Size() > MAXSZ {
+		t.Errorf("file %s is too large [%.2f Mb] to fit", rule.Path, info.Size()/(1024*1024))
+		return ExitNok
+	}
+
+}*/
+
+func (t CompFileincs) getLineTochange(rule CompFileinc) ([]byte, error) {
+	switch "fmt" {
+	case "":
+		byteContent, err := getFile(rule.Ref)
+		return []byte(strings.TrimSpace(string(byteContent))), err
+	default:
+		return []byte(rule.Fmt), nil
+	}
+}
+
+func (t CompFileincs) checkCheck(rule CompFileinc, fileContent string) ExitCode {
+	lineToAdd, err := t.getLineTochange(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	reg, err := regexp.Compile(rule.Check)
+	if err != nil {
+		t.Errorf("the regex in rule does not compile: %s\n", err)
+		return ExitNok
+	}
+	hasMatched := reg.Match(lineToAdd)
+	if !hasMatched {
+		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
+		return ExitNok
+	}
+	if err := t.loadFileContentCache(rule.Path); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	hasFoundMatch := false
+	ok := false
+	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if reg.Match([]byte(line)) {
+			if len(lineToAdd) > 0 {
+				if rule.StrictFmt && line != string(lineToAdd) {
+					t.VerboseErrorf("pattern '%s' found in %s but not strictly equal to target", rule.Check, rule.Path)
+				} else {
+					t.VerboseInfof("line '%s' found in '%s'", lineToAdd, rule.Path)
+					ok = true
+				}
+			}
+			if hasFoundMatch {
+				t.Errorf("duplicate match of pattern '%s' in '%s'", rule.Check, rule.Path)
+				return ExitNok
+			}
+			hasFoundMatch = true
+		}
+		if !ok {
+			t.Errorf("line '%s' not found is '%s'", lineToAdd, rule.Path)
+			return ExitNok
+		} else if !hasFoundMatch {
+			t.Errorf("pattern '%s' not found in %s", rule.Check, rule.Path)
+			return ExitNok
+		}
+	}
 	return ExitOk
 }
 
-func (t CompFileincs) Check() ExitCode {
+/*func (t CompFileincs) checkRef(rule CompFileinc) ExitCode {
+
+}*/
+
+/*func (t CompFileincs) Check() ExitCode {
 	t.SetVerbose(true)
 	e := ExitOk
 	for _, i := range t.Rules() {
@@ -143,7 +244,7 @@ func (t CompFileincs) Check() ExitCode {
 		e = e.Merge(o)
 	}
 	return e
-}
+}*/
 
 func (t CompFileincs) Fix() ExitCode {
 	/*t.SetVerbose(false)
