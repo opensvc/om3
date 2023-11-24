@@ -153,7 +153,7 @@ func (t CompFileincs) loadFileContentCache(path string) error {
 	return nil
 }
 
-/*func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
+func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -167,8 +167,17 @@ func (t CompFileincs) loadFileContentCache(path string) error {
 		t.Errorf("file %s is too large [%.2f Mb] to fit", rule.Path, info.Size()/(1024*1024))
 		return ExitNok
 	}
-
-}*/
+	if err := t.loadFileContentCache(rule.Path); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	switch rule.Check {
+	case "":
+		return t.checkReplace(rule)
+	default:
+		return t.checkCheck(rule)
+	}
+}
 
 func (t CompFileincs) getLineTochange(rule CompFileinc) ([]byte, error) {
 	switch "fmt" {
@@ -180,7 +189,7 @@ func (t CompFileincs) getLineTochange(rule CompFileinc) ([]byte, error) {
 	}
 }
 
-func (t CompFileincs) checkCheck(rule CompFileinc, fileContent string) ExitCode {
+func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 	lineToAdd, err := t.getLineTochange(rule)
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -196,12 +205,9 @@ func (t CompFileincs) checkCheck(rule CompFileinc, fileContent string) ExitCode 
 		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
 		return ExitNok
 	}
-	if err := t.loadFileContentCache(rule.Path); err != nil {
-		t.Errorf("%s\n", err)
-		return ExitNok
-	}
 	hasFoundMatch := false
 	ok := false
+	e := ExitOk
 	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -210,32 +216,64 @@ func (t CompFileincs) checkCheck(rule CompFileinc, fileContent string) ExitCode 
 				if rule.StrictFmt && line != string(lineToAdd) {
 					t.VerboseErrorf("pattern '%s' found in %s but not strictly equal to target", rule.Check, rule.Path)
 				} else {
-					t.VerboseInfof("line '%s' found in '%s'", lineToAdd, rule.Path)
+					t.VerboseInfof("line '%s' found in '%s'", line, rule.Path)
 					ok = true
 				}
 			}
 			if hasFoundMatch {
 				t.Errorf("duplicate match of pattern '%s' in '%s'", rule.Check, rule.Path)
-				return ExitNok
+				e = e.Merge(ExitNok)
 			}
 			hasFoundMatch = true
 		}
-		if !ok {
-			t.Errorf("line '%s' not found is '%s'", lineToAdd, rule.Path)
-			return ExitNok
+		if len(lineToAdd) == 0 {
+			if hasFoundMatch {
+				t.VerboseErrorf("pattern '%s' found in %s", rule.Check, rule.Path)
+			} else {
+				t.VerboseInfof("pattern '%s' not found in %s", rule.Check, rule.Path)
+				e = e.Merge(ExitNok)
+			}
+		} else if !ok {
+			t.Errorf("line '%s' not found in '%s'", lineToAdd, rule.Path)
+			e = e.Merge(ExitNok)
 		} else if !hasFoundMatch {
 			t.Errorf("pattern '%s' not found in %s", rule.Check, rule.Path)
-			return ExitNok
+			e = e.Merge(ExitNok)
 		}
 	}
-	return ExitOk
+	return e
 }
 
-/*func (t CompFileincs) checkRef(rule CompFileinc) ExitCode {
+func (t CompFileincs) checkReplace(rule CompFileinc) ExitCode {
+	e := ExitOk
+	lineToAdd, err := t.getLineTochange(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	reg, err := regexp.Compile(rule.Replace)
+	if err != nil {
+		t.Errorf("the regex in rule does not compile: %s\n", err)
+		return ExitNok
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if reg.Match([]byte(line)) {
+			for _, stringMatch := range reg.FindAll([]byte(line), -1) {
+				if line == string(lineToAdd) {
+					t.VerboseInfof("%s : string '%s' found on target in line '%s'", rule.Path, stringMatch, line)
+					continue
+				}
+				t.VerboseErrorf("%s : string '%s' should be replaced by '%s' in line '%s'", rule.Path, stringMatch, lineToAdd, line)
+				e = e.Merge(ExitNok)
+			}
+		}
+	}
+	return e
+}
 
-}*/
-
-/*func (t CompFileincs) Check() ExitCode {
+func (t CompFileincs) Check() ExitCode {
 	t.SetVerbose(true)
 	e := ExitOk
 	for _, i := range t.Rules() {
@@ -244,7 +282,7 @@ func (t CompFileincs) checkCheck(rule CompFileinc, fileContent string) ExitCode 
 		e = e.Merge(o)
 	}
 	return e
-}*/
+}
 
 func (t CompFileincs) Fix() ExitCode {
 	/*t.SetVerbose(false)
