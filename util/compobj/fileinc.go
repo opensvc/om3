@@ -164,7 +164,7 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 		return ExitNok
 	}
 	if info.Size() > MAXSZ {
-		t.Errorf("file %s is too large [%.2f Mb] to fit", rule.Path, info.Size()/(1024*1024))
+		t.Errorf("file %s is too large [%.2f Mb] to fit\n", rule.Path, float64(info.Size()/(1024*1024)))
 		return ExitNok
 	}
 	if err := t.loadFileContentCache(rule.Path); err != nil {
@@ -180,10 +180,10 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 }
 
 func (t CompFileincs) getLineTochange(rule CompFileinc) ([]byte, error) {
-	switch "fmt" {
+	switch rule.Fmt {
 	case "":
 		byteContent, err := getFile(rule.Ref)
-		return []byte(strings.TrimSpace(string(byteContent))), err
+		return byteContent, err
 	default:
 		return []byte(rule.Fmt), nil
 	}
@@ -214,32 +214,32 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 		if reg.Match([]byte(line)) {
 			if len(lineToAdd) > 0 {
 				if rule.StrictFmt && line != string(lineToAdd) {
-					t.VerboseErrorf("pattern '%s' found in %s but not strictly equal to target", rule.Check, rule.Path)
+					t.VerboseErrorf("pattern '%s' found in %s but not strictly equal to target\n", rule.Check, rule.Path)
 				} else {
-					t.VerboseInfof("line '%s' found in '%s'", line, rule.Path)
+					t.VerboseInfof("line '%s' found in '%s'\n", line, rule.Path)
 					ok = true
 				}
 			}
 			if hasFoundMatch {
-				t.Errorf("duplicate match of pattern '%s' in '%s'", rule.Check, rule.Path)
+				t.Errorf("duplicate match of pattern '%s' in '%s'\n", rule.Check, rule.Path)
 				e = e.Merge(ExitNok)
 			}
 			hasFoundMatch = true
 		}
-		if len(lineToAdd) == 0 {
-			if hasFoundMatch {
-				t.VerboseErrorf("pattern '%s' found in %s", rule.Check, rule.Path)
-			} else {
-				t.VerboseInfof("pattern '%s' not found in %s", rule.Check, rule.Path)
-				e = e.Merge(ExitNok)
-			}
-		} else if !ok {
-			t.Errorf("line '%s' not found in '%s'", lineToAdd, rule.Path)
-			e = e.Merge(ExitNok)
-		} else if !hasFoundMatch {
-			t.Errorf("pattern '%s' not found in %s", rule.Check, rule.Path)
+	}
+	if len(lineToAdd) == 0 {
+		if hasFoundMatch {
+			t.VerboseErrorf("pattern '%s' found in %s\n", rule.Check, rule.Path)
+		} else {
+			t.VerboseInfof("pattern '%s' not found in %s\n", rule.Check, rule.Path)
 			e = e.Merge(ExitNok)
 		}
+	} else if !ok {
+		t.Errorf("line '%s' not found in '%s'\n", lineToAdd, rule.Path)
+		e = e.Merge(ExitNok)
+	} else if !hasFoundMatch {
+		t.Errorf("pattern '%s' not found in %s\n", rule.Check, rule.Path)
+		e = e.Merge(ExitNok)
 	}
 	return e
 }
@@ -262,10 +262,10 @@ func (t CompFileincs) checkReplace(rule CompFileinc) ExitCode {
 		if reg.Match([]byte(line)) {
 			for _, stringMatch := range reg.FindAll([]byte(line), -1) {
 				if line == string(lineToAdd) {
-					t.VerboseInfof("%s : string '%s' found on target in line '%s'", rule.Path, stringMatch, line)
+					t.VerboseInfof("%s : string '%s' found on target in line '%s'\n", rule.Path, stringMatch, line)
 					continue
 				}
-				t.VerboseErrorf("%s : string '%s' should be replaced by '%s' in line '%s'", rule.Path, stringMatch, lineToAdd, line)
+				t.VerboseErrorf("%s : string '%s' should be replaced by '%s' in line '%s'\n", rule.Path, stringMatch, lineToAdd, line)
 				e = e.Merge(ExitNok)
 			}
 		}
