@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/goccy/go-json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -200,8 +201,7 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 		t.Errorf("the regex in rule does not compile: %s\n", err)
 		return ExitNok
 	}
-	hasMatched := reg.Match(lineToAdd)
-	if !hasMatched {
+	if !reg.Match(lineToAdd) {
 		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
 		return ExitNok
 	}
@@ -284,15 +284,121 @@ func (t CompFileincs) Check() ExitCode {
 	return e
 }
 
-func (t CompFileincs) Fix() ExitCode {
-	/*t.SetVerbose(false)
-	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		if e := t.FixSymlink(rule); e == ExitNok {
+func (t CompFileincs) fixRule(rule CompFileinc) ExitCode {
+	if e := t.checkRule(rule); e == ExitOk {
+		return ExitOk
+	}
+	info, err := os.Stat(rule.Path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			t.VerboseErrorf("the path %s does not exist\n", rule.Path)
 			return ExitNok
 		}
-	}*/
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if info.Size() > MAXSZ {
+		t.Errorf("file %s is too large [%.2f Mb] to fit\n", rule.Path, float64(info.Size()/(1024*1024)))
+		return ExitNok
+	}
+	switch rule.Check {
+	case "":
+		return t.fixReplace(rule)
+	default:
+		return t.fixCheck(rule)
+	}
+}
+
+func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
+	reg, err := regexp.Compile(rule.Replace)
+	if err != nil {
+		t.Errorf("the regex in rule does not compile: %s\n", err)
+		return ExitNok
+	}
+	lineToAdd, err := t.getLineTochange(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if !reg.Match(lineToAdd) {
+		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
+		return ExitNok
+	}
+	newFile, err := os.CreateTemp(filepath.Dir(rule.Path), "newFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	oldFileStat, err := os.Stat(rule.Path)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	match := 0
+	i := 0
+	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
+	for scanner.Scan() {
+		i += 1
+		line := scanner.Text()
+		if reg.Match([]byte(line)) {
+			match += 1
+			if match == 1 {
+				if rule.StrictFmt && line != string(lineToAdd) {
+					t.Infof("rewrite %s:%d:'%s', new content: '%s'", rule.Path, i, line, lineToAdd)
+					if _, err := newFile.Write(lineToAdd); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				} else {
+					if _, err := newFile.Write([]byte(line)); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+			} else if match > 1 {
+				t.Infof("remove duplicate line %s:%d:'%s'", rule.Path, i, line)
+			}
+		} else {
+			if _, err := newFile.Write([]byte(line)); err != nil {
+				t.Errorf("%s\n", err)
+				return ExitNok
+			}
+		}
+	}
+	if match == 0 && len(lineToAdd) > 0 {
+		t.Infof("add line '%s' to %s", lineToAdd, rule.Path)
+		if _, err := newFile.Write(lineToAdd); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
+	if err = newFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(rule.Path, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
 	return ExitOk
+}
+
+func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
+	return ExitNok
+}
+
+func (t CompFileincs) Fix() ExitCode {
+	t.SetVerbose(false)
+	e := ExitOk
+	for _, i := range t.Rules() {
+		rule := i.(CompFileinc)
+		e = e.Merge(t.fixRule(rule))
+	}
+	return e
 }
 
 func (t CompFileincs) Fixable() ExitCode {

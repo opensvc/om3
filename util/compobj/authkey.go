@@ -723,18 +723,18 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode {
 	oldConfigFileStat, err := os.Stat(authKeyFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFile, err := os.CreateTemp(filepath.Dir(authKeyFilePath), "newAuthKey")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFilePath := newConfigFile.Name()
 	oldConfigFile, err := os.Open(authKeyFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	scanner := bufio.NewScanner(oldConfigFile)
@@ -747,17 +747,17 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 		line += "\n"
 		_, err = newConfigFile.Write([]byte(line))
 		if err != nil {
-			t.Errorf("%s", err)
+			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	}
 	if err := os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	err = oldConfigFile.Close()
@@ -767,7 +767,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	}
 	err = os.Rename(newConfigFilePath, authKeyFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 	}
 	return ExitOk
 }
@@ -800,18 +800,18 @@ func delKeyFromCache(delKey string, keys []string) []string {
 func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	primaryGroupName := ""
 	oldConfigFile, err := os.Open(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFilePath := newConfigFile.Name()
@@ -829,19 +829,19 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 				splitLine = append(splitLine, primaryGroupName)
 				_, err = newConfigFile.Write([]byte(splitLine[0]))
 				if err != nil {
-					t.Errorf("%s", err)
+					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 				for _, elem := range splitLine[1:] {
 					_, err = newConfigFile.Write([]byte(" " + elem))
 					if err != nil {
-						t.Errorf("%s", err)
+						t.Errorf("%s\n", err)
 						return ExitNok
 					}
 				}
 				_, err = newConfigFile.Write([]byte("\n"))
 				if err != nil {
-					t.Errorf("%s", err)
+					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 				continue
@@ -849,24 +849,24 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 		}
 		_, err = newConfigFile.Write([]byte(line + "\n"))
 		if err != nil {
-			t.Errorf("%s", err)
+			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	}
 	if err = newConfigFile.Close(); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err = oldConfigFile.Close(); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err := os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
@@ -876,17 +876,17 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	oldConfigFile, err := os.Open(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	newConfigFilePath := newConfigFile.Name()
@@ -898,41 +898,41 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 			if splitLine[0] == "AllowUsers" {
 				splitLine = append(splitLine, rule.User)
 				if _, err = newConfigFile.Write([]byte(splitLine[0])); err != nil {
-					t.Errorf("%s", err)
+					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 				for _, elem := range splitLine[1:] {
 					if _, err = newConfigFile.Write([]byte(" " + elem)); err != nil {
-						t.Errorf("%s", err)
+						t.Errorf("%s\n", err)
 						return ExitNok
 					}
 				}
 				if _, err = newConfigFile.Write([]byte("\n")); err != nil {
-					t.Errorf("%s", err)
+					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 				continue
 			}
 		}
 		if _, err = newConfigFile.Write([]byte(line + "\n")); err != nil {
-			t.Errorf("%s", err)
+			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	}
 	if err = oldConfigFile.Close(); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err = newConfigFile.Close(); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err = os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if err = os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
@@ -955,7 +955,7 @@ func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
 				return ExitOk
 			}
 		} else {
-			t.Errorf("%s \n", err)
+			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	}
@@ -971,7 +971,7 @@ func (t CompAuthkeys) checkAllows() ExitCode {
 		_, err := user.Lookup(rule.User)
 		if err != nil {
 			if _, ok := err.(user.UnknownUserError); !ok {
-				t.Errorf("%s", err)
+				t.Errorf("%s\n", err)
 				return ExitNok
 			}
 			continue
