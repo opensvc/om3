@@ -142,10 +142,19 @@ func (t *CompFileincs) Add(s string) error {
 	return nil
 }
 
-func (t CompFileincs) loadFileContentCache(path string) error {
+func (t CompFileincs) getFileContentCache(path string) error {
 	if _, ok := fileContentCache[path]; ok {
 		return nil
 	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	fileContentCache[path] = content
+	return nil
+}
+
+func (t CompFileincs) loadFileContentCache(path string) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -158,7 +167,7 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			t.VerboseErrorf("the path %s does not exist\n", rule.Path)
+			t.Errorf("the path %s does not exist\n", rule.Path)
 			return ExitNok
 		}
 		t.Errorf("%s\n", err)
@@ -168,7 +177,7 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 		t.Errorf("file %s is too large [%.2f Mb] to fit\n", rule.Path, float64(info.Size()/(1024*1024)))
 		return ExitNok
 	}
-	if err := t.loadFileContentCache(rule.Path); err != nil {
+	if err := t.getFileContentCache(rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
@@ -291,26 +300,30 @@ func (t CompFileincs) fixRule(rule CompFileinc) ExitCode {
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			t.VerboseErrorf("the path %s does not exist\n", rule.Path)
 			return ExitNok
 		}
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if info.Size() > MAXSZ {
-		t.Errorf("file %s is too large [%.2f Mb] to fit\n", rule.Path, float64(info.Size()/(1024*1024)))
 		return ExitNok
 	}
+	var e ExitCode
 	switch rule.Check {
 	case "":
-		return t.fixReplace(rule)
+		e = t.fixReplace(rule)
 	default:
-		return t.fixCheck(rule)
+		e = t.fixCheck(rule)
 	}
+	if err = t.loadFileContentCache(rule.Path); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	return e
 }
 
 func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
-	reg, err := regexp.Compile(rule.Replace)
+	reg, err := regexp.Compile(rule.Check)
 	if err != nil {
 		t.Errorf("the regex in rule does not compile: %s\n", err)
 		return ExitNok
@@ -344,30 +357,30 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 			match += 1
 			if match == 1 {
 				if rule.StrictFmt && line != string(lineToAdd) {
-					t.Infof("rewrite %s:%d:'%s', new content: '%s'", rule.Path, i, line, lineToAdd)
-					if _, err := newFile.Write(lineToAdd); err != nil {
+					t.Infof("rewrite %s:%d:'%s', new content: '%s'\n", rule.Path, i, line, lineToAdd)
+					if _, err := newFile.Write(append(lineToAdd, '\n')); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
 				} else {
-					if _, err := newFile.Write([]byte(line)); err != nil {
+					if _, err := newFile.Write(append([]byte(line), '\n')); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
 				}
 			} else if match > 1 {
-				t.Infof("remove duplicate line %s:%d:'%s'", rule.Path, i, line)
+				t.Infof("remove duplicate line %s:%d:'%s'\n", rule.Path, i, line)
 			}
 		} else {
-			if _, err := newFile.Write([]byte(line)); err != nil {
+			if _, err := newFile.Write(append([]byte(line), '\n')); err != nil {
 				t.Errorf("%s\n", err)
 				return ExitNok
 			}
 		}
 	}
 	if match == 0 && len(lineToAdd) > 0 {
-		t.Infof("add line '%s' to %s", lineToAdd, rule.Path)
-		if _, err := newFile.Write(lineToAdd); err != nil {
+		t.Infof("add line '%s' to %s\n", lineToAdd, rule.Path)
+		if _, err := newFile.Write(append(lineToAdd, '\n')); err != nil {
 			t.Errorf("%s\n", err)
 			return ExitNok
 		}
@@ -388,7 +401,47 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 }
 
 func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
-	return ExitNok
+	reg, err := regexp.Compile(rule.Replace)
+	if err != nil {
+		t.Errorf("the regex in rule does not compile: %s\n", err)
+		return ExitNok
+	}
+	lineToAdd, err := t.getLineTochange(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newFile, err := os.CreateTemp(filepath.Dir(rule.Path), "newFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	oldFileStat, err := os.Stat(rule.Path)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if _, err = newFile.Write(append([]byte(reg.ReplaceAllString(line, string(lineToAdd))), '\n')); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
+	if err = newFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(rule.Path, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	return ExitOk
 }
 
 func (t CompFileincs) Fix() ExitCode {
