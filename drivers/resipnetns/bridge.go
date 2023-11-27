@@ -44,8 +44,13 @@ func (t *T) startBridge(ctx context.Context) error {
 	netns, err := t.getNS()
 	if err != nil {
 		return err
+	} else if netns != nil {
+		defer func() {
+			if err := netns.Close(); err != nil {
+				t.Log().Warnf("netns close: %s", err)
+			}
+		}()
 	}
-	defer netns.Close()
 
 	guestDev, err := t.guestDev(netns)
 	if err != nil {
