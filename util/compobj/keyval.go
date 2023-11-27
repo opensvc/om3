@@ -12,7 +12,7 @@ type (
 	CompKeyval struct {
 		Key   string `json:"key"`
 		Op    string `json:"op"`
-		Value string `json:"value"`
+		Value any    `json:"value"`
 	}
 )
 
@@ -99,7 +99,7 @@ func (t *CompKeyvals) Add(s string) error {
 			t.Errorf("key should be in the dict: %s\n", s)
 			return fmt.Errorf("key should be in the dict: %s\n", s)
 		}
-		if rule.Value == "" && (rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
+		if rule.Value == nil && (rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
 			t.Errorf("value should be set in the dict: %s\n", s)
 			return fmt.Errorf("value should be set in the dict: %s\n", s)
 		}
@@ -110,6 +110,31 @@ func (t *CompKeyvals) Add(s string) error {
 		if !(rule.Op == "reset" || rule.Op == "unset" || rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
 			t.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
 			return fmt.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
+		}
+		switch rule.Value.(type) {
+		case string:
+		//skip
+		case float64:
+		//skip
+		default:
+			if rule.Op != "IN" {
+				t.Errorf("value should be an int or a string in dict: %s\n", s)
+				return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
+			}
+			if _, ok := rule.Value.([]any); !ok {
+				t.Errorf("value should be a list in dict: %s\n", s)
+				return fmt.Errorf("value should be a list in dict: %s\n", s)
+			}
+			for _, val := range rule.Value.([]any) {
+				if _, ok := val.(float64); ok {
+					continue
+				}
+				if _, ok := val.(string); ok {
+					continue
+				}
+				t.Errorf("the values in value list should be string or int in dict: %s\n", s)
+				return fmt.Errorf("the values in value should be string or int in dict: %s\n", s)
+			}
 		}
 		switch rule.Op {
 		case "unset":

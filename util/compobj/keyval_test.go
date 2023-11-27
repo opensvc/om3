@@ -70,6 +70,64 @@ func TestKeyValsAdd(t *testing.T) {
 			expectError:  true,
 			expectedRule: []any{},
 		},
+
+		"with value that is an int": {
+			jsonRule:    `[{"key":"test","op":"=","value":1}]`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "=",
+				Value: float64(1),
+			}},
+		},
+
+		"with value that is a bool": {
+			jsonRule:     `[{"key":"test","op":"=","value":true}]`,
+			expectError:  true,
+			expectedRule: []any{},
+		},
+
+		"with value that is a list and op != IN": {
+			jsonRule:     `[{"key":"test","op":"=","value":[2,4]}]`,
+			expectError:  true,
+			expectedRule: []any{},
+		},
+
+		"with value that is a list of int and op = IN": {
+			jsonRule:    `[{"key":"test","op":"IN","value":[2,4]}]`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "IN",
+				Value: []any{float64(2), float64(4)},
+			}},
+		},
+
+		"with value that is a list of string and op = IN": {
+			jsonRule:    `[{"key":"test","op":"IN","value":["2","4"]}]`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "IN",
+				Value: []any{"2", "4"},
+			}},
+		},
+
+		"with value that is a list of containing string and int and op = IN": {
+			jsonRule:    `[{"key":"test","op":"IN","value":["2",4]}]`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "IN",
+				Value: []any{"2", float64(4)},
+			}},
+		},
+
+		"with value that is a list of containing string and int and bool and op = IN": {
+			jsonRule:     `[{"key":"test","op":"IN","value":["2",4,true]}]`,
+			expectError:  true,
+			expectedRule: []any{},
+		},
 	}
 
 	for name, c := range testCases {
