@@ -140,6 +140,7 @@ func TestKeyValsAdd(t *testing.T) {
 
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
+			keyvalValidityMap = map[string]string{}
 			obj := CompKeyvals{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 			if c.expectError {
 				require.Error(t, obj.Add(c.jsonRule))
