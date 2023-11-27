@@ -12,7 +12,7 @@ func TestKeyValsAdd(t *testing.T) {
 		expectedRule []any
 	}{
 		"with a full (one rule)": {
-			jsonRule:    `[{"key":"test","op":"=","value":"test"}]`,
+			jsonRule:    `{"path":"tmp", "keys" : [{"key":"test","op":"=","value":"test"}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -22,7 +22,7 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with multiples rules": {
-			jsonRule:    `[{"key":"test","op":"=","value":"test"}, {"key":"test2","op":"=","value":"test2"}]`,
+			jsonRule:    `{"path" : "tmp","keys" :[{"key":"test","op":"=","value":"test"}, {"key":"test2","op":"=","value":"test2"}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -36,43 +36,51 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with conflicts in rules": {
-			jsonRule:     `[{"key":"test","op":"=","value":"test"}, {"key":"test","op":"unset","value":"test2"}]`,
+			jsonRule:     `{"path" : "tmp","keys" : [{"key":"test","op":"=","value":"test"}, {"key":"test","op":"unset","value":"test2"}]}`,
 			expectError:  false,
 			expectedRule: []any{},
 		},
 
 		"with missing key": {
-			jsonRule:     `[{"op":"=","value":"test"}]`,
+			jsonRule:     `{"path":"tmp", "keys" : [{"op":"=","value":"test"}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},
 
 		"with missing op": {
-			jsonRule:     `[{"key":"test","value":"test"}]`,
-			expectError:  true,
-			expectedRule: []any{},
+			jsonRule:    `{"path":"tmp", "keys" : [{"key":"test","value":"test"}]}`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "=",
+				Value: "test",
+			}},
 		},
 
 		"with missing value and op != unset": {
-			jsonRule:     `[{"key":"test","op":"="}]`,
+			jsonRule:     `{"path":"tmp", "keys" : [{"key":"test","op":"="}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},
 
 		"with missing value and op = unset": {
-			jsonRule:     `[{"key":"test","op":"unset"}]`,
-			expectError:  true,
-			expectedRule: []any{},
+			jsonRule:    `{"path":"tmp", "keys" : [{"key":"test","op":"unset"}]}`,
+			expectError: false,
+			expectedRule: []any{CompKeyval{
+				Key:   "test",
+				Op:    "unset",
+				Value: nil,
+			}},
 		},
 
 		"with a false op": {
-			jsonRule:     `[{"key":"test","op":">>>>","value":"2"}]`,
+			jsonRule:     `{"path" : "tmp","keys" :[{"key":"test","op":">>>>","value":"2"}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},
 
 		"with value that is an int": {
-			jsonRule:    `[{"key":"test","op":"=","value":1}]`,
+			jsonRule:    `{"path" : "tmp","keys" :[{"key":"test","op":"=","value":1}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -82,19 +90,19 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with value that is a bool": {
-			jsonRule:     `[{"key":"test","op":"=","value":true}]`,
+			jsonRule:     `{"path" : "tmp","keys" :[{"key":"test","op":"=","value":true}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},
 
 		"with value that is a list and op != IN": {
-			jsonRule:     `[{"key":"test","op":"=","value":[2,4]}]`,
+			jsonRule:     `{"path" : "tmp","keys" :[{"key":"test","op":"=","value":[2,4]}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},
 
 		"with value that is a list of int and op = IN": {
-			jsonRule:    `[{"key":"test","op":"IN","value":[2,4]}]`,
+			jsonRule:    `{"path" : "tmp","keys" :[{"key":"test","op":"IN","value":[2,4]}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -104,7 +112,7 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with value that is a list of string and op = IN": {
-			jsonRule:    `[{"key":"test","op":"IN","value":["2","4"]}]`,
+			jsonRule:    `{"path" : "tmp","keys" :[{"key":"test","op":"IN","value":["2","4"]}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -114,7 +122,7 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with value that is a list of containing string and int and op = IN": {
-			jsonRule:    `[{"key":"test","op":"IN","value":["2",4]}]`,
+			jsonRule:    `{"path" : "tmp","keys" :[{"key":"test","op":"IN","value":["2",4]}]}`,
 			expectError: false,
 			expectedRule: []any{CompKeyval{
 				Key:   "test",
@@ -124,7 +132,7 @@ func TestKeyValsAdd(t *testing.T) {
 		},
 
 		"with value that is a list of containing string and int and bool and op = IN": {
-			jsonRule:     `[{"key":"test","op":"IN","value":["2",4,true]}]`,
+			jsonRule:     `{"path" : "tmp","keys" :[{"key":"test","op":"IN","value":["2",4,true]}]}`,
 			expectError:  true,
 			expectedRule: []any{},
 		},

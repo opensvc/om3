@@ -17,6 +17,7 @@ type (
 )
 
 var (
+	keyValpath        string
 	keyvalValidityMap = map[string]string{}
 	compKeyvalInfo    = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_KEYVAL_",
@@ -90,50 +91,59 @@ func NewCompKeyvals() interface{} {
 }
 
 func (t *CompKeyvals) Add(s string) error {
-	var data []CompKeyval
-	if err := json.Unmarshal([]byte(s), &data); err != nil {
+	dataPath := struct {
+		Path string       `json:"path"`
+		Keys []CompKeyval `json:"keys"`
+	}{}
+	if err := json.Unmarshal([]byte(s), &dataPath); err != nil {
 		return err
 	}
-	for _, rule := range data {
+	if dataPath.Path == "" {
+		t.Errorf("path should be in the dict: %s\n", s)
+		return fmt.Errorf("path should be in the dict: %s\n", s)
+	}
+	keyValpath = dataPath.Path
+	for _, rule := range dataPath.Keys {
 		if rule.Key == "" {
 			t.Errorf("key should be in the dict: %s\n", s)
 			return fmt.Errorf("key should be in the dict: %s\n", s)
+		}
+		if rule.Op == "" {
+			rule.Op = "="
 		}
 		if rule.Value == nil && (rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
 			t.Errorf("value should be set in the dict: %s\n", s)
 			return fmt.Errorf("value should be set in the dict: %s\n", s)
 		}
-		if rule.Op == "" {
-			t.Errorf("op should be set in the dict: %s\n", s)
-			return fmt.Errorf("op should be set in the dict: %s\n", s)
-		}
 		if !(rule.Op == "reset" || rule.Op == "unset" || rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
 			t.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
 			return fmt.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
 		}
-		switch rule.Value.(type) {
-		case string:
-		//skip
-		case float64:
-		//skip
-		default:
-			if rule.Op != "IN" {
-				t.Errorf("value should be an int or a string in dict: %s\n", s)
-				return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
-			}
-			if _, ok := rule.Value.([]any); !ok {
-				t.Errorf("value should be a list in dict: %s\n", s)
-				return fmt.Errorf("value should be a list in dict: %s\n", s)
-			}
-			for _, val := range rule.Value.([]any) {
-				if _, ok := val.(float64); ok {
-					continue
+		if rule.Op != "unset" {
+			switch rule.Value.(type) {
+			case string:
+			//skip
+			case float64:
+			//skip
+			default:
+				if rule.Op != "IN" {
+					t.Errorf("value should be an int or a string in dict: %s\n", s)
+					return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
 				}
-				if _, ok := val.(string); ok {
-					continue
+				if _, ok := rule.Value.([]any); !ok {
+					t.Errorf("value should be a list in dict: %s\n", s)
+					return fmt.Errorf("value should be a list in dict: %s\n", s)
 				}
-				t.Errorf("the values in value list should be string or int in dict: %s\n", s)
-				return fmt.Errorf("the values in value should be string or int in dict: %s\n", s)
+				for _, val := range rule.Value.([]any) {
+					if _, ok := val.(float64); ok {
+						continue
+					}
+					if _, ok := val.(string); ok {
+						continue
+					}
+					t.Errorf("the values in value list should be string or int in dict: %s\n", s)
+					return fmt.Errorf("the values in value should be string or int in dict: %s\n", s)
+				}
 			}
 		}
 		switch rule.Op {
