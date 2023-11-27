@@ -265,13 +265,12 @@ func (t CompGroups) checkFileNsswitch() bool {
 func (t *CompGroups) Fix() ExitCode {
 	t.SetVerbose(false)
 	t.loadGroupFile()
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroup)
-		if e := t.fixGroup(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixGroup(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompGroups) fixGroup(rule CompGroup) ExitCode {

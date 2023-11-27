@@ -222,13 +222,12 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 
 func (t CompNodeconfs) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompNodeconf)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompNodeconfs) Fixable() ExitCode {

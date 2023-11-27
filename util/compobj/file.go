@@ -454,13 +454,12 @@ func (t CompFiles) Check() ExitCode {
 
 func (t CompFiles) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompFile)
-		if e := t.FixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.FixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompFiles) Fixable() ExitCode {

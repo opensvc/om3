@@ -161,13 +161,12 @@ func (t CompFilesProps) Check() ExitCode {
 
 func (t CompFilesProps) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompFileProp)
-		if e := t.FixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.FixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompFilesProps) Fixable() ExitCode {

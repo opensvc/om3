@@ -335,13 +335,12 @@ func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCod
 
 func (t CompGroupsMemberships) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroupMembership)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompGroupsMemberships) Fixable() ExitCode {

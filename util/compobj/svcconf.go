@@ -350,13 +350,12 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 
 func (t CompSvcconfs) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSvcconf)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompSvcconfs) Fixable() ExitCode {

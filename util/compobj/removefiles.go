@@ -105,13 +105,12 @@ func (t CompRemovefiles) fixRule(rule CompRemovefile) ExitCode {
 
 func (t CompRemovefiles) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompRemovefile)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompRemovefiles) Fixable() ExitCode {

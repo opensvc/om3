@@ -121,7 +121,7 @@ func (t CompSymlinks) fixLink(rule CompSymlink) ExitCode {
 	return ExitOk
 }
 
-func (t CompSymlinks) FixSymlink(rule CompSymlink) ExitCode {
+func (t CompSymlinks) fixSymlink(rule CompSymlink) ExitCode {
 	if e := t.CheckSymlink(rule); e == ExitNok {
 		if e := t.fixLink(rule); e == ExitNok {
 			return e
@@ -143,13 +143,12 @@ func (t CompSymlinks) Check() ExitCode {
 
 func (t CompSymlinks) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSymlink)
-		if e := t.FixSymlink(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixSymlink(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompSymlinks) Fixable() ExitCode {
