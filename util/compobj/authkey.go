@@ -751,12 +751,12 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 			return ExitNok
 		}
 	}
-	if err := os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	err = newConfigFile.Close()
+	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	err = newConfigFile.Close()
-	if err != nil {
+	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}

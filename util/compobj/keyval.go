@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -374,6 +375,189 @@ func (t CompKeyvals) formatList(list []any) []string {
 	return newList
 }
 
+func (t CompKeyvals) fixRule(rule CompKeyval) ExitCode {
+	if err := t.loadCache(); err != nil {
+		t.Errorf("%s\n", err)
+	}
+	if t.checkRule(rule) == ExitOk {
+		return ExitOk
+	}
+	switch rule.Op {
+	case "reset":
+		return t.fixReset(rule)
+	case "unset":
+		return t.fixUnset(rule)
+	default:
+		return t.fixOperator(rule)
+	}
+}
+
+func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
+	resetRules := []CompKeyval{}
+	for i := 0; i < len(t.rules) && len(resetRules) < keyValResetMap[rule.Key]; i++ {
+		ruleToAdd := t.rules[i].(CompKeyval)
+		if ruleToAdd.Key == rule.Key && ruleToAdd.Op != "reset" && ruleToAdd.Op != "unset" {
+			resetRules = append(resetRules, ruleToAdd)
+		}
+	}
+	oldConfigFileStat, err := os.Stat(keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newFile, err := os.CreateTemp(filepath.Dir(keyValpath), "newFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newFile.Name()
+	oldConfigFile, err := os.Open(keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	scanner := bufio.NewScanner(oldConfigFile)
+	keyToResetCount := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.SplitN(line, " ", 2)[0] == rule.Key {
+			if keyToResetCount < len(resetRules) {
+				keyToResetCount += 1
+				var stringValue string
+				if resetRules[keyToResetCount].Op == "IN" {
+					if fVal, ok := resetRules[keyToResetCount].Value.([]any)[0].(float64); ok {
+						stringValue = strconv.FormatFloat(fVal, 'f', -1, 64)
+					} else {
+						stringValue = resetRules[keyToResetCount].Value.([]any)[0].(string)
+					}
+				} else {
+					if fVal, ok := resetRules[keyToResetCount].Value.(float64); ok {
+						stringValue = strconv.FormatFloat(fVal, 'f', -1, 64)
+					} else {
+						stringValue = resetRules[keyToResetCount].Value.(string)
+					}
+				}
+				if _, err = newFile.Write([]byte(rule.Key + stringValue + "\n")); err != nil {
+					t.Errorf("%s", err)
+					return ExitNok
+				}
+			}
+		} else {
+			if _, err = newFile.Write([]byte(line + "\n")); err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+		}
+	}
+	err = newFile.Close()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(newFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = oldConfigFile.Close(); err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	err = os.Rename(newConfigFilePath, keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	return ExitOk
+}
+
+func (t CompKeyvals) fixOperator(rule CompKeyval) ExitCode {
+	oldConfigFileStat, err := os.Stat(keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newFile, err := os.CreateTemp(filepath.Dir(keyValpath), "newFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newFile.Name()
+	newFileFmt := keyValFileFmtCache
+	if newFileFmt[len(newFileFmt)-1] != '\n' {
+		newFileFmt = append(newFileFmt, '\n')
+	}
+	var stringValue string
+	if rule.Op == "IN" {
+		if fVal, ok := rule.Value.([]any)[0].(float64); ok {
+			stringValue = strconv.FormatFloat(fVal, 'f', -1, 64)
+		} else {
+			stringValue = rule.Value.([]any)[0].(string)
+		}
+	} else {
+		if fVal, ok := rule.Value.(float64); ok {
+			stringValue = strconv.FormatFloat(fVal, 'f', -1, 64)
+		} else {
+			stringValue = rule.Value.(string)
+		}
+	}
+	newFileFmt = append(newFileFmt, []byte(rule.Key+" "+stringValue+"\n")...)
+	if _, err = newFile.Write(newFileFmt); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = newFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(newFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Rename(newConfigFilePath, keyValpath); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	return ExitOk
+}
+
+func (t CompKeyvals) fixUnset(rule CompKeyval) ExitCode {
+	oldConfigFileStat, err := os.Stat(keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(keyValpath), "newFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	scanner := bufio.NewScanner(bytes.NewReader(keyValFileFmtCache))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.SplitN(line, " ", 2)[0] != rule.Key {
+			if _, err = newConfigFile.Write([]byte(line)); err != nil {
+				t.Errorf("%s\n", err)
+				return ExitNok
+			}
+		}
+	}
+	err = newConfigFile.Close()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	err = os.Rename(newConfigFilePath, keyValpath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	return ExitOk
+}
+
 func (t CompKeyvals) Check() ExitCode {
 	t.SetVerbose(true)
 	if err := t.loadCache(); err != nil {
@@ -392,10 +576,10 @@ func (t CompKeyvals) Check() ExitCode {
 func (t CompKeyvals) Fix() ExitCode {
 	t.SetVerbose(false)
 	e := ExitOk
-	/*	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		e = e.Merge(t.fixSymlink(rule))
-	}*/
+	for _, i := range t.Rules() {
+		rule := i.(CompKeyval)
+		e = e.Merge(t.fixRule(rule))
+	}
 	return e
 }
 
