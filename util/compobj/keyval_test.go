@@ -136,6 +136,12 @@ func TestKeyValsAdd(t *testing.T) {
 			expectError:  true,
 			expectedRule: []any{},
 		},
+
+		"use <= with a string": {
+			jsonRule:     `{"path" : "tmp","keys" :[{"key":"test","op":"<=","value":"laal"}]}`,
+			expectError:  true,
+			expectedRule: []any{},
+		},
 	}
 
 	for name, c := range testCases {
