@@ -148,6 +148,10 @@ func (t *CompKeyvals) Add(s string) error {
 					t.Errorf("value should be a list in dict: %s\n", s)
 					return fmt.Errorf("value should be a list in dict: %s\n", s)
 				}
+				if len(rule.Value.([]any)) == 0 {
+					t.Errorf("list should not be empty in dict: %s\n", s)
+					return fmt.Errorf("list should not be empty in dict: %s\n", s)
+				}
 				for _, val := range rule.Value.([]any) {
 					if _, ok := val.(float64); ok {
 						continue
@@ -287,22 +291,23 @@ func (t CompKeyvals) checkOperator(rule CompKeyval, valuesFromFile []string) int
 	return -1
 }
 
-func (t CompKeyvals) checkRule(rule CompKeyval) ExitCode {
-	switch rule.Op {
-	case "reset":
-		valuesFromFile := t.getValues(rule.Key)
-		if len(valuesFromFile) != keyValResetMap[rule.Key] {
-			t.VerboseErrorf("%s: %s is set %d times, should be set %d times\n", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
-			return ExitNok
-		}
-		t.VerboseErrorf("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
+func (t CompKeyvals) checkReset(rule CompKeyval) ExitCode {
+	if rule.Op != "reset" {
 		return ExitOk
-	default:
-		return t.checkNoReset(rule)
 	}
+	valuesFromFile := t.getValues(rule.Key)
+	if len(valuesFromFile) != keyValResetMap[rule.Key] {
+		t.VerboseErrorf("%s: %s is set %d times, should be set %d times\n", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
+		return ExitNok
+	}
+	t.VerboseErrorf("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
+	return ExitOk
 }
 
 func (t CompKeyvals) checkNoReset(rule CompKeyval) ExitCode {
+	if rule.Op == "reset" {
+		return ExitOk
+	}
 	valuesFromFile := t.getValues(rule.Key)
 	if rule.Op == "unset" {
 		if len(valuesFromFile) > 0 {
@@ -375,16 +380,14 @@ func (t CompKeyvals) formatList(list []any) []string {
 	return newList
 }
 
-func (t CompKeyvals) fixRule(rule CompKeyval) ExitCode {
+func (t CompKeyvals) fixRuleNoReset(rule CompKeyval) ExitCode {
 	if err := t.loadCache(); err != nil {
 		t.Errorf("%s\n", err)
 	}
-	if t.checkRule(rule) == ExitOk {
+	if t.checkNoReset(rule) == ExitOk {
 		return ExitOk
 	}
 	switch rule.Op {
-	case "reset":
-		return t.fixReset(rule)
 	case "unset":
 		return t.fixUnset(rule)
 	default:
@@ -393,6 +396,9 @@ func (t CompKeyvals) fixRule(rule CompKeyval) ExitCode {
 }
 
 func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
+	if t.checkReset(rule) == ExitOk {
+		return ExitOk
+	}
 	resetRules := []CompKeyval{}
 	for i := 0; i < len(t.rules) && len(resetRules) < keyValResetMap[rule.Key]; i++ {
 		ruleToAdd := t.rules[i].(CompKeyval)
@@ -422,7 +428,6 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 		line := scanner.Text()
 		if strings.SplitN(line, " ", 2)[0] == rule.Key {
 			if keyToResetCount < len(resetRules) {
-				keyToResetCount += 1
 				var stringValue string
 				if resetRules[keyToResetCount].Op == "IN" {
 					if fVal, ok := resetRules[keyToResetCount].Value.([]any)[0].(float64); ok {
@@ -437,10 +442,11 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 						stringValue = resetRules[keyToResetCount].Value.(string)
 					}
 				}
-				if _, err = newFile.Write([]byte(rule.Key + stringValue + "\n")); err != nil {
+				if _, err = newFile.Write([]byte(rule.Key + " " + stringValue + "\n")); err != nil {
 					t.Errorf("%s", err)
 					return ExitNok
 				}
+				keyToResetCount += 1
 			}
 		} else {
 			if _, err = newFile.Write([]byte(line + "\n")); err != nil {
@@ -567,7 +573,12 @@ func (t CompKeyvals) Check() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
-		o := t.checkRule(rule)
+		o := t.checkNoReset(rule)
+		e = e.Merge(o)
+	}
+	for _, i := range t.Rules() {
+		rule := i.(CompKeyval)
+		o := t.checkReset(rule)
 		e = e.Merge(o)
 	}
 	return e
@@ -578,7 +589,11 @@ func (t CompKeyvals) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
-		e = e.Merge(t.fixRule(rule))
+		e = e.Merge(t.fixRuleNoReset(rule))
+	}
+	for _, i := range t.Rules() {
+		rule := i.(CompKeyval)
+		e = e.Merge(t.fixReset(rule))
 	}
 	return e
 }
