@@ -28,15 +28,21 @@ var (
 	keyvalValidityMap  = map[string]string{}
 	compKeyvalInfo     = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_KEYVAL_",
-		ExampleValue: []CompKeyval{{
-			Key:   "PermitRootLogin",
-			Op:    "=",
-			Value: "yes",
-		}, {
-			Key:   "PermitRootLogin",
-			Op:    "reset",
-			Value: "",
-		},
+		ExampleValue: struct {
+			path any
+			keys any
+		}{
+			path: "/etc/ssh/sshd_config",
+			keys: []CompKeyval{{
+				Key:   "PermitRootLogin",
+				Op:    "=",
+				Value: "yes",
+			}, {
+				Key:   "PermitRootLogin",
+				Op:    "reset",
+				Value: "",
+			},
+			},
 		},
 		Description: `* Setup and verify keys in "key value" formatted configuration file.
 * Example files: sshd_config, ssh_config, ntp.conf, ...
@@ -209,12 +215,12 @@ func (t CompKeyvals) getValues(key string) []string {
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
-		splitLine := strings.SplitN(line, "=", 1)
+		splitLine := strings.SplitN(line, " ", 2)
 		if len(splitLine) != 2 {
 			continue
 		}
 		if splitLine[0] == key {
-			values = append(values, splitLine[1])
+			values = append(values, strings.TrimSpace(splitLine[1]))
 		}
 	}
 	return values
@@ -244,7 +250,7 @@ func (t CompKeyvals) checkOperator(rule CompKeyval, valuesFromFile []string) int
 			if err != nil {
 				continue
 			}
-			if float64(rule.Value.(int)) >= floatValueFromFile {
+			if floatValueFromFile >= rule.Value.(float64) {
 				return i
 			}
 		}
@@ -254,7 +260,7 @@ func (t CompKeyvals) checkOperator(rule CompKeyval, valuesFromFile []string) int
 			if err != nil {
 				continue
 			}
-			if float64(rule.Value.(int)) <= floatValueFromFile {
+			if floatValueFromFile <= rule.Value.(float64) {
 				return i
 			}
 		}
@@ -285,15 +291,12 @@ func (t CompKeyvals) checkRule(rule CompKeyval) ExitCode {
 	case "reset":
 		valuesFromFile := t.getValues(rule.Key)
 		if len(valuesFromFile) != keyValResetMap[rule.Key] {
-			t.VerboseErrorf("%s: %s is set %d times, should be set %d times", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
+			t.VerboseErrorf("%s: %s is set %d times, should be set %d times\n", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s is set %d times, on target", keyValpath, rule.Key, keyValResetMap[rule.Key])
+		t.VerboseErrorf("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
 		return ExitOk
 	default:
-		if _, ok := keyValResetMap[rule.Key]; ok {
-			keyValResetMap[rule.Key] += 1
-		}
 		return t.checkNoReset(rule)
 	}
 }
@@ -302,50 +305,73 @@ func (t CompKeyvals) checkNoReset(rule CompKeyval) ExitCode {
 	valuesFromFile := t.getValues(rule.Key)
 	if rule.Op == "unset" {
 		if len(valuesFromFile) > 0 {
-			t.VerboseErrorf("%s: %s is set and should not be set", keyValpath, rule.Key)
+			t.VerboseErrorf("%s: %s is set and should not be set\n", keyValpath, rule.Key)
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s is not set and should not be set", keyValpath, rule.Key)
+		t.VerboseInfof("%s: %s is not set and should not be set\n", keyValpath, rule.Key)
 		return ExitOk
 	}
 	if len(valuesFromFile) < 1 {
-		t.VerboseErrorf("%s: %s is unset and should be set", keyValpath, rule.Key)
+		t.VerboseErrorf("%s: %s is unset and should be set\n", keyValpath, rule.Key)
 		return ExitNok
+	}
+	if _, ok := keyValResetMap[rule.Key]; ok {
+		keyValResetMap[rule.Key] += 1
 	}
 	switch rule.Op {
 	case "=":
 		i := t.checkOperator(rule, valuesFromFile)
 		if i == -1 {
-			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+			if _, ok := rule.Value.(float64); ok {
+				t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
+			} else {
+				t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be equal to %s\n", keyValpath, rule.Key, valuesFromFile, rule.Value)
+			}
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+		if _, ok := rule.Value.(float64); ok {
+			t.VerboseInfof("%s: %s has the following values: %s and one of these values should be equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
+		} else {
+			t.VerboseInfof("%s: %s has the following values: %s and one of these values should be equal to %s\n", keyValpath, rule.Key, valuesFromFile, rule.Value)
+		}
 		return ExitOk
 	case ">=":
 		i := t.checkOperator(rule, valuesFromFile)
 		if i == -1 {
-			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be greater or equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be greater than or equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be greater or equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+		t.VerboseInfof("%s: %s has the following values: %s and one of these values should be greater than or equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
 		return ExitOk
 	case "<=":
 		i := t.checkOperator(rule, valuesFromFile)
 		if i == -1 {
-			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be less or equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be less than or equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be less or equal to %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+		t.VerboseInfof("%s: %s has the following values: %s and one of these values should be less than or equal to %d\n", keyValpath, rule.Key, valuesFromFile, int(rule.Value.(float64)))
 		return ExitOk
 	default:
 		i := t.checkOperator(rule, valuesFromFile)
 		if i == -1 {
-			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be in %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+			t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be in %s\n", keyValpath, rule.Key, valuesFromFile, t.formatList(rule.Value.([]any)))
 			return ExitNok
 		}
-		t.VerboseErrorf("%s: %s has the following values: %s and one of these values should be in %s", keyValpath, rule.Key, valuesFromFile, rule.Value)
+		t.VerboseInfof("%s: %s has the following values: %s and one of these values should be in %s\n", keyValpath, rule.Key, valuesFromFile, t.formatList(rule.Value.([]any)))
 		return ExitOk
 	}
+}
+
+func (t CompKeyvals) formatList(list []any) []string {
+	newList := []string{}
+	for _, val := range list {
+		if fVal, ok := val.(float64); ok {
+			newList = append(newList, strconv.FormatFloat(fVal, 'f', -1, 64))
+		} else {
+			newList = append(newList, val.(string))
+		}
+	}
+	return newList
 }
 
 func (t CompKeyvals) Check() ExitCode {
@@ -355,11 +381,11 @@ func (t CompKeyvals) Check() ExitCode {
 		return ExitNok
 	}
 	e := ExitOk
-	/*	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		o := t.CheckSymlink(rule)
+	for _, i := range t.Rules() {
+		rule := i.(CompKeyval)
+		o := t.checkRule(rule)
 		e = e.Merge(o)
-	}*/
+	}
 	return e
 }
 
