@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -13,23 +12,23 @@ import (
 type (
 	sectionMap   map[string]sectionMap
 	MpathSection struct {
-		name   string
-		indent int
-		attr   map[string]any
+		Name   string
+		Indent int
+		Attr   map[string][]string
 	}
 	MpathBlackList struct {
-		name     string
-		wwids    []string
-		devnodes []string
-		devices  []MpathSection
+		Name     string
+		Wwids    []string
+		Devnodes []string
+		Devices  []MpathSection
 	}
 	MpathConf struct {
-		blackList           MpathBlackList
-		blackListExceptions MpathBlackList
-		defaults            MpathSection
-		devices             []MpathSection
-		multipaths          []MpathSection
-		overrides           MpathSection
+		BlackList           MpathBlackList
+		BlackListExceptions MpathBlackList
+		Defaults            MpathSection
+		Devices             []MpathSection
+		Multipaths          []MpathSection
+		Overrides           MpathSection
 	}
 	CompMpaths struct {
 		*Obj
@@ -47,7 +46,7 @@ var (
 		"blacklist": {
 			"device": {},
 		},
-		"blacklist_exception": {
+		"blacklist_exceptions": {
 			"device": {},
 		},
 		"devices": {
@@ -173,37 +172,37 @@ func (t *CompMpaths) Add(s string) error {
 
 func (t CompMpaths) loadMpathData() (MpathConf, error) {
 	mPathData := MpathConf{
-		blackList: MpathBlackList{
-			name:     "blacklist",
-			wwids:    []string{},
-			devnodes: []string{},
-			devices:  []MpathSection{},
+		BlackList: MpathBlackList{
+			Name:     "blacklist",
+			Wwids:    []string{},
+			Devnodes: []string{},
+			Devices:  []MpathSection{},
 		},
-		blackListExceptions: MpathBlackList{
-			name:     "blacklist_exceptions",
-			wwids:    []string{},
-			devnodes: []string{},
-			devices:  []MpathSection{},
+		BlackListExceptions: MpathBlackList{
+			Name:     "blacklist_exceptions",
+			Wwids:    []string{},
+			Devnodes: []string{},
+			Devices:  []MpathSection{},
 		},
-		defaults: MpathSection{
-			name:   "default",
-			indent: 0,
-			attr:   map[string]any{},
+		Defaults: MpathSection{
+			Name:   "default",
+			Indent: 1,
+			Attr:   map[string][]string{},
 		},
-		devices:    []MpathSection{},
-		multipaths: []MpathSection{},
-		overrides: MpathSection{
-			name:   "overrides",
-			indent: 0,
-			attr:   map[string]any{},
+		Devices:    []MpathSection{},
+		Multipaths: []MpathSection{},
+		Overrides: MpathSection{
+			Name:   "overrides",
+			Indent: 1,
+			Attr:   map[string][]string{},
 		},
 	}
-	buff, err := os.ReadFile(filepath.Join("/etc", "multipath.conf"))
+	buff, err := osReadFile(filepath.Join("/etc", "multipath.conf"))
 	if err != nil {
 		return MpathConf{}, err
 	}
 	buff = stripComments(buff)
-	t.recursiveLoadFile(buff, MpathSectionsTree, []string{}, &mPathData)
+	t.recursiveLoadFile(buff, MpathSectionsTree, []string{}, &mPathData, true)
 	return mPathData, nil
 }
 
@@ -224,23 +223,22 @@ func stripComments(buff []byte) []byte {
 	return newBuff
 }
 
-func (t CompMpaths) recursiveLoadFile(buff []byte, sections sectionMap, chain []string, mPathData *MpathConf) {
-	for section, subsection := range MpathSectionsTree {
+func (t CompMpaths) recursiveLoadFile(buff []byte, sections sectionMap, chain []string, mPathData *MpathConf, originalCall bool) {
+	for section, subsection := range sections {
+		if originalCall {
+			chain = []string{}
+		}
 		chain = append(chain, section)
-		for {
-			data0, data1 := t.loadSection(buff, section)
-			if data0 == nil && data1 == nil {
-				break
-			}
-			buff = data1
-			t.loadKeyWords(data0, subsection, chain, mPathData)
-			t.recursiveLoadFile(data0, subsection, chain, mPathData)
+		datas := t.loadSections(buff, section, originalCall)
+		for _, data := range datas {
+			t.loadKeyWords(data, subsection, chain, mPathData)
+			t.recursiveLoadFile(data, subsection, chain, mPathData, false)
 		}
 	}
 }
 
 func (t CompMpaths) loadKeyWords(buff []byte, subsection sectionMap, chain []string, mPathData *MpathConf) {
-	keywords := map[string]any{}
+	keywords := map[string][]string{}
 	keyword := ""
 	value := ""
 	scanner := bufio.NewScanner(bytes.NewReader(buff))
@@ -254,7 +252,7 @@ func (t CompMpaths) loadKeyWords(buff []byte, subsection sectionMap, chain []str
 			continue
 		}
 		keyword = strings.TrimSpace(keyval[0])
-		value = strings.TrimSpace(keyval[1])
+		value = strings.Trim(strings.TrimSpace(keyval[1]), `"`)
 		if _, ok := subsection[keyword]; ok {
 			continue
 		}
@@ -262,63 +260,64 @@ func (t CompMpaths) loadKeyWords(buff []byte, subsection sectionMap, chain []str
 			if _, ok := keywords[keyword]; !ok {
 				keywords[keyword] = []string{value}
 			} else {
-				keywords[keyword] = append(keywords[keyword].([]string), value)
+				keywords[keyword] = append(keywords[keyword], value)
 			}
 		} else {
-			keywords[keyword] = value
+			keywords[keyword] = []string{value}
 		}
 	}
 	switch {
 	case chain[len(chain)-1] == "device" && chain[0] == "devices":
-		mPathData.devices = append(mPathData.devices, MpathSection{
-			name:   "device",
-			indent: 1,
-			attr:   keywords,
+		mPathData.Devices = append(mPathData.Devices, MpathSection{
+			Name:   "device",
+			Indent: 2,
+			Attr:   keywords,
 		})
 	case chain[len(chain)-1] == "multipath":
-		mPathData.multipaths = append(mPathData.multipaths, MpathSection{
-			name:   "multipath",
-			indent: 1,
-			attr:   keywords,
+		mPathData.Multipaths = append(mPathData.Multipaths, MpathSection{
+			Name:   "multipath",
+			Indent: 2,
+			Attr:   keywords,
 		})
 	case chain[len(chain)-1] == "device" && chain[0] == "blacklist":
-		mPathData.blackList.devices = append(mPathData.blackList.devices, MpathSection{
-			name:   "device",
-			indent: 1,
-			attr:   keywords,
+		mPathData.BlackList.Devices = append(mPathData.BlackList.Devices, MpathSection{
+			Name:   "device",
+			Indent: 2,
+			Attr:   keywords,
 		})
-	case chain[len(chain)-1] == "device" && chain[0] == "blacklist_exception":
-		mPathData.blackListExceptions.devices = append(mPathData.blackListExceptions.devices, MpathSection{
-			name:   "device",
-			indent: 1,
-			attr:   keywords,
+	case chain[len(chain)-1] == "device" && chain[0] == "blacklist_exceptions":
+		mPathData.BlackListExceptions.Devices = append(mPathData.BlackListExceptions.Devices, MpathSection{
+			Name:   "device",
+			Indent: 2,
+			Attr:   keywords,
 		})
 	case chain[len(chain)-1] == "blacklist":
 		if tmp, ok := keywords["wwid"]; ok {
-			mPathData.blackList.wwids = tmp.([]string)
+			mPathData.BlackList.Wwids = tmp
 		}
 		if tmp, ok := keywords["devnode"]; ok {
-			mPathData.blackList.devnodes = tmp.([]string)
+			mPathData.BlackList.Devnodes = tmp
 		}
-	case chain[len(chain)-1] == "blacklist_exception":
+	case chain[len(chain)-1] == "blacklist_exceptions":
 		if tmp, ok := keywords["wwid"]; ok {
-			mPathData.blackListExceptions.wwids = tmp.([]string)
+			mPathData.BlackListExceptions.Wwids = tmp
 		}
 		if tmp, ok := keywords["devnode"]; ok {
-			mPathData.blackListExceptions.devnodes = tmp.([]string)
+			mPathData.BlackListExceptions.Devnodes = tmp
 		}
 	case chain[len(chain)-1] == "defaults":
-		mPathData.defaults.attr = keywords
-	case chain[len(chain)-1] == "override":
-		mPathData.overrides.attr = keywords
+		mPathData.Defaults.Attr = keywords
+	case chain[len(chain)-1] == "overrides":
+		mPathData.Overrides.Attr = keywords
 	}
 }
 
 func (t CompMpaths) loadSection(buff []byte, section string) ([]byte, []byte) {
 	var start int
-	if start = strings.Index(string(buff), section); start == -1 {
+	if start = strings.Index(string(buff), section+" "); start == -1 {
 		return nil, nil
 	}
+	buff = buff[start:]
 	if start = strings.Index(string(buff), "{"); start == -1 {
 		return nil, nil
 	}
@@ -335,6 +334,23 @@ func (t CompMpaths) loadSection(buff []byte, section string) ([]byte, []byte) {
 		}
 	}
 	return nil, nil
+}
+
+func (t CompMpaths) loadSections(buff []byte, section string, originalCall bool) [][]byte {
+	sections := [][]byte{}
+	if originalCall {
+		b1, _ := t.loadSection(buff, section)
+		return append(sections, b1)
+	}
+	for {
+		b1, b2 := t.loadSection(buff, section)
+		if b1 == nil && b2 == nil {
+			break
+		}
+		buff = b2
+		sections = append(sections, b1)
+	}
+	return sections
 }
 
 /*func (t CompMpaths) Check() ExitCode {

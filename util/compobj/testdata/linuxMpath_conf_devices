@@ -1,0 +1,10 @@
+devices {
+       device {
+               vendor  "IBM"
+               product "3S42"       #DS4200 Product 10
+       }
+       device {
+               vendor  "HP"
+               product "*"
+       }
+}

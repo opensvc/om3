@@ -1,0 +1,13 @@
+blacklist_exceptions {
+       devnode "^hd[a-z]"
+       device {
+               vendor  "IBM"
+               product "3S42"       #DS4200 Product 10
+       }
+       wwid *
+       wwid "laal"
+       device {
+               vendor  "HP"
+               product "*"
+       }
+}
