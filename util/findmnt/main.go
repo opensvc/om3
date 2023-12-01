@@ -3,6 +3,7 @@ package findmnt
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -16,9 +17,14 @@ type (
 		FsType  string `json:"fstype"`
 		Options string `json:"options"`
 	}
+
 	info struct {
 		Filesystems []MountInfo `json:"filesystems"`
 	}
+)
+
+const (
+	PathNfsSeparator = ':'
 )
 
 func Has(dev string, mnt string) (bool, error) {
@@ -30,53 +36,97 @@ func Has(dev string, mnt string) (bool, error) {
 }
 
 func newInfo() *info {
-	data := info{}
-	data.Filesystems = make([]MountInfo, 0)
-	return &data
+	return &info{Filesystems: make([]MountInfo, 0)}
 }
 
-func List(dev string, mnt string) ([]MountInfo, error) {
-	data := newInfo()
-	if _, err := exec.LookPath("findmnt"); err != nil {
-		return data.Filesystems, err
+// List return matching dev and mnt list of MountInfo.
+// findmnt exec is used to do initial filtering,
+// then filter on mnt is used (for nfs) + custom filter on [dev] for bind mounts.
+//
+// We can't use findmnt -J -T {mnt} -S {dev} for nfs because it may hang.
+// A timeout version of findmnt is not sufficient, we have to differentiate hang but mounted
+// from not mounted.
+//
+// So when dev is on nfs, We can't use findmnt -J -T {mnt} -S {dev}
+// Instead findmnt -J -S {dev} is used, then mnt is filtered within List function.
+func List(dev string, mnt string) (mounts []MountInfo, err error) {
+	var (
+		devIsDir, devIsNfs bool
+	)
+
+	if _, err = exec.LookPath("findmnt"); err != nil {
+		return
 	}
-	bind, err := file.ExistsAndDir(dev)
-	if err != nil {
-		return data.Filesystems, err
+
+	if devIsDir, err = file.ExistsAndDir(dev); err != nil {
+		return
+	} else if !devIsDir {
+		devIsNfs = isNfsPath(dev)
 	}
-	opts := []string{"-J", "-T", mnt}
-	if dev != "" && !bind {
+
+	args := findMntArgs(dev, mnt, devIsDir, devIsNfs)
+	if mounts, err = findMnt(args); err != nil {
+		return
+	}
+
+	if mnt != "" {
+		filtered := make([]MountInfo, 0)
+		for _, mi := range mounts {
+			if mi.Target != mnt {
+				continue
+			}
+			filtered = append(filtered, mi)
+		}
+		mounts = filtered
+	}
+
+	if devIsDir {
+		filtered := make([]MountInfo, 0)
+		pattern := fmt.Sprintf("[%s]", dev)
+		for _, mi := range mounts {
+			if !strings.Contains(mi.Source, pattern) {
+				continue
+			}
+			filtered = append(filtered, mi)
+		}
+		mounts = filtered
+	}
+	return
+}
+
+// findMntArgs returns findmnt exec args for dev and mnt.
+// When dev is on nfs, -T mnt is skipped to prevent command hang
+// When dev is dir, -S dev is skipped
+func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
+	opts := []string{"-J"}
+
+	if !devIsDir {
 		opts = append(opts, "-S", dev)
 	}
+	if mnt != "" && !devIsNfs {
+		opts = append(opts, "-T", mnt)
+	}
+	return opts
+}
+
+func findMnt(opts []string) (mounts []MountInfo, err error) {
+	data := newInfo()
 	cmd := exec.Command("findmnt", opts...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		return data.Filesystems, nil
 	}
 	err = json.Unmarshal(stdout, &data)
-	if err != nil {
-		return data.Filesystems, err
+	return data.Filesystems, err
+}
+
+func isNfsPath(s string) bool {
+	if strings.HasPrefix(s, string(os.PathSeparator)) {
+		return false
 	}
-	if mnt != "" {
-		filtered := newInfo()
-		for _, mi := range data.Filesystems {
-			if mi.Target != mnt {
-				continue
-			}
-			filtered.Filesystems = append(filtered.Filesystems, mi)
-		}
-		data = filtered
+	split := strings.Split(s, string(PathNfsSeparator))
+	if len(split) != 2 {
+		return false
 	}
-	if bind {
-		filtered := newInfo()
-		pattern := fmt.Sprintf("[%s]", dev)
-		for _, mi := range data.Filesystems {
-			if !strings.Contains(mi.Source, pattern) {
-				continue
-			}
-			filtered.Filesystems = append(filtered.Filesystems, mi)
-		}
-		data = filtered
-	}
-	return data.Filesystems, nil
+	return len(split[0]) > 0 && len(split[1]) > 0
 }
