@@ -144,6 +144,7 @@ func (t *CompMpaths) Add(s string) error {
 		return err
 	}
 	for _, rule := range data {
+		rule.Key = strings.TrimSpace(rule.Key)
 		if rule.Key == "" {
 			t.Errorf("key should be in the dict: %s\n", s)
 			return fmt.Errorf("symlink should be in the dict: %s\n", s)
@@ -184,7 +185,7 @@ func (t CompMpaths) verifyDeviceAndMultipathInfos(key string, dict string) error
 				return err
 			}
 			if !b {
-				return fmt.Errorf("in the key field device must be used with the form: device.{VENDOR}.{PRODUCT} in the dict: %s", dict)
+				return fmt.Errorf("in the key field device must be used with the form: device.{vendor}.{product} in the dict: %s", dict)
 			}
 		} else if val == "multipath" {
 			b, err := regexp.Match("multipath.{([^}]+)}", []byte(key))
@@ -380,6 +381,112 @@ func (t CompMpaths) loadSections(buff []byte, section string, originalCall bool)
 		sections = append(sections, b1)
 	}
 	return sections
+}
+
+func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
+	indexs, newKey, err := t.getIndex(key)
+	if err != nil {
+		return nil, nil
+	}
+	splitKey := strings.Split(newKey, ".")
+	switch splitKey[0] {
+	case "blacklist":
+		if len(splitKey) < 2 {
+			return nil, fmt.Errorf(`the key %s is malformed: blacklist must be followed by ".anotherSection"`, key)
+		}
+		switch splitKey[1] {
+		case "wwid":
+			return conf.BlackList.Wwids, nil
+		case "devnode":
+			return conf.BlackList.Devnodes, nil
+		case "device":
+			if len(splitKey) < 3 {
+				return nil, fmt.Errorf(`the key %s is malformed: blacklist.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
+			}
+			for _, device := range conf.BlackList.Devices {
+				if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+					return device.Attr[splitKey[2]], nil
+				}
+			}
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("the key %s is malformed: unkwnow section %s", key, splitKey[1])
+		}
+	case "blacklist_exceptions":
+		if len(splitKey) < 2 {
+			return nil, fmt.Errorf(`the key %s is malformed: blacklist_exception must be followed by ".anotherSection"`, key)
+		}
+		switch splitKey[1] {
+		case "wwid":
+			return conf.BlackList.Wwids, nil
+		case "devnode":
+			return conf.BlackList.Devnodes, nil
+		case "device":
+			if len(splitKey) < 3 {
+				return nil, fmt.Errorf(`the key %s is malformed: blacklist_exception.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
+			}
+			for _, device := range conf.BlackList.Devices {
+				if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+					return device.Attr[splitKey[2]], nil
+				}
+			}
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("the key %s is malformed: unkwnow section %s", key, splitKey[1])
+		}
+	case "default":
+		if len(splitKey) < 2 {
+			return nil, fmt.Errorf(`the key %s is malformed: default must be followed by ".anotherSection"`, key)
+		}
+		return conf.Defaults.Attr[splitKey[1]], nil
+	case "devices":
+		if len(splitKey) < 3 {
+			return nil, fmt.Errorf(`the key %s is malformed: devices must be followed by ".device.{vendor}.{product}.attribute"`, key)
+		}
+		for _, device := range conf.Devices {
+			if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+				return device.Attr[splitKey[2]], nil
+			}
+		}
+		return nil, nil
+	case "multipaths":
+		if len(splitKey) < 3 {
+			return nil, fmt.Errorf(`the key %s is malformed: multipaths must be followed by ".multipath.{wwid}.attribute"`, key)
+		}
+		for _, multipath := range conf.Multipaths {
+			if multipath.Attr["wwid"][0] == indexs[0] {
+				return multipath.Attr[splitKey[2]], nil
+			}
+		}
+		return nil, nil
+	case "overrides":
+		if len(splitKey) < 2 {
+			return nil, fmt.Errorf(`the key %s is malformed: overrides must be followed by ".anotherSection"`, key)
+		}
+		return conf.Overrides.Attr[splitKey[1]], nil
+	default:
+		return nil, fmt.Errorf("the first word of key must be in: [blacklist, blacklistExceptions, defaults, devices, multipaths, overrides] in key: %s", key)
+	}
+}
+
+func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
+	reg, err := regexp.Compile(`device.{([^}]+)}.{([^}]+)}`)
+	if err != nil {
+		return [2]string{}, key, err
+	}
+	indexs := reg.FindStringSubmatch(key)
+	if len(indexs) > 2 {
+		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), strings.Trim(strings.TrimSpace(indexs[2]), `"`)}, reg.ReplaceAllString(key, ""), nil
+	}
+	reg, err = regexp.Compile(`multipath.{([^}]+)}`)
+	if err != nil {
+		return [2]string{}, reg.ReplaceAllString(key, ""), err
+	}
+	indexs = reg.FindStringSubmatch(key)
+	if len(indexs) > 1 {
+		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), ""}, reg.ReplaceAllString(key, ""), nil
+	}
+	return [2]string{}, key, nil
 }
 
 /*func (t CompMpaths) Check() ExitCode {
