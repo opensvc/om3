@@ -739,3 +739,108 @@ func TestGetConfValuesMpath(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckRuleMpath(t *testing.T) {
+	oriTLoadMpathData := tloadMpathData
+	defer func() { tloadMpathData = oriTLoadMpathData }()
+
+	oriTGetConfValues := tgetConfValues
+	defer func() { tgetConfValues = oriTGetConfValues }()
+
+	testCases := map[string]struct {
+		rule                CompMpath
+		values              []string
+		expectedCheckResult ExitCode
+	}{
+		"when rule.value is a string and op = (true rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "=",
+				Value: "zozo",
+			},
+			values:              []string{"lili", "zozo", "lolo"},
+			expectedCheckResult: ExitOk,
+		},
+		"when rule.value is a string and op = (false rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "=",
+				Value: "zop",
+			},
+			values:              []string{"lili", "zozo", "lolo"},
+			expectedCheckResult: ExitNok,
+		},
+		"when rule.value is a float and op = (true rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "zozo", "3", "lolo"},
+			expectedCheckResult: ExitOk,
+		},
+
+		"when rule.value is a float and op = (false rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "zozo", "9", "lolo"},
+			expectedCheckResult: ExitNok,
+		},
+
+		"when rule.value is a float and op >= (true rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    ">=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "zozo", "9", "lolo"},
+			expectedCheckResult: ExitOk,
+		},
+
+		"when rule.value is a float and op >= (false rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    ">=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "zozo", "2", "lolo"},
+			expectedCheckResult: ExitNok,
+		},
+
+		"when rule.value is a float and op <= (true rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "<=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "56", "zozo", "-7", "lolo"},
+			expectedCheckResult: ExitOk,
+		},
+
+		"when rule.value is a float and op <= (false rule)": {
+			rule: CompMpath{
+				Key:   "",
+				Op:    "<=",
+				Value: float64(3),
+			},
+			values:              []string{"lili", "7", "zozo", "78", "lolo"},
+			expectedCheckResult: ExitNok,
+		},
+	}
+
+	obj := CompMpaths{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	tloadMpathData = func() (MpathConf, error) {
+		return MpathConf{}, nil
+	}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			tgetConfValues = func(key string, conf MpathConf) ([]string, error) {
+				return c.values, nil
+			}
+			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
+		})
+	}
+}

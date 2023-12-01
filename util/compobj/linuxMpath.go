@@ -44,7 +44,8 @@ type (
 )
 
 var (
-	//tloadMpathData    = CompMpaths{}.loadMpathData
+	tloadMpathData    = CompMpaths{}.loadMpathData
+	tgetConfValues    = CompMpaths{}.getConfValues
 	MpathSectionsTree = sectionMap{
 		"defaults": {},
 		"blacklist": {
@@ -499,30 +500,29 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 }
 
 func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
-	//conf, err := tloadMpathData()
-	conf, err := t.loadMpathData()
+	conf, err := tloadMpathData()
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	values, err := t.getConfValues(rule.Key, conf)
+	values, err := tgetConfValues(rule.Key, conf)
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if len(values) == 0 {
-		t.VerboseErrorf("the key %s is not set", rule.Key)
+		t.VerboseErrorf("the key %s is not set\n", rule.Key)
 		return ExitNok
 	}
 	switch rule.Value.(type) {
 	case string:
 		for _, val := range values {
 			if val == rule.Value {
-				t.VerboseInfof("%s=%s on target", rule.Key, rule.Value)
+				t.VerboseInfof("%s=%s on target\n", rule.Key, rule.Value)
 				return ExitOk
 			}
 		}
-		t.VerboseErrorf("%s=%s is not set", rule.Key, rule.Value)
+		t.VerboseErrorf("%s=%s is not set\n", rule.Key, rule.Value)
 		return ExitNok
 	default:
 		switch rule.Op {
@@ -537,11 +537,11 @@ func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
 					continue
 				}
 				if fVal >= rule.Value.(float64) {
-					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					t.VerboseInfof("%s=%s on target\n", rule.Key, val)
 					return ExitOk
 				}
 			}
-			t.VerboseErrorf("the values of %s are %s, one on these value should be greater than or equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			t.VerboseErrorf("the values of %s are %s, one on these value should be greater than or equal to %d\n", rule.Key, values, int(rule.Value.(float64)))
 			return ExitNok
 		case "<=":
 			for _, val := range values {
@@ -554,11 +554,11 @@ func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
 					continue
 				}
 				if fVal <= rule.Value.(float64) {
-					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					t.VerboseInfof("%s=%s on target\n", rule.Key, val)
 					return ExitOk
 				}
 			}
-			t.VerboseErrorf("the values of %s are %s, one on these value should be less than or equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			t.VerboseErrorf("the values of %s are %s, one on these value should be less than or equal to %d\n", rule.Key, values, int(rule.Value.(float64)))
 			return ExitNok
 		default:
 			for _, val := range values {
@@ -571,11 +571,11 @@ func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
 					continue
 				}
 				if fVal == rule.Value.(float64) {
-					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					t.VerboseInfof("%s=%s on target\n", rule.Key, val)
 					return ExitOk
 				}
 			}
-			t.VerboseErrorf("the values of %s are %s, one on these value should be equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			t.VerboseErrorf("the values of %s are %s, one on these value should be equal to %d\n", rule.Key, values, int(rule.Value.(float64)))
 			return ExitNok
 		}
 	}
