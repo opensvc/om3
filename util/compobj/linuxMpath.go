@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -383,10 +385,10 @@ func (t CompMpaths) loadSections(buff []byte, section string, originalCall bool)
 	return sections
 }
 
-func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
+func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) {
 	indexs, newKey, err := t.getIndex(key)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	splitKey := strings.Split(newKey, ".")
 	switch splitKey[0] {
@@ -408,7 +410,7 @@ func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
 					return device.Attr[splitKey[2]], nil
 				}
 			}
-			return nil, nil
+			return []string{}, nil
 		default:
 			return nil, fmt.Errorf("the key %s is malformed: unkwnow section %s", key, splitKey[1])
 		}
@@ -430,7 +432,7 @@ func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
 					return device.Attr[splitKey[2]], nil
 				}
 			}
-			return nil, nil
+			return []string{}, nil
 		default:
 			return nil, fmt.Errorf("the key %s is malformed: unkwnow section %s", key, splitKey[1])
 		}
@@ -448,7 +450,7 @@ func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
 				return device.Attr[splitKey[2]], nil
 			}
 		}
-		return nil, nil
+		return []string{}, nil
 	case "multipaths":
 		if len(splitKey) < 3 {
 			return nil, fmt.Errorf(`the key %s is malformed: multipaths must be followed by ".multipath.{wwid}.attribute"`, key)
@@ -458,7 +460,7 @@ func (t CompMpaths) getConfValue(key string, conf MpathConf) ([]string, error) {
 				return multipath.Attr[splitKey[2]], nil
 			}
 		}
-		return nil, nil
+		return []string{}, nil
 	case "overrides":
 		if len(splitKey) < 2 {
 			return nil, fmt.Errorf(`the key %s is malformed: overrides must be followed by ".anotherSection"`, key)
@@ -489,16 +491,97 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 	return [2]string{}, key, nil
 }
 
-/*func (t CompMpaths) Check() ExitCode {
+func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
+	conf, err := t.loadMpathData()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	values, err := t.getConfValues(rule.Key, conf)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if len(values) == 0 {
+		t.VerboseErrorf("the key %s is not set", rule.Key)
+		return ExitNok
+	}
+	switch rule.Value.(type) {
+	case string:
+		for _, val := range values {
+			if val == rule.Value {
+				t.VerboseInfof("%s=%s on target", rule.Key, rule.Value)
+				return ExitOk
+			}
+		}
+		t.VerboseErrorf("%s=%s is not set", rule.Key, rule.Value)
+		return ExitNok
+	default:
+		switch rule.Op {
+		case ">=":
+			for _, val := range values {
+				fVal, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					if !errors.Is(err, strconv.ErrSyntax) {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+					continue
+				}
+				if fVal >= rule.Value.(float64) {
+					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					return ExitOk
+				}
+			}
+			t.VerboseErrorf("the values of %s are %s, one on these value should be greater than or equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			return ExitNok
+		case "<=":
+			for _, val := range values {
+				fVal, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					if !errors.Is(err, strconv.ErrSyntax) {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+					continue
+				}
+				if fVal <= rule.Value.(float64) {
+					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					return ExitOk
+				}
+			}
+			t.VerboseErrorf("the values of %s are %s, one on these value should be less than or equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			return ExitNok
+		default:
+			for _, val := range values {
+				fVal, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					if !errors.Is(err, strconv.ErrSyntax) {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+					continue
+				}
+				if fVal == rule.Value.(float64) {
+					t.VerboseInfof("%s=%s on target", rule.Key, val)
+					return ExitOk
+				}
+			}
+			t.VerboseErrorf("the values of %s are %s, one on these value should be equal to %d", rule.Key, values, int(rule.Value.(float64)))
+			return ExitNok
+		}
+	}
+}
+
+func (t CompMpaths) Check() ExitCode {
 	t.SetVerbose(true)
 	e := ExitOk
 	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		o := t.CheckSymlink(rule)
-		e = e.Merge(o)
+		rule := i.(CompMpath)
+		e = e.Merge(t.checkRule(rule))
 	}
 	return e
-}*/
+}
 
 /*func (t CompMpaths) Fix() ExitCode {
 	t.SetVerbose(false)
