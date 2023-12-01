@@ -44,6 +44,7 @@ type (
 )
 
 var (
+	//tloadMpathData    = CompMpaths{}.loadMpathData
 	MpathSectionsTree = sectionMap{
 		"defaults": {},
 		"blacklist": {
@@ -416,18 +417,18 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 		}
 	case "blacklist_exceptions":
 		if len(splitKey) < 2 {
-			return nil, fmt.Errorf(`the key %s is malformed: blacklist_exception must be followed by ".anotherSection"`, key)
+			return nil, fmt.Errorf(`the key %s is malformed: blacklist_exceptions must be followed by ".anotherSection"`, key)
 		}
 		switch splitKey[1] {
 		case "wwid":
-			return conf.BlackList.Wwids, nil
+			return conf.BlackListExceptions.Wwids, nil
 		case "devnode":
-			return conf.BlackList.Devnodes, nil
+			return conf.BlackListExceptions.Devnodes, nil
 		case "device":
 			if len(splitKey) < 3 {
-				return nil, fmt.Errorf(`the key %s is malformed: blacklist_exception.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
+				return nil, fmt.Errorf(`the key %s is malformed: blacklist_exceptions.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
 			}
-			for _, device := range conf.BlackList.Devices {
+			for _, device := range conf.BlackListExceptions.Devices {
 				if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
 					return device.Attr[splitKey[2]], nil
 				}
@@ -445,6 +446,9 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 		if len(splitKey) < 3 {
 			return nil, fmt.Errorf(`the key %s is malformed: devices must be followed by ".device.{vendor}.{product}.attribute"`, key)
 		}
+		if splitKey[1] != "device" {
+			return nil, fmt.Errorf(`the key %s is malformed: devices must be followed by ".device.{vendor}.{product}.attribute"`, key)
+		}
 		for _, device := range conf.Devices {
 			if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
 				return device.Attr[splitKey[2]], nil
@@ -454,6 +458,9 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 	case "multipaths":
 		if len(splitKey) < 3 {
 			return nil, fmt.Errorf(`the key %s is malformed: multipaths must be followed by ".multipath.{wwid}.attribute"`, key)
+		}
+		if splitKey[1] != "multipath" {
+			return nil, fmt.Errorf(`the key %s is malformed: multipaths must be followed by ".multipath.{wwid}"`, key)
 		}
 		for _, multipath := range conf.Multipaths {
 			if multipath.Attr["wwid"][0] == indexs[0] {
@@ -467,7 +474,7 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 		}
 		return conf.Overrides.Attr[splitKey[1]], nil
 	default:
-		return nil, fmt.Errorf("the first word of key must be in: [blacklist, blacklistExceptions, defaults, devices, multipaths, overrides] in key: %s", key)
+		return nil, fmt.Errorf("the first word of key must be in: [blacklist, blacklist_exceptions, defaults, devices, multipaths, overrides] in key: %s", key)
 	}
 }
 
@@ -478,7 +485,7 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 	}
 	indexs := reg.FindStringSubmatch(key)
 	if len(indexs) > 2 {
-		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), strings.Trim(strings.TrimSpace(indexs[2]), `"`)}, reg.ReplaceAllString(key, ""), nil
+		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), strings.Trim(strings.TrimSpace(indexs[2]), `"`)}, reg.ReplaceAllString(key, "device"), nil
 	}
 	reg, err = regexp.Compile(`multipath.{([^}]+)}`)
 	if err != nil {
@@ -486,12 +493,13 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 	}
 	indexs = reg.FindStringSubmatch(key)
 	if len(indexs) > 1 {
-		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), ""}, reg.ReplaceAllString(key, ""), nil
+		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), ""}, reg.ReplaceAllString(key, "multipath"), nil
 	}
 	return [2]string{}, key, nil
 }
 
 func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
+	//conf, err := tloadMpathData()
 	conf, err := t.loadMpathData()
 	if err != nil {
 		t.Errorf("%s\n", err)
