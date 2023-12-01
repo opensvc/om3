@@ -58,6 +58,44 @@ func TestMpathAdd(t *testing.T) {
 			expectError:   true,
 			expectedRules: nil,
 		},
+
+		"with a full rule but device does not have precision of the vendor and product": {
+			jsonRules:     `[{"key":"lala.device", "op":"=", "value" : "ok"}]`,
+			expectError:   true,
+			expectedRules: []interface{}{},
+		},
+
+		"with a full rule but device does not have precision of the product": {
+			jsonRules:     `[{"key":"lala.device.{vendor}", "op":"=", "value" : "ok"}]`,
+			expectError:   true,
+			expectedRules: []interface{}{},
+		},
+
+		"with a full rule and device in key": {
+			jsonRules:   `[{"key":"lala.device.{vendor}.{product}", "op":"=", "value" : "ok"}]`,
+			expectError: false,
+			expectedRules: []interface{}{CompMpath{
+				Key:   "lala.device.{vendor}.{product}",
+				Op:    "=",
+				Value: "ok",
+			}},
+		},
+
+		"with a full rule but multipath does not have precision of the wwid": {
+			jsonRules:     `[{"key":"lala.multipath", "op":"=", "value" : "ok"}]`,
+			expectError:   true,
+			expectedRules: []interface{}{},
+		},
+
+		"with a full rule and multipath in key": {
+			jsonRules:   `[{"key":"lala.multipath.{wwid}", "op":"=", "value" : "ok"}]`,
+			expectError: false,
+			expectedRules: []interface{}{CompMpath{
+				Key:   "lala.multipath.{wwid}",
+				Op:    "=",
+				Value: "ok",
+			}},
+		},
 	}
 
 	for name, c := range testCases {

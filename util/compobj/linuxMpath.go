@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -165,7 +166,35 @@ func (t *CompMpaths) Add(s string) error {
 			t.Errorf("value should be an int or a string in dict: %s\n", s)
 			return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
 		}
+		if err := t.verifyDeviceAndMultipathInfos(rule.Key, s); err != nil {
+			t.Errorf("%s\n", err)
+			return err
+		}
 		t.Obj.Add(rule)
+	}
+	return nil
+}
+
+func (t CompMpaths) verifyDeviceAndMultipathInfos(key string, dict string) error {
+	splitKey := strings.Split(key, ".")
+	for _, val := range splitKey {
+		if val == "device" {
+			b, err := regexp.Match("device.{([^}]+)}.{([^}]+)}", []byte(key))
+			if err != nil {
+				return err
+			}
+			if !b {
+				return fmt.Errorf("in the key field device must be used with the form: device.{VENDOR}.{PRODUCT} in the dict: %s", dict)
+			}
+		} else if val == "multipath" {
+			b, err := regexp.Match("multipath.{([^}]+)}", []byte(key))
+			if err != nil {
+				return err
+			}
+			if !b {
+				return fmt.Errorf("in the key field multipath must be used with the form: multipath.{WWID} in the dict: %s", dict)
+			}
+		}
 	}
 	return nil
 }
