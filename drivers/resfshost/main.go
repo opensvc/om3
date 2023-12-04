@@ -266,7 +266,7 @@ func (t *T) validateDevice() error {
 		return nil
 	}
 	dev := t.devpath()
-	if !fs.IsFileBacked() && !file.Exists(dev) {
+	if (!fs.IsFileBacked() && !fs.IsNetworked()) && !file.Exists(dev) {
 		return fmt.Errorf("device does not exist: %s", dev)
 	}
 	return nil
