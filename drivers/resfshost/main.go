@@ -405,9 +405,7 @@ func (t *T) canCheckWriteAccess() bool {
 func (t *T) checkWriteAccess() error {
 	mountPoint := t.mountPoint()
 	if err := t.checkWriteXattr(mountPoint); err != nil {
-		t.Log().Debugf("checkWriteXattr failed on %s: %s", err)
 		if err = t.checkWriteFile(path.Join(mountPoint, ".opensvc")); err != nil {
-			t.Log().Debugf("checkWriteFile failed on %s: %s", err)
 			return fmt.Errorf("check write access: %w", err)
 		}
 	}
@@ -438,7 +436,6 @@ func (t *T) checkReadAccess() error {
 	} else {
 		cmd = exec.Command(name, arg...)
 	}
-	t.Log().Debugf("run %s", cmd.String())
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("check read access failed after %d ms: %w", time.Now().Sub(now).Milliseconds(), err)
 	}
