@@ -36,7 +36,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "5s",
 		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/stat_timout"),
+		Text:      keywords.NewText(fs, "text/kw/stat_timeout"),
 	}
 	KeywordMountPoint = keywords.Keyword{
 		Option:   "mnt",
