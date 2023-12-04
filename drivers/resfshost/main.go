@@ -69,7 +69,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
@@ -121,7 +121,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-func (t T) Label() string {
+func (t *T) Label() string {
 	s := t.devpath()
 	m := t.mountPoint()
 	if m != "" {
@@ -138,11 +138,11 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{"dev", t.devpath()},
 		{"mnt", t.mountPoint()},
@@ -151,7 +151,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) fsDir() *resfsdir.T {
+func (t *T) fsDir() *resfsdir.T {
 	r := resfsdir.New().(*resfsdir.T)
 	r.SetRID(t.RID())
 	r.SetObject(t.GetObject())
@@ -162,25 +162,25 @@ func (t T) fsDir() *resfsdir.T {
 	return r
 }
 
-func (t T) testFile() string {
+func (t *T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }
 
-func (t T) mountOptions() string {
+func (t *T) mountOptions() string {
 	// in can we need to mangle options
 	return t.MountOptions
 }
 
-func (t T) mountPoint() string {
+func (t *T) mountPoint() string {
 	// add zonepath translation, and cache ?
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() device.T {
+func (t *T) device() device.T {
 	return device.New(t.devpath(), device.WithLogger(t.Log()))
 }
 
-func (t T) devpath() string {
+func (t *T) devpath() string {
 	if t.fs().IsFileBacked() {
 		return t.Device
 	}
@@ -288,11 +288,11 @@ func (t *T) validateDevice() error {
 	return nil
 }
 
-func (t T) isByUUID() bool {
+func (t *T) isByUUID() bool {
 	return strings.HasPrefix(t.Device, "UUID=")
 }
 
-func (t T) isByLabel() bool {
+func (t *T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
@@ -340,7 +340,7 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 	return nil
 }
 
-func (t T) fs() filesystems.I {
+func (t *T) fs() filesystems.I {
 	fs := filesystems.FromType(t.Type)
 	fs.SetLog(t.Log())
 	return fs
@@ -389,11 +389,11 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Head() string {
+func (t *T) Head() string {
 	return t.MountPoint
 }
 
-func (t T) canCheckWriteAccess() bool {
+func (t *T) canCheckWriteAccess() bool {
 	if t.fs().IsNetworked() || t.hasMountOption("ro") {
 		return false
 	}
@@ -414,7 +414,7 @@ func (t *T) checkWriteAccess() error {
 	return nil
 }
 
-func (t T) canCheckReadAccess() bool {
+func (t *T) canCheckReadAccess() bool {
 	if !t.CheckRead {
 		return false
 	}
@@ -424,7 +424,7 @@ func (t T) canCheckReadAccess() bool {
 	return true
 }
 
-func (t T) checkReadAccess() error {
+func (t *T) checkReadAccess() error {
 	var (
 		cmd  *exec.Cmd
 		name = "stat"
