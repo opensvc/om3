@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
@@ -397,8 +400,17 @@ func (t T) canCheckWriteAccess() bool {
 	return true
 }
 
-func (t T) checkWriteAccess() error {
-	// TODO
+// checkWriteAccess returns nil if we can write to mount point.
+// It uses setxattr on mountpoint, fallback to write file '.opensvc' in mountpoint.
+func (t *T) checkWriteAccess() error {
+	mountPoint := t.mountPoint()
+	if err := t.checkWriteXattr(mountPoint); err != nil {
+		t.Log().Debugf("checkWriteXattr failed on %s: %s", err)
+		if err = t.checkWriteFile(path.Join(mountPoint, ".opensvc")); err != nil {
+			t.Log().Debugf("checkWriteFile failed on %s: %s", err)
+			return fmt.Errorf("check write access: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -429,6 +441,27 @@ func (t T) checkReadAccess() error {
 	t.Log().Debugf("run %s", cmd.String())
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("check read access failed after %d ms: %w", time.Now().Sub(now).Milliseconds(), err)
+	}
+	return nil
+}
+
+func (t *T) checkWriteXattr(s string) error {
+	data := []byte(time.Now().String())
+	t.Log().Debugf("checkWriteXattr %s", s)
+	return unix.Setxattr(s, "user.opensvc", data, 0)
+}
+
+func (t *T) checkWriteFile(s string) error {
+	t.Log().Debugf("checkWriteFile %s", s)
+	if f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err != nil {
+		return err
+	} else {
+		defer func() {
+			_ = f.Close()
+		}()
+		if _, err := f.Write([]byte(" ")); err != nil {
+			return err
+		}
 	}
 	return nil
 }
