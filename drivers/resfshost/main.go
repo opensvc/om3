@@ -168,6 +168,9 @@ func (t T) devpath() string {
 	if t.fs().IsFileBacked() {
 		return t.Device
 	}
+	if t.fs().IsNetworked() {
+		return t.Device
+	}
 	if t.fs().IsVirtual() {
 		return "none"
 	}
