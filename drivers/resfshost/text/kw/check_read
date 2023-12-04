@@ -1,0 +1,8 @@
+Activate file system read check during status evaluation when the
+file system is mounted but file system write check is disabled.
+
+This can help detection of nfs stale file systems.
+It is ignored when mnt_opt contains 'nointr'.
+The file system read check is: 'timeout {stat_timeout} stat -f {mnt}'
+The file system write check is disabled when fs_type is a network file system or
+when mnt_opt contains 'ro'.

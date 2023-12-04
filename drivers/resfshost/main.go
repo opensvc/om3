@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -41,6 +42,7 @@ type (
 		SCSIReservation bool           `json:"scsireserv"`
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
 		PromoteRW       bool           `json:"promote_rw"`
+		CheckRead       bool           `json:"check_read"`
 	}
 
 	IsFormateder interface {
@@ -101,6 +103,17 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	} else if !v {
 		return status.Down
+	}
+	if t.canCheckWriteAccess() {
+		if err := t.checkWriteAccess(); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Warn
+		}
+	} else if t.canCheckReadAccess() {
+		if err := t.checkReadAccess(); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Warn
+		}
 	}
 	return status.Up
 }
@@ -375,4 +388,56 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 
 func (t T) Head() string {
 	return t.MountPoint
+}
+
+func (t T) canCheckWriteAccess() bool {
+	if t.fs().IsNetworked() || t.hasMountOption("ro") {
+		return false
+	}
+	return true
+}
+
+func (t T) checkWriteAccess() error {
+	// TODO
+	return nil
+}
+
+func (t T) canCheckReadAccess() bool {
+	if !t.CheckRead {
+		return false
+	}
+	if t.hasMountOption("nointr") {
+		return false
+	}
+	return true
+}
+
+func (t T) checkReadAccess() error {
+	var (
+		cmd  *exec.Cmd
+		name = "stat"
+		arg  = []string{"-f", t.mountPoint()}
+		now  = time.Now()
+	)
+	if t.StatTimeout != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), *t.StatTimeout)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, name, arg...)
+	} else {
+		cmd = exec.Command(name, arg...)
+	}
+	t.Log().Debugf("run %s", cmd.String())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("check read access failed after %d ms: %w", time.Now().Sub(now).Milliseconds(), err)
+	}
+	return nil
+}
+
+func (t *T) hasMountOption(option string) bool {
+	for _, s := range strings.Split(t.mountOptions(), ",") {
+		if s == option {
+			return true
+		}
+	}
+	return false
 }

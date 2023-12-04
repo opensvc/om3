@@ -87,6 +87,13 @@ var (
 		Example:   "1777",
 		Text:      keywords.NewText(fs, "text/kw/group"),
 	}
+	KeywordCheckRead = keywords.Keyword{
+		Option:    "check_read",
+		Attr:      "CheckRead",
+		Converter: converters.Bool,
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/check_read"),
+	}
 
 	KeywordsVirtual = []keywords.Keyword{
 		KeywordMountPoint,
@@ -94,6 +101,7 @@ var (
 		KeywordDevice,
 		KeywordStatTimeout,
 		KeywordZone,
+		KeywordCheckRead,
 	}
 
 	KeywordsBase = []keywords.Keyword{
@@ -110,6 +118,7 @@ var (
 		KeywordUser,
 		KeywordGroup,
 		KeywordPerm,
+		KeywordCheckRead,
 	}
 
 	KeywordsPooling = []keywords.Keyword{
@@ -122,6 +131,7 @@ var (
 		KeywordUser,
 		KeywordGroup,
 		KeywordPerm,
+		KeywordCheckRead,
 	}
 )
 
