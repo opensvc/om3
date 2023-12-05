@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -53,6 +54,10 @@ func (t *CmdObjectStart) Run(selector, kind string) error {
 			if t.DisableRollback {
 				v := true
 				params.DisableRollback = &v
+			}
+			{
+				sid := xsession.ID
+				params.RequesterSid = &sid
 			}
 			response, err := c.PostInstanceActionStartWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

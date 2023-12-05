@@ -1,30 +1,23 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/command"
 )
 
 func (a *DaemonApi) PostInstanceActionStop(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
 	log := LogHandler(ctx, "PostInstanceActionStop")
+	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	execname, err := os.Executable()
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "can't detect om execname: %s", err)
-	}
 	args := []string{p.String(), "stop", "--local"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
@@ -41,28 +34,13 @@ func (a *DaemonApi) PostInstanceActionStop(ctx echo.Context, namespace string, k
 	if params.Tag != nil && *params.Tag != "" {
 		args = append(args, "--tag", *params.Tag)
 	}
-	sid := uuid.New()
-	cmd := command.New(
-		command.WithName(execname),
-		command.WithArgs(args),
-		command.WithLogger(log),
-		command.WithVarEnv(
-			env.OriginSetenvArg(env.ActionOriginDaemonApi),
-			"OSVC_SESSION_ID="+sid.String(),
-			"OSVC_REQUEST_ID="+fmt.Sprint(ctx.Get("uuid")),
-		),
-	)
-	if err = cmd.Start(); err != nil {
-		log.Errorf("exec StartProcess: %s", err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "instance action failed: %s", err)
+	if params.RequesterSid != nil {
+		requesterSid = *params.RequesterSid
 	}
-	log.Infof("-> exec %s", cmd)
-	if err := ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionId: sid}); err != nil {
-		return err
+	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
+	} else {
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionId: sid})
 	}
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-	log.Infof("<- exec %s", cmd)
-	return nil
+
 }

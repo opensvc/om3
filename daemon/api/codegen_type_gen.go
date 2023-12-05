@@ -793,6 +793,9 @@ type InQueryDisableRollback = bool
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
+// InQueryRequesterSid defines model for inQueryRequesterSid.
+type InQueryRequesterSid = openapi_types.UUID
+
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
 
@@ -926,6 +929,7 @@ type GetInstanceLogsParams struct {
 type PostInstanceActionStartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
 	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
@@ -934,11 +938,12 @@ type PostInstanceActionStartParams struct {
 
 // PostInstanceActionStopParams defines parameters for PostInstanceActionStop.
 type PostInstanceActionStopParams struct {
-	Force  *InQueryForce  `form:"force,omitempty" json:"force,omitempty"`
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.

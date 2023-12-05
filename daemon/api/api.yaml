@@ -884,6 +884,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
@@ -916,6 +917,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
@@ -3052,6 +3054,12 @@ components:
       name: force
       schema:
         type: boolean
+    inQueryRequesterSid:
+      in: query
+      name: requester_sid
+      schema:
+        type: string
+        format: uuid
     inQueryRid:
       in: query
       name: rid

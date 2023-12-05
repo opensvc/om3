@@ -374,6 +374,9 @@ func (t T) DoLocal() error {
 	for {
 		result := <-resultQ
 		results = append(results, result)
+		if result.Error != nil {
+			errs = errors.Join(errs, result.Error)
+		}
 		done += 1
 		if done >= todo {
 			break
@@ -732,7 +735,7 @@ func (t T) DoAsync() error {
 				return errs
 			case err := <-waitC:
 				if err != nil {
-					errs = errors.Join(errs, ctx.Err())
+					errs = errors.Join(errs, err)
 				}
 			}
 		}
@@ -769,10 +772,24 @@ func (t T) DoRemote() error {
 	resultQ := make(chan actionrouter.Result)
 	done := 0
 	todo := 0
+	requesterSid := xsession.ID
 
-	var errs error
+	var (
+		cancel context.CancelFunc
+		errs   error
+		waitC  chan error
+		count  int
+	)
 
 	ctx := context.Background()
+
+	if t.WaitDuration > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
 
 	for i, item := range resp.JSON200.Items {
 		selectedInstances := make(api.InstanceMap)
@@ -785,12 +802,21 @@ func (t T) DoRemote() error {
 			return fmt.Errorf("%s: cowardly refusing to start multiple instances: topology is failover", item.Meta.Object)
 		}
 		resp.JSON200.Items[i].Data.Instances = selectedInstances
+		count += len(selectedInstances)
 	}
+
+	if t.Wait {
+		waitC = make(chan error, count)
+	}
+
 	for _, item := range resp.JSON200.Items {
 		for n, _ := range item.Data.Instances {
 			p, err := naming.ParsePath(item.Meta.Object)
 			if err != nil {
 				return err
+			}
+			if t.Wait {
+				t.waitRequesterSessionEnd(ctx, c, requesterSid, p, waitC)
 			}
 			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
@@ -815,6 +841,19 @@ func (t T) DoRemote() error {
 		done += 1
 		if done >= todo {
 			break
+		}
+	}
+	if t.Wait && todo > 0 {
+		for i := 0; i < todo; i++ {
+			select {
+			case <-ctx.Done():
+				errs = errors.Join(errs, ctx.Err())
+				return errs
+			case err := <-waitC:
+				if err != nil {
+					errs = errors.Join(errs, err)
+				}
+			}
 		}
 	}
 	output.Renderer{
@@ -933,6 +972,77 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 				}
 			case *msgbus.ObjectStatusDeleted:
 				log.Debug().Msgf("%s: reached expectation %s (deleted)", p, expectation)
+				return
+			}
+		}
+	}()
+}
+
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSid uuid.UUID, p naming.Path, errC chan<- error) {
+	var (
+		filters []string
+		msg     pubsub.Messager
+
+		err      error
+		evReader event.ReadCloser
+	)
+	filters = []string{
+		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
+		fmt.Sprintf("ExecFailed,path=%s,requester_sid=%s", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,requester_sid=%s", p, requesterSid),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if t.WaitDuration > 0 {
+		getEvents = getEvents.SetDuration(t.WaitDuration)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		defer func() {
+			if err != nil {
+				err = fmt.Errorf("wait requester session end failed on object %s: %w", p, err)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = fmt.Errorf("no more events, wait %v failed: %w", p, err)
+				} else {
+					err = readError
+				}
+				return
+			}
+			msg, err = msgbus.EventToMessage(*ev)
+			if err != nil {
+				return
+			}
+			switch m := msg.(type) {
+			case *msgbus.ExecSuccess:
+				return
+			case *msgbus.ExecFailed:
+				errC <- errors.New(m.ErrS)
+				return
+			case *msgbus.ObjectStatusDeleted:
+				log.Debug().Msgf("%s: stop waiting requester session id end %s (deleted)", p)
 				return
 			}
 		}

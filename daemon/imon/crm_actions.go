@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -117,6 +118,7 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 	defer func() {
 		<-runners
 	}()
+	sid := uuid.New()
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
@@ -124,9 +126,10 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 		command.WithVarEnv(
 			env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
 			env.ActionOrchestrationIdVar+"="+o.state.OrchestrationId.String(),
+			"OSVC_SESSION_ID="+sid.String(),
 		),
 	)
-	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}}
+	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}, {"sid", sid.String()}}
 	if title != "" {
 		o.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {

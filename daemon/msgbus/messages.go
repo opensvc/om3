@@ -260,8 +260,9 @@ type (
 		// Node is the nodename that will call exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin string `json:"origin" yaml:"origin"`
-		Title  string `json:"title" yaml:"title"`
+		Origin    string    `json:"origin" yaml:"origin"`
+		Title     string    `json:"title" yaml:"title"`
+		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -273,8 +274,9 @@ type (
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin string `json:"origin" yaml:"origin"`
-		Title  string `json:"title" yaml:"title"`
+		Origin    string    `json:"origin" yaml:"origin"`
+		Title     string    `json:"title" yaml:"title"`
+		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -285,8 +287,9 @@ type (
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin string `json:"origin" yaml:"origin"`
-		Title  string `json:"title" yaml:"title"`
+		Origin    string    `json:"origin" yaml:"origin"`
+		Title     string    `json:"title" yaml:"title"`
+		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
 	}
 
 	Exit struct {
