@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -593,6 +594,9 @@ func (t CompMpaths) Check() ExitCode {
 }
 
 func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
+	if t.checkRule(rule) == ExitOk {
+		return ExitOk
+	}
 	conf, err := t.loadMpathData()
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -607,6 +611,23 @@ func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
 		return t.fixAlreadyExist(rule)
 	}
 	return t.fixNotExist(rule, conf)
+}
+
+func (t CompMpaths) restartDeamon() error {
+	cmd := exec.Command("pgrep", "multipathd")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, output)
+	}
+	if string(output) == "" {
+		return nil
+	}
+	cmd = exec.Command("multipathd", "reconfigure")
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, output)
+	}
+	return nil
 }
 
 func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
@@ -668,6 +689,10 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 	err = os.Rename(newConfigFilePath, filepath.Join("/etc", "multipath.conf"))
 	if err != nil {
 		t.Errorf("%s\n", err)
+	}
+	if err = t.restartDeamon(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
 	return ExitOk
 }
@@ -852,6 +877,10 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 				return ExitNok
 			}
 		}
+	}
+	if err = t.restartDeamon(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
 	return ExitOk
 }
