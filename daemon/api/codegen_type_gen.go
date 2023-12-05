@@ -922,6 +922,16 @@ type PostInstanceActionBootParams struct {
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionDeleteParams defines parameters for PostInstanceActionDelete.
+type PostInstanceActionDeleteParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostInstanceActionFreezeParams defines parameters for PostInstanceActionFreeze.
+type PostInstanceActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter
@@ -953,6 +963,11 @@ type PostInstanceActionStopParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// PostInstanceActionUnfreezeParams defines parameters for PostInstanceActionUnfreeze.
+type PostInstanceActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // GetNetworkIpParams defines parameters for GetNetworkIp.

@@ -877,7 +877,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Start the object instance.
+      description: Boot the object instance.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -887,6 +887,93 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/delete:
+    post:
+      operationId: PostInstanceActionDelete
+      tags:
+        - object / svc
+        - object / vol
+        - object / sec
+        - object / cfg
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete the object instance.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/freeze:
+    post:
+      operationId: PostInstanceActionFreeze
+      tags:
+        - object / svc
+        - object / vol
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Freeze the object instance.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /namespaces/{namespace}/{kind}/{name}/instance/unfreeze:
+    post:
+      operationId: PostInstanceActionUnfreeze
+      tags:
+        - object / svc
+        - object / vol
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Start the object instance.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
