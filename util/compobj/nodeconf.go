@@ -20,7 +20,9 @@ type (
 )
 
 var (
-	compNodeconfInfo = ObjInfo{
+	ruleNodeConf        = map[string]CompNodeconf{}
+	blacklistedNodeConf = map[string]any{}
+	compNodeconfInfo    = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_NODECONF_",
 		ExampleValue: []CompNodeconf{
 			{
@@ -108,10 +110,47 @@ func (t *CompNodeconfs) Add(s string) error {
 		} else {
 			rule.Value = fmt.Sprint(rule.Value)
 		}
+		t.aggregateBlacklist(rule)
 		t.Obj.Add(rule)
 	}
+	t.filterNodeConfUsingBlacklist()
 	return nil
 }
+
+func (t *CompNodeconfs) aggregateBlacklist(rule CompNodeconf) {
+	if _, ok := blacklistedNodeConf[rule.Key]; ok {
+		return
+	}
+	objRule, ok := ruleNodeConf[rule.Key]
+	if !ok {
+		ruleNodeConf[rule.Key] = rule
+		return
+	}
+	switch rule.Op {
+	case "unset":
+		if objRule.Op != "unset" {
+			t.Errorf("conflict with the key %s: trying to unset and to compare a value at the same time the key is now blacklisted\n", rule.Key)
+			blacklistedNodeConf[rule.Key] = nil
+		}
+	default:
+		if objRule.Op == "unset" {
+			t.Errorf("conflict with the key %s: trying to unset and to compare a value at the same time the key is now blacklisted\n", rule.Key)
+			blacklistedNodeConf[rule.Key] = nil
+		}
+	}
+}
+
+func (t *CompNodeconfs) filterNodeConfUsingBlacklist() {
+	newobj := NewCompNodeConfs().(*CompNodeconfs)
+	for _, rule := range t.rules {
+		rule := rule.(CompNodeconf)
+		if _, ok := blacklistedNodeConf[rule.Key]; !ok {
+			newobj.Obj.Add(rule)
+		}
+	}
+	*t = *newobj
+}
+
 func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 	n, err := object.NewNode()
 	if err != nil {
@@ -121,22 +160,22 @@ func (t CompNodeconfs) checkRule(rule CompNodeconf) ExitCode {
 	currentVal := n.Config().Get(key.Parse(rule.Key))
 	if currentVal == "" {
 		if rule.Op == "unset" {
-			t.VerboseInfof("the key %s is unset and should be unset --> ok\n", rule.Key)
+			t.VerboseInfof("the node key %s is unset and should be unset\n", rule.Key)
 			return ExitOk
 		}
-		t.VerboseInfof("the key %s is unset and should not be unset --> not ok\n", rule.Key)
+		t.VerboseErrorf("the node key %s is unset and should be set\n", rule.Key)
 		return ExitNok
 	}
 	if rule.Op == "unset" {
-		t.VerboseInfof("the key %s in not unset and should not be unset\n", rule.Key)
+		t.VerboseErrorf("the node key %s is set and should be unset\n", rule.Key)
 		return ExitNok
 	}
 
 	if n.Config().HasKeyMatchingOp(*keyop.Parse(rule.Key + rule.Op + rule.Value.(string))) {
-		t.VerboseInfof("the rule for the key %s , operator %s, value %s is respected --> ok\n", rule.Key, rule.Op, rule.Value.(string))
+		t.VerboseInfof("the rule for the node key %s , operator %s, value %s is respected\n", rule.Key, rule.Op, rule.Value.(string))
 		return ExitOk
 	}
-	t.VerboseInfof("the rule for the key %s , operator %s, value %s is not respected --> not ok\n", rule.Key, rule.Op, rule.Value.(string))
+	t.VerboseErrorf("the rule for the node key %s , operator %s, value %s is not respected\n", rule.Key, rule.Op, rule.Value.(string))
 	return ExitNok
 }
 
@@ -157,24 +196,24 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 	}
 	n, err := object.NewNode()
 	if err != nil {
-		t.Errorf("error can't open a new node obj to fix the rule")
+		t.Errorf("error can't open a new node obj to fix the rule\n")
 		return ExitNok
 	}
 	if rule.Op == "unset" {
 		n.Config().Unset(key.Parse(rule.Key))
 		err = n.Config().Commit()
 		if err != nil {
-			t.Errorf("error when trying to commit the unset")
+			t.Errorf("error when trying to commit the unset for the rule %s\n", rule)
 			return ExitNok
 		}
 		return ExitOk
 	}
 	if err := n.Config().Set(*keyop.Parse(rule.Key + "=" + rule.Value.(string))); err != nil {
-		t.Errorf("error when trying to set the rule : %s\n", err)
+		t.Errorf("error when trying to set the rule: %s\n", err)
 		return ExitNok
 	}
 	if err = n.Config().Commit(); err != nil {
-		t.Errorf("error when trying to commit the rule : %s\n", err)
+		t.Errorf("error when trying to commit the rule: %s\n", err)
 		return ExitNok
 	}
 
@@ -183,13 +222,12 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 
 func (t CompNodeconfs) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompNodeconf)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompNodeconfs) Fixable() ExitCode {

@@ -26,11 +26,9 @@ func TestSvcconfAdd(t *testing.T) {
 	s, err := object.NewSvc(p)
 	require.NoError(t, err)
 	require.NoError(t, s.Config().SetKeys(keyop.ParseList("app#0.start=test", "app#1.start=test1")...))
-	fmt.Println(s.Config().SectionStrings())
-	fmt.Println(p)
 	obj := CompSvcconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	require.Error(t, obj.Add(`[{}]`))
-	require.Equal(t, []string{"DEFAULT", "app#0", "app#1"}, svcRessourcesNames)
+	require.Equal(t, []string{"DEFAULT", "app#0", "app#1", "env"}, svcRessourcesNames)
 
 	testCases := map[string]struct {
 		jsonRule      string
@@ -40,7 +38,7 @@ func TestSvcconfAdd(t *testing.T) {
 		"add with a true simple rule": {
 			jsonRule:    `[{"key" : "test", "op" : "=", "value" : 5}]`,
 			expectError: false,
-			expectedRules: []any{CompNodeconf{
+			expectedRules: []any{CompSvcconf{
 				Key:   "test",
 				Op:    "=",
 				Value: "5",
@@ -50,7 +48,7 @@ func TestSvcconfAdd(t *testing.T) {
 		"add a rule with no key": {
 			jsonRule:    `[{"op" : "=", "value" : 5}]`,
 			expectError: true,
-			expectedRules: []any{CompNodeconf{
+			expectedRules: []any{CompSvcconf{
 				Key:   "test",
 				Op:    "=",
 				Value: float64(5),
@@ -60,7 +58,7 @@ func TestSvcconfAdd(t *testing.T) {
 		"add a rule with no value": {
 			jsonRule:    `[{"key" : "test", "op" : "="}]`,
 			expectError: true,
-			expectedRules: []any{CompNodeconf{
+			expectedRules: []any{CompSvcconf{
 				Key:   "test",
 				Op:    "=",
 				Value: float64(5),
@@ -70,21 +68,21 @@ func TestSvcconfAdd(t *testing.T) {
 		"add multiple rules": {
 			jsonRule:    `[{"key" : "test", "op" : "=", "value" : 5}, {"key" : "test2", "op" : ">=", "value" : 3}]`,
 			expectError: false,
-			expectedRules: []any{CompNodeconf{
+			expectedRules: []any{CompSvcconf{
 				Key:   "test",
 				Op:    "=",
 				Value: "5",
-			}, CompNodeconf{
+			}, CompSvcconf{
 				Key:   "test2",
 				Op:    ">=",
 				Value: "3",
 			}},
 		},
 
-		"with an operator that is not in =, <=, >=": {
+		"with an operator that is not in =, <=, >=, unset": {
 			jsonRule:    `[{"key" : "test", "op" : ">>", "value" : 5}]`,
 			expectError: true,
-			expectedRules: []any{CompNodeconf{
+			expectedRules: []any{CompSvcconf{
 				Key:   "test",
 				Op:    "=",
 				Value: float64(5),
@@ -106,7 +104,7 @@ func TestSvcconfAdd(t *testing.T) {
 	}
 }
 
-func TestSvcconfCheckRule(t *testing.T) {
+func TestSvcconfCheckRuleFixRule(t *testing.T) {
 	usr, err := user.Current()
 	require.NoError(t, err)
 	if usr.Username != "root" {
@@ -257,6 +255,24 @@ func TestSvcconfCheckRule(t *testing.T) {
 				Value: "10",
 			},
 			expectedCheckResult: ExitOk,
+		},
+
+		"with a true rule with unset": {
+			rule: CompSvcconf{
+				Key:   "app#0.idontexist",
+				Op:    "unset",
+				Value: "nil",
+			},
+			expectedCheckResult: ExitOk,
+		},
+
+		"with a false rule with unset": {
+			rule: CompSvcconf{
+				Key:   "app#0.start",
+				Op:    "unset",
+				Value: "nil",
+			},
+			expectedCheckResult: ExitNok,
 		},
 	}
 

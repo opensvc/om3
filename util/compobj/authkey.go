@@ -4,14 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/pbar1/pkill-go"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/opensvc/om3/util/compobj/sysproc"
+	"github.com/pbar1/pkill-go"
 )
 
 type (
@@ -28,15 +31,17 @@ type (
 )
 
 var (
-	cacheAllowUsers      []string
-	cacheAllowGroups     []string
-	cacheInstalledKeys   = map[string][]string{}
-	osReadDir            = os.ReadDir
-	osReadLink           = os.Readlink
-	userLookup           = user.Lookup
-	userLookupGroupId    = user.LookupGroupId
-	getAuthKeyFilesPaths = CompAuthkeys{}.getAuthKeyFilesPaths
-	getAuthKeyFilePath   = CompAuthkeys{}.getAuthKeyFilePath
+	osOpen                  = os.Open
+	checkAllowsUsersCfgFile = map[[2]string]any{}
+	userValidityMap         = map[string]bool{}
+	actionKeyUserMap        = map[[3]string]any{}
+	cacheAllowUsers         []string
+	cacheAllowGroups        []string
+	cacheInstalledKeys      = map[string][]string{}
+	userLookup              = user.Lookup
+	userLookupGroupId       = user.LookupGroupId
+	getAuthKeyFilesPaths    = CompAuthkeys{}.getAuthKeyFilesPaths
+	getAuthKeyFilePath      = CompAuthkeys{}.getAuthKeyFilePath
 
 	compAuthKeyInfo = ObjInfo{
 		DefaultPrefix: "OSVC_COMP_AUTHKEY_",
@@ -59,7 +64,7 @@ Outputs:
   -
     Dest: compliance variable
     Type: json
-    Format: dict
+    Format: list of dict
     Class: authkey
 
 Inputs:
@@ -122,6 +127,7 @@ Inputs:
 
 func init() {
 	m["authkey"] = NewCompAutkey
+	m["authkey_list"] = NewCompAutkey
 }
 
 func NewCompAutkey() interface{} {
@@ -131,31 +137,79 @@ func NewCompAutkey() interface{} {
 }
 
 func (t *CompAuthkeys) Add(s string) error {
-	var data CompAuthKey
-	if err := json.Unmarshal([]byte(s), &data); err != nil {
-		return err
+	var data = []CompAuthKey{{}}
+	if err1 := json.Unmarshal([]byte(s), &data[0]); err1 != nil {
+		if err2 := json.Unmarshal([]byte(s), &data); err2 != nil {
+			return fmt.Errorf("%w: %w", err1, err2)
+		}
 	}
-	if !(data.Action == "add" || data.Action == "del") {
-		t.Errorf("action should be equal to add or del in the dict: %s\n", s)
-		return fmt.Errorf("action should be equal to add or del in the dict: %s\n", s)
+	for _, rule := range data {
+		if err := t.addASingleCompauthkey(rule); err != nil {
+			return err
+		}
 	}
-	if !(data.Authfile == "authorized_keys" || data.Authfile == "authorized_keys2") {
-		t.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", s)
-		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", s)
-	}
-	if data.User == "" {
-		t.Errorf("user should be in the dict: %s\n", s)
-		return fmt.Errorf("user should be in the dict: %s\n", s)
-	}
-	if data.Key == "" {
-		t.Errorf("key should be in the dict: %s\n", s)
-		return fmt.Errorf("user should be in the dict: %s\n", s)
-	}
-	if data.ConfigFile == "" {
-		data.ConfigFile = "/etc/ssh/sshd_config"
-	}
-	t.Obj.Add(data)
 	return nil
+}
+
+func (t *CompAuthkeys) addASingleCompauthkey(rule CompAuthKey) error {
+	if !(rule.Action == "add" || rule.Action == "del") {
+		t.Errorf("action should be equal to add or del in the dict: %s\n", rule)
+		return fmt.Errorf("action should be equal to add or del in the dict: %s\n", rule)
+	}
+	if !(rule.Authfile == "authorized_keys" || rule.Authfile == "authorized_keys2") {
+		t.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
+		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
+	}
+	if rule.User == "" {
+		t.Errorf("user should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s\n", rule)
+	}
+	if rule.Key == "" {
+		t.Errorf("key should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s\n", rule)
+	}
+	if rule.ConfigFile == "" {
+		rule.ConfigFile = "/etc/ssh/sshd_config"
+	}
+	if t.verifyBeforeAdd(rule) {
+		t.Obj.Add(rule)
+	}
+	return nil
+}
+
+func (t CompAuthkeys) verifyBeforeAdd(rule CompAuthKey) bool {
+	if v, ok := userValidityMap[rule.User]; ok {
+		if !v {
+			return false
+		}
+	}
+	userValidityMap[rule.User] = true
+	switch rule.Action {
+	case "add":
+		_, ok := actionKeyUserMap[[3]string{"del", rule.Key, rule.User}]
+		if ok {
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix\n", rule.User)
+			userValidityMap[rule.User] = false
+			return false
+		}
+		_, ok = actionKeyUserMap[[3]string{"add", rule.Key, rule.User}]
+		if ok {
+			return false
+		}
+	case "del":
+		_, ok := actionKeyUserMap[[3]string{"add", rule.Key, rule.User}]
+		if ok {
+			t.Errorf("the authkeys rules for the user %s generate some conflicts (add and del action for the same key) the user is now blacklisted from check and fix\n", rule.User)
+			userValidityMap[rule.User] = false
+			return false
+		}
+		_, ok = actionKeyUserMap[[3]string{"del", rule.Key, rule.User}]
+		if ok {
+			return false
+		}
+	}
+	actionKeyUserMap[[3]string{rule.Action, rule.Key, rule.User}] = nil
+	return true
 }
 
 func (t CompAuthkeys) truncateKey(key string) string {
@@ -174,9 +228,12 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 		t.VerboseInfof("there is no need to reload sshd because sshd is not up \n")
 		return nil
 	}
-	pid, err := t.getSshdPid(port)
+	pid, err := sysproc.GetPidFromPort(port)
 	if err != nil {
 		return err
+	}
+	if pid <= 1 {
+		panic("arggg")
 	}
 	err = syscall.Kill(pid, syscall.SIGHUP)
 	if err != nil {
@@ -185,133 +242,17 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 	return nil
 }
 
-func (t CompAuthkeys) getSshdPid(port int) (int, error) {
-	socketMap, err := t.getSocketsMap()
-	if err != nil {
-		return -1, err
-	}
-	inode, err := t.getInodeListeningOnPort(port)
-	if err != nil {
-		return -1, err
-	}
-	return socketMap[inode], nil
-}
-
-func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
-	socketsMap := map[int]int{}
-	files, err := osReadDir("/proc")
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		pid, err := strconv.Atoi(file.Name())
-		if err != nil {
-			t.VerboseInfof("info can't convert %s in int in /proc: %s \n", file.Name(), err)
-		}
-		if file.IsDir() && err == nil {
-			fds, err := osReadDir(filepath.Join("proc", file.Name(), "fd"))
-			if err != nil {
-				t.Errorf("error:%s can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-			for _, fd := range fds {
-				link, err := osReadLink(filepath.Join("proc", file.Name(), "fd", fd.Name()))
-				if err != nil {
-					return nil, err
-				}
-				splitLink := strings.Split(link, "[")
-				if splitLink[0] == "socket:" && len(splitLink) == 2 {
-					if len(splitLink[1]) > 1 {
-						inode, err := strconv.Atoi(splitLink[1][:len(splitLink[1])-2])
-						if err != nil {
-							return nil, err
-						}
-						socketsMap[inode] = pid
-					}
-				}
-			}
-		}
-	}
-	return socketsMap, nil
-}
-
-func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
-	files, err := osReadDir("/proc")
-	if err != nil {
-		return -1, nil
-	}
-	for _, file := range files {
-		if file.IsDir() && err == nil {
-			tcpFileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp"))
-			if err != nil {
-				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-			tcp6FileContent, err := osReadFile(filepath.Join("proc", file.Name(), "net", "tcp6"))
-			if err != nil {
-				t.Infof("error:%s can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-
-			inode, err := t.getInodeFromTcpFileContent(port, tcpFileContent)
-			if err != nil {
-				return -1, err
-			}
-			if inode != -1 {
-				return inode, nil
-			}
-
-			inode, err = t.getInodeFromTcpFileContent(port, tcp6FileContent)
-			if err != nil {
-				return -1, err
-			}
-			if inode != -1 {
-				return inode, nil
-			}
-		}
-	}
-	return -1, fmt.Errorf("there is no process listening on port %d", port)
-}
-
-func (t CompAuthkeys) getInodeFromTcpFileContent(port int, content []byte) (int, error) {
-	scanner := bufio.NewScanner(bytes.NewReader(content))
-	for scanner.Scan() {
-		splitLine := strings.Fields(scanner.Text())
-		if len(splitLine) < 10 {
-			continue
-		}
-		splitAdress := strings.Split(splitLine[1], ":")
-		if len(splitAdress) != 2 {
-			continue
-		}
-		portUsed, err := strconv.ParseInt(splitAdress[1], 16, 64)
-		if err != nil {
-			return -1, err
-		}
-		if int(portUsed) == port {
-			inode, err := strconv.Atoi(splitLine[9])
-			if err != nil {
-				return -1, err
-			}
-			return inode, nil
-		}
-	}
-	return -1, nil
-}
-
-func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string) ([]string, error) {
+func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string, authFile string) ([]string, error) {
 	paths := []string{}
 	authKeyList1, err := t.getAuthKeyFilePath("authorized_keys", configFilePath, userName)
 	if err != nil {
 		return nil, err
 	}
-	if configFilePath == "authorized_keys" {
-		authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
-		if err != nil {
-			return []string{}, err
-		}
-		paths = append(paths, authKeyList2...)
+	authKeyList2, err := t.readAuthFilePathFromConfigFile(configFilePath, false)
+	if err != nil {
+		return []string{}, err
 	}
+	paths = append(paths, authKeyList2...)
 	paths = append(paths, authKeyList1...)
 	return t.expandPaths(paths, userName)
 }
@@ -329,11 +270,11 @@ func (t CompAuthkeys) getAuthKeyFilePath(authFile string, configFilePath string,
 }
 
 func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, readOnlyTheFirstAuthKeysFile bool) ([]string, error) {
-	configFileContent, err := osReadFile(configFilePath)
+	configFile, err := osOpen(configFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileContent))
+	scanner := bufio.NewScanner(configFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -346,6 +287,9 @@ func (t CompAuthkeys) readAuthFilePathFromConfigFile(configFilePath string, read
 			}
 			return splitLine[1:], nil
 		}
+	}
+	if readOnlyTheFirstAuthKeysFile {
+		return []string{".ssh/authorized_keys"}, nil
 	}
 	return []string{".ssh/authorized_keys2"}, nil
 }
@@ -395,11 +339,11 @@ func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error)
 	if cacheAllowUsers != nil {
 		return cacheAllowUsers, nil
 	}
-	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	sshdConfigFile, err := osOpen(sshdConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	scanner := bufio.NewScanner(sshdConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -411,7 +355,7 @@ func (t CompAuthkeys) getAllowUsers(sshdConfigFilePath string) ([]string, error)
 			return cacheAllowUsers, nil
 		}
 	}
-	t.VerboseInfof("no allowUsers field find in the sshd config \n")
+	//t.VerboseInfof("keyword allowUsers not found \n")
 	cacheAllowUsers = []string{"\x00"}
 	return cacheAllowUsers, nil
 }
@@ -420,11 +364,11 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 	if cacheAllowGroups != nil {
 		return cacheAllowGroups, nil
 	}
-	sshdConfigFileContent, err := osReadFile(sshdConfigFilePath)
+	sshdConfigFile, err := osOpen(sshdConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(sshdConfigFileContent))
+	scanner := bufio.NewScanner(sshdConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 1 {
@@ -436,17 +380,17 @@ func (t CompAuthkeys) getAllowGroups(sshdConfigFilePath string) ([]string, error
 			return cacheAllowGroups, nil
 		}
 	}
-	t.VerboseInfof("no allowGroups field find in the sshd config \n")
+	//t.VerboseInfof("keyword allowGroups not found \n")
 	cacheAllowGroups = []string{"\x00"}
 	return cacheAllowGroups, nil
 }
 
-func (t CompAuthkeys) getInstalledKeys(configFilePath string, userName string) ([]string, error) {
+func (t CompAuthkeys) getInstalledKeys(configFilePath string, userName string, authFile string) ([]string, error) {
 	if _, ok := cacheInstalledKeys[userName]; ok == true {
 		return cacheInstalledKeys[userName], nil
 	}
 	installedKeys := []string{}
-	authKeysFiles, err := getAuthKeyFilesPaths(configFilePath, userName)
+	authKeysFiles, err := getAuthKeyFilesPaths(configFilePath, userName, authFile)
 	if err != nil {
 		return nil, err
 	}
@@ -474,32 +418,53 @@ func (t CompAuthkeys) isElemInSlice(elem string, slice []string) bool {
 }
 
 func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
-	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User)
+	_, err := userLookup(rule.User)
 	if err != nil {
-		t.Errorf("error when trying to read the authKeys :%s", err)
+		switch rule.Action {
+		case "add":
+			var unknownUserError user.UnknownUserError
+			if errors.As(err, &unknownUserError) {
+				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+			} else {
+				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+			}
+			return ExitNok
+		default:
+			var unknownUserError user.UnknownUserError
+			if errors.As(err, &unknownUserError) {
+				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+			} else {
+				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+			}
+			return ExitOk
+		}
+	}
+	installedKeys, err := t.getInstalledKeys(rule.ConfigFile, rule.User, rule.Authfile)
+	if err != nil {
+		t.Errorf("error when trying to read the authKeys: %s\n", err)
 		return ExitNok
 	}
 	isKeyInstalled := t.isElemInSlice(rule.Key, installedKeys)
 	if rule.Action == "add" {
 		if isKeyInstalled {
-			t.VerboseInfof("the key %s is installed and should be installed --> ok\n", t.truncateKey(rule.Key))
+			t.VerboseInfof("the key %s is installed and should be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 			return ExitOk
 		}
-		t.VerboseInfof("the key %s is not installed and should be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is not installed and should be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
 	if isKeyInstalled {
-		t.VerboseInfof("the key %s is installed and should not be installed --> not ok\n", t.truncateKey(rule.Key))
+		t.VerboseErrorf("the key %s is installed and should not be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 		return ExitNok
 	}
-	t.VerboseInfof("the key %s is not installed and should not be installed --> ok\n", t.truncateKey(rule.Key))
+	t.VerboseInfof("the key %s is not installed and should not be installed for the user %s\n", t.truncateKey(rule.Key), rule.User)
 	return ExitOk
 }
 
 func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 	allowGroups, err := t.getAllowGroups(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowGroups field in sshd config file :%s\n", err)
+		t.Errorf("error when trying to read AllowGroups field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowGroups) > 0 {
@@ -513,10 +478,10 @@ func (t CompAuthkeys) checkAllowGroups(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	if t.isElemInSlice(primaryGroupName, allowGroups) {
-		t.VerboseInfof("the primary group of the user %s is in allowGroups in the sshd config file\n", rule.User)
+		t.VerboseInfof("the primary group of the user %s is in AllowGroups in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 		return ExitOk
 	}
-	t.VerboseInfof("the primary group of the user %s is not in allowGroups in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the primary group of the user %s is not in AllowGroups in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitNok
 }
 
@@ -535,7 +500,7 @@ func (t CompAuthkeys) getPrimaryGroupName(userName string) (string, error) {
 func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 	allowUsers, err := t.getAllowUsers(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read allowUsers field in sshd config file :%s\n", err)
+		t.Errorf("error when trying to read AllowUsers field in sshd config file: %s\n", err)
 		return ExitNok
 	}
 	if len(allowUsers) > 0 {
@@ -544,26 +509,47 @@ func (t CompAuthkeys) checkAllowUsers(rule CompAuthKey) ExitCode {
 		}
 	}
 	if t.isElemInSlice(rule.User, allowUsers) {
-		t.VerboseInfof("the user %s is in allowUsers in the sshd config file\n", rule.User)
+		t.VerboseInfof("the user %s is in AllowUsers in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 		return ExitOk
 	}
-	t.VerboseInfof("the user %s is not in allowUsers in the sshd config file\n", rule.User)
+	t.VerboseErrorf("the user %s is not in AllowUsers in the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitNok
 }
 
 func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	authKeyFilePath, err := getAuthKeyFilePath(rule.Authfile, rule.ConfigFile, rule.User)
 	if err != nil {
-		t.Errorf("error when trying to get the authorized keys file path\n")
+		t.Errorf("error when trying to get the authorized keys file path: %s\n", err)
 		return ExitNok
 	}
 	if len(authKeyFilePath) < 1 {
 		t.Errorf("error when trying to get the authorized keys file path\n")
 		return ExitNok
 	}
-	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0755)
+	if _, err = os.Stat(authKeyFilePath[0]); err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(filepath.Dir(authKeyFilePath[0]), 0700)
+			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+			_, err := os.Create(authKeyFilePath[0])
+			if err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+			if err := os.Chmod(authKeyFilePath[0], 0600); err != nil {
+				t.Errorf("%s", err)
+				return ExitNok
+			}
+		} else {
+			t.Errorf("%s", err)
+			return ExitNok
+		}
+	}
+	f, err := os.OpenFile(authKeyFilePath[0], os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		t.Errorf("error when trying to open : %s to add the key : %s\n", authKeyFilePath[0], t.truncateKey(rule.Key))
+		t.Errorf("error when trying to open : %s to add the key: %s:%s\n", authKeyFilePath[0], t.truncateKey(rule.Key), err)
 		return ExitNok
 	}
 	defer func() {
@@ -574,7 +560,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	}()
 	_, err = f.Write([]byte(rule.Key + "\n"))
 	if err != nil {
-		t.Errorf("error when trying to write the key : %s in the file : %s\n", t.truncateKey(rule.Key), authKeyFilePath[0])
+		t.Errorf("error when trying to write the key : %s in the file: %s: %s\n", t.truncateKey(rule.Key), authKeyFilePath[0], err)
 		return ExitNok
 	}
 	if _, ok := cacheInstalledKeys[rule.User]; ok {
@@ -584,40 +570,59 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 }
 
 func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode {
-	configFileNewContent := []byte{}
-	configFileOldContent, err := os.ReadFile(authKeyFilePath)
+	oldConfigFileStat, err := os.Stat(authKeyFilePath)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", authKeyFilePath, err)
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	newConfigFile, err := os.CreateTemp(filepath.Dir(authKeyFilePath), "newAuthKey")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	oldConfigFile, err := os.Open(authKeyFilePath)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineKey := strings.TrimSpace(line)
 		if lineKey == key {
 			continue
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, byte('\n'))
-	}
-	f, err := os.Create(authKeyFilePath)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", authKeyFilePath, err)
-	}
-	defer func() {
-		err := f.Close()
+		line += "\n"
+		_, err = newConfigFile.Write([]byte(line))
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", authKeyFilePath, err)
+			t.Errorf("%s\n", err)
+			return ExitNok
 		}
-	}()
-	_, err = f.Write(configFileNewContent)
+	}
+	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", authKeyFilePath, err)
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	err = oldConfigFile.Close()
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
+	err = os.Rename(newConfigFilePath, authKeyFilePath)
+	if err != nil {
+		t.Errorf("%s\n", err)
 	}
 	return ExitOk
 }
 
 func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
-	authKeysFiles, err := getAuthKeyFilesPaths(rule.ConfigFile, rule.User)
+	authKeysFiles, err := getAuthKeyFilesPaths(rule.ConfigFile, rule.User, rule.Authfile)
 	if err != nil {
 		t.Errorf("error when trying to get the authKey files paths\n")
 		return ExitNok
@@ -631,24 +636,25 @@ func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
 	return ExitOk
 }
 
-func delKeyFromCache(delKey string, keys []string) []string {
-	newKeys := []string{}
-	for _, key := range keys {
-		if key != delKey {
-			newKeys = append(newKeys, key)
-		}
-	}
-	return newKeys
-}
-
 func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
-	primaryGroupName := ""
-	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
-	configFileNewContent := []byte{}
+	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	primaryGroupName := ""
+	oldConfigFile, err := os.Open(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitLine := strings.Fields(line)
@@ -656,87 +662,166 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 			if splitLine[0] == "AllowGroups" {
 				primaryGroupName, err = t.getPrimaryGroupName(rule.User)
 				if err != nil {
-					t.Errorf("can't get the primary group of the user %s :%s\n", rule.User, err)
+					t.Errorf("can't get the primary group of the user %s: %s\n", rule.User, err)
 					return ExitNok
 				}
 				splitLine = append(splitLine, primaryGroupName)
-				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
-				for _, elem := range splitLine[1:] {
-					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
+				_, err = newConfigFile.Write([]byte(splitLine[0]))
+				if err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
 				}
-				configFileNewContent = append(configFileNewContent, []byte("\n")...)
+				for _, elem := range splitLine[1:] {
+					_, err = newConfigFile.Write([]byte(" " + elem))
+					if err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+				_, err = newConfigFile.Write([]byte("\n"))
+				if err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
 				continue
 			}
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, []byte("\n")...)
-	}
-	f, err := os.Create(rule.ConfigFile)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", rule.ConfigFile, err)
-	}
-	defer func() {
-		err := f.Close()
+		_, err = newConfigFile.Write([]byte(line + "\n"))
 		if err != nil {
-			t.Errorf("error when trying to close file %s :%s\n", rule.ConfigFile, err)
+			t.Errorf("%s\n", err)
+			return ExitNok
 		}
-	}()
-	_, err = f.Write(configFileNewContent)
-	if err != nil {
-		t.Errorf("error when trying to write in %s :%s\n", rule.ConfigFile, err)
+	}
+	if err = newConfigFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = oldConfigFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err := os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
 	return ExitOk
 }
 
 func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
-	configFileOldContent, err := os.ReadFile(rule.ConfigFile)
-	configFileNewContent := []byte{}
+	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to read content of %s :%s\n", rule.ConfigFile, err)
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(configFileOldContent))
+	oldConfigFile, err := os.Open(rule.ConfigFile)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(rule.ConfigFile), "newSshdConfigFile")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	scanner := bufio.NewScanner(oldConfigFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		splitLine := strings.Fields(line)
 		if len(splitLine) > 1 {
 			if splitLine[0] == "AllowUsers" {
 				splitLine = append(splitLine, rule.User)
-				configFileNewContent = append(configFileNewContent, []byte(splitLine[0])...)
-				for _, elem := range splitLine[1:] {
-					configFileNewContent = append(configFileNewContent, []byte(" "+elem)...)
+				if _, err = newConfigFile.Write([]byte(splitLine[0])); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
 				}
-				configFileNewContent = append(configFileNewContent, []byte("\n")...)
+				for _, elem := range splitLine[1:] {
+					if _, err = newConfigFile.Write([]byte(" " + elem)); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+				if _, err = newConfigFile.Write([]byte("\n")); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
 				continue
 			}
 		}
-		configFileNewContent = append(configFileNewContent, []byte(line)...)
-		configFileNewContent = append(configFileNewContent, []byte("\n")...)
-	}
-	f, err := os.Create(rule.ConfigFile)
-	if err != nil {
-		t.Errorf("can't open the file %s in write mode :%s\n", rule.ConfigFile, err)
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			t.Errorf("error when trying to close file %s :%s", rule.ConfigFile, err)
+		if _, err = newConfigFile.Write([]byte(line + "\n")); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
 		}
-	}()
-	_, err = f.Write(configFileNewContent)
-	if err != nil {
-		t.Errorf("error when trying to write in %s :%s", rule.ConfigFile, err)
+	}
+	if err = oldConfigFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = newConfigFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
 	return ExitOk
 }
 
 func (t CompAuthkeys) checkRule(rule CompAuthKey) ExitCode {
+	if !userValidityMap[rule.User] {
+		return ExitNok
+	}
+	_, err := user.Lookup(rule.User)
+	if err != nil {
+		if _, ok := err.(user.UnknownUserError); ok {
+			switch rule.Action {
+			case "add":
+				t.VerboseErrorf("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+				return ExitNok
+			case "del":
+				t.VerboseInfof("the key %s is not installed for the user %s: user does not exist\n", t.truncateKey(rule.Key), rule.User)
+				return ExitOk
+			}
+		} else {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
 	e := ExitOk
 	e = e.Merge(t.checkAuthKey(rule))
-	if rule.Action == "add" {
-		e = e.Merge(t.checkAllowGroups(rule))
-		e = e.Merge(t.checkAllowUsers(rule))
+	return e
+}
+
+func (t CompAuthkeys) checkAllows() ExitCode {
+	e := ExitOk
+	for _, i := range t.Rules() {
+		rule := i.(CompAuthKey)
+		_, err := user.Lookup(rule.User)
+		if err != nil {
+			if _, ok := err.(user.UnknownUserError); !ok {
+				t.Errorf("%s\n", err)
+				return ExitNok
+			}
+			continue
+		}
+		if rule.Action == "add" {
+			if _, ok := checkAllowsUsersCfgFile[[2]string{rule.User, rule.ConfigFile}]; !ok {
+				checkAllowsUsersCfgFile[[2]string{rule.User, rule.ConfigFile}] = nil
+				e = e.Merge(t.checkAllowGroups(rule))
+				e = e.Merge(t.checkAllowUsers(rule))
+			}
+		}
 	}
 	return e
 }
@@ -749,10 +834,15 @@ func (t CompAuthkeys) Check() ExitCode {
 		o := t.checkRule(rule)
 		e = e.Merge(o)
 	}
+	e.Merge(t.checkAllows())
 	return e
 }
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
+	if !userValidityMap[rule.User] {
+		t.Errorf("the user %s is blacklisted can't fix the rule", rule.User)
+		return ExitNok
+	}
 	e := ExitOk
 	if t.checkAuthKey(rule) == ExitNok {
 		switch rule.Action {
@@ -772,25 +862,24 @@ func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
 	}
 	port, err := t.getPortFromConfigFile(rule.ConfigFile)
 	if err != nil {
-		t.Errorf("error when trying to get the port of sshd :%s\n", err)
+		t.Errorf("error when trying to get the port of sshd: %s\n", err)
 	} else {
 		err = t.reloadSshd(port)
 	}
 	if err != nil {
-		t.Errorf("error when trying to reload sshd :%s\n", err)
+		t.Errorf("error when trying to reload sshd: %s\n", err)
 	}
 	return e
 }
 
 func (t CompAuthkeys) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompAuthKey)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompAuthkeys) Fixable() ExitCode {
@@ -799,4 +888,14 @@ func (t CompAuthkeys) Fixable() ExitCode {
 
 func (t CompAuthkeys) Info() ObjInfo {
 	return compAuthKeyInfo
+}
+
+func delKeyFromCache(delKey string, keys []string) []string {
+	newKeys := []string{}
+	for _, key := range keys {
+		if key != delKey {
+			newKeys = append(newKeys, key)
+		}
+	}
+	return newKeys
 }

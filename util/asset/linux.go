@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -65,7 +66,7 @@ func (t T) Get(s string) (interface{}, error) {
 	case "os_arch":
 		return si.OS.Architecture, nil
 	case "os_name":
-		return si.OS.Name, nil
+		return osName()
 	case "serial":
 		return si.Product.Serial, nil
 	case "sp_version":
@@ -214,6 +215,10 @@ func memBanks() (int, error) {
 		n += 1
 	}
 	return n, nil
+}
+
+func osName() (string, error) {
+	return runtime.GOOS, nil
 }
 
 // pkg Size() is buggy wrt to extended support ...

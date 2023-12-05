@@ -80,7 +80,7 @@ Inputs:
 )
 
 func init() {
-	m["groupmembership"] = NewCompGroupsMemberShips
+	m["group_membership"] = NewCompGroupsMemberShips
 }
 
 func NewCompGroupsMemberShips() interface{} {
@@ -122,7 +122,7 @@ func (t CompGroupsMemberships) locatePresenceInRules(groupName string) int {
 func (t CompGroupsMemberships) checkRule(rule CompGroupMembership) ExitCode {
 	isGroupPresent, err := t.isGroupExisting(rule.Group)
 	if err != nil {
-		t.Errorf("can't check if group exist :%s\n", err)
+		t.Errorf("can't check if group exist: %s\n", err)
 		return ExitNok
 	}
 	if !isGroupPresent {
@@ -160,26 +160,26 @@ func (t CompGroupsMemberships) checkMember(groupMembers map[string]any, member s
 		return false
 	} else if primaryGroup == groupName {
 		if delMember {
-			t.VerboseInfof("user %s has the group %s as primary group and should not be present in the group --> not ok\n", member, groupName)
+			t.VerboseErrorf("user %s has the group %s as primary group and should not be present in the group\n", member, groupName)
 			return false
 		}
-		t.VerboseInfof("user %s has the group %s as primary group and should be present in the group --> ok\n", member, groupName)
+		t.VerboseInfof("user %s has the group %s as primary group and should be present in the group\n", member, groupName)
 		return true
 	}
 	if _, ok := groupMembers[member]; ok {
 		if delMember {
-			t.VerboseInfof("user %s is present in the group %s and should not be present --> not ok\n", member, groupName)
+			t.VerboseErrorf("user %s is present in the group %s and should not be present\n", member, groupName)
 			return false
 		}
-		t.VerboseInfof("user %s is present in the group %s and should be present --> ok\n", member, groupName)
+		t.VerboseInfof("user %s is present in the group %s and should be present\n", member, groupName)
 		return true
 	}
 
 	if delMember {
-		t.VerboseInfof("user %s is not present in the group %s and should not be present -->  ok\n", member, groupName)
+		t.VerboseInfof("user %s is not present in the group %s and should not be present\n", member, groupName)
 		return true
 	}
-	t.VerboseInfof("user %s is not present in the group %s and should be present --> not ok\n", member, groupName)
+	t.VerboseErrorf("user %s is not present in the group %s and should be present\n", member, groupName)
 	return false
 }
 
@@ -218,7 +218,7 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 	for _, member := range members {
 		isMissing, err := t.isUserMissing(member)
 		if err != nil {
-			t.Errorf("error when trying to look if user %s exist :%s \n", member, err)
+			t.Errorf("error when trying to look if user %s exist: %s \n", member, err)
 			return ExitNok
 		}
 
@@ -228,7 +228,6 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 		t.Errorf("error : some members are not present in the current os\n")
 		return ExitNok
 	}
-	t.VerboseInfof("all the members are user in the current os\n")
 	return ExitOk
 }
 
@@ -322,7 +321,7 @@ func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCod
 		return ExitNok
 	}
 	if group == primaryGroup {
-		t.Errorf("user %s has the group %s as primary group --> cowardly refusing to del the user from its primary group \n", member, group)
+		t.Errorf("user %s has the group %s as primary group, cowardly refusing to del the user from its primary group \n", member, group)
 		return ExitNok
 	}
 	cmd := execGpasswdDel(group, member)
@@ -336,13 +335,12 @@ func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCod
 
 func (t CompGroupsMemberships) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroupMembership)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompGroupsMemberships) Fixable() ExitCode {

@@ -987,7 +987,7 @@ func TestUserFix(t *testing.T) {
 				return exec.Command("pwd")
 			}
 
-			execShellCommand = func(shell string) *exec.Cmd {
+			execShellCommand = func(shell string, user string) *exec.Cmd {
 				c.FixAction = shellFix
 				c.currentPasswdFile = "./testdata/user_passwd"
 				c.currentShadowFile = "./testdata/user_shadow"

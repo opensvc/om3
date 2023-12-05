@@ -408,7 +408,7 @@ func (t Run) Push() error {
 		v := []interface{}{
 			hn,
 			ma.Module,
-			ma.Status(),
+			ma.ExitCode,
 			ma.Log.RenderForCollector(),
 			ma.Action,
 			md5sum,
@@ -485,7 +485,9 @@ func (t Run) Stat() RunStat {
 	stat := RunStat{}
 	m := make(map[string]int)
 	for _, ma := range t.ModuleActions {
-		m[ma.Module] = ma.ExitCode
+		if ma.Action == ActionCheck {
+			m[ma.Module] = ma.ExitCode
+		}
 	}
 	for _, x := range m {
 		switch x {
@@ -509,7 +511,9 @@ func (t Run) Render() string {
 	buff += fmt.Sprintf(" Data Fetch:        %s\n", t.initDuration())
 	buff += fmt.Sprintf(" Modules Execution: %s\n", t.runDuration())
 	buff += fmt.Sprintf(" Modules Count:     %d\n", stat.Total)
-	buff += fmt.Sprintf(" Modules States:    %d ok, %d nok, %d n/a\n", stat.Ok, stat.Nok, stat.NA)
+	if stat.Total > 0 {
+		buff += fmt.Sprintf(" Checks by State:   %d ok, %d nok, %d n/a\n", stat.Ok, stat.Nok, stat.NA)
+	}
 	return buff
 }
 

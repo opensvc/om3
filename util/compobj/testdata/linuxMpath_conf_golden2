@@ -1,0 +1,64 @@
+devices {
+       device {
+               vendor  "IBM"
+               product "3S42"       #DS4200 Product 10
+       }
+
+        #bipboup
+
+
+       device {
+               vendor  "HP"
+               product "*"
+       }
+}
+
+blacklist {
+       devnode "^hd[a-z]"
+       device {
+               vendor  "IBM"
+               product "3S42"       #DS4200 Product 10
+       }
+       wwid *
+       wwid "laal"
+       device {
+               vendor  "HP"
+               product "*"
+       }
+}
+
+blacklist_exceptions {
+       devnode "^hd[a-z]"
+       device {
+               vendor  "IBM"
+               product "3S42"       #DS4200 Product 10
+       }
+       wwid *
+       wwid "laal"
+       device {
+               vendor  "HP"
+               product "*"
+       }
+}
+defaults {
+        user_friendly_names     yes
+        path_grouping_policy    multibus
+}
+overrides             {
+        user_friendly_names     yes  #lalaal
+        path_grouping_policy    multibus
+}
+multipaths {
+       multipath {
+              wwid                  3600508b4000156d70001200000b0000
+       }
+       multipath {
+              wwid                  1DEC_____321816758474
+              alias                 red
+              rr_weight             priorities
+        }
+}
+
+
+
+

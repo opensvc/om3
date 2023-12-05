@@ -26,7 +26,9 @@ type (
 )
 
 var (
-	cmdRun = func(r commandInterface) error {
+	rulePackages        = map[string]any{}
+	blacklistedPackages = map[string]any{}
+	cmdRun              = func(r commandInterface) error {
 		return r.Run()
 	}
 
@@ -76,9 +78,9 @@ Inputs:
 var (
 	packages = map[string]interface{}{}
 	hasItMap = map[string]bool{}
-	osVendor = os.Getenv("OSVC_COMP_NODES_OS_VENDOR")
-	osName   = os.Getenv("OSVC_COMP_NODES_OS_NAME")
-	osArch   = os.Getenv("OSVC_COMP_NODES_OS_ARCH")
+	osVendor = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_VENDOR"))
+	osName   = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_NAME"))
+	osArch   = strings.ToLower(os.Getenv("OSVC_COMP_NODES_OS_ARCH"))
 )
 
 func init() {
@@ -87,11 +89,11 @@ func init() {
 
 func hasDpkg() bool {
 	return hasIt("dpkg", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Ubuntu", "Debian":
+		case "ubuntu", "debian":
 			// pass
 		default:
 			return false
@@ -103,11 +105,11 @@ func hasDpkg() bool {
 
 func hasYum() bool {
 	return hasIt("yum", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle":
+		case "hed hat", "redhat", "centOS", "oracle":
 			// pass
 		default:
 			return false
@@ -123,7 +125,7 @@ func hasDnf() bool {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle":
+		case "red hat", "redhat", "centOS", "oracle":
 			// pass
 		default:
 			return false
@@ -135,11 +137,11 @@ func hasDnf() bool {
 
 func hasRpm() bool {
 	return hasIt("rpm", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Red Hat", "RedHat", "CentOS", "Oracle", "SuSE":
+		case "red hat", "redhat", "centOS", "oracle", "suse":
 			// pass
 		default:
 			return false
@@ -151,11 +153,11 @@ func hasRpm() bool {
 
 func hasZypper() bool {
 	return hasIt("zypper", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "SuSE":
+		case "suse":
 			// pass
 		default:
 			return false
@@ -167,7 +169,7 @@ func hasZypper() bool {
 
 func hasPkgadd() bool {
 	return hasIt("pkgadd", func() bool {
-		if osName != "SunOS" {
+		if osName != "sunos" {
 			return false
 		}
 		p, err := execLookPath("pkgadd")
@@ -177,11 +179,11 @@ func hasPkgadd() bool {
 
 func hasApt() bool {
 	return hasIt("apt", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Ubuntu", "Debian":
+		case "ubuntu", "debian":
 			// pass
 		default:
 			return false
@@ -193,7 +195,7 @@ func hasApt() bool {
 
 func hasFreebsdPkg() bool {
 	return hasIt("freebsdpkg", func() bool {
-		if osName != "FreeBSD" {
+		if osName != "freebsd" {
 			return false
 		}
 		p, err := execLookPath("pkg")
@@ -203,11 +205,11 @@ func hasFreebsdPkg() bool {
 
 func hasApk() bool {
 	return hasIt("apk", func() bool {
-		if osName != "Linux" {
+		if osName != "linux" {
 			return false
 		}
 		switch osVendor {
-		case "Alpine":
+		case "alpine":
 			// pass
 		default:
 			return false
@@ -237,8 +239,61 @@ func (t *CompPackages) Add(s string) error {
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
+	t.aggregateBlacklist(data)
 	t.Obj.Add(data)
+	t.filterPackagesUsingBlacklist()
 	return nil
+}
+
+func (t *CompPackages) aggregateBlacklist(rule CompPackage) {
+	for _, s := range rule {
+		if len(s) == 0 {
+			t.Errorf("one of the package name is empty\n")
+			continue
+		}
+		switch s[0] {
+		case '-':
+			if _, ok := blacklistedPackages[s[1:]]; ok {
+				continue
+			}
+			if _, ok := rulePackages[s[1:]]; ok {
+				t.Errorf("conflict with the package %s: trying to add the package and del the package at the same time the package is now blacklisted\n", s[1:])
+				blacklistedPackages[s[1:]] = nil
+			}
+			rulePackages[s] = nil
+		default:
+			if _, ok := blacklistedPackages[s]; ok {
+				continue
+			}
+			if _, ok := rulePackages["-"+s]; ok {
+				t.Errorf("conflict with the package %s: trying to add the package and del the package at the same time the package is now blacklisted\n", s)
+				blacklistedPackages[s] = nil
+			}
+			rulePackages[s] = nil
+		}
+	}
+}
+
+func (t *CompPackages) filterPackagesUsingBlacklist() {
+	newobj := NewCompPackages().(*CompPackages)
+
+	for _, rule := range t.rules {
+		newRule := CompPackage{}
+		for _, s := range rule.(CompPackage) {
+			if len(s) == 0 {
+				continue
+			}
+			searchName := s
+			if s[0] == '-' {
+				searchName = s[1:]
+			}
+			if _, ok := blacklistedPackages[searchName]; !ok {
+				newRule = append(newRule, s)
+			}
+		}
+		newobj.Obj.Add(newRule)
+	}
+	*t = *newobj
 }
 
 func loadInstalledPackages() error {
@@ -764,6 +819,10 @@ func (t *CompPackages) Check() ExitCode {
 		o := t.CheckRule(rule)
 		e = e.Merge(o)
 	}
+	if len(blacklistedPackages) != 0 {
+		t.Errorf("some packages are blacklisted can't do a full check")
+		e = e.Merge(ExitNok)
+	}
 	return e
 }
 
@@ -813,6 +872,10 @@ func (t *CompPackages) Fix() ExitCode {
 	if len(adds) > 0 {
 		o := t.fixPkgAdd(adds)
 		e = e.Merge(o)
+	}
+	if len(blacklistedPackages) != 0 {
+		t.Errorf("some packages are blacklisted can't do a full fix")
+		e = e.Merge(ExitNok)
 	}
 	return e
 }

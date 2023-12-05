@@ -13,8 +13,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	dpkgEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "Ubuntu"
-		osName = "Linux"
+		osVendor = "ubuntu"
+		osName = "linux"
 
 		cmdRun = func(r commandInterface) error {
 			return nil
@@ -35,8 +35,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	rpmEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "RedHat"
-		osName = "Linux"
+		osVendor = "redhat"
+		osName = "linux"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
@@ -57,8 +57,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	pkgaddEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "Solaris"
-		osName = "SunOS"
+		osVendor = "solaris"
+		osName = "sunos"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
@@ -78,8 +78,8 @@ func TestPackage_loadInstalledPackages(t *testing.T) {
 
 	freebsdpkgEnv := func(cmdOutputFilePath string) {
 
-		osVendor = "FreeBsd"
-		osName = "FreeBSD"
+		osVendor = "freebsd"
+		osName = "freebsd"
 		cmdRun = func(r commandInterface) error {
 			return nil
 		}
@@ -333,6 +333,42 @@ func TestPackage_expand(t *testing.T) {
 			list, err := expandFunc(c.pkgNames)
 			require.NoError(t, err)
 			require.Equal(t, sliceToMap(c.expectedPkgList), sliceToMap(list))
+		})
+	}
+}
+
+func TestAdd(t *testing.T) {
+	testCases := map[string]struct {
+		jsonRules     []string
+		expectedRules []interface{}
+	}{
+		"with a simple rule": {
+			jsonRules:     []string{`["lalal","yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal", "yoyo"}},
+		},
+		"with a two simple rules": {
+			jsonRules:     []string{`["lalal","yoyo"]`, `["toto"]`},
+			expectedRules: []interface{}{CompPackage{"lalal", "yoyo"}, CompPackage{"toto"}},
+		},
+		"with a simple rule and contradictions": {
+			jsonRules:     []string{`["lalal","yoyo","-yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal"}},
+		},
+		"with a simple rule and contradictions in two different rules": {
+			jsonRules:     []string{`["lalal","yoyo"]`, `["-yoyo"]`},
+			expectedRules: []interface{}{CompPackage{"lalal"}, CompPackage{}},
+		},
+	}
+
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			obj := CompPackages{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+			for _, rule := range c.jsonRules {
+				require.NoError(t, obj.Add(rule))
+			}
+			require.Equal(t, c.expectedRules, obj.rules)
+			rulePackages = map[string]any{}
+			blacklistedPackages = map[string]any{}
 		})
 	}
 }

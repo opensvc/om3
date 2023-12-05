@@ -25,6 +25,22 @@ func TestNodeConfAdd(t *testing.T) {
 			}},
 		},
 
+		"add with two rules and a contradiction": {
+			jsonRule:      `[{"key" : "test", "op" : "=", "value" : 5},{"key" : "test", "op" : "unset", "value" : 5}]`,
+			expectError:   false,
+			expectedRules: []any{},
+		},
+
+		"add with three rules and a contradiction": {
+			jsonRule:    `[{"key" : "test", "op" : "=", "value" : 5},{"key" : "test", "op" : "unset", "value" : 5},{"key" : "test2", "op" : "unset", "value" : 5}]`,
+			expectError: false,
+			expectedRules: []any{CompNodeconf{
+				Key:   "test2",
+				Op:    "unset",
+				Value: "5",
+			}},
+		},
+
 		"add a rule with no key": {
 			jsonRule:    `[{"op" : "=", "value" : 5}]`,
 			expectError: true,
@@ -90,6 +106,8 @@ func TestNodeConfAdd(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, c.expectedRules, obj.rules)
 			}
+			ruleNodeConf = map[string]CompNodeconf{}
+			blacklistedNodeConf = map[string]any{}
 		})
 	}
 }

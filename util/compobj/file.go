@@ -190,14 +190,12 @@ func (t CompFile) FileMode() (os.FileMode, error) {
 
 func (t CompFiles) checkPathExistance(rule CompFile) ExitCode {
 	_, err := os.Lstat(rule.Path)
-	m, _ := file.Mode(rule.Path)
-	t.VerboseErrorf(m.String())
 	if err != nil {
 		if os.IsNotExist(err) {
 			t.VerboseErrorf("the file %s does not exist\n", rule.Path)
 			return ExitNok
 		}
-		t.VerboseErrorf("can't check if the file %s exist: %s", rule.Path, err)
+		t.VerboseErrorf("can't check if the file %s exist: %s\n", rule.Path, err)
 		return ExitNok
 	}
 	return ExitOk
@@ -376,22 +374,29 @@ func (t CompFiles) fixContent(rule CompFile) ExitCode {
 	t.Infof("file %s rewritten\n", rule.Path)
 	return ExitOk
 }
-func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
-	if strings.HasPrefix(rule.Path, "/") {
+
+func (t CompFiles) fixPathExistence(rule CompFile) ExitCode {
+	if strings.HasSuffix(rule.Path, "/") {
 		err := os.Mkdir(rule.Path, 0666)
 		if err != nil {
-			t.VerboseErrorf("can't create the file :%s", rule.Path)
+			t.Errorf("can't create the dir: %s\n", rule.Path)
 			return ExitNok
 		}
 		return ExitOk
 	}
+
+	err := os.MkdirAll(filepath.Dir(rule.Path), 0666)
+	if err != nil {
+		t.Errorf("%s", err)
+		return ExitNok
+	}
 	f, err := os.Create(rule.Path)
 	if err != nil {
-		t.VerboseErrorf("can't create the file :%s", rule.Path)
+		t.Errorf("can't create the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	if err = f.Close(); err != nil {
-		t.VerboseErrorf("can't close the file :%s", rule.Path)
+		t.Errorf("can't close the file: %s\n", rule.Path)
 		return ExitNok
 	}
 	return ExitOk
@@ -399,7 +404,7 @@ func (t CompFiles) fixPathExistance(rule CompFile) ExitCode {
 
 func (t CompFiles) FixRule(rule CompFile) ExitCode {
 	if e := t.checkPathExistance(rule); e == ExitNok {
-		if e := t.fixPathExistance(rule); e == ExitNok {
+		if e := t.fixPathExistence(rule); e == ExitNok {
 			return ExitNok
 		}
 	}
@@ -449,13 +454,12 @@ func (t CompFiles) Check() ExitCode {
 
 func (t CompFiles) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompFile)
-		if e := t.FixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.FixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompFiles) Fixable() ExitCode {

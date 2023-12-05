@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/key"
 	"os"
 	"regexp"
 	"strings"
@@ -89,6 +90,7 @@ Inputs:
       - "="
       - ">="
       - "<="
+      - "unset"
     Help: The comparison operator to use to check the parameter value.
   -
     Id: value
@@ -113,7 +115,7 @@ func NewCompSvcConfs() interface{} {
 }
 
 func (t *CompSvcconfs) Add(s string) error {
-	var data []CompNodeconf
+	var data []CompSvcconf
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
@@ -128,10 +130,10 @@ func (t *CompSvcconfs) Add(s string) error {
 	}
 	o, err := object.NewSvc(p)
 	if err != nil {
-		return fmt.Errorf("error can't create an configurer obj : %s", err)
+		return fmt.Errorf("error can't create an configurer obj: %s", err)
 	}
 	svcRessourcesNames = o.Config().SectionStrings()
-
+	svcRessourcesNames = t.addEnvInRessourcesNamesIfNotPresent(svcRessourcesNames)
 	for _, rule := range data {
 		if rule.Key == "" {
 			return fmt.Errorf("key is mandatory in dict : %s \n", s)
@@ -139,16 +141,29 @@ func (t *CompSvcconfs) Add(s string) error {
 		if rule.Op == "" {
 			rule.Op = "="
 		}
-		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
-			return fmt.Errorf("op must be in =, >=, <= in dict : %s \n", s)
+		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "unset") {
+			return fmt.Errorf("op must be in =, >=, <= in dict: %s", s)
 		}
 		if rule.Value == nil {
-			return fmt.Errorf("value is mandatory in dict : %s \n", s)
+			if rule.Op == "unset" {
+				rule.Value = "nil"
+			} else {
+				return fmt.Errorf("value is mandatory in dict : %s \n", s)
+			}
 		}
 		rule.Value = fmt.Sprint(rule.Value)
 		t.Obj.Add(rule)
 	}
 	return nil
+}
+
+func (t CompSvcconfs) addEnvInRessourcesNamesIfNotPresent(ressourcesNames []string) []string {
+	for _, ressource := range ressourcesNames {
+		if ressource == "env" {
+			return ressourcesNames
+		}
+	}
+	return append(ressourcesNames, "env")
 }
 
 func (t *CompSvcconfs) getKeyParts(rule CompSvcconf) (string, string, string) {
@@ -181,7 +196,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	o, err := object.NewConfigurer(svcName)
 	var op, leftFilter, rightFilter string
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s", err)
+		t.Errorf("can't create an configurer obj: %s\n", err)
 		return false
 	}
 
@@ -208,32 +223,81 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	}
 }
 
-func (t CompSvcconfs) checkValue(resourceName string, key string, value string, op string) bool {
+func (t CompSvcconfs) checkValue(resourceName string, keyName string, value string, op string) bool {
 	o, err := object.NewConfigurer(svcName)
 	if err != nil {
-		t.Errorf("error can't create an configurer obj : %s", err)
+		t.Errorf("can't create an configurer obj: %s\n", err)
 		return false
 	}
-	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + key + op + value))
+	if op == "unset" {
+		return !o.Config().HasKey(key.New(resourceName, keyName))
+	}
+	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + keyName + op + value))
 }
 
 func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
+	o, err := object.NewConfigurer(svcName)
+	if err != nil {
+		t.Errorf("can't create an configurer obj: %s\n", err)
+		return false
+	}
 	ruleSection, filter, keyName := t.getKeyParts(rule)
 	if t.checkRessourceName(resourceName, ruleSection) && t.checkFilter(resourceName, filter) {
-		return t.checkValue(resourceName, keyName, rule.Value.(string), rule.Op)
+		isRuleRespected := t.checkValue(resourceName, keyName, rule.Value.(string), rule.Op)
+		t.displayLogs(svcName, resourceName, o.Config().Get(key.Parse(rule.Key)), fmt.Sprintf("%s", rule.Value), rule.Op, isRuleRespected)
+		return isRuleRespected
 	}
 	return true
+}
+
+func (t CompSvcconfs) displayLogs(svcName, resourceName, currentValue, ruleValue, operator string, isRuleRespected bool) {
+	switch operator {
+	case "=":
+		if isRuleRespected {
+			t.VerboseInfof("the resource %s of the svc %s is supposed to be equal to %s and is equal to %s\n", resourceName, svcName, ruleValue, currentValue)
+			return
+		}
+		if currentValue == "" {
+			t.VerboseErrorf("the resource %s of the svc %s is supposed to be equal to %s but is unset\n", resourceName, svcName, ruleValue)
+			return
+		}
+		t.Errorf("the resource %s of the svc %s is supposed to be equal to %s but is equal to %s\n", resourceName, svcName, ruleValue, currentValue)
+	case "<=":
+		if isRuleRespected {
+			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be less or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
+			return
+		}
+		if currentValue == "" {
+			t.VerboseErrorf("the resource %s of the svc %s is unset and should be less or equal to %s\n", resourceName, svcName, ruleValue)
+			return
+		}
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be less or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
+	case ">=":
+		if isRuleRespected {
+			t.VerboseInfof("the resource %s of the svc %s is equal to %s and should be greater or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
+			return
+		}
+		if currentValue == "" {
+			t.VerboseErrorf("the resource %s of the svc %s is unset and should be greater or equal to %s\n", resourceName, svcName, ruleValue)
+			return
+		}
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be greater or equal to %s\n", resourceName, svcName, currentValue, ruleValue)
+	default:
+		if isRuleRespected {
+			t.VerboseInfof("the resource %s of the svc %s is unset and should be unset\n", resourceName, svcName)
+			return
+		}
+		t.VerboseErrorf("the resource %s of the svc %s is equal to %s and should be unset\n", resourceName, svcName, currentValue)
+	}
 }
 
 func (t CompSvcconfs) checkRule(rule CompSvcconf) ExitCode {
 	e := ExitOk
 	for _, resourceName := range svcRessourcesNames {
 		if t.checkSection(resourceName, rule) {
-			t.VerboseInfof("the resource %s respect the rule %s%s%s (or is not concerned by the section filter) --> ok\n", resourceName, rule.Key, rule.Op, rule.Value)
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseInfof("the resource %s does not respect the rule %s%s%s --> not ok\n", resourceName, rule.Key, rule.Op, rule.Value)
 		e = e.Merge(ExitNok)
 	}
 	return e
@@ -254,40 +318,44 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 	e := ExitOk
 	for _, resourceName := range svcRessourcesNames {
 		if t.checkSection(resourceName, rule) {
-			t.VerboseInfof("the resource %s respect the rule %s%s%s --> ok no need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
+			t.VerboseInfof("the resource %s respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
 			e = e.Merge(ExitOk)
 			continue
 		}
-		t.VerboseInfof("the resource %s does not respect the rule %s%s%s --> not ok need to fix\n", resourceName, rule.Key, rule.Op, rule.Value)
+		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
 		o, err := object.NewConfigurer(svcName)
 		if err != nil {
-			t.Errorf("error can't create an configurer obj : %s", err)
+			t.Errorf("error can't create an configurer obj: %s\n", err)
 			return ExitNok
 		}
 		_, _, variable := t.getKeyParts(rule)
-		if err := o.Config().Set(*keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))); err != nil {
-			t.Errorf("%s", err)
-			e = e.Merge(ExitNok)
-			continue
+		if rule.Op == "unset" {
+			if i := o.Config().Unset(key.New(resourceName, variable)); i == 0 {
+				return e.Merge(ExitNok)
+			}
+		} else {
+			if err := o.Config().Set(*keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))); err != nil {
+				t.Errorf("%s", err)
+				e = e.Merge(ExitNok)
+				continue
+			}
 		}
 		if err := o.Config().Commit(); err != nil {
 			t.Errorf("%s", err)
 			e = e.Merge(ExitNok)
 		}
-		e = e.Merge(ExitOk)
 	}
 	return e
 }
 
 func (t CompSvcconfs) Fix() ExitCode {
 	t.SetVerbose(false)
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSvcconf)
-		if e := t.fixRule(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixRule(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompSvcconfs) Fixable() ExitCode {

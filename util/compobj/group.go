@@ -175,23 +175,22 @@ func (t CompGroups) checkGroup(rule CompGroup) ExitCode {
 	case true:
 		rule.Group = rule.Group[1:]
 		if t.getGroupGid(rule.Group) == -1 {
-			t.VerboseInfof("group %s does not exist and should not exist --> ok\n", rule.Group)
+			t.VerboseInfof("group %s does not exist and should not exist\n", rule.Group)
 			return ExitOk
 		}
-		t.VerboseInfof("group %s does exist and should not exist --> not ok\n", rule.Group)
+		t.VerboseErrorf("group %s does exist and should not exist\n", rule.Group)
 		return ExitNok
 	default:
 		gid := t.getGroupGid(rule.Group)
 		if gid == -1 {
-			t.VerboseInfof("group %s does not exist and should exist --> not ok\n", rule.Group)
+			t.VerboseErrorf("group %s does not exist and should exist\n", rule.Group)
 			return ExitNok
 		}
-		t.VerboseInfof("group : %s gid = %d target = %d\n", rule.Group, gid, *rule.Gid)
 		if gid != *rule.Gid {
-			t.VerboseInfof("gid not ok\n")
+			t.VerboseErrorf("the gid of the group %s is %d and should be %d\n", rule.Group, gid, *rule.Gid)
 			return ExitNok
 		}
-		t.VerboseInfof("gid ok\n")
+		t.VerboseInfof("the gid of the group %s is %d and should be %d\n", rule.Group, gid, *rule.Gid)
 		return ExitOk
 	}
 }
@@ -204,7 +203,7 @@ func (t CompGroups) getGroupGid(groupName string) int {
 		if splitedLine[0] == groupName {
 			gid, err := strconv.Atoi(splitedLine[2])
 			if err != nil {
-				t.Errorf("can't convert gid from /etc/group to int :%s", err)
+				t.Errorf("can't convert gid from /etc/group to int: %s\n", err)
 			}
 			return gid
 		}
@@ -226,12 +225,12 @@ func (t *CompGroups) Check() ExitCode {
 func (t CompGroups) loadGroupFile() ExitCode {
 	var err error
 	if !t.checkFileNsswitch() {
-		t.Errorf("group is not using files (in /etc/Nsswitch)")
+		t.Errorf("group is not using files (in /etc/Nsswitch)\n")
 		return ExitNok
 	}
 	groupFileContent, err = osReadFile("/etc/group")
 	if err != nil {
-		t.Errorf("can't open /etc/group")
+		t.Errorf("can't open /etc/group\n")
 		return ExitNok
 	}
 	return ExitOk
@@ -240,7 +239,7 @@ func (t CompGroups) loadGroupFile() ExitCode {
 func (t CompGroups) checkFileNsswitch() bool {
 	nsswitchFileContent, err := osReadFile("/etc/nsswitch.conf")
 	if err != nil {
-		t.Errorf("can't open /etc/nsswitch to check if group file are using files :%s", err)
+		t.Errorf("can't open /etc/nsswitch to check if group file are using files: %s\n", err)
 		return false
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(nsswitchFileContent))
@@ -266,13 +265,12 @@ func (t CompGroups) checkFileNsswitch() bool {
 func (t *CompGroups) Fix() ExitCode {
 	t.SetVerbose(false)
 	t.loadGroupFile()
+	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroup)
-		if e := t.fixGroup(rule); e == ExitNok {
-			return ExitNok
-		}
+		e = e.Merge(t.fixGroup(rule))
 	}
-	return ExitOk
+	return e
 }
 
 func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
@@ -303,7 +301,7 @@ func (t CompGroups) fixGroupDel(rule CompGroup) ExitCode {
 	cmd := execGroupDel(rule.Group)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
 	return ExitOk
@@ -323,7 +321,7 @@ func (t CompGroups) fixGroupGid(rule CompGroup) ExitCode {
 	cmd := execChGroupGid(rule.Group, *rule.Gid)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
 	return ExitOk
