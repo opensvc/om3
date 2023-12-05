@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -591,15 +592,457 @@ func (t CompMpaths) Check() ExitCode {
 	return e
 }
 
-/*func (t CompMpaths) Fix() ExitCode {
+func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
+	conf, err := t.loadMpathData()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	values, err := t.getConfValues(rule.Key, conf)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if len(values) == 0 {
+		return t.fixAlreadyExist(rule)
+	}
+	return t.fixNotExist(rule, conf)
+}
+
+func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
+	indexs, newKey, err := t.getIndex(rule.Key)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	splitKey := strings.Split(newKey, ".")
+	fileContent, err := os.ReadFile(filepath.Join("/etc", "multipath.conf"))
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	lines := strings.Split(string(fileContent), "\n")
+	indexLineToChange := t.getLineIndex(&lines, splitKey, indexs, 0, len(splitKey)-1)
+	comment := ""
+	if i := strings.Index(lines[indexLineToChange], "#"); i != -1 {
+		comment = lines[indexLineToChange][i:]
+	}
+	newline := ""
+	for i := 0; i < len(lines[indexLineToChange])-1; i++ {
+		newline += "\t\t"
+	}
+	newline += splitKey[len(splitKey)-1]
+	switch rule.Value.(type) {
+	case string:
+		newline += newline + " " + rule.Value.(string) + " #" + comment
+	default:
+		newline += newline + " " + strconv.Itoa(rule.Value.(int)) + " #" + comment
+	}
+	lines[indexLineToChange] = newline
+
+	oldConfigFileStat, err := os.Stat(filepath.Join("/etc", "multipath.conf"))
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(filepath.Join("/etc", "multipath.conf")), "newMultipath")
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	newConfigFilePath := newConfigFile.Name()
+	for _, line := range lines {
+		if _, err := newConfigFile.Write([]byte(line + "\n")); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
+	if err := newConfigFile.Close(); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	err = os.Rename(newConfigFilePath, filepath.Join("/etc", "multipath.conf"))
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	return ExitOk
+}
+
+func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
+	indexs, newKey, err := t.getIndex(rule.Key)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	splitKey := strings.Split(newKey, ".")
+	fileContent, err := os.ReadFile(filepath.Join("/etc", "multipath.conf"))
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	var newValue string
+	switch rule.Value.(type) {
+	case string:
+		newValue = rule.Value.(string)
+	default:
+		newValue = strconv.Itoa(rule.Value.(int))
+	}
+	switch {
+	case splitKey[0] == "defaults" || splitKey[0] == "blacklist" || splitKey[0] == "blacklist_exceptions" || splitKey[0] == "overrides":
+		scanner := bufio.NewScanner(bytes.NewReader(fileContent))
+		i := 0
+		b := false
+		for scanner.Scan() {
+			if strings.HasPrefix(scanner.Text(), splitKey[0]+" ") {
+				b = true
+				break
+			}
+			i++
+		}
+		if b {
+			switch {
+			case splitKey[0] == "defaults" || splitKey[0] == "overrides":
+				if err = t.addInConfAfterLine(i, fileContent, splitKey[1]+" "+newValue); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
+			case splitKey[0] == "blacklist" || splitKey[0] == "blacklist_exception":
+				switch splitKey[1] {
+				case "device":
+					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+`"`+indexs[0]+`"`+"\n\t\tproduct "+`"`+indexs[1]+`"`+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}"); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				default:
+					if err = t.addInConfAfterLine(i, fileContent, splitKey[1]+" "+newValue); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+			}
+		} else {
+			switch {
+			case splitKey[0] == "defaults" || splitKey[0] == "overrides":
+				if err = t.addInConfAfterLine(i, fileContent, splitKey[0]+" {\n\t"+splitKey[1]+" "+newValue+"\n}\n"); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
+			default:
+				switch splitKey[1] {
+				case "device":
+					if err = t.addInConfAfterLine(i, fileContent, splitKey[0]+" {\t"+"\tdevice {\n\t\tvendor "+`"`+indexs[0]+`"`+"\n\t\tproduct "+`"`+indexs[1]+`"`+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n"+"}\n"); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				default:
+					if err = t.addInConfAfterLine(i, fileContent, splitKey[0]+" {\n\t"+splitKey[1]+" "+newValue+"\n}\n"); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+			}
+		}
+	default:
+		scanner := bufio.NewScanner(bytes.NewReader(fileContent))
+		i := 0
+		b := false
+		for scanner.Scan() {
+			if strings.HasPrefix(scanner.Text(), splitKey[0]+" ") {
+				b = true
+				break
+			}
+			i++
+		}
+		if b {
+			switch splitKey[0] {
+			case "multipath":
+				if t.checkIfMultipathExist(conf, indexs[0]) {
+					scannerBis := bufio.NewScanner(bytes.NewReader(fileContent))
+					j := 0
+					for k := 0; k < i; k++ {
+						scannerBis.Scan()
+					}
+					for scannerBis.Scan() {
+						line := scannerBis.Text()
+						if i := strings.Index(line, "#"); i != -1 {
+							line = line[:i]
+						}
+						splitLine := strings.SplitN(line, " ", 2)
+						if strings.TrimSpace(splitLine[0]) == "wwid" {
+							if len(splitLine) != 2 {
+								continue
+							}
+							if strings.TrimSpace(splitLine[1]) == indexs[0] {
+								if err = t.addInConfAfterLine(j, fileContent, "\t\t"+splitKey[2]+" "+newValue); err != nil {
+									t.Errorf("%s\n", err)
+									return ExitNok
+								}
+							}
+						}
+						j++
+					}
+				} else {
+					if err = t.addInConfAfterLine(i, fileContent, "\tmultipath {\n\t\twwid "+indexs[0]+"\n\t\t"+splitKey[1]+" "+newValue+"\n\t}\n"); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+			case "devices":
+				if t.checkIfDevicesExist(conf, splitKey[0], indexs[0], indexs[1]) {
+					scannerBis := bufio.NewScanner(bytes.NewReader(fileContent))
+					j := 0
+					var isVendor, isProduct bool
+					for scannerBis.Scan() {
+						line := scannerBis.Text()
+						if i := strings.Index(line, "#"); i != -1 {
+							line = line[:i]
+						}
+						splitLine := strings.SplitN(line, " ", 2)
+						if strings.TrimSpace(splitLine[0]) == "vendor" {
+							if len(splitLine) != 2 {
+								continue
+							}
+							if strings.TrimSpace(splitLine[1]) == indexs[0] {
+								isVendor = true
+							}
+						} else if strings.TrimSpace(splitLine[0]) == "product" {
+							if len(splitLine) != 2 {
+								continue
+							}
+							if strings.TrimSpace(splitLine[1]) == indexs[1] {
+								isProduct = true
+							}
+						} else if strings.HasPrefix(strings.TrimSpace(splitLine[0]), splitKey[0]+" ") {
+							isVendor = false
+							isProduct = false
+						}
+						if isProduct && isVendor {
+							if err = t.addInConfAfterLine(j, fileContent, "\t\t"+splitKey[2]+" "+newValue); err != nil {
+								t.Errorf("%s\n", err)
+								return ExitNok
+							}
+						}
+						j++
+					}
+				} else {
+					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+indexs[0]+"\n\t\tproduct "+indexs[1]+"\n\t\t"+splitKey[1]+" "+newValue+"\n\t}\n"); err != nil {
+						t.Errorf("%s\n", err)
+						return ExitNok
+					}
+				}
+			}
+		} else {
+			switch splitKey[1] {
+			case "multipath":
+				if err = t.addInConfAfterLine(i, fileContent, "multipaths {\n\tmultipath {\n\t\twwid "+indexs[0]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
+			case "device":
+				if err = t.addInConfAfterLine(i, fileContent, "devices {\n\tdevice {\n\t\tvendor "+indexs[0]+"\n\t\tproduct "+indexs[1]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
+					t.Errorf("%s\n", err)
+					return ExitNok
+				}
+			default:
+				t.Errorf("the key %s is not valid\n", rule.Key)
+				return ExitNok
+			}
+		}
+	}
+	return ExitOk
+}
+
+func (t CompMpaths) checkIfMultipathExist(conf MpathConf, wwid string) bool {
+	for _, multipath := range conf.Multipaths {
+		if multipath.Attr["wwid"][0] == wwid {
+			return true
+		}
+	}
+	return false
+}
+
+func (t CompMpaths) checkIfDevicesExist(conf MpathConf, sectionName, vendor, product string) bool {
+	switch sectionName {
+	case "blacklist":
+		for _, device := range conf.BlackList.Devices {
+			if device.Attr["vendor"][0] == vendor && device.Attr["product"][0] == product {
+				return true
+			}
+		}
+		return false
+	default:
+		for _, device := range conf.BlackListExceptions.Devices {
+			if device.Attr["vendor"][0] == vendor && device.Attr["product"][0] == product {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func (t CompMpaths) addInConfAfterLine(lineIndex int, fileContent []byte, stringToAdd string) error {
+	oldConfigFileStat, err := os.Stat(filepath.Join("/etc", "multipath.conf"))
+	if err != nil {
+		return err
+	}
+	newConfigFile, err := os.CreateTemp(filepath.Dir(filepath.Join("/etc", "multipath.conf")), "newAuthKey")
+	if err != nil {
+		return err
+	}
+	newConfigFilePath := newConfigFile.Name()
+	i := 0
+	scanner := bufio.NewScanner(bytes.NewReader(fileContent))
+	for scanner.Scan() {
+		if _, err = newConfigFile.Write([]byte(scanner.Text() + "\n")); err != nil {
+			return err
+		}
+		if i == lineIndex {
+			if _, err = newConfigFile.Write([]byte(stringToAdd + "\n")); err != nil {
+				return err
+			}
+		}
+		i++
+	}
+	if err = newConfigFile.Close(); err != nil {
+		return err
+	}
+	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+		return err
+	}
+
+	if err = os.Rename(newConfigFilePath, filepath.Join("/etc", "multipath.conf")); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [2]string, beginning, end int) int {
+	switch len(sectionList) {
+	case 1:
+		for i, line := range (*lines)[beginning:end] {
+			if strings.TrimSpace(strings.Split(line, " ")[0]) == sectionList[0] {
+				return i + beginning
+			}
+		}
+	default:
+		switch sectionList[0] {
+		case "device":
+			for i, line := range (*lines)[beginning:end] {
+				if strings.HasPrefix(strings.TrimSpace(line), sectionList[0]+" ") {
+					var j int
+					var lineBis string
+					for j, lineBis = range (*lines)[beginning+i : end] {
+						if iComment := strings.Index(lineBis, "#"); iComment != -1 {
+							lineBis = lineBis[:i]
+						}
+						if strings.TrimSpace(lineBis) == "}" {
+							break
+						}
+					}
+					if t.isCorrectDevice(lines, indexs, beginning+i, j) {
+						return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, j)
+					}
+				}
+			}
+		case "multipath":
+			for i, line := range (*lines)[beginning:end] {
+				if strings.HasPrefix(strings.TrimSpace(line), sectionList[0]+" ") {
+					var j int
+					var lineBis string
+					for j, lineBis = range (*lines)[beginning+i : end] {
+						if iComment := strings.Index(lineBis, "#"); iComment != -1 {
+							lineBis = lineBis[:i]
+						}
+						if strings.TrimSpace(lineBis) == "}" {
+							break
+						}
+					}
+					if t.isCorrectMultipath(lines, indexs, beginning+i, j) {
+						return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, j)
+					}
+				}
+			}
+		default:
+			for i, line := range (*lines)[beginning:end] {
+				if strings.HasPrefix(strings.TrimSpace(line), sectionList[0]+" ") {
+					var j int
+					var lineBis string
+					for j, lineBis = range (*lines)[beginning+i : end] {
+						if iComment := strings.Index(lineBis, "#"); iComment != -1 {
+							lineBis = lineBis[:i]
+						}
+						if strings.TrimSpace(lineBis) == "}" {
+							return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, j)
+						}
+					}
+				}
+			}
+		}
+	}
+	return -1
+}
+
+func (t CompMpaths) isCorrectDevice(lines *[]string, indexs [2]string, beginning, end int) bool {
+	var vendor, product string
+	for _, line := range (*lines)[beginning:end] {
+		splitLine := strings.SplitN(line, " ", 2)
+		if strings.TrimSpace(splitLine[0]) == "vendor" {
+			if len(splitLine) < 2 {
+				continue
+			}
+			if i := strings.Index(splitLine[1], "#"); i != -1 {
+				splitLine[1] = splitLine[1][:i]
+			}
+			splitLine[1] = strings.TrimSpace(splitLine[1])
+			splitLine[1] = strings.Trim(splitLine[1], `"`)
+			vendor = splitLine[1]
+		} else if strings.TrimSpace(splitLine[0]) == "product" {
+			if len(splitLine) < 2 {
+				continue
+			}
+			if i := strings.Index(splitLine[1], "#"); i != -1 {
+				splitLine[1] = splitLine[1][:i]
+			}
+			splitLine[1] = strings.TrimSpace(splitLine[1])
+			splitLine[1] = strings.Trim(splitLine[1], `"`)
+			product = splitLine[1]
+		}
+	}
+	return vendor == indexs[0] && product == indexs[1]
+}
+
+func (t CompMpaths) isCorrectMultipath(lines *[]string, indexs [2]string, beginning, end int) bool {
+	var wwid string
+	for _, line := range (*lines)[beginning:end] {
+		splitLine := strings.SplitN(line, " ", 2)
+		if strings.TrimSpace(splitLine[0]) == "wwid" {
+			if len(splitLine) < 2 {
+				continue
+			}
+			if i := strings.Index(splitLine[1], "#"); i != -1 {
+				splitLine[1] = splitLine[1][:i]
+			}
+			splitLine[1] = strings.TrimSpace(splitLine[1])
+			splitLine[1] = strings.Trim(splitLine[1], `"`)
+			wwid = splitLine[1]
+		}
+	}
+	return wwid == indexs[0] && wwid == indexs[1]
+}
+
+func (t CompMpaths) Fix() ExitCode {
 	t.SetVerbose(false)
 	e := ExitOk
 	for _, i := range t.Rules() {
-		rule := i.(CompSymlink)
-		e = e.Merge(t.fixSymlink(rule))
+		rule := i.(CompMpath)
+		e = e.Merge(t.fixRule(rule))
 	}
 	return e
-}*/
+}
 
 func (t CompMpaths) Fixable() ExitCode {
 	return ExitNotApplicable
