@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/opensvc/om3/util/file"
 	"github.com/stretchr/testify/require"
 	"os"
 	"os/user"
@@ -157,77 +156,6 @@ func TestAuthkeyAdd(t *testing.T) {
 			checkAllowsUsersCfgFile = map[[2]string]any{}
 			userValidityMap = map[string]bool{}
 			actionKeyUserMap = map[[3]string]any{}
-		})
-	}
-}
-
-func TestAuthkeyGetSshdPid(t *testing.T) {
-	testCases := map[string]struct {
-		testDir     string
-		expectError bool
-		expectedPid int
-	}{
-		"the listening tcp and the socket are in the same pid": {
-			testDir:     "./testdata/authkey_procDir_with_listening_tcp_in_the_same_pid",
-			expectError: false,
-			expectedPid: 5,
-		},
-
-		"the listening tcp and the socket are not in the same pid": {
-			testDir:     "./testdata/authkey_procDir_with_listening_tcp_in_not_the_same_pid",
-			expectError: false,
-			expectedPid: 5,
-		},
-
-		"the listening tcp and the socket are not in the same pid but using tcp6": {
-			testDir:     "./testdata/authkey_procDir_with_listening_tcp6_in_the_same_pid",
-			expectError: false,
-			expectedPid: 5,
-		},
-
-		"no listening tcp": {
-			testDir:     "./testdata/authkey_procDir_with_no_listening",
-			expectError: true,
-			expectedPid: -1,
-		},
-	}
-	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
-	for name, c := range testCases {
-		t.Run(name, func(t *testing.T) {
-			oriOsReadLink := osReadLink
-			defer func() { osReadLink = oriOsReadLink }()
-
-			oriOsReadFile := osReadFile
-			defer func() { osReadFile = oriOsReadFile }()
-
-			oriOsReadDir := osReadDir
-			defer func() { osReadDir = oriOsReadDir }()
-
-			osReadLink = func(name string) (string, error) {
-				return os.Readlink(filepath.Join(c.testDir, name))
-			}
-
-			osReadFile = func(name string) ([]byte, error) {
-				return os.ReadFile(filepath.Join(c.testDir, name))
-			}
-
-			osReadDir = func(name string) ([]os.DirEntry, error) {
-				return os.ReadDir(filepath.Join(c.testDir, name))
-			}
-
-			tgetParentPid = func(pid int) (int, error) {
-				return pid, nil
-			}
-
-			pid, err := obj.getSshdPid(22)
-
-			if c.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			require.Equal(t, c.expectedPid, pid)
 		})
 	}
 }
@@ -702,49 +630,6 @@ func TestAddAllowGroup(t *testing.T) {
 			goldenFileContent, err := os.ReadFile(c.goldenAllows)
 			require.NoError(t, err)
 			require.Equal(t, string(goldenFileContent), string(currentFileContent))
-		})
-	}
-}
-
-func TestGetParentPid(t *testing.T) {
-	oriOsReadFile := osReadFile
-	defer func() { osReadFile = oriOsReadFile }()
-
-	oriFileMD5 := fileMD5
-	defer func() { fileMD5 = oriFileMD5 }()
-
-	testCases := map[string]struct {
-		testDirPath  string
-		oriPid       int
-		expectedPpid int
-	}{
-		"with pid that is the ppid": {
-			testDirPath:  "./testdata/authkey_procDir_getParentPid",
-			oriPid:       2,
-			expectedPpid: 2,
-		},
-
-		"with pid that is not the ppid": {
-			testDirPath:  "./testdata/authkey_procDir_getParentPid",
-			oriPid:       4,
-			expectedPpid: 2,
-		},
-	}
-
-	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
-	for name, c := range testCases {
-		t.Run(name, func(t *testing.T) {
-			osReadFile = func(name string) ([]byte, error) {
-				return os.ReadFile(filepath.Join(c.testDirPath, name))
-			}
-
-			fileMD5 = func(p string) ([]byte, error) {
-				return file.MD5(filepath.Join(c.testDirPath, p))
-			}
-
-			ppid, err := obj.getParentPid(c.oriPid)
-			require.NoError(t, err)
-			require.Equal(t, c.expectedPpid, ppid)
 		})
 	}
 }

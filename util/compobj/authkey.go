@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opensvc/om3/util/file"
-	"github.com/pbar1/pkill-go"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/opensvc/om3/util/compobj/sysproc"
+	"github.com/pbar1/pkill-go"
 )
 
 type (
@@ -31,16 +32,12 @@ type (
 
 var (
 	osOpen                  = os.Open
-	fileMD5                 = file.MD5
-	tgetParentPid           = CompAuthkeys{}.getParentPid
 	checkAllowsUsersCfgFile = map[[2]string]any{}
 	userValidityMap         = map[string]bool{}
 	actionKeyUserMap        = map[[3]string]any{}
 	cacheAllowUsers         []string
 	cacheAllowGroups        []string
 	cacheInstalledKeys      = map[string][]string{}
-	osReadDir               = os.ReadDir
-	osReadLink              = os.Readlink
 	userLookup              = user.Lookup
 	userLookupGroupId       = user.LookupGroupId
 	getAuthKeyFilesPaths    = CompAuthkeys{}.getAuthKeyFilesPaths
@@ -231,7 +228,7 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 		t.VerboseInfof("there is no need to reload sshd because sshd is not up \n")
 		return nil
 	}
-	pid, err := t.getSshdPid(port)
+	pid, err := sysproc.GetPidFromPort(port)
 	if err != nil {
 		return err
 	}
@@ -243,154 +240,6 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 		return err
 	}
 	return nil
-}
-
-func (t CompAuthkeys) getSshdPid(port int) (int, error) {
-	socketMap, err := t.getSocketsMap()
-	if err != nil {
-		return -1, err
-	}
-	inode, err := t.getInodeListeningOnPort(port)
-	if err != nil {
-		return -1, err
-	}
-	return tgetParentPid(socketMap[inode])
-}
-
-func (t CompAuthkeys) getParentPid(pid int) (int, error) {
-	strPid := strconv.Itoa(pid)
-	statContent, err := osReadFile(filepath.Join("/proc", strPid, "stat"))
-	if err != nil {
-		return -1, err
-	}
-	splitLine := strings.Fields(string(statContent))
-	if len(splitLine) < 4 {
-		return -1, fmt.Errorf("the stat file of the pid %s, is in the wrong format", strPid)
-	}
-	strPpid := splitLine[3]
-	md5pid, err := fileMD5(filepath.Join("/proc", strPid, "exe"))
-	if err != nil {
-		return -1, err
-	}
-	md5Ppid, err := fileMD5(filepath.Join("/proc", strPpid, "exe"))
-	if err != nil {
-		return -1, err
-	}
-	if string(md5pid) == string(md5Ppid) {
-		ppid, err := strconv.Atoi(strPpid)
-		if err != nil {
-			return -1, err
-		}
-		return t.getParentPid(ppid)
-	}
-	return pid, nil
-}
-
-func (t CompAuthkeys) getSocketsMap() (map[int]int, error) {
-	socketsMap := map[int]int{}
-	files, err := osReadDir("/proc")
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		pid, _ := strconv.Atoi(file.Name())
-		if pid == 1 {
-			continue
-		}
-		if file.IsDir() && err == nil {
-			fds, err := osReadDir(filepath.Join("/proc", file.Name(), "fd"))
-			if err != nil {
-				if os.IsNotExist(err) {
-					continue
-				}
-				t.Errorf("%s: can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-			for _, fd := range fds {
-				link, err := osReadLink(filepath.Join("/proc", file.Name(), "fd", fd.Name()))
-				if err != nil {
-					if !os.IsNotExist(err) {
-						return nil, err
-					}
-				}
-				splitLink := strings.Split(link, "[")
-				if splitLink[0] == "socket:" && len(splitLink) == 2 {
-					if len(splitLink[1]) > 1 {
-						inode, err := strconv.Atoi(splitLink[1][:len(splitLink[1])-1])
-						if err != nil {
-							return nil, err
-						}
-						socketsMap[inode] = pid
-					}
-				}
-			}
-		}
-	}
-	return socketsMap, nil
-}
-
-func (t CompAuthkeys) getInodeListeningOnPort(port int) (int, error) {
-	files, err := osReadDir("/proc")
-	if err != nil {
-		return -1, nil
-	}
-	for _, file := range files {
-		if file.IsDir() && err == nil {
-			tcpFileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp"))
-			if err != nil {
-				t.Infof("%s: can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-			tcp6FileContent, err := osReadFile(filepath.Join("/proc", file.Name(), "net", "tcp6"))
-			if err != nil {
-				t.Infof("%s: can't read proc %s \n", err.Error(), file.Name())
-				continue
-			}
-
-			inode, err := t.getInodeFromTcpFileContent(port, tcpFileContent)
-			if err != nil {
-				return -1, err
-			}
-			if inode != -1 {
-				return inode, nil
-			}
-
-			inode, err = t.getInodeFromTcpFileContent(port, tcp6FileContent)
-			if err != nil {
-				return -1, err
-			}
-			if inode != -1 {
-				return inode, nil
-			}
-		}
-	}
-	return -1, fmt.Errorf("there is no process listening on port %d", port)
-}
-
-func (t CompAuthkeys) getInodeFromTcpFileContent(port int, content []byte) (int, error) {
-	scanner := bufio.NewScanner(bytes.NewReader(content))
-	for scanner.Scan() {
-		splitLine := strings.Fields(scanner.Text())
-		if len(splitLine) < 10 {
-			continue
-		}
-		splitAdress := strings.Split(splitLine[1], ":")
-		if len(splitAdress) != 2 {
-			continue
-		}
-		portUsed, err := strconv.ParseInt(splitAdress[1], 16, 64)
-		if err != nil {
-			return -1, err
-		}
-		if int(portUsed) == port {
-			inode, err := strconv.Atoi(splitLine[9])
-			if err != nil {
-				return -1, err
-			}
-			return inode, nil
-		}
-	}
-	return -1, nil
 }
 
 func (t CompAuthkeys) getAuthKeyFilesPaths(configFilePath string, userName string, authFile string) ([]string, error) {
@@ -787,16 +636,6 @@ func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
 	return ExitOk
 }
 
-func delKeyFromCache(delKey string, keys []string) []string {
-	newKeys := []string{}
-	for _, key := range keys {
-		if key != delKey {
-			newKeys = append(newKeys, key)
-		}
-	}
-	return newKeys
-}
-
 func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 	oldFileStat, err := os.Stat(rule.ConfigFile)
 	if err != nil {
@@ -1049,4 +888,14 @@ func (t CompAuthkeys) Fixable() ExitCode {
 
 func (t CompAuthkeys) Info() ObjInfo {
 	return compAuthKeyInfo
+}
+
+func delKeyFromCache(delKey string, keys []string) []string {
+	newKeys := []string{}
+	for _, key := range keys {
+		if key != delKey {
+			newKeys = append(newKeys, key)
+		}
+	}
+	return newKeys
 }
