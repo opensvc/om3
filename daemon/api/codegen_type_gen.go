@@ -913,6 +913,15 @@ type GetObjectConfigParams struct {
 	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
+// PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
+type PostInstanceActionBootParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter

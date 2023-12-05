@@ -55,6 +55,18 @@ func (t *CmdObjectStart) Run(selector, kind string) error {
 				v := true
 				params.DisableRollback = &v
 			}
+			if t.OptsResourceSelector.RID != "" {
+				params.Rid = &t.OptsResourceSelector.RID
+			}
+			if t.OptsResourceSelector.Subset != "" {
+				params.Subset = &t.OptsResourceSelector.Subset
+			}
+			if t.OptsResourceSelector.Tag != "" {
+				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptTo.To != "" {
+				params.To = &t.OptTo.To
+			}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid

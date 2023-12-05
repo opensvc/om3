@@ -96,6 +96,9 @@ type ServerInterface interface {
 	// (POST /namespaces/{namespace}/{kind}/{name}/giveback)
 	PostObjectActionGiveback(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/boot)
+	PostInstanceActionBoot(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionBootParams) error
+
 	// (POST /namespaces/{namespace}/{kind}/{name}/instance/clear)
 	PostInstanceClear(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
@@ -819,6 +822,79 @@ func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) erro
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostObjectActionGiveback(ctx, namespace, kind, name)
+	return err
+}
+
+// PostInstanceActionBoot converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionBoot(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionBootParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionBoot(ctx, namespace, kind, name, params)
 	return err
 }
 
@@ -1805,6 +1881,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/namespaces/:namespace/:kind/:name/file", wrapper.GetObjectFile)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/freeze", wrapper.PostObjectActionFreeze)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/giveback", wrapper.PostObjectActionGiveback)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/boot", wrapper.PostInstanceActionBoot)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/clear", wrapper.PostInstanceClear)
 	router.GET(baseURL+"/namespaces/:namespace/:kind/:name/instance/logs", wrapper.GetInstanceLogs)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/progress", wrapper.PostInstanceProgress)
@@ -1954,22 +2031,23 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
+	"nd/e3t7+bwAAAP//C6AikQr7AAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
