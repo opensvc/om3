@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
@@ -41,6 +45,7 @@ type (
 		SCSIReservation bool           `json:"scsireserv"`
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
 		PromoteRW       bool           `json:"promote_rw"`
+		CheckRead       bool           `json:"check_read"`
 	}
 
 	IsFormateder interface {
@@ -64,7 +69,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
@@ -74,7 +79,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
@@ -102,10 +107,21 @@ func (t *T) Status(ctx context.Context) status.T {
 	} else if !v {
 		return status.Down
 	}
+	if t.canCheckWriteAccess() {
+		if err := t.checkWriteAccess(); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Warn
+		}
+	} else if t.canCheckReadAccess() {
+		if err := t.checkReadAccess(); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Warn
+		}
+	}
 	return status.Up
 }
 
-func (t T) Label() string {
+func (t *T) Label() string {
 	s := t.devpath()
 	m := t.mountPoint()
 	if m != "" {
@@ -122,11 +138,11 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{"dev", t.devpath()},
 		{"mnt", t.mountPoint()},
@@ -135,7 +151,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) fsDir() *resfsdir.T {
+func (t *T) fsDir() *resfsdir.T {
 	r := resfsdir.New().(*resfsdir.T)
 	r.SetRID(t.RID())
 	r.SetObject(t.GetObject())
@@ -146,26 +162,29 @@ func (t T) fsDir() *resfsdir.T {
 	return r
 }
 
-func (t T) testFile() string {
+func (t *T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }
 
-func (t T) mountOptions() string {
+func (t *T) mountOptions() string {
 	// in can we need to mangle options
 	return t.MountOptions
 }
 
-func (t T) mountPoint() string {
+func (t *T) mountPoint() string {
 	// add zonepath translation, and cache ?
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() device.T {
+func (t *T) device() device.T {
 	return device.New(t.devpath(), device.WithLogger(t.Log()))
 }
 
-func (t T) devpath() string {
+func (t *T) devpath() string {
 	if t.fs().IsFileBacked() {
+		return t.Device
+	}
+	if t.fs().IsNetworked() {
 		return t.Device
 	}
 	if t.fs().IsVirtual() {
@@ -263,17 +282,17 @@ func (t *T) validateDevice() error {
 		return nil
 	}
 	dev := t.devpath()
-	if !fs.IsFileBacked() && !file.Exists(dev) {
+	if (!fs.IsFileBacked() && !fs.IsNetworked()) && !file.Exists(dev) {
 		return fmt.Errorf("device does not exist: %s", dev)
 	}
 	return nil
 }
 
-func (t T) isByUUID() bool {
+func (t *T) isByUUID() bool {
 	return strings.HasPrefix(t.Device, "UUID=")
 }
 
-func (t T) isByLabel() bool {
+func (t *T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
@@ -321,7 +340,7 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 	return nil
 }
 
-func (t T) fs() filesystems.I {
+func (t *T) fs() filesystems.I {
 	fs := filesystems.FromType(t.Type)
 	fs.SetLog(t.Log())
 	return fs
@@ -370,6 +389,85 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Head() string {
+func (t *T) Head() string {
 	return t.MountPoint
+}
+
+func (t *T) canCheckWriteAccess() bool {
+	if t.fs().IsNetworked() || t.hasMountOption("ro") {
+		return false
+	}
+	return true
+}
+
+// checkWriteAccess returns nil if we can write to mount point.
+// It uses setxattr on mountpoint, fallback to write file '.opensvc' in mountpoint.
+func (t *T) checkWriteAccess() error {
+	mountPoint := t.mountPoint()
+	if err := t.checkWriteXattr(mountPoint); err != nil {
+		if err = t.checkWriteFile(path.Join(mountPoint, ".opensvc")); err != nil {
+			return fmt.Errorf("check write access: %w", err)
+		}
+	}
+	return nil
+}
+
+func (t *T) canCheckReadAccess() bool {
+	if !t.CheckRead {
+		return false
+	}
+	if t.hasMountOption("nointr") {
+		return false
+	}
+	return true
+}
+
+func (t *T) checkReadAccess() error {
+	var (
+		cmd  *exec.Cmd
+		name = "stat"
+		arg  = []string{"-f", t.mountPoint()}
+		now  = time.Now()
+	)
+	if t.StatTimeout != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), *t.StatTimeout)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, name, arg...)
+	} else {
+		cmd = exec.Command(name, arg...)
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("check read access failed after %d ms: %w", time.Now().Sub(now).Milliseconds(), err)
+	}
+	return nil
+}
+
+func (t *T) checkWriteXattr(s string) error {
+	data := []byte(time.Now().String())
+	t.Log().Debugf("checkWriteXattr %s", s)
+	return unix.Setxattr(s, "user.opensvc", data, 0)
+}
+
+func (t *T) checkWriteFile(s string) error {
+	t.Log().Debugf("checkWriteFile %s", s)
+	if f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err != nil {
+		return err
+	} else {
+		defer func() {
+			_ = f.Close()
+		}()
+		if _, err := f.Write([]byte(" ")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *T) hasMountOption(option string) bool {
+	for _, s := range strings.Split(t.mountOptions(), ",") {
+		if s == option {
+			return true
+		}
+	}
+	return false
 }

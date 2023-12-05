@@ -713,6 +713,9 @@ func (t *T) ipnetStrict() (*net.IPNet, error) {
 func (t T) curGuestDev(netns ns.NetNS) (string, error) {
 	ref := t.ipnet()
 	s := ""
+	if netns == nil {
+		return "", fmt.Errorf("can't get current guest dev from nil netns")
+	}
 	if err := netns.Do(func(_ ns.NetNS) error {
 		var err error
 		s, err = netif.InterfaceNameByIP(ref)
