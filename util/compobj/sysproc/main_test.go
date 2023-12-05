@@ -61,7 +61,7 @@ func TestGetPidFromPort(t *testing.T) {
 				return os.ReadDir(filepath.Join(c.testDir, name))
 			}
 
-			oriGetParentPid := getParentPid
+			oriGetParentPid := fGetParentPid
 			defer func() {
 				getParentPid = oriGetParentPid
 			}()
@@ -119,7 +119,7 @@ func TestGetParentPid(t *testing.T) {
 				return string(b), err
 			}
 
-			ppid, err := getParentPid(c.oriPid)
+			ppid, err := fGetParentPid(c.oriPid)
 			require.NoError(t, err)
 			require.Equal(t, c.expectedPpid, ppid)
 		})

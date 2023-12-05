@@ -11,17 +11,14 @@ import (
 )
 
 var (
-	GetInodeFromTcpFileContent = fGetInodeFromTcpFileContent
-
-	getParentPid   = fGetParentPid
-	GetPidFromPort = fGetPidFromPort
-
-	osReadDir  = os.ReadDir
-	osReadFile = os.ReadFile
-	osReadLink = os.Readlink
+	// for test
+	getParentPid = fGetParentPid
+	osReadDir    = os.ReadDir
+	osReadFile   = os.ReadFile
+	osReadLink   = os.Readlink
 )
 
-func fGetPidFromPort(port int) (int, error) {
+func GetPidFromPort(port int) (int, error) {
 	socketMap, err := getSocketsMap()
 	if err != nil {
 		return -1, err
@@ -51,7 +48,7 @@ func getInodeListeningOnPort(port int) (int, error) {
 				continue
 			}
 
-			inode, err := GetInodeFromTcpFileContent(port, tcpFileContent)
+			inode, err := getInodeFromTcpFileContent(port, tcpFileContent)
 			if err != nil {
 				return -1, err
 			}
@@ -59,7 +56,7 @@ func getInodeListeningOnPort(port int) (int, error) {
 				return inode, nil
 			}
 
-			inode, err = GetInodeFromTcpFileContent(port, tcp6FileContent)
+			inode, err = getInodeFromTcpFileContent(port, tcp6FileContent)
 			if err != nil {
 				return -1, err
 			}
@@ -145,7 +142,7 @@ func getSocketsMap() (map[int]int, error) {
 	return socketsMap, nil
 }
 
-func fGetInodeFromTcpFileContent(port int, content []byte) (int, error) {
+func getInodeFromTcpFileContent(port int, content []byte) (int, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	for scanner.Scan() {
 		splitLine := strings.Fields(scanner.Text())
