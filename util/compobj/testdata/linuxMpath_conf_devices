@@ -6,5 +6,6 @@ devices {
        device {
                vendor  "HP"
                product "*"
+               alias red #test
        }
 }
