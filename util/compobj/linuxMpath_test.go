@@ -136,7 +136,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -174,7 +174,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -212,7 +212,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -242,7 +242,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -254,7 +254,7 @@ func TestLoadMpathData(t *testing.T) {
 					}, {
 						Name:   "device",
 						Indent: 2,
-						Attr:   map[string][]string{"vendor": {"HP"}, "product": {"*"}},
+						Attr:   map[string][]string{"vendor": {"HP"}, "product": {"*"}, "alias": {"red"}},
 					},
 				},
 				Multipaths: []MpathSection{},
@@ -281,7 +281,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -321,7 +321,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -367,7 +367,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -432,7 +432,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -676,8 +676,8 @@ func TestGetConfValuesMpath(t *testing.T) {
 			expectedValues: []string{"blue"},
 		},
 
-		"with default": {
-			key:            `default.path_grouping_policy`,
+		"with defaults": {
+			key:            `defaults.path_grouping_policy`,
 			conf:           fullConf,
 			expectError:    false,
 			expectedValues: []string{"multibus"},
