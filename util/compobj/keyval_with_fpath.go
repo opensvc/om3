@@ -95,7 +95,7 @@ Inputs:
 )
 
 func init() {
-	m["keyval"] = NewCompKeyvals
+	m["keyval_with_fpath"] = NewCompKeyvals
 }
 
 func NewCompKeyvals() interface{} {
