@@ -1,6 +1,9 @@
 package main
 
-import "os/exec"
+import (
+	"fmt"
+	"os/exec"
+)
 
 type (
 	CompSudoerss struct {
@@ -44,9 +47,10 @@ func (t CompSudoerss) checkSyntax(rule CompFile) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	cmd := exec.Command("bash", "-c"+`"`+"echo "+string(content)+" | "+"sudo "+"visudo "+"-s ", "-c ", "-", `"`)
-	_, err = cmd.CombinedOutput()
+	cmd := exec.Command("bash", "-c", `echo -n '`+string(content)+`' | visudo -s -c -`)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(output), err)
 		t.VerboseErrorf("wrong syntax for sudoers file %s\n", rule.Path)
 		return ExitNok
 	}
