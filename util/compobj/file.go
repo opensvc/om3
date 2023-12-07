@@ -138,6 +138,14 @@ func (t *CompFiles) Add(s string) error {
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
+	if data.Path == "" {
+		t.Errorf("path should be in the dict: %s\n", s)
+		return fmt.Errorf("path should be in the dict: %s\n", s)
+	}
+	if data.Ref == "" && data.Fmt == nil {
+		t.Errorf("ref or fmt should be in the dict: %s\n", s)
+		return fmt.Errorf("ref or fmt should be in the dict: %s\n", s)
+	}
 	t.Obj.Add(data)
 	return nil
 }

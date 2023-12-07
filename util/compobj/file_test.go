@@ -338,3 +338,59 @@ func TestFile(t *testing.T) {
 		})
 	}
 }
+
+func TestAddFile(t *testing.T) {
+	pts := func(s string) *string { return &s }
+	testCases := map[string]struct {
+		jsonRule     string
+		expectError  bool
+		expectedRule CompFile
+	}{
+		"with a true rule and fmt": {
+			jsonRule: `{"path":"/tmp/test","fmt":"content"}`,
+			expectedRule: CompFile{
+				Path: "/tmp/test",
+				Mode: nil,
+				UID:  nil,
+				GID:  nil,
+				Fmt:  pts("content"),
+				Ref:  "",
+			},
+		},
+
+		"with a true rule and ref": {
+			jsonRule: `{"path":"/tmp/test","ref":"content"}`,
+			expectedRule: CompFile{
+				Path: "/tmp/test",
+				Mode: nil,
+				UID:  nil,
+				GID:  nil,
+				Fmt:  nil,
+				Ref:  "content",
+			},
+		},
+
+		"with no path": {
+			jsonRule:     `{"fmt":"content"}`,
+			expectedRule: CompFile{},
+			expectError:  true,
+		},
+
+		"with no ref and no fmt": {
+			jsonRule:     `{"path":"content"}`,
+			expectedRule: CompFile{},
+			expectError:  true,
+		},
+	}
+	obj := CompFiles{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			if c.expectError {
+				require.Error(t, obj.Add(c.jsonRule))
+			} else {
+				require.NoError(t, obj.Add(c.jsonRule))
+				require.Equal(t, c.expectedRule, obj.Rules()[0].(CompFile))
+			}
+		})
+	}
+}
