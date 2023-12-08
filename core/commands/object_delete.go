@@ -28,6 +28,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTarget("deleted"),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(nodename))
 			if err != nil {

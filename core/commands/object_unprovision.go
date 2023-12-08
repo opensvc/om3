@@ -40,6 +40,7 @@ func (t *CmdObjectUnprovision) Run(selector, kind string) error {
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(nodename))
 			if err != nil {
