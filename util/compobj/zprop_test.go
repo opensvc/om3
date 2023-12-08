@@ -76,3 +76,30 @@ func TestAddZprop(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckZbin(t *testing.T) {
+	oriZpropZbin := zpropZbin
+	defer func() { zpropZbin = oriZpropZbin }()
+
+	testCases := map[string]struct {
+		zbin           string
+		expectedOutput ExitCode
+	}{
+		"with binary that is in path": {
+			zbin:           "pwd",
+			expectedOutput: ExitOk,
+		},
+
+		"with binary that is not in path": {
+			zbin:           "iamnotinpath",
+			expectedOutput: ExitNok,
+		},
+	}
+	obj := CompZprops{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			zpropZbin = c.zbin
+			require.Equal(t, c.expectedOutput, obj.checkZbin())
+		})
+	}
+}
