@@ -135,8 +135,7 @@ func (t CompSymlinks) Check() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSymlink)
-		o := t.CheckSymlink(rule)
-		e = e.Merge(o)
+		e = e.Merge(t.CheckSymlink(rule))
 	}
 	return e
 }
