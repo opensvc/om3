@@ -15,7 +15,7 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 	logName := "GetObjects"
 	log := LogHandler(ctx, logName)
 	if l, err := a.getObjects(ctx, params.Path); err != nil {
-		log.Errorf("log.Errorf%s: %s", logName, err)
+		log.Errorf("%s: %s", logName, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	} else {
 		return ctx.JSON(http.StatusOK, api.ObjectList{Kind: "ObjectList", Items: l})
@@ -31,7 +31,7 @@ func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind naming.Ki
 	}
 	s := p.FQN()
 	if l, err := a.getObjects(ctx, &s); err != nil {
-		log.Errorf("log.Errorf%s: %s", logName, err)
+		log.Errorf("%s: %s", logName, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	} else if len(l) == 0 {
 		return JSONProblem(ctx, http.StatusNotFound, "", "")

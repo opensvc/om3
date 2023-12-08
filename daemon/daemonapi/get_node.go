@@ -17,7 +17,7 @@ func (a *DaemonApi) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 	name := "GetNodes"
 	log := LogHandler(ctx, name)
 	if err := meta.Expand(); err != nil {
-		log.Errorf("log.Errorf%s: %s", name, err)
+		log.Errorf("%s: %s", name, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	configs := node.ConfigData.GetAll()
