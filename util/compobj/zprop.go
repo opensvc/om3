@@ -22,37 +22,39 @@ type (
 )
 
 func (t *CompZprops) add(s string) error {
-	var data CompZprop
+	var data []CompZprop
 	if err := json.Unmarshal([]byte(s), &data); err != nil {
 		return err
 	}
-	if data.Name == "" {
-		t.Errorf("name should be in dict: %s\n", s)
-		return fmt.Errorf("name should be in dict: %s", s)
+	for _, rule := range data {
+		if rule.Name == "" {
+			t.Errorf("name should be in dict: %s\n", s)
+			return fmt.Errorf("name should be in dict: %s", s)
+		}
+		if rule.Prop == "" {
+			t.Errorf("prop should be in dict: %s\n", s)
+			return fmt.Errorf("prop should be in dict: %s", s)
+		}
+		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
+			t.Errorf("op should equal to =, >= or <= dict: %s\n", s)
+			return fmt.Errorf("op should equal to =, >= or <= dict: %s", s)
+		}
+		if rule.Value == nil {
+			t.Errorf("value should be in dict: %s\n", s)
+			return fmt.Errorf("value should be in dict: %s", s)
+		}
+		_, okString := rule.Value.(string)
+		_, okFloat64 := rule.Value.(float64)
+		if !(okString || okFloat64) {
+			t.Errorf("value should be a string or an int in dict: %s\n", s)
+			return fmt.Errorf("value should be a string or an int in dict: %s", s)
+		}
+		if okString && (rule.Op == ">=" || rule.Op == "<=") {
+			t.Errorf("op should be = if value is a string in dict: %s\n", s)
+			return fmt.Errorf("op should be = if value is a string in dict: %s", s)
+		}
+		t.Obj.Add(rule)
 	}
-	if data.Prop == "" {
-		t.Errorf("prop should be in dict: %s\n", s)
-		return fmt.Errorf("prop should be in dict: %s", s)
-	}
-	if !(data.Op == "=" || data.Op == ">=" || data.Op == "<=") {
-		t.Errorf("op should equal to =, >= or <= dict: %s\n", s)
-		return fmt.Errorf("op should equal to =, >= or <= dict: %s", s)
-	}
-	if data.Value == "" {
-		t.Errorf("value should be in dict: %s\n", s)
-		return fmt.Errorf("value should be in dict: %s", s)
-	}
-	_, okString := data.Value.(string)
-	_, okFloat64 := data.Value.(float64)
-	if !(okString || okFloat64) {
-		t.Errorf("value should be a string or an int in dict: %s\n", s)
-		return fmt.Errorf("value should be a string or an int in dict: %s", s)
-	}
-	if okString && (data.Op == ">=" || data.Op == "<=") {
-		t.Errorf("op should be = if value is a string in dict: %s\n", s)
-		return fmt.Errorf("op should be = if value is a string in dict: %s", s)
-	}
-	t.Obj.Add(data)
 	return nil
 }
 
