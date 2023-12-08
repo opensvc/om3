@@ -8,9 +8,13 @@ import (
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonApi) PostInstanceActionFreeze(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionFreezeParams) error {
+	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+		return err
+	}
 	log := LogHandler(ctx, "PostInstanceActionFreeze")
 	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)

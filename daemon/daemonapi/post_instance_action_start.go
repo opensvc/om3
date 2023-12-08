@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -66,6 +67,10 @@ func (a *DaemonApi) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 }
 
 func (a *DaemonApi) PostInstanceActionStart(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
+	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+		return err
+	}
+
 	log := LogHandler(ctx, "PostInstanceActionStart")
 	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)

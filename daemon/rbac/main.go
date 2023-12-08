@@ -19,6 +19,7 @@ const (
 	RoleUndef          Role = ""
 	RoleRoot           Role = "root"
 	RoleAdmin          Role = "admin"
+	RoleOperator       Role = "operator"
 	RoleGuest          Role = "guest"
 	RoleSquatter       Role = "squatter"
 	RoleBlacklistAdmin Role = "blacklistadmin"
@@ -32,6 +33,7 @@ var (
 		"":               RoleUndef,
 		"root":           RoleRoot,
 		"admin":          RoleAdmin,
+		"operator":       RoleOperator,
 		"guest":          RoleGuest,
 		"squatter":       RoleSquatter,
 		"blacklistadmin": RoleBlacklistAdmin,
@@ -39,6 +41,13 @@ var (
 		"join":           RoleJoin,
 		"leave":          RoleJoin,
 	}
+
+	GrantRoot           = NewGrant("root", "")
+	GrantSquatter       = NewGrant("squatter", "")
+	GrantHeartbeat      = NewGrant("heartbeat", "")
+	GrantBlacklistAdmin = NewGrant("blacklistadmin", "")
+	GrantJoin           = NewGrant("join", "")
+	GrantLeave          = NewGrant("leave", "")
 )
 
 func NewGrants(l ...string) Grants {
@@ -69,7 +78,7 @@ func (t Grants) Has(role Role, scope string) bool {
 	return match(t, role, scope)
 }
 
-func formatGrant(role Role, scope string) Grant {
+func NewGrant(role Role, scope string) Grant {
 	var s string
 	if scope == "" {
 		s = fmt.Sprintf("%s", role)
@@ -80,7 +89,7 @@ func formatGrant(role Role, scope string) Grant {
 }
 
 func match(userGrants Grants, role Role, scope string) bool {
-	grant := formatGrant(role, scope)
+	grant := NewGrant(role, scope)
 	return matchGrants(userGrants, grant)
 }
 
