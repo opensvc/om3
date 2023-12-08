@@ -7,7 +7,10 @@ import (
 	"strconv"
 )
 
-var zpropZbin string
+var (
+	tgetProp  = CompZprops{}.getProp
+	zpropZbin string
+)
 
 type (
 	CompZprops struct {
@@ -82,7 +85,7 @@ func (t CompZprops) checkZbin() ExitCode {
 }
 
 func (t CompZprops) checkOperator(rule CompZprop) ExitCode {
-	strCurrentValue, err := t.getProp(rule)
+	strCurrentValue, err := tgetProp(rule)
 	var float64CurrentValue float64
 	var strTargetValue string
 	switch rule.Value.(type) {

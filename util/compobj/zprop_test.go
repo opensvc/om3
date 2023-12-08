@@ -103,3 +103,80 @@ func TestCheckZbin(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckOperator(t *testing.T) {
+	oriTGetProp := tgetProp
+	defer func() { tgetProp = oriTGetProp }()
+
+	testCases := map[string]struct {
+		rule               CompZprop
+		getPropReturnValue string
+		expectedOutput     ExitCode
+	}{
+		"with a true string value and op =": {
+			rule: CompZprop{
+				Name:  "test",
+				Prop:  "testProp",
+				Op:    "=",
+				Value: "val",
+			},
+			getPropReturnValue: "val",
+			expectedOutput:     ExitOk,
+		},
+
+		"with a false string value and op =": {
+			rule: CompZprop{
+				Name:  "test",
+				Prop:  "testProp",
+				Op:    "=",
+				Value: "val",
+			},
+			getPropReturnValue: "false",
+			expectedOutput:     ExitNok,
+		},
+
+		"with a true float64 value and op =": {
+			rule: CompZprop{
+				Name:  "test",
+				Prop:  "testProp",
+				Op:    "=",
+				Value: float64(2),
+			},
+			getPropReturnValue: "2",
+			expectedOutput:     ExitOk,
+		},
+
+		"with a false float64 value and op >=": {
+			rule: CompZprop{
+				Name:  "test",
+				Prop:  "testProp",
+				Op:    ">=",
+				Value: float64(2),
+			},
+			getPropReturnValue: "1",
+			expectedOutput:     ExitNok,
+		},
+
+		"with a false float64 value and op <=": {
+			rule: CompZprop{
+				Name:  "test",
+				Prop:  "testProp",
+				Op:    "<=",
+				Value: float64(2),
+			},
+			getPropReturnValue: "89",
+			expectedOutput:     ExitNok,
+		},
+	}
+
+	obj := CompZprops{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			tgetProp = func(rule CompZprop) (string, error) {
+				return c.getPropReturnValue, nil
+			}
+
+			require.Equal(t, c.expectedOutput, obj.checkOperator(c.rule))
+		})
+	}
+}
