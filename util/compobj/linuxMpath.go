@@ -502,11 +502,57 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 	return [2]string{}, key, nil
 }
 
+func (t CompMpaths) checkDevicesInSection(rule CompMpath, conf MpathConf) (ExitCode, bool) {
+	isConcerned, err := t.isConcernedByDevicePresence(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok, true
+	}
+	if !isConcerned {
+		return ExitNok, false
+	}
+	indexs, newKey, err := t.getIndex(rule.Key)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok, true
+	}
+	splitkey := strings.Split(newKey, ".")
+	if t.checkIfDevicesExist(conf, splitkey[0], indexs[0], indexs[1]) {
+		return ExitOk, true
+	}
+	return ExitNok, true
+}
+
+func (t CompMpaths) isConcernedByDevicePresence(rule CompMpath) (bool, error) {
+	_, newKey, err := t.getIndex(rule.Key)
+	if err != nil {
+		return false, err
+	}
+	splitkey := strings.Split(newKey, ".")
+	if splitkey[0] == "blacklist" || splitkey[0] == "blacklist_exceptions" || splitkey[0] == "devices" {
+		if len(splitkey) == 2 {
+			if splitkey[1] == "device" {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (t CompMpaths) checkRule(rule CompMpath) ExitCode {
 	conf, err := tloadMpathData()
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
+	}
+	exitCodeDevice, boolDevice := t.checkDevicesInSection(rule, conf)
+	if boolDevice == true {
+		if exitCodeDevice == ExitOk {
+			t.VerboseInfof("the key %s is set\n", rule.Key)
+		} else {
+			t.VerboseErrorf("the key %s is not set\n", rule.Key)
+		}
+		return exitCodeDevice
 	}
 	values, err := tgetConfValues(rule.Key, conf)
 	if err != nil {
@@ -602,6 +648,21 @@ func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
+	}
+	isConcerned, err := t.isConcernedByDevicePresence(rule)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if isConcerned {
+		indexs, _, err := t.getIndex(rule.Key)
+		if err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+		rule.Key += ".vendor"
+		rule.Op = "="
+		rule.Value = indexs[0]
 	}
 	values, err := t.getConfValues(rule.Key, conf)
 	if err != nil {
@@ -952,6 +1013,7 @@ func (t CompMpaths) checkIfDevicesExist(conf MpathConf, sectionName, vendor, pro
 			}
 		}
 		return false
+
 	default:
 		for _, device := range conf.Devices {
 			if device.Attr["vendor"][0] == vendor && device.Attr["product"][0] == product {

@@ -1052,3 +1052,124 @@ func TestFixRuleMpath(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckDeviceInSection(t *testing.T) {
+	testCases := map[string]struct {
+		rule                   CompMpath
+		conf                   MpathConf
+		expectedExitCodeOutput ExitCode
+		expectedBoolOutput     bool
+	}{
+		"with a rule true that is concerned (section devices)": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList:           MpathBlackList{},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule true that is concerned (section blacklist)": {
+			rule: CompMpath{
+				Key:   "blacklist.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList: MpathBlackList{Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}}},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices:             nil,
+				Multipaths:          nil,
+				Overrides:           MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule true that is concerned (section blacklist_exceptions)": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList: MpathBlackList{},
+				BlackListExceptions: MpathBlackList{Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}}},
+				Defaults: MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule false that is concerned": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList:           MpathBlackList{},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor2"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitNok,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule that is not concerned": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}.att",
+				Op:    "",
+				Value: nil,
+			},
+			conf:                   MpathConf{},
+			expectedExitCodeOutput: ExitNok,
+			expectedBoolOutput:     false,
+		},
+	}
+
+	obj := CompMpaths{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			e, b := obj.checkDevicesInSection(c.rule, c.conf)
+			require.Equal(t, c.expectedExitCodeOutput, e)
+			require.Equal(t, c.expectedBoolOutput, b)
+		})
+	}
+}
