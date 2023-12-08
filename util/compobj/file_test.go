@@ -382,9 +382,9 @@ func TestAddFile(t *testing.T) {
 			expectError:  true,
 		},
 	}
-	obj := CompFiles{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
+			obj := CompFiles{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 			if c.expectError {
 				require.Error(t, obj.Add(c.jsonRule))
 			} else {
