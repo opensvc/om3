@@ -346,6 +346,11 @@ func (t T) DoLocal() error {
 	if err != nil {
 		return err
 	}
+	paths = paths.Existing()
+	if len(paths) == 0 {
+		return fmt.Errorf("%s exists but has no local instance", t.ObjectSelector)
+	}
+
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
 		fmt.Printf("sid=%s\n", xsession.ID)
 	}

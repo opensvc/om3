@@ -296,6 +296,16 @@ func (t Paths) String() string {
 	return strings.Join(l, ",")
 }
 
+func (t Paths) Existing() Paths {
+	l := make(Paths, 0)
+	for _, p := range t {
+		if p.Exists() {
+			l = append(l, p)
+		}
+	}
+	return l
+}
+
 func (t Paths) Filter(pattern string) Paths {
 	l := make(Paths, 0)
 	for _, p := range t {
