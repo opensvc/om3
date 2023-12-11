@@ -83,6 +83,9 @@ func configureLogger() error {
 		Str("version", version.Version()).
 		Stringer("sid", xsession.ID).
 		Logger()
+	if requestId := os.Getenv("OSVC_REQUEST_ID"); requestId != "" {
+		log.Logger = log.Logger.With().Str("request_id", requestId).Logger()
+	}
 	return nil
 }
 

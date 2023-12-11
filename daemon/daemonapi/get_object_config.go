@@ -28,11 +28,11 @@ func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	var data *orderedmap.OrderedMap
 	logName := "GetObjectConfig"
 	log := LogHandler(ctx, logName)
-	log.Debugf("log.Errorf%s: starting", logName)
+	log.Debugf("%s: starting", logName)
 
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		log.Infof("log.Errorf%s: %s", logName, err)
+		log.Infof("%s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	if impersonate != "" && !evaluate {

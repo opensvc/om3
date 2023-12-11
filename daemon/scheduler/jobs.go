@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -13,7 +14,8 @@ import (
 )
 
 func (o T) action(e schedule.Entry) error {
-	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
+	sid := uuid.New().String()
+	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}, {"sid", sid}}
 	cmdArgs := []string{}
 	if e.Path.IsZero() {
 		cmdArgs = append(cmdArgs, "node")
@@ -66,6 +68,7 @@ func (o T) action(e schedule.Entry) error {
 		cmdEnv,
 		env.OriginSetenvArg(env.ActionOriginDaemonScheduler),
 		env.ParentSessionIDSetenvArg(),
+		"OSVC_SESSION_ID="+sid,
 	)
 
 	cmd := command.New(

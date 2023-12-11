@@ -96,14 +96,38 @@ type ServerInterface interface {
 	// (POST /namespaces/{namespace}/{kind}/{name}/giveback)
 	PostObjectActionGiveback(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/boot)
+	PostInstanceActionBoot(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionBootParams) error
+
 	// (POST /namespaces/{namespace}/{kind}/{name}/instance/clear)
 	PostInstanceClear(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/delete)
+	PostInstanceActionDelete(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionDeleteParams) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/freeze)
+	PostInstanceActionFreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionFreezeParams) error
 
 	// (GET /namespaces/{namespace}/{kind}/{name}/instance/logs)
 	GetInstanceLogs(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params GetInstanceLogsParams) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/instance/progress)
 	PostInstanceProgress(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/provision)
+	PostInstanceActionProvision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionProvisionParams) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/start)
+	PostInstanceActionStart(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStartParams) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/stop)
+	PostInstanceActionStop(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStopParams) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/unfreeze)
+	PostInstanceActionUnfreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnfreezeParams) error
+
+	// (POST /namespaces/{namespace}/{kind}/{name}/instance/unprovision)
+	PostInstanceActionUnprovision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnprovisionParams) error
 
 	// (POST /namespaces/{namespace}/{kind}/{name}/provision)
 	PostObjectActionProvision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
@@ -816,6 +840,79 @@ func (w *ServerInterfaceWrapper) PostObjectActionGiveback(ctx echo.Context) erro
 	return err
 }
 
+// PostInstanceActionBoot converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionBoot(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionBootParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionBoot(ctx, namespace, kind, name, params)
+	return err
+}
+
 // PostInstanceClear converts echo context to params.
 func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 	var err error
@@ -849,6 +946,96 @@ func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostInstanceClear(ctx, namespace, kind, name)
+	return err
+}
+
+// PostInstanceActionDelete converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionDelete(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionDeleteParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionDelete(ctx, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionFreeze converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionFreeze(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionFreezeParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionFreeze(ctx, namespace, kind, name, params)
 	return err
 }
 
@@ -944,6 +1131,399 @@ func (w *ServerInterfaceWrapper) PostInstanceProgress(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostInstanceProgress(ctx, namespace, kind, name)
+	return err
+}
+
+// PostInstanceActionProvision converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionProvision(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionProvisionParams
+	// ------------- Optional query parameter "disable_rollback" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
+	}
+
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "leader" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionProvision(ctx, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionStart converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionStart(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionStartParams
+	// ------------- Optional query parameter "disable_rollback" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
+	}
+
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionStart(ctx, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionStop converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionStop(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionStopParams
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionStop(ctx, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionUnfreeze converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionUnfreeze(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionUnfreezeParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionUnfreeze(ctx, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionUnprovision converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionUnprovision(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionUnprovisionParams
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "leader" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionUnprovision(ctx, namespace, kind, name, params)
 	return err
 }
 
@@ -1632,9 +2212,17 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/namespaces/:namespace/:kind/:name/file", wrapper.GetObjectFile)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/freeze", wrapper.PostObjectActionFreeze)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/giveback", wrapper.PostObjectActionGiveback)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/boot", wrapper.PostInstanceActionBoot)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/clear", wrapper.PostInstanceClear)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/delete", wrapper.PostInstanceActionDelete)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/freeze", wrapper.PostInstanceActionFreeze)
 	router.GET(baseURL+"/namespaces/:namespace/:kind/:name/instance/logs", wrapper.GetInstanceLogs)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/progress", wrapper.PostInstanceProgress)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/provision", wrapper.PostInstanceActionProvision)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/start", wrapper.PostInstanceActionStart)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/stop", wrapper.PostInstanceActionStop)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/unfreeze", wrapper.PostInstanceActionUnfreeze)
+	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/instance/unprovision", wrapper.PostInstanceActionUnprovision)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/provision", wrapper.PostObjectActionProvision)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/purge", wrapper.PostObjectActionPurge)
 	router.POST(baseURL+"/namespaces/:namespace/:kind/:name/start", wrapper.PostObjectActionStart)
@@ -1666,132 +2254,138 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"/0t1vps17QAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

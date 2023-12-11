@@ -316,9 +316,6 @@ func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	if err != nil {
 		return matching, err
 	}
-	if !p.Exists() {
-		return matching, nil
-	}
 	matching.Add(p.String())
 	return matching, nil
 }

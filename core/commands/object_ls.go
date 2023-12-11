@@ -17,7 +17,11 @@ type (
 )
 
 func (t *CmdObjectLs) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	defaultSelector := ""
+	if kind != "" {
+		defaultSelector = fmt.Sprintf("*/%s/*", kind)
+	}
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
 
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {

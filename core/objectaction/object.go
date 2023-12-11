@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"runtime/debug"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,10 +22,12 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
@@ -42,7 +43,8 @@ type (
 	// method implementation differ.
 	T struct {
 		actionrouter.T
-		Func func(context.Context, naming.Path) (any, error)
+		LocalFunc  func(context.Context, naming.Path) (any, error)
+		RemoteFunc func(context.Context, naming.Path, string) (any, error)
 	}
 )
 
@@ -52,6 +54,9 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
+	if t.NodeSelector != "" && t.DefaultOutput == "" {
+		t.DefaultOutput = "tab=OBJECT:path,NODE:nodename,SID:data.session_id"
+	}
 	return t
 }
 
@@ -246,7 +251,16 @@ func WithServer(s string) funcopt.O {
 func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Func = f
+		t.LocalFunc = f
+		return nil
+	})
+}
+
+// WithRemoteRun sets a function to run if the action is local
+func WithRemoteRun(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.RemoteFunc = f
 		return nil
 	})
 }
@@ -254,6 +268,69 @@ func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 // Options returns the base Action struct
 func (t T) Options() actionrouter.T {
 	return t.T
+}
+
+func rsHumanRender(rs []actionrouter.Result) string {
+	var (
+		rsTree *tree.Tree
+		rsNode *tree.Node
+	)
+	type treeProvider interface {
+		Tree() *tree.Tree
+	}
+	s := ""
+	manyResults := len(rs) > 1
+	for i, r := range rs {
+		switch {
+		case errors.Is(r.Error, object.ErrDisabled):
+			if manyResults {
+				fmt.Printf("%s: %s\n", r.Path, r.Error)
+			} else {
+				fmt.Printf("%s\n", r.Error)
+			}
+			rs[i].Error = nil
+		case (r.Error != nil) && fmt.Sprint(r.Error) != "":
+			log.Error().Msgf("%s: %s", r.Path, r.Error)
+		case r.Panic != nil:
+			switch err := r.Panic.(type) {
+			case error:
+				log.Fatal().Stack().Msgf("%s: %s", r.Path, err)
+			default:
+				log.Fatal().Msgf("%s: %s", r.Path, err)
+			}
+		}
+		if i, ok := r.Data.(treeProvider); ok {
+			if rsTree == nil {
+				rsTree = tree.New()
+			}
+			branch := i.Tree()
+			if !branch.IsEmpty() {
+				rsNode = rsTree.AddNode()
+				rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
+				rsNode.PlugTree(branch)
+			}
+			continue
+		}
+		switch {
+		case r.HumanRenderer != nil:
+			s += r.HumanRenderer()
+		case r.Data != nil:
+			switch v := r.Data.(type) {
+			case string:
+				s += fmt.Sprintln(v)
+			case []string:
+				for _, e := range v {
+					s += fmt.Sprintln(e)
+				}
+			default:
+				log.Error().Msgf("%s: unimplemented default renderer for local action result of type %s", r.Path, reflect.TypeOf(v))
+			}
+		}
+	}
+	if rsTree != nil {
+		return rsTree.Render()
+	}
+	return s
 }
 
 func (t T) DoLocal() error {
@@ -265,92 +342,59 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		objectselector.SelectionWithLocal(true),
 	)
-	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
-		fmt.Printf("sid=%s\n", xsession.ID)
-	}
-	rs, err := t.selectionDo(sel, t.Func)
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
-	human := func() string {
-		var (
-			rsTree *tree.Tree
-			rsNode *tree.Node
-		)
-		type treeProvider interface {
-			Tree() *tree.Tree
+	paths = paths.Existing()
+	if len(paths) == 0 {
+		return fmt.Errorf("%s exists but has no local instance", t.ObjectSelector)
+	}
+
+	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
+		fmt.Printf("sid=%s\n", xsession.ID)
+	}
+	var errs error
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	done := 0
+	todo := len(paths)
+	if todo == 0 {
+		return nil
+	}
+	ctx := context.Background()
+	ctx = actioncontext.WithRID(ctx, t.RID)
+	ctx = actioncontext.WithTag(ctx, t.Tag)
+	ctx = actioncontext.WithSubset(ctx, t.Subset)
+	if t.WithProgress {
+		progressView := progress.NewView()
+		progressView.Start()
+		defer progressView.Stop()
+		ctx = progress.ContextWithView(ctx, progressView)
+	}
+
+	for _, path := range paths {
+		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, t.LocalFunc)
+	}
+	for {
+		result := <-resultQ
+		results = append(results, result)
+		if result.Error != nil {
+			errs = errors.Join(errs, result.Error)
 		}
-		s := ""
-		manyResults := len(rs) > 1
-		for i, r := range rs {
-			switch {
-			case errors.Is(r.Error, object.ErrDisabled):
-				if manyResults {
-					fmt.Printf("%s: %s\n", r.Path, r.Error)
-				} else {
-					fmt.Printf("%s\n", r.Error)
-				}
-				rs[i].Error = nil
-			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
-				log.Error().Msgf("%s: %s", r.Path, r.Error)
-			case r.Panic != nil:
-				switch err := r.Panic.(type) {
-				case error:
-					log.Fatal().Stack().Msgf("%s: %s", r.Path, err)
-				default:
-					log.Fatal().Msgf("%s: %s", r.Path, err)
-				}
-			}
-			if i, ok := r.Data.(treeProvider); ok {
-				if rsTree == nil {
-					rsTree = tree.New()
-				}
-				branch := i.Tree()
-				if !branch.IsEmpty() {
-					rsNode = rsTree.AddNode()
-					rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
-					rsNode.PlugTree(branch)
-				}
-				continue
-			}
-			switch {
-			case r.HumanRenderer != nil:
-				s += r.HumanRenderer()
-			case r.Data != nil:
-				switch v := r.Data.(type) {
-				case string:
-					s += fmt.Sprintln(v)
-				case []string:
-					for _, e := range v {
-						s += fmt.Sprintln(e)
-					}
-				default:
-					log.Error().Msgf("%s: unimplemented default renderer for local action result of type %s", r.Path, reflect.TypeOf(v))
-				}
-			}
+		done += 1
+		if done >= todo {
+			break
 		}
-		if rsTree != nil {
-			return rsTree.Render()
-		}
-		return s
 	}
 	output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          rs,
-		HumanRenderer: human,
+		Data:          results,
+		HumanRenderer: func() string { return rsHumanRender(results) },
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	var errs error
-	for _, ar := range rs {
-		switch {
-		case ar.Panic != nil:
-			errs = errors.Join(errs, fmt.Errorf("%s: %s", ar.Path, ar.Panic))
-		case ar.Error != nil:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", ar.Path, ar.Error))
-		}
-	}
 	return errs
 }
 
@@ -696,7 +740,7 @@ func (t T) DoAsync() error {
 				return errs
 			case err := <-waitC:
 				if err != nil {
-					errs = errors.Join(errs, ctx.Err())
+					errs = errors.Join(errs, err)
 				}
 			}
 		}
@@ -707,67 +751,156 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	return fmt.Errorf("todo")
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
+	params := api.GetObjectsParams{Path: &t.ObjectSelector}
+	resp, err := c.GetObjectsWithResponse(context.Background(), &params)
+	if err != nil {
+		return fmt.Errorf("api: %w", err)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("unexpected GET /objects status: %s", resp.Status())
+	}
+
+	nodenames := make(map[string]any)
+	if l, err := nodeselector.Expand(t.NodeSelector); err != nil {
+		return err
+	} else {
+		for _, s := range l {
+			nodenames[s] = nil
+		}
+	}
+
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	done := 0
+	todo := 0
+	requesterSid := xsession.ID
+
+	var (
+		cancel context.CancelFunc
+		errs   error
+		waitC  chan error
+		count  int
+	)
+
+	ctx := context.Background()
+
+	if t.WaitDuration > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
+
+	for i, item := range resp.JSON200.Items {
+		selectedInstances := make(api.InstanceMap)
+		for n, i := range item.Data.Instances {
+			if _, ok := nodenames[n]; ok {
+				selectedInstances[n] = i
+			}
+		}
+		if t.Target == "started" && (string(item.Data.Topology) == topology.Failover.String()) && len(selectedInstances) > 1 {
+			return fmt.Errorf("%s: cowardly refusing to start multiple instances: topology is failover", item.Meta.Object)
+		}
+		resp.JSON200.Items[i].Data.Instances = selectedInstances
+		count += len(selectedInstances)
+	}
+
+	if t.Wait {
+		waitC = make(chan error, count)
+	}
+
+	for _, item := range resp.JSON200.Items {
+		for n, _ := range item.Data.Instances {
+			p, err := naming.ParsePath(item.Meta.Object)
+			if err != nil {
+				return err
+			}
+			if t.Wait {
+				t.waitRequesterSessionEnd(ctx, c, requesterSid, p, waitC)
+			}
+			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, p naming.Path) (any, error) {
+				return t.RemoteFunc(ctx, p, n)
+			})
+			todo += 1
+		}
+	}
+	if todo == 0 {
+		return nil
+	}
+	for {
+		result := <-resultQ
+		switch {
+		case result.Panic != nil:
+			fmt.Fprintln(os.Stderr, result.Panic)
+			errs = errors.New("remote action error")
+		case result.Error != nil:
+			fmt.Fprintln(os.Stderr, result.Error)
+			errs = errors.New("remote action error")
+		}
+		results = append(results, result)
+		done += 1
+		if done >= todo {
+			break
+		}
+	}
+	output.Renderer{
+		DefaultOutput: t.DefaultOutput,
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          results,
+		HumanRenderer: func() string { return rsHumanRender(results) },
+		Colorize:      rawconfig.Colorize,
+	}.Print()
+	if t.Wait && todo > 0 {
+		for i := 0; i < todo; i++ {
+			select {
+			case <-ctx.Done():
+				errs = errors.Join(errs, ctx.Err())
+				return errs
+			case err := <-waitC:
+				if err != nil {
+					errs = errors.Join(errs, err)
+				}
+			}
+		}
+	}
+	return errs
 }
 
 func (t T) Do() error {
 	return actionrouter.Do(t)
 }
 
-// selectionDo executes in parallel the action on all selected objects supporting
-// the action.
-func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, naming.Path) (any, error)) ([]actionrouter.Result, error) {
-	results := make([]actionrouter.Result, 0)
-
-	paths, err := selection.MustExpand()
-	if err != nil {
-		return results, err
-	}
-
-	ctx := context.Background()
-	ctx = actioncontext.WithRID(ctx, t.RID)
-	ctx = actioncontext.WithTag(ctx, t.Tag)
-	ctx = actioncontext.WithSubset(ctx, t.Subset)
-
+// instanceDo executes the action in a goroutine
+func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, naming.Path) (any, error)) {
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
-	if t.WithProgress {
-		progressView := progress.NewView()
-		progressView.Start()
-		defer progressView.Stop()
-		ctx = progress.ContextWithView(ctx, progressView)
-	}
 
-	q := make(chan actionrouter.Result, len(paths))
-	started := 0
-
-	for _, p := range paths {
-		go func(p naming.Path) {
-			result := actionrouter.Result{
-				Path:     p,
-				Nodename: hostname.Hostname(),
-			}
+	go func(p naming.Path) {
+		result := actionrouter.Result{
+			Path:     p,
+			Nodename: nodename,
+		}
+		/*
 			defer func() {
 				if r := recover(); r != nil {
 					result.Panic = r
 					fmt.Println(string(debug.Stack()))
-					q <- result
+					resultQ <- result
 				}
 			}()
-			data, err := fn(ctx, p)
-			result.Data = data
-			result.Error = err
-			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
-			q <- result
-		}(p)
-		started++
-	}
-
-	for i := 0; i < started; i++ {
-		r := <-q
-		results = append(results, r)
-	}
-	return results, nil
+		*/
+		data, err := fn(ctx, p)
+		result.Data = data
+		result.Error = err
+		result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
+		resultQ <- result
+	}(path)
 }
 
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
@@ -844,6 +977,77 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 				}
 			case *msgbus.ObjectStatusDeleted:
 				log.Debug().Msgf("%s: reached expectation %s (deleted)", p, expectation)
+				return
+			}
+		}
+	}()
+}
+
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSid uuid.UUID, p naming.Path, errC chan<- error) {
+	var (
+		filters []string
+		msg     pubsub.Messager
+
+		err      error
+		evReader event.ReadCloser
+	)
+	filters = []string{
+		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
+		fmt.Sprintf("ExecFailed,path=%s,requester_sid=%s", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,requester_sid=%s", p, requesterSid),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if t.WaitDuration > 0 {
+		getEvents = getEvents.SetDuration(t.WaitDuration)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		defer func() {
+			if err != nil {
+				err = fmt.Errorf("wait requester session end failed on object %s: %w", p, err)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = fmt.Errorf("no more events, wait %v failed: %w", p, err)
+				} else {
+					err = readError
+				}
+				return
+			}
+			msg, err = msgbus.EventToMessage(*ev)
+			if err != nil {
+				return
+			}
+			switch m := msg.(type) {
+			case *msgbus.ExecSuccess:
+				return
+			case *msgbus.ExecFailed:
+				err = errors.New(m.ErrS)
+				return
+			case *msgbus.ObjectStatusDeleted:
+				log.Debug().Msgf("%s: stop waiting requester session id end (deleted)", p)
 				return
 			}
 		}

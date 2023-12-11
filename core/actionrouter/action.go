@@ -138,8 +138,8 @@ type (
 		Nodename      string        `json:"nodename"`
 		Path          naming.Path   `json:"path,omitempty"`
 		Data          interface{}   `json:"data"`
-		Error         error         `json:"error,omitempty"`
-		Panic         interface{}   `json:"panic,omitempty"`
+		Error         error         `json:"-"`
+		Panic         interface{}   `json:"-"`
 		HumanRenderer func() string `json:"-"`
 	}
 
@@ -148,6 +148,14 @@ type (
 		Render() string
 	}
 )
+
+func (t Result) Unstructured() map[string]any {
+	return map[string]any{
+		"nodename": t.Nodename,
+		"path":     t.Path.String(),
+		"data":     t.Data,
+	}
+}
 
 // Do is the switch method between local, remote or async mode.
 // If Watch is set, end up starting a monitor on the selected objects.

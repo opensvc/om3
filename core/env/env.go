@@ -15,6 +15,7 @@ var (
 	ActionOrchestrationIdVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
 	ActionOriginVar                          = "OSVC_ACTION_ORIGIN"
 	ActionOriginUser            ActionOrigin = "user"
+	ActionOriginDaemonApi       ActionOrigin = "daemon/api"
 	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
 	ActionOriginDaemonScheduler ActionOrigin = "daemon/scheduler"
 
@@ -30,7 +31,19 @@ var (
 // it executes.
 func HasDaemonOrigin() bool {
 	switch Origin() {
-	case ActionOriginDaemonMonitor, ActionOriginDaemonScheduler:
+	case ActionOriginDaemonMonitor, ActionOriginDaemonApi, ActionOriginDaemonScheduler:
+		return true
+	default:
+		return false
+	}
+}
+
+// HasDaemonMonitorOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
+// is set to "daemon/imon". The opensvc daemon sets this variable on every command
+// it executes.
+func HasDaemonMonitorOrigin() bool {
+	switch Origin() {
+	case ActionOriginDaemonMonitor:
 		return true
 	default:
 		return false

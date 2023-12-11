@@ -36,14 +36,14 @@ func NewData[T Dataer]() *Data[T] {
 
 func (c *Data[T]) Set(p naming.Path, v *T) {
 	c.Lock()
-	defer c.Unlock()
 	c.data[p] = v
+	c.Unlock()
 }
 
 func (c *Data[T]) Unset(p naming.Path) {
 	c.Lock()
-	defer c.Unlock()
 	delete(c.data, p)
+	c.Unlock()
 }
 
 func (c *Data[T]) Get(p naming.Path) *T {
@@ -54,25 +54,25 @@ func (c *Data[T]) Get(p naming.Path) *T {
 }
 
 func (c *Data[T]) GetAll() []DataElement[T] {
+	l := make([]DataElement[T], 0)
 	c.RLock()
-	result := make([]DataElement[T], 0)
 	for p, v := range c.data {
-		result = append(result, DataElement[T]{
+		l = append(l, DataElement[T]{
 			Path:  p,
 			Value: v,
 		})
 	}
 	c.RUnlock()
-	return result
+	return l
 }
 
 func (c *Data[T]) GetPaths() naming.Paths {
 	l := make(naming.Paths, 0)
 	c.RLock()
-	defer c.RUnlock()
 	for k := range c.data {
 		l = append(l, k)
 	}
+	c.RUnlock()
 	return l
 }
 

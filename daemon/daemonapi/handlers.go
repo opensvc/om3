@@ -63,6 +63,10 @@ func JSONProblemf(ctx echo.Context, code int, title, detail string, argv ...any)
 	})
 }
 
+func JSONForbiddenMissingGrant(ctx echo.Context, missing ...rbac.Grant) error {
+	return JSONProblemf(ctx, http.StatusForbidden, "Missing grants", "not allowed, need one of %v grant", missing)
+}
+
 func JSONForbiddenMissingRole(ctx echo.Context, missing ...rbac.Role) error {
 	return JSONProblemf(ctx, http.StatusForbidden, "Missing grants", "not allowed, need one of %v role", missing)
 }

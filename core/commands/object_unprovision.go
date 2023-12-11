@@ -2,11 +2,15 @@ package commands
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -31,13 +35,59 @@ func (t *CmdObjectUnprovision) Run(selector, kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("unprovision"),
 		objectaction.WithAsyncTarget("unprovisioned"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
+		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
+			c, err := client.New(client.WithURL(nodename))
+			if err != nil {
+				return nil, err
+			}
+			params := api.PostInstanceActionUnprovisionParams{}
+			if t.Force {
+				v := true
+				params.Force = &v
+			}
+			if t.Leader {
+				v := true
+				params.Leader = &v
+			}
+			if t.OptsResourceSelector.RID != "" {
+				params.Rid = &t.OptsResourceSelector.RID
+			}
+			if t.OptsResourceSelector.Subset != "" {
+				params.Subset = &t.OptsResourceSelector.Subset
+			}
+			if t.OptsResourceSelector.Tag != "" {
+				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptTo.To != "" {
+				params.To = &t.OptTo.To
+			}
+			{
+				sid := xsession.ID
+				params.RequesterSid = &sid
+			}
+			response, err := c.PostInstanceActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case response.JSON200 != nil:
+				return *response.JSON200, nil
+			case response.JSON401 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
+			case response.JSON403 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON403)
+			case response.JSON500 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON500)
+			default:
+				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
+			}
+		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

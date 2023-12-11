@@ -152,7 +152,7 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 // * set to "started" via InstanceMonitorUpdated event handler
 // * set to "" if progress is idle
 func (t *actor) announceProgress(ctx context.Context, progress string) error {
-	if env.HasDaemonOrigin() {
+	if env.HasDaemonMonitorOrigin() {
 		// no need to announce if the daemon started this action
 		return nil
 	}
@@ -194,7 +194,7 @@ func (t *actor) abortStart(ctx context.Context, l resourceLister) (err error) {
 }
 
 func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
-	if env.HasDaemonOrigin() {
+	if env.HasDaemonMonitorOrigin() {
 		return nil
 	}
 	if actioncontext.IsForce(ctx) {
@@ -439,7 +439,7 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		t.log.Debugf("skip freeze: Orchestrate value")
 		return nil
 	}
-	if env.HasDaemonOrigin() {
+	if env.HasDaemonMonitorOrigin() {
 		t.log.Debugf("skip freeze: Action has daemon origin")
 		return nil
 	}
