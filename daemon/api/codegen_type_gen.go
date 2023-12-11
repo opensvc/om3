@@ -296,12 +296,6 @@ type InstanceMonitor = instance.Monitor
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
 
-// InstanceStatusItem defines model for InstanceStatusItem.
-type InstanceStatusItem struct {
-	Data InstanceStatus `json:"data"`
-	Meta InstanceMeta   `json:"meta"`
-}
-
 // Kind defines model for Kind.
 type Kind = naming.Kind
 
@@ -844,18 +838,6 @@ type PostAuthTokenParams struct {
 	Duration *string `form:"duration,omitempty" json:"duration,omitempty"`
 }
 
-// GetDaemonEventsParams defines parameters for GetDaemonEvents.
-type GetDaemonEventsParams struct {
-	// Duration max duration
-	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
-
-	// Limit limit items count
-	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// Filter list of event filter
-	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
-}
-
 // PostDaemonJoinParams defines parameters for PostDaemonJoin.
 type PostDaemonJoinParams struct {
 	// Node The node to add to cluster nodes
@@ -872,6 +854,18 @@ type PostDaemonLeaveParams struct {
 type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+}
+
+// GetDaemonEventsParams defines parameters for GetDaemonEvents.
+type GetDaemonEventsParams struct {
+	// Duration max duration
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// Limit limit items count
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Filter list of event filter
+	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // GetDaemonStatusParams defines parameters for GetDaemonStatus.
@@ -907,15 +901,6 @@ type GetInstancesLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
-// GetObjectConfigParams defines parameters for GetObjectConfig.
-type GetObjectConfigParams struct {
-	// Evaluate evaluate
-	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-
-	// Impersonate impersonate the evaluation as node
-	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
@@ -933,18 +918,6 @@ type PostInstanceActionDeleteParams struct {
 // PostInstanceActionFreezeParams defines parameters for PostInstanceActionFreeze.
 type PostInstanceActionFreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// GetInstanceLogsParams defines parameters for GetInstanceLogs.
-type GetInstanceLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 }
 
 // PostInstanceActionProvisionParams defines parameters for PostInstanceActionProvision.
@@ -996,16 +969,34 @@ type PostInstanceActionUnprovisionParams struct {
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
-// GetNetworkIpParams defines parameters for GetNetworkIp.
-type GetNetworkIpParams struct {
-	// Name the name of a cluster backend network
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 }
 
 // GetNetworksParams defines parameters for GetNetworks.
 type GetNetworksParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNetworkIpParams defines parameters for GetNetworkIp.
+type GetNetworkIpParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNodesParams defines parameters for GetNodes.
+type GetNodesParams struct {
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -1035,10 +1026,10 @@ type GetNodeLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
-// GetNodesParams defines parameters for GetNodes.
-type GetNodesParams struct {
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+// GetObjectsParams defines parameters for GetObjects.
+type GetObjectsParams struct {
+	// Path object selector expression.
+	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
 }
 
 // GetObjectPathsParams defines parameters for GetObjectPaths.
@@ -1047,20 +1038,23 @@ type GetObjectPathsParams struct {
 	Path Path `form:"path" json:"path"`
 }
 
-// GetObjectsParams defines parameters for GetObjects.
-type GetObjectsParams struct {
-	// Path object selector expression.
-	Path *PathOptional `form:"path,omitempty" json:"path,omitempty"`
-}
+// GetObjectConfigParams defines parameters for GetObjectConfig.
+type GetObjectConfigParams struct {
+	// Evaluate evaluate
+	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 
-// GetPoolVolumesParams defines parameters for GetPoolVolumes.
-type GetPoolVolumesParams struct {
-	// Name the name of a backend storage pool
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
+	// Impersonate impersonate the evaluation as node
+	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
 // GetPoolsParams defines parameters for GetPools.
 type GetPoolsParams struct {
+	// Name the name of a backend storage pool
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetPoolVolumesParams defines parameters for GetPoolVolumes.
+type GetPoolVolumesParams struct {
 	// Name the name of a backend storage pool
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
@@ -1092,17 +1086,17 @@ type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControl
 // PostDaemonSubActionJSONRequestBody defines body for PostDaemonSubAction for application/json ContentType.
 type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 
-// PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
-type PostInstanceStatusJSONRequestBody = InstanceStatusItem
-
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
-// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
-type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+// PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
+type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
+
+// PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
+type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

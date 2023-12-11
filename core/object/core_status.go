@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *core) statusFile() string {
@@ -125,14 +124,7 @@ func (t *core) postInstanceStatus(data instance.Status) error {
 	if c, err := client.New(); err != nil {
 		return err
 	} else {
-		body := api.InstanceStatusItem{
-			Meta: api.InstanceMeta{
-				Object: t.path.String(),
-				Node:   hostname.Hostname(),
-			},
-			Data: instanceStatus,
-		}
-		resp, err := c.PostInstanceStatusWithResponse(context.Background(), body)
+		resp, err := c.PostInstanceStatusWithResponse(context.Background(), t.path.Namespace, t.path.Kind, t.path.Name, instanceStatus)
 		if err != nil {
 			return err
 		}
