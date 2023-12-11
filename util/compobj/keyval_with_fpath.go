@@ -300,7 +300,7 @@ func (t CompKeyvals) checkReset(rule CompKeyval) ExitCode {
 		t.VerboseErrorf("%s: %s is set %d times, should be set %d times\n", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
 		return ExitNok
 	}
-	t.VerboseErrorf("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
+	t.VerboseInfof("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
 	return ExitOk
 }
 
@@ -317,12 +317,12 @@ func (t CompKeyvals) checkNoReset(rule CompKeyval) ExitCode {
 		t.VerboseInfof("%s: %s is not set and should not be set\n", keyValpath, rule.Key)
 		return ExitOk
 	}
+	if _, ok := keyValResetMap[rule.Key]; ok {
+		keyValResetMap[rule.Key] += 1
+	}
 	if len(valuesFromFile) < 1 {
 		t.VerboseErrorf("%s: %s is unset and should be set\n", keyValpath, rule.Key)
 		return ExitNok
-	}
-	if _, ok := keyValResetMap[rule.Key]; ok {
-		keyValResetMap[rule.Key] += 1
 	}
 	switch rule.Op {
 	case "=":
@@ -488,8 +488,10 @@ func (t CompKeyvals) fixOperator(rule CompKeyval) ExitCode {
 	}
 	newConfigFilePath := newFile.Name()
 	newFileFmt := keyValFileFmtCache
-	if newFileFmt[len(newFileFmt)-1] != '\n' {
-		newFileFmt = append(newFileFmt, '\n')
+	if len(newFileFmt) > 0 {
+		if newFileFmt[len(newFileFmt)-1] != '\n' {
+			newFileFmt = append(newFileFmt, '\n')
+		}
 	}
 	var stringValue string
 	if rule.Op == "IN" {

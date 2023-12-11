@@ -167,7 +167,7 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("the path %s does not exist\n", rule.Path)
+			t.Errorf("the file %s does not exist\n", rule.Path)
 			return ExitNok
 		}
 		t.Errorf("%s\n", err)
@@ -211,7 +211,7 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 		return ExitNok
 	}
 	if !reg.Match(lineToAdd) {
-		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
+		t.VerboseErrorf("rule error: '%s' does not match target content\n", rule.Check)
 		return ExitNok
 	}
 	hasFoundMatch := false
@@ -244,10 +244,10 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 			e = e.Merge(ExitNok)
 		}
 	} else if !ok {
-		t.Errorf("line '%s' not found in '%s'\n", lineToAdd, rule.Path)
+		t.VerboseErrorf("line '%s' not found in '%s'\n", lineToAdd, rule.Path)
 		e = e.Merge(ExitNok)
 	} else if !hasFoundMatch {
-		t.Errorf("pattern '%s' not found in %s\n", rule.Check, rule.Path)
+		t.VerboseErrorf("pattern '%s' not found in %s\n", rule.Check, rule.Path)
 		e = e.Merge(ExitNok)
 	}
 	return e

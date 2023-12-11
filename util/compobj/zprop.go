@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -62,12 +63,12 @@ func (t *CompZprops) add(s string) error {
 }
 
 func (t CompZprops) getProp(rule CompZprop) (string, error) {
-	cmd := exec.Command(zpropZbin, "get", rule.Prop, rule.Name, "-Ho value")
+	cmd := exec.Command(zpropZbin, "get", rule.Prop, rule.Name, "-Ho", "value")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", err, output)
 	}
-	return string(output), nil
+	return strings.Trim(string(output), "\n"), nil
 }
 
 func (t CompZprops) checkZbin() ExitCode {
