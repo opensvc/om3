@@ -1044,10 +1044,10 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 			case *msgbus.ExecSuccess:
 				return
 			case *msgbus.ExecFailed:
-				errC <- errors.New(m.ErrS)
+				err = errors.New(m.ErrS)
 				return
 			case *msgbus.ObjectStatusDeleted:
-				log.Debug().Msgf("%s: stop waiting requester session id end %s (deleted)", p)
+				log.Debug().Msgf("%s: stop waiting requester session id end (deleted)", p)
 				return
 			}
 		}
