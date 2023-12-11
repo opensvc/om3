@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,33 +11,24 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceStatus(ctx echo.Context) error {
-	var (
-		err     error
-		p       naming.Path
-		payload api.InstanceStatusItem
-	)
+func (a *DaemonApi) PostInstanceStatus(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	var payload api.InstanceStatus
 	log := LogHandler(ctx, "PostInstanceStatus")
 	log.Debugf("starting")
+	p, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		log.Warnf("can't make path: %s", err)
+		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error making path: %s", err)
+		return err
+	}
 	if err := ctx.Bind(&payload); err != nil {
 		log.Warnf("decode body: %s", err)
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 		return err
 	}
-	p, err = naming.ParsePath(payload.Meta.Object)
-	if err != nil {
-		log.Warnf("can't parse path %s: %s", payload.Meta.Object, err)
-		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Meta.Object, err)
-		return err
-	}
-	if payload.Meta.Node != a.localhost {
-		err := fmt.Errorf("meta node is %s: expecting %s", payload.Meta.Node, a.localhost)
-		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
-		return err
-	}
-	a.EventBus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: payload.Meta.Node, Value: payload.Data},
-		pubsub.Label{"path", payload.Meta.Object},
-		pubsub.Label{"node", payload.Meta.Node},
+	a.EventBus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: a.localhost, Value: payload},
+		pubsub.Label{"path", p.String()},
+		pubsub.Label{"node", a.localhost},
 	)
 	return ctx.JSON(http.StatusOK, nil)
 }
