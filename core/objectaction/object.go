@@ -848,6 +848,14 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
+	output.Renderer{
+		DefaultOutput: t.DefaultOutput,
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          results,
+		HumanRenderer: func() string { return rsHumanRender(results) },
+		Colorize:      rawconfig.Colorize,
+	}.Print()
 	if t.Wait && todo > 0 {
 		for i := 0; i < todo; i++ {
 			select {
@@ -861,14 +869,6 @@ func (t T) DoRemote() error {
 			}
 		}
 	}
-	output.Renderer{
-		DefaultOutput: t.DefaultOutput,
-		Output:        t.Output,
-		Color:         t.Color,
-		Data:          results,
-		HumanRenderer: func() string { return rsHumanRender(results) },
-		Colorize:      rawconfig.Colorize,
-	}.Print()
 	return errs
 }
 
