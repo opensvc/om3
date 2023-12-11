@@ -222,7 +222,9 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 			t.Errorf("error when trying to look if user %s exist: %s \n", member, err)
 			return ExitNok
 		}
-
+		if !isMissing {
+			t.Errorf("user %s is missing in the os \n", member)
+		}
 		missingMembers = missingMembers || isMissing
 	}
 	if missingMembers {
@@ -235,10 +237,13 @@ func (t CompGroupsMemberships) isGroupExisting(groupName string) (bool, error) {
 	cmd := execGetent("group", groupName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			if exitError.ExitCode() == 2 {
+				return false, nil
+			}
+		}
 		return false, fmt.Errorf("can't read /etc/group %w:%s \n", err, output)
-	}
-	if len(output) == 0 {
-		return false, nil
 	}
 	return true, nil
 }
@@ -253,7 +258,6 @@ func (t CompGroupsMemberships) isUserMissing(member string) (bool, error) {
 		var exitError *exec.ExitError
 		if errors.As(err, &exitError) {
 			if exitError.ExitCode() == 2 {
-				t.Errorf("user %s is missing in the os \n", member)
 				return true, nil
 			}
 		}

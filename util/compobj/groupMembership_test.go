@@ -267,6 +267,9 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 				default:
 					line = `the param file in execGetent only takes as argument "group"" or "file" you should not see this line ! this line come from groupMembership_test.go`
 				}
+				if len(line) == 0 {
+					return exec.Command("bash", "-c", "exit 2")
+				}
 				return exec.Command("echo", "-n", line)
 			}
 			execId = func(userName string) *exec.Cmd {
@@ -432,6 +435,9 @@ func TestGroupMembershipFixRule(t *testing.T) {
 					line = getLine(fileContent, name)
 				default:
 					line = `the param file in execGetent only takes as argument "group"" or "file" you should not see this line ! this line come from groupMembership_test.go`
+				}
+				if len(line) == 0 {
+					return exec.Command("bash", "-c", "exit 2")
 				}
 				return exec.Command("echo", "-n", line)
 			}
