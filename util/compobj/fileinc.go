@@ -343,6 +343,7 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	newFilePath := newFile.Name()
 	oldFileStat, err := os.Stat(rule.Path)
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -390,20 +391,20 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newFile.Name(), oldFileStat.Mode()); err != nil {
+	if err = os.Chmod(newFilePath, oldFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
-		if err = os.Chown(newFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+		if err = os.Chown(newFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
 			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newFile.Name())
+		t.Errorf("can't change the owner of the file %s", newFilePath)
 		return ExitNok
 	}
-	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
@@ -426,6 +427,7 @@ func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	newFilePath := newFile.Name()
 	oldFileStat, err := os.Stat(rule.Path)
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -443,20 +445,20 @@ func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newFile.Name(), oldFileStat.Mode()); err != nil {
+	if err = os.Chmod(newFilePath, oldFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
-		if err = os.Chown(newFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+		if err = os.Chown(newFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
 			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newFile.Name())
+		t.Errorf("can't change the owner of the file %s", newFilePath)
 		return ExitNok
 	}
-	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}

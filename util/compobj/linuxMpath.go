@@ -750,7 +750,7 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	if err = os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
@@ -1060,7 +1060,7 @@ func (t CompMpaths) addInConfAfterLine(lineIndex int, fileContent []byte, string
 	if err = newConfigFile.Close(); err != nil {
 		return err
 	}
-	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	if err = os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		return err
 	}
 

@@ -383,7 +383,7 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 
 	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("can't close file %s: %s\n", newConfigFile.Name(), err)
+		t.Errorf("can't close file %s: %s\n", newConfigFilePath, err)
 	}
 	err = oldConfigFile.Close()
 	if err != nil {
