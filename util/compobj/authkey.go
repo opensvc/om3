@@ -609,6 +609,15 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		return ExitNok
+	}
 	err = oldConfigFile.Close()
 	if err != nil {
 		t.Errorf("%s", err)
@@ -700,11 +709,20 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
+	if err := os.Chmod(newConfigFilePath, oldFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err := os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
+	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		return ExitNok
+	}
+	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}

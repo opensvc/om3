@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type (
@@ -388,12 +389,20 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 	if err != nil {
 		t.Errorf("can't close file %s: %s\n", "/etc/sysctl.conf", err)
 	}
+	if err := os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
+		return false, err
+	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			return false, err
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		return false, err
+	}
 	err = os.Rename(newConfigFilePath, sysctlConfigFilePath)
 	if err != nil {
 		t.Errorf("%s", err)
-	}
-	if err := os.Chmod(sysctlConfigFilePath, oldConfigFileStat.Mode()); err != nil {
-		return false, err
 	}
 	return changeDone, nil
 }

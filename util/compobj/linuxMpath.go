@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type (
@@ -751,6 +752,15 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 	}
 	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
 		return ExitNok
 	}
 	err = os.Rename(newConfigFilePath, multipathConfPath)
