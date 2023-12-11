@@ -1057,6 +1057,11 @@ func (t CompMpaths) addInConfAfterLine(lineIndex int, fileContent []byte, string
 		}
 		i++
 	}
+	if i == 0 && lineIndex == -1 {
+		if _, err = newConfigFile.Write([]byte(stringToAdd + "\n")); err != nil {
+			return err
+		}
+	}
 	if err = newConfigFile.Close(); err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -225,7 +226,6 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 		missingMembers = missingMembers || isMissing
 	}
 	if missingMembers {
-		t.Errorf("error : some members are not present in the current os\n")
 		return ExitNok
 	}
 	return ExitOk
@@ -250,11 +250,14 @@ func (t CompGroupsMemberships) isUserMissing(member string) (bool, error) {
 	cmd := execGetent("passwd", member)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			if exitError.ExitCode() == 2 {
+				t.Errorf("user %s is missing in the os \n", member)
+				return true, nil
+			}
+		}
 		return true, fmt.Errorf("can't read /etc/passwd :%w/%s \n", err, output)
-	}
-	if len(output) == 0 {
-		t.Errorf("user %s is missing in the os \n", member)
-		return true, nil
 	}
 	return false, nil
 }
