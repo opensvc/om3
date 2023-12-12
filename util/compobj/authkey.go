@@ -424,17 +424,17 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 		case "add":
 			var unknownUserError user.UnknownUserError
 			if errors.As(err, &unknownUserError) {
-				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist\n", t.truncateKey(rule.Key), rule.User)
 			} else {
-				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+				t.Errorf("error when trying to check if user %s exist: %s\n", rule.User, err)
 			}
 			return ExitNok
 		default:
 			var unknownUserError user.UnknownUserError
 			if errors.As(err, &unknownUserError) {
-				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist\n", t.truncateKey(rule.Key), rule.User)
 			} else {
-				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+				t.Errorf("error when trying to check if user %s exist: %s\n", rule.User, err)
 			}
 			return ExitOk
 		}
@@ -615,7 +615,7 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return ExitNok
 	}
 	err = oldConfigFile.Close()
@@ -637,6 +637,13 @@ func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	for _, authKeyFile := range authKeysFiles {
+		if _, err = os.Stat(authKeyFile); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
 		if t.delKeyInFile(authKeyFile, rule.Key) == ExitNok {
 			return ExitNok
 		}
@@ -719,7 +726,7 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return ExitNok
 	}
 	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
@@ -794,7 +801,7 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return ExitNok
 	}
 	if err = os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
@@ -867,7 +874,7 @@ func (t CompAuthkeys) Check() ExitCode {
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
 	if !userValidityMap[rule.User] {
-		t.Errorf("the user %s is blacklisted can't fix the rule", rule.User)
+		t.Errorf("the user %s is blacklisted can't fix the rule\n", rule.User)
 		return ExitNok
 	}
 	e := ExitOk
