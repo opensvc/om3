@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -165,25 +166,53 @@ func (t CompFile) Content() ([]byte, error) {
 	return subst(b), nil
 }
 
-func (t CompFile) ParseUID() int {
+func (t CompFile) ParseUID() (int, error) {
 	switch v := t.UID.(type) {
 	case int:
-		return v
+		return v, nil
 	case float64:
-		return int(v)
+		return int(v), nil
+	case string:
+		cmd := exec.Command("bash", "-c", "getent passwd "+t.UID.(string)+" | cut -d: -f3")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return -1, fmt.Errorf("%w: %s", err, output)
+		}
+		if len(output) == 0 {
+			return -1, fmt.Errorf("the user %s does not exist", t.UID.(string))
+		}
+		uid, err := strconv.ParseInt(string(output)[:len(output)-1], 10, 64)
+		if err != nil {
+			return -1, err
+		}
+		return int(uid), nil
 	default:
-		return -1
+		return -1, nil
 	}
 }
 
-func (t CompFile) ParseGID() int {
+func (t CompFile) ParseGID() (int, error) {
 	switch v := t.GID.(type) {
 	case int:
-		return v
+		return v, nil
 	case float64:
-		return int(v)
+		return int(v), nil
+	case string:
+		cmd := exec.Command("bash", "-c", "getent group "+t.GID.(string)+" | cut -d: -f3")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return -1, fmt.Errorf("%w: %s", err, output)
+		}
+		if len(output) == 0 {
+			return -1, fmt.Errorf("the group %s does not exist", t.GID.(string))
+		}
+		gid, err := strconv.ParseInt(string(output)[:len(output)-1], 10, 64)
+		if err != nil {
+			return -1, err
+		}
+		return int(gid), nil
 	default:
-		return -1
+		return -1, nil
 	}
 }
 
@@ -254,13 +283,21 @@ func (t CompFiles) fixMode(rule CompFile) ExitCode {
 }
 
 func (t CompFiles) checkOwnership(rule CompFile) ExitCode {
-	targetUID := rule.ParseUID()
-	targetGID := rule.ParseGID()
-	if targetUID < 0 && targetGID < 0 {
-		return ExitNotApplicable
+	e := ExitOk
+	targetUID, err := rule.ParseUID()
+	if err != nil {
+		t.VerboseErrorf("%s\n", err)
+		e = e.Merge(ExitNok)
+	}
+	targetGID, err := rule.ParseGID()
+	if err != nil {
+		t.VerboseErrorf("%s\n", err)
+		e = e.Merge(ExitNok)
+	}
+	if e == ExitNok {
+		return ExitNok
 	}
 	uid, gid, err := file.Ownership(rule.Path)
-	e := ExitOk
 	if err != nil {
 		t.VerboseErrorf("file %s get current ownership: %s\n", rule.Path, err)
 		return ExitNok
@@ -287,9 +324,21 @@ func (t CompFiles) checkOwnership(rule CompFile) ExitCode {
 }
 
 func (t CompFiles) fixOwnership(rule CompFile) ExitCode {
-	targetUID := rule.ParseUID()
-	targetGID := rule.ParseGID()
-	err := os.Chown(rule.Path, targetUID, targetGID)
+	e := ExitOk
+	targetUID, err := rule.ParseUID()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		e = e.Merge(ExitNok)
+	}
+	targetGID, err := rule.ParseGID()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		e = e.Merge(ExitNok)
+	}
+	if e == ExitNok {
+		return ExitNok
+	}
+	err = os.Chown(rule.Path, targetUID, targetGID)
 	if err == nil {
 		t.Infof("file %s ownership set to %d:%d\n", rule.Path, targetUID, targetGID)
 		return ExitOk
