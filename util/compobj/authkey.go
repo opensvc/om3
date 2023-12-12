@@ -882,6 +882,9 @@ func (t CompAuthkeys) Check() ExitCode {
 }
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
+	if t.checkRule(rule) == ExitOk {
+		return ExitOk
+	}
 	if !userValidityMap[rule.User] {
 		t.Errorf("the user %s is blacklisted can't fix the rule\n", rule.User)
 		return ExitNok
