@@ -354,6 +354,11 @@ type Node struct {
 	Status  *NodeStatus  `json:"status,omitempty"`
 }
 
+// NodeActionAccepted defines model for NodeActionAccepted.
+type NodeActionAccepted struct {
+	SessionId openapi_types.UUID `json:"session_id"`
+}
+
 // NodeConfig defines model for NodeConfig.
 type NodeConfig = node.Config
 
@@ -997,6 +1002,16 @@ type GetNetworkIpParams struct {
 type GetNodesParams struct {
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
+// PostNodeActionFreezeParams defines parameters for PostNodeActionFreeze.
+type PostNodeActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionUnfreezeParams defines parameters for PostNodeActionUnfreeze.
+type PostNodeActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.

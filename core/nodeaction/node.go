@@ -12,10 +12,12 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
@@ -23,13 +25,17 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/xsession"
+	"github.com/rs/zerolog/log"
 )
 
 type (
 	// T has is an actionrouter.T with a node func
 	T struct {
 		actionrouter.T
-		Func func() (any, error)
+		LocalFunc  func() (any, error)
+		RemoteFunc func(context.Context, string) (any, error)
 	}
 
 	Expectation any
@@ -38,6 +44,9 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
+	if t.NodeSelector != "" && t.DefaultOutput == "" {
+		t.DefaultOutput = "tab=NODE:nodename,SID:data.session_id"
+	}
 	return t
 }
 
@@ -47,6 +56,15 @@ func WithRemoteNodes(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.NodeSelector = s
+		return nil
+	})
+}
+
+// WithRemoteRun sets a function to run if the action is local
+func WithRemoteRun(f func(context.Context, string) (any, error)) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.RemoteFunc = f
 		return nil
 	})
 }
@@ -169,7 +187,7 @@ func WithServer(s string) funcopt.O {
 func WithLocalRun(f func() (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Func = f
+		t.LocalFunc = f
 		return nil
 	})
 }
@@ -179,43 +197,44 @@ func (t T) Options() actionrouter.T {
 	return t.T
 }
 
+func human(r actionrouter.Result) string {
+	if r.Error != nil {
+		fmt.Fprintf(os.Stderr, "%s", r.Error)
+	}
+	if r.Panic != nil {
+		fmt.Fprintf(os.Stderr, "%s", r.Panic)
+	}
+	s := ""
+	if r.HumanRenderer != nil {
+		s += r.HumanRenderer()
+	} else if r.Data != nil {
+		if b, err := yaml.Marshal(r.Data); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "%s", err)
+		} else {
+			_, _ = os.Stdout.Write(b)
+		}
+	}
+	return s
+}
+
 func (t T) DoLocal() error {
-	r := nodeDo(t.Func)
-	log := plog.NewDefaultLogger().WithPrefix("nodeaction: ")
-	human := func() string {
-		if r.Error != nil {
-			log.Errorf("%s", r.Error)
-		}
-		if r.Panic != nil {
-			log.Errorf("%s", r.Panic)
-		}
-		s := ""
-		if r.HumanRenderer != nil {
-			s += r.HumanRenderer()
-		} else if r.Data != nil {
-			if b, err := yaml.Marshal(r.Data); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "%s", err)
-			} else {
-				_, _ = os.Stdout.Write(b)
-			}
-		}
-		return s
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	ctx := context.Background()
+	t.nodeDo(ctx, resultQ, hostname.Hostname(), func(_ context.Context, nodename string) (any, error) { return t.LocalFunc() })
+	result := <-resultQ
+	results = append(results, result)
+	if result.Error != nil {
+		return result.Error
 	}
 	output.Renderer{
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          []actionrouter.Result{r},
-		HumanRenderer: human,
+		Data:          []actionrouter.Result{result},
 		Colorize:      rawconfig.Colorize,
+		HumanRenderer: func() string { return human(result) },
 	}.Print()
-	var errs error
-	if r.Panic != nil {
-		errs = errors.Join(errs, fmt.Errorf("%s", r.Panic))
-	}
-	if r.Error != nil {
-		errs = errors.Join(errs, r.Error)
-	}
-	return errs
+	return nil
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -366,46 +385,166 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	/*
-		c, err := client.New(client.WithURL(t.Server))
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	if err != nil {
+		return err
+	}
+
+	results := make([]actionrouter.Result, 0)
+	resultQ := make(chan actionrouter.Result)
+	count := len(nodenames)
+	done := 0
+	todo := 0
+	requesterSid := xsession.ID
+
+	var (
+		cancel context.CancelFunc
+		errs   error
+		waitC  chan error
+	)
+
+	ctx := context.Background()
+
+	if t.WaitDuration > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
+
+	if t.Wait {
+		waitC = make(chan error, count)
+	}
+
+	for _, nodename := range nodenames {
+		c, err := client.New(client.WithURL(nodename), client.WithTimeout(0))
 		if err != nil {
 			return err
 		}
-		req := c.PostNodeAction()
-		req.NodeSelector = t.NodeSelector
-		req.Action = t.Action
-		req.Options = t.PostFlags
-		b, err := req.Do()
-		if err != nil {
-			return err
+		if t.Wait {
+			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSid, waitC)
 		}
-		data := &struct {
-			Err    string `json:"err"`
-			Out    string `json:"out"`
-			Status int    `json:"status"`
-		}{}
-		if err := json.Unmarshal(b, data); err != nil {
-			return err
+		t.nodeDo(ctx, resultQ, nodename, func(ctx context.Context, nodename string) (any, error) {
+			return t.RemoteFunc(ctx, nodename)
+		})
+		todo += 1
+	}
+	if todo == 0 {
+		return nil
+	}
+	for {
+		result := <-resultQ
+		switch {
+		case result.Panic != nil:
+			fmt.Fprintln(os.Stderr, result.Panic)
+			errs = errors.New("remote action error")
+		case result.Error != nil:
+			fmt.Fprintln(os.Stderr, result.Error)
+			errs = errors.New("remote action error")
 		}
-		_, _ = fmt.Fprintf(os.Stdout, data.Out)
-		_, _ = fmt.Fprintf(os.Stderr, data.Err)
-	*/
-	return fmt.Errorf("todo")
+		results = append(results, result)
+		done += 1
+		if done >= todo {
+			break
+		}
+	}
+	output.Renderer{
+		DefaultOutput: t.DefaultOutput,
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          results,
+		Colorize:      rawconfig.Colorize,
+	}.Print()
+	if t.Wait && todo > 0 {
+		for i := 0; i < todo; i++ {
+			select {
+			case <-ctx.Done():
+				errs = errors.Join(errs, ctx.Err())
+				return errs
+			case err := <-waitC:
+				if err != nil {
+					errs = errors.Join(errs, err)
+				}
+			}
+		}
+	}
+	return errs
+}
+
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename string, requesterSid uuid.UUID, errC chan<- error) {
+	var (
+		filters []string
+		msg     pubsub.Messager
+
+		err      error
+		evReader event.ReadCloser
+	)
+	filters = []string{
+		fmt.Sprintf("NodeMonitorDeleted"),
+		fmt.Sprintf("ExecFailed,requester_sid=%s", requesterSid),
+		fmt.Sprintf("ExecSuccess,requester_sid=%s", requesterSid),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if t.WaitDuration > 0 {
+		getEvents = getEvents.SetDuration(t.WaitDuration)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		defer func() {
+			if err != nil {
+				err = fmt.Errorf("wait requester session end failed on node %s: %w", nodename, err)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = fmt.Errorf("no more events, wait %s failed: %w", nodename, err)
+				} else {
+					err = readError
+				}
+				return
+			}
+			msg, err = msgbus.EventToMessage(*ev)
+			if err != nil {
+				return
+			}
+			switch m := msg.(type) {
+			case *msgbus.ExecSuccess:
+				return
+			case *msgbus.ExecFailed:
+				err = errors.New(m.ErrS)
+				return
+			case *msgbus.ObjectStatusDeleted:
+				log.Debug().Msgf("%s: stop waiting requester session id end (deleted)", nodename)
+				return
+			}
+		}
+	}()
 }
 
 func (t T) Do() error {
 	return actionrouter.Do(t)
-}
-
-func nodeDo(fn func() (any, error)) actionrouter.Result {
-	data, err := fn()
-	result := actionrouter.Result{
-		Nodename:      hostname.Hostname(),
-		HumanRenderer: func() string { return actionrouter.DefaultHumanRenderer(data) },
-	}
-	result.Data = data
-	result.Error = err
-	return result
 }
 
 // waitExpectation subscribes to NodeMonitorUpdated and wait for expectation reached
@@ -502,4 +641,17 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 			}
 		}
 	}()
+}
+
+func (t T) nodeDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, fn func(context.Context, string) (any, error)) {
+	go func(nodename string) {
+		result := actionrouter.Result{
+			Nodename: nodename,
+		}
+		data, err := fn(ctx, nodename)
+		result.Data = data
+		result.Error = err
+		result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
+		resultQ <- result
+	}(nodename)
 }

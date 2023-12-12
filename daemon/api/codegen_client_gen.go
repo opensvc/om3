@@ -196,6 +196,12 @@ type ClientInterface interface {
 	// PostNodeActionDrain request
 	PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionFreeze request
+	PostNodeActionFreeze(ctx context.Context, params *PostNodeActionFreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionUnfreeze request
+	PostNodeActionUnfreeze(ctx context.Context, params *PostNodeActionUnfreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeClear request
 	PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -721,6 +727,30 @@ func (c *Client) GetNodes(ctx context.Context, params *GetNodesParams, reqEditor
 
 func (c *Client) PostNodeActionDrain(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionDrainRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionFreeze(ctx context.Context, params *PostNodeActionFreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionFreezeRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionUnfreeze(ctx context.Context, params *PostNodeActionUnfreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionUnfreezeRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3294,6 +3324,100 @@ func NewPostNodeActionDrainRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewPostNodeActionFreezeRequest generates requests for PostNodeActionFreeze
+func NewPostNodeActionFreezeRequest(server string, params *PostNodeActionFreezeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/action/freeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionUnfreezeRequest generates requests for PostNodeActionUnfreeze
+func NewPostNodeActionUnfreezeRequest(server string, params *PostNodeActionUnfreezeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/action/unfreeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostNodeClearRequest generates requests for PostNodeClear
 func NewPostNodeClearRequest(server string) (*http.Request, error) {
 	var err error
@@ -4829,6 +4953,12 @@ type ClientWithResponsesInterface interface {
 	// PostNodeActionDrain request
 	PostNodeActionDrainWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeActionDrainResponse, error)
 
+	// PostNodeActionFreeze request
+	PostNodeActionFreezeWithResponse(ctx context.Context, params *PostNodeActionFreezeParams, reqEditors ...RequestEditorFn) (*PostNodeActionFreezeResponse, error)
+
+	// PostNodeActionUnfreeze request
+	PostNodeActionUnfreezeWithResponse(ctx context.Context, params *PostNodeActionUnfreezeParams, reqEditors ...RequestEditorFn) (*PostNodeActionUnfreezeResponse, error)
+
 	// PostNodeClear request
 	PostNodeClearWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeClearResponse, error)
 
@@ -5744,6 +5874,56 @@ func (r PostNodeActionDrainResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostNodeActionDrainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionFreezeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionFreezeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionFreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionUnfreezeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionUnfreezeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionUnfreezeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -6811,6 +6991,24 @@ func (c *ClientWithResponses) PostNodeActionDrainWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParsePostNodeActionDrainResponse(rsp)
+}
+
+// PostNodeActionFreezeWithResponse request returning *PostNodeActionFreezeResponse
+func (c *ClientWithResponses) PostNodeActionFreezeWithResponse(ctx context.Context, params *PostNodeActionFreezeParams, reqEditors ...RequestEditorFn) (*PostNodeActionFreezeResponse, error) {
+	rsp, err := c.PostNodeActionFreeze(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionFreezeResponse(rsp)
+}
+
+// PostNodeActionUnfreezeWithResponse request returning *PostNodeActionUnfreezeResponse
+func (c *ClientWithResponses) PostNodeActionUnfreezeWithResponse(ctx context.Context, params *PostNodeActionUnfreezeParams, reqEditors ...RequestEditorFn) (*PostNodeActionUnfreezeResponse, error) {
+	rsp, err := c.PostNodeActionUnfreeze(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionUnfreezeResponse(rsp)
 }
 
 // PostNodeClearWithResponse request returning *PostNodeClearResponse
@@ -8659,6 +8857,100 @@ func ParsePostNodeActionDrainResponse(rsp *http.Response) (*PostNodeActionDrainR
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionFreezeResponse parses an HTTP response from a PostNodeActionFreezeWithResponse call
+func ParsePostNodeActionFreezeResponse(rsp *http.Response) (*PostNodeActionFreezeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionFreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionUnfreezeResponse parses an HTTP response from a PostNodeActionUnfreezeWithResponse call
+func ParsePostNodeActionUnfreezeResponse(rsp *http.Response) (*PostNodeActionUnfreezeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionUnfreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Problem

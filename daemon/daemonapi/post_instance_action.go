@@ -35,9 +35,11 @@ func (a *DaemonApi) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 	)
 	labels := []pubsub.Label{
 		labelApi,
-		{"path", p.String()},
 		{"sid", sid.String()},
 		{"requester_sid", requesterSid.String()},
+	}
+	if !p.IsZero() {
+		labels = append(labels, pubsub.Label{"path", p.String()})
 	}
 	log.Infof("-> exec %s", cmd)
 	msg := msgbus.Exec{Command: cmd.String(), Node: hostname.Hostname(), Origin: "api"}
