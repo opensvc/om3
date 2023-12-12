@@ -606,7 +606,7 @@ func (t CompUsers) fixGid(rule CompUser) ExitCode {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("set the primary gid of the user %s to %d\n", rule.User, *rule.Gid)
@@ -618,7 +618,7 @@ func (t CompUsers) fixUid(rule CompUser) ExitCode {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("set the uid of the user %s to %d\n", rule.User, *rule.Uid)
@@ -635,7 +635,7 @@ func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
 	cmd := execAddCommand(cmdArgs)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s:%s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("add user %s\n", rule.User)
@@ -645,7 +645,7 @@ func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
 func (t CompUsers) fixHomeOwnerShip(rule CompUser, userInfos []string) ExitCode {
 	err := os.Chown(getHomeDir(userInfos), *rule.Uid, -1)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	t.Infof("set the user %s as the owner of his home directory\n", rule.User)
@@ -655,21 +655,21 @@ func (t CompUsers) fixHomeOwnerShip(rule CompUser, userInfos []string) ExitCode 
 func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
 	err := os.MkdirAll(rule.Home, 0755)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	if file.Exists("/etc/skel") {
 		cmd := exec.Command("cp", "-R", "/etc/skel/*", rule.Home)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Errorf("%s: %s", err, output)
+			t.Errorf("%s: %s\n", err, output)
 		}
 	}
 
 	cmd := execAddHomeCommand(rule.Home, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 	}
 	t.Infof("set the home dir of the user %s to %s\n", rule.User, rule.Home)
 	return ExitOk
@@ -680,7 +680,7 @@ func (t CompUsers) fixShell(rule CompUser) ExitCode {
 	cmd := execShellCommand(rule.Shell, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("set the shell of the user %s to %s\n", rule.User, rule.Shell)
@@ -691,7 +691,7 @@ func (t CompUsers) fixPasswordHash(rule CompUser) ExitCode {
 	cmd := execPasswordHashCommand(rule.User, rule.Password)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s", output)
+		t.Errorf("%s\n", output)
 		return ExitNok
 	}
 	t.Infof("set the password hash of the user %s to %s\n", rule.User, rule.Password)

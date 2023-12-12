@@ -219,11 +219,11 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 	for _, member := range members {
 		isMissing, err := t.isUserMissing(member)
 		if err != nil {
-			t.Errorf("error when trying to look if user %s exist: %s \n", member, err)
+			t.Errorf("error when trying to look if user %s exist: %s\n", member, err)
 			return ExitNok
 		}
 		if !isMissing {
-			t.Errorf("user %s is missing in the os \n", member)
+			t.Errorf("user %s is missing in the os\n", member)
 		}
 		missingMembers = missingMembers || isMissing
 	}
@@ -325,17 +325,17 @@ func (t CompGroupsMemberships) fixMemberAdd(member string, group string) ExitCod
 func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCode {
 	primaryGroup, err := t.getPrimaryGroup(member)
 	if err != nil {
-		t.Errorf("can't read primary group for the user %s \n", member)
+		t.Errorf("can't read primary group for the user %s\n", member)
 		return ExitNok
 	}
 	if group == primaryGroup {
-		t.Errorf("user %s has the group %s as primary group, cowardly refusing to del the user from its primary group \n", member, group)
+		t.Errorf("user %s has the group %s as primary group, cowardly refusing to del the user from its primary group\n", member, group)
 		return ExitNok
 	}
 	cmd := execGpasswdDel(group, member)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("error when trying to del the user %s from the group %s :%s \n", member, group, output)
+		t.Errorf("error when trying to del the user %s from the group %s :%s\n", member, group, output)
 		return ExitNok
 	}
 	return ExitOk

@@ -294,14 +294,14 @@ func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
 func (t CompGroups) fixGroupDel(rule CompGroup) ExitCode {
 	for _, groupNameBlackList := range blackList {
 		if groupNameBlackList == rule.Group {
-			t.Errorf("cowardly refusing to delete group %s \n", rule.Group)
+			t.Errorf("cowardly refusing to delete group %s\n", rule.Group)
 			return ExitNok
 		}
 	}
 	cmd := execGroupDel(rule.Group)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("delete the group %s\n", rule.Group)
@@ -312,7 +312,7 @@ func (t CompGroups) fixGroupAdd(rule CompGroup) ExitCode {
 	cmd := execGroupAdd(rule.Group, *rule.Gid)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s:%s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("add the group %s\n", rule.Group)
@@ -323,7 +323,7 @@ func (t CompGroups) fixGroupGid(rule CompGroup) ExitCode {
 	cmd := execChGroupGid(rule.Group, *rule.Gid)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
 	t.Infof("changing the gid of the group %s to %d\n", rule.Group, *rule.Gid)

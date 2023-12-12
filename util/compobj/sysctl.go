@@ -329,18 +329,18 @@ func (t CompSysctls) getValues(rule CompSysctl, getLiveValue bool) ([]string, er
 func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 	oldConfigFileStat, err := os.Stat(sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	changeDone := false
 	oldConfigFile, err := os.Open(sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	newConfigFile, err := os.CreateTemp(filepath.Dir(sysctlConfigFilePath), "newSysctlConf")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	newConfigFilePath := newConfigFile.Name()
@@ -397,12 +397,12 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 			return false, err
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newConfigFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return false, err
 	}
 	err = os.Rename(newConfigFilePath, sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 	}
 	return changeDone, nil
 }

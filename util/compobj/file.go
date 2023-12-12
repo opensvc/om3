@@ -395,7 +395,7 @@ func (t CompFiles) checkContent(rule CompFile) ExitCode {
 		return ExitOk
 	}
 	diff := fmt.Sprint(gotextdiff.ToUnified(rule.Path, rule.Path+".tgt", string(current), fragments))
-	t.VerboseErrorf("%s", diff)
+	t.VerboseErrorf("%s\n", diff)
 	return ExitNok
 }
 
@@ -443,7 +443,7 @@ func (t CompFiles) fixPathExistence(rule CompFile) ExitCode {
 
 	err := os.MkdirAll(filepath.Dir(rule.Path), 0666)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	f, err := os.Create(rule.Path)
