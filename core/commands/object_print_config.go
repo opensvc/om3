@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -28,8 +29,12 @@ type (
 
 type result map[string]rawconfig.T
 
-func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, error) {
+func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 	data := make(result)
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return data, err
+	}
 	paths, err := objectselector.NewSelection(
 		selector,
 		objectselector.SelectionWithLocal(true),
@@ -39,7 +44,7 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, er
 	}
 	for _, p := range paths {
 		if d, err := t.extractOne(p, c); err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s", p, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
 		} else {
 			data[p.String()] = d
 		}
@@ -50,11 +55,13 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, er
 func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
 	if data, err := t.extractFromDaemon(p, c); err == nil {
 		return data, nil
+	} else if clientcontext.IsSet() {
+		return rawconfig.T{}, err
+	} else if p.Exists() {
+		return t.extractLocal(p)
+	} else {
+		return rawconfig.T{}, fmt.Errorf("%w, and no local instance to read from", err)
 	}
-	if clientcontext.IsSet() {
-		return rawconfig.T{}, fmt.Errorf("can not fetch from daemon")
-	}
-	return t.extractLocal(p)
 }
 
 func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) {
@@ -72,56 +79,53 @@ func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) 
 }
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
+	var nodenames []string
+	var errs error
+	if resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name); err != nil {
+		return rawconfig.T{}, err
+	} else if len(resp.JSON200.Data.Scope) == 0 {
+		return rawconfig.T{}, nil
+	} else {
+		nodenames = resp.JSON200.Data.Scope
+	}
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
 	}
-	resp, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
-	if err != nil {
-		return rawconfig.T{}, err
-	} else if resp.StatusCode() != http.StatusOK {
-		return rawconfig.T{}, fmt.Errorf("unexpected get object config status %s", resp.Status())
+	for _, nodename := range nodenames {
+		scopeClient, err := client.New(client.WithURL(nodename))
+		if err != nil {
+			return rawconfig.T{}, err
+		}
+		resp, err := scopeClient.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		} else if resp.StatusCode() != http.StatusOK {
+			errs = errors.Join(errs, fmt.Errorf("get object config: %s", resp.Status()))
+			continue
+		}
+		data := rawconfig.T{}
+		if b, err := json.Marshal(resp.JSON200.Data); err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		} else if err := json.Unmarshal(b, &data); err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		} else {
+			return data, nil
+		}
 	}
-	data := rawconfig.T{}
-	if resp.JSON200 == nil {
-		panic("response json is nil")
-	} else if b, err := json.Marshal(resp.JSON200.Data); err != nil {
-		return rawconfig.T{}, err
-	} else if err := json.Unmarshal(b, &data); err != nil {
-		return rawconfig.T{}, err
-	} else {
-		return data, nil
-	}
-	return rawconfig.T{}, nil
-}
-
-func parseRoutedResponse(b []byte) (rawconfig.T, error) {
-	type routedResponse struct {
-		Nodes  map[string]rawconfig.T
-		Status int
-	}
-	d := routedResponse{}
-	err := json.Unmarshal(b, &d)
-	if err != nil {
-		return rawconfig.T{}, err
-	}
-	for _, cfg := range d.Nodes {
-		return cfg, nil
-	}
-	return rawconfig.T{}, fmt.Errorf("no nodes in response")
+	return rawconfig.T{}, errs
 }
 
 func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 	var (
-		c    *client.T
 		data result
 		err  error
 	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		return err
-	}
-	if data, err = t.extract(mergedSelector, c); err != nil {
+	if data, err = t.extract(mergedSelector); err != nil {
 		return err
 	}
 	if len(data) == 0 {
