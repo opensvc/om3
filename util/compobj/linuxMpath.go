@@ -771,6 +771,7 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("changing value of the key %s to %s\n", rule.Key, rule.Value)
 	return ExitOk
 }
 
@@ -893,7 +894,6 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
-					return ExitOk
 				}
 			case "device":
 				if t.checkIfDevicesExist(conf, splitKey[0], indexs[0], indexs[1]) {
@@ -934,7 +934,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 								t.Errorf("%s\n", err)
 								return ExitNok
 							}
-							return ExitOk
+							break
 						}
 						j++
 					}
@@ -967,6 +967,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("adding the key %s and its associated value %s in %s\n", rule.Key, newValue, multipathConfPath)
 	return ExitOk
 }
 

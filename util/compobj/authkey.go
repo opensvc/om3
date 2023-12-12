@@ -239,6 +239,7 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 	if err != nil {
 		return err
 	}
+	t.Infof("reload sshd\n")
 	return nil
 }
 
@@ -566,6 +567,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	if _, ok := cacheInstalledKeys[rule.User]; ok {
 		cacheInstalledKeys[rule.User] = append(cacheInstalledKeys[rule.User], rule.Key)
 	}
+	t.Infof("adding the key %s in the file %s\n", rule.Key, authKeyFilePath[0])
 	return ExitOk
 }
 
@@ -587,10 +589,12 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 		return ExitNok
 	}
 	scanner := bufio.NewScanner(oldConfigFile)
+	hasDeleted := false
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineKey := strings.TrimSpace(line)
 		if lineKey == key {
+			hasDeleted = true
 			continue
 		}
 		line += "\n"
@@ -626,6 +630,9 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	err = os.Rename(newConfigFilePath, authKeyFilePath)
 	if err != nil {
 		t.Errorf("%s\n", err)
+	}
+	if hasDeleted {
+		t.Infof("delete the key %s from the file %s\n", key, authKeyFilePath)
 	}
 	return ExitOk
 }
@@ -734,6 +741,7 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
+	t.Infof("adding the group %s in the field AllowGroups of the sshd config file (%s)\n", primaryGroupName, rule.ConfigFile)
 	return ExitOk
 }
 
@@ -809,6 +817,7 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
+	t.Infof("adding the user %s in the field AllowUsers of the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitOk
 }
 

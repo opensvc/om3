@@ -304,6 +304,7 @@ func (t CompGroups) fixGroupDel(rule CompGroup) ExitCode {
 		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
+	t.Infof("delete the group %s\n", rule.Group)
 	return ExitOk
 }
 
@@ -314,6 +315,7 @@ func (t CompGroups) fixGroupAdd(rule CompGroup) ExitCode {
 		t.Errorf("%s:%s", err, output)
 		return ExitNok
 	}
+	t.Infof("add the group %s\n", rule.Group)
 	return ExitOk
 }
 
@@ -324,6 +326,7 @@ func (t CompGroups) fixGroupGid(rule CompGroup) ExitCode {
 		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
+	t.Infof("changing the gid of the group %s to %d\n", rule.Group, *rule.Gid)
 	return ExitOk
 }
 

@@ -460,7 +460,7 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 			return ExitNok
 		}
 	}
-	t.VerboseErrorf("hash of the password for the user %s not found in /etc/shadow \n", rule.User)
+	t.VerboseErrorf("hash of the password for the user %s not found in /etc/shadow\n", rule.User)
 	return ExitNok
 }
 
@@ -609,6 +609,7 @@ func (t CompUsers) fixGid(rule CompUser) ExitCode {
 		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
+	t.Infof("set the primary gid of the user %s to %d\n", rule.User, *rule.Gid)
 	return ExitOk
 }
 
@@ -620,6 +621,7 @@ func (t CompUsers) fixUid(rule CompUser) ExitCode {
 		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
+	t.Infof("set the uid of the user %s to %d\n", rule.User, *rule.Uid)
 	return ExitOk
 }
 
@@ -636,6 +638,7 @@ func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
 		t.Errorf("%s:%s", err, output)
 		return ExitNok
 	}
+	t.Infof("add user %s\n", rule.User)
 	return ExitOk
 }
 
@@ -645,6 +648,7 @@ func (t CompUsers) fixHomeOwnerShip(rule CompUser, userInfos []string) ExitCode 
 		t.Errorf("%s", err)
 		return ExitNok
 	}
+	t.Infof("set the user %s as the owner of his home directory\n", rule.User)
 	return ExitOk
 }
 
@@ -667,6 +671,7 @@ func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
 	if err != nil {
 		t.Errorf("%s: %s", err, output)
 	}
+	t.Infof("set the home dir of the user %s to %s\n", rule.User, rule.Home)
 	return ExitOk
 }
 
@@ -678,6 +683,7 @@ func (t CompUsers) fixShell(rule CompUser) ExitCode {
 		t.Errorf("%s: %s", err, output)
 		return ExitNok
 	}
+	t.Infof("set the shell of the user %s to %s\n", rule.User, rule.Shell)
 	return ExitOk
 }
 
@@ -688,6 +694,7 @@ func (t CompUsers) fixPasswordHash(rule CompUser) ExitCode {
 		t.Errorf("%s", output)
 		return ExitNok
 	}
+	t.Infof("set the password hash of the user %s to %s\n", rule.User, rule.Password)
 	return ExitOk
 }
 
@@ -695,9 +702,10 @@ func (t CompUsers) fixGecos(rule CompUser) ExitCode {
 	cmd := execGecosCommand(rule.Gecos, rule.User)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("error when trying to change the gecos of the user %s: %s", rule.User, output)
+		t.Errorf("error when trying to change the gecos of the user %s: %s\n", rule.User, output)
 		return ExitNok
 	}
+	t.Infof("set the gecos of the user %s to %s\n", rule.User, rule.Gecos)
 	return ExitOk
 }
 
@@ -716,6 +724,7 @@ func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
+	t.Infof("delete user %s\n", rule.User)
 	return ExitOk
 }
 

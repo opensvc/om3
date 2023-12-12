@@ -401,13 +401,14 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newFilePath)
 		return ExitNok
 	}
 	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("adding %s in file %s\n", lineToAdd, rule.Path)
 	return ExitOk
 }
 
@@ -455,13 +456,14 @@ func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
 			return ExitNok
 		}
 	} else {
-		t.Errorf("can't change the owner of the file %s", newFilePath)
+		t.Errorf("can't change the owner of the file %s\n", newFilePath)
 		return ExitNok
 	}
 	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("replace the pattern %s with %s in file %s\n", rule.Replace, lineToAdd, rule.Path)
 	return ExitOk
 }
 

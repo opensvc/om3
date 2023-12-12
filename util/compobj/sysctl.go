@@ -451,6 +451,7 @@ func (t CompSysctls) reloadSysctl() ExitCode {
 		t.Errorf("can't reload sysctl: %s: %s\n", err, out)
 		return ExitNok
 	}
+	t.Infof("reload sysctl\n")
 	return ExitOk
 }
 
@@ -474,6 +475,10 @@ func (t CompSysctls) fixRule(rule CompSysctl) (ExitCode, bool) {
 				return ExitNok, false
 			}
 		}
+		if _, ok := rule.Value.(string); !ok {
+			rule.Value = strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64)
+		}
+		t.Infof("setting the key %s to %s in /etc/sysctl.conf\n", rule.Key, rule.Value)
 		needReload = true
 	}
 	return ExitOk, needReload

@@ -317,6 +317,7 @@ func (t CompSvcconfs) Check() ExitCode {
 
 func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 	e := ExitOk
+	changement := false
 	for _, resourceName := range svcRessourcesNames {
 		if t.checkSection(resourceName, rule) {
 			t.VerboseInfof("the resource %s respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
@@ -324,9 +325,10 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 			continue
 		}
 		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
+		changement = true
 		o, err := object.NewConfigurer(svcName)
 		if err != nil {
-			t.Errorf("error can't create an configurer obj: %s\n", err)
+			t.Errorf("error can't create a configurer obj: %s\n", err)
 			return ExitNok
 		}
 		_, _, variable := t.getKeyParts(rule)
@@ -347,6 +349,13 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 		if err := o.Config().Commit(); err != nil {
 			t.Errorf("%s", err)
 			e = e.Merge(ExitNok)
+		}
+	}
+	if changement {
+		if rule.Op == "unset" {
+			t.Infof("unset the key %s in the configuration of the service %s\n", rule.Key, svcName)
+		} else {
+			t.Infof("set the key %s to %s in the configuration of the service %s\n", rule.Key, rule.Value.(string), svcName)
 		}
 	}
 	return e

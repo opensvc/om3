@@ -276,9 +276,8 @@ func (t CompFiles) fixMode(rule CompFile) ExitCode {
 	if err != nil {
 		t.Errorf("file %s mode set to %s failed: %s\n", rule.Path, target, err)
 		return ExitNok
-	} else {
-		t.Infof("file %s mode set to %s\n", rule.Path, target)
 	}
+	t.Infof("file %s mode set to %s\n", rule.Path, target)
 	return ExitOk
 }
 
@@ -456,6 +455,7 @@ func (t CompFiles) fixPathExistence(rule CompFile) ExitCode {
 		t.Errorf("can't close the file: %s\n", rule.Path)
 		return ExitNok
 	}
+	t.Infof("create the file %s\n", rule.Path)
 	return ExitOk
 }
 

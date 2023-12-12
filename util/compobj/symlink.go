@@ -118,6 +118,7 @@ func (t CompSymlinks) fixLink(rule CompSymlink) ExitCode {
 		t.Errorf("Cant create symlink %s\n", rule.Symlink)
 		return ExitNok
 	}
+	t.Infof("create symlink %s\n", rule.Symlink)
 	return ExitOk
 }
 

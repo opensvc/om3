@@ -137,6 +137,7 @@ func (t CompZprops) fixRule(rule CompZprop) ExitCode {
 		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
+	t.Infof("set the property %s of the %s %s to %s\n", rule.Prop, zpropZbin, rule.Name, rule.Value.(string))
 	return ExitOk
 }
 

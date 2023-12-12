@@ -595,6 +595,7 @@ func (t CompKeyvals) fixUnset(rule CompKeyval) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("unset the key %s in file %s\n", rule.Key, keyValpath)
 	return ExitOk
 }
 

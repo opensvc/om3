@@ -280,7 +280,7 @@ func (t CompGroupsMemberships) Check() ExitCode {
 func (t CompGroupsMemberships) fixRule(rule CompGroupMembership) ExitCode {
 	isGroupPresent, err := t.isGroupExisting(rule.Group)
 	if err != nil {
-		t.Errorf("can't check if group %s exist :%s \n", rule.Group, err)
+		t.Errorf("can't check if group %s exist :%s\n", rule.Group, err)
 		return ExitNok
 	}
 	if !isGroupPresent {
@@ -288,7 +288,7 @@ func (t CompGroupsMemberships) fixRule(rule CompGroupMembership) ExitCode {
 	}
 	e := t.checkMembersExistence(rule.Members)
 	if e == ExitNok {
-		return e
+		return ExitNok
 	}
 	groupMembers, err := t.getGroupMembers(rule.Group)
 	if err != nil {
@@ -318,6 +318,7 @@ func (t CompGroupsMemberships) fixMemberAdd(member string, group string) ExitCod
 		t.Errorf("can't add the user %s to the group %s :%s \n", member, group, output)
 		return ExitNok
 	}
+	t.Infof("adding the user %s to the group %s\n", member, group)
 	return ExitOk
 }
 

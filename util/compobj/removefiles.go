@@ -100,6 +100,7 @@ func (t CompRemovefiles) fixRule(rule CompRemovefile) ExitCode {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
+	t.Infof("remove the file %s\n", rule)
 	return ExitOk
 }
 
