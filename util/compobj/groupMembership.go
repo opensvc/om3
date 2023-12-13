@@ -127,6 +127,7 @@ func (t CompGroupsMemberships) checkRule(rule CompGroupMembership) ExitCode {
 		return ExitNok
 	}
 	if !isGroupPresent {
+		t.VerboseInfof("group Membership: the group %s does not exist, in this case the rule is considered as on target\n", rule.Group)
 		return ExitOk
 	}
 	if e := t.checkMembersExistence(rule.Members); e == ExitNok {
@@ -222,7 +223,7 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 			t.Errorf("error when trying to look if user %s exist: %s\n", member, err)
 			return ExitNok
 		}
-		if !isMissing {
+		if isMissing {
 			t.Errorf("user %s is missing in the os\n", member)
 		}
 		missingMembers = missingMembers || isMissing
