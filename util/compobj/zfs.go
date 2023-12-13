@@ -125,9 +125,7 @@ Inputs:
     StrictCandidates: yes
     Candidates:
       - "="
-      - ">"
       - ">="
-      - "<"
       - "<="
     Help: The comparison operator to use to check the property current value.
     Condition: "#prop == copies"
