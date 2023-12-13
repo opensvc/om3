@@ -13,7 +13,7 @@ func (a *DaemonApi) announceSub(name string) {
 	a.EventBus.Pub(&msgbus.ClientSubscribed{Time: time.Now(), Name: name})
 }
 
-func (a *DaemonApi) announceUnSub(name string) {
+func (a *DaemonApi) announceUnsub(name string) {
 	a.EventBus.Pub(&msgbus.ClientUnsubscribed{Time: time.Now(), Name: name})
 }
 
