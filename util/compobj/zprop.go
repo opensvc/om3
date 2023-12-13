@@ -94,6 +94,12 @@ func (t CompZprops) checkOperator(rule CompZprop) ExitCode {
 		strTargetValue = rule.Value.(string)
 	default:
 		strTargetValue = strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64)
+	}
+	if strCurrentValue == "-" && !(rule.Op == "=" && strTargetValue == "-") {
+		t.VerboseErrorf("property %s current value is not %s %s (the value is not set)\n", rule.Prop, rule.Op, strTargetValue)
+		return ExitNok
+	}
+	if _, ok := rule.Value.(float64); ok {
 		float64CurrentValue, err = strconv.ParseFloat(strCurrentValue, 64)
 		if err != nil {
 			t.Errorf("error when trying to convert in float64 %s: %s\n", strCurrentValue, err)
