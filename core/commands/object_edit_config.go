@@ -1,12 +1,9 @@
 package commands
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -14,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -72,90 +68,27 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 	return nil
 }
 
-func remoteClient(p naming.Path, c *client.T) (*client.T, error) {
-	resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("get object %s data from %s: %s", p, c.URL(), resp.Status())
-	}
-	var nodename string
-	for k, _ := range resp.JSON200.Data.Instances {
-		nodename = k
-		break
-	}
-	if nodename == "" {
-		return nil, fmt.Errorf("%s has no instance", p)
-	}
-	if c, err = client.New(client.WithURL(nodename)); err != nil {
-		return nil, err
-	}
-	return c, nil
-}
-
-func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
-	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
-	if err != nil {
-		return nil, err
-	} else if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("get object %s file from %s: %s", p, c.URL(), resp.Status())
-	}
-	return resp.JSON200.Data, nil
-}
-
-func putConfig(p naming.Path, fName string, c *client.T) (err error) {
-	body := api.PutObjectFileJSONRequestBody{}
-	body.Mtime = time.Now()
-	if buff, err := os.ReadFile(fName); err != nil {
-		return err
-	} else {
-		body.Data = buff
-	}
-	resp, err := c.PutObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, body)
-	if err != nil {
-		return err
-	}
-	switch resp.StatusCode() {
-	case http.StatusNoContent:
-		return nil
-	default:
-		return fmt.Errorf("put object %s file from %s: %s", p, c.URL(), resp.Status()+string(resp.Body))
-	}
-}
-
 func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
 	var (
-		err    error
-		refSum []byte
-		buff   []byte
-		f      *os.File
+		err      error
+		refSum   []byte
+		filename string
 	)
-	if c, err = remoteClient(p, c); err != nil {
+	if filename, err = createTempRemoteConfig(p, c); err != nil {
 		return err
 	}
-	if buff, err = fetchConfig(p, c); err != nil {
+	defer os.Remove(filename)
+	if refSum, err = file.MD5(filename); err != nil {
 		return err
 	}
-	if f, err = os.CreateTemp("", ".opensvc.edit.config.*"); err != nil {
+	if err = editor.Edit(filename); err != nil {
 		return err
 	}
-	fName := f.Name()
-	defer os.Remove(fName)
-	if _, err = f.Write(buff); err != nil {
-		return err
-	}
-	if refSum, err = file.MD5(fName); err != nil {
-		return err
-	}
-	if err = editor.Edit(fName); err != nil {
-		return err
-	}
-	if file.HaveSameMD5(refSum, fName) {
+	if file.HaveSameMD5(refSum, filename) {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = putConfig(p, fName, c); err != nil {
+	if err = putConfig(p, filename, c); err != nil {
 		return err
 	}
 	return nil
