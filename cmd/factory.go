@@ -1101,6 +1101,7 @@ func newCmdNodeFreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
 
@@ -1339,6 +1340,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
 

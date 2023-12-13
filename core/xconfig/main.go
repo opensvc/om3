@@ -1164,6 +1164,16 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 	return nil
 }
 
+func (t *T) Recommit() error {
+	t.changed = true
+	return t.rawCommit(rawconfig.T{}, "", true)
+}
+
+func (t *T) RecommitInvalid() error {
+	t.changed = true
+	return t.rawCommit(rawconfig.T{}, "", false)
+}
+
 func (t *T) Commit() error {
 	return t.rawCommit(rawconfig.T{}, "", true)
 }

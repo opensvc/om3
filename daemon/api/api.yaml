@@ -510,6 +510,56 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/action/freeze:
+    post:
+      operationId: PostNodeActionFreeze
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Freeze the node.
+      parameters:
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/action/unfreeze:
+    post:
+      operationId: PostNodeActionUnfreeze
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Unfreeze the node.
+      parameters:
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -1604,6 +1654,78 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+    post:
+      operationId: PostObjectFile
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectFile'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+    put:
+      operationId: PutObjectFile
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectFile'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
 
   /pool:
     get:
@@ -2306,6 +2428,14 @@ components:
           $ref: '#/components/schemas/NodeMonitor'
         status:
           $ref: '#/components/schemas/NodeStatus'
+    NodeActionAccepted:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+      required:
+        - session_id
     NodeItems:
       type: array
       items:

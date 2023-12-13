@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -13,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -102,21 +104,24 @@ func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 	return resp.JSON200.Data, nil
 }
 
-func pushConfig(p naming.Path, fName string, c *client.T) (err error) {
-	/*
-		var cfg *xconfig.Path
-		if cfg, err = xconfig.NewObject("", fName); err != nil {
-			return err
-		}
-		params := api.PostObjectCreate()
-		params.Restore = true
-		params.Data[p.String()] = cfg.Raw()
-		_, err = c.PostObjectCreate(context.Background(), params)
-		if err != nil {
-			return err
-		}
-	*/
-	return fmt.Errorf("todo")
+func putConfig(p naming.Path, fName string, c *client.T) (err error) {
+	body := api.PutObjectFileJSONRequestBody{}
+	body.Mtime = time.Now()
+	if buff, err := os.ReadFile(fName); err != nil {
+		return err
+	} else {
+		body.Data = buff
+	}
+	resp, err := c.PutObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, body)
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("put object %s file from %s: %s", p, c.URL(), resp.Status()+string(resp.Body))
+	}
 }
 
 func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
@@ -150,7 +155,7 @@ func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = pushConfig(p, fName, c); err != nil {
+	if err = putConfig(p, fName, c); err != nil {
 		return err
 	}
 	return nil

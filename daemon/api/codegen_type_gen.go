@@ -354,6 +354,11 @@ type Node struct {
 	Status  *NodeStatus  `json:"status,omitempty"`
 }
 
+// NodeActionAccepted defines model for NodeActionAccepted.
+type NodeActionAccepted struct {
+	SessionId openapi_types.UUID `json:"session_id"`
+}
+
 // NodeConfig defines model for NodeConfig.
 type NodeConfig = node.Config
 
@@ -817,6 +822,9 @@ type N401 = Problem
 // N403 defines model for 403.
 type N403 = Problem
 
+// N404 defines model for 404.
+type N404 = Problem
+
 // N408 defines model for 408.
 type N408 = Problem
 
@@ -999,6 +1007,16 @@ type GetNodesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
+// PostNodeActionFreezeParams defines parameters for PostNodeActionFreeze.
+type PostNodeActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionUnfreezeParams defines parameters for PostNodeActionUnfreeze.
+type PostNodeActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
 type GetNodeDRBDConfigParams struct {
 	// Name the full naming of the file is deduced from the name
@@ -1097,6 +1115,12 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PostObjectFileJSONRequestBody defines body for PostObjectFile for application/json ContentType.
+type PostObjectFileJSONRequestBody = ObjectFile
+
+// PutObjectFileJSONRequestBody defines body for PutObjectFile for application/json ContentType.
+type PutObjectFileJSONRequestBody = ObjectFile
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
