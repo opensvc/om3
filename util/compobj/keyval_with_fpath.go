@@ -21,6 +21,7 @@ type (
 		Key   string `json:"key"`
 		Op    string `json:"op"`
 		Value any    `json:"value"`
+		path  string
 	}
 )
 
@@ -120,6 +121,7 @@ func (t *CompKeyvals) Add(s string) error {
 	}
 	keyValpath = dataPath.Path
 	for _, rule := range dataPath.Keys {
+		rule.path = keyValpath
 		if rule.Key == "" {
 			t.Errorf("key should be in the dict: %s\n", s)
 			return fmt.Errorf("key should be in the dict: %s\n", s)
@@ -191,6 +193,7 @@ func (t *CompKeyvals) Add(s string) error {
 		t.Obj.Add(rule)
 	}
 	t.filterRules()
+	keyValpath = ""
 	return nil
 }
 
@@ -615,23 +618,36 @@ func (t CompKeyvals) checkPathExistence() ExitCode {
 	return ExitOk
 }
 
+func (t CompKeyvals) updateFilePath(rule CompKeyval) ExitCode {
+	if keyValpath != rule.path {
+		keyValpath = rule.path
+		if t.checkPathExistence() == ExitNok {
+			return ExitNok
+		}
+		if err := t.loadCache(); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
+	return ExitOk
+}
+
 func (t CompKeyvals) Check() ExitCode {
 	t.SetVerbose(true)
-	if t.checkPathExistence() == ExitNok {
-		return ExitNok
-	}
-	if err := t.loadCache(); err != nil {
-		t.Errorf("%s\n", err)
-		return ExitNok
-	}
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		o := t.checkNoReset(rule)
 		e = e.Merge(o)
 	}
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		o := t.checkReset(rule)
 		e = e.Merge(o)
 	}
@@ -640,16 +656,19 @@ func (t CompKeyvals) Check() ExitCode {
 
 func (t CompKeyvals) Fix() ExitCode {
 	t.SetVerbose(false)
-	if t.checkPathExistence() == ExitNok {
-		return ExitNok
-	}
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		e = e.Merge(t.fixRuleNoReset(rule))
 	}
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		e = e.Merge(t.fixReset(rule))
 	}
 	return e
