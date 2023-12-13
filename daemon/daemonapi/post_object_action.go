@@ -16,46 +16,46 @@ import (
 )
 
 func (a *DaemonApi) PostObjectActionAbort(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectAborted)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectAborted)
 }
 
 func (a *DaemonApi) PostObjectActionDelete(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectDeleted)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectDeleted)
 }
 
 func (a *DaemonApi) PostObjectActionFreeze(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectFrozen)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectFrozen)
 }
 
 func (a *DaemonApi) PostObjectActionGiveback(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPlaced)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPlaced)
 }
 
 func (a *DaemonApi) PostObjectActionProvision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectProvisioned)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectProvisioned)
 }
 
 func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPurged)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPurged)
 }
 
 func (a *DaemonApi) PostObjectActionStart(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStarted)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStarted)
 }
 
 func (a *DaemonApi) PostObjectActionStop(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStopped)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectStopped)
 }
 
 func (a *DaemonApi) PostObjectActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectThawed)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectThawed)
 }
 
 func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	return a.PostObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectUnprovisioned)
+	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectUnprovisioned)
 }
 
-func (a *DaemonApi) PostObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
+func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
 	var (
 		value = instance.MonitorUpdate{}
 		p     naming.Path
