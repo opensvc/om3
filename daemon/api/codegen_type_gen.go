@@ -822,6 +822,9 @@ type N401 = Problem
 // N403 defines model for 403.
 type N403 = Problem
 
+// N404 defines model for 404.
+type N404 = Problem
+
 // N408 defines model for 408.
 type N408 = Problem
 
@@ -1112,6 +1115,12 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PostObjectFileJSONRequestBody defines body for PostObjectFile for application/json ContentType.
+type PostObjectFileJSONRequestBody = ObjectFile
+
+// PutObjectFileJSONRequestBody defines body for PutObjectFile for application/json ContentType.
+type PutObjectFileJSONRequestBody = ObjectFile
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
