@@ -398,6 +398,9 @@ func (t CompKeyvals) fixRuleNoReset(rule CompKeyval) ExitCode {
 }
 
 func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
+	if err := t.loadCache(); err != nil {
+		t.Errorf("%s\n", err)
+	}
 	if t.checkReset(rule) == ExitOk {
 		return ExitOk
 	}

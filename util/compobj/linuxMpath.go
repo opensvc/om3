@@ -642,9 +642,6 @@ func (t CompMpaths) Check() ExitCode {
 }
 
 func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
-	if t.checkRule(rule) == ExitOk {
-		return ExitOk
-	}
 	conf, err := t.loadMpathData()
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -1201,7 +1198,9 @@ func (t CompMpaths) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompMpath)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

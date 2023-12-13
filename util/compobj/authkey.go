@@ -882,9 +882,6 @@ func (t CompAuthkeys) Check() ExitCode {
 }
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
-	if t.checkRule(rule) == ExitOk {
-		return ExitOk
-	}
 	if !userValidityMap[rule.User] {
 		t.Errorf("the user %s is blacklisted can't fix the rule\n", rule.User)
 		return ExitNok
@@ -923,7 +920,9 @@ func (t CompAuthkeys) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompAuthKey)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

@@ -268,15 +268,14 @@ func (t *CompGroups) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroup)
-		e = e.Merge(t.fixGroup(rule))
+		if t.checkGroup(rule) == ExitNok {
+			e = e.Merge(t.fixGroup(rule))
+		}
 	}
 	return e
 }
 
 func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
-	if t.checkGroup(rule) == ExitOk {
-		return ExitOk
-	}
 	switch strings.HasPrefix(rule.Group, "-") {
 	case true:
 		rule.Group = rule.Group[1:]

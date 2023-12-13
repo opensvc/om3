@@ -168,7 +168,9 @@ func (t CompZprops) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompZprop)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkOperator(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

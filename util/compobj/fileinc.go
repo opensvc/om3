@@ -295,9 +295,6 @@ func (t CompFileincs) Check() ExitCode {
 }
 
 func (t CompFileincs) fixRule(rule CompFileinc) ExitCode {
-	if e := t.checkRule(rule); e == ExitOk {
-		return ExitOk
-	}
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -472,7 +469,9 @@ func (t CompFileincs) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompFileinc)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }
