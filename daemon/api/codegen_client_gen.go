@@ -278,6 +278,9 @@ type ClientInterface interface {
 	// PostObjectConfigSet request
 	PostObjectConfigSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostObjectConfigUnset request
+	PostObjectConfigUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObjectFile request
 	GetObjectFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1082,6 +1085,18 @@ func (c *Client) GetObjectConfig(ctx context.Context, namespace InPathNamespace,
 
 func (c *Client) PostObjectConfigSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectConfigSetRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostObjectConfigUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectConfigUnsetRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4855,6 +4870,74 @@ func NewPostObjectConfigSetRequest(server string, namespace InPathNamespace, kin
 	return req, nil
 }
 
+// NewPostObjectConfigUnsetRequest generates requests for PostObjectConfigUnset
+func NewPostObjectConfigUnsetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUnsetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/unset", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Kw != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectFileRequest generates requests for GetObjectFile
 func NewGetObjectFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -5559,6 +5642,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostObjectConfigSet request
 	PostObjectConfigSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*PostObjectConfigSetResponse, error)
+
+	// PostObjectConfigUnset request
+	PostObjectConfigUnsetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUnsetParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUnsetResponse, error)
 
 	// GetObjectFile request
 	GetObjectFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error)
@@ -7085,7 +7171,7 @@ func (r GetObjectConfigResponse) StatusCode() int {
 type PostObjectConfigSetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *InstanceActionAccepted
+	JSON200      *Problem
 	JSON400      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
@@ -7102,6 +7188,32 @@ func (r PostObjectConfigSetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostObjectConfigSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostObjectConfigUnsetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Problem
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostObjectConfigUnsetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostObjectConfigUnsetResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7915,6 +8027,15 @@ func (c *ClientWithResponses) PostObjectConfigSetWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParsePostObjectConfigSetResponse(rsp)
+}
+
+// PostObjectConfigUnsetWithResponse request returning *PostObjectConfigUnsetResponse
+func (c *ClientWithResponses) PostObjectConfigUnsetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUnsetParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUnsetResponse, error) {
+	rsp, err := c.PostObjectConfigUnset(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostObjectConfigUnsetResponse(rsp)
 }
 
 // GetObjectFileWithResponse request returning *GetObjectFileResponse
@@ -11026,7 +11147,61 @@ func ParsePostObjectConfigSetResponse(rsp *http.Response) (*PostObjectConfigSetR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest InstanceActionAccepted
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostObjectConfigUnsetResponse parses an HTTP response from a PostObjectConfigUnsetWithResponse call
+func ParsePostObjectConfigUnsetResponse(rsp *http.Response) (*PostObjectConfigUnsetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostObjectConfigUnsetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

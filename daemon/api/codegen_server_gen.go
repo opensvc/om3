@@ -198,6 +198,9 @@ type ServerInterface interface {
 	// (POST /object/path/{namespace}/{kind}/{name}/config/set)
 	PostObjectConfigSet(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostObjectConfigSetParams) error
 
+	// (POST /object/path/{namespace}/{kind}/{name}/config/unset)
+	PostObjectConfigUnset(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostObjectConfigUnsetParams) error
+
 	// (GET /object/path/{namespace}/{kind}/{name}/file)
 	GetObjectFile(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
@@ -2257,6 +2260,51 @@ func (w *ServerInterfaceWrapper) PostObjectConfigSet(ctx echo.Context) error {
 	return err
 }
 
+// PostObjectConfigUnset converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectConfigUnset(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostObjectConfigUnsetParams
+	// ------------- Optional query parameter "kw" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "kw", ctx.QueryParams(), &params.Kw)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kw: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectConfigUnset(ctx, namespace, kind, name, params)
+	return err
+}
+
 // GetObjectFile converts echo context to params.
 func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 	var err error
@@ -2583,6 +2631,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/object/path/:namespace/:kind/:name/action/unprovision", wrapper.PostObjectActionUnprovision)
 	router.GET(baseURL+"/object/path/:namespace/:kind/:name/config", wrapper.GetObjectConfig)
 	router.POST(baseURL+"/object/path/:namespace/:kind/:name/config/set", wrapper.PostObjectConfigSet)
+	router.POST(baseURL+"/object/path/:namespace/:kind/:name/config/unset", wrapper.PostObjectConfigUnset)
 	router.GET(baseURL+"/object/path/:namespace/:kind/:name/file", wrapper.GetObjectFile)
 	router.POST(baseURL+"/object/path/:namespace/:kind/:name/file", wrapper.PostObjectFile)
 	router.PUT(baseURL+"/object/path/:namespace/:kind/:name/file", wrapper.PutObjectFile)
@@ -2730,13 +2779,13 @@ var swaggerSpec = []string{
 	"vVk6q13Wv4ZiWDthfw7Cft+LQJ/3E8ua8TUUx9ppxm4Z8Ar7nKxAV5DoLe7/43rsBH4n8A8t8GtIuPcO",
 	"b7uIfyUV4XYyvjPqfpHP+HyAA/NRN9+J+k7Uvz5RbxQMaxf1r6AG2E7Ud55L3+cYq6L92Atd7SR7J9lW",
 	"sq+JjBYDZNu0f653Qj2k0LLdKwlop17PTr18ed3tCvZ1VFnbLSC7XcCQSm1dMp/u4jw7sf8axb47r90I",
-	"+pqpz4+swsw/VzjJsOzV9niZAheM6ub3n4fTnY+/y8Tha4j2Bm849K22V2bg03m4ofwCw+MqaLcrurFZ",
-	"vaV+6qPkvXtdeKdaPfMUSk2DneHuMNzjTmf6K5Gl7Udm+ohRTYZf9bnt+urxuNqv+rR99dQzyMajNPOp",
-	"QLbTgJ0GPAsNUP5HyljS5ll8ZCwZWCHMVYgSknE8B6SHeIRlotTUnvAdO032gsn7K5ZkS+ji9f/qVk+Y",
-	"42aCz4Tv2TQh0T5LgeKUtLH+7BrP58A3vSRtmWnvhj1u+ub00kSyFOOQ4Nv9JQiB56268kk1fG/bDfUS",
-	"dOdTFgPtGQbQHd6aK6/H91xBpzyzp3p5UbO5Yx9U4/B9nQJXhglVScWmKE+MJRYg0YyzJcJIzwItAHM5",
-	"BSz71o/oWZfnCbDXaLRgGY86lNm02fTC+HhgScUeik/ih7mP7kjQVoXRkXJXidGJmRWtL3d3d3f/PwAA",
-	"//9tn8jxyyQBAA==",
+	"+pqpz4+swsw/VzjJsOzV9niZAheM6ub3n4fTnY+/y8Tha4j2Bm849K22V2bg03m4ofwCw5fdbau/sD7S",
+	"IHHfrNLkOiL/lMpLFnUidyL/+EVeyWe36/JOtXrmWb6aBjvfosO3GHfu974SWdp+8LCPGNVk+FUfe/nq",
+	"8ewGX/Vp++qpJzmOR2nmU4FspwE7DXgWGqD8j5SxpM2z+MhYMrCInStiJiTjeA5ID/EIK5mpqT3ha6Ca",
+	"7AWT91csyZbQxev/1a2eMMfNBJ8J37NpQqJ9lgLFKWlj/dk1ns+Bb3qP3zLTXl983PTN6aWJZCnGIcG3",
+	"+0sQAs9bdeWTavjethvqJejOpywG2nPTrju8Nbeyj++5yFN5Zk/1fq1mc8c+qMbh+0pUqAwTKuSLTd2o",
+	"GEssQKIZZ0uEkZ4FWgDmcgpY9i1x0jOy8wTYazRasIxHHcps2mxa02A8sOpnD8Un8cOUTHAkaCsU6ki5",
+	"KxbqxMyK1pe7u7u7/x8AAP//SSx5TW4nAQA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

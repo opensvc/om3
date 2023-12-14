@@ -1817,11 +1817,37 @@ paths:
         - $ref: '#/components/parameters/inQueryKeywordOps'
       responses:
         200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /object/path/{namespace}/{kind}/{name}/config/unset:
+    post:
+      operationId: PostObjectConfigUnset
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Unset keywords in a the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeywords'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
         400:
           $ref: '#/components/responses/400'
         401:

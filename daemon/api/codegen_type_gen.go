@@ -1098,6 +1098,11 @@ type PostObjectConfigSetParams struct {
 	Kw *InQueryKeywordOps `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
+// PostObjectConfigUnsetParams defines parameters for PostObjectConfigUnset.
+type PostObjectConfigUnsetParams struct {
+	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
+}
+
 // GetPoolsParams defines parameters for GetPools.
 type GetPoolsParams struct {
 	// Name the name of a backend storage pool
