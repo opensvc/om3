@@ -156,6 +156,9 @@ type ClientInterface interface {
 	// PostInstanceActionProvision request
 	PostInstanceActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionProvisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInstanceActionSet request
+	PostInstanceActionSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionSetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInstanceActionStart request
 	PostInstanceActionStart(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionStartParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -167,6 +170,9 @@ type ClientInterface interface {
 
 	// PostInstanceActionUnprovision request
 	PostInstanceActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnprovisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInstanceActionUnset request
+	PostInstanceActionUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceClear request
 	PostInstanceClear(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -268,6 +274,9 @@ type ClientInterface interface {
 
 	// GetObjectConfig request
 	GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostObjectConfigSet request
+	PostObjectConfigSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectFile request
 	GetObjectFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -579,6 +588,18 @@ func (c *Client) PostInstanceActionProvision(ctx context.Context, namespace InPa
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostInstanceActionSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionSetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionSetRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostInstanceActionStart(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionStartParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionStartRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
@@ -617,6 +638,18 @@ func (c *Client) PostInstanceActionUnfreeze(ctx context.Context, namespace InPat
 
 func (c *Client) PostInstanceActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnprovisionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionUnprovisionRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceActionUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionUnsetRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1037,6 +1070,18 @@ func (c *Client) PostObjectActionUnprovision(ctx context.Context, namespace InPa
 
 func (c *Client) GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostObjectConfigSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectConfigSetRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2400,6 +2445,122 @@ func NewPostInstanceActionProvisionRequest(server string, namespace InPathNamesp
 	return req, nil
 }
 
+// NewPostInstanceActionSetRequest generates requests for PostInstanceActionSet
+func NewPostInstanceActionSetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionSetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/path/%s/%s/%s/action/set", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Kw != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.NoLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "no_lock", runtime.ParamLocationQuery, *params.NoLock); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.WaitLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "wait_lock", runtime.ParamLocationQuery, *params.WaitLock); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceActionStartRequest generates requests for PostInstanceActionStart
 func NewPostInstanceActionStartRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionStartParams) (*http.Request, error) {
 	var err error
@@ -2921,6 +3082,122 @@ func NewPostInstanceActionUnprovisionRequest(server string, namespace InPathName
 	if params.To != nil {
 
 		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostInstanceActionUnsetRequest generates requests for PostInstanceActionUnset
+func NewPostInstanceActionUnsetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/path/%s/%s/%s/action/unset", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Kw != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.NoLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "no_lock", runtime.ParamLocationQuery, *params.NoLock); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.WaitLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "wait_lock", runtime.ParamLocationQuery, *params.WaitLock); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -4510,6 +4787,74 @@ func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind In
 	return req, nil
 }
 
+// NewPostObjectConfigSetRequest generates requests for PostObjectConfigSet
+func NewPostObjectConfigSetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/set", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Kw != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectFileRequest generates requests for GetObjectFile
 func NewGetObjectFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -5093,6 +5438,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceActionProvision request
 	PostInstanceActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionProvisionParams, reqEditors ...RequestEditorFn) (*PostInstanceActionProvisionResponse, error)
 
+	// PostInstanceActionSet request
+	PostInstanceActionSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionSetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionSetResponse, error)
+
 	// PostInstanceActionStart request
 	PostInstanceActionStartWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionStartParams, reqEditors ...RequestEditorFn) (*PostInstanceActionStartResponse, error)
 
@@ -5104,6 +5452,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostInstanceActionUnprovision request
 	PostInstanceActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnprovisionParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnprovisionResponse, error)
+
+	// PostInstanceActionUnset request
+	PostInstanceActionUnsetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnsetResponse, error)
 
 	// PostInstanceClear request
 	PostInstanceClearWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
@@ -5205,6 +5556,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectConfig request
 	GetObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error)
+
+	// PostObjectConfigSet request
+	PostObjectConfigSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*PostObjectConfigSetResponse, error)
 
 	// GetObjectFile request
 	GetObjectFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error)
@@ -5769,6 +6123,31 @@ func (r PostInstanceActionProvisionResponse) StatusCode() int {
 	return 0
 }
 
+type PostInstanceActionSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostInstanceActionStartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5863,6 +6242,31 @@ func (r PostInstanceActionUnprovisionResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostInstanceActionUnprovisionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInstanceActionUnsetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionUnsetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionUnsetResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -6678,6 +7082,32 @@ func (r GetObjectConfigResponse) StatusCode() int {
 	return 0
 }
 
+type PostObjectConfigSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostObjectConfigSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostObjectConfigSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetObjectFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7113,6 +7543,15 @@ func (c *ClientWithResponses) PostInstanceActionProvisionWithResponse(ctx contex
 	return ParsePostInstanceActionProvisionResponse(rsp)
 }
 
+// PostInstanceActionSetWithResponse request returning *PostInstanceActionSetResponse
+func (c *ClientWithResponses) PostInstanceActionSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionSetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionSetResponse, error) {
+	rsp, err := c.PostInstanceActionSet(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionSetResponse(rsp)
+}
+
 // PostInstanceActionStartWithResponse request returning *PostInstanceActionStartResponse
 func (c *ClientWithResponses) PostInstanceActionStartWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionStartParams, reqEditors ...RequestEditorFn) (*PostInstanceActionStartResponse, error) {
 	rsp, err := c.PostInstanceActionStart(ctx, namespace, kind, name, params, reqEditors...)
@@ -7147,6 +7586,15 @@ func (c *ClientWithResponses) PostInstanceActionUnprovisionWithResponse(ctx cont
 		return nil, err
 	}
 	return ParsePostInstanceActionUnprovisionResponse(rsp)
+}
+
+// PostInstanceActionUnsetWithResponse request returning *PostInstanceActionUnsetResponse
+func (c *ClientWithResponses) PostInstanceActionUnsetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnsetResponse, error) {
+	rsp, err := c.PostInstanceActionUnset(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionUnsetResponse(rsp)
 }
 
 // PostInstanceClearWithResponse request returning *PostInstanceClearResponse
@@ -7458,6 +7906,15 @@ func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, n
 		return nil, err
 	}
 	return ParseGetObjectConfigResponse(rsp)
+}
+
+// PostObjectConfigSetWithResponse request returning *PostObjectConfigSetResponse
+func (c *ClientWithResponses) PostObjectConfigSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigSetParams, reqEditors ...RequestEditorFn) (*PostObjectConfigSetResponse, error) {
+	rsp, err := c.PostObjectConfigSet(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostObjectConfigSetResponse(rsp)
 }
 
 // GetObjectFileWithResponse request returning *GetObjectFileResponse
@@ -8577,6 +9034,53 @@ func ParsePostInstanceActionProvisionResponse(rsp *http.Response) (*PostInstance
 	return response, nil
 }
 
+// ParsePostInstanceActionSetResponse parses an HTTP response from a PostInstanceActionSetWithResponse call
+func ParsePostInstanceActionSetResponse(rsp *http.Response) (*PostInstanceActionSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostInstanceActionStartResponse parses an HTTP response from a PostInstanceActionStartWithResponse call
 func ParsePostInstanceActionStartResponse(rsp *http.Response) (*PostInstanceActionStartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -8727,6 +9231,53 @@ func ParsePostInstanceActionUnprovisionResponse(rsp *http.Response) (*PostInstan
 	}
 
 	response := &PostInstanceActionUnprovisionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceActionUnsetResponse parses an HTTP response from a PostInstanceActionUnsetWithResponse call
+func ParsePostInstanceActionUnsetResponse(rsp *http.Response) (*PostInstanceActionUnsetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionUnsetResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -10433,6 +10984,60 @@ func ParseGetObjectConfigResponse(rsp *http.Response) (*GetObjectConfigResponse,
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostObjectConfigSetResponse parses an HTTP response from a PostObjectConfigSetWithResponse call
+func ParsePostObjectConfigSetResponse(rsp *http.Response) (*PostObjectConfigSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostObjectConfigSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

@@ -792,8 +792,17 @@ type InQueryDisableRollback = bool
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
+// InQueryKeywordOps defines model for inQueryKeywordOps.
+type InQueryKeywordOps = []string
+
+// InQueryKeywords defines model for inQueryKeywords.
+type InQueryKeywords = []string
+
 // InQueryLeader defines model for inQueryLeader.
 type InQueryLeader = bool
+
+// InQueryNoLock defines model for inQueryNoLock.
+type InQueryNoLock = bool
 
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
@@ -809,6 +818,9 @@ type InQueryTag = string
 
 // InQueryTo defines model for inQueryTo.
 type InQueryTo = string
+
+// InQueryWaitLock defines model for inQueryWaitLock.
+type InQueryWaitLock = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -940,6 +952,14 @@ type PostInstanceActionProvisionParams struct {
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionSetParams defines parameters for PostInstanceActionSet.
+type PostInstanceActionSetParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Kw           *InQueryKeywordOps   `form:"kw,omitempty" json:"kw,omitempty"`
+	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
+	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
+}
+
 // PostInstanceActionStartParams defines parameters for PostInstanceActionStart.
 type PostInstanceActionStartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
@@ -975,6 +995,14 @@ type PostInstanceActionUnprovisionParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// PostInstanceActionUnsetParams defines parameters for PostInstanceActionUnset.
+type PostInstanceActionUnsetParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Kw           *InQueryKeywords     `form:"kw,omitempty" json:"kw,omitempty"`
+	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
+	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
@@ -1063,6 +1091,11 @@ type GetObjectConfigParams struct {
 
 	// Impersonate impersonate the evaluation as node
 	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// PostObjectConfigSetParams defines parameters for PostObjectConfigSet.
+type PostObjectConfigSetParams struct {
+	Kw *InQueryKeywordOps `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
 // GetPoolsParams defines parameters for GetPools.

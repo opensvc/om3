@@ -331,3 +331,19 @@ func ValidateFile(p string, ref Referrer) error {
 	}
 	return nil
 }
+
+func (t ValidateAlerts) String() string {
+	l := make([]string, len(t))
+	for i, alert := range t {
+		l[i] = alert.String()
+	}
+	return strings.Join(l, "\n")
+}
+
+func (t ValidateAlert) String() string {
+	buff := fmt.Sprintf("[%s] path %s key %s: %s", t.Level, t.Path, t.Key, t.Kind)
+	if t.Comment != "" {
+		buff += ", " + t.Comment
+	}
+	return buff
+}
