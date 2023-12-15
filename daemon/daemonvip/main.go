@@ -159,7 +159,7 @@ func (t *T) createOrUpdate(kv map[string]string) error {
 	}
 	rid := "ip#0"
 	toSet := make([]keyop.T, 0)
-	toUnSet := make([]key.T, 0)
+	toUnset := make([]key.T, 0)
 	if ipKw, err := o.Config().SectionMapStrict(rid); err == nil {
 		for k := range ipKw {
 			if k == "tags" {
@@ -169,7 +169,7 @@ func (t *T) createOrUpdate(kv map[string]string) error {
 			keyS := fmt.Sprintf("%s.%s", rid, k)
 			keyT := key.T{Section: rid, Option: k}
 			if _, ok := kv[keyS]; !ok {
-				toUnSet = append(toUnSet, keyT)
+				toUnset = append(toUnset, keyT)
 			}
 		}
 	}
@@ -177,6 +177,6 @@ func (t *T) createOrUpdate(kv map[string]string) error {
 	for k, val := range kv {
 		toSet = append(toSet, keyop.T{Key: key.Parse(k), Op: keyop.Set, Value: val})
 	}
-	t.log.Infof("will set %#v, unset %#v", toSet, toUnSet)
-	return o.Update(t.ctx, nil, toUnSet, toSet)
+	t.log.Debugf("will set %#v, unset %#v", toSet, toUnset)
+	return o.Update(t.ctx, nil, toUnset, toSet)
 }
