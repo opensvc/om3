@@ -33,7 +33,7 @@ var (
 	shadowFileContent []byte
 	passwdFileContent []byte
 
-	blackList = []string{
+	blackListUser = []string{
 		"root",
 		"bin",
 		"daemon",
@@ -711,7 +711,7 @@ func (t CompUsers) fixGecos(rule CompUser) ExitCode {
 
 func (t CompUsers) fixUserDel(rule CompUser) ExitCode {
 	rule.User = rule.User[1:]
-	for _, usrBlackList := range blackList {
+	for _, usrBlackList := range blackListUser {
 		if usrBlackList == rule.User {
 			t.Errorf("cowardly refusing to delete user: %s\n", rule.User)
 			return ExitNok

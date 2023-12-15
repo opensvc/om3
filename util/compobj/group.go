@@ -35,7 +35,7 @@ var (
 		return exec.Command("groupmod", "-g", strconv.Itoa(newGid), groupName)
 	}
 
-	blacklist = []string{
+	blacklistGroup = []string{
 		"root",
 		"bin",
 		"daemon",
@@ -291,7 +291,7 @@ func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
 }
 
 func (t CompGroups) fixGroupDel(rule CompGroup) ExitCode {
-	for _, groupNameBlackList := range blackList {
+	for _, groupNameBlackList := range blacklistGroup {
 		if groupNameBlackList == rule.Group {
 			t.Errorf("cowardly refusing to delete group %s\n", rule.Group)
 			return ExitNok
