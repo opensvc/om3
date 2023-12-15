@@ -447,6 +447,13 @@ func (t *T) Unset(ks ...key.T) int {
 	return deleted
 }
 
+// prepareUnset unsets keywords from config without committing changes.
+// The returned needCommit bool indicates that changes exists so commit
+// will be required to make changes persistent.
+func (t *T) prepareUnset(ks ...key.T) bool {
+	return t.Unset(ks...) > 0
+}
+
 func (t *T) Set(op keyop.T) error {
 	if !DriverGroups.Has(op.Key.Section) {
 		return t.set(op)
@@ -1205,20 +1212,33 @@ func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error
 	return t.rawCommit(configData, configPath, false)
 }
 
+// DeleteSections removes sections from config and commit when changes
 func (t *T) DeleteSections(sections []string) error {
-	deleted := 0
+	needCommit, err := t.prepareDeleteSections(sections)
+	if err != nil {
+		return err
+	}
+	if needCommit {
+		return t.Commit()
+	}
+	return nil
+}
+
+// prepareDeleteSections removes sections from config without committing changes.
+// The returned needCommit bool indicates that changes exists so commit
+// will be required to make changes persistent.
+func (t *T) prepareDeleteSections(sections []string) (needCommit bool, err error) {
 	for _, section := range sections {
 		if _, err := t.file.GetSection(section); err != nil {
 			continue
 		}
 		t.file.DeleteSection(section)
-		deleted++
+		needCommit = true
 	}
-	if deleted > 0 {
+	if needCommit {
 		t.changed = true
-		t.Commit()
 	}
-	return nil
+	return
 }
 
 func (t T) ModTime() time.Time {
@@ -1226,22 +1246,67 @@ func (t T) ModTime() time.Time {
 }
 
 func (t *T) SetKeys(kops ...keyop.T) error {
-	return setKeys(t, kops...)
+	if needCommit, err := t.prepareSetKeys(kops...); err != nil {
+		return err
+	} else if needCommit {
+		return t.Commit()
+	}
+	return nil
 }
 
-func setKeys(cf *T, kops ...keyop.T) error {
-	changes := 0
+// prepareSetKeys applies key operations to config without committing changes.
+// The returned needCommit bool indicates that changes exists so commit
+// will be required to make changes persistent.
+func (t *T) prepareSetKeys(kops ...keyop.T) (needCommit bool, err error) {
 	for _, op := range kops {
 		if op.IsZero() {
-			return fmt.Errorf("invalid set expression: %s", op)
+			err = fmt.Errorf("invalid set expression: %s", op)
+			return
 		}
-		if err := cf.Set(op); err != nil {
+		oldValue := t.Get(op.Key)
+		if err = t.Set(op); err != nil {
+			return
+		}
+		newValue := t.Get(op.Key)
+		if oldValue != newValue {
+			needCommit = true
+		}
+	}
+	return
+}
+
+// Update groups configuration changes into one commit.
+//
+// The configuration changes are executed in the following order:
+//
+//	1- delete sections
+//	2- unset keywords
+//	3- apply key operations
+//
+// The commit is skipped if nothing changes
+func (t *T) Update(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T) error {
+	var (
+		err        error
+		needCommit bool
+	)
+	if len(deleteSections) > 0 {
+		needCommit, err = t.prepareDeleteSections(deleteSections)
+		if err != nil {
 			return err
 		}
-		changes++
 	}
-	if changes > 0 {
-		return cf.Commit()
+	if len(unsetKeys) > 0 {
+		needCommit = t.prepareUnset(unsetKeys...)
+	}
+	if len(keyOps) > 0 {
+		needCommit, err = t.prepareSetKeys(keyOps...)
+		if err != nil {
+			return err
+		}
+	}
+
+	if needCommit {
+		return t.Commit()
 	}
 	return nil
 }
