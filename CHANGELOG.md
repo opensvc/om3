@@ -4,6 +4,8 @@
 
 ### core
 
+* **breaking change:** set/unset/get/eval now need --local to operate on the local node without api calls.
+
 * New placement policy `last start`. Use the mtime of `<objvar>/last_start` as the candidate sort key. More recent has higher priority.
 
 * **breaking change:** Drop the --dry-run flag.

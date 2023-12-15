@@ -61,7 +61,7 @@ func TestGenCert(t *testing.T) {
 			t.Logf("out:\n%s", out)
 			require.Nilf(t, err, string(out))
 
-			args = append([]string{name, "set"}, keywords...)
+			args = append([]string{name, "set", "--local"}, keywords...)
 			for _, kw := range keywords {
 				args = append(args, "--kw", kw)
 			}
