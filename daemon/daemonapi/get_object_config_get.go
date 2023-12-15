@@ -1,0 +1,102 @@
+package daemonapi
+
+import (
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/util/key"
+)
+
+func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
+	log := LogHandler(ctx, "GetObjectConfigGet")
+
+	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleGuest, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+		return err
+	}
+
+	r := api.KeywordList{
+		Kind:  "KeywordList",
+		Items: make(api.KeywordItems, 0),
+	}
+	if params.Kw == nil {
+		return ctx.JSON(http.StatusOK, r)
+	}
+
+	p, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	log = naming.LogWithPath(log, p)
+
+	instanceStatusData := instance.StatusData.GetByPath(p)
+
+	if _, ok := instanceStatusData[a.localhost]; ok {
+		oc, err := object.NewCore(p)
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewCore", "%s", err)
+		}
+		var (
+			isEvaluated bool
+			evaluatedAs string
+		)
+		if params.Evaluate != nil {
+			isEvaluated = *params.Evaluate
+		}
+		if params.Impersonate != nil {
+			evaluatedAs = *params.Impersonate
+		} else if isEvaluated {
+			evaluatedAs = a.localhost
+		}
+		if !isEvaluated && evaluatedAs != "" {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "impersonate can only be specified with evaluate=true")
+		}
+		for _, s := range *params.Kw {
+			kw := key.Parse(s)
+			item := api.KeywordItem{
+				Kind: "KeywordItem",
+				Meta: api.KeywordMeta{
+					Node:        a.localhost,
+					Object:      p.String(),
+					Keyword:     s,
+					IsEvaluated: isEvaluated,
+					EvaluatedAs: evaluatedAs,
+				},
+			}
+
+			if isEvaluated {
+				if i, err := oc.EvalAs(kw, evaluatedAs); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
+				} else {
+					item.Data = i
+					r.Items = append(r.Items, item)
+				}
+			} else {
+				i := oc.Config().Get(kw)
+				item.Data = i
+				r.Items = append(r.Items, item)
+			}
+		}
+		return ctx.JSON(http.StatusOK, r)
+	}
+
+	for nodename, _ := range instance.StatusData.GetByPath(p) {
+		c, err := client.New(client.WithURL(nodename))
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+		}
+		if resp, err := c.GetObjectConfigGetWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+		} else if len(resp.Body) > 0 {
+			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+		}
+	}
+
+	return nil
+}

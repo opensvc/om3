@@ -929,7 +929,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Set keywords in a the object instance configuration file.
+      description: Set keywords in the object instance configuration file.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -1097,7 +1097,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Unset keywords in a the object instance configuration file.
+      description: Unset keywords in the object instance configuration file.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -1797,19 +1797,55 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /object/path/{namespace}/{kind}/{name}/config/get:
+    get:
+      operationId: GetObjectConfigGet
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Get or evaluate a keyword in the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /object/path/{namespace}/{kind}/{name}/config/set:
     post:
       operationId: PostObjectConfigSet
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Set keywords in a the object configuration file.
+      description: Set keywords in the object configuration file.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -1831,15 +1867,15 @@ paths:
     post:
       operationId: PostObjectConfigUnset
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Unset keywords in a the object configuration file.
+      description: Unset keywords in the object configuration file.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -2447,6 +2483,61 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    KeywordList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - KeywordList
+        items:
+          $ref: '#/components/schemas/KeywordItems'
+
+    KeywordItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/KeywordItem'
+
+    KeywordItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - KeywordItem
+        meta:
+          $ref: '#/components/schemas/KeywordMeta'
+        data:
+          x-go-type: any
+
+    KeywordMeta:
+      type: object
+      required:
+        - object
+        - node
+        - keyword
+        - is_evaluated
+        - evaluated_as
+      properties:
+        object:
+          type: string
+        node:
+          type: string
+        keyword:
+          type: string
+        is_evaluated:
+          type: boolean
+        evaluated_as:
+          type: string
+
     Network:
       type: object
       required:
@@ -2495,6 +2586,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - NetworkList
         items:
           $ref: '#/components/schemas/NetworkItems'
     NetworkItems:
@@ -2528,6 +2621,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - NetworkIpList
         items:
           $ref: '#/components/schemas/NetworkIpItems'
     NetworkIpItems:
@@ -2547,6 +2642,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - NodeList
         items:
           $ref: '#/components/schemas/NodeItems'
     Node:
@@ -2571,18 +2668,20 @@ components:
       items:
         $ref: '#/components/schemas/NodeItem'
     NodeItem:
-        type: object
-        required:
-          - kind
-          - meta
-          - data
-        properties:
-          kind:
-            type: string
-          meta:
-            $ref: '#/components/schemas/NodeMeta'
-          data:
-            $ref: '#/components/schemas/Node'
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - NodeItem
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Node'
     NodeConfig:
       x-go-type: node.Config
       x-go-type-import:
@@ -2746,6 +2845,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - ObjectList
         items:
           $ref: '#/components/schemas/ObjectItems'
     ObjectItems:
@@ -2753,18 +2854,20 @@ components:
       items:
         $ref: '#/components/schemas/ObjectItem'
     ObjectItem:
-        type: object
-        required:
-          - kind
-          - meta
-          - data
-        properties:
-          kind:
-            type: string
-          meta:
-            $ref: '#/components/schemas/ObjectMeta'
-          data:
-            $ref: '#/components/schemas/ObjectData'
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - ObjectItem
+        meta:
+          $ref: '#/components/schemas/ObjectMeta'
+        data:
+          $ref: '#/components/schemas/ObjectData'
     ObjectConfig:
       type: object
       required:
@@ -2978,6 +3081,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - InstanceList
         items:
           $ref: '#/components/schemas/InstanceItems'
     Instance:
@@ -2994,18 +3099,20 @@ components:
       items:
         $ref: '#/components/schemas/InstanceItem'
     InstanceItem:
-        type: object
-        required:
-          - kind
-          - meta
-          - data
-        properties:
-          kind:
-            type: string
-          meta:
-            $ref: '#/components/schemas/InstanceMeta'
-          data:
-            $ref: '#/components/schemas/Instance'
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - InstanceItem
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/Instance'
     InstanceMap:
       type: object
       additionalProperties:
@@ -3037,6 +3144,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - PoolList
         items:
           $ref: '#/components/schemas/PoolItems'
     PoolItems:
@@ -3093,6 +3202,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - PoolVolumeList
         items:
           $ref: '#/components/schemas/PoolVolumeItems'
     PoolVolumeItems:
@@ -3226,6 +3337,8 @@ components:
       properties:
         kind:
           type: string
+          enum:
+            - ResourceList
         items:
           $ref: '#/components/schemas/ResourceItems'
     Resource:
@@ -3242,18 +3355,20 @@ components:
       items:
         $ref: '#/components/schemas/ResourceItem'
     ResourceItem:
-        type: object
-        required:
-          - kind
-          - meta
-          - data
-        properties:
-          kind:
-            type: string
-          meta:
-            $ref: '#/components/schemas/ResourceMeta'
-          data:
-            $ref: '#/components/schemas/Resource'
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceItem
+        meta:
+          $ref: '#/components/schemas/ResourceMeta'
+        data:
+          $ref: '#/components/schemas/Resource'
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
@@ -3534,11 +3649,28 @@ components:
       name: disable_rollback
       schema:
         type: boolean
+    inQueryEvaluate:
+      in: query
+      name: evaluate
+      schema:
+        type: boolean
+        description: Dereference, scope and convert the keyword raw value.
     inQueryForce:
       in: query
       name: force
       schema:
         type: boolean
+    inQueryImpersonate:
+      in: query
+      name: impersonate
+      schema:
+        type: string
+        description: The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
+    inQueryKeyword:
+      in: query
+      name: kw
+      schema:
+        type: string
     inQueryKeywords:
       in: query
       name: kw

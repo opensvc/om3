@@ -18,6 +18,56 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for InstanceItemKind.
+const (
+	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
+)
+
+// Defines values for InstanceListKind.
+const (
+	InstanceListKindInstanceList InstanceListKind = "InstanceList"
+)
+
+// Defines values for KeywordItemKind.
+const (
+	KeywordItemKindKeywordItem KeywordItemKind = "KeywordItem"
+)
+
+// Defines values for KeywordListKind.
+const (
+	KeywordListKindKeywordList KeywordListKind = "KeywordList"
+)
+
+// Defines values for NetworkIpListKind.
+const (
+	NetworkIpListKindNetworkIpList NetworkIpListKind = "NetworkIpList"
+)
+
+// Defines values for NetworkListKind.
+const (
+	NetworkListKindNetworkList NetworkListKind = "NetworkList"
+)
+
+// Defines values for NodeItemKind.
+const (
+	NodeItemKindNodeItem NodeItemKind = "NodeItem"
+)
+
+// Defines values for NodeListKind.
+const (
+	NodeListKindNodeList NodeListKind = "NodeList"
+)
+
+// Defines values for ObjectItemKind.
+const (
+	ObjectItemKindObjectItem ObjectItemKind = "ObjectItem"
+)
+
+// Defines values for ObjectListKind.
+const (
+	ObjectListKindObjectList ObjectListKind = "ObjectList"
+)
+
 // Defines values for Orchestrate.
 const (
 	OrchestrateHa    Orchestrate = "ha"
@@ -44,6 +94,16 @@ const (
 	PlacementStateUndef      PlacementState = "undef"
 )
 
+// Defines values for PoolListKind.
+const (
+	PoolListKindPoolList PoolListKind = "PoolList"
+)
+
+// Defines values for PoolVolumeListKind.
+const (
+	PoolVolumeListKindPoolVolumeList PoolVolumeListKind = "PoolVolumeList"
+)
+
 // Defines values for PostDaemonLogsControlLevel.
 const (
 	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
@@ -68,6 +128,16 @@ const (
 	ProvisionedMixed Provisioned = "mixed"
 	ProvisionedNa    Provisioned = "n/a"
 	ProvisionedTrue  Provisioned = "true"
+)
+
+// Defines values for ResourceItemKind.
+const (
+	ResourceItemKindResourceItem ResourceItemKind = "ResourceItem"
+)
+
+// Defines values for ResourceListKind.
+const (
+	ResourceListKindResourceList ResourceListKind = "ResourceList"
 )
 
 // Defines values for Role.
@@ -267,19 +337,25 @@ type InstanceConfig = instance.Config
 
 // InstanceItem defines model for InstanceItem.
 type InstanceItem struct {
-	Data Instance     `json:"data"`
-	Kind string       `json:"kind"`
-	Meta InstanceMeta `json:"meta"`
+	Data Instance         `json:"data"`
+	Kind InstanceItemKind `json:"kind"`
+	Meta InstanceMeta     `json:"meta"`
 }
+
+// InstanceItemKind defines model for InstanceItem.Kind.
+type InstanceItemKind string
 
 // InstanceItems defines model for InstanceItems.
 type InstanceItems = []InstanceItem
 
 // InstanceList defines model for InstanceList.
 type InstanceList struct {
-	Items InstanceItems `json:"items"`
-	Kind  string        `json:"kind"`
+	Items InstanceItems    `json:"items"`
+	Kind  InstanceListKind `json:"kind"`
 }
+
+// InstanceListKind defines model for InstanceList.Kind.
+type InstanceListKind string
 
 // InstanceMap defines model for InstanceMap.
 type InstanceMap map[string]Instance
@@ -295,6 +371,37 @@ type InstanceMonitor = instance.Monitor
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
+
+// KeywordItem defines model for KeywordItem.
+type KeywordItem struct {
+	Data any             `json:"data"`
+	Kind KeywordItemKind `json:"kind"`
+	Meta KeywordMeta     `json:"meta"`
+}
+
+// KeywordItemKind defines model for KeywordItem.Kind.
+type KeywordItemKind string
+
+// KeywordItems defines model for KeywordItems.
+type KeywordItems = []KeywordItem
+
+// KeywordList defines model for KeywordList.
+type KeywordList struct {
+	Items KeywordItems    `json:"items"`
+	Kind  KeywordListKind `json:"kind"`
+}
+
+// KeywordListKind defines model for KeywordList.Kind.
+type KeywordListKind string
+
+// KeywordMeta defines model for KeywordMeta.
+type KeywordMeta struct {
+	EvaluatedAs string `json:"evaluated_as"`
+	IsEvaluated bool   `json:"is_evaluated"`
+	Keyword     string `json:"keyword"`
+	Node        string `json:"node"`
+	Object      string `json:"object"`
+}
 
 // Kind defines model for Kind.
 type Kind = naming.Kind
@@ -327,9 +434,12 @@ type NetworkIpItems = []NetworkIp
 
 // NetworkIpList defines model for NetworkIpList.
 type NetworkIpList struct {
-	Items NetworkIpItems `json:"items"`
-	Kind  string         `json:"kind"`
+	Items NetworkIpItems    `json:"items"`
+	Kind  NetworkIpListKind `json:"kind"`
 }
+
+// NetworkIpListKind defines model for NetworkIpList.Kind.
+type NetworkIpListKind string
 
 // NetworkIpNetwork defines model for NetworkIpNetwork.
 type NetworkIpNetwork struct {
@@ -343,9 +453,12 @@ type NetworkItems = []Network
 
 // NetworkList defines model for NetworkList.
 type NetworkList struct {
-	Items NetworkItems `json:"items"`
-	Kind  string       `json:"kind"`
+	Items NetworkItems    `json:"items"`
+	Kind  NetworkListKind `json:"kind"`
 }
+
+// NetworkListKind defines model for NetworkList.Kind.
+type NetworkListKind string
 
 // Node defines model for Node.
 type Node struct {
@@ -376,10 +489,13 @@ type NodeInfo struct {
 
 // NodeItem defines model for NodeItem.
 type NodeItem struct {
-	Data Node     `json:"data"`
-	Kind string   `json:"kind"`
-	Meta NodeMeta `json:"meta"`
+	Data Node         `json:"data"`
+	Kind NodeItemKind `json:"kind"`
+	Meta NodeMeta     `json:"meta"`
 }
+
+// NodeItemKind defines model for NodeItem.Kind.
+type NodeItemKind string
 
 // NodeItems defines model for NodeItems.
 type NodeItems = []NodeItem
@@ -395,9 +511,12 @@ type NodeLabel struct {
 
 // NodeList defines model for NodeList.
 type NodeList struct {
-	Items NodeItems `json:"items"`
-	Kind  string    `json:"kind"`
+	Items NodeItems    `json:"items"`
+	Kind  NodeListKind `json:"kind"`
 }
+
+// NodeListKind defines model for NodeList.Kind.
+type NodeListKind string
 
 // NodeMeta defines model for NodeMeta.
 type NodeMeta struct {
@@ -457,19 +576,25 @@ type ObjectFile struct {
 
 // ObjectItem defines model for ObjectItem.
 type ObjectItem struct {
-	Data ObjectData `json:"data"`
-	Kind string     `json:"kind"`
-	Meta ObjectMeta `json:"meta"`
+	Data ObjectData     `json:"data"`
+	Kind ObjectItemKind `json:"kind"`
+	Meta ObjectMeta     `json:"meta"`
 }
+
+// ObjectItemKind defines model for ObjectItem.Kind.
+type ObjectItemKind string
 
 // ObjectItems defines model for ObjectItems.
 type ObjectItems = []ObjectItem
 
 // ObjectList defines model for ObjectList.
 type ObjectList struct {
-	Items ObjectItems `json:"items"`
-	Kind  string      `json:"kind"`
+	Items ObjectItems    `json:"items"`
+	Kind  ObjectListKind `json:"kind"`
 }
+
+// ObjectListKind defines model for ObjectList.Kind.
+type ObjectListKind string
 
 // ObjectMeta defines model for ObjectMeta.
 type ObjectMeta struct {
@@ -511,9 +636,12 @@ type PoolItems = []Pool
 
 // PoolList defines model for PoolList.
 type PoolList struct {
-	Items PoolItems `json:"items"`
-	Kind  string    `json:"kind"`
+	Items PoolItems    `json:"items"`
+	Kind  PoolListKind `json:"kind"`
 }
+
+// PoolListKind defines model for PoolList.Kind.
+type PoolListKind string
 
 // PoolVolume defines model for PoolVolume.
 type PoolVolume struct {
@@ -529,9 +657,12 @@ type PoolVolumeItems = []PoolVolume
 
 // PoolVolumeList defines model for PoolVolumeList.
 type PoolVolumeList struct {
-	Items PoolVolumeItems `json:"items"`
-	Kind  string          `json:"kind"`
+	Items PoolVolumeItems    `json:"items"`
+	Kind  PoolVolumeListKind `json:"kind"`
 }
+
+// PoolVolumeListKind defines model for PoolVolumeList.Kind.
+type PoolVolumeListKind string
 
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
@@ -628,19 +759,25 @@ type ResourceConfig = instance.ResourceConfig
 
 // ResourceItem defines model for ResourceItem.
 type ResourceItem struct {
-	Data Resource     `json:"data"`
-	Kind string       `json:"kind"`
-	Meta ResourceMeta `json:"meta"`
+	Data Resource         `json:"data"`
+	Kind ResourceItemKind `json:"kind"`
+	Meta ResourceMeta     `json:"meta"`
 }
+
+// ResourceItemKind defines model for ResourceItem.Kind.
+type ResourceItemKind string
 
 // ResourceItems defines model for ResourceItems.
 type ResourceItems = []ResourceItem
 
 // ResourceList defines model for ResourceList.
 type ResourceList struct {
-	Items ResourceItems `json:"items"`
-	Kind  string        `json:"kind"`
+	Items ResourceItems    `json:"items"`
+	Kind  ResourceListKind `json:"kind"`
 }
+
+// ResourceListKind defines model for ResourceList.Kind.
+type ResourceListKind string
 
 // ResourceLog defines model for ResourceLog.
 type ResourceLog = []ResourceLogEntry
@@ -789,8 +926,14 @@ type InPathNamespace = string
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
+// InQueryEvaluate Dereference, scope and convert the keyword raw value.
+type InQueryEvaluate = bool
+
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
+
+// InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
+type InQueryImpersonate = string
 
 // InQueryKeywordOps defines model for inQueryKeywordOps.
 type InQueryKeywordOps = []string
@@ -1091,6 +1234,13 @@ type GetObjectConfigParams struct {
 
 	// Impersonate impersonate the evaluation as node
 	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// GetObjectConfigGetParams defines parameters for GetObjectConfigGet.
+type GetObjectConfigGetParams struct {
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
 // PostObjectConfigSetParams defines parameters for PostObjectConfigSet.
