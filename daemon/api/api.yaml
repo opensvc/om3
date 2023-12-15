@@ -3637,6 +3637,7 @@ components:
       required: true
       schema:
         type: string
+        example: test
     inPathKind:
       in: path
       name: kind
