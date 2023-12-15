@@ -28,6 +28,7 @@ type (
 		DeleteSection(context.Context, ...string) error
 		Delete(context.Context) error
 		Set(context.Context, ...keyop.T) error
+		Update(context.Context, []string, []key.T, []keyop.T) error
 		Unset(context.Context, ...key.T) error
 		Doc(string, string) (string, error)
 		DriverDoc(string) (string, error)
