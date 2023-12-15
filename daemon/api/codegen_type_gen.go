@@ -928,6 +928,9 @@ type InPathName = string
 // InPathNamespace defines model for inPathNamespace.
 type InPathNamespace = string
 
+// InPathNodeName defines model for inPathNodeName.
+type InPathNodeName = string
+
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
@@ -1218,6 +1221,13 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
+type GetNodeConfigGetParams struct {
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.

@@ -560,6 +560,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/config/get:
+    get:
+      operationId: GetNodeConfigGet
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Get or evaluate a keyword in the node configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -3646,6 +3676,13 @@ components:
       schema:
         type: string
         example: test
+    inPathNodeName:
+      in: path
+      name: nodename
+      required: true
+      schema:
+        type: string
+        example: node1
     inPathKind:
       in: path
       name: kind
