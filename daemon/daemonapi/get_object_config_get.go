@@ -74,12 +74,12 @@ func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 				if i, err := oc.EvalAs(kw, evaluatedAs); err != nil {
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
 				} else {
-					item.Data = i
+					item.Data.Value = i
 					r.Items = append(r.Items, item)
 				}
 			} else {
 				i := oc.Config().Get(kw)
-				item.Data = i
+				item.Data.Value = i
 				r.Items = append(r.Items, item)
 			}
 		}
@@ -98,5 +98,5 @@ func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 		}
 	}
 
-	return nil
+	return ctx.JSON(http.StatusOK, r)
 }

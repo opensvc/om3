@@ -1064,7 +1064,7 @@ func newCmdNodeEval() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagImpersonate(flags, &options.Impersonate)
-	addFlagKeyword(flags, &options.Keyword)
+	addFlagKeywords(flags, &options.Keywords)
 	cmd.MarkFlagRequired("kw")
 	return cmd
 }
@@ -1118,7 +1118,8 @@ func newCmdNodeGet() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagEval(flags, &options.Eval)
-	addFlagKeyword(flags, &options.Keyword)
+	addFlagImpersonate(flags, &options.Impersonate)
+	addFlagKeywords(flags, &options.Keywords)
 	return cmd
 }
 
@@ -2019,7 +2020,7 @@ func newCmdObjectEval(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagKeyword(flags, &options.Keyword)
+	addFlagKeywords(flags, &options.Keywords)
 	addFlagImpersonate(flags, &options.Impersonate)
 	cmd.MarkFlagRequired("kw")
 	return cmd
@@ -2052,7 +2053,8 @@ func newCmdObjectGet(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagEval(flags, &options.Eval)
-	addFlagKeyword(flags, &options.Keyword)
+	addFlagImpersonate(flags, &options.Impersonate)
+	addFlagKeywords(flags, &options.Keywords)
 	return cmd
 }
 

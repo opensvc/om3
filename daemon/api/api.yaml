@@ -2516,6 +2516,14 @@ components:
         meta:
           $ref: '#/components/schemas/KeywordMeta'
         data:
+          $ref: '#/components/schemas/KeywordData'
+
+    KeywordData:
+      type: object
+      required:
+        - value
+      properties:
+        value:
           x-go-type: any
 
     KeywordMeta:

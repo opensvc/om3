@@ -372,9 +372,14 @@ type InstanceMonitor = instance.Monitor
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
 
+// KeywordData defines model for KeywordData.
+type KeywordData struct {
+	Value any `json:"value"`
+}
+
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
-	Data any             `json:"data"`
+	Data KeywordData     `json:"data"`
 	Kind KeywordItemKind `json:"kind"`
 	Meta KeywordMeta     `json:"meta"`
 }

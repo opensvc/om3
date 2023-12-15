@@ -12,8 +12,9 @@ type (
 	CmdNodeGet struct {
 		OptsGlobal
 		OptsLock
-		Eval    bool
-		Keyword string
+		Eval        bool
+		Impersonate string
+		Keywords    []string
 	}
 )
 
@@ -21,14 +22,9 @@ func (t *CmdNodeGet) Run() error {
 	return nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("get"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw": t.Keyword,
-		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
@@ -37,12 +33,18 @@ func (t *CmdNodeGet) Run() error {
 			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			if t.Eval {
-				return n.Eval(ctx, t.Keyword)
-			} else {
-				return n.Get(ctx, t.Keyword)
+			for _, s := range t.Keywords {
+				if t.Eval {
+					if t.Impersonate != "" {
+						return n.EvalAs(ctx, s, t.Impersonate)
+					} else {
+						return n.Eval(ctx, s)
+					}
+				} else {
+					return n.Get(ctx, s)
+				}
 			}
-
+			return nil, nil
 		}),
 	).Do()
 }

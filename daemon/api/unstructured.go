@@ -36,6 +36,29 @@ func (t InstanceItem) Unstructured() map[string]any {
 	}
 }
 
+func (t KeywordItem) Unstructured() map[string]any {
+	return map[string]any{
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t KeywordData) Unstructured() any {
+	return map[string]any{
+		"value": t.Value,
+	}
+}
+
+func (t KeywordMeta) Unstructured() map[string]any {
+	return map[string]any{
+		"node":         t.Node,
+		"object":       t.Object,
+		"keyword":      t.Keyword,
+		"is_evaluated": t.IsEvaluated,
+		"evaluated_as": t.EvaluatedAs,
+	}
+}
+
 func (t ObjectItem) Unstructured() map[string]any {
 	return map[string]any{
 		"meta": t.Meta.Unstructured(),
