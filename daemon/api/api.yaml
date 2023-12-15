@@ -3679,7 +3679,7 @@ components:
         items:
           type: string
           description: A keyword to remove.
-          example: orchestrate, env.unwanted
+          example: env.unwanted
     inQueryKeywordOps:
       in: query
       name: kw
@@ -3688,7 +3688,7 @@ components:
         items:
           type: string
           description: An operation and value to do on a keyword.
-          example: orchestrate=ha, env.unwanted=removeMe
+          example: env.unwanted=removeMe
     inQueryNoLock:
       in: query
       name: no_lock
