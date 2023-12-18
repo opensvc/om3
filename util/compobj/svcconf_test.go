@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/user"
+	"testing"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/stretchr/testify/require"
-	"os"
-	"os/user"
-	"testing"
 )
 
 func TestSvcconfAdd(t *testing.T) {
@@ -284,7 +285,7 @@ func TestSvcconfCheckRuleFixRule(t *testing.T) {
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
 			require.Equal(t, ExitOk, obj.fixRule(c.rule))
 			require.Equal(t, ExitOk, obj.checkRule(c.rule))
-			require.NoError(t, s.Config().DeleteSections([]string{"app#0", "app#1", "container#0", "container#1"}))
+			require.NoError(t, s.Config().DeleteSections("app#0", "app#1", "container#0", "container#1"))
 			fmt.Println(s.Config().SectionStrings())
 		})
 	}

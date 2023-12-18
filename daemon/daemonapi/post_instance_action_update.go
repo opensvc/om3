@@ -11,24 +11,22 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostInstanceActionSet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSetParams) error {
-	log := LogHandler(ctx, "PostInstanceActionSet")
+func (a *DaemonApi) PostInstanceActionUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUpdateParams) error {
+	log := LogHandler(ctx, "PostInstanceActionUpdate")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
 		return err
-	}
-
-	if params.Kw == nil {
-		return nil
 	}
 
 	if isRoot, err := assertGrant(ctx, rbac.GrantRoot); err != nil {
 		return err
 	} else if !isRoot {
 		// Non-root is not allowed to set dangerous keywords.
-		for _, op := range *params.Kw {
-			if err := keyopStringRbac(op); err != nil {
-				return JSONProblemf(ctx, http.StatusUnauthorized, "Unauthorized keyword", "%s", err)
+		if params.Set != nil {
+			for _, op := range *params.Set {
+				if err := keyopStringRbac(op); err != nil {
+					return JSONProblemf(ctx, http.StatusUnauthorized, "Unauthorized keyword", "%s", err)
+				}
 			}
 		}
 	}
@@ -40,9 +38,21 @@ func (a *DaemonApi) PostInstanceActionSet(ctx echo.Context, namespace string, ki
 	}
 	log = naming.LogWithPath(log, p)
 
-	args := []string{p.String(), "set", "--local"}
-	for _, kw := range *params.Kw {
-		args = append(args, "--kw", kw)
+	args := []string{p.String(), "update", "--local"}
+	if params.Delete != nil {
+		for _, kw := range *params.Delete {
+			args = append(args, "--delete", kw)
+		}
+	}
+	if params.Unset != nil {
+		for _, kw := range *params.Unset {
+			args = append(args, "--unset", kw)
+		}
+	}
+	if params.Set != nil {
+		for _, kw := range *params.Set {
+			args = append(args, "--set", kw)
+		}
 	}
 	if params.WaitLock != nil {
 		args = append(args, "--waitlock", *params.WaitLock)

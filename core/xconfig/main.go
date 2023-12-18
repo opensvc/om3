@@ -433,25 +433,24 @@ func (t *T) GetSizeStrict(k key.T) (*int64, error) {
 	}
 }
 
-// Unset deletes keys and returns the number of deleted keys
-func (t *T) Unset(ks ...key.T) int {
-	deleted := 0
+// PrepareUnset unsets keywords from config without committing changes.
+func (t *T) PrepareUnset(ks ...key.T) error {
 	for _, k := range ks {
 		if !t.file.Section(k.Section).HasKey(k.Option) {
 			continue
 		}
 		t.file.Section(k.Section).DeleteKey(k.Option)
-		deleted += 1
 		t.changed = true
 	}
-	return deleted
+	return nil
 }
 
-// prepareUnset unsets keywords from config without committing changes.
-// The returned needCommit bool indicates that changes exists so commit
-// will be required to make changes persistent.
-func (t *T) prepareUnset(ks ...key.T) bool {
-	return t.Unset(ks...) > 0
+// Unset deletes keys and commits.
+func (t *T) Unset(ks ...key.T) error {
+	if err := t.PrepareUnset(ks...); err != nil {
+		return err
+	}
+	return t.Commit()
 }
 
 func (t *T) Set(op keyop.T) error {
@@ -551,6 +550,7 @@ func (t *T) set(op keyop.T) error {
 		target = append(target, op.Value)
 		target = append(target, current[op.Index:]...)
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
+		t.changed = true
 		return nil
 	}
 
@@ -1212,101 +1212,81 @@ func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error
 	return t.rawCommit(configData, configPath, false)
 }
 
-// DeleteSections removes sections from config and commit when changes
-func (t *T) DeleteSections(sections []string) error {
-	needCommit, err := t.prepareDeleteSections(sections)
-	if err != nil {
+// DeleteSections deletes sections from the config and commit changes
+func (t *T) DeleteSections(sections ...string) error {
+	if err := t.PrepareDeleteSections(sections...); err != nil {
 		return err
 	}
-	if needCommit {
-		return t.Commit()
-	}
-	return nil
+	return t.Commit()
 }
 
-// prepareDeleteSections removes sections from config without committing changes.
-// The returned needCommit bool indicates that changes exists so commit
-// will be required to make changes persistent.
-func (t *T) prepareDeleteSections(sections []string) (needCommit bool, err error) {
+// PrepareDeleteSections deletes sections from the config without committing changes.
+func (t *T) PrepareDeleteSections(sections ...string) error {
 	for _, section := range sections {
 		if _, err := t.file.GetSection(section); err != nil {
 			continue
 		}
 		t.file.DeleteSection(section)
-		needCommit = true
-	}
-	if needCommit {
 		t.changed = true
 	}
-	return
+	return nil
 }
 
 func (t T) ModTime() time.Time {
 	return file.ModTime(t.ConfigFilePath)
 }
 
+// SetKeys applies key operations to config and commit changes.
 func (t *T) SetKeys(kops ...keyop.T) error {
-	if needCommit, err := t.prepareSetKeys(kops...); err != nil {
+	if err := t.PrepareSetKeys(kops...); err != nil {
 		return err
-	} else if needCommit {
-		return t.Commit()
+	}
+	return t.Commit()
+}
+
+// PrepareSetKeys applies key operations to config without committing changes.
+func (t *T) PrepareSetKeys(kops ...keyop.T) error {
+	for _, op := range kops {
+		if op.IsZero() {
+			return fmt.Errorf("invalid set expression: %s", op)
+		}
+		if err := t.Set(op); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// prepareSetKeys applies key operations to config without committing changes.
-// The returned needCommit bool indicates that changes exists so commit
-// will be required to make changes persistent.
-func (t *T) prepareSetKeys(kops ...keyop.T) (needCommit bool, err error) {
-	for _, op := range kops {
-		if op.IsZero() {
-			err = fmt.Errorf("invalid set expression: %s", op)
-			return
-		}
-		oldValue := t.Get(op.Key)
-		if err = t.Set(op); err != nil {
-			return
-		}
-		newValue := t.Get(op.Key)
-		if oldValue != newValue {
-			needCommit = true
-		}
-	}
-	return
-}
-
-// Update groups configuration changes into one commit.
-//
-// The configuration changes are executed in the following order:
+// PrepareUpdate applies:
 //
 //	1- delete sections
 //	2- unset keywords
 //	3- apply key operations
 //
-// The commit is skipped if nothing changes
-func (t *T) Update(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T) error {
-	var (
-		err        error
-		needCommit bool
-	)
-	if len(deleteSections) > 0 {
-		needCommit, err = t.prepareDeleteSections(deleteSections)
-		if err != nil {
-			return err
-		}
+// without committing changes.
+func (t *T) PrepareUpdate(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T) error {
+	if err := t.PrepareDeleteSections(deleteSections...); err != nil {
+		return err
 	}
-	if len(unsetKeys) > 0 {
-		needCommit = t.prepareUnset(unsetKeys...)
+	if err := t.PrepareUnset(unsetKeys...); err != nil {
+		return err
 	}
-	if len(keyOps) > 0 {
-		needCommit, err = t.prepareSetKeys(keyOps...)
-		if err != nil {
-			return err
-		}
-	}
-
-	if needCommit {
-		return t.Commit()
+	if err := t.PrepareSetKeys(keyOps...); err != nil {
+		return err
 	}
 	return nil
+}
+
+// Update applies:
+//
+//	1- delete sections
+//	2- unset keywords
+//	3- apply key operations
+//
+// and commit changes.
+func (t *T) Update(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T) error {
+	if err := t.PrepareUpdate(deleteSections, unsetKeys, keyOps); err != nil {
+		return err
+	}
+	return t.Commit()
 }

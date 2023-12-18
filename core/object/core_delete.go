@@ -24,7 +24,7 @@ func (t core) DeleteSection(ctx context.Context, rids ...string) error {
 		return err
 	}
 	defer unlock()
-	return t.config.DeleteSections(rids)
+	return t.config.DeleteSections(rids...)
 }
 
 func (t core) Delete(ctx context.Context) error {

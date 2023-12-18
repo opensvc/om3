@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
@@ -200,23 +201,16 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 		return ExitNok
 	}
 	if rule.Op == "unset" {
-		n.Config().Unset(key.Parse(rule.Key))
-		err = n.Config().Commit()
-		if err != nil {
-			t.Errorf("error when trying to commit the unset for the rule %s\n", rule)
+		if err := n.Config().Unset(key.Parse(rule.Key)); err != nil {
+			t.Errorf("error when trying to unset for the rule %s\n", rule)
 			return ExitNok
 		}
 		return ExitOk
 	}
-	if err := n.Config().Set(*keyop.Parse(rule.Key + "=" + rule.Value.(string))); err != nil {
+	if err := n.Config().SetKeys(*keyop.Parse(rule.Key + "=" + rule.Value.(string))); err != nil {
 		t.Errorf("error when trying to set the rule: %s\n", err)
 		return ExitNok
 	}
-	if err = n.Config().Commit(); err != nil {
-		t.Errorf("error when trying to commit the rule: %s\n", err)
-		return ExitNok
-	}
-
 	return ExitOk
 }
 

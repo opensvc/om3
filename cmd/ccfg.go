@@ -32,6 +32,7 @@ func init() {
 		newCmdObjectMonitor(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
+		newCmdObjectUpdate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

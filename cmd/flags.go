@@ -303,6 +303,18 @@ func addFlagTarget(flagSet *pflag.FlagSet, p *[]string) {
 	flagSet.StringSliceVar(p, "target", []string{}, "The peers to sync to. The value can be either nodes or drpnodes. If not set, all nodes and drpnodes are synchronized.")
 }
 
+func addFlagUpdateDelete(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "delete", []string{}, "Configuration section to delete.")
+}
+
+func addFlagUpdateSet(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "set", []string{}, "A keyword operation to apply to the configuration.")
+}
+
+func addFlagUpdateUnset(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "unset", []string{}, "A keyword to unset from the configuration.")
+}
+
 func addFlagUpTo(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "upto", "", "Start up to the specified rid or driver group.")
 	flagSet.Lookup("upto").Deprecated = "Use --to."

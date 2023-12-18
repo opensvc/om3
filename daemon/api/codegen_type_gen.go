@@ -931,6 +931,9 @@ type InPathNamespace = string
 // InPathNodeName defines model for inPathNodeName.
 type InPathNodeName = string
 
+// InQueryDeletes defines model for inQueryDeletes.
+type InQueryDeletes = []string
+
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
@@ -961,6 +964,9 @@ type InQueryRequesterSid = openapi_types.UUID
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
 
+// InQuerySets defines model for inQuerySets.
+type InQuerySets = []string
+
 // InQuerySubset defines model for inQuerySubset.
 type InQuerySubset = string
 
@@ -969,6 +975,9 @@ type InQueryTag = string
 
 // InQueryTo defines model for inQueryTo.
 type InQueryTo = string
+
+// InQueryUnsets defines model for inQueryUnsets.
+type InQueryUnsets = []string
 
 // InQueryWaitLock defines model for inQueryWaitLock.
 type InQueryWaitLock = string
@@ -1156,6 +1165,16 @@ type PostInstanceActionUnsetParams struct {
 	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
 }
 
+// PostInstanceActionUpdateParams defines parameters for PostInstanceActionUpdate.
+type PostInstanceActionUpdateParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Delete       *InQueryDeletes      `form:"delete,omitempty" json:"delete,omitempty"`
+	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
+	Set          *InQuerySets         `form:"set,omitempty" json:"set,omitempty"`
+	Unset        *InQueryUnsets       `form:"unset,omitempty" json:"unset,omitempty"`
+	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter
@@ -1258,14 +1277,11 @@ type GetObjectConfigGetParams struct {
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
-// PostObjectConfigSetParams defines parameters for PostObjectConfigSet.
-type PostObjectConfigSetParams struct {
-	Kw *InQueryKeywordOps `form:"kw,omitempty" json:"kw,omitempty"`
-}
-
-// PostObjectConfigUnsetParams defines parameters for PostObjectConfigUnset.
-type PostObjectConfigUnsetParams struct {
-	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
+// PostObjectConfigUpdateParams defines parameters for PostObjectConfigUpdate.
+type PostObjectConfigUpdateParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
 // GetPoolsParams defines parameters for GetPools.

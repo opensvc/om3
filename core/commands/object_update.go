@@ -12,18 +12,21 @@ import (
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
-	CmdObjectSet struct {
+	CmdObjectUpdate struct {
 		OptsGlobal
 		OptsLock
-		KeywordOps []string
+		Delete []string
+		Set    []string
+		Unset  []string
 	}
 )
 
-func (t *CmdObjectSet) Run(selector, kind string) error {
+func (t *CmdObjectUpdate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local || (t.NodeSelector != "") {
 		return t.doObjectAction(mergedSelector)
@@ -39,7 +42,9 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 	}
 	for _, p := range paths {
 		params := api.PostObjectConfigUpdateParams{}
-		params.Set = &t.KeywordOps
+		params.Set = &t.Set
+		params.Unset = &t.Unset
+		params.Delete = &t.Delete
 		response, err := c.PostObjectConfigUpdateWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
@@ -62,7 +67,7 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectSet) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectUpdate) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
@@ -75,7 +80,7 @@ func (t *CmdObjectSet) doObjectAction(mergedSelector string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSetParams{}
+			params := api.PostInstanceActionUpdateParams{}
 			if t.OptsLock.Disable {
 				v := true
 				params.NoLock = &v
@@ -87,9 +92,11 @@ func (t *CmdObjectSet) doObjectAction(mergedSelector string) error {
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
-				params.Kw = &t.KeywordOps
+				params.Set = &t.Set
+				params.Unset = &t.Unset
+				params.Delete = &t.Delete
 			}
-			response, err := c.PostInstanceActionSetWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -113,7 +120,7 @@ func (t *CmdObjectSet) doObjectAction(mergedSelector string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			return nil, o.Set(ctx, keyop.ParseOps(t.KeywordOps)...)
+			return nil, o.Update(ctx, t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set))
 		}),
 	).Do()
 }
