@@ -27,12 +27,32 @@ const (
 	PathNfsSeparator = ':'
 )
 
+// Has return True when {dev} is mounted on {mnt} using the findmnt command
 func Has(dev string, mnt string) (bool, error) {
 	l, err := List(dev, mnt)
 	if err != nil {
 		return false, err
 	}
 	return len(l) > 0, nil
+}
+
+// HasFromMount return True when {dev} is mounted on {mnt} using the mount command
+func HasFromMount(dev string, mnt string) (bool, error) {
+	cmd := mountCmd()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, err
+	}
+	split := strings.Split(string(output), "\n")
+	for _, line := range split {
+		elems := strings.Split(line, " ")
+		if len(elems) >= 3 {
+			if elems[0] == dev && elems[2] == mnt {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func newInfo() *info {
