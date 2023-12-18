@@ -3,6 +3,7 @@ package imon
 import (
 	"bytes"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -422,29 +423,33 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 }
 
 func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
-	sendError := func(err error) {
-		if c.Err != nil {
-			c.Err <- err
-		}
+	var (
+		// errs joins doState, doGlobalExpect and doLocalExpect errors
+		errs error
+	)
+
+	addError := func(err error) {
+		errs = errors.Join(errs, err)
 	}
+
 	doState := func() {
 		if c.Value.State == nil {
 			return
 		}
 		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
-			sendError(err)
+			addError(err)
 			o.log.Warnf("set instance monitor: %s", err)
 			return
 		}
 		if *c.Value.State == instance.MonitorStateZero {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
-			sendError(err)
+			addError(err)
 			return
 		}
 		if o.state.State == *c.Value.State {
 			err := fmt.Errorf("%w: %s", instance.ErrSameState, *c.Value.State)
-			sendError(err)
+			addError(err)
 			o.log.Infof("set instance monitor: %s", err)
 			return
 		}
@@ -467,14 +472,14 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
-			sendError(err)
+			addError(err)
 			o.log.Warnf("set instance monitor: %s", err)
 			globalExpectRefused()
 			return
 		}
 		if o.state.OrchestrationId != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
 			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, o.state.GlobalExpect, o.state.OrchestrationId)
-			sendError(err)
+			addError(err)
 			return
 		}
 		switch *c.Value.GlobalExpect {
@@ -486,7 +491,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				dst := o.nextPlacedAtCandidate()
 				if dst == "" {
 					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could be selected from candidates", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
-					sendError(err)
+					addError(err)
 					o.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return
@@ -498,14 +503,14 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				can, err := o.nextPlacedAtCandidates(want)
 				if err != nil {
 					err2 := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want, err)
-					sendError(err2)
+					addError(err2)
 					o.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return
 				}
 				if can == "" {
 					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want)
-					sendError(err)
+					addError(err)
 					o.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return
@@ -518,7 +523,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
 				err := fmt.Errorf("%w: daemon: imon: %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, reason)
-				sendError(err)
+				addError(err)
 				o.log.Infof("set instance monitor %s", o.path, err)
 				globalExpectRefused()
 				return
@@ -536,7 +541,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 			if instMon.GlobalExpectUpdatedAt.After(o.state.GlobalExpectUpdatedAt) {
 				err := fmt.Errorf("%w: daemon: imon: %s: more recent value %s on node %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, instMon.GlobalExpect, node)
-				sendError(err)
+				addError(err)
 				o.log.Infof("set instance monitor: %s", o.path, err)
 				globalExpectRefused()
 				return
@@ -567,14 +572,14 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorLocalExpectShutdown:
 		default:
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
-			sendError(err)
+			addError(err)
 			o.log.Warnf("set instance monitor: %s", err)
 			return
 		}
 		target := *c.Value.LocalExpect
 		if o.state.LocalExpect == target {
 			err := fmt.Errorf("%w: %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
-			sendError(err)
+			addError(err)
 			o.log.Infof("set instance monitor: %s", err)
 			return
 		}
@@ -588,7 +593,9 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	doLocalExpect()
 
 	// inform the publisher we're done sending errors
-	sendError(nil)
+	if c.Err != nil {
+		c.Err <- errs
+	}
 
 	if o.change {
 		if o.state.OrchestrationId.String() != c.Value.CandidateOrchestrationId.String() {
