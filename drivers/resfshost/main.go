@@ -190,6 +190,9 @@ func (t *T) devpath() string {
 	if t.fs().IsVirtual() {
 		return "none"
 	}
+	if t.hasMountOption("loop") {
+		return t.Device
+	}
 	if p, err := vpath.HostDevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
