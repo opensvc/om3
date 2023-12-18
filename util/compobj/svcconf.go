@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"regexp"
+	"strings"
+
 	"github.com/goccy/go-json"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
-	"os"
-	"regexp"
-	"strings"
 )
 
 type (
@@ -330,12 +331,15 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 		}
 		_, _, variable := t.getKeyParts(rule)
 		if rule.Op == "unset" {
-			if i := o.Config().Unset(key.New(resourceName, variable)); i == 0 {
+			kw := key.New(resourceName, variable)
+			if err := o.Config().PrepareUnset(kw); err != nil {
+				t.Errorf("unset %s: %s", kw, err)
 				return e.Merge(ExitNok)
 			}
 		} else {
-			if err := o.Config().Set(*keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))); err != nil {
-				t.Errorf("%s", err)
+			kop := keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))
+			if err := o.Config().PrepareSetKeys(*kop); err != nil {
+				t.Errorf("set %s: %s", *kop, err)
 				e = e.Merge(ExitNok)
 				continue
 			}
