@@ -1,12 +1,13 @@
 package main
 
 import (
+	"os/user"
+	"testing"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
 	"github.com/stretchr/testify/require"
-	"os/user"
-	"testing"
 )
 
 func TestNodeConfAdd(t *testing.T) {
@@ -230,14 +231,11 @@ func TestNodeConfCheckRuleFixRule(t *testing.T) {
 			}
 			o, err := object.NewNode()
 			require.NoError(t, err)
-			for _, k := range c.keys {
-				require.NoError(t, o.Config().SetKeys(*keyop.Parse(k)))
-			}
+			require.NoError(t, o.Config().SetKeys(keyop.ParseList(c.keys...)...))
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
-			o.Config().Unset(key.New("section", "test"))
 			require.Equal(t, ExitOk, obj.fixRule(c.rule))
 			require.Equal(t, ExitOk, obj.checkRule(c.rule))
-			require.NoError(t, o.Config().Commit())
+			o.Config().Unset(key.New("section", "test"))
 		})
 	}
 }
