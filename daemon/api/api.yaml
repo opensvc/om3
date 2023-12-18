@@ -1051,6 +1051,43 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /instance/path/{namespace}/{kind}/{name}/action/update:
+    post:
+      operationId: PostInstanceActionUpdate
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the object instance configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryNoLock'
+        - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQueryWaitLock'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /instance/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
       operationId: PostInstanceActionUnfreeze

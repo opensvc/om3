@@ -1299,8 +1299,9 @@ func newCmdNodeRelayStatus() *cobra.Command {
 func newCmdNodeSet() *cobra.Command {
 	var options commands.CmdNodeSet
 	cmd := &cobra.Command{
-		Use:   "set",
-		Short: "set a configuration key value",
+		Use:    "set",
+		Short:  "set a configuration key value",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1348,8 +1349,9 @@ func newCmdNodeUnfreeze() *cobra.Command {
 func newCmdNodeUnset() *cobra.Command {
 	var options commands.CmdNodeUnset
 	cmd := &cobra.Command{
-		Use:   "unset",
-		Short: "unset configuration keywords or sections",
+		Use:    "unset",
+		Short:  "unset configuration keywords or sections",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2448,8 +2450,9 @@ func newCmdObjectRun(kind string) *cobra.Command {
 func newCmdObjectSet(kind string) *cobra.Command {
 	var options commands.CmdObjectSet
 	cmd := &cobra.Command{
-		Use:   "set",
-		Short: "set a configuration key value",
+		Use:    "set",
+		Short:  "set a configuration key value",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2678,11 +2681,32 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectUpdate
+	cmd := &cobra.Command{
+		Use:    "update",
+		Short:  "update configuration",
+		Long:   "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagUpdateDelete(flags, &options.Delete)
+	addFlagUpdateSet(flags, &options.Set)
+	addFlagUpdateUnset(flags, &options.Unset)
+	return cmd
+}
+
 func newCmdObjectUnset(kind string) *cobra.Command {
 	var options commands.CmdObjectUnset
 	cmd := &cobra.Command{
-		Use:   "unset",
-		Short: "unset configuration keywords or sections",
+		Use:    "unset",
+		Short:  "unset configuration keywords or sections",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},

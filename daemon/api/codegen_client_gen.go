@@ -174,6 +174,9 @@ type ClientInterface interface {
 	// PostInstanceActionUnset request
 	PostInstanceActionUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInstanceActionUpdate request
+	PostInstanceActionUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInstanceClear request
 	PostInstanceClear(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -656,6 +659,18 @@ func (c *Client) PostInstanceActionUnprovision(ctx context.Context, namespace In
 
 func (c *Client) PostInstanceActionUnset(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionUnsetRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceActionUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionUpdateRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3251,6 +3266,154 @@ func NewPostInstanceActionUnsetRequest(server string, namespace InPathNamespace,
 	return req, nil
 }
 
+// NewPostInstanceActionUpdateRequest generates requests for PostInstanceActionUpdate
+func NewPostInstanceActionUpdateRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/instance/path/%s/%s/%s/action/update", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Delete != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.NoLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "no_lock", runtime.ParamLocationQuery, *params.NoLock); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Set != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Unset != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.WaitLock != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "wait_lock", runtime.ParamLocationQuery, *params.WaitLock); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceClearRequest generates requests for PostInstanceClear
 func NewPostInstanceClearRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -5704,6 +5867,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceActionUnset request
 	PostInstanceActionUnsetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnsetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnsetResponse, error)
 
+	// PostInstanceActionUpdate request
+	PostInstanceActionUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUpdateResponse, error)
+
 	// PostInstanceClear request
 	PostInstanceClearWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
 
@@ -6521,6 +6687,31 @@ func (r PostInstanceActionUnsetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostInstanceActionUnsetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInstanceActionUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7901,6 +8092,15 @@ func (c *ClientWithResponses) PostInstanceActionUnsetWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParsePostInstanceActionUnsetResponse(rsp)
+}
+
+// PostInstanceActionUpdateWithResponse request returning *PostInstanceActionUpdateResponse
+func (c *ClientWithResponses) PostInstanceActionUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUpdateResponse, error) {
+	rsp, err := c.PostInstanceActionUpdate(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionUpdateResponse(rsp)
 }
 
 // PostInstanceClearWithResponse request returning *PostInstanceClearResponse
@@ -9602,6 +9802,53 @@ func ParsePostInstanceActionUnsetResponse(rsp *http.Response) (*PostInstanceActi
 	}
 
 	response := &PostInstanceActionUnsetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceActionUpdateResponse parses an HTTP response from a PostInstanceActionUpdateWithResponse call
+func ParsePostInstanceActionUpdateResponse(rsp *http.Response) (*PostInstanceActionUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

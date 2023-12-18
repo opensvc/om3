@@ -36,6 +36,7 @@ func init() {
 		newCmdObjectPurge(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
+		newCmdObjectUpdate(kind),
 		newCmdSecGenCert(kind),
 		newCmdSecPKCS(kind),
 	)

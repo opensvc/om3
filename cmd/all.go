@@ -63,6 +63,7 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
+		newCmdObjectUpdate(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceLs(kind),
