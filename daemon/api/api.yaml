@@ -1863,9 +1863,9 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /object/path/{namespace}/{kind}/{name}/config/set:
+  /object/path/{namespace}/{kind}/{name}/config/update:
     post:
-      operationId: PostObjectConfigSet
+      operationId: PostObjectConfigUpdate
       tags:
         - object / svc
         - object / vol
@@ -1880,37 +1880,9 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeywordOps'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /object/path/{namespace}/{kind}/{name}/config/unset:
-    post:
-      operationId: PostObjectConfigUnset
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Unset keywords in the object configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -3669,6 +3641,7 @@ components:
       required: true
       schema:
         type: string
+
     inPathNamespace:
       in: path
       name: namespace
@@ -3676,6 +3649,7 @@ components:
       schema:
         type: string
         example: test
+
     inPathNodeName:
       in: path
       name: nodename
@@ -3683,6 +3657,7 @@ components:
       schema:
         type: string
         example: node1
+
     inPathKind:
       in: path
       name: kind
@@ -3690,33 +3665,68 @@ components:
       schema:
         $ref: '#/components/schemas/Kind'
 
+    inQueryDeletes:
+      in: query
+      name: delete
+      schema:
+        type: array
+        items:
+          type: string
+          description: The name of a section to delete, without brackets.
+          example: task#unwanted
+
     inQueryDisableRollback:
       in: query
       name: disable_rollback
       schema:
         type: boolean
+
     inQueryEvaluate:
       in: query
       name: evaluate
       schema:
         type: boolean
         description: Dereference, scope and convert the keyword raw value.
+
     inQueryForce:
       in: query
       name: force
       schema:
         type: boolean
+
     inQueryImpersonate:
       in: query
       name: impersonate
       schema:
         type: string
         description: The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
+
     inQueryKeyword:
       in: query
       name: kw
       schema:
         type: string
+
+    inQuerySets:
+      in: query
+      name: set
+      schema:
+        type: array
+        items:
+          type: string
+          description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
+          example: env.eat=fruits
+
+    inQueryUnsets:
+      in: query
+      name: unset
+      schema:
+        type: array
+        items:
+          type: string
+          description: The name of the section to remove, without brackets.
+          example: task#unwanted
+
     inQueryKeywords:
       in: query
       name: kw
@@ -3726,6 +3736,7 @@ components:
           type: string
           description: A keyword to remove.
           example: env.unwanted
+
     inQueryKeywordOps:
       in: query
       name: kw
@@ -3735,42 +3746,50 @@ components:
           type: string
           description: An operation and value to do on a keyword.
           example: env.unwanted=removeMe
+
     inQueryNoLock:
       in: query
       name: no_lock
       schema:
         type: boolean
+
     inQueryLeader:
       in: query
       name: leader
       schema:
         type: boolean
+
     inQueryRequesterSid:
       in: query
       name: requester_sid
       schema:
         type: string
         format: uuid
+
     inQueryRid:
       in: query
       name: rid
       schema:
         type: string
+
     inQuerySubset:
       in: query
       name: subset
       schema:
         type: string
+
     inQueryTag:
       in: query
       name: tag
       schema:
         type: string
+
     inQueryTo:
       in: query
       name: to
       schema:
         type: string
+
     inQueryWaitLock:
       in: query
       name: wait_lock

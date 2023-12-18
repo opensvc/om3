@@ -19,5 +19,5 @@ func (t *actor) Unset(ctx context.Context, kws ...key.T) error {
 		return err
 	}
 	defer unlock()
-	return unsetKeys(t.config, kws...)
+	return t.config.Unset(kws...)
 }

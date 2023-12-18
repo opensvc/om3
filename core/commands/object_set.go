@@ -38,9 +38,9 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 		return err
 	}
 	for _, p := range paths {
-		params := api.PostObjectConfigSetParams{}
-		params.Kw = &t.KeywordOps
-		response, err := c.PostObjectConfigSetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		params := api.PostObjectConfigUpdateParams{}
+		params.Set = &t.KeywordOps
+		response, err := c.PostObjectConfigUpdateWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}

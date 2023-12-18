@@ -1,34 +1,15 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 )
-
-func keywordRbac(s string) error {
-	op := keyop.Parse(s)
-	if strings.HasSuffix(op.Key.Option, "_trigger") {
-		return fmt.Errorf("%s", op.Key)
-	}
-	drvGroup := strings.Split(op.Key.Section, "#")[0]
-	switch drvGroup {
-	case "app", "task":
-		switch op.Key.Option {
-		case "script", "start", "stop", "check", "info":
-			return fmt.Errorf("%s", op.Key)
-		}
-	}
-	return nil
-}
 
 func (a *DaemonApi) PostInstanceActionSet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSetParams) error {
 	log := LogHandler(ctx, "PostInstanceActionSet")
@@ -45,8 +26,8 @@ func (a *DaemonApi) PostInstanceActionSet(ctx echo.Context, namespace string, ki
 		return err
 	} else if !isRoot {
 		// Non-root is not allowed to set dangerous keywords.
-		for _, s := range *params.Kw {
-			if err := keywordRbac(s); err != nil {
+		for _, op := range *params.Kw {
+			if err := keyopStringRbac(op); err != nil {
 				return JSONProblemf(ctx, http.StatusUnauthorized, "Unauthorized keyword", "%s", err)
 			}
 		}

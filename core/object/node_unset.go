@@ -8,5 +8,5 @@ import (
 
 // Unset removes keywords from node config
 func (t *Node) Unset(ctx context.Context, kws ...key.T) error {
-	return unsetKeys(t.config, kws...)
+	return t.config.Unset(kws...)
 }

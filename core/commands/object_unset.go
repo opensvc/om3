@@ -41,9 +41,9 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 		return err
 	}
 	for _, p := range paths {
-		params := api.PostObjectConfigUnsetParams{}
-		params.Kw = &t.Keywords
-		response, err := c.PostObjectConfigUnsetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		params := api.PostObjectConfigUpdateParams{}
+		params.Unset = &t.Keywords
+		response, err := c.PostObjectConfigUpdateWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}
