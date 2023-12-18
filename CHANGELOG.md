@@ -4,6 +4,8 @@
 
 ### core
 
+* The set and unset commands are superseded by update --set ... --unset ... --delete. This new command allow to have a single commit for different kind of changes. The set and unset commands are now hidden so users don't get tempted to use them anymore.
+
 * **breaking change:** set/unset/get/eval now need --local to operate on the local node without api calls.
 
 * New placement policy `last start`. Use the mtime of `<objvar>/last_start` as the candidate sort key. More recent has higher priority.
