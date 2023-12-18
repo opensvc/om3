@@ -203,7 +203,7 @@ func (o *imon) startSubscriptions() {
 
 // worker watch for local imon updates
 func (o *imon) worker(initialNodes []string) {
-	defer o.log.Debugf("worker started")
+	defer o.log.Debugf("worker stopped")
 
 	// Initiate crmStatus first, this will update our instance status cache
 	// as soon as possible.
