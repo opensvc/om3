@@ -1,6 +1,7 @@
 package ccfg
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -78,7 +79,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.CASecPaths = o.clusterConfig.GetStrings(keyCASecPaths)
 	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
 	cfg.Quorum = o.clusterConfig.GetBool(keyQuorum)
-
+	cfg.Vip = o.getVipFromConfig(cfg.Nodes)
 	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
 	if v, err := o.clusterConfig.Eval(keyListenerAddr); err != nil {
 		o.log.Errorf("eval listener addr: %s", err)
@@ -122,4 +123,77 @@ func (o *ccfg) onCmdGet(c cmdGet) {
 	resp := o.state
 	c.ErrC <- nil
 	c.resp <- resp
+}
+
+// getVipFromConfig returns the Vip from cluster config
+func (o *ccfg) getVipFromConfig(nodes []string) (vip cluster.Vip) {
+	keyVip := key.New("cluster", "vip")
+	defaultVip := o.clusterConfig.Get(keyVip)
+	if defaultVip == "" {
+		return cluster.Vip{}
+	}
+
+	// pickup defaults from vip keyword
+	ipname, netmask, dev, err := parseVip(defaultVip)
+	if err != nil {
+		o.log.Errorf("skip vip: %s", err)
+		return cluster.Vip{}
+	}
+
+	devs := make(map[string]string)
+
+	for _, n := range nodes {
+		v, err := o.clusterConfig.EvalAs(keyVip, n)
+		if err != nil {
+			o.log.Warnf("eval vip from node %s: %s", n, err)
+			continue
+		}
+		customVip := v.(string)
+		if customVip == "" || customVip == defaultVip {
+			continue
+		}
+		if _, _, customDev, err := parseVip(customVip); err != nil {
+			o.log.Errorf("skip vip value from node %s: %s", n, err)
+			continue
+		} else if customDev != dev {
+			devs[n] = customDev
+		}
+	}
+
+	return cluster.Vip{
+		Default: defaultVip,
+		Addr:    ipname,
+		Netmask: netmask,
+		Dev:     dev,
+		Devs:    devs,
+	}
+}
+
+func parseVip(s string) (ipname, netmask, ipdev string, err error) {
+	r := strings.Split(s, "@")
+	if len(r) != 2 {
+		err = fmt.Errorf("unexpected vip value: missing @ in %s", s)
+		return
+	}
+	if len(r[1]) == 0 {
+		err = fmt.Errorf("unexpected vip value: empty addr in %s", s)
+		return
+	}
+	ipdev = r[1]
+	r = strings.Split(r[0], "/")
+	if len(r) != 2 {
+		err = fmt.Errorf("unexpected vip value: missing / in %s", s)
+		return
+	}
+	if len(r[0]) == 0 {
+		err = fmt.Errorf("unexpected vip value: empty ipname in %s", s)
+		return
+	}
+	ipname = r[0]
+	if len(r[1]) == 0 {
+		err = fmt.Errorf("unexpected vip value: empty netmask in %s", s)
+		return
+	}
+	netmask = r[1]
+	return
 }
