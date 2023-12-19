@@ -15,7 +15,6 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/plog"
@@ -103,7 +102,7 @@ func (t *dns) Start(parent context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.cluster = ccfg.Get()
+	t.cluster = *cluster.ConfigData.Get()
 
 	t.bus = pubsub.BusFromContext(t.ctx)
 

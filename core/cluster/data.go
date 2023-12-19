@@ -34,6 +34,9 @@ func (c *DataT[T]) Set(v *T) {
 func (c *DataT[T]) Get() *T {
 	c.RLock()
 	defer c.RUnlock()
+	if c.data == nil {
+		panic("Get called before initial Set")
+	}
 	return c.data
 }
 

@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -351,9 +350,9 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		log.Infof("invalid scope %s", nodes)
 		return
 	}
-	var freeze bool
+	var freezeV bool
 	if remoteInstanceConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
-		freeze = true
+		freezeV = true
 	}
 	select {
 	case <-ctx.Done():
@@ -365,7 +364,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 			Path:      p,
 			Node:      peer,
 			File:      tmpFilename,
-			Freeze:    freeze,
+			Freeze:    freezeV,
 			UpdatedAt: updated,
 			Ctx:       ctx,
 			Err:       err,
@@ -379,7 +378,7 @@ func newDaemonClient(n string) (*client.T, error) {
 	return client.New(
 		client.WithURL(peerUrl(n)),
 		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(ccfg.Get().Secret()),
+		client.WithPassword(cluster.ConfigData.Get().Secret()),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

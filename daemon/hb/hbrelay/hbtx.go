@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -112,11 +112,11 @@ func (t *tx) send(b []byte) {
 		return
 	}
 
-	cluster := ccfg.Get()
+	clusterConfig := cluster.ConfigData.Get()
 	params := api.PostRelayMessage{
 		Nodename:    hostname.Hostname(),
-		ClusterId:   cluster.ID,
-		ClusterName: cluster.Name,
+		ClusterId:   clusterConfig.ID,
+		ClusterName: clusterConfig.Name,
 		Msg:         string(b),
 	}
 	resp, err := cli.PostRelayMessage(context.Background(), params)

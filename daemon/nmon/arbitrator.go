@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
 )
@@ -133,8 +133,7 @@ func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	d := net.Dialer{}
 	addr := a.Uri
 	if !strings.Contains(addr, ":") {
-		port := ccfg.Get().Listener.Port
-		addr = fmt.Sprintf("%s:%d", addr, port)
+		addr = fmt.Sprintf("%s:%d", addr, cluster.ConfigData.Get().Listener.Port)
 	}
 	dialContext, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {

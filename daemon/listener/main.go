@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonauth"
@@ -77,7 +78,7 @@ func (t *T) Start(ctx context.Context) error {
 		ctx = context.WithValue(ctx, "authStrategies", strategies)
 		ctx = context.WithValue(ctx, "JWTCreator", &daemonauth.JWTCreator{})
 	}
-	clusterConfig := ccfg.Get()
+	clusterConfig := cluster.ConfigData.Get()
 	for _, lsnr := range []startStopper{
 		lsnrhttpux.New(
 			ctx,

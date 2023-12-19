@@ -19,7 +19,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -34,7 +33,6 @@ type (
 		clusterConfig *xconfig.T
 		ctx           context.Context
 		cancel        context.CancelFunc
-		cmdC          chan any
 		drainDuration time.Duration
 		bus           *pubsub.Bus
 		log           *plog.Logger
@@ -54,22 +52,12 @@ type (
 		wg  sync.WaitGroup
 	}
 
-	cmdGet struct {
-		draincommand.ErrC
-		resp chan cluster.Config
-	}
-
 	// NodeDB implements AuthenticateNode
 	NodeDB struct{}
 )
 
-var (
-	cmdC chan any
-)
-
 func New(drainDuration time.Duration) *ccfg {
 	o := &ccfg{
-		cmdC:          make(chan any),
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
 		log:           plog.NewDefaultLogger().WithPrefix("daemon: ccfg: ").Attr("pkg", "daemon/ccfg"),
@@ -82,7 +70,6 @@ func New(drainDuration time.Duration) *ccfg {
 func (o *ccfg) Start(parent context.Context) error {
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.bus = pubsub.BusFromContext(o.ctx)
-	cmdC = o.cmdC
 
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
 		return err
@@ -96,7 +83,6 @@ func (o *ccfg) Start(parent context.Context) error {
 	o.wg.Add(1)
 	go func() {
 		defer func() {
-			draincommand.Do(o.cmdC, o.drainDuration)
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Warnf("subscription stop: %s", err)
 			}
@@ -104,9 +90,6 @@ func (o *ccfg) Start(parent context.Context) error {
 		}()
 		o.worker()
 	}()
-
-	// start serving
-	cmdC = o.cmdC
 
 	return nil
 }
@@ -139,26 +122,8 @@ func (o *ccfg) worker() {
 			case *msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
 			}
-		case i := <-o.cmdC:
-			switch c := i.(type) {
-			case cmdGet:
-				o.onCmdGet(c)
-			}
 		}
 	}
-}
-
-func Get() cluster.Config {
-	err := make(chan error, 1)
-	c := cmdGet{
-		ErrC: err,
-		resp: make(chan cluster.Config),
-	}
-	cmdC <- c
-	if <-err != nil {
-		return cluster.Config{}
-	}
-	return <-c.resp
 }
 
 // AuthenticateNode returns nil if nodename is a cluster node and password is cluster secret
@@ -166,7 +131,7 @@ func (_ *NodeDB) AuthenticateNode(nodename, password string) error {
 	if nodename == "" {
 		return fmt.Errorf("can't authenticate: nodename is empty")
 	}
-	clu := Get()
+	clu := cluster.ConfigData.Get()
 	if !clu.Nodes.Contains(nodename) {
 		return fmt.Errorf("can't authenticate: %s is not a cluster node", nodename)
 	}

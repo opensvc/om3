@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/plog"
 )
@@ -102,7 +102,7 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	cluster := ccfg.Get()
+	clusterId := cluster.ConfigData.Get().ID
 	cli, err := client.New(
 		client.WithURL(t.relay),
 		client.WithUsername(t.username),
@@ -116,7 +116,7 @@ func (t *rx) recv(nodename string) {
 
 	params := api.GetRelayMessageParams{
 		Nodename:  &nodename,
-		ClusterId: &cluster.ID,
+		ClusterId: &clusterId,
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {

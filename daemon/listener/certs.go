@@ -6,11 +6,11 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/filesystems"
@@ -115,7 +115,7 @@ func (t *T) installCaFiles(clusterName string) error {
 	var b []byte
 	validCA := make([]string, 0)
 	caList := []string{caPath.String()}
-	caList = append(caList, ccfg.Get().CASecPaths...)
+	caList = append(caList, cluster.ConfigData.Get().CASecPaths...)
 	for _, p := range caList {
 		caPath, err := naming.ParsePath(p)
 		if err != nil {

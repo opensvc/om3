@@ -1,5 +1,5 @@
 /*
-Package daemon provide the subdaemon main responsible ot other opensvc daemons
+Package daemon is responsible ot other opensvc daemons start/stop
 
 It is responsible for other sub daemons (listener, discover, scheduler, hb...)
 */
@@ -17,6 +17,7 @@ import (
 
 	"github.com/retailnext/cannula"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/collector"
@@ -58,10 +59,6 @@ type (
 		Start(ctx context.Context) error
 		Stop() error
 	}
-)
-
-var (
-	profiling = true
 )
 
 func New() *T {
@@ -122,7 +119,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration)); err != nil {
 		return err
 	}
-	initialCcfg := ccfg.Get()
+	initialCcfg := cluster.ConfigData.Get()
 	if initialCcfg.Name == "" {
 		panic("cluster name read from ccfg is empty")
 	}
