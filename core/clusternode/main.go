@@ -15,12 +15,25 @@ var (
 func Set(l []string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	clusterNodes = append([]string{}, l...)
+	clusterNodes = make([]string, len(l))
+	copy(clusterNodes, l)
 }
 
 // Get returns the cached cluster node list
 func Get() []string {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	return append([]string{}, clusterNodes...)
+	clusterNodesCopy := make([]string, len(clusterNodes))
+	copy(clusterNodesCopy, clusterNodes)
+	return clusterNodesCopy
+}
+
+// Has returns true if s is a cluster node
+func Has(s string) bool {
+	for _, e := range Get() {
+		if e == s {
+			return true
+		}
+	}
+	return false
 }

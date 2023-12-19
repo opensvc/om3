@@ -136,6 +136,7 @@ func init() {
 		newCmdNodeSet(),
 		newCmdNodeSysreport(),
 		newCmdNodeUnfreeze(),
+		newCmdNodeUpdate(),
 		newCmdNodeUnset(),
 		newCmdNodeVersion(),
 	)

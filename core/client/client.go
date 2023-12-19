@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -264,4 +265,14 @@ func (t *T) NewGetLogs() *api.GetLogs {
 
 func (t *T) NewGetDaemonStatus() *api.GetDaemonStatus {
 	return api.NewGetDaemonStatus(t)
+}
+
+func (t *T) Hostname() string {
+	if u, err := url.Parse(t.url); err == nil {
+		return u.Hostname()
+	} else if strings.HasPrefix(t.url, "/") {
+		return hostname.Hostname()
+	} else {
+		return ""
+	}
 }

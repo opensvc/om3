@@ -234,6 +234,9 @@ type ClientInterface interface {
 	// GetNodeConfigGet request
 	GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeConfigUpdate request
+	PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObjects request
 	GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -911,6 +914,18 @@ func (c *Client) GetNodeLogs(ctx context.Context, params *GetNodeLogsParams, req
 
 func (c *Client) GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigGetRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeConfigUpdateRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4303,6 +4318,92 @@ func NewGetNodeConfigGetRequest(server string, nodename InPathNodeName, params *
 	return req, nil
 }
 
+// NewPostNodeConfigUpdateRequest generates requests for PostNodeConfigUpdate
+func NewPostNodeConfigUpdateRequest(server string, nodename InPathNodeName, params *PostNodeConfigUpdateParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/config/update", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Delete != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Unset != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Set != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectsRequest generates requests for GetObjects
 func NewGetObjectsRequest(server string, params *GetObjectsParams) (*http.Request, error) {
 	var err error
@@ -5927,6 +6028,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeConfigGet request
 	GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error)
 
+	// PostNodeConfigUpdate request
+	PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error)
+
 	// GetObjects request
 	GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error)
 
@@ -7144,6 +7248,32 @@ func (r GetNodeConfigGetResponse) StatusCode() int {
 	return 0
 }
 
+type PostNodeConfigUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Problem
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeConfigUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeConfigUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8278,6 +8408,15 @@ func (c *ClientWithResponses) GetNodeConfigGetWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetNodeConfigGetResponse(rsp)
+}
+
+// PostNodeConfigUpdateWithResponse request returning *PostNodeConfigUpdateResponse
+func (c *ClientWithResponses) PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error) {
+	rsp, err := c.PostNodeConfigUpdate(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeConfigUpdateResponse(rsp)
 }
 
 // GetObjectsWithResponse request returning *GetObjectsResponse
@@ -10655,6 +10794,60 @@ func ParseGetNodeConfigGetResponse(rsp *http.Response) (*GetNodeConfigGetRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest KeywordList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeConfigUpdateResponse parses an HTTP response from a PostNodeConfigUpdateWithResponse call
+func ParsePostNodeConfigUpdateResponse(rsp *http.Response) (*PostNodeConfigUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeConfigUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

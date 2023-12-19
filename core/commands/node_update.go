@@ -11,17 +11,20 @@ import (
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (
-	CmdNodeSet struct {
+	CmdNodeUpdate struct {
 		OptsGlobal
 		OptsLock
-		KeywordOps []string
+		Delete []string
+		Set    []string
+		Unset  []string
 	}
 )
 
-func (t *CmdNodeSet) Run() error {
+func (t *CmdNodeUpdate) Run() error {
 	if t.Local {
 		return t.doLocal()
 	}
@@ -34,13 +37,15 @@ func (t *CmdNodeSet) Run() error {
 	return fmt.Errorf("--node must be specified")
 }
 
-func (t *CmdNodeSet) doRemote() error {
+func (t *CmdNodeUpdate) doRemote() error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
 	params := api.PostNodeConfigUpdateParams{}
-	params.Set = &t.KeywordOps
+	params.Set = &t.Set
+	params.Unset = &t.Unset
+	params.Delete = &t.Delete
 	nodenames, err := nodeselector.Expand(t.NodeSelector)
 	if err != nil {
 		return err
@@ -67,13 +72,13 @@ func (t *CmdNodeSet) doRemote() error {
 	return nil
 }
 
-func (t *CmdNodeSet) doLocal() error {
-	n, err := object.NewNode()
+func (t *CmdNodeUpdate) doLocal() error {
+	o, err := object.NewNode()
 	if err != nil {
 		return err
 	}
 	ctx := context.Background()
 	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-	return n.Set(ctx, keyop.ParseOps(t.KeywordOps)...)
+	return o.Update(ctx, t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set))
 }

@@ -1249,6 +1249,13 @@ type GetNodeConfigGetParams struct {
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
+// PostNodeConfigUpdateParams defines parameters for PostNodeConfigUpdate.
+type PostNodeConfigUpdateParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
 // GetObjectsParams defines parameters for GetObjects.
 type GetObjectsParams struct {
 	// Path object selector expression.

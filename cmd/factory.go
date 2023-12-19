@@ -1313,6 +1313,25 @@ func newCmdNodeSet() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeUpdate() *cobra.Command {
+	var options commands.CmdNodeUpdate
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "update the node configuration",
+		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagUpdateDelete(flags, &options.Delete)
+	addFlagUpdateSet(flags, &options.Set)
+	addFlagUpdateUnset(flags, &options.Unset)
+	return cmd
+}
+
 func newCmdNodeSysreport() *cobra.Command {
 	var options commands.CmdNodeSysreport
 	cmd := &cobra.Command{
