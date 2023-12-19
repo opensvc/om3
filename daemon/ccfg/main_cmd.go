@@ -113,16 +113,12 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 			o.log.Errorf("allocate Node for network setup: %s", err)
 		} else {
 			o.log.Infof("reconfigure networks")
-			network.Setup(n)
+			if err := network.Setup(n); err != nil {
+				o.log.Infof("reconfigure networks: %s", err.Error())
+			}
 		}
 	}
 	return cfg
-}
-
-func (o *ccfg) onCmdGet(c cmdGet) {
-	resp := o.state
-	c.ErrC <- nil
-	c.resp <- resp
 }
 
 // getVipFromConfig returns the Vip from cluster config
