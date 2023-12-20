@@ -1788,9 +1788,9 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /object/path/{namespace}/{kind}/{name}/file:
+  /object/path/{namespace}/{kind}/{name}/config/file:
     get:
-      operationId: GetObjectFile
+      operationId: GetObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1810,7 +1810,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectFile'
+                $ref: '#/components/schemas/ObjectConfigFile'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1818,7 +1818,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
     post:
-      operationId: PostObjectFile
+      operationId: PostObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1837,7 +1837,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ObjectFile'
+              $ref: '#/components/schemas/ObjectConfigFile'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -1854,7 +1854,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
     put:
-      operationId: PutObjectFile
+      operationId: PutObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1873,7 +1873,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ObjectFile'
+              $ref: '#/components/schemas/ObjectConfigFile'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -2952,7 +2952,7 @@ components:
         mtime:
           type: string
           format: date-time
-    ObjectFile:
+    ObjectConfigFile:
       type: object
       required:
         - data

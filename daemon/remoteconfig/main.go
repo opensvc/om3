@@ -17,7 +17,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func FetchObjectFile(cli *client.T, p naming.Path) (filename string, updated time.Time, err error) {
+func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updated time.Time, err error) {
 	var (
 		b       []byte
 		tmpFile *os.File
@@ -55,9 +55,9 @@ func FetchObjectFile(cli *client.T, p naming.Path) (filename string, updated tim
 
 func fetchFromApi(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
 	var (
-		resp *api.GetObjectFileResponse
+		resp *api.GetObjectConfigFileResponse
 	)
-	resp, err = cli.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+	resp, err = cli.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {

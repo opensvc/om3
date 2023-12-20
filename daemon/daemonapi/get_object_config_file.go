@@ -11,8 +11,8 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	logName := "GetObjectFile"
+func (a *DaemonApi) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	logName := "GetObjectConfigFile"
 	log := LogHandler(ctx, logName)
 	log.Debugf("%s: starting", logName)
 
@@ -29,7 +29,7 @@ func (a *DaemonApi) GetObjectFile(ctx echo.Context, namespace string, kind namin
 		log.Infof("%s: configFile no present(mtime) %s %s", logName, filename, mtime)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s", filename, mtime)
 	}
-	resp := api.ObjectFile{
+	resp := api.ObjectConfigFile{
 		Mtime: mtime,
 	}
 	resp.Data, err = os.ReadFile(filename)

@@ -543,6 +543,12 @@ type ObjectConfig struct {
 	Mtime time.Time              `json:"mtime"`
 }
 
+// ObjectConfigFile defines model for ObjectConfigFile.
+type ObjectConfigFile struct {
+	Data  []byte    `json:"data"`
+	Mtime time.Time `json:"mtime"`
+}
+
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
 	Avail       Status      `json:"avail"`
@@ -571,12 +577,6 @@ type ObjectData struct {
 	Topology         Topology `json:"topology"`
 	UpInstancesCount int      `json:"up_instances_count"`
 	UpdatedAt        string   `json:"updated_at"`
-}
-
-// ObjectFile defines model for ObjectFile.
-type ObjectFile struct {
-	Data  []byte    `json:"data"`
-	Mtime time.Time `json:"mtime"`
 }
 
 // ObjectItem defines model for ObjectItem.
@@ -1342,11 +1342,11 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PostObjectFileJSONRequestBody defines body for PostObjectFile for application/json ContentType.
-type PostObjectFileJSONRequestBody = ObjectFile
+// PostObjectConfigFileJSONRequestBody defines body for PostObjectConfigFile for application/json ContentType.
+type PostObjectConfigFileJSONRequestBody = ObjectConfigFile
 
-// PutObjectFileJSONRequestBody defines body for PutObjectFile for application/json ContentType.
-type PutObjectFileJSONRequestBody = ObjectFile
+// PutObjectConfigFileJSONRequestBody defines body for PutObjectConfigFile for application/json ContentType.
+type PutObjectConfigFileJSONRequestBody = ObjectConfigFile
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

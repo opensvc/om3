@@ -82,7 +82,7 @@ func (t *CmdDaemonJoin) run() error {
 	}
 
 	_, _ = fmt.Fprintf(os.Stdout, "Fetch cluster config from %s\n", t.Node)
-	file, _, err := remoteconfig.FetchObjectFile(cli, naming.Cluster)
+	file, _, err := remoteconfig.FetchObjectConfigFile(cli, naming.Cluster)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 	for _, p := range toFetch {
 		var file string
 		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
-		file, _, err = remoteconfig.FetchObjectFile(cli, p)
+		file, _, err = remoteconfig.FetchObjectConfigFile(cli, p)
 		if err != nil {
 			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
 		}

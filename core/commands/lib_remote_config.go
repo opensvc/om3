@@ -58,7 +58,7 @@ func remoteClient(p naming.Path, c *client.T) (*client.T, error) {
 }
 
 func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
-	resp, err := c.GetObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -68,14 +68,14 @@ func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 }
 
 func putConfig(p naming.Path, fName string, c *client.T) (err error) {
-	body := api.PutObjectFileJSONRequestBody{}
+	body := api.PutObjectConfigFileJSONRequestBody{}
 	body.Mtime = time.Now()
 	if buff, err := os.ReadFile(fName); err != nil {
 		return err
 	} else {
 		body.Data = buff
 	}
-	resp, err := c.PutObjectFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, body)
+	resp, err := c.PutObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, body)
 	if err != nil {
 		return err
 	}
