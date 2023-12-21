@@ -249,11 +249,11 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /daemon/dns/dump:
+  /dns/dump:
     get:
-      operationId: GetDaemonDNSDump
+      operationId: GetDNSDump
       tags:
-        - daemon
+        - dns
       security:
         - basicAuth: []
         - bearerAuth: []

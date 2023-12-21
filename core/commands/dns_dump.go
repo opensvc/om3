@@ -14,19 +14,19 @@ import (
 )
 
 type (
-	CmdDaemonDNSDump struct {
+	CmdDNSDump struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdDaemonDNSDump) Run() error {
+func (t *CmdDNSDump) Run() error {
 	c, err := client.New(
 		client.WithURL(t.Server),
 	)
 	if err != nil {
 		return err
 	}
-	resp, err := c.GetDaemonDNSDump(context.Background())
+	resp, err := c.GetDNSDump(context.Background())
 	if err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {

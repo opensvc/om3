@@ -4,6 +4,8 @@
 
 ### core
 
+* **breaking change:** The "om daemon dns dump" command is deprecated (with backward compatibility) in favour of "om dns dump". As a consequence, the "dns" object path, if used, is now masked. The root/svc/dns identifier can still be used to help with the transition to a new object name.
+
 * The set and unset commands are superseded by update --set ... --unset ... --delete. This new command allow to have a single commit for different kind of changes. The set and unset commands are now hidden so users don't get tempted to use them anymore.
 
 * **breaking change:** set/unset/get/eval now need --local to operate on the local node without api calls.
