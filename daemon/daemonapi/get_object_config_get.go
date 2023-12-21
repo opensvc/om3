@@ -35,9 +35,9 @@ func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 	}
 	log = naming.LogWithPath(log, p)
 
-	instanceStatusData := instance.StatusData.GetByPath(p)
+	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	if _, ok := instanceStatusData[a.localhost]; ok {
+	if _, ok := instanceConfigData[a.localhost]; ok {
 		oc, err := object.NewCore(p)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewCore", "%s", err)
@@ -86,7 +86,7 @@ func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 		return ctx.JSON(http.StatusOK, r)
 	}
 
-	for nodename, _ := range instance.StatusData.GetByPath(p) {
+	for nodename, _ := range instanceConfigData {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
