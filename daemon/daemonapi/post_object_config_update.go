@@ -54,9 +54,9 @@ func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 	}
 	log = naming.LogWithPath(log, p)
 
-	instanceStatusData := instance.StatusData.GetByPath(p)
+	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	if _, ok := instanceStatusData[a.localhost]; ok {
+	if _, ok := instanceConfigData[a.localhost]; ok {
 		oc, err := object.NewConfigurer(p)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewConfigurer", "%s", err)
@@ -75,7 +75,7 @@ func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		return nil
 	}
 
-	for nodename, _ := range instance.StatusData.GetByPath(p) {
+	for nodename, _ := range instanceConfigData {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
