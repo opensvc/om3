@@ -56,7 +56,7 @@ func (a *DaemonApi) PostNodeConfigUpdate(ctx echo.Context, nodename string, para
 		}
 		return nil
 	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node")
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {

@@ -75,7 +75,7 @@ func (a *DaemonApi) GetNodeConfigGet(ctx echo.Context, nodename string, params a
 		}
 		return ctx.JSON(http.StatusOK, r)
 	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node")
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {

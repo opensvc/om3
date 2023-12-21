@@ -19,7 +19,7 @@ func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error
 	if nodename == a.localhost {
 		return a.localNodeActionDrain(ctx)
 	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node")
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {
