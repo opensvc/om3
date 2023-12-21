@@ -1205,16 +1205,6 @@ type GetNodesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// PostNodeActionFreezeParams defines parameters for PostNodeActionFreeze.
-type PostNodeActionFreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// PostNodeActionUnfreezeParams defines parameters for PostNodeActionUnfreeze.
-type PostNodeActionUnfreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
 type GetNodeDRBDConfigParams struct {
 	// Name the full naming of the file is deduced from the name
@@ -1240,6 +1230,16 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths Paths `form:"paths" json:"paths"`
+}
+
+// PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
+type PostPeerActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
+type PostPeerActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // GetNodeConfigGetParams defines parameters for GetNodeConfigGet.

@@ -5,16 +5,35 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeActionFreeze(ctx echo.Context, params api.PostNodeActionFreezeParams) error {
+func (a *DaemonApi) PostPeerActionFreeze(ctx echo.Context, nodename string, params api.PostPeerActionFreezeParams) error {
+	if nodename == a.localhost {
+		return a.localNodeActionFreeze(ctx, params)
+	}
+	c, err := client.New(client.WithURL(nodename))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+
+	resp, err := c.PostPeerActionFreezeWithResponse(ctx.Request().Context(), nodename, &params)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if len(resp.Body) > 0 {
+		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+	}
+	return nil
+}
+
+func (a *DaemonApi) localNodeActionFreeze(ctx echo.Context, params api.PostPeerActionFreezeParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}
-	log := LogHandler(ctx, "PostNodeActionFreeze")
+	log := LogHandler(ctx, "PostPeerActionFreeze")
 	var requesterSid uuid.UUID
 	args := []string{"node", "freeze", "--local"}
 	if params.RequesterSid != nil {

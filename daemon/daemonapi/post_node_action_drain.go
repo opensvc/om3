@@ -17,7 +17,7 @@ import (
 
 func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
-		return a.PostNodeActionDrain(ctx)
+		return a.localNodeActionDrain(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node")
 	} else {
@@ -25,7 +25,7 @@ func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PostNodeActionDrainWithResponse(ctx.Request().Context()); err != nil {
+		if resp, err := c.PostPeerActionDrainWithResponse(ctx.Request().Context(), nodename); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -34,7 +34,7 @@ func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error
 	return nil
 }
 
-func (a *DaemonApi) PostNodeActionDrain(ctx echo.Context) error {
+func (a *DaemonApi) localNodeActionDrain(ctx echo.Context) error {
 	var (
 		value = node.MonitorUpdate{}
 	)

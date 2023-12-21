@@ -2,62 +2,83 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/nodeaction"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type CmdNodeFreeze struct {
 	OptsGlobal
-	OptsAsync
 }
 
 func (t *CmdNodeFreeze) Run() error {
-	return nodeaction.New(
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithColor(t.Color),
-		nodeaction.WithAsyncWait(t.Wait),
-		nodeaction.WithAsyncTime(t.Time),
-		nodeaction.WithAsyncWatch(t.Watch),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithRemoteRun(func(ctx context.Context, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
-			if err != nil {
-				return nil, err
+	if t.Local {
+		n, err := object.NewNode()
+		if err != nil {
+			return err
+		}
+		return n.Freeze()
+	}
+	if !clientcontext.IsSet() && t.NodeSelector == "" {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if t.NodeSelector == "" {
+		return fmt.Errorf("--node must be specified")
+	}
+	return t.doRemote()
+}
+
+func (t *CmdNodeFreeze) doRemote() error {
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return err
+	}
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	if err != nil {
+		return err
+	}
+	errC := make(chan error)
+	ctx := context.Background()
+	for _, nodename := range nodenames {
+		go func(nodename string) {
+			if resp, err := c.PostPeerActionFreezeWithResponse(ctx, nodename, &api.PostPeerActionFreezeParams{RequesterSid: &xsession.ID}); err != nil {
+				errC <- err
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					fmt.Printf("%s: %s\n", nodename, *resp.JSON200)
+				case 401:
+					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON401)
+				case 403:
+					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON403)
+				case 500:
+					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON500)
+				default:
+					errC <- fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
+				}
 			}
-			params := api.PostNodeActionFreezeParams{}
-			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
-			}
-			response, err := c.PostNodeActionFreezeWithResponse(ctx, &params)
-			if err != nil {
-				return nil, err
-			}
-			switch {
-			case response.JSON200 != nil:
-				return *response.JSON200, nil
-			case response.JSON401 != nil:
-				return nil, fmt.Errorf("node %s: %s", nodename, *response.JSON401)
-			case response.JSON403 != nil:
-				return nil, fmt.Errorf("node %s: %s", nodename, *response.JSON403)
-			case response.JSON500 != nil:
-				return nil, fmt.Errorf("node %s: %s", nodename, *response.JSON500)
-			default:
-				return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
-			}
-		}),
-		nodeaction.WithLocal(true),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			return nil, n.Freeze()
-		}),
-	).Do()
+			errC <- err
+		}(nodename)
+	}
+	var (
+		count int
+		errs  error
+	)
+	for {
+		err := <-errC
+		errs = errors.Join(errs, err)
+		count += 1
+		if count == len(nodenames) {
+			break
+		}
+	}
+	return errs
 }
