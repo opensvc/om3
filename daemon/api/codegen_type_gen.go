@@ -543,6 +543,12 @@ type ObjectConfig struct {
 	Mtime time.Time              `json:"mtime"`
 }
 
+// ObjectConfigFile defines model for ObjectConfigFile.
+type ObjectConfigFile struct {
+	Data  []byte    `json:"data"`
+	Mtime time.Time `json:"mtime"`
+}
+
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
 	Avail       Status      `json:"avail"`
@@ -571,12 +577,6 @@ type ObjectData struct {
 	Topology         Topology `json:"topology"`
 	UpInstancesCount int      `json:"up_instances_count"`
 	UpdatedAt        string   `json:"updated_at"`
-}
-
-// ObjectFile defines model for ObjectFile.
-type ObjectFile struct {
-	Data  []byte    `json:"data"`
-	Mtime time.Time `json:"mtime"`
 }
 
 // ObjectItem defines model for ObjectItem.
@@ -1205,16 +1205,6 @@ type GetNodesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// PostNodeActionFreezeParams defines parameters for PostNodeActionFreeze.
-type PostNodeActionFreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// PostNodeActionUnfreezeParams defines parameters for PostNodeActionUnfreeze.
-type PostNodeActionUnfreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
 type GetNodeDRBDConfigParams struct {
 	// Name the full naming of the file is deduced from the name
@@ -1242,11 +1232,28 @@ type GetNodeLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
+// PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
+type PostPeerActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
+type PostPeerActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
 type GetNodeConfigGetParams struct {
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// PostNodeConfigUpdateParams defines parameters for PostNodeConfigUpdate.
+type PostNodeConfigUpdateParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.
@@ -1335,11 +1342,11 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PostObjectFileJSONRequestBody defines body for PostObjectFile for application/json ContentType.
-type PostObjectFileJSONRequestBody = ObjectFile
+// PostObjectConfigFileJSONRequestBody defines body for PostObjectConfigFile for application/json ContentType.
+type PostObjectConfigFileJSONRequestBody = ObjectConfigFile
 
-// PutObjectFileJSONRequestBody defines body for PutObjectFile for application/json ContentType.
-type PutObjectFileJSONRequestBody = ObjectFile
+// PutObjectConfigFileJSONRequestBody defines body for PutObjectConfigFile for application/json ContentType.
+type PutObjectConfigFileJSONRequestBody = ObjectConfigFile
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

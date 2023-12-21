@@ -16,12 +16,12 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 )
 
-type CmdNodeDrain struct {
+type CmdNodeAbort struct {
 	OptsGlobal
 	OptsAsync
 }
 
-func (t *CmdNodeDrain) Run() error {
+func (t *CmdNodeAbort) Run() error {
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -34,7 +34,7 @@ func (t *CmdNodeDrain) Run() error {
 	return t.doRemote()
 }
 
-func (t *CmdNodeDrain) doRemote() error {
+func (t *CmdNodeAbort) doRemote() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
@@ -47,14 +47,14 @@ func (t *CmdNodeDrain) doRemote() error {
 	for _, nodename := range nodenames {
 		go func(nodename string) {
 			err := nodeaction.New(
-				nodeaction.WithAsyncTarget("drained"),
+				nodeaction.WithAsyncTarget("aborted"),
 				nodeaction.WithAsyncTime(t.Time),
 				nodeaction.WithAsyncWait(t.Wait),
 				nodeaction.WithAsyncWaitNode(nodename),
 				nodeaction.WithFormat(t.Output),
 				nodeaction.WithColor(t.Color),
 				nodeaction.WithAsyncFunc(func(ctx context.Context) error {
-					if resp, err := c.PostPeerActionDrainWithResponse(ctx, nodename); err != nil {
+					if resp, err := c.PostPeerActionAbortWithResponse(ctx, nodename); err != nil {
 						return err
 					} else {
 						switch resp.StatusCode() {

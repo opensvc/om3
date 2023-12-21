@@ -34,8 +34,10 @@ type (
 	// T has is an actionrouter.T with a node func
 	T struct {
 		actionrouter.T
-		LocalFunc  func() (any, error)
-		RemoteFunc func(context.Context, string) (any, error)
+		AsyncWaitNode string
+		AsyncFunc     func(context.Context) error
+		LocalFunc     func() (any, error)
+		RemoteFunc    func(context.Context, string) (any, error)
 	}
 
 	Expectation any
@@ -56,6 +58,23 @@ func WithRemoteNodes(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.NodeSelector = s
+		return nil
+	})
+}
+
+func WithAsyncWaitNode(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.AsyncWaitNode = s
+		return nil
+	})
+}
+
+// WithAsyncFunc sets a function to run if the action is async
+func WithAsyncFunc(f func(context.Context) error) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.AsyncFunc = f
 		return nil
 	})
 }
@@ -273,102 +292,88 @@ func (t T) DoAsync() error {
 		}
 		t.waitExpectation(ctx, c, expectation, waitC)
 	}
-	switch t.Target {
-	case node.MonitorStateDrained.String():
-		if resp, e := c.PostNodeActionDrainWithResponse(ctx); e != nil {
-			err = e
-		} else {
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
-			}
+	if t.AsyncFunc != nil {
+		if err := t.AsyncFunc(ctx); err != nil {
+			return err
 		}
-	case node.MonitorGlobalExpectAborted.String():
-		expectation = node.MonitorGlobalExpectAborted
-		if resp, e := c.PostClusterActionAbortWithResponse(ctx); e != nil {
-			err = e
-		} else {
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
-			}
-		}
-	case node.MonitorGlobalExpectFrozen.String():
-		expectation = node.MonitorGlobalExpectFrozen
-		if resp, e := c.PostClusterActionFreezeWithResponse(ctx); e != nil {
-			err = e
-		} else {
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
-			}
-		}
-	case node.MonitorGlobalExpectThawed.String():
-		expectation = node.MonitorGlobalExpectThawed
-		if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
-			err = e
-		} else {
-			switch resp.StatusCode() {
-			case http.StatusOK:
-				b = resp.Body
-			case 400:
-				err = fmt.Errorf("%s", resp.JSON400)
-			case 401:
-				err = fmt.Errorf("%s", resp.JSON401)
-			case 403:
-				err = fmt.Errorf("%s", resp.JSON403)
-			case 408:
-				err = fmt.Errorf("%s", resp.JSON408)
-			case 409:
-				err = fmt.Errorf("%s", resp.JSON409)
-			case 500:
-				err = fmt.Errorf("%s", resp.JSON500)
-			}
-		}
-	default:
-		return fmt.Errorf("unexpected target: %s", t.Target)
-	}
-	var orchestrationQueued api.OrchestrationQueued
-	if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
-		fmt.Println(orchestrationQueued.OrchestrationId)
 	} else {
-		fmt.Fprintln(os.Stderr, err)
+		switch t.Target {
+		case node.MonitorGlobalExpectAborted.String():
+			expectation = node.MonitorGlobalExpectAborted
+			if resp, e := c.PostClusterActionAbortWithResponse(ctx); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case node.MonitorGlobalExpectFrozen.String():
+			expectation = node.MonitorGlobalExpectFrozen
+			if resp, e := c.PostClusterActionFreezeWithResponse(ctx); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		case node.MonitorGlobalExpectThawed.String():
+			expectation = node.MonitorGlobalExpectThawed
+			if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
+		default:
+			return fmt.Errorf("unexpected target: %s", t.Target)
+		}
+
+		var orchestrationQueued api.OrchestrationQueued
+		if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
+			fmt.Println(orchestrationQueued.OrchestrationId)
+		} else {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 
 	if t.Wait {
@@ -562,7 +567,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 	log := plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("nodeaction: wait %s: ", exp))
 	switch exp.(type) {
 	case node.MonitorState:
-		filters = []string{"NodeMonitorUpdated,node=" + hostname.Hostname()}
+		filters = []string{"NodeMonitorUpdated,node=" + t.AsyncWaitNode}
 	case node.MonitorGlobalExpect:
 		filters = []string{"NodeMonitorUpdated"}
 	}

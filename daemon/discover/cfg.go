@@ -306,7 +306,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
 		Attr("pkg", "daemon/discover").
 		Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
-	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
+	tmpFilename, updated, err := remoteconfig.FetchObjectConfigFile(cli, p)
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)
 		time.Sleep(250 * time.Millisecond)
@@ -319,7 +319,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 				log.Errorf("unable to recreate client: %s", err)
 				return
 			}
-			if tmpFilename, updated, err = remoteconfig.FetchObjectFile(cli, p); err != nil {
+			if tmpFilename, updated, err = remoteconfig.FetchObjectConfigFile(cli, p); err != nil {
 				log.Infof("unable to retrieve %s from outdated url %s: %s", id, cli.URL(), err)
 				return
 			}

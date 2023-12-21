@@ -482,37 +482,9 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/action/drain:
+  /node/name/{nodename}/action/freeze:
     post:
-      operationId: PostNodeActionDrain
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/action/freeze:
-    post:
-      operationId: PostNodeActionFreeze
+      operationId: PostPeerActionFreeze
       tags:
         - node
       security:
@@ -520,6 +492,7 @@ paths:
         - bearerAuth: []
       description: Freeze the node.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -535,9 +508,9 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/action/unfreeze:
+  /node/name/{nodename}/action/unfreeze:
     post:
-      operationId: PostNodeActionUnfreeze
+      operationId: PostPeerActionUnfreeze
       tags:
         - node
       security:
@@ -545,6 +518,7 @@ paths:
         - bearerAuth: []
       description: Unfreeze the node.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -581,6 +555,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeywordList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/abort:
+    post:
+      operationId: PostPeerActionAbort
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/drain:
+    post:
+      operationId: PostPeerActionDrain
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/config/update:
+    post:
+      operationId: PostNodeConfigUpdate
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the node configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1193,6 +1253,9 @@ paths:
       tags:
         - instance / svc
         - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1368,6 +1431,9 @@ paths:
       tags:
         - object / svc
         - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1762,9 +1828,9 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /object/path/{namespace}/{kind}/{name}/file:
+  /object/path/{namespace}/{kind}/{name}/config/file:
     get:
-      operationId: GetObjectFile
+      operationId: GetObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1784,7 +1850,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectFile'
+                $ref: '#/components/schemas/ObjectConfigFile'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1792,7 +1858,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
     post:
-      operationId: PostObjectFile
+      operationId: PostObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1811,7 +1877,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ObjectFile'
+              $ref: '#/components/schemas/ObjectConfigFile'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -1828,7 +1894,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
     put:
-      operationId: PutObjectFile
+      operationId: PutObjectConfigFile
       tags:
         - object / svc
         - object / vol
@@ -1847,7 +1913,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ObjectFile'
+              $ref: '#/components/schemas/ObjectConfigFile'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -1912,7 +1978,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Set keywords in the object configuration file.
+      description: Delete sections, unset and set keywords in the object configuration file.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -2926,7 +2992,7 @@ components:
         mtime:
           type: string
           format: date-time
-    ObjectFile:
+    ObjectConfigFile:
       type: object
       required:
         - data
