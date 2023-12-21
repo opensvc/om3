@@ -3,10 +3,12 @@ package daemonapi
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
@@ -31,7 +33,13 @@ func (a *DaemonApi) PostPeerActionAbort(ctx echo.Context, nodename string) error
 
 func (a *DaemonApi) localNodeActionAbort(ctx echo.Context) error {
 	v := node.MonitorLocalExpectNone
-	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{LocalExpect: &v}},
-		labelApi)
-	return ctx.JSON(http.StatusOK, nil)
+	msg := msgbus.SetNodeMonitor{
+		Node: a.localhost,
+		Value: node.MonitorUpdate{
+			LocalExpect:              &v,
+			CandidateOrchestrationId: uuid.New(),
+		},
+	}
+	a.EventBus.Pub(&msg, labelApi)
+	return ctx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationId: msg.Value.CandidateOrchestrationId})
 }

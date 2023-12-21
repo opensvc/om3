@@ -571,6 +571,21 @@ func newCmdNetworkIpLs() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAbort() *cobra.Command {
+	var options commands.CmdNodeAbort
+	cmd := &cobra.Command{
+		Use:   "abort",
+		Short: "abort the running orchestration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodeCapabilitiesList() *cobra.Command {
 	var options commands.CmdNodeCapabilitiesList
 	cmd := &cobra.Command{
