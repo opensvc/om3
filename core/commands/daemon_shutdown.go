@@ -2,12 +2,17 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -20,7 +25,20 @@ type (
 )
 
 func (t *CmdDaemonShutdown) Run() error {
-	cli, err := client.New(client.WithURL(t.Server), client.WithTimeout(t.Timeout))
+	if t.Local {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if !clientcontext.IsSet() && t.NodeSelector == "" {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if t.NodeSelector == "" {
+		return fmt.Errorf("--node must be specified")
+	}
+	return t.doNodes()
+}
+
+func (t *CmdDaemonShutdown) doNodes() error {
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(t.Timeout))
 	if err != nil {
 		return err
 	}
@@ -29,7 +47,49 @@ func (t *CmdDaemonShutdown) Run() error {
 	params := api.PostDaemonShutdownParams{
 		Duration: &duration,
 	}
-	if resp, e := cli.PostDaemonShutdownWithResponse(context.Background(), &params); e != nil {
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	if err != nil {
+		return err
+	}
+	errC := make(chan error)
+	ctx := context.Background()
+	needDoLocal := false
+	running := 0
+	for _, nodename := range nodenames {
+		if nodename == hostname.Hostname() {
+			needDoLocal = true
+			continue
+		}
+		running += 1
+		go func(nodename string) {
+			_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on remote %s\n", nodename)
+			err := t.doRemote(ctx, c, nodename, params)
+			errC <- err
+		}(nodename)
+	}
+	var (
+		errs error
+	)
+	for {
+		if running == 0 {
+			break
+		}
+		err := <-errC
+		errs = errors.Join(errs, err)
+		running -= 1
+	}
+
+	// make sure the local host is shutdown last, as it relays the api calls
+	if needDoLocal {
+		_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on localhost\n")
+		err := t.doRemote(ctx, c, hostname.Hostname(), params)
+		errs = errors.Join(errs, err)
+	}
+	return errs
+}
+
+func (t *CmdDaemonShutdown) doRemote(ctx context.Context, c *client.T, nodename string, params api.PostDaemonShutdownParams) (err error) {
+	if resp, e := c.PostDaemonShutdownWithResponse(ctx, nodename, &params); e != nil {
 		err = e
 	} else {
 		switch resp.StatusCode() {
@@ -43,8 +103,7 @@ func (t *CmdDaemonShutdown) Run() error {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("daemon shutdown failed: %w", err)
-	} else {
-		return nil
+		err = fmt.Errorf("daemon shutdown failed: %w", err)
 	}
+	return
 }

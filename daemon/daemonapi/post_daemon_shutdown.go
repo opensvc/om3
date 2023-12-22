@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -17,6 +18,23 @@ import (
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/pubsub"
 )
+
+func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, nodename string, params api.PostDaemonShutdownParams) error {
+	if nodename == a.localhost {
+		return a.localPostDaemonShutdown(ctx, params)
+	}
+	c, err := client.New(client.WithURL(nodename))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+	resp, err := c.PostDaemonShutdownWithResponse(ctx.Request().Context(), nodename, &params)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if len(resp.Body) > 0 {
+		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+	}
+	return nil
+}
 
 // PostDaemonShutdown is the daemon shutdown handler.
 //
@@ -28,7 +46,7 @@ import (
 //   - publishes DaemonCtl stop
 //
 // On unexpected errors it reverts pending local expect, and announces node monitor state shutdown failed
-func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonShutdownParams) error {
+func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDaemonShutdownParams) error {
 	var (
 		log                        = LogHandler(ctx, "PostDaemonShutdown")
 		monitorLocalExpectShutdown = instance.MonitorLocalExpectShutdown
@@ -51,6 +69,7 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 	a.announceNodeState(log, node.MonitorStateShutting)
 
 	sub := a.EventBus.Sub(fmt.Sprintf("PostDaemonShutdown %s", ctx.Get("uuid")))
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode)
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -118,7 +137,6 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, params api.PostDaemonSh
 	for p, state := range getMonitorStates() {
 		if state.Is(instance.MonitorStateIdle) {
 			logP := naming.LogWithPath(log, p)
-			sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode, pubsub.Label{"path", p.String()})
 			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 			value := instance.MonitorUpdate{

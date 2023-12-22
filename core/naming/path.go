@@ -194,7 +194,9 @@ func ParsePath(s string) (Path, error) {
 		namespace string
 		kind      string
 	)
-	s = strings.ToLower(s)
+	if s != strings.ToLower(s) {
+		return Path{}, fmt.Errorf("%w: uppercase letters are not allowed", ErrInvalid)
+	}
 	l := strings.Split(s, Separator)
 	switch len(l) {
 	case 3:

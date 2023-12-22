@@ -345,7 +345,7 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.log = plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("%s: pubsub", name)).Attr("pkg", "util/pubsub").Attr("bus_name", name)
+	b.log = plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("%s: pubsub: ", name)).Attr("pkg", "util/pubsub").Attr("bus_name", name)
 	b.drainChanDuration = defaultDrainChanDuration
 	b.subQueueSize = defaultSubscriptionQueueSize
 	return b
@@ -710,7 +710,7 @@ func (b *Bus) warnExceededNotification(ctx context.Context, maxDuration time.Dur
 				if now.Sub(begin) > maxDuration {
 					duration := time.Now().Sub(begin).Seconds()
 					sub := b.subs[id]
-					b.log.Warnf("waited %.02fs over %s for %s", duration, maxDuration, sub)
+					b.log.Warnf("waited %.02fs over %s for %s", duration, maxDuration, sub.name)
 				}
 			}
 		}

@@ -371,7 +371,7 @@ func (t *T) stop() error {
 		log.Debugf("already stopped")
 		return nil
 	}
-	resp, err := t.client.PostDaemonStop(context.Background())
+	resp, err := t.client.PostDaemonStop(context.Background(), hostname.Hostname())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
