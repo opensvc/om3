@@ -8,8 +8,10 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/daemoncmd"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -23,20 +25,19 @@ type (
 //
 // The daemon restart is asynchronous when node selector is used
 func (t *CmdDaemonRestart) Run() error {
-	if t.NodeSelector == "" {
-		return t.restartLocal()
-	} else {
-		nodes, err := nodeselector.New(t.NodeSelector).Expand()
-		if err != nil {
-			return fmt.Errorf("can't retrieve nodes: %w", err)
-		} else if len(nodes) == 0 {
-			return fmt.Errorf("empty nodes")
-		}
-		return t.restartRemotes(nodes)
+	if t.Local {
+		t.NodeSelector = hostname.Hostname()
 	}
+	if !clientcontext.IsSet() && t.NodeSelector == "" {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if t.NodeSelector == "" {
+		return fmt.Errorf("--node must be specified")
+	}
+	return t.doNodes()
 }
 
-func (t *CmdDaemonRestart) restartLocal() error {
+func (t *CmdDaemonRestart) doLocal() error {
 	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on localhost\n")
 	cli, err := client.New()
 	if err != nil {
@@ -46,31 +47,61 @@ func (t *CmdDaemonRestart) restartLocal() error {
 	return daemoncmd.NewContext(ctx, cli).RestartFromCmd(ctx)
 }
 
-func (t *CmdDaemonRestart) restartRemotes(nodes []string) error {
-	var errs error
-	for _, s := range nodes {
-		if err := t.restartRemote(s); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("restart daemon failed on %s: %w", s, err))
+func (t *CmdDaemonRestart) doNodes() error {
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return err
+	}
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	if err != nil {
+		return err
+	}
+	errC := make(chan error)
+	ctx := context.Background()
+	running := 0
+	needDoLocal := false
+	for _, nodename := range nodenames {
+		if nodename == hostname.Hostname() {
+			needDoLocal = true
+			continue
 		}
+		running += 1
+		go func(nodename string) {
+			err := t.doNode(ctx, c, nodename)
+			errC <- err
+		}(nodename)
+	}
+	var (
+		errs error
+	)
+	for {
+		if running == 0 {
+			break
+		}
+		err := <-errC
+		errs = errors.Join(errs, err)
+		running -= 1
+	}
+	if needDoLocal {
+		err := t.doNode(ctx, c, hostname.Hostname())
+		errs = errors.Join(errs, err)
 	}
 	return errs
 }
 
-func (t *CmdDaemonRestart) restartRemote(s string) error {
-	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on remote %s\n", s)
-	cli, err := client.New(client.WithURL(s))
-	if err != nil {
-		return err
+func (t *CmdDaemonRestart) doNode(ctx context.Context, cli *client.T, nodename string) error {
+	if nodename == hostname.Hostname() {
+		return t.doLocal()
 	}
-	ctx := context.Background()
-	r, err := cli.PostDaemonRestart(ctx)
+	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on remote %s\n", nodename)
+	r, err := cli.PostDaemonRestart(ctx, nodename)
 	if err != nil {
-		return fmt.Errorf("unexpected post daemon restart failure for %s: %w", s, err)
+		return fmt.Errorf("unexpected post daemon restart failure for %s: %w", nodename, err)
 	}
 	switch r.StatusCode {
 	case http.StatusOK:
 		return nil
 	default:
-		return fmt.Errorf("unexpected post daemon restart status code for %s: %d", s, r.StatusCode)
+		return fmt.Errorf("unexpected post daemon restart status code for %s: %d", nodename, r.StatusCode)
 	}
 }

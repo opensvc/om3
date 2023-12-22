@@ -107,18 +107,6 @@ type ClientInterface interface {
 	// PostDaemonLeave request
 	PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonRestart request
-	PostDaemonRestart(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostDaemonShutdown request
-	PostDaemonShutdown(ctx context.Context, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostDaemonStop request
-	PostDaemonStop(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDaemonDNSDump request
-	GetDaemonDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -137,6 +125,9 @@ type ClientInterface interface {
 	PostDaemonSubActionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDNSDump request
+	GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstances request
 	GetInstances(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -239,6 +230,15 @@ type ClientInterface interface {
 
 	// PostNodeConfigUpdate request
 	PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonRestart request
+	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonShutdown request
+	PostDaemonShutdown(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonStop request
+	PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjects request
 	GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -399,54 +399,6 @@ func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeavePar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonRestart(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonRestartRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostDaemonShutdown(ctx context.Context, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonShutdownRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostDaemonStop(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonStopRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDaemonDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonDNSDumpRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetDaemonEvents(ctx context.Context, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDaemonEventsRequest(c.Server, params)
 	if err != nil {
@@ -521,6 +473,18 @@ func (c *Client) PostDaemonSubActionWithBody(ctx context.Context, contentType st
 
 func (c *Client) PostDaemonSubAction(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonSubActionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDNSDumpRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -941,6 +905,42 @@ func (c *Client) GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, 
 
 func (c *Client) PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeConfigUpdateRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonRestartRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonShutdown(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonShutdownRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonStopRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -1541,134 +1541,6 @@ func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*h
 	return req, nil
 }
 
-// NewPostDaemonRestartRequest generates requests for PostDaemonRestart
-func NewPostDaemonRestartRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/action/restart")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostDaemonShutdownRequest generates requests for PostDaemonShutdown
-func NewPostDaemonShutdownRequest(server string, params *PostDaemonShutdownParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/action/shutdown")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	queryValues := queryURL.Query()
-
-	if params.Duration != nil {
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "duration", runtime.ParamLocationQuery, *params.Duration); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-	}
-
-	queryURL.RawQuery = queryValues.Encode()
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostDaemonStopRequest generates requests for PostDaemonStop
-func NewPostDaemonStopRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/action/stop")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonDNSDumpRequest generates requests for GetDaemonDNSDump
-func NewGetDaemonDNSDumpRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/dns/dump")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetDaemonEventsRequest generates requests for GetDaemonEvents
 func NewGetDaemonEventsRequest(server string, params *GetDaemonEventsParams) (*http.Request, error) {
 	var err error
@@ -1914,6 +1786,33 @@ func NewPostDaemonSubActionRequestWithBody(server string, contentType string, bo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetDNSDumpRequest generates requests for GetDNSDump
+func NewGetDNSDumpRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns/dump")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -4474,6 +4373,128 @@ func NewPostNodeConfigUpdateRequest(server string, nodename InPathNodeName, para
 	return req, nil
 }
 
+// NewPostDaemonRestartRequest generates requests for PostDaemonRestart
+func NewPostDaemonRestartRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/restart", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonShutdownRequest generates requests for PostDaemonShutdown
+func NewPostDaemonShutdownRequest(server string, nodename InPathNodeName, params *PostDaemonShutdownParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/shutdown", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Duration != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "duration", runtime.ParamLocationQuery, *params.Duration); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonStopRequest generates requests for PostDaemonStop
+func NewPostDaemonStopRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/stop", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectsRequest generates requests for GetObjects
 func NewGetObjectsRequest(server string, params *GetObjectsParams) (*http.Request, error) {
 	var err error
@@ -5971,18 +5992,6 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonLeave request
 	PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
 
-	// PostDaemonRestart request
-	PostDaemonRestartWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
-
-	// PostDaemonShutdown request
-	PostDaemonShutdownWithResponse(ctx context.Context, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error)
-
-	// PostDaemonStop request
-	PostDaemonStopWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error)
-
-	// GetDaemonDNSDump request
-	GetDaemonDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error)
-
 	// GetDaemonEvents request
 	GetDaemonEventsWithResponse(ctx context.Context, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
 
@@ -6001,6 +6010,9 @@ type ClientWithResponsesInterface interface {
 	PostDaemonSubActionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonSubActionResponse, error)
 
 	PostDaemonSubActionWithResponse(ctx context.Context, body PostDaemonSubActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonSubActionResponse, error)
+
+	// GetDNSDump request
+	GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error)
 
 	// GetInstances request
 	GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error)
@@ -6103,6 +6115,15 @@ type ClientWithResponsesInterface interface {
 
 	// PostNodeConfigUpdate request
 	PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error)
+
+	// PostDaemonRestart request
+	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
+
+	// PostDaemonShutdown request
+	PostDaemonShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error)
+
+	// PostDaemonStop request
+	PostDaemonStopWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error)
 
 	// GetObjects request
 	GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error)
@@ -6346,106 +6367,6 @@ func (r PostDaemonLeaveResponse) StatusCode() int {
 	return 0
 }
 
-type PostDaemonRestartResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostDaemonRestartResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonRestartResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostDaemonShutdownResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostDaemonShutdownResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonShutdownResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostDaemonStopResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostDaemonStopResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonStopResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetDaemonDNSDumpResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DNSZone
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonDNSDumpResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonDNSDumpResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetDaemonEventsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6564,6 +6485,31 @@ func (r PostDaemonSubActionResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonSubActionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDNSDumpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DNSZone
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDNSDumpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDNSDumpResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7375,6 +7321,81 @@ func (r PostNodeConfigUpdateResponse) StatusCode() int {
 	return 0
 }
 
+type PostDaemonRestartResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonRestartResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonRestartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonShutdownResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonShutdownResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonShutdownResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonStopResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonStopResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8120,42 +8141,6 @@ func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, p
 	return ParsePostDaemonLeaveResponse(rsp)
 }
 
-// PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
-func (c *ClientWithResponses) PostDaemonRestartWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error) {
-	rsp, err := c.PostDaemonRestart(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonRestartResponse(rsp)
-}
-
-// PostDaemonShutdownWithResponse request returning *PostDaemonShutdownResponse
-func (c *ClientWithResponses) PostDaemonShutdownWithResponse(ctx context.Context, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error) {
-	rsp, err := c.PostDaemonShutdown(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonShutdownResponse(rsp)
-}
-
-// PostDaemonStopWithResponse request returning *PostDaemonStopResponse
-func (c *ClientWithResponses) PostDaemonStopWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error) {
-	rsp, err := c.PostDaemonStop(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonStopResponse(rsp)
-}
-
-// GetDaemonDNSDumpWithResponse request returning *GetDaemonDNSDumpResponse
-func (c *ClientWithResponses) GetDaemonDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error) {
-	rsp, err := c.GetDaemonDNSDump(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonDNSDumpResponse(rsp)
-}
-
 // GetDaemonEventsWithResponse request returning *GetDaemonEventsResponse
 func (c *ClientWithResponses) GetDaemonEventsWithResponse(ctx context.Context, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error) {
 	rsp, err := c.GetDaemonEvents(ctx, params, reqEditors...)
@@ -8215,6 +8200,15 @@ func (c *ClientWithResponses) PostDaemonSubActionWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParsePostDaemonSubActionResponse(rsp)
+}
+
+// GetDNSDumpWithResponse request returning *GetDNSDumpResponse
+func (c *ClientWithResponses) GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error) {
+	rsp, err := c.GetDNSDump(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDNSDumpResponse(rsp)
 }
 
 // GetInstancesWithResponse request returning *GetInstancesResponse
@@ -8527,6 +8521,33 @@ func (c *ClientWithResponses) PostNodeConfigUpdateWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParsePostNodeConfigUpdateResponse(rsp)
+}
+
+// PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
+func (c *ClientWithResponses) PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error) {
+	rsp, err := c.PostDaemonRestart(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonRestartResponse(rsp)
+}
+
+// PostDaemonShutdownWithResponse request returning *PostDaemonShutdownResponse
+func (c *ClientWithResponses) PostDaemonShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error) {
+	rsp, err := c.PostDaemonShutdown(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonShutdownResponse(rsp)
+}
+
+// PostDaemonStopWithResponse request returning *PostDaemonStopResponse
+func (c *ClientWithResponses) PostDaemonStopWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error) {
+	rsp, err := c.PostDaemonStop(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonStopResponse(rsp)
 }
 
 // GetObjectsWithResponse request returning *GetObjectsResponse
@@ -9109,194 +9130,6 @@ func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse,
 	return response, nil
 }
 
-// ParsePostDaemonRestartResponse parses an HTTP response from a PostDaemonRestartWithResponse call
-func ParsePostDaemonRestartResponse(rsp *http.Response) (*PostDaemonRestartResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostDaemonRestartResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostDaemonShutdownResponse parses an HTTP response from a PostDaemonShutdownWithResponse call
-func ParsePostDaemonShutdownResponse(rsp *http.Response) (*PostDaemonShutdownResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostDaemonShutdownResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostDaemonStopResponse parses an HTTP response from a PostDaemonStopWithResponse call
-func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostDaemonStopResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDaemonDNSDumpResponse parses an HTTP response from a GetDaemonDNSDumpWithResponse call
-func ParseGetDaemonDNSDumpResponse(rsp *http.Response) (*GetDaemonDNSDumpResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonDNSDumpResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DNSZone
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetDaemonEventsResponse parses an HTTP response from a GetDaemonEventsWithResponse call
 func ParseGetDaemonEventsResponse(rsp *http.Response) (*GetDaemonEventsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9494,6 +9327,53 @@ func ParsePostDaemonSubActionResponse(rsp *http.Response) (*PostDaemonSubActionR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDNSDumpResponse parses an HTTP response from a GetDNSDumpWithResponse call
+func ParseGetDNSDumpResponse(rsp *http.Response) (*GetDNSDumpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDNSDumpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSZone
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11037,6 +10917,147 @@ func ParsePostNodeConfigUpdateResponse(rsp *http.Response) (*PostNodeConfigUpdat
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonRestartResponse parses an HTTP response from a PostDaemonRestartWithResponse call
+func ParsePostDaemonRestartResponse(rsp *http.Response) (*PostDaemonRestartResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonRestartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonShutdownResponse parses an HTTP response from a PostDaemonShutdownWithResponse call
+func ParsePostDaemonShutdownResponse(rsp *http.Response) (*PostDaemonShutdownResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonShutdownResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonStopResponse parses an HTTP response from a PostDaemonStopWithResponse call
+func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonStopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

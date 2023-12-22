@@ -1030,12 +1030,6 @@ type PostDaemonLeaveParams struct {
 	Node string `form:"node" json:"node"`
 }
 
-// PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
-type PostDaemonShutdownParams struct {
-	// Duration max duration
-	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
-}
-
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
 	// Duration max duration
@@ -1254,6 +1248,12 @@ type PostNodeConfigUpdateParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
+type PostDaemonShutdownParams struct {
+	// Duration max duration
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.

@@ -6,10 +6,28 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/util/command"
 )
 
-func (a *DaemonApi) PostDaemonRestart(ctx echo.Context) error {
+func (a *DaemonApi) PostDaemonRestart(ctx echo.Context, nodename string) error {
+	if nodename == a.localhost {
+		return a.localPostDaemonRestart(ctx)
+	}
+	c, err := client.New(client.WithURL(nodename))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+	resp, err := c.PostDaemonRestartWithResponse(ctx.Request().Context(), nodename)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if len(resp.Body) > 0 {
+		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+	}
+	return nil
+}
+
+func (a *DaemonApi) localPostDaemonRestart(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonRestart")
 	log.Infof("starting")
 

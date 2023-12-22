@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/stringslice"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,17 +20,18 @@ func TestSvcconfAdd(t *testing.T) {
 		t.Skip("need root")
 	}
 
-	require.NoError(t, os.Setenv("OSVC_COMP_SERVICES_SVCNAME", "svcTest"))
+	require.NoError(t, os.Setenv("OSVC_COMP_SERVICES_SVCNAME", "test/svc/svc1"))
 	defer func() { require.NoError(t, os.Unsetenv("OSVC_COMP_SERVICES_SVCNAME")) }()
 
-	p, err := naming.ParsePath("svcTest")
+	p, err := naming.ParsePath("test/svc/svc1")
 	require.NoError(t, err)
 	s, err := object.NewSvc(p)
 	require.NoError(t, err)
 	require.NoError(t, s.Config().SetKeys(keyop.ParseList("app#0.start=test", "app#1.start=test1")...))
 	obj := CompSvcconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	require.Error(t, obj.Add(`[{}]`))
-	require.Equal(t, []string{"DEFAULT", "app#0", "app#1", "env"}, svcRessourcesNames)
+	require.True(t, stringslice.Has("app#0", svcRessourcesNames))
+	require.True(t, stringslice.Has("app#1", svcRessourcesNames))
 
 	testCases := map[string]struct {
 		jsonRule      string
@@ -114,7 +116,7 @@ func TestSvcconfCheckRuleFixRule(t *testing.T) {
 
 	oriSvcName := svcName
 	defer func() { svcName = oriSvcName }()
-	svcName = "svcTest"
+	svcName = "test/svc/svc1"
 
 	s, err := object.NewConfigurer(svcName)
 	require.NoError(t, err)

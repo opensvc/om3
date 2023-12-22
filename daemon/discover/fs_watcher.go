@@ -110,6 +110,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							log.Debug().Msgf("daemon: discover: fs: add file %s", filename)
 						}
 					*/
+					log.Debugf("publish msgbus.ConfigFileUpdated config file %s", filename)
 					bus.Pub(&msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 				}
 				return nil

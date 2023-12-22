@@ -1,18 +1,19 @@
 openapi: 3.0.0
+
 info:
   title: opensvc agent api
-  version: 3.11.0
-#servers:
-#  - url: https://localhost:1215
+  version: 3.12.0
+
 paths:
   /auth/token:
     post:
+      description: |
+        Create and return a JSON Web Token the client can use as a Authorization
+        header in its following requests.
+
+        The requested roles are embedded as a 'grant' claim if matching the usr
+        'grant' keyword.
       operationId: PostAuthToken
-      tags:
-        - auth
-      security:
-        - basicAuth: []
-        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/Roles'
         - in: query
@@ -36,15 +37,19 @@ paths:
           $ref: '#/components/responses/500'
         503:
           $ref: '#/components/responses/503'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - auth
 
   /cluster/action/abort:
     post:
+      description: |
+        Abort the running cluster-wide action orchestration.
+
+        Reset the node monitor global expect value on all nodes.
       operationId: PostClusterActionAbort
-      tags:
-        - cluster
-      security:
-        - basicAuth: []
-        - bearerAuth: []
       responses:
         200:
           description: OK
@@ -64,15 +69,22 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
 
   /cluster/action/freeze:
     post:
+      description: |
+        Freeze all the cluster nodes.
+
+        Prevent all service monitors decisions, for example services takeover.
+
+        Nodes should be frozen before any maintenance operation on the system,
+        the clusterware or the managed applications.
       operationId: PostClusterActionFreeze
-      tags:
-        - cluster
-      security:
-        - basicAuth: []
-        - bearerAuth: []
       responses:
         200:
           description: OK
@@ -92,15 +104,23 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
 
   /cluster/action/unfreeze:
     post:
+      description: |
+        Unfreeze all the cluster nodes.
+
+        Restore service monitors decision taking capability, for example services takeover.
+
+        Nodes should be unfrozen before leaving the nodes after a maintenance operation on
+        the system, the clusterware or the managed applications, so unattended failover is
+        enabled again.
       operationId: PostClusterActionUnfreeze
-      tags:
-        - cluster
-      security:
-        - basicAuth: []
-        - bearerAuth: []
       responses:
         200:
           description: OK
@@ -120,26 +140,29 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
 
   /daemon/action/join:
     post:
-      operationId: PostDaemonJoin
       description: |
-        Register a join request to add a new cluster node member.
-        The authenticated client requires at least grant 'root' or 'Join'.
+        Add a new node to the cluster of the requested api node.
 
-        Processing of the join request is done asynchronously by daemon, http response is sent
-        when the join request has been published with label: node=<api_node>
+        The requester must be granted the 'root' or 'join' roles.
 
-        To follow processing of the join request, you have to watch following events:
+        The processing of the join request is asynchronous.
+       
+        The HTTP response is sent when the join request event has been published.
+        This event is labeled node=<api_node>.
+
+        To follow the processing of the join request, use the following event filters,
         - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
         - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
         - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
-      tags:
-        - daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
+      operationId: PostDaemonJoin
       parameters:
         - in: query
           name: node
@@ -158,26 +181,28 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /daemon/action/leave:
-    post:
-      operationId: PostDaemonLeave
-      description: |
-        Register a leave request to remove a cluster node member.
-        The authenticated client requires at least grant 'root' or 'Leave'.
-
-        Processing of the leave request is done asynchronously by daemon, http response is sent
-        when the leave request has been published with label: node=<api_node>
-
-        To follow processing of the leave request, you have to watch following events:
-        - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
-        - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
-        - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
-      tags:
-        - daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
+      tags:
+        - daemon
+
+  /daemon/action/leave:
+    post:
+      description: |
+        Register a leave request to remove a cluster node member.
+        The requester must be granted the 'root' or 'Leave' roles.
+
+        The processing of the leave request is asynchronous.
+
+        The HTTP response is sent when the leave request event has been published.
+        This event is labeled node=<api_node>.
+
+        To follow the processing of the leave request, use the following event filters,
+        - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
+        - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
+        - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
+      operationId: PostDaemonLeave
       parameters:
         - in: query
           name: node
@@ -190,16 +215,24 @@ paths:
       responses:
         200:
           description: OK
-
-  /daemon/action/restart:
-    post:
-      description: restart the daemon
-      operationId: PostDaemonRestart
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
       tags:
         - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+
+  /node/name/{nodename}/daemon/action/restart:
+    post:
+      description: |
+        Restart the daemon on this node.
+
+        The node svc and vol instances do not change state.
+
+        The peer nodes are notified of our maintenance state so they will not
+        try to takeover services during the restart.
+      operationId: PostDaemonRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -209,18 +242,24 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /daemon/action/shutdown:
-    post:
-      operationId: PostDaemonShutdown
-      description: Shutdown all local svc and vol objects then shutdown the daemon
-      tags:
-        - daemon
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - daemon
+
+  /node/name/{nodename}/daemon/action/shutdown:
+    post:
+      description: |
+        Shut down all the node svc and vol instances, then stop the daemon.
+
+        Peer nodes are not notified of a maintenance period, so they will try
+        to takeover services as soon as their instance on the shutdown daemon's
+        node is down.
+      operationId: PostDaemonShutdown
       parameters:
         - $ref: '#/components/parameters/Duration'
+        - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -230,15 +269,23 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
 
-  /daemon/action/stop:
+  /node/name/{nodename}/daemon/action/stop:
     post:
+      description: |
+        Stop the daemon.
+
+        The node svc and vol instances do not change state.
+        The peer nodes are notified of our maintenance state so they will
+        not takeover services until the maintenance_grace_period is expired.
       operationId: PostDaemonStop
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -248,17 +295,17 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /daemon/dns/dump:
-    get:
-      operationId: GetDaemonDNSDump
-      tags:
-        - daemon
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - daemon
+
+  /dns/dump:
+    get:
       description: |
         Dump the cluster DNS zone content.
+      operationId: GetDNSDump
       responses:
         200:
           description: OK
@@ -272,15 +319,15 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - dns
 
   /daemon/event:
     get:
       operationId: GetDaemonEvents
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
       description: |
         Listen daemon events
       parameters:
@@ -300,6 +347,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - daemon
 
   /daemon/log/control:
     post:
