@@ -1199,18 +1199,6 @@ type GetNodesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
-type GetNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
-	Name DRBDConfigName `form:"name" json:"name"`
-}
-
-// PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
-type PostNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
-	Name DRBDConfigName `form:"name" json:"name"`
-}
-
 // GetNodeLogsParams defines parameters for GetNodeLogs.
 type GetNodeLogsParams struct {
 	// Filter list of log filter
@@ -1254,6 +1242,18 @@ type PostNodeConfigUpdateParams struct {
 type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+}
+
+// GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
+type GetNodeDRBDConfigParams struct {
+	// Name the full naming of the file is deduced from the name
+	Name DRBDConfigName `form:"name" json:"name"`
+}
+
+// PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
+type PostNodeDRBDConfigParams struct {
+	// Name the full naming of the file is deduced from the name
+	Name DRBDConfigName `form:"name" json:"name"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.

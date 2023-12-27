@@ -397,12 +397,12 @@ func (t T) ProvisionStart(ctx context.Context) error {
 
 func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 	allocations := make(map[string]api.DRBDAllocation)
+	c, err := client.New()
+	if err != nil {
+		return nil, err
+	}
 	for _, nodename := range t.Nodes {
-		c, err := client.New(client.WithURL(nodename))
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background())
+		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background(), nodename)
 		switch {
 		case err != nil:
 			return nil, err
@@ -551,14 +551,14 @@ func (t T) unlock(ctx context.Context) error {
 }
 
 func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := client.New()
 	if err != nil {
 		return nil, err
 	}
 	params := api.GetNodeDRBDConfigParams{
 		Name: t.Res,
 	}
-	resp, err := c.GetNodeDRBDConfigWithResponse(context.Background(), &params)
+	resp, err := c.GetNodeDRBDConfigWithResponse(context.Background(), nodename, &params)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -644,7 +644,7 @@ func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error
 }
 
 func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}
@@ -655,7 +655,7 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		AllocationId: allocationId,
 		Data:         b,
 	}
-	resp, err := c.PostNodeDRBDConfigWithResponse(context.Background(), &params, body)
+	resp, err := c.PostNodeDRBDConfigWithResponse(context.Background(), nodename, &params, body)
 	if err != nil {
 		return err
 	}

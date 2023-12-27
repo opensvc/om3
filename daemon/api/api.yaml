@@ -723,14 +723,13 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/drbd/allocation:
+  /node/name/{nodename}/drbd/allocation:
     get:
+      description: |
+        Get the drbd driver minor numbers and ports already allocated on the node.
       operationId: GetNodeDRBDAllocation
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
           description: OK
@@ -740,16 +739,19 @@ paths:
                 $ref: '#/components/schemas/DRBDAllocation'
         500:
           $ref: '#/components/responses/500'
-
-  /node/drbd/config:
-    get:
-      operationId: GetNodeDRBDConfig
-      tags:
-        - node
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - node
+
+  /node/name/{nodename}/drbd/config:
+    get:
+      operationId: GetNodeDRBDConfig
+      description: |
+        Fetch from a node a drbd configuration file fragment.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
       responses:
         200:
@@ -766,14 +768,22 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
     post:
       operationId: PostNodeDRBDConfig
+      description: |
+        Send to a node a drbd configuration file fragment to install.
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
       requestBody:
         description: monitor

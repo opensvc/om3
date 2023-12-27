@@ -196,17 +196,6 @@ type ClientInterface interface {
 	// PostNodeClear request
 	PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNodeDRBDAllocation request
-	GetNodeDRBDAllocation(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetNodeDRBDConfig request
-	GetNodeDRBDConfig(ctx context.Context, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeDRBDConfig request with any body
-	PostNodeDRBDConfigWithBody(ctx context.Context, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostNodeDRBDConfig(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetNodesInfo request
 	GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -239,6 +228,17 @@ type ClientInterface interface {
 
 	// PostDaemonStop request
 	PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeDRBDAllocation request
+	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeDRBDConfig request
+	GetNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeDRBDConfig request with any body
+	PostNodeDRBDConfigWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjects request
 	GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -771,54 +771,6 @@ func (c *Client) PostNodeClear(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeDRBDAllocation(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeDRBDAllocationRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetNodeDRBDConfig(ctx context.Context, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeDRBDConfigRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeDRBDConfigWithBody(ctx context.Context, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeDRBDConfigRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeDRBDConfig(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeDRBDConfigRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodesInfoRequest(c.Server)
 	if err != nil {
@@ -941,6 +893,54 @@ func (c *Client) PostDaemonShutdown(ctx context.Context, nodename InPathNodeName
 
 func (c *Client) PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonStopRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeDRBDAllocationRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeDRBDConfigRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeDRBDConfigWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeDRBDConfigRequestWithBody(c.Server, nodename, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeDRBDConfigRequest(c.Server, nodename, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3781,132 +3781,6 @@ func NewPostNodeClearRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewGetNodeDRBDAllocationRequest generates requests for GetNodeDRBDAllocation
-func NewGetNodeDRBDAllocationRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/drbd/allocation")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetNodeDRBDConfigRequest generates requests for GetNodeDRBDConfig
-func NewGetNodeDRBDConfigRequest(server string, params *GetNodeDRBDConfigParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/drbd/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	queryValues := queryURL.Query()
-
-	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
-		return nil, err
-	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-		return nil, err
-	} else {
-		for k, v := range parsed {
-			for _, v2 := range v {
-				queryValues.Add(k, v2)
-			}
-		}
-	}
-
-	queryURL.RawQuery = queryValues.Encode()
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostNodeDRBDConfigRequest calls the generic PostNodeDRBDConfig builder with application/json body
-func NewPostNodeDRBDConfigRequest(server string, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostNodeDRBDConfigRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewPostNodeDRBDConfigRequestWithBody generates requests for PostNodeDRBDConfig with any type of body
-func NewPostNodeDRBDConfigRequestWithBody(server string, params *PostNodeDRBDConfigParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/drbd/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	queryValues := queryURL.Query()
-
-	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
-		return nil, err
-	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-		return nil, err
-	} else {
-		for k, v := range parsed {
-			for _, v2 := range v {
-				queryValues.Add(k, v2)
-			}
-		}
-	}
-
-	queryURL.RawQuery = queryValues.Encode()
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewGetNodesInfoRequest generates requests for GetNodesInfo
 func NewGetNodesInfoRequest(server string) (*http.Request, error) {
 	var err error
@@ -4491,6 +4365,153 @@ func NewPostDaemonStopRequest(server string, nodename InPathNodeName) (*http.Req
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetNodeDRBDAllocationRequest generates requests for GetNodeDRBDAllocation
+func NewGetNodeDRBDAllocationRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/drbd/allocation", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeDRBDConfigRequest generates requests for GetNodeDRBDConfig
+func NewGetNodeDRBDConfigRequest(server string, nodename InPathNodeName, params *GetNodeDRBDConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/drbd/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeDRBDConfigRequest calls the generic PostNodeDRBDConfig builder with application/json body
+func NewPostNodeDRBDConfigRequest(server string, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostNodeDRBDConfigRequestWithBody(server, nodename, params, "application/json", bodyReader)
+}
+
+// NewPostNodeDRBDConfigRequestWithBody generates requests for PostNodeDRBDConfig with any type of body
+func NewPostNodeDRBDConfigRequestWithBody(server string, nodename InPathNodeName, params *PostNodeDRBDConfigParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/drbd/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6081,17 +6102,6 @@ type ClientWithResponsesInterface interface {
 	// PostNodeClear request
 	PostNodeClearWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeClearResponse, error)
 
-	// GetNodeDRBDAllocation request
-	GetNodeDRBDAllocationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
-
-	// GetNodeDRBDConfig request
-	GetNodeDRBDConfigWithResponse(ctx context.Context, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*GetNodeDRBDConfigResponse, error)
-
-	// PostNodeDRBDConfig request with any body
-	PostNodeDRBDConfigWithBodyWithResponse(ctx context.Context, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
-
-	PostNodeDRBDConfigWithResponse(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
-
 	// GetNodesInfo request
 	GetNodesInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesInfoResponse, error)
 
@@ -6124,6 +6134,17 @@ type ClientWithResponsesInterface interface {
 
 	// PostDaemonStop request
 	PostDaemonStopWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error)
+
+	// GetNodeDRBDAllocation request
+	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
+
+	// GetNodeDRBDConfig request
+	GetNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*GetNodeDRBDConfigResponse, error)
+
+	// PostNodeDRBDConfig request with any body
+	PostNodeDRBDConfigWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
+
+	PostNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
 
 	// GetObjects request
 	GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error)
@@ -7040,80 +7061,6 @@ func (r PostNodeClearResponse) StatusCode() int {
 	return 0
 }
 
-type GetNodeDRBDAllocationResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DRBDAllocation
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r GetNodeDRBDAllocationResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeDRBDAllocationResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetNodeDRBDConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DRBDConfig
-	JSON400      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r GetNodeDRBDConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeDRBDConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodeDRBDConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *Problem
-	JSON401      *Problem
-	JSON403      *Problem
-	JSON500      *Problem
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeDRBDConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeDRBDConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetNodesInfoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7390,6 +7337,80 @@ func (r PostDaemonStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeDRBDAllocationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DRBDAllocation
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeDRBDAllocationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeDRBDAllocationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeDRBDConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DRBDConfig
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeDRBDConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeDRBDConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeDRBDConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *Problem
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeDRBDConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeDRBDConfigResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8416,41 +8437,6 @@ func (c *ClientWithResponses) PostNodeClearWithResponse(ctx context.Context, req
 	return ParsePostNodeClearResponse(rsp)
 }
 
-// GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
-func (c *ClientWithResponses) GetNodeDRBDAllocationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error) {
-	rsp, err := c.GetNodeDRBDAllocation(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetNodeDRBDAllocationResponse(rsp)
-}
-
-// GetNodeDRBDConfigWithResponse request returning *GetNodeDRBDConfigResponse
-func (c *ClientWithResponses) GetNodeDRBDConfigWithResponse(ctx context.Context, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*GetNodeDRBDConfigResponse, error) {
-	rsp, err := c.GetNodeDRBDConfig(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetNodeDRBDConfigResponse(rsp)
-}
-
-// PostNodeDRBDConfigWithBodyWithResponse request with arbitrary body returning *PostNodeDRBDConfigResponse
-func (c *ClientWithResponses) PostNodeDRBDConfigWithBodyWithResponse(ctx context.Context, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error) {
-	rsp, err := c.PostNodeDRBDConfigWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeDRBDConfigResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostNodeDRBDConfigWithResponse(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error) {
-	rsp, err := c.PostNodeDRBDConfig(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeDRBDConfigResponse(rsp)
-}
-
 // GetNodesInfoWithResponse request returning *GetNodesInfoResponse
 func (c *ClientWithResponses) GetNodesInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesInfoResponse, error) {
 	rsp, err := c.GetNodesInfo(ctx, reqEditors...)
@@ -8548,6 +8534,41 @@ func (c *ClientWithResponses) PostDaemonStopWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParsePostDaemonStopResponse(rsp)
+}
+
+// GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
+func (c *ClientWithResponses) GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error) {
+	rsp, err := c.GetNodeDRBDAllocation(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeDRBDAllocationResponse(rsp)
+}
+
+// GetNodeDRBDConfigWithResponse request returning *GetNodeDRBDConfigResponse
+func (c *ClientWithResponses) GetNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*GetNodeDRBDConfigResponse, error) {
+	rsp, err := c.GetNodeDRBDConfig(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeDRBDConfigResponse(rsp)
+}
+
+// PostNodeDRBDConfigWithBodyWithResponse request with arbitrary body returning *PostNodeDRBDConfigResponse
+func (c *ClientWithResponses) PostNodeDRBDConfigWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error) {
+	rsp, err := c.PostNodeDRBDConfigWithBody(ctx, nodename, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeDRBDConfigResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error) {
+	rsp, err := c.PostNodeDRBDConfig(ctx, nodename, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeDRBDConfigResponse(rsp)
 }
 
 // GetObjectsWithResponse request returning *GetObjectsResponse
@@ -10385,140 +10406,6 @@ func ParsePostNodeClearResponse(rsp *http.Response) (*PostNodeClearResponse, err
 	return response, nil
 }
 
-// ParseGetNodeDRBDAllocationResponse parses an HTTP response from a GetNodeDRBDAllocationWithResponse call
-func ParseGetNodeDRBDAllocationResponse(rsp *http.Response) (*GetNodeDRBDAllocationResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetNodeDRBDAllocationResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DRBDAllocation
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetNodeDRBDConfigResponse parses an HTTP response from a GetNodeDRBDConfigWithResponse call
-func ParseGetNodeDRBDConfigResponse(rsp *http.Response) (*GetNodeDRBDConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetNodeDRBDConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DRBDConfig
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeDRBDConfigResponse parses an HTTP response from a PostNodeDRBDConfigWithResponse call
-func ParsePostNodeDRBDConfigResponse(rsp *http.Response) (*PostNodeDRBDConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeDRBDConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetNodesInfoResponse parses an HTTP response from a GetNodesInfoWithResponse call
 func ParseGetNodesInfoResponse(rsp *http.Response) (*GetNodesInfoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -11058,6 +10945,140 @@ func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeDRBDAllocationResponse parses an HTTP response from a GetNodeDRBDAllocationWithResponse call
+func ParseGetNodeDRBDAllocationResponse(rsp *http.Response) (*GetNodeDRBDAllocationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeDRBDAllocationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DRBDAllocation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeDRBDConfigResponse parses an HTTP response from a GetNodeDRBDConfigWithResponse call
+func ParseGetNodeDRBDConfigResponse(rsp *http.Response) (*GetNodeDRBDConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeDRBDConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DRBDConfig
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeDRBDConfigResponse parses an HTTP response from a PostNodeDRBDConfigWithResponse call
+func ParsePostNodeDRBDConfigResponse(rsp *http.Response) (*PostNodeDRBDConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeDRBDConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

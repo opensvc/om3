@@ -8,7 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/drbd"
 )
 
@@ -72,7 +75,34 @@ func init() {
 	pendingDRBDAllocations = newPendingDRBDAllocationsMap()
 }
 
-func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
+func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context, nodename string) error {
+	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
+		return err
+	}
+	if a.localhost == nodename {
+		return a.getLocalNodeDRBDAllocation(ctx)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
+	} else {
+		return a.getPeerDRBDAllocation(ctx, nodename)
+	}
+	return nil
+}
+
+func (a *DaemonApi) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {
+	c, err := client.New(client.WithURL(nodename))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+	if resp, err := c.GetNodeDRBDAllocationWithResponse(ctx.Request().Context(), nodename); err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if len(resp.Body) > 0 {
+		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+	}
+	return nil
+}
+
+func (a *DaemonApi) getLocalNodeDRBDAllocation(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodeDRBDAllocation")
 	log.Debugf("starting")
 
