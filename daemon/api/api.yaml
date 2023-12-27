@@ -1210,20 +1210,13 @@ paths:
         - instance / svc
         - instance / vol
 
-  /instance/path/{namespace}/{kind}/{name}/clear:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
     post:
+      description: |
+        Clear an error ("start failed" for example) in the instance monitor state.
       operationId: PostInstanceClear
-      tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Clear an error ("start failed" for example) in the instance monitor state.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1236,6 +1229,15 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
 
   /instance/path/{namespace}/{kind}/{name}/log:
     get:
@@ -1276,8 +1278,8 @@ paths:
     post:
       operationId: PostInstanceProgress
       tags:
-        - instance / svc
-        - instance / vol
+        - internal / instance / svc
+        - internal / instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1306,8 +1308,8 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - instance / svc
-        - instance / vol
+        - internal / instance / svc
+        - internal / instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
