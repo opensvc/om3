@@ -185,7 +185,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - internal
 
   /daemon/action/leave:
     post:
@@ -219,7 +219,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - internal
 
   /node/name/{nodename}/daemon/action/restart:
     post:
@@ -939,6 +939,39 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}:
+    get:
+      operationId: GetInstance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: get instance config, monitor and status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceItem'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/boot:
     post:
       description: Boot the object instance.
@@ -1278,8 +1311,7 @@ paths:
     post:
       operationId: PostInstanceProgress
       tags:
-        - internal / instance / svc
-        - internal / instance / vol
+        - internal
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1308,8 +1340,7 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - internal / instance / svc
-        - internal / instance / vol
+        - internal
       security:
         - basicAuth: []
         - bearerAuth: []
