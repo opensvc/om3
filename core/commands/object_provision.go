@@ -43,7 +43,7 @@ func (t *CmdObjectProvision) Run(selector, kind string) error {
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
+			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
@@ -80,7 +80,7 @@ func (t *CmdObjectProvision) Run(selector, kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionProvisionWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

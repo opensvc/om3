@@ -33,7 +33,7 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
+			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +42,7 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionUnfreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

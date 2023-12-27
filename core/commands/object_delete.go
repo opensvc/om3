@@ -30,7 +30,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithAsyncTarget("deleted"),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
+			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
@@ -39,7 +39,7 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionDeleteWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

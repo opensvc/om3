@@ -63,39 +63,6 @@ type ServerInterface interface {
 	// (GET /instance/log)
 	GetInstancesLogs(ctx echo.Context, params GetInstancesLogsParams) error
 
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/boot)
-	PostInstanceActionBoot(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionBootParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/delete)
-	PostInstanceActionDelete(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionDeleteParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/freeze)
-	PostInstanceActionFreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionFreezeParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/provision)
-	PostInstanceActionProvision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionProvisionParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/set)
-	PostInstanceActionSet(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionSetParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/start)
-	PostInstanceActionStart(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStartParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/stop)
-	PostInstanceActionStop(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStopParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/unfreeze)
-	PostInstanceActionUnfreeze(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnfreezeParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/unprovision)
-	PostInstanceActionUnprovision(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnprovisionParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/unset)
-	PostInstanceActionUnset(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnsetParams) error
-
-	// (POST /instance/path/{namespace}/{kind}/{name}/action/update)
-	PostInstanceActionUpdate(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUpdateParams) error
-
 	// (POST /instance/path/{namespace}/{kind}/{name}/clear)
 	PostInstanceClear(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
@@ -161,6 +128,30 @@ type ServerInterface interface {
 
 	// (POST /node/name/{nodename}/drbd/config)
 	PostNodeDRBDConfig(ctx echo.Context, nodename InPathNodeName, params PostNodeDRBDConfigParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/boot)
+	PostInstanceActionBoot(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionBootParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/delete)
+	PostInstanceActionDelete(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionDeleteParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/freeze)
+	PostInstanceActionFreeze(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionFreezeParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision)
+	PostInstanceActionProvision(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionProvisionParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start)
+	PostInstanceActionStart(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStartParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/stop)
+	PostInstanceActionStop(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionStopParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unfreeze)
+	PostInstanceActionUnfreeze(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnfreezeParams) error
+
+	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unprovision)
+	PostInstanceActionUnprovision(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params PostInstanceActionUnprovisionParams) error
 
 	// (GET /object)
 	GetObjects(ctx echo.Context, params GetObjectsParams) error
@@ -544,774 +535,6 @@ func (w *ServerInterfaceWrapper) GetInstancesLogs(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.GetInstancesLogs(ctx, params)
-	return err
-}
-
-// PostInstanceActionBoot converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionBoot(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionBootParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "rid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
-	}
-
-	// ------------- Optional query parameter "subset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
-	}
-
-	// ------------- Optional query parameter "tag" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionBoot(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionDelete converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionDelete(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionDeleteParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionDelete(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionFreeze converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionFreeze(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionFreezeParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionFreeze(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionProvision converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionProvision(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionProvisionParams
-	// ------------- Optional query parameter "disable_rollback" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
-	}
-
-	// ------------- Optional query parameter "force" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
-	}
-
-	// ------------- Optional query parameter "leader" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
-	}
-
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "rid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
-	}
-
-	// ------------- Optional query parameter "subset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
-	}
-
-	// ------------- Optional query parameter "tag" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionProvision(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionSet converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionSet(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionSetParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "kw" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "kw", ctx.QueryParams(), &params.Kw)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kw: %s", err))
-	}
-
-	// ------------- Optional query parameter "no_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "no_lock", ctx.QueryParams(), &params.NoLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter no_lock: %s", err))
-	}
-
-	// ------------- Optional query parameter "wait_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "wait_lock", ctx.QueryParams(), &params.WaitLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter wait_lock: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionSet(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionStart converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionStart(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionStartParams
-	// ------------- Optional query parameter "disable_rollback" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
-	}
-
-	// ------------- Optional query parameter "force" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
-	}
-
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "rid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
-	}
-
-	// ------------- Optional query parameter "subset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
-	}
-
-	// ------------- Optional query parameter "tag" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionStart(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionStop converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionStop(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionStopParams
-	// ------------- Optional query parameter "force" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
-	}
-
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "rid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
-	}
-
-	// ------------- Optional query parameter "subset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
-	}
-
-	// ------------- Optional query parameter "tag" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionStop(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionUnfreeze converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionUnfreeze(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionUnfreezeParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionUnfreeze(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionUnprovision converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionUnprovision(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionUnprovisionParams
-	// ------------- Optional query parameter "force" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
-	}
-
-	// ------------- Optional query parameter "leader" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
-	}
-
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "rid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
-	}
-
-	// ------------- Optional query parameter "subset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
-	}
-
-	// ------------- Optional query parameter "tag" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionUnprovision(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionUnset converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionUnset(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionUnsetParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "kw" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "kw", ctx.QueryParams(), &params.Kw)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kw: %s", err))
-	}
-
-	// ------------- Optional query parameter "no_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "no_lock", ctx.QueryParams(), &params.NoLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter no_lock: %s", err))
-	}
-
-	// ------------- Optional query parameter "wait_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "wait_lock", ctx.QueryParams(), &params.WaitLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter wait_lock: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionUnset(ctx, namespace, kind, name, params)
-	return err
-}
-
-// PostInstanceActionUpdate converts echo context to params.
-func (w *ServerInterfaceWrapper) PostInstanceActionUpdate(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "namespace" -------------
-	var namespace InPathNamespace
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
-	}
-
-	// ------------- Path parameter "kind" -------------
-	var kind InPathKind
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
-	}
-
-	// ------------- Path parameter "name" -------------
-	var name InPathName
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
-	ctx.Set(BasicAuthScopes, []string{""})
-
-	ctx.Set(BearerAuthScopes, []string{""})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostInstanceActionUpdateParams
-	// ------------- Optional query parameter "requester_sid" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
-	}
-
-	// ------------- Optional query parameter "delete" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "delete", ctx.QueryParams(), &params.Delete)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter delete: %s", err))
-	}
-
-	// ------------- Optional query parameter "no_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "no_lock", ctx.QueryParams(), &params.NoLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter no_lock: %s", err))
-	}
-
-	// ------------- Optional query parameter "set" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "set", ctx.QueryParams(), &params.Set)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter set: %s", err))
-	}
-
-	// ------------- Optional query parameter "unset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "unset", ctx.QueryParams(), &params.Unset)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter unset: %s", err))
-	}
-
-	// ------------- Optional query parameter "wait_lock" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "wait_lock", ctx.QueryParams(), &params.WaitLock)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter wait_lock: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostInstanceActionUpdate(ctx, namespace, kind, name, params)
 	return err
 }
 
@@ -1945,6 +1168,626 @@ func (w *ServerInterfaceWrapper) PostNodeDRBDConfig(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostNodeDRBDConfig(ctx, nodename, params)
+	return err
+}
+
+// PostInstanceActionBoot converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionBoot(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionBootParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionBoot(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionDelete converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionDelete(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionDeleteParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionDelete(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionFreeze converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionFreeze(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionFreezeParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionFreeze(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionProvision converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionProvision(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionProvisionParams
+	// ------------- Optional query parameter "disable_rollback" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
+	}
+
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "leader" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionProvision(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionStart converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionStart(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionStartParams
+	// ------------- Optional query parameter "disable_rollback" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "disable_rollback", ctx.QueryParams(), &params.DisableRollback)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter disable_rollback: %s", err))
+	}
+
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionStart(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionStop converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionStop(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionStopParams
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionStop(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionUnfreeze converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionUnfreeze(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionUnfreezeParams
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionUnfreeze(ctx, nodename, namespace, kind, name, params)
+	return err
+}
+
+// PostInstanceActionUnprovision converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceActionUnprovision(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceActionUnprovisionParams
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "leader" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "leader", ctx.QueryParams(), &params.Leader)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter leader: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// ------------- Optional query parameter "rid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rid", ctx.QueryParams(), &params.Rid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rid: %s", err))
+	}
+
+	// ------------- Optional query parameter "subset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "subset", ctx.QueryParams(), &params.Subset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter subset: %s", err))
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tag", ctx.QueryParams(), &params.Tag)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tag: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to", ctx.QueryParams(), &params.To)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceActionUnprovision(ctx, nodename, namespace, kind, name, params)
 	return err
 }
 
@@ -2875,17 +2718,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/dns/dump", wrapper.GetDNSDump)
 	router.GET(baseURL+"/instance", wrapper.GetInstances)
 	router.GET(baseURL+"/instance/log", wrapper.GetInstancesLogs)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/boot", wrapper.PostInstanceActionBoot)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/delete", wrapper.PostInstanceActionDelete)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/freeze", wrapper.PostInstanceActionFreeze)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/provision", wrapper.PostInstanceActionProvision)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/set", wrapper.PostInstanceActionSet)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/start", wrapper.PostInstanceActionStart)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/stop", wrapper.PostInstanceActionStop)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/unfreeze", wrapper.PostInstanceActionUnfreeze)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/unprovision", wrapper.PostInstanceActionUnprovision)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/unset", wrapper.PostInstanceActionUnset)
-	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/action/update", wrapper.PostInstanceActionUpdate)
 	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/clear", wrapper.PostInstanceClear)
 	router.GET(baseURL+"/instance/path/:namespace/:kind/:name/log", wrapper.GetInstanceLogs)
 	router.POST(baseURL+"/instance/path/:namespace/:kind/:name/progress", wrapper.PostInstanceProgress)
@@ -2908,6 +2740,14 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/node/name/:nodename/drbd/allocation", wrapper.GetNodeDRBDAllocation)
 	router.GET(baseURL+"/node/name/:nodename/drbd/config", wrapper.GetNodeDRBDConfig)
 	router.POST(baseURL+"/node/name/:nodename/drbd/config", wrapper.PostNodeDRBDConfig)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/boot", wrapper.PostInstanceActionBoot)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/delete", wrapper.PostInstanceActionDelete)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/freeze", wrapper.PostInstanceActionFreeze)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/provision", wrapper.PostInstanceActionProvision)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/start", wrapper.PostInstanceActionStart)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/stop", wrapper.PostInstanceActionStop)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/unfreeze", wrapper.PostInstanceActionUnfreeze)
+	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/unprovision", wrapper.PostInstanceActionUnprovision)
 	router.GET(baseURL+"/object", wrapper.GetObjects)
 	router.GET(baseURL+"/object/path", wrapper.GetObjectPaths)
 	router.GET(baseURL+"/object/path/:namespace/:kind/:name", wrapper.GetObject)
@@ -2940,163 +2780,162 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"rJV1PAEA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

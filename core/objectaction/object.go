@@ -374,7 +374,9 @@ func (t T) DoLocal() error {
 	}
 
 	for _, path := range paths {
-		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, t.LocalFunc)
+		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, func(ctx context.Context, n string, p naming.Path) (any, error) {
+			return t.LocalFunc(ctx, p)
+		})
 	}
 	for {
 		result := <-resultQ
@@ -823,7 +825,7 @@ func (t T) DoRemote() error {
 			if t.Wait {
 				t.waitRequesterSessionEnd(ctx, c, requesterSid, p, waitC)
 			}
-			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, p naming.Path) (any, error) {
+			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
 			})
 			todo += 1
@@ -877,14 +879,14 @@ func (t T) Do() error {
 }
 
 // instanceDo executes the action in a goroutine
-func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, naming.Path) (any, error)) {
+func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, string, naming.Path) (any, error)) {
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
 
-	go func(p naming.Path) {
+	go func(n string, p naming.Path) {
 		result := actionrouter.Result{
 			Path:     p,
-			Nodename: nodename,
+			Nodename: n,
 		}
 		/*
 			defer func() {
@@ -895,12 +897,12 @@ func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nod
 				}
 			}()
 		*/
-		data, err := fn(ctx, p)
+		data, err := fn(ctx, n, p)
 		result.Data = data
 		result.Error = err
 		result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
 		resultQ <- result
-	}(path)
+	}(nodename, path)
 }
 
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
