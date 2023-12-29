@@ -251,6 +251,8 @@ func (t *T) loadContext() error {
 		t.insecureSkipVerify = context.Cluster.InsecureSkipVerify
 		t.clientCertificate = context.User.ClientCertificate
 		t.clientKey = context.User.ClientKey
+		t.password = context.User.Password
+		t.username = context.User.Name
 	}
 	return nil
 }
