@@ -2926,6 +2926,9 @@ components:
         labels:
           type: object
     NodeInfo:
+      x-go-type: node.NodeInfo
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - labels
@@ -2965,6 +2968,9 @@ components:
         node:
           type: string
     NodesInfo:
+      x-go-type: node.NodesInfo
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
       type: array
       items:
         $ref: '#/components/schemas/NodeInfo'

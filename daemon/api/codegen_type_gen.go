@@ -481,16 +481,7 @@ type NodeActionAccepted struct {
 type NodeConfig = node.Config
 
 // NodeInfo defines model for NodeInfo.
-type NodeInfo struct {
-	// Labels labels is the list of node labels.
-	Labels []NodeLabel `json:"labels"`
-
-	// Nodename nodename is the name of the node where the labels and paths are coming from.
-	Nodename string `json:"nodename"`
-
-	// Paths paths is the list of node to storage array san paths.
-	Paths []SANPath `json:"paths"`
-}
+type NodeInfo = node.NodeInfo
 
 // NodeItem defines model for NodeItem.
 type NodeItem struct {
@@ -535,7 +526,7 @@ type NodeMonitor = node.Monitor
 type NodeStatus = node.Status
 
 // NodesInfo defines model for NodesInfo.
-type NodesInfo = []NodeInfo
+type NodesInfo = node.NodesInfo
 
 // ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {

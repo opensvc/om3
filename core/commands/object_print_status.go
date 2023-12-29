@@ -140,16 +140,16 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	return data, nil
 }
 
-func (t *CmdObjectPrintStatus) getNodenames() ([]string, error) {
+func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
 	if t.NodeSelector != "" {
-		if nodes, err := nodeselector.Expand(t.NodeSelector); err != nil {
+		if nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
 		} else {
 			return nodes, nil
 		}
 	}
 	if clientcontext.IsSet() {
-		if nodes, err := nodeselector.Expand("*"); err != nil {
+		if nodes, err := nodeselector.New("*", nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
 		} else {
 			return nodes, nil
@@ -176,7 +176,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
-	nodenames, err := t.getNodenames()
+	nodenames, err := t.getNodenames(c)
 	if err != nil {
 		return err
 	}
@@ -197,23 +197,17 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		},
 		Colorize: rawconfig.Colorize,
 	}
-	if t.NodeSelector != "" {
-		nodes, err := nodeselector.Expand(t.NodeSelector)
-		if err != nil {
-			return fmt.Errorf("expand node selection: %w", err)
-		}
-		l := make([]instance.States, 0)
-		for _, objData := range data {
-			instMap := objData.Instances.ByNode()
-			for _, node := range nodes {
-				if _, ok := instMap[node]; !ok {
-					return fmt.Errorf("instance of %s on node %s does not exist", objData.Path, node)
-				}
-				l = append(l, instMap[node])
+	l := make([]instance.States, 0)
+	for _, objData := range data {
+		instMap := objData.Instances.ByNode()
+		for _, nodename := range nodenames {
+			if _, ok := instMap[nodename]; !ok {
+				return fmt.Errorf("instance of %s on node %s does not exist", objData.Path, nodename)
 			}
+			l = append(l, instMap[nodename])
 		}
-		renderer.Data = l
 	}
+	renderer.Data = l
 	renderer.Print()
 	return nil
 }
