@@ -140,6 +140,24 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	return data, nil
 }
 
+func (t *CmdObjectPrintStatus) getNodenames() ([]string, error) {
+	if t.NodeSelector != "" {
+		if nodes, err := nodeselector.Expand(t.NodeSelector); err != nil {
+			return nil, fmt.Errorf("expand node selection: %w", err)
+		} else {
+			return nodes, nil
+		}
+	}
+	if clientcontext.IsSet() {
+		if nodes, err := nodeselector.Expand("*"); err != nil {
+			return nil, fmt.Errorf("expand node selection: %w", err)
+		} else {
+			return nodes, nil
+		}
+	}
+	return []string{hostname.Hostname()}, nil
+}
+
 func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	var (
 		data []object.Digest
@@ -158,6 +176,10 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
+	nodenames, err := t.getNodenames()
+	if err != nil {
+		return err
+	}
 	data, _ = t.extract(mergedSelector, c)
 	renderer := output.Renderer{
 		Output: t.Output,
@@ -169,7 +191,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 				if !paths.Contains(d.Path) {
 					continue
 				}
-				s += d.Render([]string{hostname.Hostname()})
+				s += d.Render(nodenames)
 			}
 			return s
 		},
