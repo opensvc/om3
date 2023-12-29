@@ -26,13 +26,6 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("add"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"key":   t.Key,
-			"from":  t.From,
-			"value": t.Value,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			store, err := object.NewKeystore(p)
 			if err != nil {

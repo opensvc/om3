@@ -25,12 +25,7 @@ func (t *CmdObjectDoc) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("doc"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"kw":     t.Keyword,
-			"driver": t.Driver,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {

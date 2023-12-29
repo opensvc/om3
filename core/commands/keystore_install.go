@@ -11,7 +11,8 @@ import (
 type (
 	CmdKeystoreInstall struct {
 		OptsGlobal
-		Key string
+		NodeSelector string
+		Key          string
 	}
 )
 

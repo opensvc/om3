@@ -8,6 +8,7 @@ import (
 type (
 	CmdNodeValidateConfig struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 
@@ -19,7 +20,6 @@ func (t *CmdNodeValidateConfig) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("push_asset"),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

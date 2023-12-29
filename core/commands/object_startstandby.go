@@ -17,6 +17,7 @@ type (
 		OptTo
 		Force           bool
 		DisableRollback bool
+		NodeSelector    string
 	}
 )
 
@@ -31,7 +32,6 @@ func (t *CmdObjectStartStandby) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("startstandby"),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)

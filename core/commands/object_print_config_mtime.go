@@ -24,8 +24,6 @@ func (t *CmdObjectPrintConfigMtime) Run(selector, kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("print_config_mtime"),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {

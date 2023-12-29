@@ -8,21 +8,17 @@ import (
 type (
 	CmdNodeComplianceListRuleset struct {
 		OptsGlobal
-		Ruleset string
+		Ruleset      string
+		NodeSelector string
 	}
 )
 
 func (t *CmdNodeComplianceListRuleset) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("compliance list ruleset"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Output,
-		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

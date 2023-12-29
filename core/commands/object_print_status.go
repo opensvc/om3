@@ -25,7 +25,8 @@ type (
 	CmdObjectPrintStatus struct {
 		OptsGlobal
 		OptsLock
-		Refresh bool
+		NodeSelector string
+		Refresh      bool
 	}
 )
 

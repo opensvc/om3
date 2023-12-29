@@ -20,7 +20,8 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		Force bool
+		Force        bool
+		NodeSelector string
 	}
 )
 

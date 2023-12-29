@@ -20,9 +20,10 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
+		DisableRollback bool
 		Force           bool
 		Leader          bool
-		DisableRollback bool
+		NodeSelector    string
 	}
 )
 

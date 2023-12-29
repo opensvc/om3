@@ -17,6 +17,7 @@ import (
 type (
 	CmdDaemonStop struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 

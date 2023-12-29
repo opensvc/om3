@@ -19,6 +19,7 @@ type (
 		OptsResourceSelector
 		OptTo
 		OptsLock
+		NodeSelector string
 	}
 )
 

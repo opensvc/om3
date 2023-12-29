@@ -18,6 +18,7 @@ import (
 type (
 	CmdDaemonShutdown struct {
 		OptsGlobal
+		NodeSelector string
 
 		// Timeout is the maximum duration for shutdown
 		Timeout time.Duration

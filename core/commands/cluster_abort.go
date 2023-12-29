@@ -11,8 +11,6 @@ type CmdClusterAbort struct {
 
 func (t *CmdClusterAbort) Run() error {
 	return nodeaction.New(
-		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithRemoteAction("abort"),
 		nodeaction.WithAsyncTarget("aborted"),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),

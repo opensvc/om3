@@ -11,8 +11,9 @@ import (
 type (
 	CmdObjectComplianceEnv struct {
 		OptsGlobal
-		Moduleset string
-		Module    string
+		Moduleset    string
+		Module       string
+		NodeSelector string
 	}
 )
 
@@ -26,12 +27,6 @@ func (t *CmdObjectComplianceEnv) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithServer(t.Server),
-		objectaction.WithRemoteAction("compliance env"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Output,
-			"moduleset": t.Moduleset,
-			"module":    t.Module,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err

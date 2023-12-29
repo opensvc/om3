@@ -19,6 +19,7 @@ import (
 type CmdNodeDrain struct {
 	OptsGlobal
 	OptsAsync
+	NodeSelector string
 }
 
 func (t *CmdNodeDrain) Run() error {

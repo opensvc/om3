@@ -16,6 +16,7 @@ type (
 	CmdObjectFreeze struct {
 		OptsGlobal
 		OptsAsync
+		NodeSelector string
 	}
 )
 

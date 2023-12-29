@@ -16,6 +16,7 @@ type (
 	CmdObjectUnfreeze struct {
 		OptsGlobal
 		OptsAsync
+		NodeSelector string
 	}
 )
 

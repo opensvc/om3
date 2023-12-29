@@ -14,6 +14,7 @@ type (
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
+		NodeSelector string
 	}
 )
 
@@ -26,10 +27,6 @@ func (t *CmdObjectSetUnprovisioned) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("set unprovisioned"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"rid": t.RID,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

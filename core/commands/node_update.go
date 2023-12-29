@@ -18,9 +18,10 @@ type (
 	CmdNodeUpdate struct {
 		OptsGlobal
 		OptsLock
-		Delete []string
-		Set    []string
-		Unset  []string
+		Delete       []string
+		Set          []string
+		Unset        []string
+		NodeSelector string
 	}
 )
 

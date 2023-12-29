@@ -19,8 +19,9 @@ type (
 	CmdNodeEval struct {
 		OptsGlobal
 		OptsLock
-		Keywords    []string
-		Impersonate string
+		Keywords     []string
+		Impersonate  string
+		NodeSelector string
 	}
 )
 

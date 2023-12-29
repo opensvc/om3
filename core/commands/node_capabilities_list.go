@@ -8,6 +8,7 @@ import (
 type (
 	CmdNodeCapabilitiesList struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 

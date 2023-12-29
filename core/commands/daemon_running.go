@@ -10,6 +10,7 @@ import (
 type (
 	CmdDaemonRunning struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 

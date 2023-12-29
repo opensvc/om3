@@ -22,6 +22,7 @@ type (
 		OptTo
 		Force           bool
 		DisableRollback bool
+		NodeSelector    string
 	}
 )
 

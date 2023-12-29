@@ -24,7 +24,7 @@ type (
 
 func (t *CmdObjectSet) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	if t.Local || (t.NodeSelector != "") {
+	if t.Local {
 		return t.doObjectAction(mergedSelector)
 	}
 	c, err := client.New()

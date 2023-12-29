@@ -18,14 +18,6 @@ func (t *CmdNodeDoc) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-
-		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithRemoteAction("node doc"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw":     t.Keyword,
-			"driver": t.Driver,
-		}),
-
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()

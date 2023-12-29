@@ -13,6 +13,7 @@ import (
 type (
 	CmdObjectInstanceLs struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 

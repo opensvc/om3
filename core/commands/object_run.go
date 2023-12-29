@@ -14,8 +14,9 @@ type (
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		Cron    bool
-		Confirm bool
+		NodeSelector string
+		Cron         bool
+		Confirm      bool
 	}
 )
 
@@ -30,7 +31,6 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("run"),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)

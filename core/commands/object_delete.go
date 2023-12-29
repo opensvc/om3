@@ -17,6 +17,7 @@ type (
 	CmdObjectDelete struct {
 		OptsGlobal
 		OptsLock
+		NodeSelector string
 	}
 )
 

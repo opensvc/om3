@@ -18,8 +18,9 @@ type (
 	CmdNodeUnset struct {
 		OptsGlobal
 		OptsLock
-		Keywords []string
-		Sections []string
+		Keywords     []string
+		Sections     []string
+		NodeSelector string
 	}
 )
 

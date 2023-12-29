@@ -17,7 +17,8 @@ import (
 type (
 	CmdDaemonRestart struct {
 		OptsGlobal
-		Debug bool
+		Debug        bool
+		NodeSelector string
 	}
 )
 

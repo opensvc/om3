@@ -19,9 +19,10 @@ type (
 	CmdNodeGet struct {
 		OptsGlobal
 		OptsLock
-		Eval        bool
-		Impersonate string
-		Keywords    []string
+		Eval         bool
+		Impersonate  string
+		Keywords     []string
+		NodeSelector string
 	}
 )
 

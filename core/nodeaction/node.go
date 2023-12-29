@@ -430,6 +430,9 @@ func (t T) DoRemote() error {
 		if t.Wait {
 			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSid, waitC)
 		}
+		if t.RemoteFunc == nil {
+			return fmt.Errorf("RemoteFunc is nil")
+		}
 		t.nodeDo(ctx, resultQ, nodename, func(ctx context.Context, nodename string) (any, error) {
 			return t.RemoteFunc(ctx, nodename)
 		})

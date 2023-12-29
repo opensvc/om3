@@ -8,7 +8,8 @@ import (
 type (
 	CmdNodeSysreport struct {
 		OptsGlobal
-		Force bool
+		Force        bool
+		NodeSelector string
 	}
 )
 
@@ -19,11 +20,6 @@ func (t *CmdNodeSysreport) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("sysreport"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Output,
-			"force":  t.Force,
-		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

@@ -21,6 +21,7 @@ type (
 	CmdObjectLogs struct {
 		OptsGlobal
 		OptsLogs
+		NodeSelector string
 	}
 )
 

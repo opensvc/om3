@@ -23,9 +23,6 @@ func (t *CmdSecGenCert) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("gencert"),
-		//objectaction.WithRemoteOptions(map[string]interface{}{}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {

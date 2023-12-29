@@ -17,6 +17,7 @@ import (
 
 type CmdNodeUnfreeze struct {
 	OptsGlobal
+	NodeSelector string
 }
 
 func (t *CmdNodeUnfreeze) Run() error {

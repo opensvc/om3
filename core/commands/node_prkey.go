@@ -8,6 +8,7 @@ import (
 type (
 	CmdNodePRKey struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 
@@ -17,10 +18,6 @@ func (t *CmdNodePRKey) Run() error {
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithRemoteAction("node prkey"),
-		nodeaction.WithRemoteOptions(map[string]any{
-			"format": t.Output,
-		}),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (any, error) {
 			n, err := object.NewNode()

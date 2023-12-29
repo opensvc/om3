@@ -23,11 +23,6 @@ func (t *CmdKeystoreDecode) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("decode"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"key": t.Key,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			store, err := object.NewKeystore(p)
 			if err != nil {
