@@ -175,6 +175,9 @@ type ClientInterface interface {
 	// PostPeerActionFreeze request
 	PostPeerActionFreeze(ctx context.Context, nodename InPathNodeName, params *PostPeerActionFreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionSysreport request
+	PostNodeActionSysreport(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostPeerActionUnfreeze request
 	PostPeerActionUnfreeze(ctx context.Context, nodename InPathNodeName, params *PostPeerActionUnfreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -671,6 +674,18 @@ func (c *Client) PostPeerActionDrain(ctx context.Context, nodename InPathNodeNam
 
 func (c *Client) PostPeerActionFreeze(ctx context.Context, nodename InPathNodeName, params *PostPeerActionFreezeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostPeerActionFreezeRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionSysreport(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionSysreportRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2544,6 +2559,76 @@ func NewPostPeerActionFreezeRequest(server string, nodename InPathNodeName, para
 	}
 
 	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionSysreportRequest generates requests for PostNodeActionSysreport
+func NewPostNodeActionSysreportRequest(server string, nodename InPathNodeName, params *PostNodeActionSysreportParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/action/sysreport", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Force != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
 
 	if params.RequesterSid != nil {
 
@@ -5789,6 +5874,9 @@ type ClientWithResponsesInterface interface {
 	// PostPeerActionFreeze request
 	PostPeerActionFreezeWithResponse(ctx context.Context, nodename InPathNodeName, params *PostPeerActionFreezeParams, reqEditors ...RequestEditorFn) (*PostPeerActionFreezeResponse, error)
 
+	// PostNodeActionSysreport request
+	PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error)
+
 	// PostPeerActionUnfreeze request
 	PostPeerActionUnfreezeWithResponse(ctx context.Context, nodename InPathNodeName, params *PostPeerActionUnfreezeParams, reqEditors ...RequestEditorFn) (*PostPeerActionUnfreezeResponse, error)
 
@@ -6588,6 +6676,31 @@ func (r PostPeerActionFreezeResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostPeerActionFreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionSysreportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionSysreportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionSysreportResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8025,6 +8138,15 @@ func (c *ClientWithResponses) PostPeerActionFreezeWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParsePostPeerActionFreezeResponse(rsp)
+}
+
+// PostNodeActionSysreportWithResponse request returning *PostNodeActionSysreportResponse
+func (c *ClientWithResponses) PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error) {
+	rsp, err := c.PostNodeActionSysreport(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionSysreportResponse(rsp)
 }
 
 // PostPeerActionUnfreezeWithResponse request returning *PostPeerActionUnfreezeResponse
@@ -9716,6 +9838,53 @@ func ParsePostPeerActionFreezeResponse(rsp *http.Response) (*PostPeerActionFreez
 	}
 
 	response := &PostPeerActionFreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionSysreportResponse parses an HTTP response from a PostNodeActionSysreportWithResponse call
+func ParsePostNodeActionSysreportResponse(rsp *http.Response) (*PostNodeActionSysreportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionSysreportResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

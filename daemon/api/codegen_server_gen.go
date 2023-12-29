@@ -99,6 +99,9 @@ type ServerInterface interface {
 	// (POST /node/name/{nodename}/action/freeze)
 	PostPeerActionFreeze(ctx echo.Context, nodename InPathNodeName, params PostPeerActionFreezeParams) error
 
+	// (POST /node/name/{nodename}/action/sysreport)
+	PostNodeActionSysreport(ctx echo.Context, nodename InPathNodeName, params PostNodeActionSysreportParams) error
+
 	// (POST /node/name/{nodename}/action/unfreeze)
 	PostPeerActionUnfreeze(ctx echo.Context, nodename InPathNodeName, params PostPeerActionUnfreezeParams) error
 
@@ -873,6 +876,42 @@ func (w *ServerInterfaceWrapper) PostPeerActionFreeze(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PostPeerActionFreeze(ctx, nodename, params)
+	return err
+}
+
+// PostNodeActionSysreport converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeActionSysreport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostNodeActionSysreportParams
+	// ------------- Optional query parameter "force" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "force", ctx.QueryParams(), &params.Force)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter force: %s", err))
+	}
+
+	// ------------- Optional query parameter "requester_sid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "requester_sid", ctx.QueryParams(), &params.RequesterSid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter requester_sid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostNodeActionSysreport(ctx, nodename, params)
 	return err
 }
 
@@ -2785,6 +2824,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/node/name/:nodename/action/abort", wrapper.PostPeerActionAbort)
 	router.POST(baseURL+"/node/name/:nodename/action/drain", wrapper.PostPeerActionDrain)
 	router.POST(baseURL+"/node/name/:nodename/action/freeze", wrapper.PostPeerActionFreeze)
+	router.POST(baseURL+"/node/name/:nodename/action/sysreport", wrapper.PostNodeActionSysreport)
 	router.POST(baseURL+"/node/name/:nodename/action/unfreeze", wrapper.PostPeerActionUnfreeze)
 	router.GET(baseURL+"/node/name/:nodename/config/get", wrapper.GetNodeConfigGet)
 	router.POST(baseURL+"/node/name/:nodename/config/update", wrapper.PostNodeConfigUpdate)
@@ -2965,34 +3005,34 @@ var swaggerSpec = []string{
 	"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",
-	"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",
-	"XK0/AQA=",
+	"795zabzR/Kg3QHEjOOSd95xfmzJcxn8D6q74lD3jToct/V1OcW/89IbxZMd/fwb+G3Bps6/y8m4k7tTX",
+	"Q2UfE1zatw5i0E/8B0jEOIJLnBW61okrGlKLn5iBbLI9mpEswF/WoTSVa/4B96jIfjEQiwFd/m7XO6DL",
+	"22UOXDCqe90l+9rlrPI7H2mkKcLj5rZPXEEeQgYSkDA1/cUYFVSA266lY3oxmOvL0KFu+9lAcW+cb1Y1",
+	"hPE/q2UP6XCim5/tgqKbs2r9pqVXqDN211I38PMZdCkQfZXOuxCueVWXw6IpumRVxVKBUqbTH+z7Gib6",
+	"Xd6mBHfTTxeZokyXp9OFT1nBayUVTOqF0DfVb9AV0dV25CmV/EbfX7dFHKqyDvYKnq2qq1Yx6bx1d1zW",
+	"u7wTl/6RZYr3YD6xKKSuwhflvpNFIXWhvrIOSJzPdGkNairDVtxqyue0uKzGafXSHTlwwtJxndMkvzml",
+	"QS7DAgnGqPpXLoBw770UWzLHrtIC9J04pe4yqvq5mydPHIru8lLijoHXZWDJ8g7mDXDiWqpyY0WpOE4G",
+	"eLegkmS2/EzZ/3zOcQLnRgwUl8J1TjikKxhVoWKnOe+O8fg03a/edOt0pTTP8WmKUk4UvZeEMo5osZwC",
+	"F5rrcsalV8HDDKu4qTI8J/HjusPjnw9fVaB8yyHwBqhRT+bbMM0UjaunjYL0fQMyWZhHyrDRJNjQuu0n",
+	"oBnH82X8ylX9wcJ78Beqye6H8K5+7c59NYw3jm1UQHXljd4MpRrrTSvLYrvCt8Fcd5NEHn7pM8BmVZH9",
+	"XZbtpsqxZ7Z4n0uP9xIaue+E8ju+VGme+9pdqvyql4I2EQzns0wZ6wj3/MyYsR/tNYGyNH1QyTvmMOcc",
+	"P5vHMx6UaK15sNS/26DWpiz/gA6f8HxIa3Y/uuRRHIutUgLbk+hUx99XnjqsKdWm906u7/zAeCcdsS2y",
+	"tSO29sztbpEDUrTWEKh7zNjaCdROoLa+3ZSPxMUFpHwRcF0ZKQd4tGJyaJ7xO2ZZNsXJxR1m1L3TrwLt",
+	"TN2d7vn2dc+KZIWTMlVhDZ1zspXD/52+2amPnfr4ZtVHr/P6tZTHFo6//6y6Y6cBdhrgT6IBBl5iWEMT",
+	"3Oudhp2Dv5ORO5CRHi7+56rR+pKSP3o3f+es7/baB6dH+tTNQeV7Od+fjswVA1Mz53TkP9JYVtAJV2KM",
+	"ZR85irpaOo8h3WNXW7VvGoV9hL/r2SB938C0K69j2TptkWzKD6bxhvXU77QchIZwd6NPM5flAZ8htFrr",
+	"yh8zCDQVf9Yh832Q19YjepBbV4xm62UDGnz9CUrF3im/xPL6Hgy7lLtH+afZO8o/zc5RNYZa4+au0dOH",
+	"6lGtyuB/C/WqHgAr7goV3WOhoq8pF+1ctW7B2Cz7bCcZO8n4s0hGOy7dLRmbpZHtJGMnGduSjDWYfU4u",
+	"QacZ9Gb3f7geO4bfMfx9M/waHB48Qulm8Y2THnc8vuPxr6jU84LPBxgwH3XzHavvWP3Px+qtPNRuVt8o",
+	"tXTH6jtWv0/LpZkkuYq110983HH2jrPvlbOviEwWA3jbtH+sb2UGUKF5u1ctk514PTrxCuXWdgvYprmy",
+	"uw1kx+Ff0QuIJMqu4vl8F+fZsf2fke1bpQkjOTWb1Xz7VjK0h1Tnv7ey/DUE79J2tnYIawv4z0gGffn7",
+	"jWr7yLPHPEzsmHEFM45XGgh/Kr7avs/Zn6UaXP28T5Ho59+OKfG8T9vnDz1DZjzKi5A4FDtp2EnDo5OG",
+	"wabKRu9p2cl7vqjls+IGb2p9Y1cvdw92PfjrPV9HMrf8CtgAWW2akpu9BPatVSjaPTP2cAUsZyzrcrw/",
+	"MpYFLt3VBUs/XYKXYN50muLkAnQBcsbxHJCeYjwiquVvitqj8Ui1Hr0w/4w9RStvcvW7kJzQ+ej2ThW3",
+	"WtoDft5fo70i8v4ly4olrKL1/+hWD5jiZoGPhO7FNCPJPsuB4px0kf7kCs/nYB7M2AD5lpj2vui3jd8S",
+	"XxpJFmMcMnyzvwQh8LxTVo5Vw/e23dB9Xnc+suUd+myTusNrcw3+7R0X9/FX9lAvNGsyrwgNNih8V8ke",
+	"tWkC2FYAugeCUiyxslTtK1R6FWgBmMspYNn3tZuH/6qbI6+RaMEKnqwQZtNm0yISqwVZCf2Q9sckvZ8a",
+	"FQ4FsY1xDhI5VO6em3FsZlnr7Pb29vb/BwAA//8MaOGtLUIBAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

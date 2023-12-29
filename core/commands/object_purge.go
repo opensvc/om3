@@ -33,7 +33,6 @@ func (t *CmdObjectPurge) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("purge"),
 		objectaction.WithAsyncTarget("purged"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),

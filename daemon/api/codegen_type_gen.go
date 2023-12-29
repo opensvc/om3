@@ -1116,6 +1116,12 @@ type PostPeerActionFreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
+// PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.
+type PostNodeActionSysreportParams struct {
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
 type PostPeerActionUnfreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`

@@ -25,10 +25,6 @@ func (t *CmdKeystoreInstall) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("install"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"key": t.Key,
-		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			store, err := object.NewKeystore(p)
 			if err != nil {

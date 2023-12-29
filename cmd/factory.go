@@ -1415,6 +1415,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

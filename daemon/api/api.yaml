@@ -534,6 +534,66 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/action/abort:
+    post:
+      operationId: PostPeerActionAbort
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/drain:
+    post:
+      operationId: PostPeerActionDrain
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/action/freeze:
     post:
       operationId: PostPeerActionFreeze
@@ -545,6 +605,33 @@ paths:
       description: Freeze the node.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/sysreport:
+    post:
+      operationId: PostNodeActionSysreport
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Collect and send a new sysreport.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -613,66 +700,6 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/action/abort:
-    post:
-      operationId: PostPeerActionAbort
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/action/drain:
-    post:
-      operationId: PostPeerActionDrain
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 

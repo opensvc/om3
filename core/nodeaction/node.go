@@ -108,26 +108,6 @@ func LocalFirst() funcopt.O {
 	})
 }
 
-// WithRemoteAction is the name of the action as passed to the command line
-// interface.
-func WithRemoteAction(s string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.Action = s
-		return nil
-	})
-}
-
-// WithRemoteOptions is the dataset submited in the POST /{object|node}_action
-// api handler to execute the action remotely.
-func WithRemoteOptions(m map[string]any) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.PostFlags = m
-		return nil
-	})
-}
-
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
 func WithAsyncTarget(s string) funcopt.O {
