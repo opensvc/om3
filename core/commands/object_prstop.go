@@ -32,7 +32,7 @@ func (t *CmdObjectPRStop) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

@@ -21,7 +21,7 @@ func (t *CmdNodeCollectorTagCreate) Run() error {
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

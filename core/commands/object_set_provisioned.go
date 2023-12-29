@@ -27,7 +27,7 @@ func (t *CmdObjectSetProvisioned) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

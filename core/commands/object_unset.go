@@ -72,7 +72,7 @@ func (t *CmdObjectUnset) doObjectAction(mergedSelector string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			// TODO: one commit on Unset, one commit on DeleteSection. Change to single commit ?
 			o, err := object.NewConfigurer(p)
 			if err != nil {

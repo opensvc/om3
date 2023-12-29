@@ -33,7 +33,7 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
+		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
@@ -60,7 +60,7 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

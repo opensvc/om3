@@ -26,7 +26,7 @@ func (t *CmdNodeSysreport) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteRun(func(ctx context.Context, nodename string) (interface{}, error) {
+		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
@@ -57,7 +57,7 @@ func (t *CmdNodeSysreport) Run() error {
 				return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
 			}
 		}),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

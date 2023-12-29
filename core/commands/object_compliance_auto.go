@@ -29,7 +29,7 @@ func (t *CmdObjectComplianceAuto) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithServer(t.Server),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {

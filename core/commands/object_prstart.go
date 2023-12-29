@@ -77,7 +77,7 @@ func (t *CmdObjectPRStart) Run(selector, kind string) error {
 		           }
 		   }),
 		*/
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

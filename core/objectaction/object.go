@@ -227,8 +227,8 @@ func WithServer(s string) funcopt.O {
 	})
 }
 
-// WithLocalRun sets a function to run if the action is local
-func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
+// WithLocalFunc sets a function to run if the action is local
+func WithLocalFunc(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.LocalFunc = f
@@ -236,8 +236,8 @@ func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	})
 }
 
-// WithRemoteRun sets a function to run if the action is local
-func WithRemoteRun(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
+// WithRemoteFunc sets a function to run if the action is local
+func WithRemoteFunc(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.RemoteFunc = f

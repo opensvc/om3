@@ -21,7 +21,7 @@ func (t *CmdNodePrintConfig) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

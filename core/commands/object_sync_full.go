@@ -30,7 +30,7 @@ func (t *CmdObjectSyncFull) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

@@ -19,7 +19,7 @@ func (t *CmdNodeCapabilitiesList) Run() error {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
