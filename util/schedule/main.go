@@ -1020,8 +1020,8 @@ func parseWeeks(spec string) ([]int, error) {
 }
 
 func lastWeek(tm time.Time) int {
-	sylvester := time.Date(tm.Year(), time.December, 31, 12, 00, 00, 00, tm.Location())
-	_, i := sylvester.ISOWeek()
+	d := time.Date(tm.Year(), time.December, 28, 12, 00, 00, 00, tm.Location())
+	_, i := d.ISOWeek()
 	return i
 }
 
