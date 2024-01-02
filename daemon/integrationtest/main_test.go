@@ -71,28 +71,35 @@ func Test_daemon(t *testing.T) {
 		assert.Truef(t, ok, "unable to find node1 instance %s", p)
 	})
 
-	t.Run("cluster.vip", func(t *testing.T) {
+	// because of multiple nodes, daemon should stay in rejoin state
+	// => no orchestration on created vip object
+	t.Run("cluster.vip when daemon is in rejoin state", func(t *testing.T) {
 		var (
-			cfgEvReader, imonEvReader event.ReadCloser
+			cfgUpdateReader, setInstanceReader, imonUpdateReader event.ReadCloser
 		)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		cli, err := GetClient(t)
 		require.Nil(t, err)
 
-		cfgEvReader, err = cli.NewGetEvents().
+		cfgUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceConfigUpdated,path=system/svc/vip"}).
 			SetDuration(time.Second).
 			GetReader()
 		require.NoError(t, err)
-		imonEvReader, err = cli.NewGetEvents().
+		setInstanceReader, err = cli.NewGetEvents().
+			SetFilters([]string{"SetInstanceMonitor,path=system/svc/vip"}).
+			SetDuration(time.Second).
+			GetReader()
+		require.NoError(t, err)
+		imonUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceMonitorUpdated,path=system/svc/vip"}).
 			SetDuration(time.Second).
 			GetReader()
 		require.NoError(t, err)
 		defer func() {
-			require.NoError(t, cfgEvReader.Close())
-			require.NoError(t, imonEvReader.Close())
+			require.NoError(t, cfgUpdateReader.Close())
+			require.NoError(t, imonUpdateReader.Close())
 		}()
 		kwName := "cluster.vip"
 		t.Run("post object config update on cluster", func(t *testing.T) {
@@ -106,13 +113,13 @@ func Test_daemon(t *testing.T) {
 			resp, err := cli.PostObjectConfigUpdateWithResponse(ctx,
 				"root", "ccfg", "cluster", &params)
 			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode())
+			require.Equalf(t, http.StatusOK, resp.StatusCode(), "body: %s", resp.Body)
 		})
 		require.False(t, t.Failed(), "abort test")
 
 		t.Run("wait for system/svc/vip object automatically created", func(t *testing.T) {
 			t.Log("wait for instance config event for system/svc/vip")
-			cfgEv, err := cfgEvReader.Read()
+			cfgEv, err := cfgUpdateReader.Read()
 			require.NoError(t, err, "unable to get system/svc/vip config update event")
 			t.Logf("got instance config event: %s", cfgEv.Render())
 		})
@@ -121,7 +128,7 @@ func Test_daemon(t *testing.T) {
 		t.Run("wait for system/svc/vip thawed global expect", func(t *testing.T) {
 			t.Log("wait for instance monitor event thawed for system/svc/vip")
 			for {
-				ev, err := imonEvReader.Read()
+				ev, err := imonUpdateReader.Read()
 				require.NoError(t, err, "unable to get system/svc/vip imon update event")
 				data := msgbus.InstanceMonitorUpdated{}
 				err = json.Unmarshal(ev.Data, &data)
@@ -232,12 +239,36 @@ func Test_daemon(t *testing.T) {
 				t.Run(name, func(t *testing.T) {
 					resp, err := cli.GetObjectConfigGetWithResponse(ctx, "system", "svc", "vip", &param)
 					require.NoError(t, err)
-					require.Equalf(t, http.StatusOK, resp.StatusCode(),
-						"response: %s", resp.Body)
+					require.Equalf(t, http.StatusOK, resp.StatusCode(), "body: %s", resp.Body)
 					require.Equalf(t, tc.expected, resp.JSON200.Items[0].Data.Value,
 						"%s value not found in items: %#v", expected, resp.JSON200.Items)
 				})
 
+			}
+		})
+		require.False(t, t.Failed(), "abort test")
+
+		t.Run("post object config update on cluster to delete cluster.vip", func(t *testing.T) {
+			params := api.PostObjectConfigUpdateParams{
+				Unset: &api.InQueryUnsets{kwName, kwName + "@node1", kwName + "@node2"},
+			}
+			resp, err := cli.PostObjectConfigUpdateWithResponse(ctx,
+				"root", "ccfg", "cluster", &params)
+			require.NoError(t, err, "can't post config update")
+			require.Equalf(t, http.StatusOK, resp.StatusCode(), "body: %s", resp.Body)
+		})
+		require.False(t, t.Failed(), "abort test")
+
+		t.Run("wait for system/svc/vip purge order", func(t *testing.T) {
+			data := msgbus.SetInstanceMonitor{}
+			for {
+				ev, err := setInstanceReader.Read()
+				require.NoError(t, err, "unable to get system/svc/vip purge order")
+				require.NoError(t, json.Unmarshal(ev.Data, &data))
+				if *data.Value.GlobalExpect == instance.MonitorGlobalExpectPurged {
+					t.Logf("got %+v", data.Value)
+					break
+				}
 			}
 		})
 		require.False(t, t.Failed(), "abort test")
