@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/rs/zerolog/log"
+	"sigs.k8s.io/yaml"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -49,12 +50,17 @@ type (
 	user struct {
 		ClientCertificate string `json:"client_certificate"`
 		ClientKey         string `json:"client_key"`
+		Password          string `json:"password"`
+		Name              string `json:"name"`
 	}
 )
 
 var (
 	// Err is raised when a context definition has issues.
 	Err = errors.New("context error")
+
+	// ConfigFilename is the file where the context information is stored
+	ConfigFilename = "~/.opensvc/config"
 )
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
@@ -70,14 +76,38 @@ func New() (T, error) {
 	if n == "" {
 		return c, nil
 	}
-	cf, _ := homedir.Expand("~/.opensvc/config")
-	f, err := os.Open(cf)
+	cf, _ := homedir.Expand(ConfigFilename)
+	b, err := os.ReadFile(cf)
 	if err != nil {
 		return c, err
 	}
-	defer f.Close()
-	dec := json.NewDecoder(f)
-	if err := dec.Decode(&cfg); err != nil {
+	decodeJSON := func() error {
+		if err := json.Unmarshal(b, &cfg); err != nil {
+			return fmt.Errorf("json: %w", err)
+		}
+		return nil
+	}
+	decodeYAML := func() error {
+		if err := yaml.Unmarshal(b, &cfg); err != nil {
+			return fmt.Errorf("yaml: %w", err)
+		}
+		return nil
+	}
+	decode := func() error {
+		var errs error
+		if err := decodeJSON(); err == nil {
+			return nil
+		} else {
+			errs = errors.Join(errs, err)
+		}
+		if err := decodeYAML(); err == nil {
+			return nil
+		} else {
+			errs = errors.Join(errs, err)
+		}
+		return fmt.Errorf("could not decode %s: %w", ConfigFilename, errs)
+	}
+	if err := decode(); err != nil {
 		return c, err
 	}
 	cr, ok := cfg.Contexts[n]
@@ -88,6 +118,10 @@ func New() (T, error) {
 	if !ok {
 		return c, fmt.Errorf("%w: cluster not defined: %s", Err, cr.ClusterRefName)
 	}
+	if c.Cluster.Server == "" {
+		// If the cluster server is not specified, use the map key
+		c.Cluster.Server = cr.ClusterRefName
+	}
 	if cr.UserRefName != "" {
 		c.User, ok = cfg.Users[cr.UserRefName]
 		if !ok {
@@ -95,6 +129,10 @@ func New() (T, error) {
 		}
 	}
 	c.Namespace = cr.Namespace
+	if c.User.Name == "" {
+		// If the user name is not specified, use the map key
+		c.User.Name = cr.UserRefName
+	}
 	log.Debug().Msgf("New context: %s", c)
 	return c, nil
 }

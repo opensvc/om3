@@ -20,7 +20,8 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		Force bool
+		Force        bool
+		NodeSelector string
 	}
 )
 
@@ -40,8 +41,8 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
+		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
+			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
@@ -66,7 +67,7 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionStopWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +84,7 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

@@ -24,14 +24,8 @@ func (t *CmdObjectComplianceShowModuleset) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithServer(t.Server),
-		objectaction.WithRemoteAction("compliance show moduleset"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Output,
-			"moduleset": t.Moduleset,
-		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {

@@ -8,6 +8,7 @@ import (
 type (
 	CmdNodeCapabilitiesList struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 
@@ -16,15 +17,9 @@ func (t *CmdNodeCapabilitiesList) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithRemoteAction("node print capabilities"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Output,
-		}),
-
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

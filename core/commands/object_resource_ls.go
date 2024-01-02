@@ -14,6 +14,7 @@ type (
 	CmdObjectResourceLs struct {
 		OptsGlobal
 		OptsResourceSelector
+		NodeSelector string
 	}
 )
 

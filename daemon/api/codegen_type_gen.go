@@ -481,16 +481,7 @@ type NodeActionAccepted struct {
 type NodeConfig = node.Config
 
 // NodeInfo defines model for NodeInfo.
-type NodeInfo struct {
-	// Labels labels is the list of node labels.
-	Labels []NodeLabel `json:"labels"`
-
-	// Nodename nodename is the name of the node where the labels and paths are coming from.
-	Nodename string `json:"nodename"`
-
-	// Paths paths is the list of node to storage array san paths.
-	Paths []SANPath `json:"paths"`
-}
+type NodeInfo = node.NodeInfo
 
 // NodeItem defines model for NodeItem.
 type NodeItem struct {
@@ -535,7 +526,7 @@ type NodeMonitor = node.Monitor
 type NodeStatus = node.Status
 
 // NodesInfo defines model for NodesInfo.
-type NodesInfo = []NodeInfo
+type NodesInfo = node.NodesInfo
 
 // ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {
@@ -946,17 +937,11 @@ type InQueryForce = bool
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
-// InQueryKeywordOps defines model for inQueryKeywordOps.
-type InQueryKeywordOps = []string
-
 // InQueryKeywords defines model for inQueryKeywords.
 type InQueryKeywords = []string
 
 // InQueryLeader defines model for inQueryLeader.
 type InQueryLeader = bool
-
-// InQueryNoLock defines model for inQueryNoLock.
-type InQueryNoLock = bool
 
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
@@ -978,9 +963,6 @@ type InQueryTo = string
 
 // InQueryUnsets defines model for inQueryUnsets.
 type InQueryUnsets = []string
-
-// InQueryWaitLock defines model for inQueryWaitLock.
-type InQueryWaitLock = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -1075,6 +1057,99 @@ type GetInstancesLogsParams struct {
 	Paths Paths `form:"paths" json:"paths"`
 }
 
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
+// GetNetworksParams defines parameters for GetNetworks.
+type GetNetworksParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNetworkIpParams defines parameters for GetNetworkIp.
+type GetNetworkIpParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNodesParams defines parameters for GetNodes.
+type GetNodesParams struct {
+	// Node node selector expression.
+	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
+}
+
+// GetNodeLogsParams defines parameters for GetNodeLogs.
+type GetNodeLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
+type PostPeerActionFreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.
+type PostNodeActionSysreportParams struct {
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
+type PostPeerActionUnfreezeParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
+type GetNodeConfigGetParams struct {
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
+// PostNodeConfigUpdateParams defines parameters for PostNodeConfigUpdate.
+type PostNodeConfigUpdateParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
+type PostDaemonShutdownParams struct {
+	// Duration max duration
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+}
+
+// GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
+type GetNodeDRBDConfigParams struct {
+	// Name the full naming of the file is deduced from the name
+	Name DRBDConfigName `form:"name" json:"name"`
+}
+
+// PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
+type PostNodeDRBDConfigParams struct {
+	// Name the full naming of the file is deduced from the name
+	Name DRBDConfigName `form:"name" json:"name"`
+}
+
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
@@ -1104,14 +1179,6 @@ type PostInstanceActionProvisionParams struct {
 	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
-}
-
-// PostInstanceActionSetParams defines parameters for PostInstanceActionSet.
-type PostInstanceActionSetParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-	Kw           *InQueryKeywordOps   `form:"kw,omitempty" json:"kw,omitempty"`
-	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
-	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
 }
 
 // PostInstanceActionStartParams defines parameters for PostInstanceActionStart.
@@ -1149,111 +1216,6 @@ type PostInstanceActionUnprovisionParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
-}
-
-// PostInstanceActionUnsetParams defines parameters for PostInstanceActionUnset.
-type PostInstanceActionUnsetParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-	Kw           *InQueryKeywords     `form:"kw,omitempty" json:"kw,omitempty"`
-	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
-	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
-}
-
-// PostInstanceActionUpdateParams defines parameters for PostInstanceActionUpdate.
-type PostInstanceActionUpdateParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-	Delete       *InQueryDeletes      `form:"delete,omitempty" json:"delete,omitempty"`
-	NoLock       *InQueryNoLock       `form:"no_lock,omitempty" json:"no_lock,omitempty"`
-	Set          *InQuerySets         `form:"set,omitempty" json:"set,omitempty"`
-	Unset        *InQueryUnsets       `form:"unset,omitempty" json:"unset,omitempty"`
-	WaitLock     *InQueryWaitLock     `form:"wait_lock,omitempty" json:"wait_lock,omitempty"`
-}
-
-// GetInstanceLogsParams defines parameters for GetInstanceLogs.
-type GetInstanceLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
-}
-
-// GetNetworksParams defines parameters for GetNetworks.
-type GetNetworksParams struct {
-	// Name the name of a cluster backend network
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
-}
-
-// GetNetworkIpParams defines parameters for GetNetworkIp.
-type GetNetworkIpParams struct {
-	// Name the name of a cluster backend network
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
-}
-
-// GetNodesParams defines parameters for GetNodes.
-type GetNodesParams struct {
-	// Node node selector expression.
-	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
-type GetNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
-	Name DRBDConfigName `form:"name" json:"name"`
-}
-
-// PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
-type PostNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
-	Name DRBDConfigName `form:"name" json:"name"`
-}
-
-// GetNodeLogsParams defines parameters for GetNodeLogs.
-type GetNodeLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
-}
-
-// PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
-type PostPeerActionFreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
-type PostPeerActionUnfreezeParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
-type GetNodeConfigGetParams struct {
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
-	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
-// PostNodeConfigUpdateParams defines parameters for PostNodeConfigUpdate.
-type PostNodeConfigUpdateParams struct {
-	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
-	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
-	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
-}
-
-// PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
-type PostDaemonShutdownParams struct {
-	// Duration max duration
-	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.

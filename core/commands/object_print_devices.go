@@ -15,7 +15,8 @@ import (
 type (
 	CmdObjectPrintDevices struct {
 		OptsGlobal
-		Roles string
+		NodeSelector string
+		Roles        string
 	}
 
 	devicer interface {

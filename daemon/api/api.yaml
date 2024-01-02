@@ -185,7 +185,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - internal
 
   /daemon/action/leave:
     post:
@@ -219,7 +219,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - internal
 
   /node/name/{nodename}/daemon/action/restart:
     post:
@@ -534,6 +534,66 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/action/abort:
+    post:
+      operationId: PostPeerActionAbort
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/drain:
+    post:
+      operationId: PostPeerActionDrain
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/action/freeze:
     post:
       operationId: PostPeerActionFreeze
@@ -545,6 +605,33 @@ paths:
       description: Freeze the node.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/sysreport:
+    post:
+      operationId: PostNodeActionSysreport
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Collect and send a new sysreport.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -616,66 +703,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/action/abort:
-    post:
-      operationId: PostPeerActionAbort
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/action/drain:
-    post:
-      operationId: PostPeerActionDrain
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrchestrationQueued'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
   /node/name/{nodename}/config/update:
     post:
       operationId: PostNodeConfigUpdate
@@ -723,14 +750,13 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/drbd/allocation:
+  /node/name/{nodename}/drbd/allocation:
     get:
+      description: |
+        Get the drbd driver minor numbers and ports already allocated on the node.
       operationId: GetNodeDRBDAllocation
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
           description: OK
@@ -740,16 +766,19 @@ paths:
                 $ref: '#/components/schemas/DRBDAllocation'
         500:
           $ref: '#/components/responses/500'
-
-  /node/drbd/config:
-    get:
-      operationId: GetNodeDRBDConfig
-      tags:
-        - node
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - node
+
+  /node/name/{nodename}/drbd/config:
+    get:
+      operationId: GetNodeDRBDConfig
+      description: |
+        Fetch from a node a drbd configuration file fragment.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
       responses:
         200:
@@ -766,14 +795,22 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
     post:
       operationId: PostNodeDRBDConfig
+      description: |
+        Send to a node a drbd configuration file fragment to install.
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
       requestBody:
         description: monitor
@@ -929,17 +966,45 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /instance/path/{namespace}/{kind}/{name}/action/boot:
-    post:
-      operationId: PostInstanceActionBoot
-      tags:
-        - instance / svc
-        - instance / vol
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}:
+    get:
+      operationId: GetInstance
       security:
         - basicAuth: []
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: get instance config, monitor and status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceItem'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/boot:
+    post:
       description: Boot the object instance.
+      operationId: PostInstanceActionBoot
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -961,21 +1026,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/delete:
-    post:
-      operationId: PostInstanceActionDelete
-      tags:
-        - instance / svc
-        - instance / vol
-        - instance / sec
-        - instance / cfg
-        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/delete:
+    post:
       description: Delete the object instance.
+      operationId: PostInstanceActionDelete
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -993,18 +1056,22 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/freeze:
-    post:
-      operationId: PostInstanceActionFreeze
-      tags:
-        - instance / svc
-        - instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / sec
+        - instance / cfg
+        - instance / usr
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/freeze:
+    post:
       description: Freeze the object instance.
+      operationId: PostInstanceActionFreeze
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1022,18 +1089,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/provision:
-    post:
-      operationId: PostInstanceActionProvision
-      tags:
-        - instance / svc
-        - instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision:
+    post:
       description: Provision the object instance.
+      operationId: PostInstanceActionProvision
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1058,53 +1126,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/set:
-    post:
-      operationId: PostInstanceActionSet
       tags:
         - instance / svc
         - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Set keywords in the object instance configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryKeywordOps'
-        - $ref: '#/components/parameters/inQueryNoLock'
-        - $ref: '#/components/parameters/inQueryWaitLock'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
 
-  /instance/path/{namespace}/{kind}/{name}/action/start:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
+      description: Start the object instance.
       operationId: PostInstanceActionStart
-      tags:
-        - instance / svc
-        - instance / vol
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Start the object instance.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1128,18 +1162,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/stop:
-    post:
-      operationId: PostInstanceActionStop
-      tags:
-        - instance / svc
-        - instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/stop:
+    post:
       description: Stop the object instance.
+      operationId: PostInstanceActionStop
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1162,55 +1197,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/update:
-    post:
-      operationId: PostInstanceActionUpdate
-      tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Delete sections, unset and set keywords in the object instance configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryDeletes'
-        - $ref: '#/components/parameters/inQueryNoLock'
-        - $ref: '#/components/parameters/inQuerySets'
-        - $ref: '#/components/parameters/inQueryUnsets'
-        - $ref: '#/components/parameters/inQueryWaitLock'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
+      tags:
+        - instance / svc
+        - instance / vol
 
-  /instance/path/{namespace}/{kind}/{name}/action/unfreeze:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
+      description: Unfreeze the object instance.
       operationId: PostInstanceActionUnfreeze
-      tags:
-        - instance / svc
-        - instance / vol
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Start the object instance.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1228,18 +1227,19 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/unprovision:
-    post:
-      operationId: PostInstanceActionUnprovision
-      tags:
-        - instance / svc
-        - instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unprovision:
+    post:
       description: Unprovision the object instance.
+      operationId: PostInstanceActionUnprovision
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1263,56 +1263,20 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /instance/path/{namespace}/{kind}/{name}/action/unset:
-    post:
-      operationId: PostInstanceActionUnset
-      tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Unset keywords in the object instance configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryKeywords'
-        - $ref: '#/components/parameters/inQueryNoLock'
-        - $ref: '#/components/parameters/inQueryWaitLock'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
+      tags:
+        - instance / svc
+        - instance / vol
 
-  /instance/path/{namespace}/{kind}/{name}/clear:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
     post:
+      description: |
+        Clear an error ("start failed" for example) in the instance monitor state.
       operationId: PostInstanceClear
-      tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Clear an error ("start failed" for example) in the instance monitor state.
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -1325,6 +1289,15 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
 
   /instance/path/{namespace}/{kind}/{name}/log:
     get:
@@ -1365,8 +1338,7 @@ paths:
     post:
       operationId: PostInstanceProgress
       tags:
-        - instance / svc
-        - instance / vol
+        - internal
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -1395,8 +1367,7 @@ paths:
     post:
       operationId: PostInstanceStatus
       tags:
-        - instance / svc
-        - instance / vol
+        - internal
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2955,6 +2926,9 @@ components:
         labels:
           type: object
     NodeInfo:
+      x-go-type: node.NodeInfo
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - labels
@@ -2994,6 +2968,9 @@ components:
         node:
           type: string
     NodesInfo:
+      x-go-type: node.NodesInfo
+      x-go-type-import:
+          path: github.com/opensvc/om3/core/node
       type: array
       items:
         $ref: '#/components/schemas/NodeInfo'

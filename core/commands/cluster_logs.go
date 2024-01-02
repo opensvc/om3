@@ -17,6 +17,7 @@ type (
 	CmdClusterLogs struct {
 		OptsGlobal
 		OptsLogs
+		NodeSelector string
 	}
 )
 

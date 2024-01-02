@@ -28,7 +28,7 @@ var (
 
 // GetDaemonStatus returns daemon data status
 //
-// When sub data hIt forces refreshing of sub data every 1
+// Serve 2s cached data.
 func (a *DaemonApi) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
 	now := time.Now()
 	subRefreshed.Lock()

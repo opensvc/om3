@@ -178,6 +178,7 @@ func newCmdClusterLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLogs(flags, &options.OptsLogs)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -328,6 +329,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -343,6 +345,7 @@ func newCmdDaemonRunning() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -358,6 +361,7 @@ func newCmdDaemonShutdown() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagDuration(flags, &options.Timeout)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -422,6 +426,7 @@ func newCmdDaemonStop() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -489,6 +494,7 @@ func newCmdKeystoreInstall(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagKey(flags, &options.Key)
 	return cmd
 }
@@ -598,6 +604,7 @@ func newCmdNodeAbort() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -613,6 +620,7 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -631,6 +639,9 @@ installed software to be discovered without restarting the daemon.`,
 			return options.Run()
 		},
 	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -646,6 +657,7 @@ func newCmdNodeChecks() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -773,6 +785,7 @@ func newCmdNodeComplianceAttachModuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -790,6 +803,7 @@ func newCmdNodeComplianceAttachRuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagRuleset(flags, &options.Ruleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -807,6 +821,7 @@ func newCmdNodeComplianceAuto() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -826,6 +841,7 @@ func newCmdNodeComplianceCheck() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -844,6 +860,7 @@ func newCmdNodeComplianceFix() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -863,6 +880,7 @@ func newCmdNodeComplianceFixable() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -882,6 +900,7 @@ func newCmdNodeComplianceDetachModuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -899,6 +918,7 @@ func newCmdNodeComplianceDetachRuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagRuleset(flags, &options.Ruleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -916,6 +936,7 @@ func newCmdNodeComplianceEnv() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
 	addFlagModule(flags, &options.Module)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -931,6 +952,7 @@ func newCmdNodeComplianceListModules() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -947,6 +969,7 @@ func newCmdNodeComplianceListModuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -963,6 +986,7 @@ func newCmdNodeComplianceListRuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagRuleset(flags, &options.Ruleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -979,6 +1003,7 @@ func newCmdNodeComplianceShowModuleset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -994,6 +1019,7 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1027,6 +1053,7 @@ func newCmdNodeDrain() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1095,6 +1122,7 @@ func newCmdNodeEval() *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagImpersonate(flags, &options.Impersonate)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagRequired("kw")
 	return cmd
 }
@@ -1131,6 +1159,7 @@ func newCmdNodeFreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1149,6 +1178,7 @@ func newCmdNodeGet() *cobra.Command {
 	addFlagEval(flags, &options.Eval)
 	addFlagImpersonate(flags, &options.Impersonate)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1165,6 +1195,7 @@ func newCmdNodeLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLogs(flags, &options.OptsLogs)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1180,6 +1211,7 @@ func newCmdNodeLs() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1195,6 +1227,7 @@ func newCmdNodePRKey() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1242,6 +1275,7 @@ func newCmdNodePushAsset() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1257,6 +1291,7 @@ func newCmdNodePushDisks() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1272,6 +1307,7 @@ func newCmdNodePushPatch() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1287,6 +1323,7 @@ func newCmdNodePushPkg() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1306,6 +1343,7 @@ func newCmdNodeRegister() *cobra.Command {
 	addFlagCollectorUser(flags, &options.User)
 	addFlagCollectorPassword(flags, &options.Password)
 	addFlagCollectorApp(flags, &options.App)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 
 	return cmd
 }
@@ -1339,6 +1377,7 @@ func newCmdNodeSet() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKeywordOps(flags, &options.KeywordOps)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1355,6 +1394,7 @@ func newCmdNodeUpdate() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagUpdateDelete(flags, &options.Delete)
 	addFlagUpdateSet(flags, &options.Set)
 	addFlagUpdateUnset(flags, &options.Unset)
@@ -1375,6 +1415,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1390,6 +1431,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1407,6 +1449,7 @@ func newCmdNodeUnset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKeywords(flags, &options.Keywords)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagSections(flags, &options.Sections)
 	return cmd
 }
@@ -1449,6 +1492,7 @@ func newCmdNodeValidateConfig() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1480,6 +1524,7 @@ func newCmdObjectBoot(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1791,6 +1836,7 @@ func newCmdObjectComplianceAuto(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -1810,6 +1856,7 @@ func newCmdObjectComplianceCheck(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -1828,6 +1875,7 @@ func newCmdObjectComplianceFix(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -1847,6 +1895,7 @@ func newCmdObjectComplianceFixable(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModule(flags, &options.Module)
 	addFlagModuleset(flags, &options.Moduleset)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagComplianceAttach(flags, &options.Attach)
 	addFlagComplianceForce(flags, &options.Force)
 	return cmd
@@ -1900,6 +1949,7 @@ func newCmdObjectComplianceEnv(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagModuleset(flags, &options.Moduleset)
 	addFlagModule(flags, &options.Module)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1978,6 +2028,7 @@ func newCmdObjectComplianceShowRuleset(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2023,6 +2074,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2087,6 +2139,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2137,6 +2190,7 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLogs(flags, &options.OptsLogs)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2216,6 +2270,7 @@ func newCmdObjectPrintDevices(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagDevRoles(flags, &options.Roles)
 	return cmd
 }
@@ -2247,6 +2302,7 @@ func newCmdObjectInstanceLs(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2276,6 +2332,7 @@ func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagRefresh(flags, &options.Refresh)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2298,6 +2355,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagDisableRollback(flags, &options.DisableRollback)
 	return cmd
 }
@@ -2317,6 +2375,7 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2335,6 +2394,7 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2355,6 +2415,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2373,6 +2434,7 @@ func newCmdObjectPushResInfo(kind string) *cobra.Command {
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2393,6 +2455,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2472,6 +2535,7 @@ func newCmdObjectResourceLs(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagRID(flags, &options.RID)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2491,6 +2555,7 @@ func newCmdObjectRun(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagConfirm(flags, &options.Confirm)
 	addFlagCron(flags, &options.Cron)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2526,6 +2591,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2544,6 +2610,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2562,6 +2629,7 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2582,6 +2650,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2601,6 +2670,7 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagDisableRollback(flags, &options.DisableRollback)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2619,6 +2689,7 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagRefresh(flags, &options.Refresh)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2638,6 +2709,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2671,6 +2743,7 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2704,6 +2777,7 @@ func newCmdObjectThaw(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2725,6 +2799,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	addFlagsTo(flags, &options.OptTo)
 	addFlagForce(flags, &options.Force)
 	addFlagLeader(flags, &options.Leader)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

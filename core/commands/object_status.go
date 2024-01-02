@@ -13,7 +13,8 @@ type (
 	CmdObjectStatus struct {
 		OptsGlobal
 		OptsLock
-		Refresh bool
+		Refresh      bool
+		NodeSelector string
 	}
 )
 
@@ -26,8 +27,7 @@ func (t *CmdObjectStatus) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("status"),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewCore(p)
 			if err != nil {
 				return nil, err

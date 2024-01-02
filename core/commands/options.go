@@ -11,7 +11,6 @@ type (
 		Output         string
 		Local          bool
 		Log            string
-		NodeSelector   string
 		ObjectSelector string
 		Quiet          bool
 		Server         string

@@ -8,25 +8,19 @@ import (
 type (
 	CmdNodeComplianceEnv struct {
 		OptsGlobal
-		Moduleset string
-		Module    string
+		Moduleset    string
+		Module       string
+		NodeSelector string
 	}
 )
 
 func (t *CmdNodeComplianceEnv) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("compliance env"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Output,
-			"moduleset": t.Moduleset,
-			"module":    t.Module,
-		}),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

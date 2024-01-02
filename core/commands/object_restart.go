@@ -16,6 +16,7 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
+		NodeSelector    string
 		Force           bool
 		DisableRollback bool
 	}
@@ -32,11 +33,10 @@ func (t *CmdObjectRestart) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("restart"),
 		objectaction.WithAsyncTarget("restarted"),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

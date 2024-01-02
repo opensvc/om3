@@ -79,8 +79,8 @@ func WithAsyncFunc(f func(context.Context) error) funcopt.O {
 	})
 }
 
-// WithRemoteRun sets a function to run if the action is local
-func WithRemoteRun(f func(context.Context, string) (any, error)) funcopt.O {
+// WithRemoteFunc sets a function to run if the action is local
+func WithRemoteFunc(f func(context.Context, string) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.RemoteFunc = f
@@ -104,26 +104,6 @@ func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
-		return nil
-	})
-}
-
-// WithRemoteAction is the name of the action as passed to the command line
-// interface.
-func WithRemoteAction(s string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.Action = s
-		return nil
-	})
-}
-
-// WithRemoteOptions is the dataset submited in the POST /{object|node}_action
-// api handler to execute the action remotely.
-func WithRemoteOptions(m map[string]any) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.PostFlags = m
 		return nil
 	})
 }
@@ -202,8 +182,8 @@ func WithServer(s string) funcopt.O {
 	})
 }
 
-// WithLocalRun sets a function to run if the action is local
-func WithLocalRun(f func() (any, error)) funcopt.O {
+// WithLocalFunc sets a function to run if the action is local
+func WithLocalFunc(f func() (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.LocalFunc = f
@@ -429,6 +409,9 @@ func (t T) DoRemote() error {
 		}
 		if t.Wait {
 			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSid, waitC)
+		}
+		if t.RemoteFunc == nil {
+			return fmt.Errorf("RemoteFunc is nil")
 		}
 		t.nodeDo(ctx, resultQ, nodename, func(ctx context.Context, nodename string) (any, error) {
 			return t.RemoteFunc(ctx, nodename)

@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -47,4 +48,32 @@ func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		l = append(l, d)
 	}
 	return ctx.JSON(http.StatusOK, api.InstanceList{Kind: "InstanceList", Items: l})
+}
+
+func (a *DaemonApi) GetInstance(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "GetInstance")
+	path, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		log.Errorf("GetInstance: %s", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
+	}
+	config := instance.ConfigData.Get(path, nodename)
+	if config == nil {
+		return ctx.NoContent(http.StatusNotFound)
+	}
+	monitor := instance.MonitorData.Get(path, nodename)
+	status := instance.StatusData.Get(path, nodename)
+	item := api.InstanceItem{
+		Kind: "Instance",
+		Meta: api.InstanceMeta{
+			Node:   nodename,
+			Object: path.String(),
+		},
+		Data: api.Instance{
+			Config:  config,
+			Monitor: monitor,
+			Status:  status,
+		},
+	}
+	return ctx.JSON(http.StatusOK, item)
 }

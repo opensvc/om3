@@ -16,6 +16,7 @@ type (
 	CmdObjectFreeze struct {
 		OptsGlobal
 		OptsAsync
+		NodeSelector string
 	}
 )
 
@@ -32,8 +33,8 @@ func (t *CmdObjectFreeze) Run(selector, kind string) error {
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteRun(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(nodename))
+		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
+			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +43,7 @@ func (t *CmdObjectFreeze) Run(selector, kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionFreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionFreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +60,7 @@ func (t *CmdObjectFreeze) Run(selector, kind string) error {
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
 		}),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

@@ -24,7 +24,7 @@ func (t *CmdObjectEnter) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

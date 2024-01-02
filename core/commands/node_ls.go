@@ -9,6 +9,7 @@ import (
 type (
 	CmdNodeLs struct {
 		OptsGlobal
+		NodeSelector string
 	}
 )
 

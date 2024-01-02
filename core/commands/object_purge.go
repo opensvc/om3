@@ -16,8 +16,9 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		Force  bool
-		Leader bool
+		NodeSelector string
+		Force        bool
+		Leader       bool
 	}
 )
 
@@ -32,13 +33,12 @@ func (t *CmdObjectPurge) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("purge"),
 		objectaction.WithAsyncTarget("purged"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

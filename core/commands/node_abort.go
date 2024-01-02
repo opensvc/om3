@@ -19,6 +19,7 @@ import (
 type CmdNodeAbort struct {
 	OptsGlobal
 	OptsAsync
+	NodeSelector string
 }
 
 func (t *CmdNodeAbort) Run() error {

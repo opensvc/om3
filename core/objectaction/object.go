@@ -127,26 +127,6 @@ func LocalFirst() funcopt.O {
 	})
 }
 
-// WithRemoteAction is the name of the action as passed to the command line
-// interface.
-func WithRemoteAction(s string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.Action = s
-		return nil
-	})
-}
-
-// WithRemoteOptions is the dataset submited in the POST /{object|node}_action
-// api handler to execute the action remotely.
-func WithRemoteOptions(m map[string]any) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.PostFlags = m
-		return nil
-	})
-}
-
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
 func WithAsyncTarget(s string) funcopt.O {
@@ -247,8 +227,8 @@ func WithServer(s string) funcopt.O {
 	})
 }
 
-// WithLocalRun sets a function to run if the action is local
-func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
+// WithLocalFunc sets a function to run if the action is local
+func WithLocalFunc(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.LocalFunc = f
@@ -256,8 +236,8 @@ func WithLocalRun(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	})
 }
 
-// WithRemoteRun sets a function to run if the action is local
-func WithRemoteRun(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
+// WithRemoteFunc sets a function to run if the action is local
+func WithRemoteFunc(f func(context.Context, naming.Path, string) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.RemoteFunc = f
@@ -374,7 +354,9 @@ func (t T) DoLocal() error {
 	}
 
 	for _, path := range paths {
-		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, t.LocalFunc)
+		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, func(ctx context.Context, n string, p naming.Path) (any, error) {
+			return t.LocalFunc(ctx, p)
+		})
 	}
 	for {
 		result := <-resultQ
@@ -823,7 +805,7 @@ func (t T) DoRemote() error {
 			if t.Wait {
 				t.waitRequesterSessionEnd(ctx, c, requesterSid, p, waitC)
 			}
-			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, p naming.Path) (any, error) {
+			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
 			})
 			todo += 1
@@ -877,14 +859,14 @@ func (t T) Do() error {
 }
 
 // instanceDo executes the action in a goroutine
-func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, naming.Path) (any, error)) {
+func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, path naming.Path, fn func(context.Context, string, naming.Path) (any, error)) {
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
 
-	go func(p naming.Path) {
+	go func(n string, p naming.Path) {
 		result := actionrouter.Result{
 			Path:     p,
-			Nodename: nodename,
+			Nodename: n,
 		}
 		/*
 			defer func() {
@@ -895,12 +877,12 @@ func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nod
 				}
 			}()
 		*/
-		data, err := fn(ctx, p)
+		data, err := fn(ctx, n, p)
 		result.Data = data
 		result.Error = err
 		result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
 		resultQ <- result
-	}(path)
+	}(nodename, path)
 }
 
 // waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached

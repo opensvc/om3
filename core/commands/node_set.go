@@ -17,7 +17,8 @@ type (
 	CmdNodeSet struct {
 		OptsGlobal
 		OptsLock
-		KeywordOps []string
+		KeywordOps   []string
+		NodeSelector string
 	}
 )
 

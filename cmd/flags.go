@@ -31,7 +31,6 @@ func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
 	flagSet.StringVar(&p.Log, "log", "", "Display the logs on the console at the specified level.")
 	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme https|tls.")
-	flagSet.StringVar(&p.NodeSelector, "node", "", "Execute on a list of nodes.")
 	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
 	flagSet.MarkHidden("format")
 
@@ -189,7 +188,7 @@ func addFlagNetworkStatusExtended(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVarP(p, "extended", "x", false, "Include network addresses.")
 }
 
-func addFlagNode(flagSet *pflag.FlagSet, p *string) {
+func addFlagNodeSelector(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "node", "", "Execute on a list of nodes.")
 }
 

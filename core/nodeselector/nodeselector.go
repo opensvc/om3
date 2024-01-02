@@ -1,6 +1,7 @@
 package nodeselector
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
 
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -26,6 +29,7 @@ type (
 		knownNodesSet      *orderedset.OrderedSet
 		info               node.NodesInfo
 		log                zerolog.Logger
+		client             *client.T
 	}
 
 	ResultMap map[string]any
@@ -59,12 +63,21 @@ func WithLogger(log zerolog.Logger) funcopt.O {
 	})
 }
 
-// WithNodesInfo allow in-daemon callers to bypass nodesinfo.Load and nodesinfo.Req
+// WithNodesInfo allow in-daemon callers to bypass nodesinfo.Load
 // as they can access the NodesInfo faster from the data bus.
 func WithNodesInfo(v node.NodesInfo) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.info = v
+		return nil
+	})
+}
+
+// WithClient is the api client to use when a clientcontext is set.
+func WithClient(v *client.T) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.client = v
 		return nil
 	})
 }
@@ -226,21 +239,65 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
+	if clientcontext.IsSet() {
+		return t.KnownRemoteNodes()
+	} else {
+		return t.KnownLocalNodes(), nil
+	}
+}
+
+func (t T) KnownRemoteNodes() ([]string, error) {
+	var l []string
+	nodesInfo, err := t.getNodesInfo()
+	if err != nil {
+		return nil, err
+	}
+	for node, _ := range nodesInfo {
+		l = append(l, node)
+	}
+	return l, nil
+}
+
+func (t T) KnownLocalNodes() []string {
 	l := clusternode.Get()
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])
 	}
-	return l, nil
+	return l
+}
+
+func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
+	if t.client == nil {
+		return nil, fmt.Errorf("no client")
+	}
+	resp, err := t.client.GetNodesInfoWithResponse(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	switch resp.StatusCode() {
+	case 200:
+		return node.NodesInfo(*resp.JSON200), nil
+	default:
+		return nil, fmt.Errorf("%s", resp.Status())
+	}
 }
 
 func (t *T) getNodesInfo() (node.NodesInfo, error) {
 	if t.info != nil {
 		return t.info, nil
 	}
-	if info, err := nodesinfo.Load(); err != nil {
-		return nil, err
+	if clientcontext.IsSet() {
+		if info, err := t.getNodesInfoFromAPI(); err != nil {
+			return nil, err
+		} else {
+			t.info = info
+		}
 	} else {
-		t.info = info
+		if info, err := nodesinfo.Load(); err != nil {
+			return nil, err
+		} else {
+			t.info = info
+		}
 	}
 	return t.info, nil
 }

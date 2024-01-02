@@ -15,6 +15,7 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
+		NodeSelector string
 	}
 )
 
@@ -29,8 +30,7 @@ func (t *CmdObjectPushResInfo) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithRemoteAction("push resinfo"),
-		objectaction.WithLocalRun(func(ctx context.Context, p naming.Path) (any, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err

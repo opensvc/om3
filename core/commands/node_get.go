@@ -19,9 +19,10 @@ type (
 	CmdNodeGet struct {
 		OptsGlobal
 		OptsLock
-		Eval        bool
-		Impersonate string
-		Keywords    []string
+		Eval         bool
+		Impersonate  string
+		Keywords     []string
+		NodeSelector string
 	}
 )
 
@@ -94,7 +95,7 @@ func (t *CmdNodeGet) doNodeAction() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err

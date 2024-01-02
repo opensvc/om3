@@ -46,22 +46,10 @@ type (
 		DefaultIsLocal bool
 
 		//
-		// Action is the name of the action as passed to the command line
-		// interface.
-		//
-		Action string
-
-		//
-		// PostFlags is the dataset submited in the POST /{object|node}_action
-		// api handler to execute the action remotely.
-		//
-		PostFlags map[string]interface{}
-
-		//
 		// Flags is the command flags as parsed by cobra. This is the struct
 		// passed to the object method on local execution.
 		//
-		Flags interface{}
+		Flags any
 
 		//
 		// Target is the node or object state the daemons should orchestrate
