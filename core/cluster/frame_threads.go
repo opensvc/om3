@@ -39,7 +39,7 @@ func (f Frame) wThreadCollector() string {
 func (f Frame) wThreadListener() string {
 	var s string
 	s += bold(" listener") + "\t"
-	if f.Current.Cluster.Node[f.Localhost].Status.Lsnr.Port != "" {
+	if f.Current.Cluster.Node[f.Current.Daemon.Nodename].Status.Lsnr.Port != "" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -119,7 +119,7 @@ func (f Frame) wThreadHeartbeats() string {
 		s += "\t" + hbStatus.Type + "\t"
 		s += f.info.separator + "\t"
 		for _, peer := range f.Current.Cluster.Config.Nodes {
-			if peer == f.Localhost {
+			if peer == f.Current.Daemon.Nodename {
 				s += iconNotApplicable + "\t"
 				continue
 			}
