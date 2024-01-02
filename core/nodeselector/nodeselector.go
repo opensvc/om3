@@ -14,6 +14,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
@@ -238,6 +239,14 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
+	if clientcontext.IsSet() {
+		return t.KnownRemoteNodes()
+	} else {
+		return t.KnownLocalNodes(), nil
+	}
+}
+
+func (t T) KnownRemoteNodes() ([]string, error) {
 	var l []string
 	nodesInfo, err := t.getNodesInfo()
 	if err != nil {
@@ -247,6 +256,14 @@ func (t T) KnownNodes() ([]string, error) {
 		l = append(l, node)
 	}
 	return l, nil
+}
+
+func (t T) KnownLocalNodes() []string {
+	l := clusternode.Get()
+	for i := 0; i > len(l); i++ {
+		l[i] = strings.ToLower(l[i])
+	}
+	return l
 }
 
 func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
@@ -261,7 +278,7 @@ func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
 	case 200:
 		return node.NodesInfo(*resp.JSON200), nil
 	default:
-		return nil, fmt.Errorf("%s", resp)
+		return nil, fmt.Errorf("%s", resp.Status())
 	}
 }
 
