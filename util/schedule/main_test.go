@@ -24,9 +24,11 @@ func TestTooSoon(t *testing.T) {
 	for _, data := range tests {
 		name := fmt.Sprintf("%+v", data)
 		t.Run(name, func(t *testing.T) {
-			sc := New(data.Expression)
 			last, _ := time.Parse(timeLayout, data.Last)
 			tm, _ := time.Parse(timeLayout, data.Time)
+			getNow = func() time.Time { return tm }
+			defer func() { getNow = time.Now }()
+			sc := New(data.Expression)
 			_, err := sc.TestWithLast(tm, last)
 			require.ErrorIs(t, err, ErrNotAllowed)
 		})
@@ -64,8 +66,10 @@ func TestNotAllowed(t *testing.T) {
 	for _, data := range tests {
 		name := fmt.Sprintf("%+v", data)
 		t.Run(name, func(t *testing.T) {
-			sc := New(data.Expression)
 			tm, _ := time.Parse(timeLayout, data.Time)
+			getNow = func() time.Time { return tm }
+			defer func() { getNow = time.Now }()
+			sc := New(data.Expression)
 			_, err := sc.Test(tm)
 			require.ErrorIs(t, err, ErrNotAllowed, "test data: %+v parsed schedule: %+v", data, sc.Dataset())
 		})
@@ -307,6 +311,8 @@ func TestMonthDays(t *testing.T) {
 		name := fmt.Sprintf("%+v", data)
 		t.Run(name, func(t *testing.T) {
 			tm, err := time.Parse(timeLayout, data.Time)
+			getNow = func() time.Time { return tm }
+			defer func() { getNow = time.Now }()
 			require.ErrorIs(t, err, nil)
 			days := monthDays(tm)
 			require.Equal(t, data.Days, days)
@@ -445,8 +451,10 @@ func TestNext(t *testing.T) {
 
 	for _, data := range tests {
 		t.Run(data.Name, func(t *testing.T) {
-			sc := New(data.Expression)
 			tm, err := time.Parse(timeLayout, data.Time)
+			getNow = func() time.Time { return tm }
+			defer func() { getNow = time.Now }()
+			sc := New(data.Expression)
 			require.ErrorIs(t, err, nil)
 			last, err := time.Parse(timeLayout, data.Last)
 			require.ErrorIs(t, err, nil)

@@ -18,6 +18,8 @@ import (
 )
 
 var (
+	getNow = time.Now
+
 	timeLayout = "2006-01-02 Z15:04:05"
 
 	ErrNotAllowed = errors.New("not allowed")
@@ -1026,7 +1028,7 @@ func lastWeek(tm time.Time) int {
 }
 
 func allWeeksThisYear() []int {
-	return allWeeks(time.Now())
+	return allWeeks(getNow())
 }
 
 func allWeeks(tm time.Time) []int {
@@ -1096,7 +1098,7 @@ type nextOptionsT struct {
 
 func newNextOptions(opts ...funcopt.O) nextOptionsT {
 	options := nextOptionsT{
-		Time: time.Now(),
+		Time: getNow(),
 	}
 	_ = funcopt.Apply(&options, opts...)
 	return options
