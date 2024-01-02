@@ -746,6 +746,7 @@ func (t *CompPackages) fixPkgAdd(names []string) ExitCode {
 		t.Errorf("package install: %s\n", err)
 		return ExitNok
 	}
+	t.Infof("adding the following packages: %s\n", names)
 	return ExitOk
 }
 
@@ -771,6 +772,7 @@ func (t *CompPackages) fixPkgDel(names []string) ExitCode {
 		t.Errorf("package uninstall: %s\n", err)
 		return ExitNok
 	}
+	t.Infof("delete the following packages: %s\n", names)
 	return ExitOk
 }
 
@@ -820,7 +822,7 @@ func (t *CompPackages) Check() ExitCode {
 		e = e.Merge(o)
 	}
 	if len(blacklistedPackages) != 0 {
-		t.Errorf("some packages are blacklisted can't do a full check")
+		t.Errorf("some packages are blacklisted can't do a full check\n")
 		e = e.Merge(ExitNok)
 	}
 	return e
@@ -874,7 +876,7 @@ func (t *CompPackages) Fix() ExitCode {
 		e = e.Merge(o)
 	}
 	if len(blacklistedPackages) != 0 {
-		t.Errorf("some packages are blacklisted can't do a full fix")
+		t.Errorf("some packages are blacklisted can't do a full fix\n")
 		e = e.Merge(ExitNok)
 	}
 	return e

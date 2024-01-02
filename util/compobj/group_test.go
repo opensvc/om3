@@ -229,6 +229,15 @@ func TestGroupFixRule(t *testing.T) {
 	oriOsReadFile := osReadFile
 	defer func() { osReadFile = oriOsReadFile }()
 
+	oriExecGroupDel := execGroupDel
+	defer func() { execGroupDel = oriExecGroupDel }()
+
+	oriExecGroupAdd := execGroupAdd
+	defer func() { execGroupAdd = oriExecGroupAdd }()
+
+	oriExecChGroupGid := execChGroupGid
+	defer func() { execChGroupGid = oriExecChGroupGid }()
+
 	type cmdCode int
 	var (
 		noCmdAction    cmdCode = 0
@@ -245,17 +254,6 @@ func TestGroupFixRule(t *testing.T) {
 		expectedCmdAction cmdCode
 		expectedFixOutput ExitCode
 	}{
-		"with a true rule": {
-			rule: CompGroup{
-				Group: "zozoGroup",
-				Gid:   pti(1111),
-			},
-			currentGroupFile:  "./testdata/group_group_file",
-			goldenGroupFile:   "./testdata/group_group_file",
-			currentCmdAction:  noCmdAction,
-			expectedCmdAction: noCmdAction,
-			expectedFixOutput: ExitOk,
-		},
 
 		"with zozoGroup present and not supposed to be present": {
 			rule: CompGroup{

@@ -93,13 +93,11 @@ func (t CompRemovefiles) Check() ExitCode {
 }
 
 func (t CompRemovefiles) fixRule(rule CompRemovefile) ExitCode {
-	if t.checkRule(rule) == ExitOk {
-		return ExitOk
-	}
 	if err := os.Remove(string(rule)); err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
+	t.Infof("remove the file %s\n", rule)
 	return ExitOk
 }
 
@@ -108,7 +106,9 @@ func (t CompRemovefiles) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompRemovefile)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

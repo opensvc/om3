@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 type (
@@ -167,7 +168,7 @@ func (t CompFileincs) checkRule(rule CompFileinc) ExitCode {
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("the path %s does not exist\n", rule.Path)
+			t.Errorf("the file %s does not exist\n", rule.Path)
 			return ExitNok
 		}
 		t.Errorf("%s\n", err)
@@ -211,7 +212,7 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 		return ExitNok
 	}
 	if !reg.Match(lineToAdd) {
-		t.Errorf("rule error: '%s' does not match target content\n", rule.Check)
+		t.VerboseErrorf("rule error: '%s' does not match target content\n", rule.Check)
 		return ExitNok
 	}
 	hasFoundMatch := false
@@ -244,10 +245,10 @@ func (t CompFileincs) checkCheck(rule CompFileinc) ExitCode {
 			e = e.Merge(ExitNok)
 		}
 	} else if !ok {
-		t.Errorf("line '%s' not found in '%s'\n", lineToAdd, rule.Path)
+		t.VerboseErrorf("line '%s' not found in '%s'\n", lineToAdd, rule.Path)
 		e = e.Merge(ExitNok)
 	} else if !hasFoundMatch {
-		t.Errorf("pattern '%s' not found in %s\n", rule.Check, rule.Path)
+		t.VerboseErrorf("pattern '%s' not found in %s\n", rule.Check, rule.Path)
 		e = e.Merge(ExitNok)
 	}
 	return e
@@ -294,9 +295,6 @@ func (t CompFileincs) Check() ExitCode {
 }
 
 func (t CompFileincs) fixRule(rule CompFileinc) ExitCode {
-	if e := t.checkRule(rule); e == ExitOk {
-		return ExitOk
-	}
 	info, err := os.Stat(rule.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -342,6 +340,7 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	newFilePath := newFile.Name()
 	oldFileStat, err := os.Stat(rule.Path)
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -389,14 +388,24 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+	if err = os.Chmod(newFilePath, oldFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(rule.Path, oldFileStat.Mode()); err != nil {
+	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newFilePath)
+		return ExitNok
+	}
+	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("adding %s in file %s\n", lineToAdd, rule.Path)
 	return ExitOk
 }
 
@@ -416,6 +425,7 @@ func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	newFilePath := newFile.Name()
 	oldFileStat, err := os.Stat(rule.Path)
 	if err != nil {
 		t.Errorf("%s\n", err)
@@ -433,14 +443,24 @@ func (t CompFileincs) fixReplace(rule CompFileinc) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Rename(newFile.Name(), rule.Path); err != nil {
+	if err = os.Chmod(newFilePath, oldFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(rule.Path, oldFileStat.Mode()); err != nil {
+	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newFilePath)
+		return ExitNok
+	}
+	if err = os.Rename(newFilePath, rule.Path); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("replace the pattern %s with %s in file %s\n", rule.Replace, lineToAdd, rule.Path)
 	return ExitOk
 }
 
@@ -449,7 +469,9 @@ func (t CompFileincs) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompFileinc)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

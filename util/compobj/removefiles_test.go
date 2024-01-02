@@ -68,8 +68,10 @@ func TestRemovefileCheckRuleAndFixRule(t *testing.T) {
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, c.expectedCheckOutput, obj.checkRule(c.rule))
-			require.Equal(t, ExitOk, obj.fixRule(c.rule))
-			require.Equal(t, ExitOk, obj.checkRule(c.rule))
+			if c.expectedCheckOutput == ExitNok {
+				require.Equal(t, ExitOk, obj.fixRule(c.rule))
+				require.Equal(t, ExitOk, obj.checkRule(c.rule))
+			}
 			_, err := os.Stat(string(c.rule))
 			require.Equal(t, true, os.IsNotExist(err))
 		})

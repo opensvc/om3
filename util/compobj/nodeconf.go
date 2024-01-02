@@ -7,6 +7,8 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/plog"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -195,7 +197,7 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 	if t.checkRule(rule) == ExitOk {
 		return ExitOk
 	}
-	n, err := object.NewNode()
+	n, err := object.NewNode(object.WithLogger(plog.NewLogger(zerolog.Nop())))
 	if err != nil {
 		t.Errorf("error can't open a new node obj to fix the rule\n")
 		return ExitNok

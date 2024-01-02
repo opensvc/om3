@@ -19,6 +19,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "=",
 				Value: "test",
+				path:  "tmp",
 			}},
 		},
 
@@ -29,10 +30,12 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "=",
 				Value: "test",
+				path:  "tmp",
 			}, CompKeyval{
 				Key:   "test2",
 				Op:    "=",
 				Value: "test2",
+				path:  "tmp",
 			}},
 		},
 
@@ -55,6 +58,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "=",
 				Value: "test",
+				path:  "tmp",
 			}},
 		},
 
@@ -71,6 +75,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "unset",
 				Value: nil,
+				path:  "tmp",
 			}},
 		},
 
@@ -87,6 +92,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "=",
 				Value: float64(1),
+				path:  "tmp",
 			}},
 		},
 
@@ -109,6 +115,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "IN",
 				Value: []any{float64(2), float64(4)},
+				path:  "tmp",
 			}},
 		},
 
@@ -119,6 +126,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "IN",
 				Value: []any{"2", "4"},
+				path:  "tmp",
 			}},
 		},
 
@@ -129,6 +137,7 @@ func TestKeyValsAdd(t *testing.T) {
 				Key:   "test",
 				Op:    "IN",
 				Value: []any{"2", float64(4)},
+				path:  "tmp",
 			}},
 		},
 
@@ -168,7 +177,6 @@ func TestKeyValsAdd(t *testing.T) {
 func TestKeyValsCheckRule(t *testing.T) {
 	testCases := map[string]struct {
 		rule             CompKeyval
-		filePath         string
 		numberOfSetRules int
 		expectedResult   ExitCode
 	}{
@@ -177,8 +185,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "=",
 				Value: "yes",
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitOk,
 		},
@@ -188,8 +196,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "=",
 				Value: "bipbop",
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitNok,
 		},
@@ -199,8 +207,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    ">=",
 				Value: float64(21),
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitOk,
 		},
@@ -210,8 +218,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    ">=",
 				Value: float64(23),
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitNok,
 		},
@@ -221,8 +229,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "<=",
 				Value: float64(23),
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitOk,
 		},
@@ -232,8 +240,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "<=",
 				Value: float64(20),
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitNok,
 		},
@@ -243,8 +251,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "zooo",
 				Op:    "unset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 0,
 			expectedResult:   ExitOk,
 		},
@@ -254,8 +262,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "unset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 0,
 			expectedResult:   ExitNok,
 		},
@@ -265,8 +273,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "IN",
 				Value: []any{float64(64), "zozzo", float64(22), "lili"},
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitOk,
 		},
@@ -276,8 +284,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "IN",
 				Value: []any{float64(64), "zozzo", float64(28), "lili"},
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 1,
 			expectedResult:   ExitNok,
 		},
@@ -287,8 +295,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "reset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 3,
 			expectedResult:   ExitOk,
 		},
@@ -298,8 +306,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "reset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			},
-			filePath:         "./testdata/keyval_golden",
 			numberOfSetRules: 0,
 			expectedResult:   ExitNok,
 		},
@@ -312,8 +320,8 @@ func TestKeyValsCheckRule(t *testing.T) {
 				keyValResetMap[c.rule.Key] = c.numberOfSetRules
 			}
 			var err error
-			keyValFileFmtCache, err = os.ReadFile(c.filePath) //set the cache
-			keyValpath = c.filePath
+			keyValFileFmtCache, err = os.ReadFile(c.rule.path) //set the cache
+			keyValpath = c.rule.path
 			require.NoError(t, err)
 			obj.rules = append(obj.rules, c.rule)
 			require.Equal(t, c.expectedResult, obj.Check())
@@ -325,16 +333,15 @@ func TestKeyvalFixRule(t *testing.T) {
 	testCases := map[string]struct {
 		rules    []interface{}
 		resetMap map[string]int
-		filePath string
 	}{
 		"with a true rule op =": {
 			rules: []interface{}{CompKeyval{
 				Key:   "UsePAM",
 				Op:    "=",
 				Value: "no",
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule op =": {
@@ -342,9 +349,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "=",
 				Value: "roro",
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a true rule op >=": {
@@ -352,9 +359,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "Port",
 				Op:    ">=",
 				Value: float64(20),
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule op >=": {
@@ -362,9 +369,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "Port",
 				Op:    ">=",
 				Value: float64(30),
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a true rule op <=": {
@@ -372,9 +379,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "<=",
 				Value: float64(30),
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule op <=": {
@@ -382,9 +389,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "Port",
 				Op:    "<=",
 				Value: float64(20),
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a true rule op unset": {
@@ -392,9 +399,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "l'usineRoumaine",
 				Op:    "unset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule op unset": {
@@ -402,9 +409,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "unset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a true rule op IN": {
@@ -412,9 +419,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "IN",
 				Value: []any{float64(40), "no"},
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule op IN": {
@@ -422,19 +429,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "IN",
 				Value: []any{float64(40), "lolo"},
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: nil,
-			filePath: "./testdata/keyval_golden",
-		},
-
-		"with a true rule and op reset": {
-			rules: []interface{}{CompKeyval{
-				Key:   "UsePAM",
-				Op:    "reset",
-				Value: nil,
-			}},
-			resetMap: map[string]int{"UsePAM": 0},
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule and op reset, 0 set rules": {
@@ -442,9 +439,9 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "reset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: map[string]int{"UsePAM": 0},
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule and op reset, 2 set rules": {
@@ -452,17 +449,19 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "=",
 				Value: "toto",
+				path:  "./testdata/keyval_golden",
 			}, CompKeyval{
 				Key:   "UsePAM",
 				Op:    ">=",
 				Value: float64(50),
+				path:  "./testdata/keyval_golden",
 			}, CompKeyval{
 				Key:   "UsePAM",
 				Op:    "reset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: map[string]int{"UsePAM": 0},
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with a false rule and op reset, and one unset rule": {
@@ -470,13 +469,14 @@ func TestKeyvalFixRule(t *testing.T) {
 				Key:   "UsePAM",
 				Op:    "unset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}, CompKeyval{
 				Key:   "UsePAM",
 				Op:    "reset",
 				Value: nil,
+				path:  "./testdata/keyval_golden",
 			}},
 			resetMap: map[string]int{"UsePAM": 0},
-			filePath: "./testdata/keyval_golden",
 		},
 
 		"with multiples reset rules": {
@@ -485,31 +485,38 @@ func TestKeyvalFixRule(t *testing.T) {
 					Key:   "UsePAM",
 					Op:    "reset",
 					Value: nil,
+					path:  "./testdata/keyval_golden",
 				}, CompKeyval{
 					Key:   "UsePAM",
 					Op:    "=",
 					Value: float64(30),
+					path:  "./testdata/keyval_golden",
 				}, CompKeyval{
 					Key:   "UsePAM",
 					Op:    "=",
 					Value: float64(30),
+					path:  "./testdata/keyval_golden",
 				}, CompKeyval{
 					Key:   "UsePAM",
 					Op:    "reset",
 					Value: nil,
+					path:  "./testdata/keyval_golden",
 				}},
 			resetMap: map[string]int{"UsePAM": 0},
-			filePath: "./testdata/keyval_golden",
 		},
 	}
 
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
-			oriFileContent, err := os.ReadFile(c.filePath)
+			oriFileContent, err := os.ReadFile(c.rules[0].(CompKeyval).path)
 			require.NoError(t, err)
-			newFile, err := os.Create(c.filePath + "TmpCopy")
-			c.filePath = c.filePath + "TmpCopy"
-			defer func() { require.NoError(t, os.Remove(c.filePath)) }()
+			newFile, err := os.Create(c.rules[0].(CompKeyval).path + "TmpCopy")
+			for i, rule := range c.rules {
+				ruleConv := rule.(CompKeyval)
+				ruleConv.path += "TmpCopy"
+				c.rules[i] = ruleConv
+			}
+			defer func() { require.NoError(t, os.Remove(c.rules[0].(CompKeyval).path)) }()
 			_, err = newFile.Write([]byte(oriFileContent))
 			require.NoError(t, err)
 			require.NoError(t, newFile.Close())
@@ -517,11 +524,11 @@ func TestKeyvalFixRule(t *testing.T) {
 			obj := CompKeyvals{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 			obj.rules = c.rules
 			keyValResetMap = c.resetMap
-			keyValpath = c.filePath
 			require.Equal(t, ExitOk, obj.Fix())
 			for key := range keyValResetMap {
 				keyValResetMap[key] = 0
 			}
+			keyValpath = ""
 			require.Equal(t, ExitOk, obj.Check())
 		})
 	}

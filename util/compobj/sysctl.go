@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type (
@@ -328,18 +329,18 @@ func (t CompSysctls) getValues(rule CompSysctl, getLiveValue bool) ([]string, er
 func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 	oldConfigFileStat, err := os.Stat(sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	changeDone := false
 	oldConfigFile, err := os.Open(sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	newConfigFile, err := os.CreateTemp(filepath.Dir(sysctlConfigFilePath), "newSysctlConf")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Errorf("%s\n", err)
 		return false, err
 	}
 	newConfigFilePath := newConfigFile.Name()
@@ -382,18 +383,26 @@ func (t CompSysctls) modifyKeyInConfFile(rule CompSysctl) (bool, error) {
 
 	err = newConfigFile.Close()
 	if err != nil {
-		t.Errorf("can't close file %s: %s\n", newConfigFile.Name(), err)
+		t.Errorf("can't close file %s: %s\n", newConfigFilePath, err)
 	}
 	err = oldConfigFile.Close()
 	if err != nil {
 		t.Errorf("can't close file %s: %s\n", "/etc/sysctl.conf", err)
 	}
+	if err := os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
+		return false, err
+	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			return false, err
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
+		return false, err
+	}
 	err = os.Rename(newConfigFilePath, sysctlConfigFilePath)
 	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if err := os.Chmod(sysctlConfigFilePath, oldConfigFileStat.Mode()); err != nil {
-		return false, err
+		t.Errorf("%s\n", err)
 	}
 	return changeDone, nil
 }
@@ -442,6 +451,7 @@ func (t CompSysctls) reloadSysctl() ExitCode {
 		t.Errorf("can't reload sysctl: %s: %s\n", err, out)
 		return ExitNok
 	}
+	t.Infof("reload sysctl\n")
 	return ExitOk
 }
 
@@ -465,6 +475,10 @@ func (t CompSysctls) fixRule(rule CompSysctl) (ExitCode, bool) {
 				return ExitNok, false
 			}
 		}
+		if _, ok := rule.Value.(string); !ok {
+			rule.Value = strconv.FormatFloat(rule.Value.(float64), 'f', -1, 64)
+		}
+		t.Infof("setting the key %s to %s in /etc/sysctl.conf\n", rule.Key, rule.Value)
 		needReload = true
 	}
 	return ExitOk, needReload

@@ -35,7 +35,7 @@ var (
 		return exec.Command("groupmod", "-g", strconv.Itoa(newGid), groupName)
 	}
 
-	blacklist = []string{
+	blacklistGroup = []string{
 		"root",
 		"bin",
 		"daemon",
@@ -268,15 +268,14 @@ func (t *CompGroups) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompGroup)
-		e = e.Merge(t.fixGroup(rule))
+		if t.checkGroup(rule) == ExitNok {
+			e = e.Merge(t.fixGroup(rule))
+		}
 	}
 	return e
 }
 
 func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
-	if t.checkGroup(rule) == ExitOk {
-		return ExitOk
-	}
 	switch strings.HasPrefix(rule.Group, "-") {
 	case true:
 		rule.Group = rule.Group[1:]
@@ -292,18 +291,19 @@ func (t CompGroups) fixGroup(rule CompGroup) ExitCode {
 }
 
 func (t CompGroups) fixGroupDel(rule CompGroup) ExitCode {
-	for _, groupNameBlackList := range blackList {
+	for _, groupNameBlackList := range blacklistGroup {
 		if groupNameBlackList == rule.Group {
-			t.Errorf("cowardly refusing to delete group %s \n", rule.Group)
+			t.Errorf("cowardly refusing to delete group %s\n", rule.Group)
 			return ExitNok
 		}
 	}
 	cmd := execGroupDel(rule.Group)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
+	t.Infof("delete the group %s\n", rule.Group)
 	return ExitOk
 }
 
@@ -311,9 +311,10 @@ func (t CompGroups) fixGroupAdd(rule CompGroup) ExitCode {
 	cmd := execGroupAdd(rule.Group, *rule.Gid)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s:%s", err, output)
+		t.Errorf("%s:%s\n", err, output)
 		return ExitNok
 	}
+	t.Infof("add the group %s\n", rule.Group)
 	return ExitOk
 }
 
@@ -321,9 +322,10 @@ func (t CompGroups) fixGroupGid(rule CompGroup) ExitCode {
 	cmd := execChGroupGid(rule.Group, *rule.Gid)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("%s: %s", err, output)
+		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
+	t.Infof("changing the gid of the group %s to %d\n", rule.Group, *rule.Gid)
 	return ExitOk
 }
 

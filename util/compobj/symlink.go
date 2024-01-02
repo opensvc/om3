@@ -118,15 +118,7 @@ func (t CompSymlinks) fixLink(rule CompSymlink) ExitCode {
 		t.Errorf("Cant create symlink %s\n", rule.Symlink)
 		return ExitNok
 	}
-	return ExitOk
-}
-
-func (t CompSymlinks) fixSymlink(rule CompSymlink) ExitCode {
-	if e := t.CheckSymlink(rule); e == ExitNok {
-		if e := t.fixLink(rule); e == ExitNok {
-			return e
-		}
-	}
+	t.Infof("create symlink %s\n", rule.Symlink)
 	return ExitOk
 }
 
@@ -135,8 +127,7 @@ func (t CompSymlinks) Check() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSymlink)
-		o := t.CheckSymlink(rule)
-		e = e.Merge(o)
+		e = e.Merge(t.CheckSymlink(rule))
 	}
 	return e
 }
@@ -146,7 +137,9 @@ func (t CompSymlinks) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompSymlink)
-		e = e.Merge(t.fixSymlink(rule))
+		if t.CheckSymlink(rule) == ExitNok {
+			e = e.Merge(t.fixLink(rule))
+		}
 	}
 	return e
 }

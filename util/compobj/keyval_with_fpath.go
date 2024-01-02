@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type (
@@ -19,6 +21,7 @@ type (
 		Key   string `json:"key"`
 		Op    string `json:"op"`
 		Value any    `json:"value"`
+		path  string
 	}
 )
 
@@ -95,7 +98,7 @@ Inputs:
 )
 
 func init() {
-	m["keyval"] = NewCompKeyvals
+	m["keyval_with_fpath"] = NewCompKeyvals
 }
 
 func NewCompKeyvals() interface{} {
@@ -118,6 +121,7 @@ func (t *CompKeyvals) Add(s string) error {
 	}
 	keyValpath = dataPath.Path
 	for _, rule := range dataPath.Keys {
+		rule.path = keyValpath
 		if rule.Key == "" {
 			t.Errorf("key should be in the dict: %s\n", s)
 			return fmt.Errorf("key should be in the dict: %s\n", s)
@@ -189,6 +193,7 @@ func (t *CompKeyvals) Add(s string) error {
 		t.Obj.Add(rule)
 	}
 	t.filterRules()
+	keyValpath = ""
 	return nil
 }
 
@@ -300,7 +305,7 @@ func (t CompKeyvals) checkReset(rule CompKeyval) ExitCode {
 		t.VerboseErrorf("%s: %s is set %d times, should be set %d times\n", keyValpath, rule.Key, len(valuesFromFile), keyValResetMap[rule.Key])
 		return ExitNok
 	}
-	t.VerboseErrorf("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
+	t.VerboseInfof("%s: %s is set %d times, on target\n", keyValpath, rule.Key, keyValResetMap[rule.Key])
 	return ExitOk
 }
 
@@ -317,12 +322,12 @@ func (t CompKeyvals) checkNoReset(rule CompKeyval) ExitCode {
 		t.VerboseInfof("%s: %s is not set and should not be set\n", keyValpath, rule.Key)
 		return ExitOk
 	}
+	if _, ok := keyValResetMap[rule.Key]; ok {
+		keyValResetMap[rule.Key] += 1
+	}
 	if len(valuesFromFile) < 1 {
 		t.VerboseErrorf("%s: %s is unset and should be set\n", keyValpath, rule.Key)
 		return ExitNok
-	}
-	if _, ok := keyValResetMap[rule.Key]; ok {
-		keyValResetMap[rule.Key] += 1
 	}
 	switch rule.Op {
 	case "=":
@@ -396,6 +401,9 @@ func (t CompKeyvals) fixRuleNoReset(rule CompKeyval) ExitCode {
 }
 
 func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
+	if err := t.loadCache(); err != nil {
+		t.Errorf("%s\n", err)
+	}
 	if t.checkReset(rule) == ExitOk {
 		return ExitOk
 	}
@@ -443,7 +451,7 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 					}
 				}
 				if _, err = newFile.Write([]byte(rule.Key + " " + stringValue + "\n")); err != nil {
-					t.Errorf("%s", err)
+					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 				keyToResetCount += 1
@@ -460,8 +468,17 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	if err = os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return ExitNok
 	}
 	if err = oldConfigFile.Close(); err != nil {
@@ -472,6 +489,7 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 	if err != nil {
 		t.Errorf("%s\n", err)
 	}
+	t.Infof("reset all the old values of the key %s\n", rule.Key)
 	return ExitOk
 }
 
@@ -488,8 +506,10 @@ func (t CompKeyvals) fixOperator(rule CompKeyval) ExitCode {
 	}
 	newConfigFilePath := newFile.Name()
 	newFileFmt := keyValFileFmtCache
-	if newFileFmt[len(newFileFmt)-1] != '\n' {
-		newFileFmt = append(newFileFmt, '\n')
+	if len(newFileFmt) > 0 {
+		if newFileFmt[len(newFileFmt)-1] != '\n' {
+			newFileFmt = append(newFileFmt, '\n')
+		}
 	}
 	var stringValue string
 	if rule.Op == "IN" {
@@ -514,14 +534,24 @@ func (t CompKeyvals) fixOperator(rule CompKeyval) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	if err = os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
 		return ExitNok
 	}
 	if err = os.Rename(newConfigFilePath, keyValpath); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	t.Infof("adding the key %s with value %s in file %s\n", rule.Key, stringValue, keyValpath)
 	return ExitOk
 }
 
@@ -552,32 +582,72 @@ func (t CompKeyvals) fixUnset(rule CompKeyval) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(newConfigFile.Name(), oldConfigFileStat.Mode()); err != nil {
+	if err = os.Chmod(newConfigFilePath, oldConfigFileStat.Mode()); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
+		return ExitNok
+	}
 	err = os.Rename(newConfigFilePath, keyValpath)
+	t.Infof("unset the key %s in file %s\n", rule.Key, keyValpath)
 	if err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	t.Infof("unset the key %s in file %s\n", rule.Key, keyValpath)
+	return ExitOk
+}
+
+func (t CompKeyvals) checkPathExistence() ExitCode {
+	_, err := os.Stat(keyValpath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			t.Errorf("the file %s does not exist\n", keyValpath)
+			return ExitNok
+		}
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
 	return ExitOk
 }
 
+func (t CompKeyvals) updateFilePath(rule CompKeyval) ExitCode {
+	if keyValpath != rule.path {
+		keyValpath = rule.path
+		if t.checkPathExistence() == ExitNok {
+			return ExitNok
+		}
+		if err := t.loadCache(); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	}
+	return ExitOk
+}
+
 func (t CompKeyvals) Check() ExitCode {
 	t.SetVerbose(true)
-	if err := t.loadCache(); err != nil {
-		t.Errorf("%s\n", err)
-		return ExitNok
-	}
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		o := t.checkNoReset(rule)
 		e = e.Merge(o)
 	}
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		o := t.checkReset(rule)
 		e = e.Merge(o)
 	}
@@ -589,10 +659,16 @@ func (t CompKeyvals) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		e = e.Merge(t.fixRuleNoReset(rule))
 	}
 	for _, i := range t.Rules() {
 		rule := i.(CompKeyval)
+		if t.updateFilePath(rule) == ExitNok {
+			return ExitNok
+		}
 		e = e.Merge(t.fixReset(rule))
 	}
 	return e

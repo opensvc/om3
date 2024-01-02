@@ -239,6 +239,7 @@ func (t CompAuthkeys) reloadSshd(port int) error {
 	if err != nil {
 		return err
 	}
+	t.Infof("reload sshd\n")
 	return nil
 }
 
@@ -424,17 +425,17 @@ func (t CompAuthkeys) checkAuthKey(rule CompAuthKey) ExitCode {
 		case "add":
 			var unknownUserError user.UnknownUserError
 			if errors.As(err, &unknownUserError) {
-				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+				t.VerboseErrorf("the key %s is not installed and should be installed for the user %s:user does not exist\n", t.truncateKey(rule.Key), rule.User)
 			} else {
-				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+				t.Errorf("error when trying to check if user %s exist: %s\n", rule.User, err)
 			}
 			return ExitNok
 		default:
 			var unknownUserError user.UnknownUserError
 			if errors.As(err, &unknownUserError) {
-				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist", t.truncateKey(rule.Key), rule.User)
+				t.VerboseInfof("the key %s is not installed and should be installed for the user %s:user does not exist\n", t.truncateKey(rule.Key), rule.User)
 			} else {
-				t.Errorf("error when trying to check if user %s exist: %s", rule.User, err)
+				t.Errorf("error when trying to check if user %s exist: %s\n", rule.User, err)
 			}
 			return ExitOk
 		}
@@ -566,6 +567,7 @@ func (t CompAuthkeys) addAuthKey(rule CompAuthKey) ExitCode {
 	if _, ok := cacheInstalledKeys[rule.User]; ok {
 		cacheInstalledKeys[rule.User] = append(cacheInstalledKeys[rule.User], rule.Key)
 	}
+	t.Infof("adding the key %s in the file %s\n", rule.Key, authKeyFilePath[0])
 	return ExitOk
 }
 
@@ -587,10 +589,12 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 		return ExitNok
 	}
 	scanner := bufio.NewScanner(oldConfigFile)
+	hasDeleted := false
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineKey := strings.TrimSpace(line)
 		if lineKey == key {
+			hasDeleted = true
 			continue
 		}
 		line += "\n"
@@ -609,6 +613,15 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	if sysInfos := oldConfigFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
+		return ExitNok
+	}
 	err = oldConfigFile.Close()
 	if err != nil {
 		t.Errorf("%s", err)
@@ -617,6 +630,9 @@ func (t CompAuthkeys) delKeyInFile(authKeyFilePath string, key string) ExitCode 
 	err = os.Rename(newConfigFilePath, authKeyFilePath)
 	if err != nil {
 		t.Errorf("%s\n", err)
+	}
+	if hasDeleted {
+		t.Infof("delete the key %s from the file %s\n", key, authKeyFilePath)
 	}
 	return ExitOk
 }
@@ -628,6 +644,13 @@ func (t CompAuthkeys) delAuthKey(rule CompAuthKey) ExitCode {
 		return ExitNok
 	}
 	for _, authKeyFile := range authKeysFiles {
+		if _, err = os.Stat(authKeyFile); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
 		if t.delKeyInFile(authKeyFile, rule.Key) == ExitNok {
 			return ExitNok
 		}
@@ -700,15 +723,25 @@ func (t CompAuthkeys) addAllowGroups(rule CompAuthKey) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	if err := os.Chmod(newConfigFilePath, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFile.Name(), int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
+		return ExitNok
+	}
 	if err := os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err := os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
-		t.Errorf("%s\n", err)
-		return ExitNok
-	}
 	cacheAllowGroups = append(cacheAllowGroups, primaryGroupName)
+	t.Infof("adding the group %s in the field AllowGroups of the sshd config file (%s)\n", primaryGroupName, rule.ConfigFile)
 	return ExitOk
 }
 
@@ -766,15 +799,25 @@ func (t CompAuthkeys) addAllowUsers(rule CompAuthKey) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
+	if err = os.Chmod(newConfigFilePath, oldFileStat.Mode()); err != nil {
+		t.Errorf("%s\n", err)
+		return ExitNok
+	}
+	if sysInfos := oldFileStat.Sys(); sysInfos != nil {
+		if err = os.Chown(newConfigFilePath, int(sysInfos.(*syscall.Stat_t).Uid), int(sysInfos.(*syscall.Stat_t).Gid)); err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+	} else {
+		t.Errorf("can't change the owner of the file %s\n", newConfigFilePath)
+		return ExitNok
+	}
 	if err = os.Rename(newConfigFilePath, rule.ConfigFile); err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	if err = os.Chmod(rule.ConfigFile, oldFileStat.Mode()); err != nil {
-		t.Errorf("%s\n", err)
-		return ExitNok
-	}
 	cacheAllowUsers = append(cacheAllowUsers, rule.User)
+	t.Infof("adding the user %s in the field AllowUsers of the sshd config file (%s)\n", rule.User, rule.ConfigFile)
 	return ExitOk
 }
 
@@ -840,7 +883,7 @@ func (t CompAuthkeys) Check() ExitCode {
 
 func (t CompAuthkeys) fixRule(rule CompAuthKey) ExitCode {
 	if !userValidityMap[rule.User] {
-		t.Errorf("the user %s is blacklisted can't fix the rule", rule.User)
+		t.Errorf("the user %s is blacklisted can't fix the rule\n", rule.User)
 		return ExitNok
 	}
 	e := ExitOk
@@ -877,7 +920,9 @@ func (t CompAuthkeys) Fix() ExitCode {
 	e := ExitOk
 	for _, i := range t.Rules() {
 		rule := i.(CompAuthKey)
-		e = e.Merge(t.fixRule(rule))
+		if t.checkRule(rule) == ExitNok {
+			e = e.Merge(t.fixRule(rule))
+		}
 	}
 	return e
 }

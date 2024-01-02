@@ -4,6 +4,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -120,7 +121,7 @@ func TestLoadMpathData(t *testing.T) {
 		expectedData MpathConf
 	}{
 		"with only a default section": {
-			filePath: "./testdata/linuxMpath_conf_default",
+			filePath: "./testdata/linuxMpath_conf_defaults",
 			expectedData: MpathConf{
 				BlackList: MpathBlackList{
 					Name:     "blacklist",
@@ -135,7 +136,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -173,7 +174,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -211,7 +212,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -241,7 +242,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -253,7 +254,7 @@ func TestLoadMpathData(t *testing.T) {
 					}, {
 						Name:   "device",
 						Indent: 2,
-						Attr:   map[string][]string{"vendor": {"HP"}, "product": {"*"}},
+						Attr:   map[string][]string{"vendor": {"HP"}, "product": {"*"}, "alias": {"red"}},
 					},
 				},
 				Multipaths: []MpathSection{},
@@ -280,7 +281,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -320,7 +321,7 @@ func TestLoadMpathData(t *testing.T) {
 					Devices:  []MpathSection{},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{},
 				},
@@ -366,7 +367,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -431,7 +432,7 @@ func TestLoadMpathData(t *testing.T) {
 					}},
 				},
 				Defaults: MpathSection{
-					Name:   "default",
+					Name:   "defaults",
 					Indent: 1,
 					Attr:   map[string][]string{"user_friendly_names": {"yes"}, "path_grouping_policy": {"multibus"}},
 				},
@@ -675,8 +676,8 @@ func TestGetConfValuesMpath(t *testing.T) {
 			expectedValues: []string{"blue"},
 		},
 
-		"with default": {
-			key:            `default.path_grouping_policy`,
+		"with defaults": {
+			key:            `defaults.path_grouping_policy`,
 			conf:           fullConf,
 			expectError:    false,
 			expectedValues: []string{"multibus"},
@@ -841,6 +842,334 @@ func TestCheckRuleMpath(t *testing.T) {
 				return c.values, nil
 			}
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
+		})
+	}
+}
+
+func TestFixRuleMpath(t *testing.T) {
+	oriMultiConfPath := multipathConfPath
+	defer func() { multipathConfPath = oriMultiConfPath }()
+
+	testCases := map[string]struct {
+		rule      CompMpath
+		fileToFix string
+	}{
+		"with section defaults, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "defaults.lala",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_golden",
+		},
+
+		"with section defaults, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "defaults.lala",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_devices",
+		},
+
+		"with section blacklist, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "blacklist.wwid",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_blacklist",
+		},
+
+		"with section blacklist, keyword does not exist and is a device": {
+			rule: CompMpath{
+				Key:   "blacklist.device.{vendor}.{product}.vendor",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_blacklist",
+		},
+
+		"with section blacklist, section and keyword does not exist and is a device": {
+			rule: CompMpath{
+				Key:   "blacklist.device.{vendor}.{product}.vendor",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section blacklist, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "blacklist.wwid",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section blacklist_exceptions, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.devnode",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_blacklist_exceptions",
+		},
+
+		"with section blacklist_exceptions, keyword does not exist and is a device": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.device.{vendor}.{product}.vendor",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_blacklist_exceptions",
+		},
+
+		"with section blacklist_exceptions, section and keyword does not exist and is a device": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.device.{vendor}.{product}.vendor",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section blacklist_exceptions, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.wwid",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section multipaths, keyword exist": {
+			rule: CompMpath{
+				Key:   "multipaths.multipath.{1DEC_____321816758474}.alias",
+				Op:    "=",
+				Value: "blue",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_multipaths",
+		},
+
+		"with section multipaths, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "multipaths.multipath.{1DEC_____321816758474}.idontexist",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_multipaths",
+		},
+
+		"with section multipaths, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "multipaths.multipath.{test}.alias",
+				Op:    ">=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section multipaths, multipath and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "multipaths.multipath.{test}.alias",
+				Op:    ">=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_multipaths",
+		},
+
+		"with section devices, keyword exist": {
+			rule: CompMpath{
+				Key:   "devices.device.{HP}.{*}.alias",
+				Op:    "=",
+				Value: "blue",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_devices",
+		},
+
+		"with section devices, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "devices.device.{IBM}.{3S42}.idontexist",
+				Op:    "=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_devices",
+		},
+
+		"with section devices, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}.alias",
+				Op:    ">=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_defaults",
+		},
+
+		"with section devices, device and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}.alias",
+				Op:    "<=",
+				Value: "vendor",
+			},
+			fileToFix: "./testdata/linuxMpath_conf_devices",
+		},
+
+		"with section overrides, keyword does not exist": {
+			rule: CompMpath{
+				Key:   "overrides.lala",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_golden",
+		},
+
+		"with section overrides, section and keyword does not exist": {
+			rule: CompMpath{
+				Key:   "overrides.lala",
+				Op:    "=",
+				Value: float64(4),
+			},
+			fileToFix: "./testdata/linuxMpath_conf_devices",
+		},
+	}
+
+	obj := CompMpaths{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			fileContent, err := os.ReadFile(c.fileToFix)
+			require.NoError(t, err)
+			tmpFile, err := os.CreateTemp(filepath.Dir(c.fileToFix), "tmpFile")
+			defer func() { require.NoError(t, os.Remove(tmpFile.Name())) }()
+			require.NoError(t, err)
+			_, err = tmpFile.Write(fileContent)
+			require.NoError(t, err)
+			require.NoError(t, tmpFile.Close())
+			multipathConfPath = tmpFile.Name()
+			require.Equal(t, ExitOk, obj.fixRule(c.rule))
+			require.Equal(t, ExitOk, obj.checkRule(c.rule))
+		})
+	}
+}
+
+func TestCheckDeviceInSection(t *testing.T) {
+	testCases := map[string]struct {
+		rule                   CompMpath
+		conf                   MpathConf
+		expectedExitCodeOutput ExitCode
+		expectedBoolOutput     bool
+	}{
+		"with a rule true that is concerned (section devices)": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList:           MpathBlackList{},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule true that is concerned (section blacklist)": {
+			rule: CompMpath{
+				Key:   "blacklist.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList: MpathBlackList{Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}}},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices:             nil,
+				Multipaths:          nil,
+				Overrides:           MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule true that is concerned (section blacklist_exceptions)": {
+			rule: CompMpath{
+				Key:   "blacklist_exceptions.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList: MpathBlackList{},
+				BlackListExceptions: MpathBlackList{Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}}},
+				Defaults: MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitOk,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule false that is concerned": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}",
+				Op:    "",
+				Value: nil,
+			},
+			conf: MpathConf{
+				BlackList:           MpathBlackList{},
+				BlackListExceptions: MpathBlackList{},
+				Defaults:            MpathSection{},
+				Devices: []MpathSection{{
+					Name:   "device",
+					Indent: 0,
+					Attr:   map[string][]string{"vendor": {"vendor2"}, "product": {"product"}},
+				}},
+				Multipaths: nil,
+				Overrides:  MpathSection{},
+			},
+			expectedExitCodeOutput: ExitNok,
+			expectedBoolOutput:     true,
+		},
+
+		"with a rule that is not concerned": {
+			rule: CompMpath{
+				Key:   "devices.device.{vendor}.{product}.att",
+				Op:    "",
+				Value: nil,
+			},
+			conf:                   MpathConf{},
+			expectedExitCodeOutput: ExitNok,
+			expectedBoolOutput:     false,
+		},
+	}
+
+	obj := CompMpaths{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	for name, c := range testCases {
+		t.Run(name, func(t *testing.T) {
+			e, b := obj.checkDevicesInSection(c.rule, c.conf)
+			require.Equal(t, c.expectedExitCodeOutput, e)
+			require.Equal(t, c.expectedBoolOutput, b)
 		})
 	}
 }

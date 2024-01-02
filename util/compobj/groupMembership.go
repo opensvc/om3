@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -126,6 +127,7 @@ func (t CompGroupsMemberships) checkRule(rule CompGroupMembership) ExitCode {
 		return ExitNok
 	}
 	if !isGroupPresent {
+		t.VerboseInfof("group Membership: the group %s does not exist, in this case the rule is considered as on target\n", rule.Group)
 		return ExitOk
 	}
 	if e := t.checkMembersExistence(rule.Members); e == ExitNok {
@@ -218,14 +220,15 @@ func (t CompGroupsMemberships) checkMembersExistence(members []string) ExitCode 
 	for _, member := range members {
 		isMissing, err := t.isUserMissing(member)
 		if err != nil {
-			t.Errorf("error when trying to look if user %s exist: %s \n", member, err)
+			t.Errorf("error when trying to look if user %s exist: %s\n", member, err)
 			return ExitNok
 		}
-
+		if isMissing {
+			t.Errorf("user %s is missing in the os\n", member)
+		}
 		missingMembers = missingMembers || isMissing
 	}
 	if missingMembers {
-		t.Errorf("error : some members are not present in the current os\n")
 		return ExitNok
 	}
 	return ExitOk
@@ -235,10 +238,13 @@ func (t CompGroupsMemberships) isGroupExisting(groupName string) (bool, error) {
 	cmd := execGetent("group", groupName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			if exitError.ExitCode() == 2 {
+				return false, nil
+			}
+		}
 		return false, fmt.Errorf("can't read /etc/group %w:%s \n", err, output)
-	}
-	if len(output) == 0 {
-		return false, nil
 	}
 	return true, nil
 }
@@ -250,11 +256,13 @@ func (t CompGroupsMemberships) isUserMissing(member string) (bool, error) {
 	cmd := execGetent("passwd", member)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			if exitError.ExitCode() == 2 {
+				return true, nil
+			}
+		}
 		return true, fmt.Errorf("can't read /etc/passwd :%w/%s \n", err, output)
-	}
-	if len(output) == 0 {
-		t.Errorf("user %s is missing in the os \n", member)
-		return true, nil
 	}
 	return false, nil
 }
@@ -273,7 +281,7 @@ func (t CompGroupsMemberships) Check() ExitCode {
 func (t CompGroupsMemberships) fixRule(rule CompGroupMembership) ExitCode {
 	isGroupPresent, err := t.isGroupExisting(rule.Group)
 	if err != nil {
-		t.Errorf("can't check if group %s exist :%s \n", rule.Group, err)
+		t.Errorf("can't check if group %s exist :%s\n", rule.Group, err)
 		return ExitNok
 	}
 	if !isGroupPresent {
@@ -281,7 +289,7 @@ func (t CompGroupsMemberships) fixRule(rule CompGroupMembership) ExitCode {
 	}
 	e := t.checkMembersExistence(rule.Members)
 	if e == ExitNok {
-		return e
+		return ExitNok
 	}
 	groupMembers, err := t.getGroupMembers(rule.Group)
 	if err != nil {
@@ -311,23 +319,24 @@ func (t CompGroupsMemberships) fixMemberAdd(member string, group string) ExitCod
 		t.Errorf("can't add the user %s to the group %s :%s \n", member, group, output)
 		return ExitNok
 	}
+	t.Infof("adding the user %s to the group %s\n", member, group)
 	return ExitOk
 }
 
 func (t CompGroupsMemberships) fixMemberDel(member string, group string) ExitCode {
 	primaryGroup, err := t.getPrimaryGroup(member)
 	if err != nil {
-		t.Errorf("can't read primary group for the user %s \n", member)
+		t.Errorf("can't read primary group for the user %s\n", member)
 		return ExitNok
 	}
 	if group == primaryGroup {
-		t.Errorf("user %s has the group %s as primary group, cowardly refusing to del the user from its primary group \n", member, group)
+		t.Errorf("user %s has the group %s as primary group, cowardly refusing to del the user from its primary group\n", member, group)
 		return ExitNok
 	}
 	cmd := execGpasswdDel(group, member)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Errorf("error when trying to del the user %s from the group %s :%s \n", member, group, output)
+		t.Errorf("error when trying to del the user %s from the group %s :%s\n", member, group, output)
 		return ExitNok
 	}
 	return ExitOk
