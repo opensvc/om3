@@ -131,6 +131,8 @@ var (
 
 		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
+		"ObjectStatusCreated": func() any { return &ObjectStatusCreated{} },
+
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
 		"ObjectOrchestrationRefused": func() any { return &ObjectOrchestrationRefused{} },
@@ -585,6 +587,12 @@ type (
 		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
+	ObjectStatusCreated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
 	ObjectOrchestrationEnd struct {
 		pubsub.Msg `yaml:",inline"`
 		Id         string      `json:"id" yaml:"id"`
@@ -954,6 +962,10 @@ func (e *NodeStatusLabelsUpdated) Kind() string {
 
 func (e *NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
+}
+
+func (e *ObjectStatusCreated) Kind() string {
+	return "ObjectCreated"
 }
 
 func (e *ObjectOrchestrationEnd) Kind() string {

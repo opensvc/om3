@@ -66,41 +66,26 @@ type (
 	}
 )
 
-// ChanFromAny returns event chan from dequeued any chan
-func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
-	eventC := make(chan *Event)
-	go func() {
-		eventCount := uint64(0)
-		for {
-			select {
-			case <-ctx.Done():
-				close(eventC)
-				return
-			case i := <-anyC:
-				switch o := i.(type) {
-				case Kinder:
-					eventCount++
-					ev := &Event{
-						Kind: o.Kind(),
-						ID:   eventCount,
-					}
-
-					if o, ok := i.(Timer); ok {
-						ev.At = o.Time()
-					}
-
-					if o, ok := i.(Byter); ok {
-						ev.Data = o.Bytes()
-					} else {
-						ev.Data, _ = json.Marshal(i)
-					}
-					eventC <- ev
-				}
-			}
+func ToEvent(i any, id uint64) *Event {
+	switch o := i.(type) {
+	case Kinder:
+		ev := &Event{
+			Kind: o.Kind(),
+			ID:   id,
 		}
-	}()
 
-	return eventC
+		if o, ok := i.(Timer); ok {
+			ev.At = o.Time()
+		}
+
+		if o, ok := i.(Byter); ok {
+			ev.Data = o.Bytes()
+		} else {
+			ev.Data, _ = json.Marshal(i)
+		}
+		return ev
+	}
+	return nil
 }
 
 func (e Event) AsConcreteEvent(data any) *ConcreteEvent {

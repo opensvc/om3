@@ -334,6 +334,7 @@ paths:
         - $ref: '#/components/parameters/Duration'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/EventFilter'
+        - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
           description: OK
