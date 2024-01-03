@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-json"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/naming"
@@ -167,6 +168,10 @@ func (t *CmdNodeEvents) Run() error {
 		SetDuration(t.Duration).
 		GetReader()
 
+	if err != nil {
+		return err
+	}
+
 	ctx := context.Background()
 	if t.Duration > 0 {
 		var cancel context.CancelFunc
@@ -174,9 +179,6 @@ func (t *CmdNodeEvents) Run() error {
 		defer cancel()
 	}
 
-	if err != nil {
-		return err
-	}
 	var count uint64
 	for {
 		for {
