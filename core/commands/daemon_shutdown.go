@@ -48,7 +48,7 @@ func (t *CmdDaemonShutdown) doNodes() error {
 	params := api.PostDaemonShutdownParams{
 		Duration: &duration,
 	}
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}

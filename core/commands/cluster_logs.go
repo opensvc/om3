@@ -56,7 +56,11 @@ func (t *CmdClusterLogs) stream(node string) {
 }
 
 func (t *CmdClusterLogs) remote() error {
-	nodes, err := nodeselector.Expand(t.NodeSelector)
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
+	nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}

@@ -370,7 +370,11 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}
@@ -403,10 +407,6 @@ func (t T) DoRemote() error {
 	}
 
 	for _, nodename := range nodenames {
-		c, err := client.New(client.WithURL(nodename), client.WithTimeout(0))
-		if err != nil {
-			return err
-		}
 		if t.Wait {
 			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSid, waitC)
 		}

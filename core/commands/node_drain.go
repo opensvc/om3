@@ -40,7 +40,7 @@ func (t *CmdNodeDrain) doRemote() error {
 	if err != nil {
 		return err
 	}
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}

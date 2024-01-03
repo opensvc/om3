@@ -38,14 +38,14 @@ func (t *CmdNodeUnset) Run() error {
 }
 
 func (t *CmdNodeUnset) doRemote() error {
-	c, err := client.New()
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
 	params := api.PostNodeConfigUpdateParams{}
 	params.Unset = &t.Keywords
 	params.Delete = &t.Sections
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}
