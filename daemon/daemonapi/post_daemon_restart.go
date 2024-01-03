@@ -7,12 +7,15 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/util/command"
 )
 
 func (a *DaemonApi) PostDaemonRestart(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localPostDaemonRestart(ctx)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
 	c, err := client.New(client.WithURL(nodename))
 	if err != nil {

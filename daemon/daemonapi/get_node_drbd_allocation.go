@@ -86,7 +86,6 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 	} else {
 		return a.getPeerDRBDAllocation(ctx, nodename)
 	}
-	return nil
 }
 
 func (a *DaemonApi) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {

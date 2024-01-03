@@ -5,7 +5,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -14,10 +16,10 @@ import (
 func (a *DaemonApi) PostNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionSysreport(ctx, params)
-	} else {
-		return a.remoteNodeActionSysreport(ctx, nodename, params)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	return nil
+	return a.remoteNodeActionSysreport(ctx, nodename, params)
 }
 
 func (a *DaemonApi) remoteNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {

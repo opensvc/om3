@@ -37,6 +37,8 @@ func (a *DaemonApi) getPeerDRBDConfig(ctx echo.Context, nodename string, params 
 	c, err := client.New(client.WithURL(nodename))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
 	if resp, err := c.GetNodeDRBDConfigWithResponse(ctx.Request().Context(), nodename, &params); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
