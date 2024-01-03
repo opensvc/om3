@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -89,7 +88,7 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 }
 
 func (a *DaemonApi) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

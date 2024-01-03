@@ -5,7 +5,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -76,7 +75,7 @@ func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 	}
 
 	for nodename, _ := range instanceConfigData {
-		c, err := client.New(client.WithURL(nodename))
+		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}

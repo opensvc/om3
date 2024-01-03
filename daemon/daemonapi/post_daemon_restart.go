@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/util/command"
 )
@@ -17,7 +16,7 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context, nodename string) error {
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

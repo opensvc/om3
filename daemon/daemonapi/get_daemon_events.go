@@ -45,17 +45,14 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, nodename string, params ap
 
 func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
 	var (
-		handlerName = "getPeerDaemonEvents"
-		limit       uint64
-		eventCount  uint64
+		handlerName   = "getPeerDaemonEvents"
+		limit         uint64
+		eventCount    uint64
+		clientOptions []funcopt.O
 	)
 	log := LogHandler(ctx, handlerName)
 	evCtx := ctx.Request().Context()
 	request := ctx.Request()
-	clientOptions := []funcopt.O{
-		client.WithURL(nodename),
-		client.WithAuthorization(request.Header.Get("authorization")),
-	}
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
@@ -72,7 +69,7 @@ func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	if params.Limit != nil {
 		limit = uint64(*params.Limit)
 	}
-	c, err := client.New(clientOptions...)
+	c, err := newProxyClient(ctx, nodename, clientOptions...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

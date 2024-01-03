@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
@@ -23,7 +22,7 @@ func (a *DaemonApi) PostNodeActionSysreport(ctx echo.Context, nodename string, p
 }
 
 func (a *DaemonApi) remoteNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}
