@@ -20,6 +20,7 @@ import (
 // GetEvents describes the events request options.
 type GetEvents struct {
 	client    api.ClientInterface
+	nodename  string
 	namespace *string
 	selector  *string
 	relatives *bool
@@ -48,6 +49,11 @@ func (t *GetEvents) SetNamespace(s string) *GetEvents {
 	return t
 }
 
+func (t *GetEvents) SetNodename(s string) *GetEvents {
+	t.nodename = s
+	return t
+}
+
 func (t *GetEvents) SetSelector(s string) *GetEvents {
 	t.selector = &s
 	return t
@@ -63,6 +69,7 @@ func (t *GetEvents) SetRelatives(s bool) *GetEvents {
 func NewGetEvents(t api.ClientInterface) *GetEvents {
 	options := &GetEvents{
 		client: t,
+		nodename: "localhost",
 	}
 	return options
 }
@@ -184,7 +191,7 @@ func (t GetEvents) eventsBase() (*http.Response, error) {
 		s := t.Duration.String()
 		params.Duration = &s
 	}
-	resp, err := t.client.GetDaemonEvents(context.Background(), &params)
+	resp, err := t.client.GetDaemonEvents(context.Background(), t.nodename, &params)
 	if err == nil && resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
 	}

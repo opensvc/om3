@@ -10,6 +10,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/core/naming"
@@ -19,6 +21,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -29,9 +32,96 @@ type (
 	}
 )
 
-// GetDaemonEvents feeds publications in rss format.
+// GetDaemonEvents feeds node daemon event publications in rss format.
+func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
+	if nodename == a.localhost || nodename == "localhost" {
+		return a.getLocalDaemonEvents(ctx, params)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
+	} else {
+		return a.getPeerDaemonEvents(ctx, nodename, params)
+	}
+}
+
+func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
+	var (
+		handlerName = "getPeerDaemonEvents"
+		limit       uint64
+		eventCount  uint64
+	)
+	log := LogHandler(ctx, handlerName)
+	evCtx := ctx.Request().Context()
+	request := ctx.Request()
+	clientOptions := []funcopt.O{
+		client.WithURL(nodename),
+		client.WithAuthorization(request.Header.Get("authorization")),
+	}
+	if params.Duration != nil {
+		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
+			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+		} else if timeout := *v.(*time.Duration); timeout > 0 {
+			var cancel context.CancelFunc
+			evCtx, cancel = context.WithTimeout(evCtx, timeout)
+			defer cancel()
+			clientOptions = append(clientOptions, client.WithTimeout(timeout))
+		}
+	}
+	if params.Limit != nil {
+		limit = uint64(*params.Limit)
+	}
+	c, err := client.New(clientOptions...)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+
+	resp, err := c.GetDaemonEvents(evCtx, nodename, &params)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if resp.StatusCode != http.StatusOK {
+		return JSONProblemf(ctx, resp.StatusCode, "Request peer", "%s: %s", nodename, err)
+	}
+	w := ctx.Response()
+	if request.Header.Get("accept") == "text/event-stream" {
+		setStreamHeaders(w)
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	// don't wait first event to flush response
+	w.Flush()
+
+	sseWriter := sseevent.NewWriter(w)
+	evReader := sseevent.NewReadCloser(resp.Body)
+	defer func() {
+		if err := evReader.Close(); err != nil {
+			log.Errorf("event reader close: %s", err)
+		}
+	}()
+	for {
+		ev, err := evReader.Read()
+		if err != nil {
+			log.Debugf("event read: %s", err)
+			return nil
+		} else if ev == nil {
+			return nil
+		}
+		eventCount++
+		if _, err := sseWriter.Write(ev); err != nil {
+			log.Debugf("event write: %s", err)
+			return nil
+		}
+		w.Flush()
+		if limit > 0 && eventCount >= limit {
+			log.Debugf("reach event count limit")
+			return nil
+		}
+	}
+}
+
+// getLocalDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
-func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
+func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); err != nil {
 		return err
 	} else if !v {

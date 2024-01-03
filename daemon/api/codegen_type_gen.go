@@ -1012,21 +1012,6 @@ type PostDaemonLeaveParams struct {
 	Node string `form:"node" json:"node"`
 }
 
-// GetDaemonEventsParams defines parameters for GetDaemonEvents.
-type GetDaemonEventsParams struct {
-	// Duration max duration
-	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
-
-	// Limit limit items count
-	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// Filter list of event filter
-	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Selector selector
-	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-}
-
 // GetDaemonStatusParams defines parameters for GetDaemonStatus.
 type GetDaemonStatusParams struct {
 	// Namespace namespace
@@ -1139,6 +1124,21 @@ type PostNodeConfigUpdateParams struct {
 type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+}
+
+// GetDaemonEventsParams defines parameters for GetDaemonEvents.
+type GetDaemonEventsParams struct {
+	// Duration max duration
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// Limit limit items count
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Filter list of event filter
+	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Selector selector
+	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
