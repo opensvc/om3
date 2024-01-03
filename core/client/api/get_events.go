@@ -173,7 +173,8 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 
 func (t GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
-		Filter: &t.Filters,
+		Filter:   &t.Filters,
+		Selector: t.selector,
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)

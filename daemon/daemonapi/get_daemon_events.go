@@ -12,6 +12,9 @@ import (
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -38,6 +41,8 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 		handlerName = "GetDaemonEvents"
 		limit       uint64
 		eventCount  uint64
+		pathMap     naming.M
+		err         error
 
 		evCtx  = ctx.Request().Context()
 		cancel context.CancelFunc
@@ -46,6 +51,24 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	log.Debugf("starting")
 	defer log.Debugf("done")
 
+	getPathMap := func() (naming.M, error) {
+		if params.Selector == nil {
+			return nil, nil
+		}
+		paths, err := objectselector.NewSelection(
+			*params.Selector,
+			objectselector.SelectionWithInstalled(object.StatusData.GetPaths()),
+			objectselector.SelectionWithLocal(true),
+		).Expand()
+		if err != nil {
+			return nil, err
+		}
+		return paths.StrMap(), nil
+	}
+
+	if pathMap, err = getPathMap(); err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Object selector", "%s", err)
+	}
 	if params.Limit != nil {
 		limit = uint64(*params.Limit)
 	}
@@ -79,6 +102,17 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	a.announceSub(name)
 	defer a.announceUnsub(name)
 
+	// objectselectionSub is a subscription dedicated to object create/delete events.
+	objectselectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
+	objectselectionSub.AddFilter(&msgbus.ObjectStatusCreated{})
+	objectselectionSub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	objectselectionSub.Start()
+	defer func() {
+		if err := objectselectionSub.Stop(); err != nil {
+			log.Debugf("objectselectionSub.Stop: %s", err)
+		}
+	}()
+
 	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
@@ -105,18 +139,43 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	// don't wait first event to flush response
 	w.Flush()
 
-	eventC := event.ChanFromAny(evCtx, sub.C)
 	sseWriter := sseevent.NewWriter(w)
-	for ev := range eventC {
-		log.Debugf("write event %s", ev.Kind)
-		if _, err := sseWriter.Write(ev); err != nil {
-			log.Debugf("write event %s: %s", ev.Kind, err)
-			break
-		}
-		w.Flush()
-		eventCount++
-		if limit > 0 && eventCount >= limit {
-			break
+	evCounter := uint64(0)
+	for {
+		select {
+		case <-evCtx.Done():
+			return nil
+		case i := <-objectselectionSub.C:
+			if pathMap != nil {
+				switch ev := i.(type) {
+				case *msgbus.ObjectStatusCreated:
+					log.Infof("add created object %s to selection", ev.Path)
+					pathMap[ev.Path.String()] = nil
+				case *msgbus.ObjectStatusDeleted:
+					log.Infof("remove deleted object %s from selection", ev.Path)
+					delete(pathMap, ev.Path.String())
+				}
+			}
+		case i := <-sub.C:
+			if pathMap != nil {
+				// discard events with path label not matching the selector.
+				msg := i.(pubsub.Messager)
+				labels := msg.GetLabels()
+				if s, ok := labels["path"]; ok && !pathMap.Has(s) {
+					continue
+				}
+			}
+			ev := event.ToEvent(i, evCounter)
+			evCounter++
+			log.Debugf("write event %s", ev.Kind)
+			if _, err := sseWriter.Write(ev); err != nil {
+				log.Debugf("write event %s: %s", ev.Kind, err)
+				break
+			}
+			w.Flush()
+			if limit > 0 && eventCount >= limit {
+				break
+			}
 		}
 	}
 	return nil

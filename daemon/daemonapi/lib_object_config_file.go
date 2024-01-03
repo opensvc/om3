@@ -29,5 +29,5 @@ func (a DaemonApi) writeObjectConfigFile(ctx echo.Context, p naming.Path) error 
 	if err := configurer.Config().RecommitInvalid(); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", fmt.Sprint(err))
 	}
-	return ctx.JSON(http.StatusNoContent, nil)
+	return ctx.NoContent(http.StatusNoContent)
 }

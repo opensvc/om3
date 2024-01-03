@@ -387,10 +387,17 @@ func (o *T) delete() {
 }
 
 func (o *T) update() {
+	isNew := o.status.UpdatedAt.IsZero()
 	o.status.UpdatedAt = time.Now()
 	value := o.status.DeepCopy()
 	o.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(o.path, o.status.DeepCopy())
+	if isNew {
+		o.bus.Pub(&msgbus.ObjectStatusCreated{Path: o.path, Node: o.localhost},
+			o.labelPath,
+			o.labelNode,
+		)
+	}
 	o.bus.Pub(&msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
 		o.labelPath,
 		o.labelNode,

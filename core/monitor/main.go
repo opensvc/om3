@@ -140,7 +140,6 @@ func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 	s, err := output.Renderer{
 		Output:        m.format,
 		Color:         m.color,
-		Data:          data.WithSelector(m.selector),
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Sprint()
@@ -232,13 +231,14 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 			if nextEvId == 0 {
 				nextEvId = e.ID
 			} else if e.ID != nextEvId {
-				_, _ = fmt.Fprintf(os.Stderr, "receive broken event id %d %s\n", e.ID, e.Kind)
-				return fmt.Errorf("broken event id sequence wanted %d got %d", nextEvId, e.ID)
+				err := fmt.Errorf("broken event chain: received event id %d, expected %d", e.ID, nextEvId)
+				_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
+				return err
 			}
 			nextEvId++
 			changes = true
 			if msg, err := msgbus.EventToMessage(e); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "EventToMessage event id %d %s error %s\n", e.ID, e.Kind, err)
+				_, _ = fmt.Fprintf(os.Stderr, "EventToMessage event id %d %s error: %s\n", e.ID, e.Kind, err)
 				continue
 			} else if err := cdata.ApplyMessage(msg); err != nil {
 				return err
