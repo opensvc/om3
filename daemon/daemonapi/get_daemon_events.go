@@ -65,6 +65,8 @@ func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 			evCtx, cancel = context.WithTimeout(evCtx, timeout)
 			defer cancel()
 			clientOptions = append(clientOptions, client.WithTimeout(timeout))
+		} else {
+			clientOptions = append(clientOptions, client.WithTimeout(0))
 		}
 	}
 	if params.Limit != nil {
