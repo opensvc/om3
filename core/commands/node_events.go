@@ -11,11 +11,14 @@ import (
 	"github.com/goccy/go-json"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -29,12 +32,21 @@ type (
 		Wait     bool
 		templ    *template.Template
 		helper   *templateHelper
+
+		cli          *client.T
+		NodeSelector string
+		errC         chan error
+		evC          chan *event.Event
 	}
 
 	templateHelper struct {
 		PassedMap map[string]struct{}
 		Success   bool
 	}
+)
+
+var (
+	evReadError = fmt.Errorf("event read error")
 )
 
 func (c *templateHelper) passSet(s string, b bool) (changed bool) {
@@ -124,14 +136,24 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 }
 
 func (t *CmdNodeEvents) Run() error {
+	if t.Local {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if !clientcontext.IsSet() && t.NodeSelector == "" {
+		t.NodeSelector = hostname.Hostname()
+	}
+	if t.NodeSelector == "" {
+		return fmt.Errorf("--node must be specified")
+	}
+	return t.doNodes()
+}
+
+func (t *CmdNodeEvents) doNodes() error {
 	var (
-		err        error
-		c          *client.T
-		ev         *event.Event
-		maxRetries = 600
-		retries    = 0
-		now        = time.Now()
+		err error
+		now = time.Now()
 	)
+	t.evC = make(chan *event.Event)
 	if t.Template != "" {
 		t.Output = "json"
 		evTemplate := template.New("ev")
@@ -156,18 +178,11 @@ func (t *CmdNodeEvents) Run() error {
 			return err
 		}
 	}
-	c, err = client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	t.cli, err = client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
-
-	evReader, err := c.NewGetEvents().
-		SetRelatives(false).
-		SetLimit(t.Limit).
-		SetFilters(t.Filters).
-		SetDuration(t.Duration).
-		GetReader()
-
+	nodenames, err := nodeselector.Expand(t.NodeSelector)
 	if err != nil {
 		return err
 	}
@@ -177,6 +192,9 @@ func (t *CmdNodeEvents) Run() error {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, t.Duration)
 		defer cancel()
+	}
+	for _, nodename := range nodenames {
+		go t.nodeEventLoop(ctx, nodename)
 	}
 
 	var count uint64
@@ -189,84 +207,118 @@ func (t *CmdNodeEvents) Run() error {
 					return err
 				}
 				return ctx.Err()
+			case ev := <-t.evC:
+				count++
+				t.doEvent(*ev)
+				if t.templ != nil && t.Wait && t.helper.Success {
+					s := fmt.Sprintf("wait succeed elapsed %s", time.Now().Sub(now))
+					if len(t.helper.PassedMap) > 0 {
+						ok := make([]string, 0)
+						for k := range t.helper.PassedMap {
+							ok = append(ok, k)
+						}
+						_, _ = fmt.Fprintf(os.Stderr, "%s passed %s\n", s, ok)
+					} else {
+						_, _ = fmt.Fprintf(os.Stderr, "%s\n", s)
+					}
+					return nil
+				}
+				if t.Limit > 0 && count >= t.Limit {
+					if t.templ != nil && t.Wait && !t.helper.Success {
+						err := fmt.Errorf("wait failed after %s (event count limit)\n", time.Now().Sub(now))
+						return err
+					}
+					return nil
+				}
+			case _ = <-t.errC:
+				// TODO: verify if we can drop nodeEventLoop errors
+			}
+		}
+	}
+}
+
+func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
+	var (
+		retries    = 0
+		maxRetries = 600
+	)
+
+	evReader, err := t.getEvReader(nodename)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "getEvReader %s: %s", nodename, err)
+	}
+	if t.Duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, t.Duration)
+		defer cancel()
+	}
+	defer func() {
+		if evReader == nil {
+			return
+		} else if err := evReader.Close(); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "close event reader error %s: '%s'\n", nodename, err)
+		}
+	}()
+
+	for {
+		var ev *event.Event
+		for { // read loop
+			select {
+			case <-ctx.Done():
+				t.errC <- ctx.Err()
+				return
 			default:
+			}
+			if evReader == nil {
+				break
 			}
 			ev, err = evReader.Read()
 			if err != nil {
 				break
 			}
-			count++
-			t.doEvent(*ev)
-			if t.templ != nil && t.Wait && t.helper.Success {
-				s := fmt.Sprintf("wait succeed elapsed %s", time.Now().Sub(now))
-				if len(t.helper.PassedMap) > 0 {
-					ok := make([]string, 0)
-					for k := range t.helper.PassedMap {
-						ok = append(ok, k)
-					}
-					_, _ = fmt.Fprintf(os.Stderr, "%s passed %s\n", s, ok)
-				} else {
-					_, _ = fmt.Fprintf(os.Stderr, "%s\n", s)
-				}
-				return nil
-			}
-			if t.Limit > 0 && count >= t.Limit {
-				if t.templ != nil && t.Wait && !t.helper.Success {
-					err := fmt.Errorf("wait failed after %s (event count limit)\n", time.Now().Sub(now))
-					return err
-				}
-				return nil
-			}
+			t.evC <- ev
 		}
-		if err1 := evReader.Close(); err1 != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "close event reader error '%s'\n", err1)
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			if t.templ != nil && t.Wait && !t.helper.Success {
-				err := fmt.Errorf("wait failed after %s (%s)\n", time.Now().Sub(now), ctx.Err())
-				return err
+		for { // get reader retry loop
+			select {
+			case <-ctx.Done():
+				t.errC <- ctx.Err()
+				return
+			default:
 			}
-			return ctx.Err()
-		default:
-		}
-		for {
 			retries++
 			if retries > maxRetries {
-				if t.templ != nil && t.Wait && !t.helper.Success {
-					err := fmt.Errorf("wait failed after %s (max retries)\n", time.Now().Sub(now))
-					return err
-				}
-				return err
+				t.errC <- evReadError
+				return
 			} else if retries == 1 {
-				_, _ = fmt.Fprintf(os.Stderr, "event read failed: '%s'\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "event read failed for node %s: '%s'\n", nodename, err)
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 			}
 			time.Sleep(1 * time.Second)
 			select {
 			case <-ctx.Done():
-				if t.templ != nil && t.Wait && !t.helper.Success {
-					err := fmt.Errorf("wait failed after %s (max retries)\n", time.Now().Sub(now))
-					return err
-				}
-				return ctx.Err()
+				t.errC <- ctx.Err()
+				return
 			default:
 			}
-			evReader, err = c.NewGetEvents().
-				SetRelatives(false).
-				SetLimit(t.Limit).
-				SetFilters(t.Filters).
-				SetDuration(t.Duration).
-				GetReader()
+			evReader, err = t.getEvReader(nodename)
 			if err == nil {
-				_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d ok\n", retries, maxRetries)
+				_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d ok for %s\n", retries, maxRetries, nodename)
 				retries = 0
 				break
 			}
-			_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d failed: '%s'\n", retries, maxRetries, err)
+			_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d failed for %s: '%s'\n", retries, maxRetries, nodename, err)
 		}
 	}
+}
+
+func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
+	return t.cli.NewGetEvents().
+		SetRelatives(false).
+		SetLimit(t.Limit).
+		SetFilters(t.Filters).
+		SetDuration(t.Duration).
+		SetNodename(nodename).
+		GetReader()
 }
 
 func (t *CmdNodeEvents) doEvent(e event.Event) {
