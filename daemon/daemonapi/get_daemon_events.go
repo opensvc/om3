@@ -102,14 +102,14 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 	a.announceSub(name)
 	defer a.announceUnsub(name)
 
-	// objectselectionSub is a subscription dedicated to object create/delete events.
-	objectselectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
-	objectselectionSub.AddFilter(&msgbus.ObjectStatusCreated{})
-	objectselectionSub.AddFilter(&msgbus.ObjectStatusDeleted{})
-	objectselectionSub.Start()
+	// objectSelectionSub is a subscription dedicated to object create/delete events.
+	objectSelectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
+	objectSelectionSub.AddFilter(&msgbus.ObjectStatusCreated{})
+	objectSelectionSub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	objectSelectionSub.Start()
 	defer func() {
-		if err := objectselectionSub.Stop(); err != nil {
-			log.Debugf("objectselectionSub.Stop: %s", err)
+		if err := objectSelectionSub.Stop(); err != nil {
+			log.Debugf("objectSelectionSub.Stop: %s", err)
 		}
 	}()
 
@@ -145,7 +145,7 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 		select {
 		case <-evCtx.Done():
 			return nil
-		case i := <-objectselectionSub.C:
+		case i := <-objectSelectionSub.C:
 			if pathMap != nil {
 				switch ev := i.(type) {
 				case *msgbus.ObjectStatusCreated:
@@ -167,18 +167,16 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEvents
 			}
 			ev := event.ToEvent(i, evCounter)
 			evCounter++
-			log.Debugf("write event %s", ev.Kind)
 			if _, err := sseWriter.Write(ev); err != nil {
 				log.Debugf("write event %s: %s", ev.Kind, err)
-				break
+				return nil
 			}
 			w.Flush()
 			if limit > 0 && eventCount >= limit {
-				break
+				return nil
 			}
 		}
 	}
-	return nil
 }
 
 // parseFilters return filters from b.Filter
