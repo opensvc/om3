@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -124,11 +125,11 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}
-	m.doOneShot(data, false, out)
+	m.doOneShot(data, false, 0, out)
 	return nil
 }
 
-func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
+func (m *T) doOneShot(data cluster.Data, clear bool, evCount uint64, out io.Writer) {
 	human := func() string {
 		f := cluster.Frame{
 			Current:  data,
@@ -154,7 +155,7 @@ func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 
 		// Clearing is used by the watch mode.
 		// In this case we want to see the date as a proof of activity.
-		_, _ = fmt.Fprintf(out, "%s\n\n", time.Now().Format(time.RFC1123))
+		_, _ = fmt.Fprintf(out, "Client %s received %d events, last on %s\n\n", hostname.Hostname(), evCount, time.Now().Format(time.RFC1123))
 	}
 	_, _ = fmt.Fprint(out, s)
 }
@@ -211,10 +212,12 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 	wg.Add(1)
 	go func(d *cluster.Data) {
 		defer wg.Done()
-		m.doOneShot(*d, true, out)
+		m.doOneShot(*d, true, 0, out)
 		// show data when new data published on dataC
+		evCount := uint64(0)
 		for d := range dataC {
-			m.doOneShot(*d, true, out)
+			evCount++
+			m.doOneShot(*d, true, evCount, out)
 		}
 	}(data.DeepCopy())
 
