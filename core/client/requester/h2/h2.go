@@ -1,6 +1,7 @@
 package reqh2
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ type (
 		Username           string
 		Password           string `json:"-"`
 		URL                string `json:"url"`
+		Authorization      string `json:"-"`
 		Bearer             string `json:"-"`
 		Timeout            time.Duration
 		InsecureSkipVerify bool
@@ -41,8 +43,6 @@ const (
 var (
 	udsRetryConnect      = 10
 	udsRetryConnectDelay = 10 * time.Millisecond
-
-	clientTimeout = 5 * time.Second
 )
 
 func (t Config) String() string {
@@ -85,6 +85,12 @@ func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 	}
 }
 
+// NewInet returns api *api.ClientWithResponses from config.
+//
+//	request authorization header will be created from one of config properties:
+//	- Username & Password
+//	- Bearer
+//	- Authorization
 func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 	httpClient, err := httpclientcache.Client(httpclientcache.Options{
 		CertFile:           config.Certificate,
@@ -118,9 +124,23 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		options = append(options, api.WithRequestEditorFn(provider.Intercept))
 	}
 
+	if config.Authorization != "" {
+		fn := requestAuthorizationEditorFn(config.Authorization)
+		options = append(options, api.WithRequestEditorFn(fn))
+	}
+
 	if apiClient, err = api.NewClientWithResponses(config.URL, options...); err != nil {
 		return apiClient, err
 	} else {
 		return apiClient, nil
+	}
+}
+
+// requestAuthorizationEditorFn returns request editor function that sets the
+// request authorization header.
+func requestAuthorizationEditorFn(s string) func(context.Context, *http.Request) error {
+	return func(_ context.Context, req *http.Request) error {
+		req.Header.Set("Authorization", s)
+		return nil
 	}
 }
