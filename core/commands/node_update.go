@@ -47,7 +47,7 @@ func (t *CmdNodeUpdate) doRemote() error {
 	params.Set = &t.Set
 	params.Unset = &t.Unset
 	params.Delete = &t.Delete
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}

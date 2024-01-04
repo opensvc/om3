@@ -1143,13 +1143,13 @@ type GetDaemonEventsParams struct {
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
 type GetNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
+	// Name the full path of the file is deduced from the name
 	Name DRBDConfigName `form:"name" json:"name"`
 }
 
 // PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
 type PostNodeDRBDConfigParams struct {
-	// Name the full naming of the file is deduced from the name
+	// Name the full path of the file is deduced from the name
 	Name DRBDConfigName `form:"name" json:"name"`
 }
 

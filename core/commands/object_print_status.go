@@ -202,7 +202,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		instMap := objData.Instances.ByNode()
 		for _, nodename := range nodenames {
 			if _, ok := instMap[nodename]; !ok {
-				return fmt.Errorf("instance of %s on node %s does not exist", objData.Path, nodename)
+				continue
 			}
 			l = append(l, instMap[nodename])
 		}

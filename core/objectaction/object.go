@@ -747,7 +747,7 @@ func (t T) DoRemote() error {
 	}
 
 	nodenames := make(map[string]any)
-	if l, err := nodeselector.Expand(t.NodeSelector); err != nil {
+	if l, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
 		return err
 	} else {
 		for _, s := range l {

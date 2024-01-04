@@ -13,7 +13,11 @@ import (
 )
 
 func (f Frame) wObjects() {
-	fmt.Fprintln(f.w, f.title("Objects"))
+	s := "Objects"
+	if f.Selector != "" {
+		s += " matching " + f.Selector
+	}
+	fmt.Fprintln(f.w, f.title(s))
 	for _, k := range f.info.paths {
 		fmt.Fprintln(f.w, f.sObject(k))
 	}

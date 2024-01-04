@@ -49,28 +49,40 @@ func (t T) IsZero() bool {
 
 // Render return a colorized text version of the configuration file
 func (t T) Render() string {
-	s := ""
+	return t.render(true)
+}
+
+func (t T) String() string {
+	return t.render(false)
+}
+
+func (t T) render(colorize bool) string {
+	buff := ""
 	if t.Data == nil {
-		return s
+		return buff
 	}
 	for _, section := range t.Data.Keys() {
 		if section == "metadata" {
 			continue
 		}
-		s += Colorize.Primary(fmt.Sprintf("[%s]\n", section))
+		s := fmt.Sprintf("[%s]\n", section)
+		if colorize {
+			s = Colorize.Primary(s)
+		}
+		buff += s
 		data, _ := t.Data.Get(section)
 		omap := data.(orderedmap.OrderedMap)
 		for _, k := range omap.Keys() {
 			v, _ := omap.Get(k)
 			if k == "comment" {
-				s += renderComment(k, v)
+				buff += renderComment(k, v)
 				continue
 			}
-			s += renderKey(k, v)
+			buff += renderKey(k, v, colorize)
 		}
-		s += "\n"
+		buff += "\n"
 	}
-	return s
+	return buff
 }
 
 func renderComment(k string, v any) string {
@@ -81,12 +93,11 @@ func renderComment(k string, v any) string {
 	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
 }
 
-func renderKey(k string, v any) string {
-	k = RegexpScope.ReplaceAllString(k, Colorize.Error("$1"))
-	var vs string
-	type stringer interface {
-		String() string
+func renderKey(k string, v any, colorize bool) string {
+	if colorize {
+		k = RegexpScope.ReplaceAllString(k, Colorize.Error("$1"))
 	}
+	var vs string
 	switch o := v.(type) {
 	case []any:
 		l := make([]string, 0)
@@ -113,13 +124,18 @@ func renderKey(k string, v any) string {
 	case bool:
 		vs = strconv.FormatBool(o)
 	case string:
-		vs = RegexpReference.ReplaceAllString(o, Colorize.Optimal("$1"))
-		vs = strings.ReplaceAll(vs, "\n", "\n\t")
-	case stringer:
+		vs = strings.ReplaceAll(o, "\n", "\n\t")
+		if colorize {
+			vs = RegexpReference.ReplaceAllString(o, Colorize.Optimal("$1"))
+		}
+	case fmt.Stringer:
 		vs = o.String()
 	default:
 		//fmt.Println(o, reflect.TypeOf(o))
 		vs = ""
 	}
-	return fmt.Sprintf("%s = %s\n", Colorize.Secondary(k), vs)
+	if colorize {
+		k = Colorize.Secondary(k)
+	}
+	return fmt.Sprintf("%s = %s\n", k, vs)
 }

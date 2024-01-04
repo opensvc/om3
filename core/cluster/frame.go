@@ -54,6 +54,7 @@ var (
 type (
 	// Frame exposes daemon status renderer tunables.
 	Frame struct {
+		Selector string
 		Nodes    []string
 		Sections []string
 		Current  Data

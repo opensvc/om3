@@ -29,27 +29,6 @@ func (c *mockDaemonStatus) Get() ([]byte, error) {
 	return []byte(c.value), nil
 }
 
-var expected = "" +
-	"Threads                 \n" +
-	" daemon    running      \n" +
-	" dns                    \n" +
-	" collector              \n" +
-	" hb                     \n" +
-	" listener          :0   \n" +
-	" monitor                \n" +
-	" scheduler              \n" +
-	"                        \n" +
-	"Nodes                   \n" +
-	" score                  \n" +
-	"  load15m               \n" +
-	"  mem                   \n" +
-	"  swap                  \n" +
-	"  version  warn         \n" +
-	"  compat   warn         \n" +
-	" state                  \n" +
-	"                        \n" +
-	"Objects                 \n"
-
 var daemonResultString = `{"monitor": {"nodes": {}, "objects": {}}}`
 
 func TestMonitorOutputIsCorrect(t *testing.T) {
@@ -60,7 +39,10 @@ func TestMonitorOutputIsCorrect(t *testing.T) {
 	c := &mockDaemonStatus{daemonResultString}
 	m.Do(c, &spy)
 
-	assert.Equal(t, expected, string(spy.data), "they should be equal")
+	expected, err := os.ReadFile(path.Join("testdata", "empty-om-mon.fixture"))
+	require.Nil(t, err)
+
+	assert.Equal(t, string(expected), string(spy.data), "they should be equal")
 }
 
 func TestMonitorOutputIsCorrectWithGoMock(t *testing.T) {
@@ -77,7 +59,10 @@ func TestMonitorOutputIsCorrectWithGoMock(t *testing.T) {
 
 	m.Do(daemonStatusGetter, &spy)
 
-	assert.Equal(t, expected, string(spy.data), "they should be equal")
+	expected, err := os.ReadFile(path.Join("testdata", "empty-om-mon.fixture"))
+	require.Nil(t, err)
+
+	assert.Equal(t, string(expected), string(spy.data), "they should be equal")
 }
 
 func TestMonitorOutput(t *testing.T) {

@@ -107,6 +107,10 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 		nodes []string
 		err   error
 	)
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
 	sel := objectselector.NewSelection(
 		selStr,
 		objectselector.SelectionWithLocal(true),
@@ -116,7 +120,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 		return err
 	}
 	if t.NodeSelector != "" {
-		nodes, err = nodeselector.Expand(t.NodeSelector)
+		nodes, err = nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 		if err != nil {
 			return err
 		}
