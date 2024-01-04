@@ -3132,7 +3132,7 @@ components:
       type: array
       items:
         type: string
-        description: object naming or an instance naming (naming@node)
+        description: object path or an instance path (path@node)
     PlacementPolicy:
       type: string
       default: none
@@ -3993,11 +3993,11 @@ components:
           type: string
           description: |
             filter expression: [kind][,label=value]*
-          example: ObjectStatusUpdated,naming=foo
+          example: ObjectStatusUpdated,path=foo
     DRBDConfigName:
       name: name
       in: query
-      description: the full naming of the file is deduced from the name
+      description: the full path of the file is deduced from the name
       required: true
       schema:
         type: string
