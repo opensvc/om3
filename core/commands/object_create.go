@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
@@ -20,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/uri"
@@ -130,22 +132,59 @@ func (t *CmdObjectCreate) Do() error {
 	}
 }
 
+func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, error) {
+	o, err := object.New(p, object.WithVolatile(true))
+	if err != nil {
+		return "", err
+	}
+	oc := o.(object.Configurer)
+	if err := oc.Config().LoadRaw(c); err != nil {
+		return "", err
+	}
+
+	ops := keyop.ParseOps(t.Keywords)
+	if !t.Restore {
+		op := keyop.Parse("id=" + uuid.New().String())
+		if op == nil {
+			return "", fmt.Errorf("invalid id reset op")
+		}
+		ops = append(ops, *op)
+	}
+
+	if err := oc.Config().SetKeys(ops...); err != nil {
+		return "", err
+	}
+	return oc.Config().Raw().String(), nil
+}
+
 func (t *CmdObjectCreate) submit(pivot Pivot) error {
-	/*
-		data := make(map[string]interface{})
-		for opath, c := range pivot {
-			data[opath] = c
+	for pathStr, c := range pivot {
+		path, err := naming.ParsePath(pathStr)
+		if err != nil {
+			return fmt.Errorf("%s: %s", path, err)
 		}
-		req := t.client.NewPostObjectCreate()
-		req.Restore = t.Restore
-		req.Force = t.Force
-		req.Data = data
-		if resp, err := t.client.PostObjectCreate()
-		if _, err := req.Do(); err != nil {
-			return err
+		s, err := t.configFromRaw(path, c)
+		if err != nil {
+			return fmt.Errorf("%s: %s", path, err)
 		}
-	*/
-	return fmt.Errorf("todo")
+		body := api.PostObjectConfigFileJSONRequestBody{
+			Data:  []byte(s),
+			Mtime: time.Now(),
+		}
+		resp, err := t.client.PostObjectConfigFileWithResponse(context.Background(), path.Namespace, path.Kind, path.Name, body)
+		if err != nil {
+			return fmt.Errorf("%s: %s", path, err)
+		}
+		switch resp.StatusCode() {
+		case 204:
+			fmt.Printf("%s: created\n", path)
+		case 400:
+			fmt.Printf("%s: %s\n", path, *resp.JSON400)
+		default:
+			return fmt.Errorf("%s: %s", path, resp.Status())
+		}
+	}
+	return nil
 }
 
 func (t CmdObjectCreate) fromPaths(paths naming.Paths) error {
