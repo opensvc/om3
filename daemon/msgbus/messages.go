@@ -965,7 +965,7 @@ func (e *NodeStatusUpdated) Kind() string {
 }
 
 func (e *ObjectStatusCreated) Kind() string {
-	return "ObjectCreated"
+	return "ObjectStatusCreated"
 }
 
 func (e *ObjectOrchestrationEnd) Kind() string {
