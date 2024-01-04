@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -34,9 +33,11 @@ func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, nodename string, params 
 }
 
 func (a *DaemonApi) getPeerDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	} else if !clusternode.Has(nodename) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
 	if resp, err := c.GetNodeDRBDConfigWithResponse(ctx.Request().Context(), nodename, &params); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)

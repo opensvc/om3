@@ -9,7 +9,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -33,7 +32,7 @@ func (a *DaemonApi) PostNodeDRBDConfig(ctx echo.Context, nodename string, params
 }
 
 func (a *DaemonApi) postPeerDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

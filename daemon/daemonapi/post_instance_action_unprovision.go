@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
@@ -24,7 +23,7 @@ func (a *DaemonApi) PostInstanceActionUnprovision(ctx echo.Context, nodename, na
 }
 
 func (a *DaemonApi) postPeerInstanceActionUnprovision(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnprovisionParams) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

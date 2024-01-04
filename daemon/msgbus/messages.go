@@ -131,7 +131,7 @@ var (
 
 		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
-		"ObjectStatusCreated": func() any { return &ObjectStatusCreated{} },
+		"ObjectCreated": func() any { return &ObjectStatusCreated{} },
 
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 

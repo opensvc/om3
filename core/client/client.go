@@ -28,6 +28,7 @@ type (
 		clientKey          string
 		username           string
 		password           string
+		authorization      string
 		bearer             string
 		rootCA             string
 		timeout            time.Duration
@@ -125,6 +126,15 @@ func WithKey(s string) funcopt.O {
 	})
 }
 
+// WithAuthorization sets the client authorization to use for newRequests
+func WithAuthorization(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.authorization = s
+		return nil
+	})
+}
+
 // WithBearer sets the client bearer token to use for newRequests
 func WithBearer(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
@@ -165,7 +175,8 @@ func (t *T) configure() error {
 		}
 	} else if t.url == "" {
 		t.url = daemonenv.UrlUxHttp()
-	} else if t.bearer == "" && t.username == "" {
+	} else if t.bearer == "" && t.username == "" && t.authorization == "" {
+		// TODO: need refactor or remove, this may send credential to unexpected url
 		t.username = hostname.Hostname()
 		t.password = rawconfig.ClusterSection().Secret
 	}
@@ -203,6 +214,7 @@ func (t *T) newRequester() (err error) {
 			Key:                t.clientKey,
 			InsecureSkipVerify: t.insecureSkipVerify,
 			Username:           t.username,
+			Authorization:      t.authorization,
 			Password:           t.password,
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
@@ -231,6 +243,7 @@ func (t *T) newRequester() (err error) {
 			Certificate:        t.clientCertificate,
 			Key:                t.clientKey,
 			InsecureSkipVerify: t.insecureSkipVerify,
+			Authorization:      t.authorization,
 			Username:           t.username,
 			Password:           t.password,
 			Bearer:             t.bearer,

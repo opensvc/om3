@@ -5,7 +5,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -24,7 +23,7 @@ func (a *DaemonApi) PostInstanceClear(ctx echo.Context, nodename, namespace stri
 }
 
 func (a *DaemonApi) postPeerInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
-	c, err := client.New(client.WithURL(nodename))
+	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}
