@@ -136,9 +136,6 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 }
 
 func (t *CmdNodeEvents) Run() error {
-	if t.Local {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if !clientcontext.IsSet() && t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}

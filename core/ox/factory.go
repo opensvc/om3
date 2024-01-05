@@ -259,49 +259,6 @@ func newCmdDaemonDNSDump() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonJoin() *cobra.Command {
-	var options commands.CmdDaemonJoin
-	cmd := &cobra.Command{
-		Use:   "join",
-		Short: "add this node to a cluster",
-		Long: "Join the cluster of the node specified by '--node <node>'.\n" +
-			"The remote node expects the joiner to provide a join token using '--token <base64>'.\n" +
-			"The join token can be created on the remote node by the 'daemon auth token --role join' command or by getting /auth/token with a user having the joiner or root role.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	flags.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
-	flags.StringVar(&options.Server, "server", "", "URI of the opensvc api server when custom port is used.")
-
-	if err := cmd.MarkFlagRequired("node"); err != nil {
-		panic(err)
-	}
-	flags.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
-		" (created from 'om daemon auth --role join')")
-	if err := cmd.MarkFlagRequired("token"); err != nil {
-		panic(err)
-	}
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
-	return cmd
-}
-
-func newCmdDaemonLeave() *cobra.Command {
-	var options commands.CmdDaemonLeave
-	cmd := &cobra.Command{
-		Use:   "leave",
-		Short: "remove this node from a cluster",
-		Long:  "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node removed from cluster")
-	return cmd
-}
-
 func newCmdDaemonRelayStatus() *cobra.Command {
 	var options commands.CmdDaemonRelayStatus
 	cmd := &cobra.Command{
@@ -362,23 +319,6 @@ func newCmdDaemonShutdown() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagDuration(flags, &options.Timeout)
 	addFlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdDaemonStart() *cobra.Command {
-	var options commands.CmdDaemonStart
-	cmd := &cobra.Command{
-		Use:     "start",
-		Short:   "start the daemon or a daemon subsystem",
-		Aliases: []string{"star"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagForeground(flags, &options.Foreground)
-	addFlagCpuProfile(flags, &options.CpuProfile)
 	return cmd
 }
 
@@ -692,6 +632,7 @@ func newCmdNodeCollectorTagAttach() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	flags.StringVar(&options.Name, "name", "", "the tag name")
 	flags.StringVar(&attachData, "attach-data", "", "the data stored with the tag attachment")
 	return cmd
@@ -736,6 +677,7 @@ func newCmdNodeCollectorTagDetach() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	flags.StringVar(&options.Name, "name", "", "the tag name")
 	return cmd
 }
@@ -1023,23 +965,6 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeDoc() *cobra.Command {
-	var options commands.CmdNodeDoc
-	cmd := &cobra.Command{
-		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagKeyword(flags, &options.Keyword)
-	addFlagDriver(flags, &options.Driver)
-	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
-	return cmd
-}
-
 func newCmdNodeDrain() *cobra.Command {
 	var options commands.CmdNodeDrain
 	cmd := &cobra.Command{
@@ -1069,6 +994,7 @@ func newCmdNodeDrivers() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1261,6 +1187,7 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1620,33 +1547,6 @@ func newCmdObjectCollectorTagAttach(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectCollectorTagCreate(kind string) *cobra.Command {
-	var (
-		data    string
-		exclude string
-	)
-	var options commands.CmdObjectCollectorTagCreate
-	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "create a new tag",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("data").Changed {
-				options.Data = &data
-			}
-			if cmd.Flag("exclude").Changed {
-				options.Exclude = &exclude
-			}
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "name", "", "the tag name")
-	flags.StringVar(&data, "data", "", "the data stored with the tag")
-	flags.StringVar(&exclude, "exclude", "", "a pattern to prevent attachment of incompatible tags")
-	return cmd
-}
-
 func newCmdObjectCollectorTagDetach(kind string) *cobra.Command {
 	var options commands.CmdObjectCollectorTagDetach
 	cmd := &cobra.Command{
@@ -1660,21 +1560,6 @@ func newCmdObjectCollectorTagDetach(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flags.StringVar(&options.Name, "name", "", "the tag name")
-	return cmd
-}
-
-func newCmdObjectCollectorTagList(kind string) *cobra.Command {
-	var options commands.CmdObjectCollectorTagList
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list available tags",
-		Aliases: []string{"lis", "li", "ls", "l"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -2079,22 +1964,6 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectDoc(kind string) *cobra.Command {
-	var options commands.CmdObjectDoc
-	cmd := &cobra.Command{
-		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagKeyword(flags, &options.Keyword)
-	addFlagDriver(flags, &options.Driver)
-	return cmd
-}
-
 func newCmdObjectEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectEnter
 	cmd := &cobra.Command{
@@ -2241,21 +2110,6 @@ func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagEval(flags, &options.Eval)
 	addFlagImpersonate(flags, &options.Impersonate)
-	return cmd
-}
-
-func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintConfigMtime
-	cmd := &cobra.Command{
-		Use:     "mtime",
-		Short:   "print the object configuration file modification time",
-		Aliases: []string{"mtim", "mti", "mt", "m"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 

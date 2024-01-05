@@ -5,14 +5,10 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
 )
 
 type (
@@ -25,9 +21,6 @@ type (
 
 func (t *CmdObjectEval) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	if t.Local {
-		return t.doObjectAction(mergedSelector)
-	}
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -73,29 +66,4 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil
-}
-
-func (t *CmdObjectEval) doObjectAction(mergedSelector string) error {
-	return objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Local),
-		objectaction.WithColor(t.Color),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			c, err := object.NewConfigurer(p)
-			if err != nil {
-				return nil, err
-			}
-			for _, s := range t.Keywords {
-				kw := key.Parse(s)
-				if t.Impersonate != "" {
-					return c.EvalAs(kw, t.Impersonate)
-				} else {
-					return c.Eval(kw)
-				}
-			}
-			return nil, nil
-		}),
-	).Do()
 }

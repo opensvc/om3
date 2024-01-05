@@ -22,9 +22,6 @@ type (
 )
 
 func (t *CmdDaemonStop) Run() error {
-	if t.Local {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if !clientcontext.IsSet() && t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}

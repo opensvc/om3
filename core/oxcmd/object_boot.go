@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
@@ -26,11 +24,9 @@ type (
 func (t *CmdObjectBoot) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
-		objectaction.LocalFirst(),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
@@ -73,17 +69,6 @@ func (t *CmdObjectBoot) Run(selector, kind string) error {
 			default:
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
-		}),
-
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p)
-			if err != nil {
-				return nil, err
-			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithTo(ctx, t.To)
-			return nil, o.Boot(ctx)
 		}),
 	).Do()
 }

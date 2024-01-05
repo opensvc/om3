@@ -14,7 +14,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -23,7 +22,6 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -87,8 +85,7 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, err
 	objectSelector := mergeSelector(objectPath, "", kind, "**")
 	paths, err := objectselector.NewSelection(
 		objectSelector,
-		objectselector.SelectionWithLocal(t.Local),
-		objectselector.SelectionWithServer(t.Server),
+		objectselector.SelectionWithClient(t.client),
 	).Expand()
 	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions")
@@ -109,8 +106,7 @@ func (t *CmdObjectCreate) getTemplate() string {
 func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 	paths, _ := objectselector.NewSelection(
 		t.Config,
-		objectselector.SelectionWithLocal(t.Local),
-		objectselector.SelectionWithServer(t.Server),
+		objectselector.SelectionWithClient(t.client),
 	).Expand()
 	return paths
 }
@@ -257,10 +253,7 @@ func (t CmdObjectCreate) fromStdin() error {
 }
 
 func (t CmdObjectCreate) fromData(pivot Pivot) error {
-	if clientcontext.IsSet() {
-		return t.submit(pivot)
-	}
-	return t.localFromData(pivot)
+	return t.submit(pivot)
 }
 
 func (t CmdObjectCreate) rawFromTemplate(template string) (Pivot, error) {
@@ -369,77 +362,4 @@ func rawFromBytesFlat(p naming.Path, b []byte) (Pivot, error) {
 	}
 	pivot[p.String()] = *c
 	return pivot, nil
-}
-
-func (t CmdObjectCreate) localFromData(pivot Pivot) error {
-	for opath, c := range pivot {
-		p, err := naming.ParsePath(opath)
-		if err != nil {
-			return err
-		}
-		if err = t.localFromRaw(p, c); err != nil {
-			return err
-		}
-		fmt.Println(opath, "commited")
-	}
-	return nil
-}
-
-func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
-	if !t.Force && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
-	}
-	o, err := object.New(p)
-	if err != nil {
-		return err
-	}
-	oc := o.(object.Configurer)
-	if err := oc.Config().LoadRaw(c); err != nil {
-		return err
-	}
-
-	ops := keyop.ParseOps(t.Keywords)
-	if !t.Restore {
-		op := keyop.Parse("id=" + uuid.New().String())
-		if op == nil {
-			return fmt.Errorf("invalid id reset op")
-		}
-		ops = append(ops, *op)
-	}
-
-	if err := oc.Config().SetKeys(ops...); err != nil {
-		return err
-	}
-
-	// Freeze if orchestrate==ha and freeze capable, so the daemon
-	// doesn't decide to start the instance too soon.
-	orchestrate := oc.Config().GetString(key.Parse("orchestrate"))
-	if oa, ok := o.(object.Actor); ok && orchestrate == "ha" {
-		if err := oa.Freeze(context.Background()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t CmdObjectCreate) localEmpty(p naming.Path) error {
-	if !t.Force && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
-	}
-	o, err := object.New(p)
-	if err != nil {
-		return err
-	}
-	oc := o.(object.Configurer)
-
-	// empty any existing config
-	c := rawconfig.New()
-	if err := oc.Config().LoadRaw(c); err != nil {
-		return err
-	}
-	if err := oc.Config().SetKeys(keyop.ParseOps(t.Keywords)...); err != nil {
-		return err
-	}
-	return oc.Config().Commit()
 }

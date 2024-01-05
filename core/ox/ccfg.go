@@ -24,7 +24,6 @@ func init() {
 		newCmdClusterThaw(),
 		newCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
@@ -40,9 +39,6 @@ func init() {
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
 		newCmdObjectPrintStatus(kind),
-	)
-	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectPrintConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

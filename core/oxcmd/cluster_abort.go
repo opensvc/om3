@@ -15,6 +15,5 @@ func (t *CmdClusterAbort) Run() error {
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocal(t.Local),
 	).Do()
 }

@@ -113,7 +113,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	}
 	sel := objectselector.NewSelection(
 		selStr,
-		objectselector.SelectionWithLocal(true),
+		objectselector.SelectionWithClient(c),
 	)
 	paths, err := sel.Expand()
 	if err != nil {
@@ -142,56 +142,8 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	return nil
 }
 
-func (t *CmdObjectLogs) local(selStr string) error {
-	sel := objectselector.NewSelection(
-		selStr,
-		objectselector.SelectionWithLocal(true),
-	)
-	paths, err := sel.Expand()
-	if err != nil {
-		return err
-	}
-	matches := parseFilters(&t.Filter)
-	last := len(paths) - 1
-	for i, path := range paths {
-		matches = append(matches, "OBJ_PATH="+path.String())
-		if i > 0 && i < last {
-			matches = append(matches, "+")
-		}
-	}
-	stream := streamlog.NewStream()
-	streamConfig := streamlog.StreamConfig{
-		Follow:  t.Follow,
-		Lines:   t.Lines,
-		Matches: matches,
-	}
-	if err := stream.Start(streamConfig); err != nil {
-		return err
-	}
-	defer stream.Stop()
-	for {
-		select {
-		case err := <-stream.Errors():
-			fmt.Fprintln(os.Stderr, err)
-			if err == nil {
-				// The sender has stopped sending
-				return nil
-			}
-		case ev := <-stream.Events():
-			ev.Render(t.Output)
-		}
-	}
-	return nil
-}
-
 func (t *CmdObjectLogs) Run(selector, kind string) error {
-	var err error
 	render.SetColor(t.Color)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "**")
-	if t.Local {
-		err = t.local(mergedSelector)
-	} else {
-		err = t.remote(mergedSelector)
-	}
-	return err
+	return t.remote(mergedSelector)
 }

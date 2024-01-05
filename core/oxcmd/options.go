@@ -9,10 +9,7 @@ type (
 	OptsGlobal struct {
 		Color          string
 		Output         string
-		Local          bool
-		Log            string
 		ObjectSelector string
-		Quiet          bool
 		Server         string
 	}
 

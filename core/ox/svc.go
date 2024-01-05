@@ -40,7 +40,6 @@ func init() {
 		newCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectEnter(kind),
 		newCmdObjectFreeze(kind),
@@ -87,9 +86,6 @@ func init() {
 		newCmdObjectPrintSchedule(kind),
 		newCmdObjectPrintStatus(kind),
 	)
-	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectPrintConfigMtime(kind),
-	)
 	cmdObjectPush.AddCommand(
 		newCmdObjectPushResInfo(kind),
 	)
@@ -106,9 +102,7 @@ func init() {
 	)
 	cmdObjectCollectorTag.AddCommand(
 		newCmdObjectCollectorTagAttach(kind),
-		newCmdObjectCollectorTagCreate(kind),
 		newCmdObjectCollectorTagDetach(kind),
-		newCmdObjectCollectorTagList(kind),
 		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectCompliance.AddCommand(

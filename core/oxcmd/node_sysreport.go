@@ -6,7 +6,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeaction"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -21,7 +20,6 @@ type (
 
 func (t *CmdNodeSysreport) Run() error {
 	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
@@ -55,19 +53,6 @@ func (t *CmdNodeSysreport) Run() error {
 				return nil, fmt.Errorf("node %s: %s", nodename, *response.JSON500)
 			default:
 				return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
-			}
-		}),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			if t.Force {
-				err := n.ForceSysreport()
-				return nil, err
-			} else {
-				err := n.Sysreport()
-				return nil, err
 			}
 		}),
 	).Do()

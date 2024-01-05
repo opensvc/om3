@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xsession"
@@ -21,13 +20,6 @@ type CmdNodeUnfreeze struct {
 }
 
 func (t *CmdNodeUnfreeze) Run() error {
-	if t.Local {
-		n, err := object.NewNode()
-		if err != nil {
-			return err
-		}
-		return n.Unfreeze()
-	}
 	if !clientcontext.IsSet() && t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}

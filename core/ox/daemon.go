@@ -28,13 +28,10 @@ func init() {
 	cmdDaemon.AddCommand(
 		newCmdDaemonAuth(),
 		cmdDaemonDNS,
-		newCmdDaemonJoin(),
-		newCmdDaemonLeave(),
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
 		newCmdDaemonRunning(),
 		newCmdDaemonShutdown(),
-		newCmdDaemonStart(),
 		newCmdDaemonStats(),
 		newCmdDaemonStatus(),
 		newCmdDaemonStop(),

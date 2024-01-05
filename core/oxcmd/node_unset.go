@@ -4,14 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
 )
 
 type (
@@ -25,14 +20,8 @@ type (
 )
 
 func (t *CmdNodeUnset) Run() error {
-	if t.Local {
-		return t.doLocal()
-	}
 	if t.NodeSelector != "" {
 		return t.doRemote()
-	}
-	if !clientcontext.IsSet() {
-		return t.doLocal()
 	}
 	return fmt.Errorf("--node must be specified")
 }
@@ -69,15 +58,4 @@ func (t *CmdNodeUnset) doRemote() error {
 		}
 	}
 	return nil
-}
-
-func (t *CmdNodeUnset) doLocal() error {
-	o, err := object.NewNode()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-	return o.Update(ctx, t.Sections, key.ParseStrings(t.Keywords), keyop.L{})
 }

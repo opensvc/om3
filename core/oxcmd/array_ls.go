@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 )
@@ -21,10 +19,9 @@ func (t *CmdArrayLs) Run() error {
 		data []string
 		err  error
 	)
-	if t.Local || !clientcontext.IsSet() {
-		data, err = t.extractLocal()
-	} else {
-		data, err = t.extractDaemon()
+	data, err = t.extractDaemon()
+	if err != nil {
+		return err
 	}
 	output.Renderer{
 		Output: t.Output,
@@ -39,15 +36,7 @@ func (t *CmdArrayLs) Run() error {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return err
-}
-
-func (t *CmdArrayLs) extractLocal() ([]string, error) {
-	n, err := object.NewNode()
-	if err != nil {
-		return []string{}, err
-	}
-	return n.ListArrays(), nil
+	return nil
 }
 
 func (t *CmdArrayLs) extractDaemon() ([]string, error) {
