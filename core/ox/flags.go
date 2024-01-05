@@ -24,15 +24,10 @@ func addFlagsAsync(flagSet *pflag.FlagSet, p *commands.OptsAsync) {
 }
 
 func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.BoolVar(&p.Local, "local", false, "Inline action on local instance.")
-	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Display no logs and no progress.")
 	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto.")
-	flagSet.StringVar(&p.Output, "format", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.StringVar(&p.Log, "log", "", "Display the logs on the console at the specified level.")
 	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme https|tls.")
 	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
-	flagSet.MarkHidden("format")
 
 }
 

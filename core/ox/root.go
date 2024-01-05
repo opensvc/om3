@@ -6,41 +6,30 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/logging"
-	"github.com/opensvc/om3/util/version"
-	"github.com/opensvc/om3/util/xsession"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
 var (
-	configFlag     string
-	colorFlag      string
-	logFlag        string
-	selectorFlag   string
-	serverFlag     string
-	nodeFlag       string
-	foregroundFlag bool
-	callerFlag     bool
+	configFlag   string
+	colorFlag    string
+	selectorFlag string
+	serverFlag   string
+	nodeFlag     string
 
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
 
 	root = &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
-		Short:                  "Manage the opensvc cluster infrastructure and its deployed services.",
+		Short:                  "Manage opensvc clusters.",
 		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,
 		SilenceErrors:          false,
@@ -53,64 +42,31 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
 }
 
+func contextSuffix() string {
+	s := env.Context()
+	if s == "" {
+		return ""
+	}
+	return "." + s
+}
+
 func listObjectPaths() []string {
-	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.objects")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.objects"+contextSuffix())); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
 func listNodes() []string {
-	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.nodes")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.nodes"+contextSuffix())); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
-func configureLogger() error {
-	zerolog.TimeFieldFormat = time.RFC3339Nano
-	err := logging.Configure(logging.Config{
-		WithConsoleLog: logFlag != "" || foregroundFlag,
-		WithColor:      colorFlag != "no",
-		WithCaller:     callerFlag,
-		Level:          logFlag,
-	})
-	if err != nil {
-		return err
-	}
-	log.Logger = log.Logger.With().
-		Str("node", hostname.Hostname()).
-		Str("version", version.Version()).
-		Stringer("sid", xsession.ID).
-		Logger()
-	if requestId := os.Getenv("OSVC_REQUEST_ID"); requestId != "" {
-		log.Logger = log.Logger.With().Str("request_id", requestId).Logger()
-	}
-	return nil
-}
-
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
-	if flag := cmd.Flags().Lookup("log"); flag != nil {
-		s := flag.Value.String()
-		logFlag = s
-	}
-	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
-		foregroundFlag = true
-	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
-	}
-	logging.WithCaller = callerFlag
-	if err := hostname.Error(); err != nil {
-		return err
-	}
-	if err := configureLogger(); err != nil {
-		return err
-	}
-	if env.HasDaemonOrigin() {
-		if err := osagentservice.Join(); err != nil {
-			log.Logger.Debug().Err(err).Send()
-		}
 	}
 	return nil
 }
@@ -185,8 +141,6 @@ func init() {
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server. scheme https|tls.")
-	root.PersistentFlags().StringVar(&logFlag, "log", "", "Display logs on the console at the specified level.")
-	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
 }
 
 // initConfig reads in config file and ENV variables if set.
