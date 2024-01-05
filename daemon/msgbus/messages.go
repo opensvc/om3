@@ -1,3 +1,20 @@
+// Package msgbus defines the Opensvc messages
+//
+//		 Add new message msgX: msgbus/messages.go
+//			- defines the new message: type <msgX> struct ....
+//	          add kindToT["msgX"]
+//			- msgX should implement event.Kinder
+//			- if msgX can change ClusterData:
+//		       - create ClusterData.onMsgX function
+//		       - update ClusterData.ApplyMessage function
+//			- msgX must be sent to peers (to patch):
+//				- update daemondata.startSubscriptions function
+//				- update daemondata.eventMustBeForwarded function
+//			- peer msgX is received from peer (from patch):
+//				- update setCacheAndPublish function:
+//					- can update some caches
+//					- republish event with label from: peer
+//			- peer msgX may be published from full diff during applyNodeData
 package msgbus
 
 import (
