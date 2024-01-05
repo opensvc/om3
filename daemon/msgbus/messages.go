@@ -148,7 +148,9 @@ var (
 
 		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
-		"ObjectCreated": func() any { return &ObjectStatusCreated{} },
+		"ObjectCreated": func() any { return &ObjectCreated{} },
+
+		"ObjectDeleted": func() any { return &ObjectDeleted{} },
 
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
@@ -604,7 +606,17 @@ type (
 		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
-	ObjectStatusCreated struct {
+	// ObjectCreated is the message published when a new object is detected by
+	// localhost.
+	ObjectCreated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// ObjectDeleted is the message published when an object deletetion is
+	// detected by localhost.
+	ObjectDeleted struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
@@ -981,8 +993,12 @@ func (e *NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
 }
 
-func (e *ObjectStatusCreated) Kind() string {
-	return "ObjectStatusCreated"
+func (e *ObjectCreated) Kind() string {
+	return "ObjectCreated"
+}
+
+func (e *ObjectDeleted) Kind() string {
+	return "ObjectDeleted"
 }
 
 func (e *ObjectOrchestrationEnd) Kind() string {

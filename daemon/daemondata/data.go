@@ -397,6 +397,8 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalNode)
 
+	// need forward to peers
+	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
 	sub.Start()
@@ -439,6 +441,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.NodeStatsUpdated:
 	case *msgbus.NodeStatusUpdated:
 	// object...
+	case *msgbus.ObjectCreated:
 	case *msgbus.ObjectStatusDeleted:
 	default:
 		return false

@@ -176,6 +176,8 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		node.GenData.Set(c.Node, &c.Value.Gen)
 		d.bus.Pub(c, labelFromPeer)
 	// object...
+	case *msgbus.ObjectCreated:
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
 		object.StatusData.Unset(c.Path)
 		d.bus.Pub(c, labelFromPeer)

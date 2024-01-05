@@ -220,6 +220,12 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 		o.log.Debugf("no update required")
 		return
 	}
+	if !o.published {
+		o.bus.Pub(&msgbus.ObjectCreated{Path: o.path, Node: o.localhost},
+			pubsub.Label{"path", o.path.String()},
+			pubsub.Label{"node", o.localhost},
+		)
+	}
 	o.instanceConfig = *newConfig
 	instance.ConfigData.Set(o.path, o.localhost, newConfig.DeepCopy())
 	o.bus.Pub(&msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},

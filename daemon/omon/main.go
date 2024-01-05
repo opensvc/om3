@@ -192,8 +192,8 @@ func (o *T) worker() {
 		o.delete()
 	}()
 	for {
-		if len(o.instConfig) == 0 {
-			o.log.Infof("no more nodes")
+		if len(o.instConfig)+len(o.instStatus)+len(o.instMonitor) == 0 {
+			o.log.Infof("no more instance config, status and monitor")
 			return
 		}
 		o.srcEvent = nil
@@ -383,21 +383,18 @@ func (o *T) delete() {
 		o.labelPath,
 		o.labelNode,
 	)
+	o.bus.Pub(&msgbus.ObjectDeleted{Path: o.path, Node: o.localhost},
+		o.labelPath,
+		o.labelNode,
+	)
 	o.discoverCmdC <- &msgbus.ObjectStatusDone{Path: o.path}
 }
 
 func (o *T) update() {
-	isNew := o.status.UpdatedAt.IsZero()
 	o.status.UpdatedAt = time.Now()
 	value := o.status.DeepCopy()
 	o.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(o.path, o.status.DeepCopy())
-	if isNew {
-		o.bus.Pub(&msgbus.ObjectStatusCreated{Path: o.path, Node: o.localhost},
-			o.labelPath,
-			o.labelNode,
-		)
-	}
 	o.bus.Pub(&msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
 		o.labelPath,
 		o.labelNode,

@@ -272,6 +272,15 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	}
 	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
 	for _, s := range updates {
+		if _, ok := previous.instConfigUpdated[s]; !ok {
+			// ObjectCreated is published by icfg, before initial
+			// InstanceConfigUpdated publication.
+			d.bus.Pub(&msgbus.ObjectCreated{Path: toPath[s], Node: peer},
+				pubsub.Label{"path", s},
+				pubsub.Label{"node", peer},
+				labelFromPeer,
+			)
+		}
 		instance.ConfigData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy())
 		d.bus.Pub(&msgbus.InstanceConfigUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy()},
 			pubsub.Label{"path", s},
@@ -322,24 +331,5 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 			pubsub.Label{"node", peer},
 			labelFromPeer,
 		)
-	}
-
-	for s, updated := range current.instConfigUpdated {
-		var update bool
-		if previousUpdated, ok := previous.instConfigUpdated[s]; !ok {
-			// new cfg object
-			update = true
-		} else if !updated.Equal(previousUpdated) {
-			// update cfg object
-			update = true
-		}
-		if update {
-
-		}
-	}
-	for s := range previous.instConfigUpdated {
-		if _, ok := current.instConfigUpdated[s]; !ok {
-			// removal cfg
-		}
 	}
 }
