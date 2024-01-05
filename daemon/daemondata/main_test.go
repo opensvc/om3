@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/ccfg"
@@ -50,7 +50,7 @@ func LoadPatch(t *testing.T, name string) *hbtype.Msg {
 }
 
 func TestMain(m *testing.M) {
-	testhelper.Main(m, cmd.ExecuteArgs)
+	testhelper.Main(m, om.ExecuteArgs)
 }
 
 func setup(t *testing.T) {

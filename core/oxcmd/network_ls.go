@@ -1,0 +1,52 @@
+package oxcmd
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
+)
+
+type (
+	CmdNetworkLs struct {
+		OptsGlobal
+		Name string
+	}
+)
+
+func (t *CmdNetworkLs) Run() error {
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return err
+	}
+	params := api.GetNetworksParams{}
+	if t.Name != "" {
+		params.Name = &t.Name
+	}
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
+	if err != nil {
+		return err
+	}
+	var pb api.Problem
+	switch resp.StatusCode() {
+	case 200:
+		output.Renderer{
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          resp.JSON200.Items,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+		return nil
+	case 401:
+		pb = *resp.JSON401
+	case 403:
+		pb = *resp.JSON403
+	case 500:
+		pb = *resp.JSON500
+	}
+	return fmt.Errorf("%s", pb)
+}

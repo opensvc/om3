@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/testhelper"
@@ -276,5 +276,5 @@ func Test_daemon(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	testhelper.Main(m, cmd.ExecuteArgs)
+	testhelper.Main(m, om.ExecuteArgs)
 }
