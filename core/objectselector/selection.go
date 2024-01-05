@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/goombaio/orderedset"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -113,7 +112,6 @@ func (t *Selection) Expand() (naming.Paths, error) {
 		return t.paths, nil
 	}
 	err := t.expand()
-	log.Debug().Msgf("%d objects selected", len(t.paths))
 	return t.paths, err
 }
 
@@ -167,18 +165,12 @@ func (t *Selection) expand() error {
 			return nil
 		} else if clientcontext.IsSet() {
 			return fmt.Errorf("daemon expansion fatal error: %w", err)
-		} else {
-			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
 	}
 	return t.localExpand()
 }
 
 func (t *Selection) localExpand() error {
-	log.Debug().
-		Str("selector", t.SelectorExpression).
-		Str("mode", "local").
-		Msg("expand object selection")
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
 		if len(s) == 0 {
 			continue
@@ -335,10 +327,6 @@ func (t *Selection) localFnmatchExpand(s string) (*orderedset.OrderedSet, error)
 }
 
 func (t *Selection) daemonExpand() error {
-	log.Debug().
-		Str("selector", t.SelectorExpression).
-		Str("mode", "daemon").
-		Msg("expand selection")
 	if env.HasDaemonOrigin() {
 		return fmt.Errorf("action origin is daemon")
 	}
