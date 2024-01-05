@@ -193,8 +193,8 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	// objectSelectionSub is a subscription dedicated to object create/delete events.
 	objectSelectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
-	objectSelectionSub.AddFilter(&msgbus.ObjectStatusCreated{})
-	objectSelectionSub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	objectSelectionSub.AddFilter(&msgbus.ObjectCreated{})
+	objectSelectionSub.AddFilter(&msgbus.ObjectDeleted{})
 	objectSelectionSub.Start()
 	defer func() {
 		if err := objectSelectionSub.Stop(); err != nil {
@@ -237,10 +237,10 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		case i := <-objectSelectionSub.C:
 			if pathMap != nil {
 				switch ev := i.(type) {
-				case *msgbus.ObjectStatusCreated:
+				case *msgbus.ObjectCreated:
 					log.Infof("add created object %s to selection", ev.Path)
 					pathMap[ev.Path.String()] = nil
-				case *msgbus.ObjectStatusDeleted:
+				case *msgbus.ObjectDeleted:
 					log.Infof("remove deleted object %s from selection", ev.Path)
 					delete(pathMap, ev.Path.String())
 				}

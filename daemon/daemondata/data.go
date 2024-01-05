@@ -35,8 +35,8 @@ type (
 		// clusterData is the live current data (after apply msg from patch or subscription)
 		clusterData *msgbus.ClusterData
 
-		pendingEvs    []event.Event // local events not yet in eventQueue
-		eventQueue    eventQueue    // local data event queue for remotes
+		pendingEvs    []event.Event // list of local events for peers (not yet committed to eventQueue)
+		eventQueue    eventQueue    // queues of local data events for peers
 		gen           uint64        // gen of local TNodeData
 		hbMessageType string        // latest created hb message type
 		localNode     string
@@ -350,9 +350,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				d.statCount[idUndef]++
 			}
 		case i := <-d.sub.C:
-			if err := d.onSubEvent(i); err != nil {
-				d.log.Errorf("onSubEvent %s: %s", reflect.TypeOf(i), err)
-			}
+			d.onSubEvent(i)
 		}
 	}
 }
@@ -399,6 +397,8 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalNode)
 
+	// need forward to peers
+	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
 	sub.Start()
@@ -411,7 +411,7 @@ func marshalEventData(v any) json.RawMessage {
 	return b
 }
 
-func (d *data) appendEv(i event.Kinder) {
+func (d *data) forwardEvent(i event.Kinder) {
 	eventId++
 	d.pendingEvs = append(d.pendingEvs, event.Event{
 		Kind: i.Kind(),
@@ -421,81 +421,66 @@ func (d *data) appendEv(i event.Kinder) {
 	})
 }
 
-// onSubEvent is called label node localhost events. It updates clusterData
-// and updates pendingEvs when event has to be forwarded to other cluster nodes.
-// TODO: split responsibilities
-func (d *data) onSubEvent(i interface{}) error {
-	switch c := i.(type) {
-	case *msgbus.ClusterConfigUpdated:
-		for _, v := range c.NodesAdded {
-			d.clusterNodes[v] = struct{}{}
-		}
-		for _, v := range c.NodesRemoved {
-			d.log.Infof("removed cluster node => drop peer node %s data", v)
-			delete(d.clusterNodes, v)
-			d.dropPeer(v)
-		}
-	case *msgbus.ClusterStatusUpdated:
+// localEventMustBeForwarded returns true when local event i must be forwarded to peers
+func localEventMustBeForwarded(i interface{}) bool {
+	switch i.(type) {
+	// instances...
 	case *msgbus.InstanceConfigDeleted:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.InstanceConfigUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.InstanceMonitorDeleted:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.InstanceMonitorUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.InstanceStatusUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.InstanceStatusDeleted:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
+	// listener...
 	case *msgbus.ListenerUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
+	// node...
 	case *msgbus.NodeConfigUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.NodeMonitorDeleted:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.NodeMonitorUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.NodeOsPathsUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.NodeStatsUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
 	case *msgbus.NodeStatusUpdated:
-		if c.Node == d.localNode {
-			d.appendEv(c)
-		}
+	// object...
+	case *msgbus.ObjectCreated:
 	case *msgbus.ObjectStatusDeleted:
-		if c.Node == d.localNode {
-			d.appendEv(c)
+	default:
+		return false
+	}
+	return true
+}
+
+func (d *data) updateClusterNodes(added, removed []string) {
+	for _, s := range added {
+		d.clusterNodes[s] = struct{}{}
+	}
+	for _, s := range removed {
+		delete(d.clusterNodes, s)
+	}
+}
+
+// onSubEvent is called on events emitted from localhost (has label node=localhost).
+// It forwards event to peer (if localEventMustBeForwarded)
+//
+// when event is ClusterConfigUpdated: d.clusterNodes is refreshed and d.dropPeer
+// is called for NodesRemoved
+//
+// finally event is applied to d.clusterData
+func (d *data) onSubEvent(i interface{}) {
+	if localEventMustBeForwarded(i) {
+		if k, ok := i.(event.Kinder); ok {
+			d.forwardEvent(k)
 		}
-	case *msgbus.ObjectStatusUpdated:
 	}
+
+	if ev, ok := i.(*msgbus.ClusterConfigUpdated); ok {
+		d.updateClusterNodes(ev.NodesAdded, ev.NodesRemoved)
+		for _, s := range ev.NodesRemoved {
+			d.log.Infof("removed cluster node => drop peer node %s data", s)
+			d.dropPeer(s)
+		}
+	}
+
 	if msg, ok := i.(pubsub.Messager); ok {
-		return d.clusterData.ApplyMessage(msg)
+		d.clusterData.ApplyMessage(msg)
 	}
-	return nil
 }

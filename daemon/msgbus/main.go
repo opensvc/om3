@@ -14,7 +14,7 @@ type (
 	}
 )
 
-func (data *ClusterData) ApplyMessage(m pubsub.Messager) error {
+func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 	switch c := m.(type) {
 	case *ClusterStatusUpdated:
 		data.onClusterStatusUpdated(c)
@@ -52,9 +52,7 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) error {
 		data.onNodeStatsUpdated(c)
 	case *NodeStatusUpdated:
 		data.onNodeStatusUpdated(c)
-	default:
 	}
-	return nil
 }
 
 func NewClusterData(cd *cluster.Data) *ClusterData {

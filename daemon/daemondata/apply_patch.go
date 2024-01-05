@@ -128,17 +128,11 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	if err != nil {
 		return nil
 	}
-	if err := d.clusterData.ApplyMessage(msg); err != nil {
-		d.log.Errorf("apply patch: can't apply message %+v: %s", msg, err)
-		panic("apply patch -> ApplyMessage error " + err.Error())
-	}
+
+	d.clusterData.ApplyMessage(msg)
+
 	switch c := msg.(type) {
-	case *msgbus.ObjectStatusDeleted:
-		object.StatusData.Unset(c.Path)
-		d.bus.Pub(c, labelFromPeer)
-	case *msgbus.ObjectStatusUpdated:
-		object.StatusData.Set(c.Path, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+	// instances...
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
 		d.bus.Pub(c, labelFromPeer)
@@ -157,9 +151,11 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.InstanceStatusUpdated:
 		instance.StatusData.Set(c.Path, c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
+	// listener...
 	case *msgbus.ListenerUpdated:
 		node.LsnrData.Set(c.Node, &c.Lsnr)
 		d.bus.Pub(c, labelFromPeer)
+	// node...
 	case *msgbus.NodeConfigUpdated:
 		node.ConfigData.Set(c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
@@ -178,6 +174,12 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.NodeStatusUpdated:
 		node.StatusData.Set(c.Node, &c.Value)
 		node.GenData.Set(c.Node, &c.Value.Gen)
+		d.bus.Pub(c, labelFromPeer)
+	// object...
+	case *msgbus.ObjectCreated:
+		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.ObjectStatusDeleted:
+		object.StatusData.Unset(c.Path)
 		d.bus.Pub(c, labelFromPeer)
 	default:
 		d.log.Errorf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)

@@ -1,3 +1,20 @@
+// Package msgbus defines the Opensvc messages
+//
+//		 Add new message msgX: msgbus/messages.go
+//			- defines the new message: type <msgX> struct ....
+//	          add kindToT["msgX"]
+//			- msgX should implement event.Kinder
+//			- if msgX can change ClusterData:
+//		       - create ClusterData.onMsgX function
+//		       - update ClusterData.ApplyMessage function
+//			- msgX must be sent to peers (to patch):
+//				- update daemondata.startSubscriptions function
+//				- update daemondata.eventMustBeForwarded function
+//			- peer msgX is received from peer (from patch):
+//				- update setCacheAndPublish function:
+//					- can update some caches
+//					- republish event with label from: peer
+//			- peer msgX may be published from full diff during applyNodeData
 package msgbus
 
 import (
@@ -131,7 +148,9 @@ var (
 
 		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
-		"ObjectCreated": func() any { return &ObjectStatusCreated{} },
+		"ObjectCreated": func() any { return &ObjectCreated{} },
+
+		"ObjectDeleted": func() any { return &ObjectDeleted{} },
 
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
@@ -587,7 +606,17 @@ type (
 		Value      node.Status `json:"node_status" yaml:"node_status"`
 	}
 
-	ObjectStatusCreated struct {
+	// ObjectCreated is the message published when a new object is detected by
+	// localhost.
+	ObjectCreated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// ObjectDeleted is the message published when an object deletetion is
+	// detected by localhost.
+	ObjectDeleted struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
@@ -964,8 +993,12 @@ func (e *NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
 }
 
-func (e *ObjectStatusCreated) Kind() string {
-	return "ObjectStatusCreated"
+func (e *ObjectCreated) Kind() string {
+	return "ObjectCreated"
+}
+
+func (e *ObjectDeleted) Kind() string {
+	return "ObjectDeleted"
 }
 
 func (e *ObjectOrchestrationEnd) Kind() string {

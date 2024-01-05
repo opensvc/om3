@@ -241,12 +241,12 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 			}
 			nextEvId++
 			changes = true
-			if msg, err := msgbus.EventToMessage(e); err != nil {
+			msg, err := msgbus.EventToMessage(e)
+			if err != nil {
 				_, _ = fmt.Fprintf(os.Stderr, "EventToMessage event id %d %s error: %s\n", e.ID, e.Kind, err)
 				continue
-			} else if err := cdata.ApplyMessage(msg); err != nil {
-				return err
 			}
+			cdata.ApplyMessage(msg)
 		case <-ticker.C:
 			if changes {
 				dataC <- cdata.DeepCopy()
