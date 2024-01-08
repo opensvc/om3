@@ -10,10 +10,10 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemoncmd"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -56,7 +56,7 @@ func getClientUrl(withConfig bool) (urlM map[string]string) {
 }
 
 func TestMain(m *testing.M) {
-	testhelper.Main(m, cmd.ExecuteArgs)
+	testhelper.Main(m, om.ExecuteArgs)
 }
 
 func TestDaemonBootstrap(t *testing.T) {

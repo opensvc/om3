@@ -1,0 +1,62 @@
+Go template with Opensvc functions:
+   - hasNodeLabel(labels []pubsub.Label, expected ...string) bool
+   - hasPathLabel(labels []pubsub.Label, expected ...string) bool
+   - hasInstanceLabel(labels []pubsub.Label, expected ...string) bool
+   - passSet(s string, b bool):
+       add s to passed if b else remove s from passed
+       return true when passed items has been changed
+   - passCount() int:
+       return count of passed items
+   - setSuccess(b bool):
+       set success to b
+       when b is true and 'om node --wait' exit with 0 exit code
+   - toInst(p path, node string) string:
+       return instance id from path and nodeaaa
+
+Simple template examples:
+    simple templating: --filter InstanceMonitorUpdated --template \
+        '{{printf "instance %s@%s monitor state is %s\n" .Path .Node .Value.State.String}}'
+
+Label filtering examples:
+    label node filtering: --filter InstanceMonitorUpdated,path=foo --template \
+        '{{if hasNodeLabel .Labels "dev1n1" "dev1n2" -}}
+            {{printf "instance %s@%s monitor state is %s\n" .Path .Node .Value.State.String}}{{end}}'
+
+    label path filtering: --filter InstanceMonitorUpdated,node=dev1n1 --template \
+        '{{if hasPathLabel .Labels "foo001" "foo002" -}}
+            {{printf "instance %s@%s monitor state is %s\n" .Path .Node .Value.State.String}}{{end}}'
+
+    label instance filtering: --filter InstanceMonitorUpdated --template \
+            '{{if hasInstanceLabel .Labels "foo001@dev1n1" "foo002@dev1n2" -}}
+                {{printf "%s@%s state: %s\n" .Path .Node .Value.State.String}}{{end}}'
+
+Wait template examples:
+    object is avail up and provisioned true:
+        --wait --filter ObjectStatusUpdated,path=foo --template \
+            '{{if setSuccess (and (eq .Value.Avail.String "up")
+                             (eq .Value.Provisioned.String "true"))}}{{end}}'
+
+    instance is avail up and provisioned true:
+        --wait --filter InstanceStatusUpdated,path=foo,node=dev1n1 --template \
+            '{{if setSuccess (and (eq .Value.Avail.String "up")
+                             (eq .Value.Provisioned.String "true"))}}{{end}}'
+
+    node is frozen:
+        --wait --filter NodeStatusUpdated,node=dev1n1 --template '{{if setSuccess .Value.IsFrozen}}{{end}}'
+
+    cluster nodes are frozen:
+        --wait --filter ClusterStatusUpdated --template '{{if setSuccess .Value.Frozen}}{{end}}'
+
+    cluster nodes are thawed:
+        --wait --filter ClusterStatusUpdated --template '{{if setSuccess (not .Value.Frozen)}}{{end}}'
+
+    object avail is up on 3 objects:
+        --wait --filter ObjectStatusUpdated --template \
+         '{{if passSet (toInst .Path .Node) (eq .Value.Avail.String "up") -}}
+            {{with setSuccess (eq passCount 3)}}{{end}}{{end}}'
+
+    object avail is up on 3 objects that starts with "foo":
+        --wait --filter ObjectStatusUpdated --template \
+            '{{if eq (slice .Path.String 0 3) "foo" -}}
+                {{if passSet .Path.String (eq .Value.Avail.String "up") -}}
+                    {{with setSuccess (eq passCount 3)}}{{end}}{{end}}{{end}}'

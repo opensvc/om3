@@ -8,14 +8,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/testhelper"
 )
 
 func TestMain(m *testing.M) {
-	testhelper.Main(m, cmd.ExecuteArgs)
+	testhelper.Main(m, om.ExecuteArgs)
 }
 
 func setup(t *testing.T) testhelper.Env {

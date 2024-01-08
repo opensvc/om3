@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/cmd"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/plog"
 
@@ -42,7 +42,7 @@ flag1 = /tmp/TestAppStart.{fqdn}.1
 `)
 
 func TestMain(m *testing.M) {
-	testhelper.Main(m, cmd.ExecuteArgs)
+	testhelper.Main(m, om.ExecuteArgs)
 }
 
 func TestAppStart(t *testing.T) {

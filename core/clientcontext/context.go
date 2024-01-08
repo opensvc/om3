@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/env"
-	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"
 
 	"github.com/mitchellh/go-homedir"
@@ -133,7 +132,6 @@ func New() (T, error) {
 		// If the user name is not specified, use the map key
 		c.User.Name = cr.UserRefName
 	}
-	log.Debug().Msgf("New context: %s", c)
 	return c, nil
 }
 

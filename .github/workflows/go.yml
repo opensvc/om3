@@ -28,8 +28,11 @@ jobs:
       - name: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go env
         run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go env
 
-      - name: Build root
-        run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go build -v .
+      - name: Build om
+        run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go build -v ./cmd/om
+
+      - name: Build ox
+        run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go build -v ./cmd/ox
 
       - name: Test root
         run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go test -p 1 -timeout 60s ./...

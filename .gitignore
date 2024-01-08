@@ -10,6 +10,7 @@
 !go.mod
 !LICENSE
 !.gitignore
+!Makefile
 .idea
 core/version/version.go
 .trash

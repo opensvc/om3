@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/daemon/api"
@@ -68,7 +66,7 @@ func (t *GetEvents) SetRelatives(s bool) *GetEvents {
 // default values to its keys.
 func NewGetEvents(t api.ClientInterface) *GetEvents {
 	options := &GetEvents{
-		client: t,
+		client:   t,
 		nodename: "localhost",
 	}
 	return options
@@ -171,7 +169,6 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 		}
 		e := &event.Event{}
 		if err := json.Unmarshal(b, e); err != nil {
-			log.Error().Err(err).Msgf("can't unmarshal '%s' has Event", b)
 			continue
 		}
 		out <- *e
