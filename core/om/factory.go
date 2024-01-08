@@ -1261,6 +1261,7 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
