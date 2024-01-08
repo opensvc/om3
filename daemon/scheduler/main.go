@@ -129,7 +129,7 @@ func (t *T) createJob(e schedule.Entry) {
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
-		logger.Attr("definition", e.Definition).Errorf("get next %s %s %s schedule: %s", e.Path, e.Key, e.Action, err)
+		logger.Attr("definition", e.Schedule).Errorf("get next %s %s %s schedule: %s", e.Path, e.Key, e.Action, err)
 		t.jobs.Del(e)
 		return
 	}

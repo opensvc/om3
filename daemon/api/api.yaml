@@ -331,6 +331,32 @@ paths:
       tags:
         - daemon
 
+  /node/name/{nodename}/schedule:
+    get:
+      operationId: GetNodeSchedule
+      description: |
+        Return the schedule table of the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /dns/dump:
     get:
       description: |
@@ -3735,6 +3761,73 @@ components:
           type: string
           description: type is a the endpoint type.
           example: iscsi
+    ScheduleList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ScheduleList
+        items:
+          $ref: '#/components/schemas/ScheduleItems'
+    Schedule:
+      type: object
+      required:
+        - action
+        - schedule
+        - key
+        - last_run_at
+        - last_run_file
+        - last_success_file
+        - next_run_at
+        - require_collector
+        - require_provisioned
+      properties:
+        action:
+          type: string
+        schedule:
+          type: string
+        key:
+          type: string
+        last_run_at:
+          type: string
+          format: date-time
+        last_run_file:
+          type: string
+        last_success_file:
+          type: string
+        next_run_at:
+          type: string
+          format: date-time
+        require_collector:
+          type: boolean
+        require_provisioned:
+          type: boolean
+    ScheduleItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ScheduleItem'
+    ScheduleItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceItem
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/Schedule'
+    ScheduleTable:
+      type: array
+
     Status:
       type: string
       enum:

@@ -10,7 +10,9 @@ GOVET = $(GOCMD) vet
 OM = ./bin/om
 OX = ./bin/ox
 
-all: test om ox
+all: test build
+
+build: om ox
 
 api:
 	$(GOGEN) ./daemon/api

@@ -31,7 +31,7 @@ func (t Table) Render() string {
 		n.AddColumn().AddText(SprintTime(e.LastRunAt))
 		n.AddColumn().AddText(SprintTime(e.NextRunAt))
 		n.AddColumn().AddText(e.Key)
-		n.AddColumn().AddText(e.Definition)
+		n.AddColumn().AddText(e.Schedule)
 	}
 	return tree.Render()
 }
