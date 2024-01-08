@@ -110,6 +110,9 @@ type (
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
+	logger interface {
+		Log() *plog.Logger
+	}
 )
 
 func (t *T) Log() *plog.Logger {
