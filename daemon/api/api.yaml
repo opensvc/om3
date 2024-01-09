@@ -670,6 +670,32 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/action/push/asset:
+    post:
+      operationId: PostNodeActionPushAsset
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Refresh and send to the collector the asset discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/action/sysreport:
     post:
       operationId: PostNodeActionSysreport
