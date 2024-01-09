@@ -175,6 +175,15 @@ type ClientInterface interface {
 	// PostNodeActionPushAsset request
 	PostNodeActionPushAsset(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushAssetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionPushDisk request
+	PostNodeActionPushDisk(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushDiskParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionPushPatch request
+	PostNodeActionPushPatch(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionPushPkg request
+	PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeActionSysreport request
 	PostNodeActionSysreport(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -683,6 +692,42 @@ func (c *Client) PostPeerActionFreeze(ctx context.Context, nodename InPathNodeNa
 
 func (c *Client) PostNodeActionPushAsset(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushAssetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionPushAssetRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionPushDisk(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushDiskParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionPushDiskRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionPushPatch(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionPushPatchRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionPushPkgRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2569,6 +2614,168 @@ func NewPostNodeActionPushAssetRequest(server string, nodename InPathNodeName, p
 	}
 
 	operationPath := fmt.Sprintf("/node/name/%s/action/push/asset", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionPushDiskRequest generates requests for PostNodeActionPushDisk
+func NewPostNodeActionPushDiskRequest(server string, nodename InPathNodeName, params *PostNodeActionPushDiskParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/action/push/disk", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionPushPatchRequest generates requests for PostNodeActionPushPatch
+func NewPostNodeActionPushPatchRequest(server string, nodename InPathNodeName, params *PostNodeActionPushPatchParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/action/push/patch", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RequesterSid != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionPushPkgRequest generates requests for PostNodeActionPushPkg
+func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, params *PostNodeActionPushPkgParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/action/push/pkg", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6085,6 +6292,15 @@ type ClientWithResponsesInterface interface {
 	// PostNodeActionPushAsset request
 	PostNodeActionPushAssetWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushAssetParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushAssetResponse, error)
 
+	// PostNodeActionPushDisk request
+	PostNodeActionPushDiskWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushDiskParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushDiskResponse, error)
+
+	// PostNodeActionPushPatch request
+	PostNodeActionPushPatchWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPatchParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPatchResponse, error)
+
+	// PostNodeActionPushPkg request
+	PostNodeActionPushPkgWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPkgResponse, error)
+
 	// PostNodeActionSysreport request
 	PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error)
 
@@ -6906,6 +7122,81 @@ func (r PostNodeActionPushAssetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostNodeActionPushAssetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionPushDiskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionPushDiskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionPushDiskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionPushPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionPushPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionPushPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionPushPkgResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionPushPkgResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionPushPkgResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8463,6 +8754,33 @@ func (c *ClientWithResponses) PostNodeActionPushAssetWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParsePostNodeActionPushAssetResponse(rsp)
+}
+
+// PostNodeActionPushDiskWithResponse request returning *PostNodeActionPushDiskResponse
+func (c *ClientWithResponses) PostNodeActionPushDiskWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushDiskParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushDiskResponse, error) {
+	rsp, err := c.PostNodeActionPushDisk(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionPushDiskResponse(rsp)
+}
+
+// PostNodeActionPushPatchWithResponse request returning *PostNodeActionPushPatchResponse
+func (c *ClientWithResponses) PostNodeActionPushPatchWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPatchParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPatchResponse, error) {
+	rsp, err := c.PostNodeActionPushPatch(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionPushPatchResponse(rsp)
+}
+
+// PostNodeActionPushPkgWithResponse request returning *PostNodeActionPushPkgResponse
+func (c *ClientWithResponses) PostNodeActionPushPkgWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPkgResponse, error) {
+	rsp, err := c.PostNodeActionPushPkg(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionPushPkgResponse(rsp)
 }
 
 // PostNodeActionSysreportWithResponse request returning *PostNodeActionSysreportResponse
@@ -10263,6 +10581,147 @@ func ParsePostNodeActionPushAssetResponse(rsp *http.Response) (*PostNodeActionPu
 	}
 
 	response := &PostNodeActionPushAssetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionPushDiskResponse parses an HTTP response from a PostNodeActionPushDiskWithResponse call
+func ParsePostNodeActionPushDiskResponse(rsp *http.Response) (*PostNodeActionPushDiskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionPushDiskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionPushPatchResponse parses an HTTP response from a PostNodeActionPushPatchWithResponse call
+func ParsePostNodeActionPushPatchResponse(rsp *http.Response) (*PostNodeActionPushPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionPushPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionPushPkgResponse parses an HTTP response from a PostNodeActionPushPkgWithResponse call
+func ParsePostNodeActionPushPkgResponse(rsp *http.Response) (*PostNodeActionPushPkgResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionPushPkgResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

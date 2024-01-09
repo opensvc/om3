@@ -1145,6 +1145,21 @@ type PostNodeActionPushAssetParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
+// PostNodeActionPushDiskParams defines parameters for PostNodeActionPushDisk.
+type PostNodeActionPushDiskParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionPushPatchParams defines parameters for PostNodeActionPushPatch.
+type PostNodeActionPushPatchParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionPushPkgParams defines parameters for PostNodeActionPushPkg.
+type PostNodeActionPushPkgParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.
 type PostNodeActionSysreportParams struct {
 	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`

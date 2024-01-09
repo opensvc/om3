@@ -1207,12 +1207,12 @@ func newCmdNodePushAsset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePushDisks() *cobra.Command {
+func newCmdNodePushDisk() *cobra.Command {
 	var options commands.CmdNodePushDisks
 	cmd := &cobra.Command{
-		Use:     "disks",
+		Use:     "disk",
 		Short:   "run the disk discovery, push and print the result",
-		Aliases: []string{"disk", "dis", "di"},
+		Aliases: []string{"disks", "dis", "di"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
