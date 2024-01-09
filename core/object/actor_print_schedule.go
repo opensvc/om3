@@ -45,7 +45,7 @@ func (t *actor) newScheduleEntry(action, keyStr, rid, base string, reqCol, reqPr
 		Action:             action,
 		LastRunAt:          t.loadLast(action, rid, base),
 		Key:                k.String(),
-		Definition:         def,
+		Schedule:           def,
 		LastRunFile:        t.lastRunFile(action, rid, base),
 		LastSuccessFile:    t.lastSuccessFile(action, rid, base),
 		RequireCollector:   reqCol,

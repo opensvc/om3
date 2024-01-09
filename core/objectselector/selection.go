@@ -304,11 +304,13 @@ func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) 
 
 func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	matching := orderedset.NewOrderedSet()
-	p, err := naming.ParsePath(s)
+	path, err := naming.ParsePath(s)
 	if err != nil {
 		return matching, err
 	}
-	matching.Add(p.String())
+	if path.Exists() {
+		matching.Add(path.String())
+	}
 	return matching, nil
 }
 

@@ -14,6 +14,29 @@ func (t Instance) Unstructured() map[string]any {
 	return m
 }
 
+func (t ScheduleItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Schedule) Unstructured() map[string]any {
+	return map[string]any{
+		"action":              t.Action,
+		"schedule":            t.Schedule,
+		"key":                 t.Key,
+		"last_run_at":         t.LastRunAt,
+		"last_run_file":       t.LastRunFile,
+		"last_success_file":   t.LastSuccessFile,
+		"next_run_at":         t.NextRunAt,
+		"require_collector":   t.RequireCollector,
+		"require_Provisioned": t.RequireProvisioned,
+	}
+
+}
+
 func (t InstanceMap) Unstructured() map[string]any {
 	m := make(map[string]any)
 	for k, v := range t {
@@ -31,6 +54,7 @@ func (t InstanceMeta) Unstructured() map[string]any {
 
 func (t InstanceItem) Unstructured() map[string]any {
 	return map[string]any{
+		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
 		"data": t.Data.Unstructured(),
 	}
@@ -38,6 +62,7 @@ func (t InstanceItem) Unstructured() map[string]any {
 
 func (t KeywordItem) Unstructured() map[string]any {
 	return map[string]any{
+		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
 		"data": t.Data.Unstructured(),
 	}
@@ -61,6 +86,7 @@ func (t KeywordMeta) Unstructured() map[string]any {
 
 func (t ObjectItem) Unstructured() map[string]any {
 	return map[string]any{
+		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
 		"data": t.Data.Unstructured(),
 	}
@@ -118,6 +144,7 @@ func (t ResourceMeta) Unstructured() map[string]any {
 
 func (t ResourceItem) Unstructured() map[string]any {
 	return map[string]any{
+		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
 		"data": t.Data.Unstructured(),
 	}

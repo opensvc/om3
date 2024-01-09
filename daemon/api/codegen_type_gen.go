@@ -152,6 +152,16 @@ const (
 	Squatter       Role = "squatter"
 )
 
+// Defines values for ScheduleItemKind.
+const (
+	ScheduleItemKindResourceItem ScheduleItemKind = "ResourceItem"
+)
+
+// Defines values for ScheduleListKind.
+const (
+	ScheduleListKindScheduleList ScheduleListKind = "ScheduleList"
+)
+
 // Defines values for Status.
 const (
 	Down      Status = "down"
@@ -840,6 +850,41 @@ type SANPathTarget struct {
 	// Type type is a the endpoint type.
 	Type *string `json:"type,omitempty"`
 }
+
+// Schedule defines model for Schedule.
+type Schedule struct {
+	Action             string    `json:"action"`
+	Key                string    `json:"key"`
+	LastRunAt          time.Time `json:"last_run_at"`
+	LastRunFile        string    `json:"last_run_file"`
+	LastSuccessFile    string    `json:"last_success_file"`
+	NextRunAt          time.Time `json:"next_run_at"`
+	RequireCollector   bool      `json:"require_collector"`
+	RequireProvisioned bool      `json:"require_provisioned"`
+	Schedule           string    `json:"schedule"`
+}
+
+// ScheduleItem defines model for ScheduleItem.
+type ScheduleItem struct {
+	Data Schedule         `json:"data"`
+	Kind ScheduleItemKind `json:"kind"`
+	Meta InstanceMeta     `json:"meta"`
+}
+
+// ScheduleItemKind defines model for ScheduleItem.Kind.
+type ScheduleItemKind string
+
+// ScheduleItems defines model for ScheduleItems.
+type ScheduleItems = []ScheduleItem
+
+// ScheduleList defines model for ScheduleList.
+type ScheduleList struct {
+	Items ScheduleItems    `json:"items"`
+	Kind  ScheduleListKind `json:"kind"`
+}
+
+// ScheduleListKind defines model for ScheduleList.Kind.
+type ScheduleListKind string
 
 // Status defines model for Status.
 type Status string

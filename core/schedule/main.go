@@ -14,8 +14,8 @@ type (
 
 	Entry struct {
 		Action             string      `json:"action"`
-		Definition         string      `json:"schedule_definition"`
-		Key                string      `json:"config_parameter"`
+		Schedule           string      `json:"schedule"`
+		Key                string      `json:"key"`
 		LastRunAt          time.Time   `json:"last_run_at"`
 		LastRunFile        string      `json:"last_run_file"`
 		LastSuccessFile    string      `json:"last_success_file"`
@@ -54,7 +54,7 @@ func (t Table) AddEntries(l ...Entry) Table {
 }
 
 func (t Entry) GetNext() (time.Time, time.Duration, error) {
-	sc := usched.New(t.Definition)
+	sc := usched.New(t.Schedule)
 	return sc.Next(usched.NextWithLast(t.LastRunAt))
 }
 
