@@ -316,6 +316,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).
+		SetSelector(t.ObjectSelector).
 		GetReader()
 }
 
