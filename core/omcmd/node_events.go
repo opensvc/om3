@@ -150,8 +150,9 @@ func (t *CmdNodeEvents) Run() error {
 
 func (t *CmdNodeEvents) doNodes() error {
 	var (
-		err error
-		now = time.Now()
+		err       error
+		now       = time.Now()
+		nodenames []string
 	)
 	t.evC = make(chan *event.Event)
 	if t.Template != "" {
@@ -182,7 +183,7 @@ func (t *CmdNodeEvents) doNodes() error {
 	if err != nil {
 		return err
 	}
-	nodenames, err := nodeselector.Expand(t.NodeSelector)
+	nodenames, err = nodeselector.New(t.NodeSelector, nodeselector.WithClient(t.cli)).Expand()
 	if err != nil {
 		return err
 	}
@@ -318,6 +319,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).
+		SetSelector(t.ObjectSelector).
 		GetReader()
 }
 

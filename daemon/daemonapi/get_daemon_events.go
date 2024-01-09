@@ -277,6 +277,9 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 	}
 
 	for _, s := range *params.Filter {
+		if len(s) == 0 {
+			continue
+		}
 		filter, err = parseFilter(s)
 		if err != nil {
 			return
@@ -290,16 +293,23 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 //
 // filter syntax is: [kind][,label=value]*
 func parseFilter(s string) (filter Filter, err error) {
-	for _, elem := range strings.Split(s, ",") {
-		if strings.HasPrefix(elem, ".") {
-			// TODO filter data ?
-			continue
+	kindLabels := strings.SplitN(s, ",", 2)
+	if len(kindLabels[0]) == 0 {
+		// match all labels
+		filter.Kind = nil
+	} else {
+		filter.Kind, err = msgbus.KindToT(kindLabels[0])
+		if err != nil {
+			return
 		}
-		splitted := strings.SplitN(elem, "=", 2)
-		if len(splitted) == 1 {
-			// ignore error => use kind nil when value has invalid kind
-			filter.Kind, _ = msgbus.KindToT(splitted[0])
-		} else if len(splitted) == 2 {
+	}
+	if len(kindLabels) == 1 {
+		// no label filters
+		return
+	}
+	for _, labelElem := range strings.Split(kindLabels[1], ",") {
+		splitted := strings.SplitN(labelElem, "=", 2)
+		if len(splitted) == 2 {
 			filter.Labels = append(filter.Labels, pubsub.Label{splitted[0], splitted[1]})
 		} else {
 			err = fmt.Errorf("invalid filter expression: %s", s)

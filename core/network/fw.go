@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
-	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -21,9 +20,6 @@ type (
 	}
 	backendDevNamer interface {
 		BackendDevName() string
-	}
-	logger interface {
-		Log() *plog.Logger
 	}
 )
 

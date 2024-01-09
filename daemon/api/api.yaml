@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.1
+  version: 3.12.2
 
 paths:
   /auth/token:
@@ -29,6 +29,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthToken'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -175,6 +177,8 @@ paths:
       responses:
         200:
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -215,6 +219,8 @@ paths:
       responses:
         200:
           description: OK
+        400:
+          $ref: '#/components/responses/400'
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -236,6 +242,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -263,6 +271,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -289,6 +299,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -319,6 +331,8 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/EventList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -345,6 +359,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -399,6 +415,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -471,6 +489,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -641,6 +661,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/NodeActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -668,6 +690,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/NodeActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -694,6 +718,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/NodeActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -792,6 +818,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DRBDAllocation'
+        400:
+          $ref: '#/components/responses/400'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -903,6 +931,8 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/LogList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1048,6 +1078,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1078,6 +1110,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1111,6 +1145,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1148,6 +1184,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1184,6 +1222,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1219,6 +1259,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1249,6 +1291,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1285,6 +1329,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1311,6 +1357,8 @@ paths:
       responses:
         200:
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1344,6 +1392,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1385,6 +1435,8 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/LogList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1414,6 +1466,8 @@ paths:
       responses:
         200:
           description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1902,6 +1956,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObjectConfig'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1932,6 +1988,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObjectConfigFile'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2197,6 +2255,8 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
