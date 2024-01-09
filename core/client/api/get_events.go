@@ -189,8 +189,22 @@ func (t GetEvents) eventsBase() (*http.Response, error) {
 		params.Duration = &s
 	}
 	resp, err := t.client.GetDaemonEvents(context.Background(), t.nodename, &params)
-	if err == nil && resp.StatusCode != http.StatusOK {
+	if err != nil {
+		return resp, err
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return resp, nil
+	case http.StatusBadRequest:
+	case http.StatusUnauthorized:
+	case http.StatusForbidden:
+	case http.StatusInternalServerError:
+	default:
 		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
 	}
-	return resp, err
+	if b, err := io.ReadAll(resp.Body); err != nil {
+		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
+	} else {
+		return nil, fmt.Errorf("unexpected get events status code %s: %s", resp.Status, b)
+	}
 }

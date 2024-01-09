@@ -190,7 +190,7 @@ func KindToT(kind string) (any, error) {
 	if f, ok := kindToT[kind]; ok {
 		return f(), nil
 	}
-	return nil, errors.New("can't find type for kind: " + kind)
+	return nil, fmt.Errorf("can't find type for kind: %s", kind)
 }
 
 // EventToMessage converts event.Event message as pubsub.Messager
