@@ -159,6 +159,9 @@ type ServerInterface interface {
 	// (POST /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear)
 	PostInstanceClear(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
+	// (GET /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule)
+	GetObjectSchedule(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) error
+
 	// (GET /node/name/{nodename}/schedule)
 	GetNodeSchedule(ctx echo.Context, nodename InPathNodeName) error
 
@@ -1902,6 +1905,50 @@ func (w *ServerInterfaceWrapper) PostInstanceClear(ctx echo.Context) error {
 	return err
 }
 
+// GetObjectSchedule converts echo context to params.
+func (w *ServerInterfaceWrapper) GetObjectSchedule(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "namespace", runtime.ParamLocationPath, ctx.Param("namespace"), &namespace)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "kind", runtime.ParamLocationPath, ctx.Param("kind"), &kind)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetObjectSchedule(ctx, nodename, namespace, kind, name)
+	return err
+}
+
 // GetNodeSchedule converts echo context to params.
 func (w *ServerInterfaceWrapper) GetNodeSchedule(ctx echo.Context) error {
 	var err error
@@ -2881,6 +2928,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/unfreeze", wrapper.PostInstanceActionUnfreeze)
 	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/unprovision", wrapper.PostInstanceActionUnprovision)
 	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/clear", wrapper.PostInstanceClear)
+	router.GET(baseURL+"/node/name/:nodename/object/path/:namespace/:kind/:name/schedule", wrapper.GetObjectSchedule)
 	router.GET(baseURL+"/node/name/:nodename/schedule", wrapper.GetNodeSchedule)
 	router.GET(baseURL+"/object", wrapper.GetObjects)
 	router.GET(baseURL+"/object/path", wrapper.GetObjectPaths)
@@ -3061,19 +3109,20 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
+	"j2o5NrOsdX53d3f3/wMAAP//iOV4XElMAQA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

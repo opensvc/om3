@@ -1327,6 +1327,36 @@ paths:
         - instance / sec
         - instance / usr
 
+  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule:
+    get:
+      operationId: GetObjectSchedule
+      description: |
+        Return the schedule table of the object.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /instance/path/{namespace}/{kind}/{name}/log:
     get:
       operationId: GetInstanceLogs
