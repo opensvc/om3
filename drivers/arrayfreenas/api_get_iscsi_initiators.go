@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/deepmap/oapi-codegen/pkg/runtime"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ISCSIInitiator defines model for ISCSIInitiator.
