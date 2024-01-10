@@ -39,13 +39,15 @@ func (a *DaemonApi) getPeerNodeLogs(ctx echo.Context, nodename string, params ap
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}
 
+	w := ctx.Response()
 	resp, err := c.GetNodeLogs(evCtx, nodename, &params)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if resp.StatusCode != http.StatusOK {
-		return JSONProblemf(ctx, resp.StatusCode, "Request peer", "%s: %s", nodename, err)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			return err
+		}
 	}
-	w := ctx.Response()
 	if request.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
 	}
@@ -98,11 +100,13 @@ func (a *DaemonApi) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 		log.Infof("Invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
-	paths, err := naming.ParsePaths(params.Paths...)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
+	if params.Paths != nil {
+		paths, err := naming.ParsePaths(*params.Paths...)
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", *params.Paths, err)
+		}
+		matches = append(matches, filtersFromPaths(paths)...)
 	}
-	matches = append(matches, filtersFromPaths(paths)...)
 
 	r := ctx.Request()
 	w := ctx.Response()

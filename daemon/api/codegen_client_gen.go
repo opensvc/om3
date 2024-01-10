@@ -4417,16 +4417,20 @@ func NewGetNodeLogsRequest(server string, nodename InPathNodeName, params *GetNo
 
 	}
 
-	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
-		return nil, err
-	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-		return nil, err
-	} else {
-		for k, v := range parsed {
-			for _, v2 := range v {
-				queryValues.Add(k, v2)
+	if params.Paths != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, *params.Paths); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
 			}
 		}
+
 	}
 
 	queryURL.RawQuery = queryValues.Encode()

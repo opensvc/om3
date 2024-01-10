@@ -103,9 +103,7 @@ func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 		Filter: t.Filters,
 		Follow: t.Follow,
 		Lines:  t.Lines,
-	}
-	if t.Paths != nil {
-		params.Paths = *t.Paths
+		Paths:  t.Paths,
 	}
 	if resp, err := t.client.GetNodeLogs(context.Background(), t.nodename, &params); err == nil && resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)

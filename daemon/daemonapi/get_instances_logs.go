@@ -15,8 +15,9 @@ func (a *DaemonApi) GetInstanceLogs(ctx echo.Context, nodename string, namespace
 		JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 		return err
 	}
+	paths := naming.Paths{p}.StrSlice()
 	return a.GetNodeLogs(ctx, nodename, api.GetNodeLogsParams{
-		Paths:  naming.Paths{p}.StrSlice(),
+		Paths:  &paths,
 		Filter: params.Filter,
 		Follow: params.Follow,
 		Lines:  params.Lines,

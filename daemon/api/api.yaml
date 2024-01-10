@@ -4212,7 +4212,6 @@ components:
       name: paths
       in: query
       description: list of object paths to send logs for
-      required: true
       schema:
         type: array
         items:

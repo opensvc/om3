@@ -1256,7 +1256,7 @@ type GetNodeLogsParams struct {
 	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 
 	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
+	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
