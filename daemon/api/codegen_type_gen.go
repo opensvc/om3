@@ -1075,33 +1075,6 @@ type GetInstancesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
-// GetInstancesLogsParams defines parameters for GetInstancesLogs.
-type GetInstancesLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
-}
-
-// GetInstanceLogsParams defines parameters for GetInstanceLogs.
-type GetInstanceLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
-}
-
 // GetNetworksParams defines parameters for GetNetworks.
 type GetNetworksParams struct {
 	// Name the name of a cluster backend network
@@ -1118,21 +1091,6 @@ type GetNetworkIpParams struct {
 type GetNodesParams struct {
 	// Node node selector expression.
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
-}
-
-// GetNodeLogsParams defines parameters for GetNodeLogs.
-type GetNodeLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
-
-	// Paths list of object paths to send logs for
-	Paths Paths `form:"paths" json:"paths"`
 }
 
 // PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
@@ -1284,6 +1242,33 @@ type PostInstanceActionUnprovisionParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetNodeLogsParams defines parameters for GetNodeLogs.
+type GetNodeLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.

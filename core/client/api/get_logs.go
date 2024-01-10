@@ -13,11 +13,12 @@ import (
 
 // GetLogs describes the events request options.
 type GetLogs struct {
-	client  api.ClientInterface
-	Filters *[]string
-	Paths   *[]string
-	Lines   *int
-	Follow  *bool
+	client   api.ClientInterface
+	nodename string
+	Filters  *[]string
+	Paths    *[]string
+	Lines    *int
+	Follow   *bool
 }
 
 func (t *GetLogs) SetPaths(l *[]string) *GetLogs {
@@ -42,9 +43,10 @@ func (t *GetLogs) SetFollow(n *bool) *GetLogs {
 
 // NewGetLogs allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewGetLogs(t api.ClientInterface) *GetLogs {
+func NewGetLogs(t api.ClientInterface, nodename string) *GetLogs {
 	options := &GetLogs{
-		client: t,
+		client:   t,
+		nodename: nodename,
 	}
 	return options
 }
@@ -97,24 +99,17 @@ func (t *GetLogs) GetReader() (event.ReadCloser, error) {
 }
 
 func (t GetLogs) eventsBase() (resp *http.Response, err error) {
+	params := api.GetNodeLogsParams{
+		Filter: t.Filters,
+		Follow: t.Follow,
+		Lines:  t.Lines,
+	}
 	if t.Paths != nil {
-		params := api.GetInstancesLogsParams{
-			Filter: t.Filters,
-			Follow: t.Follow,
-			Lines:  t.Lines,
-			Paths:  *t.Paths,
-		}
-		resp, err = t.client.GetInstancesLogs(context.Background(), &params)
-	} else {
-		params := api.GetNodeLogsParams{
-			Filter: t.Filters,
-			Follow: t.Follow,
-			Lines:  t.Lines,
-		}
-		resp, err = t.client.GetNodeLogs(context.Background(), &params)
+		params.Paths = *t.Paths
 	}
-	if err == nil && resp.StatusCode != http.StatusOK {
+	if resp, err := t.client.GetNodeLogs(context.Background(), t.nodename, &params); err == nil && resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
+	} else {
+		return resp, err
 	}
-	return resp, err
 }

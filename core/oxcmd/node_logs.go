@@ -1,9 +1,14 @@
 package oxcmd
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"sync"
 
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/render"
 )
@@ -16,38 +21,61 @@ type (
 	}
 )
 
-func parseFilters(l *[]string) []string {
-	m := make([]string, 0)
-	if l == nil {
-		return m
+func (t *CmdNodeLogs) stream(node string) {
+	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
 	}
-	return *l
+	reader, err := c.NewGetLogs(node).
+		SetFilters(&t.Filter).
+		SetLines(&t.Lines).
+		SetFollow(&t.Follow).
+		GetReader()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	defer reader.Close()
+
+	for {
+		event, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			break
+		}
+		rec, err := streamlog.NewEvent(event.Data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			break
+		}
+		rec.Render(t.Output)
+	}
 }
 
-func (t *CmdNodeLogs) local() error {
-	matches := parseFilters(&t.Filter)
-	stream := streamlog.NewStream()
-	streamConfig := streamlog.StreamConfig{
-		Follow:  t.Follow,
-		Lines:   t.Lines,
-		Matches: matches,
-	}
-	if err := stream.Start(streamConfig); err != nil {
+func (t *CmdNodeLogs) remote() error {
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	if err != nil {
 		return err
 	}
-	defer stream.Stop()
-	for {
-		select {
-		case err := <-stream.Errors():
-			fmt.Fprintln(os.Stderr, err)
-			if err == nil {
-				// The sender has stopped sending
-				return nil
-			}
-		case ev := <-stream.Events():
-			ev.Render(t.Output)
-		}
+	nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
+	if err != nil {
+		return err
 	}
+	if len(nodes) == 0 {
+		return fmt.Errorf("no nodes to fetch logs from")
+	}
+	var wg sync.WaitGroup
+	wg.Add(len(nodes))
+	for _, node := range nodes {
+		go func(n string) {
+			defer wg.Done()
+			t.stream(n)
+		}(node)
+	}
+	wg.Wait()
 	return nil
 }
 
@@ -56,5 +84,5 @@ func (t *CmdNodeLogs) Run() error {
 	if t.NodeSelector == "" {
 		t.NodeSelector = "*"
 	}
-	return t.local()
+	return t.remote()
 }

@@ -27,7 +27,7 @@ func (t *CmdClusterLogs) stream(node string) {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	reader, err := c.NewGetLogs().
+	reader, err := c.NewGetLogs(node).
 		SetFilters(&t.Filter).
 		SetLines(&t.Lines).
 		SetFollow(&t.Follow).
