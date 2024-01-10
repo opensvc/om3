@@ -12,7 +12,6 @@ import (
 	"github.com/goombaio/orderedset"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -149,25 +148,17 @@ func (t *Selection) add(p naming.Path) {
 	t.paths = append(t.paths, p)
 }
 
-func (t *Selection) expand() error {
+func (t *Selection) expand() (err error) {
 	t.paths = make(naming.Paths, 0)
-	if !t.local {
-		if !t.hasClient {
-			c, _ := client.New(
-				client.WithURL(t.server),
-				client.WithUsername(hostname.Hostname()),
-				client.WithPassword(rawconfig.ClusterSection().Secret),
-			)
-			t.client = c
-			t.hasClient = true
-		}
-		if err := t.daemonExpand(); err == nil {
-			return nil
-		} else if clientcontext.IsSet() {
-			return fmt.Errorf("daemon expansion fatal error: %w", err)
-		}
+	if t.local {
+		err = t.localExpand()
+	} else {
+		err = t.daemonExpand()
 	}
-	return t.localExpand()
+	if err != nil {
+		err = fmt.Errorf("selection can't expand with local %v: %w", t.local, err)
+	}
+	return
 }
 
 func (t *Selection) localExpand() error {
@@ -332,9 +323,22 @@ func (t *Selection) daemonExpand() error {
 	if env.HasDaemonOrigin() {
 		return fmt.Errorf("action origin is daemon")
 	}
+	if !t.hasClient {
+		c, err := client.New(
+			client.WithURL(t.server),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			return fmt.Errorf("create client: %w", err)
+		}
+		t.client = c
+		t.hasClient = true
+	}
 	params := api.GetObjectPathsParams{
 		Path: t.SelectorExpression,
 	}
+
 	if resp, err := t.client.GetObjectPaths(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
