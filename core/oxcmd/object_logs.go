@@ -1,6 +1,7 @@
 package oxcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,9 +11,9 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/streamlog"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -25,33 +26,9 @@ type (
 	}
 )
 
-/*
-func (t *CmdObjectLogs) backlog(node string, paths naming.Paths) (streamlog.Events, error) {
-	events := make(streamlog.Events, 0)
-	c, err := client.New(client.WithURL(node))
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.GetInstancesBacklogs(context.Background(), &api.GetInstancesBacklogsParams{Filter: t.Filter, Paths: paths.StrSlice()})
-	if err != nil {
-		return nil, err
-	}
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&events); err != nil {
-		return nil, err
-	}
-	return events, nil
-}
-*/
-
-func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
-	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
+func (t *CmdObjectLogs) stream(c *client.T, node string, paths naming.Paths) {
 	l := paths.StrSlice()
-	reader, err := c.NewGetLogs().
+	reader, err := c.NewGetLogs(node).
 		SetFilters(&t.Filter).
 		SetLines(&t.Lines).
 		SetFollow(&t.Follow).
@@ -80,22 +57,18 @@ func (t *CmdObjectLogs) stream(node string, paths naming.Paths) {
 	}
 }
 
-func nodesFromPath(p naming.Path) ([]string, error) {
-	o, err := object.NewCore(p, object.WithVolatile(true))
+func nodesFromPaths(c *client.T, selector string) ([]string, error) {
+	m := make(map[string]any)
+	params := api.GetObjectsParams{Path: &selector}
+	resp, err := c.GetObjectsWithResponse(context.Background(), &params)
 	if err != nil {
 		return nil, err
 	}
-	return o.Nodes()
-}
-
-func nodesFromPaths(paths naming.Paths) ([]string, error) {
-	m := make(map[string]any)
-	for _, p := range paths {
-		nodes, err := nodesFromPath(p)
-		if err != nil {
-			return nil, err
-		}
-		for _, node := range nodes {
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("%s", resp.Status())
+	}
+	for _, item := range resp.JSON200.Items {
+		for node, _ := range item.Data.Instances {
 			m[node] = nil
 		}
 	}
@@ -104,6 +77,7 @@ func nodesFromPaths(paths naming.Paths) ([]string, error) {
 
 func (t *CmdObjectLogs) remote(selStr string) error {
 	var (
+		paths naming.Paths
 		nodes []string
 		err   error
 	)
@@ -111,12 +85,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.NewSelection(
-		selStr,
-		objectselector.SelectionWithClient(c),
-	)
-	paths, err := sel.Expand()
-	if err != nil {
+	if paths, err = objectselector.NewSelection(selStr, objectselector.SelectionWithClient(c)).Expand(); err != nil {
 		return err
 	}
 	if t.NodeSelector != "" {
@@ -125,7 +94,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 			return err
 		}
 	} else {
-		nodes, err = nodesFromPaths(paths)
+		nodes, err = nodesFromPaths(c, selStr)
 		if err != nil {
 			return err
 		}
@@ -135,7 +104,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	for _, node := range nodes {
 		go func(n string) {
 			defer wg.Done()
-			t.stream(n, paths)
+			t.stream(c, n, paths)
 		}(node)
 	}
 	wg.Wait()

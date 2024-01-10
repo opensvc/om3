@@ -670,6 +670,110 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/action/push/asset:
+    post:
+      operationId: PostNodeActionPushAsset
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Refresh and send to the collector the asset discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/push/disk:
+    post:
+      operationId: PostNodeActionPushDisk
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Refresh and send to the collector the disk discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/push/patch:
+    post:
+      operationId: PostNodeActionPushPatch
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Refresh and send to the collector the package discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/push/pkg:
+    post:
+      operationId: PostNodeActionPushPkg
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Refresh and send to the collector the package discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/action/sysreport:
     post:
       operationId: PostNodeActionSysreport
@@ -909,37 +1013,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/log:
-    get:
-      operationId: GetNodeLogs
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve new logs
-      parameters:
-        - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/LogFollow'
-        - $ref: '#/components/parameters/LogLines'
-        - $ref: '#/components/parameters/Paths'
-      responses:
-        200:
-          description: OK
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/LogList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /object:
     get:
       operationId: GetObjects
@@ -988,35 +1061,6 @@ paths:
                 $ref: '#/components/schemas/InstanceList'
         400:
           $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /instance/log:
-    get:
-      operationId: GetInstancesLogs
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve new logs
-      parameters:
-        - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/LogFollow'
-        - $ref: '#/components/parameters/LogLines'
-        - $ref: '#/components/parameters/Paths'
-      responses:
-        200:
-          description: OK
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/LogList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1375,6 +1419,36 @@ paths:
         - instance / sec
         - instance / usr
 
+  /node/name/{nodename}/log:
+    get:
+      operationId: GetNodeLogs
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve new logs
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule:
     get:
       operationId: GetObjectSchedule
@@ -1407,7 +1481,7 @@ paths:
         - instance / svc
         - instance / vol
 
-  /instance/path/{namespace}/{kind}/{name}/log:
+  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/log:
     get:
       operationId: GetInstanceLogs
       tags:
@@ -1422,6 +1496,7 @@ paths:
       description: |
         Serve new logs
       parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
@@ -4137,7 +4212,6 @@ components:
       name: paths
       in: query
       description: list of object paths to send logs for
-      required: true
       schema:
         type: array
         items:

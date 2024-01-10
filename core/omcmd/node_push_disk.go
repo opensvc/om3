@@ -1,4 +1,4 @@
-package oxcmd
+package commands
 
 import (
 	"context"
@@ -6,34 +6,43 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeaction"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
-	CmdNodePushAsset struct {
+	CmdNodePushDisks struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodePushAsset) Run() error {
+func (t *CmdNodePushDisks) Run() error {
 	return nodeaction.New(
+		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
+		nodeaction.WithLocalFunc(func() (interface{}, error) {
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.PushDisks()
+		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostNodeActionPushAssetParams{}
+			params := api.PostNodeActionPushDiskParams{}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostNodeActionPushAssetWithResponse(ctx, nodename, &params)
+			response, err := c.PostNodeActionPushDiskWithResponse(ctx, nodename, &params)
 			if err != nil {
 				return nil, err
 			}

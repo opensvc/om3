@@ -29,7 +29,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	}
 	var errs error
 	for _, p := range paths {
-		nodes, err := nodesFromPath(p)
+		nodes, err := nodesFromPaths(c, p.String())
 		if err != nil {
 			errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 			continue

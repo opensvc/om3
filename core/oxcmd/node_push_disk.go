@@ -11,13 +11,13 @@ import (
 )
 
 type (
-	CmdNodePushAsset struct {
+	CmdNodePushDisks struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodePushAsset) Run() error {
+func (t *CmdNodePushDisks) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -28,12 +28,12 @@ func (t *CmdNodePushAsset) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostNodeActionPushAssetParams{}
+			params := api.PostNodeActionPushDiskParams{}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostNodeActionPushAssetWithResponse(ctx, nodename, &params)
+			response, err := c.PostNodeActionPushDiskWithResponse(ctx, nodename, &params)
 			if err != nil {
 				return nil, err
 			}

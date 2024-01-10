@@ -147,7 +147,7 @@ func init() {
 	)
 	cmdNodePush.AddCommand(
 		newCmdNodePushAsset(),
-		newCmdNodePushDisks(),
+		newCmdNodePushDisk(),
 		newCmdNodePushPatch(),
 		newCmdNodePushPkg(),
 	)
