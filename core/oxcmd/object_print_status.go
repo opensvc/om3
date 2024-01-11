@@ -95,9 +95,9 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		mergedSelector,
-		objectselector.SelectionWithClient(c),
+		objectselector.WithClient(c),
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {

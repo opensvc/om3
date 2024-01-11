@@ -14,10 +14,10 @@ func (a *DaemonApi) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 	log := LogHandler(ctx, "GetObjectPaths")
 	log.Debugf("starting")
 	paths := object.StatusData.GetPaths()
-	selection := objectselector.NewSelection(
+	selection := objectselector.New(
 		params.Path,
-		objectselector.SelectionWithInstalled(paths),
-		objectselector.SelectionWithLocal(true),
+		objectselector.WithInstalled(paths),
+		objectselector.WithLocal(true),
 	)
 	matchedPaths, err := selection.Expand()
 	if err != nil {

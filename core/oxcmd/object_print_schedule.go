@@ -52,7 +52,7 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 		return err
 	}
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	paths, err := objectselector.NewSelection(mergedSelector, objectselector.SelectionWithClient(c)).Expand()
+	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}

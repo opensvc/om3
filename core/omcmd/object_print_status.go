@@ -58,9 +58,9 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 
 func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, error) {
 	data := make([]object.Digest, 0)
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		selector,
-		objectselector.SelectionWithLocal(true),
+		objectselector.WithLocal(true),
 	)
 	h := hostname.Hostname()
 	paths, err := sel.Expand()
@@ -168,9 +168,9 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		mergedSelector,
-		objectselector.SelectionWithClient(c),
+		objectselector.WithClient(c),
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {

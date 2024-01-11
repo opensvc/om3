@@ -74,9 +74,9 @@ func (s *Data) WithSelector(selector string) *Data {
 	if selector == "" {
 		return s
 	}
-	paths, err := objectselector.NewSelection(
+	paths, err := objectselector.New(
 		selector,
-		objectselector.SelectionWithLocal(true),
+		objectselector.WithLocal(true),
 	).Expand()
 	if err != nil {
 		return s

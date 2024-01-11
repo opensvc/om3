@@ -212,10 +212,10 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	if params.Selector != nil {
 		pathL = object.StatusData.GetPaths()
 		pathM = pathL.StrMap()
-		selector = objectselector.NewSelection(
+		selector = objectselector.New(
 			*params.Selector,
-			objectselector.SelectionWithInstalled(pathL),
-			objectselector.SelectionWithLocal(true),
+			objectselector.WithInstalled(pathL),
+			objectselector.WithLocal(true),
 			objectselector.WithConfigFilterDisabled(),
 		)
 		if err := selector.CheckFilters(); err != nil {

@@ -80,10 +80,10 @@ func (m *Meta) Expand() error {
 func (m *Meta) expandPath() error {
 	paths := object.StatusData.GetPaths()
 	if m.Path != nil {
-		selection := objectselector.NewSelection(
+		selection := objectselector.New(
 			*m.Path,
-			objectselector.SelectionWithInstalled(paths),
-			objectselector.SelectionWithLocal(true),
+			objectselector.WithInstalled(paths),
+			objectselector.WithLocal(true),
 		)
 		matchedPaths, err := selection.Expand()
 		if err != nil {

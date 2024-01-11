@@ -23,7 +23,7 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.NewSelection(mergedSelector, objectselector.SelectionWithClient(c))
+	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.Expand()
 	if err != nil {
 		return err

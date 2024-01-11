@@ -85,10 +85,10 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, err
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
 	objectSelector := mergeSelector(objectPath, "", kind, "**")
-	paths, err := objectselector.NewSelection(
+	paths, err := objectselector.New(
 		objectSelector,
-		objectselector.SelectionWithLocal(t.Local),
-		objectselector.SelectionWithServer(t.Server),
+		objectselector.WithLocal(t.Local),
+		objectselector.WithServer(t.Server),
 	).Expand()
 	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions")
@@ -107,10 +107,10 @@ func (t *CmdObjectCreate) getTemplate() string {
 }
 
 func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
-	paths, _ := objectselector.NewSelection(
+	paths, _ := objectselector.New(
 		t.Config,
-		objectselector.SelectionWithLocal(t.Local),
-		objectselector.SelectionWithServer(t.Server),
+		objectselector.WithLocal(t.Local),
+		objectselector.WithServer(t.Server),
 	).Expand()
 	return paths
 }

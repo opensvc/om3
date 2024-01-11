@@ -35,9 +35,9 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 	if err != nil {
 		return data, err
 	}
-	paths, err := objectselector.NewSelection(
+	paths, err := objectselector.New(
 		selector,
-		objectselector.SelectionWithClient(c),
+		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {
 		return data, err

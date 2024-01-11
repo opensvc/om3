@@ -21,7 +21,7 @@ type (
 )
 
 func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
-	sel := objectselector.NewSelection(selector)
+	sel := objectselector.New(selector)
 	wc := clientcontext.IsSet()
 	paths, err := sel.Expand()
 	if err != nil {

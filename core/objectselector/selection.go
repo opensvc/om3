@@ -25,7 +25,7 @@ import (
 type (
 	// Selection is the selection structure
 	Selection struct {
-		SelectorExpression string
+		selectorExpression string
 		hasClient          bool
 		client             *client.T
 		local              bool
@@ -34,7 +34,7 @@ type (
 		expandPaths naming.Paths
 
 		// fromPaths is the list of path used by Expand() to expand paths from
-		// SelectorExpression
+		// selectorExpression
 		fromPaths naming.Paths
 
 		installedSet *orderedset.OrderedSet
@@ -56,10 +56,10 @@ var (
 	ErrExist               = errors.New("no such object")
 )
 
-// NewSelection allocates a new object selection
-func NewSelection(selector string, opts ...funcopt.O) *Selection {
+// New allocates a new object selection
+func New(selector string, opts ...funcopt.O) *Selection {
 	t := &Selection{
-		SelectorExpression: selector,
+		selectorExpression: selector,
 	}
 	_ = funcopt.Apply(t, opts...)
 	return t
@@ -76,8 +76,8 @@ func WithConfigFilterDisabled() funcopt.O {
 	})
 }
 
-// SelectionWithClient sets the client struct key
-func SelectionWithClient(client *client.T) funcopt.O {
+// WithClient sets the client struct key
+func WithClient(client *client.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.client = client
@@ -86,10 +86,10 @@ func SelectionWithClient(client *client.T) funcopt.O {
 	})
 }
 
-// SelectionWithLocal forces the selection to be expanded without asking the
+// WithLocal forces the selection to be expanded without asking the
 // daemon, which might result in an sub-selection of what the
 // daemon would expand the selector to.
-func SelectionWithLocal(v bool) funcopt.O {
+func WithLocal(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.local = v
@@ -97,8 +97,8 @@ func SelectionWithLocal(v bool) funcopt.O {
 	})
 }
 
-// SelectionWithServer sets the server struct key
-func SelectionWithServer(server string) funcopt.O {
+// WithServer sets the server struct key
+func WithServer(server string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.server = server
@@ -106,11 +106,11 @@ func SelectionWithServer(server string) funcopt.O {
 	})
 }
 
-// SelectionWithInstalled forces a list of naming.Path from where the filtering
+// WithInstalled forces a list of naming.Path from where the filtering
 // will be done by Expand.
 // The daemon knows the path of objects with no local instance, so better
 // to use that instead of crawling etc/ via naming.InstalledPaths()
-func SelectionWithInstalled(installed naming.Paths) funcopt.O {
+func WithInstalled(installed naming.Paths) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.fromPaths = installed
@@ -119,7 +119,7 @@ func SelectionWithInstalled(installed naming.Paths) funcopt.O {
 }
 
 func (t Selection) String() string {
-	return fmt.Sprintf("Selection{%s}", t.SelectorExpression)
+	return fmt.Sprintf("Selection{%s}", t.selectorExpression)
 }
 
 // Expand resolves a selector expression into a list of object paths.
@@ -155,7 +155,7 @@ func (t *Selection) checkFilters() error {
 	if !t.isConfigFilterDisabled {
 		return nil
 	}
-	for _, s := range strings.Split(t.SelectorExpression, ",") {
+	for _, s := range strings.Split(t.selectorExpression, ",") {
 		if len(s) == 0 {
 			continue
 		}
@@ -170,7 +170,7 @@ func (t *Selection) MustExpand() (naming.Paths, error) {
 	if paths, err := t.Expand(); err != nil {
 		return paths, err
 	} else if len(paths) == 0 {
-		return paths, fmt.Errorf("%s: %w", t.SelectorExpression, ErrExist)
+		return paths, fmt.Errorf("%s: %w", t.selectorExpression, ErrExist)
 	} else {
 		return paths, nil
 	}
@@ -221,7 +221,7 @@ func (t *Selection) expand() (err error) {
 }
 
 func (t *Selection) localExpand() error {
-	for _, s := range strings.Split(t.SelectorExpression, ",") {
+	for _, s := range strings.Split(t.selectorExpression, ",") {
 		if len(s) == 0 {
 			continue
 		}
@@ -395,7 +395,7 @@ func (t *Selection) daemonExpand() error {
 		t.hasClient = true
 	}
 	params := api.GetObjectPathsParams{
-		Path: t.SelectorExpression,
+		Path: t.selectorExpression,
 	}
 
 	if resp, err := t.client.GetObjectPaths(context.Background(), &params); err != nil {
