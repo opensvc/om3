@@ -76,7 +76,8 @@ func (t *CmdNodeGet) Run() error {
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          l,
+		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Items:         l,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

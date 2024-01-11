@@ -22,7 +22,7 @@ func (t CapabilityItem) Unstructured() map[string]any {
 	}
 }
 
-func (t CapabilityData) Unstructured() map[string]any {
+func (t Capability) Unstructured() map[string]any {
 	return map[string]any{
 		"name": t.Name,
 	}

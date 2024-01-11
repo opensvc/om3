@@ -35,7 +35,9 @@ func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) (api.Sche
 }
 
 func (t *CmdObjectPrintSchedule) extractLocal(selector string) (api.ScheduleList, error) {
-	var data api.ScheduleList
+	data := api.ScheduleList{
+		Kind: "ScheduleList",
+	}
 	sel := objectselector.NewSelection(
 		selector,
 		objectselector.SelectionWithLocal(true),
@@ -86,6 +88,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemons(selector string, c *client.T
 		errs error
 		data api.ScheduleList
 	)
+	data.Kind = "ScheduleList"
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -140,7 +143,8 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          data.Items,
+		Data:          data,
+		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil

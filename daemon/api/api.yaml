@@ -2483,9 +2483,9 @@ components:
         meta:
           $ref: '#/components/schemas/NodeMeta'
         data:
-          $ref: '#/components/schemas/CapabilityData'
+          $ref: '#/components/schemas/Capability'
 
-    CapabilityData:
+    Capability:
       type: object
       required:
         - name

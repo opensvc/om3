@@ -52,9 +52,11 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		return err
 	}
 	var data api.CapabilityList
-	for _, nodename := range nodenames {
+	for i, nodename := range nodenames {
 		if d, err := t.extract(c, nodename); err != nil {
 			errs = errors.Join(err)
+		} else if i == 0 {
+			data = d
 		} else {
 			data.Items = append(data.Items, d.Items...)
 		}
@@ -64,7 +66,8 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          data.Items,
+		Data:          data,
+		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs
@@ -97,7 +100,7 @@ func (t *CmdNodeCapabilitiesList) local() error {
 			Meta: api.NodeMeta{
 				Node: localhost,
 			},
-			Data: api.CapabilityData{
+			Data: api.Capability{
 				Name: e,
 			},
 		}
@@ -107,7 +110,8 @@ func (t *CmdNodeCapabilitiesList) local() error {
 		DefaultOutput: "tab=data.name",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          data.Items,
+		Data:          data,
+		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil

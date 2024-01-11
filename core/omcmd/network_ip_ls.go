@@ -37,7 +37,8 @@ func (t *CmdNetworkIpLs) Run() error {
 			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
+			Data:          resp.JSON200,
+			Items:         resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

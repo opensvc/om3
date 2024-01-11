@@ -201,14 +201,14 @@ type AuthToken struct {
 	Token     string    `json:"token"`
 }
 
-// CapabilityData defines model for CapabilityData.
-type CapabilityData struct {
+// Capability defines model for Capability.
+type Capability struct {
 	Name string `json:"name"`
 }
 
 // CapabilityItem defines model for CapabilityItem.
 type CapabilityItem struct {
-	Data CapabilityData     `json:"data"`
+	Data Capability         `json:"data"`
 	Kind CapabilityItemKind `json:"kind"`
 	Meta NodeMeta           `json:"meta"`
 }

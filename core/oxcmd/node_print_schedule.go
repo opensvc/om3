@@ -50,9 +50,11 @@ func (t *CmdNodePrintSchedule) Run() error {
 		return err
 	}
 	var data api.ScheduleList
-	for _, nodename := range nodenames {
+	for i, nodename := range nodenames {
 		if d, err := t.extract(c, nodename); err != nil {
 			errs = errors.Join(err)
+		} else if i == 0 {
+			data = d
 		} else {
 			data.Items = append(data.Items, d.Items...)
 		}
@@ -62,7 +64,8 @@ func (t *CmdNodePrintSchedule) Run() error {
 		DefaultOutput: "tab=NODE:meta.node,ACTION:data.action,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          data.Items,
+		Data:          data,
+		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs

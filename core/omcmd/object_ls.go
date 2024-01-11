@@ -41,7 +41,8 @@ func (t *CmdObjectLs) Run(selector, kind string) error {
 			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
+			Data:          resp.JSON200,
+			Items:         resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	case 400:

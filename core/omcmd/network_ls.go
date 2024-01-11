@@ -37,7 +37,8 @@ func (t *CmdNetworkLs) Run() error {
 			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
+			Data:          resp.JSON200,
+			Items:         resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

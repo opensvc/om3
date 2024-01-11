@@ -49,7 +49,7 @@ func (a *DaemonApi) getLocalCapabilities(ctx echo.Context) error {
 			Meta: api.NodeMeta{
 				Node: a.localhost,
 			},
-			Data: api.CapabilityData{
+			Data: api.Capability{
 				Name: e,
 			},
 		}
