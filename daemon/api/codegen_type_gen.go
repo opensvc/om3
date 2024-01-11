@@ -1118,6 +1118,11 @@ type PostNodeActionPushPkgParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
+// PostNodeActionScanCapabilitiesParams defines parameters for PostNodeActionScanCapabilities.
+type PostNodeActionScanCapabilitiesParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.
 type PostNodeActionSysreportParams struct {
 	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
