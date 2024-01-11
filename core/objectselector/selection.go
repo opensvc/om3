@@ -29,10 +29,20 @@ type (
 		hasClient          bool
 		client             *client.T
 		local              bool
-		paths              naming.Paths
-		installed          naming.Paths
-		installedSet       *orderedset.OrderedSet
-		server             string
+
+		// expandPaths is the cached result of Expand()
+		expandPaths naming.Paths
+
+		// fromPaths is the list of path used by Expand() to expand paths from
+		// SelectorExpression
+		fromPaths naming.Paths
+
+		installedSet *orderedset.OrderedSet
+
+		isConfigFilterDisabled bool
+		needCheckFilters       bool
+
+		server string
 	}
 )
 
@@ -53,6 +63,17 @@ func NewSelection(selector string, opts ...funcopt.O) *Selection {
 	}
 	_ = funcopt.Apply(t, opts...)
 	return t
+}
+
+// WithConfigFilterDisabled disable config filtering.
+func WithConfigFilterDisabled() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
+		t.isConfigFilterDisabled = true
+		// sets needCheckFilters to ensure Expand() calls CheckFilters().
+		t.needCheckFilters = true
+		return nil
+	})
 }
 
 // SelectionWithClient sets the client struct key
@@ -85,13 +106,14 @@ func SelectionWithServer(server string) funcopt.O {
 	})
 }
 
-// SelectionWithInstalled forces a list of installed naming.Path
+// SelectionWithInstalled forces a list of naming.Path from where the filtering
+// will be done by Expand.
 // The daemon knows the path of objects with no local instance, so better
 // to use that instead of crawling etc/ via naming.InstalledPaths()
 func SelectionWithInstalled(installed naming.Paths) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
-		t.installed = installed
+		t.fromPaths = installed
 		return nil
 	})
 }
@@ -107,11 +129,41 @@ func (t Selection) String() string {
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 func (t *Selection) Expand() (naming.Paths, error) {
-	if t.paths != nil {
-		return t.paths, nil
+	if t.expandPaths != nil {
+		return t.expandPaths, nil
+	}
+	if t.needCheckFilters {
+		if err := t.CheckFilters(); err != nil {
+			return t.expandPaths, err
+		}
 	}
 	err := t.expand()
-	return t.paths, err
+	return t.expandPaths, err
+}
+
+// CheckFilters checks the filters
+func (t *Selection) CheckFilters() error {
+	err := t.checkFilters()
+	if err == nil {
+		t.needCheckFilters = false
+	}
+	return err
+}
+
+// checkFilters checks the filters
+func (t *Selection) checkFilters() error {
+	if !t.isConfigFilterDisabled {
+		return nil
+	}
+	for _, s := range strings.Split(t.SelectorExpression, ",") {
+		if len(s) == 0 {
+			continue
+		}
+		if configExpressionRegex.MatchString(s) {
+			return fmt.Errorf("selection with config filter disabled can't use filter: '%s'", s)
+		}
+	}
+	return nil
 }
 
 func (t *Selection) MustExpand() (naming.Paths, error) {
@@ -124,7 +176,7 @@ func (t *Selection) MustExpand() (naming.Paths, error) {
 	}
 }
 
-// ExpandSet returns a set of the paths returned by Expand. Usually to
+// ExpandSet returns a set of the expandPaths returned by Expand. Usually to
 // benefit from the .Has() function.
 func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
 	s := orderedset.NewOrderedSet()
@@ -138,18 +190,25 @@ func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
 	return s, nil
 }
 
+// SetInstalled sets the paths from where the selection Expand is done.
+func (t *Selection) SetInstalled(installed naming.Paths) {
+	t.fromPaths = installed
+	// we reset internal result cache to ensure next Expand evaluation
+	t.expandPaths = nil
+}
+
 func (t *Selection) add(p naming.Path) {
 	pathStr := p.String()
-	for _, e := range t.paths {
+	for _, e := range t.expandPaths {
 		if pathStr == e.String() {
 			return
 		}
 	}
-	t.paths = append(t.paths, p)
+	t.expandPaths = append(t.expandPaths, p)
 }
 
 func (t *Selection) expand() (err error) {
-	t.paths = make(naming.Paths, 0)
+	t.expandPaths = make(naming.Paths, 0)
 	if t.local {
 		err = t.localExpand()
 	} else {
@@ -244,18 +303,18 @@ func (t *Selection) localExpandOnePositive(s string) (*orderedset.OrderedSet, er
 	}
 }
 
-// getInstalled returns the list of all paths with a locally installed
+// getInstalled returns the list of all expandPaths with a locally fromPaths
 // configuration file.
 func (t *Selection) getInstalled() (naming.Paths, error) {
-	if t.installed != nil {
-		return t.installed, nil
+	if t.fromPaths != nil {
+		return t.fromPaths, nil
 	}
 	var err error
-	t.installed, err = naming.InstalledPaths()
+	t.fromPaths, err = naming.InstalledPaths()
 	if err != nil {
-		return t.installed, err
+		return t.fromPaths, err
 	}
-	return t.installed, nil
+	return t.fromPaths, nil
 }
 
 func (t *Selection) getInstalledSet() (*orderedset.OrderedSet, error) {
@@ -345,7 +404,7 @@ func (t *Selection) daemonExpand() error {
 		return fmt.Errorf("unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer func() { _ = resp.Body.Close() }()
-		return json.NewDecoder(resp.Body).Decode(&t.paths)
+		return json.NewDecoder(resp.Body).Decode(&t.expandPaths)
 	}
 }
 
