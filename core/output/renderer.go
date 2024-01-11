@@ -28,7 +28,7 @@ type (
 		DefaultOutput string
 		Output        string
 		Color         string
-		Data          interface{}
+		Data          any
 		HumanRenderer RenderFunc
 		Colorize      *palette.ColorPaletteFunc
 		Stream        bool
@@ -36,6 +36,10 @@ type (
 
 	renderer interface {
 		Render() string
+	}
+
+	getItemser interface {
+		GetItems() any
 	}
 )
 
@@ -225,7 +229,13 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if hasHeader {
 		fmt.Fprintf(w, strings.Join(headers, "")+"\n")
 	}
-	unstructuredData, err := unstructured.NewListWithData(t.Data)
+	var data any
+	if i, ok := t.Data.(getItemser); ok {
+		data = i.GetItems()
+	} else {
+		data = t.Data
+	}
+	unstructuredData, err := unstructured.NewListWithData(data)
 	if err != nil {
 		return "", err
 	}

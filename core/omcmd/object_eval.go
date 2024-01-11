@@ -69,7 +69,7 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          l,
+		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil

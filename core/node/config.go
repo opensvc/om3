@@ -17,3 +17,13 @@ func (t *Config) DeepCopy() *Config {
 	return &data
 
 }
+
+func (t *Config) Unstructured() map[string]any {
+	return map[string]any{
+		"env":                      t.Env,
+		"maintenance_grace_period": t.MaintenanceGracePeriod,
+		"ready_period":             t.ReadyPeriod,
+		"rejoin_grace_period":      t.RejoinGracePeriod,
+		"split_action":             t.SplitAction,
+	}
+}

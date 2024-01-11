@@ -142,6 +142,7 @@ func (m *T) doOneShot(data cluster.Data, clear bool, evCount uint64, out io.Writ
 	s, err := output.Renderer{
 		Output:        m.format,
 		Color:         m.color,
+		Data:          data,
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Sprint()

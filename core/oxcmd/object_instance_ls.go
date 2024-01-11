@@ -39,7 +39,7 @@ func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
+			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

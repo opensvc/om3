@@ -345,6 +345,36 @@ paths:
       tags:
         - daemon
 
+  /node/name/{nodename}/capabilities:
+    get:
+      operationId: GetNodeCapabilities
+      description: |
+        Return the capabilities of the node.
+        Capability scanners are provided by the core agent and by every resource driver.
+        Capabalities are used to enable or disable features based on the current operating system state.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /node/name/{nodename}/schedule:
     get:
       operationId: GetNodeSchedule
@@ -757,6 +787,35 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       description: Refresh and send to the collector the package discovery.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/action/scan/capabilities:
+    post:
+      operationId: PostNodeActionScanCapabilities
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Refresh the node capabilities cache.
+        Capability scanners are provided by the core agent and by every resource driver.
+        Capabalities are used to enable or disable features based on the current operating system state.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inQueryRequesterSid'
@@ -2379,6 +2438,7 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/Status'
+
     AuthToken:
       type: object
       required:
@@ -2390,6 +2450,49 @@ components:
           format: date-time
         token:
           type: string
+
+    CapabilityList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - CapabilityList
+        items:
+          $ref: '#/components/schemas/CapabilityItems'
+
+    CapabilityItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/CapabilityItem'
+
+    CapabilityItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - CapabilityItem
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Capability'
+
+    Capability:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
     Cluster:
       type: object
       required:
@@ -2406,14 +2509,19 @@ components:
           $ref: '#/components/schemas/ClusterObject'
         status:
           $ref: '#/components/schemas/ClusterStatus'
+
     ClusterConfig:
       type: object
+
     ClusterNode:
       type: object
+
     ClusterObject:
       type: object
+
     ClusterStatus:
       type: object
+
     Daemon:
       type: object
       required:
@@ -2439,12 +2547,15 @@ components:
           type: integer
         scheduler:
           $ref: '#/components/schemas/DaemonScheduler'
+
     DaemonCollector:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
     DaemonDNS:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
     DaemonHb:
       type: object
       required:
@@ -2459,11 +2570,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DaemonHbMode'
+
     DaemonHbStream:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
         - $ref: '#/components/schemas/DaemonHbStreamType'
         - $ref: '#/components/schemas/DaemonHbStreamPeer'
+
     DaemonHbMode:
       type: object
       required:
@@ -2480,6 +2593,7 @@ components:
         type:
           type: string
           description: the heartbeat message type used by node
+
     DaemonHbStreamType:
       type: object
       required:
@@ -2488,6 +2602,7 @@ components:
         type:
           type: string
           description: hb stream type
+
     DaemonHbStreamPeer:
       type: object
       required:
@@ -2499,15 +2614,19 @@ components:
         last_at:
           type: string
           format: date-time
+
     DaemonListener:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
     DaemonMonitor:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
     DaemonScheduler:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
     DaemonSubsystemAlert:
       type: object
       required:
@@ -2518,6 +2637,7 @@ components:
           type: string
         severity:
           type: string
+
     DaemonSubsystemStatus:
       type: object
       required:
@@ -2541,6 +2661,7 @@ components:
           type: string
         state:
           type: string
+
     DNSRecord:
       type: object
       required:
@@ -2560,10 +2681,12 @@ components:
           type: integer
         data:
           type: string
+
     DNSZone:
       type: array
       items:
         $ref: '#/components/schemas/DNSRecord'
+
     DRBDAllocation:
       type: object
       required:
@@ -2593,6 +2716,7 @@ components:
           type: string
         node:
           type: string
+
     InstanceConfig:
       x-go-type: instance.Config
       x-go-type-import:
@@ -2677,6 +2801,7 @@ components:
         updated_at:
           type: string
           format: date-time
+
     InstanceMonitor:
       x-go-type: instance.Monitor
       x-go-type-import:
@@ -2745,6 +2870,7 @@ components:
           type: object
         children:
           type: object
+
     InstanceStatus:
       x-go-type: instance.Status
       x-go-type-import:
@@ -2894,6 +3020,7 @@ components:
           type: integer
         size:
           type: integer
+
     NetworkIpNetwork:
       type: object
       required:
@@ -2907,6 +3034,7 @@ components:
           type: string
         network:
           type: string
+
     NetworkList:
       type: object
       required:
@@ -2919,10 +3047,12 @@ components:
             - NetworkList
         items:
           $ref: '#/components/schemas/NetworkItems'
+
     NetworkItems:
       type: array
       items:
         $ref: '#/components/schemas/Network'
+
     NetworkIp:
       type: object
       required:
@@ -2942,6 +3072,7 @@ components:
           type: string
         network:
           $ref: '#/components/schemas/NetworkIpNetwork'
+
     NetworkIpList:
       type: object
       required:
@@ -2954,6 +3085,7 @@ components:
             - NetworkIpList
         items:
           $ref: '#/components/schemas/NetworkIpItems'
+
     NetworkIpItems:
       type: array
       items:
@@ -2975,6 +3107,7 @@ components:
             - NodeList
         items:
           $ref: '#/components/schemas/NodeItems'
+
     Node:
       type: object
       properties:
@@ -2984,6 +3117,7 @@ components:
           $ref: '#/components/schemas/NodeMonitor'
         status:
           $ref: '#/components/schemas/NodeStatus'
+
     NodeActionAccepted:
       type: object
       properties:
@@ -2992,10 +3126,12 @@ components:
           format: uuid
       required:
         - session_id
+
     NodeItems:
       type: array
       items:
         $ref: '#/components/schemas/NodeItem'
+
     NodeItem:
       type: object
       required:
@@ -3011,6 +3147,7 @@ components:
           $ref: '#/components/schemas/NodeMeta'
         data:
           $ref: '#/components/schemas/Node'
+
     NodeConfig:
       x-go-type: node.Config
       x-go-type-import:
@@ -3036,6 +3173,7 @@ components:
           format: duration
         split_action:
           type: string
+
     NodeMonitor:
       x-go-type: node.Monitor
       x-go-type-import:
@@ -3077,6 +3215,7 @@ components:
         updated_at:
           type: string
           format: date-time
+
     NodeStatus:
       x-go-type: node.Status
       x-go-type-import:
@@ -3118,6 +3257,7 @@ components:
           type: boolean
         labels:
           type: object
+
     NodeInfo:
       x-go-type: node.NodeInfo
       x-go-type-import:
@@ -3141,6 +3281,7 @@ components:
           description: paths is the list of node to storage array san paths.
           items:
             $ref: '#/components/schemas/SANPath'
+
     NodeLabel:
       type: object
       required:
@@ -3153,6 +3294,7 @@ components:
         value:
           type: string
           description: value is the label value.
+
     NodeMeta:
       type: object
       required:
@@ -3160,6 +3302,7 @@ components:
       properties:
         node:
           type: string
+
     NodesInfo:
       x-go-type: node.NodesInfo
       x-go-type-import:
@@ -3184,10 +3327,12 @@ components:
             - ObjectList
         items:
           $ref: '#/components/schemas/ObjectItems'
+
     ObjectItems:
       type: array
       items:
         $ref: '#/components/schemas/ObjectItem'
+
     ObjectItem:
       type: object
       required:
@@ -3203,6 +3348,7 @@ components:
           $ref: '#/components/schemas/ObjectMeta'
         data:
           $ref: '#/components/schemas/ObjectData'
+
     ObjectConfig:
       type: object
       required:
@@ -3214,6 +3360,7 @@ components:
         mtime:
           type: string
           format: date-time
+
     ObjectConfigFile:
       type: object
       required:
@@ -3226,6 +3373,7 @@ components:
         mtime:
           type: string
           format: date-time
+
     ObjectMeta:
       type: object
       required:
@@ -3233,10 +3381,12 @@ components:
       properties:
         object:
           type: string
+
     ObjectPaths:
       type: array
       items:
         type: string
+
     ObjectData:
       type: object
       required:
@@ -3296,6 +3446,7 @@ components:
           type: integer
         updated_at:
           type: string
+
     Orchestrate:
       type: string
       enum:
@@ -3303,6 +3454,7 @@ components:
         - no
         - start
       default: no
+
     InstanceActionAccepted:
       type: object
       properties:
@@ -3311,6 +3463,7 @@ components:
           format: uuid
       required:
         - session_id
+
     OrchestrationQueued:
       type: object
       properties:
@@ -3319,11 +3472,13 @@ components:
           format: uuid
       required:
         - orchestration_id
+
     PathRelation:
       type: array
       items:
         type: string
         description: object path or an instance path (path@node)
+
     PlacementPolicy:
       type: string
       default: none
@@ -3336,6 +3491,7 @@ components:
         - score
         - spread
         - shift
+
     PlacementState:
       type: string
       description: object placement state
@@ -3344,6 +3500,7 @@ components:
         - non-optimal
         - n/a
         - undef
+
     PostDaemonLogsControl:
       type: object
       required:
@@ -3360,6 +3517,7 @@ components:
             - panic
             - none
           default: info
+
     PostDaemonSubAction:
       type: object
       required:
@@ -3378,6 +3536,7 @@ components:
           items:
             type: string
             example: hb#1.rx
+
     PostNodeDRBDConfigRequest:
       type: object
       required:
@@ -3390,6 +3549,7 @@ components:
         data:
           type: string
           format: byte
+
     PostInstanceProgress:
       type: object
       required:
@@ -3420,6 +3580,7 @@ components:
             - InstanceList
         items:
           $ref: '#/components/schemas/InstanceItems'
+
     Instance:
       type: object
       properties:
@@ -3429,10 +3590,12 @@ components:
           $ref: '#/components/schemas/InstanceMonitor'
         status:
           $ref: '#/components/schemas/InstanceStatus'
+
     InstanceItems:
       type: array
       items:
         $ref: '#/components/schemas/InstanceItem'
+
     InstanceItem:
       type: object
       required:
@@ -3448,6 +3611,7 @@ components:
           $ref: '#/components/schemas/InstanceMeta'
         data:
           $ref: '#/components/schemas/Instance'
+
     InstanceMap:
       type: object
       additionalProperties:
@@ -3483,10 +3647,12 @@ components:
             - PoolList
         items:
           $ref: '#/components/schemas/PoolItems'
+
     PoolItems:
       type: array
       items:
         $ref: '#/components/schemas/Pool'
+
     Pool:
       type: object
       required:
@@ -3541,10 +3707,12 @@ components:
             - PoolVolumeList
         items:
           $ref: '#/components/schemas/PoolVolumeItems'
+
     PoolVolumeItems:
       type: array
       items:
         $ref: '#/components/schemas/PoolVolume'
+
     PoolVolume:
       type: object
       required:
@@ -3567,6 +3735,7 @@ components:
         size:
           type: integer
           format: int64
+
     PostObjectActionSwitch:
       type: object
       required:
@@ -3577,6 +3746,7 @@ components:
           minItems: 1
           items:
             type: string
+
     PostRelayMessage:
       type: object
       required:
@@ -3593,6 +3763,7 @@ components:
           type: string
         msg:
           type: string
+
     Problem:
       type: object
       properties:
@@ -3617,6 +3788,7 @@ components:
         - detail
         - status
         - title
+
     Provisioned:
       type: string
       description: service, instance or resource provisioned state
@@ -3625,6 +3797,7 @@ components:
         - mixed
         - n/a
         - true
+
     RelayMessage:
       type: object
       required:
@@ -3648,10 +3821,12 @@ components:
         updated_at:
           type: string
           format: date-time
+
     RelayMessageList:
       type: array
       items:
         $ref: '#/components/schemas/RelayMessage'
+
     RelayMessages:
       type: object
       required:
@@ -3676,6 +3851,7 @@ components:
             - ResourceList
         items:
           $ref: '#/components/schemas/ResourceItems'
+
     Resource:
       type: object
       properties:
@@ -3685,10 +3861,12 @@ components:
           $ref: '#/components/schemas/ResourceMonitor'
         status:
           $ref: '#/components/schemas/ResourceStatus'
+
     ResourceItems:
       type: array
       items:
         $ref: '#/components/schemas/ResourceItem'
+
     ResourceItem:
       type: object
       required:
@@ -3704,6 +3882,7 @@ components:
           $ref: '#/components/schemas/ResourceMeta'
         data:
           $ref: '#/components/schemas/Resource'
+
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
@@ -3727,12 +3906,15 @@ components:
         restart_delay:
           type: string
           format: duration
+
     ResourceId:
       type: string
+
     ResourceLog:
       type: array
       items:
         $ref: '#/components/schemas/ResourceLogEntry'
+
     ResourceLogEntry:
       type: object
       required:
@@ -3743,6 +3925,7 @@ components:
           type: string
         message:
           type: string
+
     ResourceProvisionStatus:
       type: object
       required:
@@ -3754,6 +3937,7 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/Provisioned'
+
     ResourceMeta:
       type: object
       required:
@@ -3767,6 +3951,7 @@ components:
           type: string
         rid:
           type: string
+
     ResourceMonitor:
       x-go-type: instance.ResourceMonitor
       x-go-type-import:
@@ -3777,6 +3962,7 @@ components:
       properties:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
+
     ResourceMonitorRestart:
       type: object
       required:
@@ -3788,6 +3974,7 @@ components:
         last_at:
           type: string
           format: date-time
+
     ResourceStatus:
       x-go-type: resource.Status
       x-go-type-import:
@@ -3855,6 +4042,7 @@ components:
             type: string
         type:
           type: string
+
     DaemonStatus:
       type: object
       required:
@@ -3865,14 +4053,17 @@ components:
           $ref: '#/components/schemas/Cluster'
         daemon:
           $ref: '#/components/schemas/Daemon'
+
     LogList:
       description: responseLogList is a list of sse
       type: string
       format: binary
+
     EventList:
       description: responseEventList is a list of sse
       type: string
       format: binary
+
     DRBDConfig:
       type: object
       required:
@@ -3881,6 +4072,7 @@ components:
         data:
           type: string
           format: byte
+
     Role:
       type: string
       enum:
@@ -3892,6 +4084,7 @@ components:
         - leave
         - root
         - squatter
+
     SANPath:
       type: object
       required:
@@ -3902,6 +4095,7 @@ components:
           $ref: '#/components/schemas/SANPathInitiator'
         target:
           $ref: '#/components/schemas/SANPathTarget'
+
     SANPathInitiator:
       type: object
       description: initiator is the host side san path endpoint.
@@ -3914,6 +4108,7 @@ components:
           type: string
           description: type is the endpoint type.
           example: iscsi
+
     SANPathTarget:
       type: object
       description: target is the storage array side san path endpoint.
@@ -3926,6 +4121,7 @@ components:
           type: string
           description: type is a the endpoint type.
           example: iscsi
+
     ScheduleList:
       type: object
       required:
@@ -3938,6 +4134,7 @@ components:
             - ScheduleList
         items:
           $ref: '#/components/schemas/ScheduleItems'
+
     Schedule:
       type: object
       required:
@@ -3971,10 +4168,12 @@ components:
           type: boolean
         require_provisioned:
           type: boolean
+
     ScheduleItems:
       type: array
       items:
         $ref: '#/components/schemas/ScheduleItem'
+
     ScheduleItem:
       type: object
       required:
@@ -3990,6 +4189,7 @@ components:
           $ref: '#/components/schemas/InstanceMeta'
         data:
           $ref: '#/components/schemas/Schedule'
+
     ScheduleTable:
       type: array
 
@@ -4003,10 +4203,12 @@ components:
         - undef
         - stdby up
         - stdby down
+
     SubsetsConfig:
       type: array
       items:
         $ref: '#/components/schemas/SubsetConfig'
+
     SubsetConfig:
       x-go-type: instance.SubsetConfig
       x-go-type-import:
@@ -4017,6 +4219,7 @@ components:
       properties:
         parallel:
           type: boolean
+
     Topology:
       type: string
       description: "object topology"

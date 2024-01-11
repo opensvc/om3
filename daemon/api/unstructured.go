@@ -1,17 +1,25 @@
 package api
 
-func (t Instance) Unstructured() map[string]any {
-	m := map[string]any{}
-	if t.Config != nil {
-		m["config"] = t.Config.Unstructured()
+func (t CapabilityList) GetItems() any {
+	return t.Items
+}
+
+func (t CapabilityItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
 	}
-	if t.Monitor != nil {
-		m["monitor"] = t.Monitor.Unstructured()
+}
+
+func (t Capability) Unstructured() map[string]any {
+	return map[string]any{
+		"name": t.Name,
 	}
-	if t.Status != nil {
-		m["status"] = t.Status.Unstructured()
-	}
-	return m
+}
+
+func (t ScheduleList) GetItems() any {
+	return t.Items
 }
 
 func (t ScheduleItem) Unstructured() map[string]any {
@@ -34,7 +42,50 @@ func (t Schedule) Unstructured() map[string]any {
 		"require_collector":   t.RequireCollector,
 		"require_Provisioned": t.RequireProvisioned,
 	}
+}
 
+func (t NodeList) GetItems() any {
+	return t.Items
+}
+
+func (t NodeItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t NodeMeta) Unstructured() map[string]any {
+	return map[string]any{
+		"node": t.Node,
+	}
+}
+
+func (t Node) Unstructured() map[string]any {
+	return map[string]any{
+		"config":  t.Config.Unstructured(),
+		"monitor": t.Monitor.Unstructured(),
+		"status":  t.Status.Unstructured(),
+	}
+}
+
+func (t InstanceList) GetItems() any {
+	return t.Items
+}
+
+func (t Instance) Unstructured() map[string]any {
+	m := map[string]any{}
+	if t.Config != nil {
+		m["config"] = t.Config.Unstructured()
+	}
+	if t.Monitor != nil {
+		m["monitor"] = t.Monitor.Unstructured()
+	}
+	if t.Status != nil {
+		m["status"] = t.Status.Unstructured()
+	}
+	return m
 }
 
 func (t InstanceMap) Unstructured() map[string]any {
@@ -60,6 +111,10 @@ func (t InstanceItem) Unstructured() map[string]any {
 	}
 }
 
+func (t KeywordList) GetItems() any {
+	return t.Items
+}
+
 func (t KeywordItem) Unstructured() map[string]any {
 	return map[string]any{
 		"kind": t.Kind,
@@ -82,6 +137,10 @@ func (t KeywordMeta) Unstructured() map[string]any {
 		"is_evaluated": t.IsEvaluated,
 		"evaluated_as": t.EvaluatedAs,
 	}
+}
+
+func (t ObjectList) GetItems() any {
+	return t.Items
 }
 
 func (t ObjectItem) Unstructured() map[string]any {
@@ -126,6 +185,10 @@ func (t ObjectData) Unstructured() map[string]any {
 	return m
 }
 
+func (t ResourceList) GetItems() any {
+	return t.Items
+}
+
 func (t Resource) Unstructured() map[string]any {
 	return map[string]any{
 		"config":  t.Config.Unstructured(),
@@ -150,6 +213,10 @@ func (t ResourceItem) Unstructured() map[string]any {
 	}
 }
 
+func (t NetworkIpList) GetItems() any {
+	return t.Items
+}
+
 func (t NetworkIp) Unstructured() map[string]any {
 	return map[string]any{
 		"ip":      t.Ip,
@@ -158,6 +225,10 @@ func (t NetworkIp) Unstructured() map[string]any {
 		"path":    t.Path,
 		"rid":     t.Rid,
 	}
+}
+
+func (t NetworkList) GetItems() any {
+	return t.Items
 }
 
 func (t Network) Unstructured() map[string]any {
@@ -172,6 +243,10 @@ func (t Network) Unstructured() map[string]any {
 	}
 }
 
+func (t PoolList) GetItems() any {
+	return t.Items
+}
+
 func (t Pool) Unstructured() map[string]any {
 	return map[string]any{
 		"type":         t.Type,
@@ -184,6 +259,10 @@ func (t Pool) Unstructured() map[string]any {
 		"used":         t.Used,
 		"size":         t.Size,
 	}
+}
+
+func (t PoolVolumeList) GetItems() any {
+	return t.Items
 }
 
 func (t PoolVolume) Unstructured() map[string]any {
