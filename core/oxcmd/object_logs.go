@@ -85,7 +85,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	if err != nil {
 		return err
 	}
-	if paths, err = objectselector.NewSelection(selStr, objectselector.SelectionWithClient(c)).Expand(); err != nil {
+	if paths, err = objectselector.New(selStr, objectselector.WithClient(c)).Expand(); err != nil {
 		return err
 	}
 	if t.NodeSelector != "" {

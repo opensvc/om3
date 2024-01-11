@@ -321,9 +321,9 @@ func (t T) DoLocal() error {
 		Str("format", t.Output).
 		Str("selector", t.ObjectSelector).
 		Msgf("do local object selection action")
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		t.ObjectSelector,
-		objectselector.SelectionWithLocal(true),
+		objectselector.WithLocal(true),
 	)
 	paths, err := sel.MustExpand()
 	if err != nil {
@@ -394,9 +394,9 @@ func (t T) DoAsync() error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		t.ObjectSelector,
-		objectselector.SelectionWithClient(c),
+		objectselector.WithClient(c),
 	)
 	paths, err := sel.MustExpand()
 	if err != nil {

@@ -12,7 +12,6 @@ import (
 	"github.com/goombaio/orderedset"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -26,14 +25,24 @@ import (
 type (
 	// Selection is the selection structure
 	Selection struct {
-		SelectorExpression string
+		selectorExpression string
 		hasClient          bool
 		client             *client.T
 		local              bool
-		paths              naming.Paths
-		installed          naming.Paths
-		installedSet       *orderedset.OrderedSet
-		server             string
+
+		// expandPaths is the cached result of Expand()
+		expandPaths naming.Paths
+
+		// fromPaths is the list of path used by Expand() to expand paths from
+		// selectorExpression
+		fromPaths naming.Paths
+
+		installedSet *orderedset.OrderedSet
+
+		isConfigFilterDisabled bool
+		needCheckFilters       bool
+
+		server string
 	}
 )
 
@@ -47,17 +56,28 @@ var (
 	ErrExist               = errors.New("no such object")
 )
 
-// NewSelection allocates a new object selection
-func NewSelection(selector string, opts ...funcopt.O) *Selection {
+// New allocates a new object selection
+func New(selector string, opts ...funcopt.O) *Selection {
 	t := &Selection{
-		SelectorExpression: selector,
+		selectorExpression: selector,
 	}
 	_ = funcopt.Apply(t, opts...)
 	return t
 }
 
-// SelectionWithClient sets the client struct key
-func SelectionWithClient(client *client.T) funcopt.O {
+// WithConfigFilterDisabled disable config filtering.
+func WithConfigFilterDisabled() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
+		t.isConfigFilterDisabled = true
+		// sets needCheckFilters to ensure Expand() calls CheckFilters().
+		t.needCheckFilters = true
+		return nil
+	})
+}
+
+// WithClient sets the client struct key
+func WithClient(client *client.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.client = client
@@ -66,10 +86,10 @@ func SelectionWithClient(client *client.T) funcopt.O {
 	})
 }
 
-// SelectionWithLocal forces the selection to be expanded without asking the
+// WithLocal forces the selection to be expanded without asking the
 // daemon, which might result in an sub-selection of what the
 // daemon would expand the selector to.
-func SelectionWithLocal(v bool) funcopt.O {
+func WithLocal(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.local = v
@@ -77,8 +97,8 @@ func SelectionWithLocal(v bool) funcopt.O {
 	})
 }
 
-// SelectionWithServer sets the server struct key
-func SelectionWithServer(server string) funcopt.O {
+// WithServer sets the server struct key
+func WithServer(server string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.server = server
@@ -86,19 +106,20 @@ func SelectionWithServer(server string) funcopt.O {
 	})
 }
 
-// SelectionWithInstalled forces a list of installed naming.Path
+// WithInstalled forces a list of naming.Path from where the filtering
+// will be done by Expand.
 // The daemon knows the path of objects with no local instance, so better
 // to use that instead of crawling etc/ via naming.InstalledPaths()
-func SelectionWithInstalled(installed naming.Paths) funcopt.O {
+func WithInstalled(installed naming.Paths) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
-		t.installed = installed
+		t.fromPaths = installed
 		return nil
 	})
 }
 
 func (t Selection) String() string {
-	return fmt.Sprintf("Selection{%s}", t.SelectorExpression)
+	return fmt.Sprintf("Selection{%s}", t.selectorExpression)
 }
 
 // Expand resolves a selector expression into a list of object paths.
@@ -108,24 +129,54 @@ func (t Selection) String() string {
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 func (t *Selection) Expand() (naming.Paths, error) {
-	if t.paths != nil {
-		return t.paths, nil
+	if t.expandPaths != nil {
+		return t.expandPaths, nil
+	}
+	if t.needCheckFilters {
+		if err := t.CheckFilters(); err != nil {
+			return t.expandPaths, err
+		}
 	}
 	err := t.expand()
-	return t.paths, err
+	return t.expandPaths, err
+}
+
+// CheckFilters checks the filters
+func (t *Selection) CheckFilters() error {
+	err := t.checkFilters()
+	if err == nil {
+		t.needCheckFilters = false
+	}
+	return err
+}
+
+// checkFilters checks the filters
+func (t *Selection) checkFilters() error {
+	if !t.isConfigFilterDisabled {
+		return nil
+	}
+	for _, s := range strings.Split(t.selectorExpression, ",") {
+		if len(s) == 0 {
+			continue
+		}
+		if configExpressionRegex.MatchString(s) {
+			return fmt.Errorf("selection with config filter disabled can't use filter: '%s'", s)
+		}
+	}
+	return nil
 }
 
 func (t *Selection) MustExpand() (naming.Paths, error) {
 	if paths, err := t.Expand(); err != nil {
 		return paths, err
 	} else if len(paths) == 0 {
-		return paths, fmt.Errorf("%s: %w", t.SelectorExpression, ErrExist)
+		return paths, fmt.Errorf("%s: %w", t.selectorExpression, ErrExist)
 	} else {
 		return paths, nil
 	}
 }
 
-// ExpandSet returns a set of the paths returned by Expand. Usually to
+// ExpandSet returns a set of the expandPaths returned by Expand. Usually to
 // benefit from the .Has() function.
 func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
 	s := orderedset.NewOrderedSet()
@@ -139,39 +190,38 @@ func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
 	return s, nil
 }
 
+// SetInstalled sets the paths from where the selection Expand is done.
+func (t *Selection) SetInstalled(installed naming.Paths) {
+	t.fromPaths = installed
+	// we reset internal result cache to ensure next Expand evaluation
+	t.expandPaths = nil
+}
+
 func (t *Selection) add(p naming.Path) {
 	pathStr := p.String()
-	for _, e := range t.paths {
+	for _, e := range t.expandPaths {
 		if pathStr == e.String() {
 			return
 		}
 	}
-	t.paths = append(t.paths, p)
+	t.expandPaths = append(t.expandPaths, p)
 }
 
-func (t *Selection) expand() error {
-	t.paths = make(naming.Paths, 0)
-	if !t.local {
-		if !t.hasClient {
-			c, _ := client.New(
-				client.WithURL(t.server),
-				client.WithUsername(hostname.Hostname()),
-				client.WithPassword(rawconfig.ClusterSection().Secret),
-			)
-			t.client = c
-			t.hasClient = true
-		}
-		if err := t.daemonExpand(); err == nil {
-			return nil
-		} else if clientcontext.IsSet() {
-			return fmt.Errorf("daemon expansion fatal error: %w", err)
-		}
+func (t *Selection) expand() (err error) {
+	t.expandPaths = make(naming.Paths, 0)
+	if t.local {
+		err = t.localExpand()
+	} else {
+		err = t.daemonExpand()
 	}
-	return t.localExpand()
+	if err != nil {
+		err = fmt.Errorf("selection can't expand with local %v: %w", t.local, err)
+	}
+	return
 }
 
 func (t *Selection) localExpand() error {
-	for _, s := range strings.Split(t.SelectorExpression, ",") {
+	for _, s := range strings.Split(t.selectorExpression, ",") {
 		if len(s) == 0 {
 			continue
 		}
@@ -253,18 +303,18 @@ func (t *Selection) localExpandOnePositive(s string) (*orderedset.OrderedSet, er
 	}
 }
 
-// getInstalled returns the list of all paths with a locally installed
+// getInstalled returns the list of all expandPaths with a locally fromPaths
 // configuration file.
 func (t *Selection) getInstalled() (naming.Paths, error) {
-	if t.installed != nil {
-		return t.installed, nil
+	if t.fromPaths != nil {
+		return t.fromPaths, nil
 	}
 	var err error
-	t.installed, err = naming.InstalledPaths()
+	t.fromPaths, err = naming.InstalledPaths()
 	if err != nil {
-		return t.installed, err
+		return t.fromPaths, err
 	}
-	return t.installed, nil
+	return t.fromPaths, nil
 }
 
 func (t *Selection) getInstalledSet() (*orderedset.OrderedSet, error) {
@@ -332,16 +382,29 @@ func (t *Selection) daemonExpand() error {
 	if env.HasDaemonOrigin() {
 		return fmt.Errorf("action origin is daemon")
 	}
-	params := api.GetObjectPathsParams{
-		Path: t.SelectorExpression,
+	if !t.hasClient {
+		c, err := client.New(
+			client.WithURL(t.server),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			return fmt.Errorf("create client: %w", err)
+		}
+		t.client = c
+		t.hasClient = true
 	}
+	params := api.GetObjectPathsParams{
+		Path: t.selectorExpression,
+	}
+
 	if resp, err := t.client.GetObjectPaths(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer func() { _ = resp.Body.Close() }()
-		return json.NewDecoder(resp.Body).Decode(&t.paths)
+		return json.NewDecoder(resp.Body).Decode(&t.expandPaths)
 	}
 }
 

@@ -130,8 +130,13 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		handlerName = "GetDaemonEvents"
 		limit       uint64
 		eventCount  uint64
-		pathMap     naming.M
 		err         error
+
+		// for selector
+		selector     *objectselector.Selection
+		pathSelected naming.M
+		pathM        naming.M
+		pathL        naming.Paths
 
 		evCtx  = ctx.Request().Context()
 		cancel context.CancelFunc
@@ -140,24 +145,14 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	log.Debugf("starting")
 	defer log.Debugf("done")
 
-	getPathMap := func() (naming.M, error) {
-		if params.Selector == nil {
-			return nil, nil
-		}
-		paths, err := objectselector.NewSelection(
-			*params.Selector,
-			objectselector.SelectionWithInstalled(object.StatusData.GetPaths()),
-			objectselector.SelectionWithLocal(true),
-		).Expand()
-		if err != nil {
+	getSelectedMap := func() (naming.M, error) {
+		if selected, err := selector.Expand(); err != nil {
 			return nil, err
+		} else {
+			return selected.StrMap(), nil
 		}
-		return paths.StrMap(), nil
 	}
 
-	if pathMap, err = getPathMap(); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Object selector", "%s", err)
-	}
 	if params.Limit != nil {
 		limit = uint64(*params.Limit)
 	}
@@ -191,17 +186,6 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	a.announceSub(name)
 	defer a.announceUnsub(name)
 
-	// objectSelectionSub is a subscription dedicated to object create/delete events.
-	objectSelectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
-	objectSelectionSub.AddFilter(&msgbus.ObjectCreated{})
-	objectSelectionSub.AddFilter(&msgbus.ObjectDeleted{})
-	objectSelectionSub.Start()
-	defer func() {
-		if err := objectSelectionSub.Stop(); err != nil {
-			log.Debugf("objectSelectionSub.Stop: %s", err)
-		}
-	}()
-
 	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
@@ -215,14 +199,37 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
 	}
-
+	if params.Selector != nil && len(filters) != 0 {
+		sub.AddFilter(&msgbus.ObjectCreated{})
+		sub.AddFilter(&msgbus.ObjectDeleted{}, pubsub.Label{"node", a.localhost})
+	}
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
 			log.Debugf("sub.Stop: %s", err)
 		}
 	}()
-
+	if params.Selector != nil {
+		pathL = object.StatusData.GetPaths()
+		pathM = pathL.StrMap()
+		selector = objectselector.New(
+			*params.Selector,
+			objectselector.WithInstalled(pathL),
+			objectselector.WithLocal(true),
+			objectselector.WithConfigFilterDisabled(),
+		)
+		if err := selector.CheckFilters(); err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest,
+				"Invalid filters", "%s", err)
+		}
+		if selected, err := getSelectedMap(); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError,
+				"get object paths", "from selector %s: %s", params.Selector,
+				err)
+		} else {
+			pathSelected = selected
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 
 	// don't wait first event to flush response
@@ -234,23 +241,42 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		select {
 		case <-evCtx.Done():
 			return nil
-		case i := <-objectSelectionSub.C:
-			if pathMap != nil {
+		case i := <-sub.C:
+			if params.Selector != nil {
 				switch ev := i.(type) {
 				case *msgbus.ObjectCreated:
-					log.Infof("add created object %s to selection", ev.Path)
-					pathMap[ev.Path.String()] = nil
+					s := ev.Path.String()
+					if !pathM.Has(s) {
+						pathL = pathL.Merge([]naming.Path{ev.Path})
+						pathM[s] = nil
+						selector.SetInstalled(pathL)
+						if selected, err := getSelectedMap(); err != nil {
+							log.Errorf("can't filter on object created")
+							return err
+						} else if selected.Has(s) {
+							log.Infof("add created object %s to selection", s)
+							pathSelected[s] = nil
+						}
+					}
+					continue
 				case *msgbus.ObjectDeleted:
-					log.Infof("remove deleted object %s from selection", ev.Path)
-					delete(pathMap, ev.Path.String())
+					if params.Selector != nil {
+						if ev.GetLabels()["node"] != a.localhost {
+							continue
+						}
+						s := ev.Path.String()
+						if pathSelected.Has(s) {
+							log.Infof("remove deleted object %s from selection", s)
+							delete(pathSelected, s)
+						}
+						delete(pathM, s)
+					}
+					continue
 				}
-			}
-		case i := <-sub.C:
-			if pathMap != nil {
 				// discard events with path label not matching the selector.
 				msg := i.(pubsub.Messager)
 				labels := msg.GetLabels()
-				if s, ok := labels["path"]; ok && !pathMap.Has(s) {
+				if s, ok := labels["path"]; ok && !pathSelected.Has(s) {
 					continue
 				}
 			}

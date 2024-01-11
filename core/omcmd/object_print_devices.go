@@ -39,9 +39,9 @@ func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) (objectdev
 
 func (t *CmdObjectPrintDevices) extractLocal(selector string) (objectdevice.L, error) {
 	data := objectdevice.NewList()
-	sel := objectselector.NewSelection(
+	sel := objectselector.New(
 		selector,
-		objectselector.SelectionWithLocal(true),
+		objectselector.WithLocal(true),
 	)
 	paths, err := sel.Expand()
 	if err != nil {
