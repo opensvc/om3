@@ -48,9 +48,25 @@ func (t NodeList) GetItems() any {
 	return t.Items
 }
 
+func (t NodeItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
 func (t NodeMeta) Unstructured() map[string]any {
 	return map[string]any{
 		"node": t.Node,
+	}
+}
+
+func (t Node) Unstructured() map[string]any {
+	return map[string]any{
+		"config":  t.Config.Unstructured(),
+		"monitor": t.Monitor.Unstructured(),
+		"status":  t.Status.Unstructured(),
 	}
 }
 

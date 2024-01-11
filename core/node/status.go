@@ -122,3 +122,20 @@ func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
 	}
 	return l
 }
+
+func (t *Status) Unstructured() map[string]any {
+	return map[string]any{
+		"agent":          t.Agent,
+		"api":            t.API,
+		"arbitrators":    t.Arbitrators,
+		"compat":         t.Compat,
+		"frozen_at":      t.FrozenAt,
+		"gen":            t.Gen,
+		"min_avail_mem":  t.MinAvailMemPct,
+		"min_avail_swap": t.MinAvailSwapPct,
+		"is_speaker":     t.IsSpeaker,
+		"labels":         t.Labels,
+		"lsnr":           t.Lsnr,
+		"pid":            t.Pid,
+	}
+}

@@ -1,10 +1,12 @@
 package oxcmd
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -28,22 +30,25 @@ func (t *CmdNodeLs) Run() error {
 	} else {
 		selector = t.NodeSelector
 	}
-	nodes, err := nodeselector.New(selector, nodeselector.WithClient(c)).Expand()
+	resp, err := c.GetNodesWithResponse(context.Background(), &api.GetNodesParams{Node: &selector})
 	if err != nil {
 		return err
 	}
+	switch resp.StatusCode() {
+	case 200:
+	case 401:
+		return fmt.Errorf("%s", *resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", *resp.JSON403)
+	default:
+		return fmt.Errorf("unexpected statuscode: %s", resp.Status())
+	}
+
 	output.Renderer{
-		Output: t.Output,
-		Color:  t.Color,
-		Data:   nodes,
-		HumanRenderer: func() string {
-			s := ""
-			for _, e := range nodes {
-				s += e + "\n"
-			}
-			return s
-		},
-		Colorize: rawconfig.Colorize,
+		DefaultOutput: "tab=NAME:meta.node,AGENT:data.status.agent,STATE:data.monitor.state",
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          *resp.JSON200,
 	}.Print()
 	return nil
 }

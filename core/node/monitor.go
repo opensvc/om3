@@ -249,3 +249,18 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 		return nil
 	}
 }
+
+func (t *Monitor) Unstructured() map[string]any {
+	return map[string]any{
+		"global_expect":            t.GlobalExpect,
+		"local_expect":             t.LocalExpect,
+		"state":                    t.State,
+		"global_expect_updated_at": t.GlobalExpectUpdatedAt,
+		"local_expect_updated_at":  t.LocalExpectUpdatedAt,
+		"state_updated_at":         t.StateUpdatedAt,
+		"updated_at":               t.UpdatedAt,
+		"orchestration_id":         t.OrchestrationId,
+		"orchestration_is_done":    t.OrchestrationIsDone,
+		"session_id":               t.SessionId,
+	}
+}
