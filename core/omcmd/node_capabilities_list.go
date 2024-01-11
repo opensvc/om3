@@ -67,7 +67,6 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
-		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs
@@ -111,7 +110,6 @@ func (t *CmdNodeCapabilitiesList) local() error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
-		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil

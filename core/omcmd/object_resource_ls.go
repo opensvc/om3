@@ -45,7 +45,6 @@ func (t *CmdObjectResourceLs) Run(selector, kind string) error {
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,
-			Items:         resp.JSON200.Items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

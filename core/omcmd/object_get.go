@@ -77,7 +77,6 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
-		Items:         l,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

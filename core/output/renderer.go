@@ -29,7 +29,6 @@ type (
 		Output        string
 		Color         string
 		Data          any
-		Items         any
 		HumanRenderer RenderFunc
 		Colorize      *palette.ColorPaletteFunc
 		Stream        bool
@@ -37,6 +36,10 @@ type (
 
 	renderer interface {
 		Render() string
+	}
+
+	getItemser interface {
+		GetItems() any
 	}
 )
 
@@ -227,8 +230,8 @@ func (t Renderer) renderTab(options string) (string, error) {
 		fmt.Fprintf(w, strings.Join(headers, "")+"\n")
 	}
 	var data any
-	if t.Items != nil {
-		data = t.Items
+	if i, ok := t.Data.(getItemser); ok {
+		data = i.GetItems()
 	} else {
 		data = t.Data
 	}

@@ -77,7 +77,6 @@ func (t *CmdNodeEval) Run() error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
-		Items:         l,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

@@ -65,7 +65,6 @@ func (t *CmdNodePrintSchedule) Run() error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
-		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs

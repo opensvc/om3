@@ -73,7 +73,6 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          data,
-		Items:         data.Items,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs
