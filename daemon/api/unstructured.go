@@ -14,6 +14,20 @@ func (t Instance) Unstructured() map[string]any {
 	return m
 }
 
+func (t CapabilityItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t CapabilityData) Unstructured() map[string]any {
+	return map[string]any{
+		"name": t.Name,
+	}
+}
+
 func (t ScheduleItem) Unstructured() map[string]any {
 	return map[string]any{
 		"kind": t.Kind,
@@ -43,6 +57,12 @@ func (t InstanceMap) Unstructured() map[string]any {
 		m[k] = v.Unstructured()
 	}
 	return m
+}
+
+func (t NodeMeta) Unstructured() map[string]any {
+	return map[string]any{
+		"node": t.Node,
+	}
 }
 
 func (t InstanceMeta) Unstructured() map[string]any {

@@ -18,6 +18,16 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for CapabilityItemKind.
+const (
+	CapabilityItemKindCapabilityItem CapabilityItemKind = "CapabilityItem"
+)
+
+// Defines values for CapabilityListKind.
+const (
+	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
+)
+
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -190,6 +200,33 @@ type AuthToken struct {
 	ExpiredAt time.Time `json:"expired_at"`
 	Token     string    `json:"token"`
 }
+
+// CapabilityData defines model for CapabilityData.
+type CapabilityData struct {
+	Name string `json:"name"`
+}
+
+// CapabilityItem defines model for CapabilityItem.
+type CapabilityItem struct {
+	Data CapabilityData     `json:"data"`
+	Kind CapabilityItemKind `json:"kind"`
+	Meta NodeMeta           `json:"meta"`
+}
+
+// CapabilityItemKind defines model for CapabilityItem.Kind.
+type CapabilityItemKind string
+
+// CapabilityItems defines model for CapabilityItems.
+type CapabilityItems = []CapabilityItem
+
+// CapabilityList defines model for CapabilityList.
+type CapabilityList struct {
+	Items CapabilityItems    `json:"items"`
+	Kind  CapabilityListKind `json:"kind"`
+}
+
+// CapabilityListKind defines model for CapabilityList.Kind.
+type CapabilityListKind string
 
 // Cluster defines model for Cluster.
 type Cluster struct {
