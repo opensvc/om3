@@ -23,7 +23,7 @@ import (
 
 type (
 	T struct {
-		SelectorExpression string
+		selectorExpression string
 		nodes              []string
 		knownNodes         []string
 		knownNodesSet      *orderedset.OrderedSet
@@ -47,7 +47,7 @@ func (m ResultMap) Has(s string) bool {
 // New allocates a new node selector
 func New(selector string, opts ...funcopt.O) *T {
 	t := &T{
-		SelectorExpression: selector,
+		selectorExpression: selector,
 		log:                log.Logger,
 	}
 	_ = funcopt.Apply(t, opts...)
@@ -83,7 +83,7 @@ func WithClient(v *client.T) funcopt.O {
 }
 
 func (t T) String() string {
-	return fmt.Sprintf("NodeSelector{%s}", t.SelectorExpression)
+	return fmt.Sprintf("NodeSelector{%s}", t.selectorExpression)
 }
 
 // Expand resolves a selector expression into a list of object paths
@@ -130,7 +130,7 @@ func (t *T) add(node string) {
 }
 
 func (t *T) expand() error {
-	selector := t.SelectorExpression
+	selector := t.selectorExpression
 	for _, s := range strings.Fields(selector) {
 		pset, err := t.expandOne(s)
 		if err != nil {
