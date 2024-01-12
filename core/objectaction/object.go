@@ -736,6 +736,10 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
+	if t.RemoteFunc == nil {
+		return fmt.Errorf("no remote function defined")
+	}
+
 	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
