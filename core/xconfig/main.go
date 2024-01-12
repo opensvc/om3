@@ -23,7 +23,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xstrings"
 )
@@ -47,7 +46,6 @@ type (
 	Referrer interface {
 		KeywordLookup(key.T, string) keywords.Keyword
 		IsVolatile() bool
-		Log() *plog.Logger
 		Config() *T
 
 		// for reference private to the referrer. ex: path for an object
@@ -475,7 +473,6 @@ func (t *T) DriverGroupSet(op keyop.T) error {
 }
 
 func (t *T) set(op keyop.T) error {
-	t.Referrer.Log().Attr("op", op.String()).Debugf("set %s", op)
 	setSet := func(op keyop.T) error {
 		current := t.file.Section(op.Key.Section).Key(op.Key.Option).Value()
 		if current == op.Value {
@@ -988,8 +985,6 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 }
 
 func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
-	t.Referrer.Log().Debugf("dereference node key %s", ref)
-
 	//
 	// Extract the key string relative to the node configuration
 	// Examples:
@@ -1017,7 +1012,6 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 		// allow
 	default:
 		// deny
-		t.Referrer.Log().Debugf("denied reference to node key %s", ref)
 		return ref, fmt.Errorf("denied reference to node key %s", ref)
 	}
 
@@ -1029,7 +1023,6 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 }
 
 func (t T) dereferenceKey(ref string, section string, impersonate string) (string, error) {
-	t.Referrer.Log().Debugf("dereference well known key %s from section %s context", ref, section)
 	refKey := key.Parse(ref)
 	if refKey.Section == "" {
 		refKey.Section = section
