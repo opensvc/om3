@@ -112,9 +112,9 @@ func (t T) Label() string {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"dev", t.Device},
-		{"mnt", t.mountPoint()},
-		{"mnt_opt", t.MountOptions},
+		{Key: "dev", Value: t.Device},
+		{Key: "mnt", Value: t.mountPoint()},
+		{Key: "mnt_opt", Value: t.MountOptions},
 	}
 	return m, nil
 }

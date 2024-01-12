@@ -69,7 +69,7 @@ func (t *actor) Schedules() schedule.Table {
 		if i, ok := r.(scheduleOptioner); ok {
 			opts := i.ScheduleOptions()
 			rid := r.RID()
-			e := t.newScheduleEntry(opts.Action, key.T{rid, opts.Option}.String(), rid, opts.Base, opts.RequireCollector, opts.RequireProvisioned)
+			e := t.newScheduleEntry(opts.Action, key.T{Section: rid, Option: opts.Option}.String(), rid, opts.Base, opts.RequireCollector, opts.RequireProvisioned)
 			table = table.Add(e)
 		}
 	}

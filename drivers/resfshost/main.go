@@ -144,9 +144,9 @@ func (t *T) Provisioned() (provisioned.T, error) {
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"dev", t.devpath()},
-		{"mnt", t.mountPoint()},
-		{"mnt_opt", t.MountOptions},
+		{Key: "dev", Value: t.devpath()},
+		{Key: "mnt", Value: t.mountPoint()},
+		{Key: "mnt_opt", Value: t.MountOptions},
 	}
 	return m, nil
 }

@@ -171,7 +171,7 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"name", t.Name},
+		{Key: "name", Value: t.Name},
 	}
 	return m, nil
 }

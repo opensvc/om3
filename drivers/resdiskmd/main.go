@@ -79,7 +79,7 @@ func (t T) Name() string {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"uuid", t.UUID},
+		{Key: "uuid", Value: t.UUID},
 	}
 	return m, nil
 }

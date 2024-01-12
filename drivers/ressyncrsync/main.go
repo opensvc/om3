@@ -471,19 +471,19 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	target := sort.StringSlice(t.Target)
 	sort.Sort(target)
 	m := resource.InfoKeys{
-		{"src", t.Src},
-		{"dst", t.Dst},
-		{"bwlimit", t.BandwidthLimit},
-		{"snap", fmt.Sprintf("%v", t.Snap)},
-		{"target", strings.Join(target, " ")},
-		{"options", strings.Join(t.Options, " ")},
-		{"reset_options", fmt.Sprintf("%v", t.ResetOptions)},
+		{Key: "src", Value: t.Src},
+		{Key: "dst", Value: t.Dst},
+		{Key: "bwlimit", Value: t.BandwidthLimit},
+		{Key: "snap", Value: fmt.Sprintf("%v", t.Snap)},
+		{Key: "target", Value: strings.Join(target, " ")},
+		{Key: "options", Value: strings.Join(t.Options, " ")},
+		{Key: "reset_options", Value: fmt.Sprintf("%v", t.ResetOptions)},
 	}
 	if t.Timeout != nil {
-		m = append(m, resource.InfoKey{"timeout", fmt.Sprintf("%s", t.Timeout)})
+		m = append(m, resource.InfoKey{Key: "timeout", Value: fmt.Sprintf("%s", t.Timeout)})
 	}
 	if t.DstFS != "" {
-		m = append(m, resource.InfoKey{"dstfs", fmt.Sprintf("%v", t.DstFS)})
+		m = append(m, resource.InfoKey{Key: "dstfs", Value: fmt.Sprintf("%v", t.DstFS)})
 	}
 	return m, nil
 }

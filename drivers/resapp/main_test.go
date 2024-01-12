@@ -39,16 +39,16 @@ func TestT_Info(t *testing.T) {
 		info, err := app.Info(ctx)
 		assert.Nil(t, err)
 		expected := []resource.InfoKey{
-			{"script", "scriptPath"},
-			{"start", "startCmd"},
-			{"stop", "stopCmd"},
-			{"check", "checkCmd"},
-			{"info", "echo foo:Foo && echo notAnInfo && echo fooBar:FOOBAR"},
-			{"timeout", "1h0m0s"},
-			{"start_timeout", "3.003s"},
-			{"stop_timeout", "6s"},
-			{"check_timeout", "2.003s"},
-			{"info_timeout", "2.001s"},
+			{Key: "script", Value: "scriptPath"},
+			{Key: "start", Value: "startCmd"},
+			{Key: "stop", Value: "stopCmd"},
+			{Key: "check", Value: "checkCmd"},
+			{Key: "info", Value: "echo foo:Foo && echo notAnInfo && echo fooBar:FOOBAR"},
+			{Key: "timeout", Value: "1h0m0s"},
+			{Key: "start_timeout", Value: "3.003s"},
+			{Key: "stop_timeout", Value: "6s"},
+			{Key: "check_timeout", Value: "2.003s"},
+			{Key: "info_timeout", Value: "2.001s"},
 		}
 		for _, entry := range expected {
 			t.Run(entry.Key+" "+entry.String(), func(t *testing.T) {
@@ -56,8 +56,8 @@ func TestT_Info(t *testing.T) {
 			})
 		}
 		t.Run("has info from info output", func(t *testing.T) {
-			assert.Contains(t, info, resource.InfoKey{"foo", "Foo"})
-			assert.Contains(t, info, resource.InfoKey{"fooBar", "FOOBAR"})
+			assert.Contains(t, info, resource.InfoKey{Key: "foo", Value: "Foo"})
+			assert.Contains(t, info, resource.InfoKey{Key: "fooBar", Value: "FOOBAR"})
 		})
 	})
 
@@ -68,16 +68,16 @@ func TestT_Info(t *testing.T) {
 		info, err := app.Info(ctx)
 		assert.Nil(t, err)
 		expected := []resource.InfoKey{
-			{"script", ""},
-			{"start", ""},
-			{"stop", ""},
-			{"check", ""},
-			{"info", ""},
-			{"timeout", ""},
-			{"start_timeout", ""},
-			{"stop_timeout", ""},
-			{"check_timeout", ""},
-			{"info_timeout", ""},
+			{Key: "script", Value: ""},
+			{Key: "start", Value: ""},
+			{Key: "stop", Value: ""},
+			{Key: "check", Value: ""},
+			{Key: "info", Value: ""},
+			{Key: "timeout", Value: ""},
+			{Key: "start_timeout", Value: ""},
+			{Key: "stop_timeout", Value: ""},
+			{Key: "check_timeout", Value: ""},
+			{Key: "info_timeout", Value: ""},
 		}
 		for _, entry := range expected {
 			t.Run("default value empty "+entry.Key, func(t *testing.T) {

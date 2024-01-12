@@ -66,8 +66,8 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"name", t.LVName},
-		{"vg", t.VGName},
+		{Key: "name", Value: t.LVName},
+		{Key: "vg", Value: t.VGName},
 	}
 	return m, nil
 }

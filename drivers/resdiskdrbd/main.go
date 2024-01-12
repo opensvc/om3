@@ -115,7 +115,7 @@ func (t T) Name() string {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"res", t.Res},
+		{Key: "res", Value: t.Res},
 	}
 	return m, nil
 }
@@ -450,13 +450,13 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 			return ConfRes{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
 		}
 		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
-		if s, err := obj.Config().EvalAs(key.T{t.RID(), "disk"}, nodename); err != nil {
+		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "disk"}, nodename); err != nil {
 			return res, err
 		} else {
 			disk = s.(string)
 		}
 
-		if s, err := obj.Config().EvalAs(key.T{t.RID(), "addr"}, nodename); err != nil || addr == "" {
+		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); err != nil || addr == "" {
 			if ip, err := t.getNodeIP(nodename); err != nil {
 				return res, err
 			} else {
@@ -466,7 +466,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 			addr = s.(string)
 		}
 
-		if i, err := obj.Config().EvalAs(key.T{t.RID(), "port"}, nodename); err != nil {
+		if i, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "port"}, nodename); err != nil {
 			// EvalAs will error because the port kw has no default
 			port = allocation.Port
 		} else {

@@ -46,7 +46,7 @@ func runArray(args []string) error {
 	if !o.Config().HasSectionString(arrayName) {
 		return fmt.Errorf("no section found matching %s in the cluster config", arrayName)
 	}
-	arrayType, err := o.Config().GetStringStrict(key.T{arrayName, "type"})
+	arrayType, err := o.Config().GetStringStrict(key.T{Section: arrayName, Option: "type"})
 	if err != nil {
 		return err
 	}

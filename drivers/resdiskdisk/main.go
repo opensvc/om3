@@ -218,7 +218,7 @@ func (t *T) unsetDiskIDKeywords(ctx context.Context) error {
 			// not ok
 			continue
 		}
-		k := key.T{section, option}
+		k := key.T{Section: section, Option: option}
 		keys = append(keys, k)
 		save = append(save, keyop.T{
 			Key:   k,
@@ -265,7 +265,7 @@ func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
 	}
 
 	// Set our local node DiskID resource property, for use by Path.configure()
-	t.DiskID = obj.Config().GetString(key.T{t.RID(), "disk_id"})
+	t.DiskID = obj.Config().GetString(key.T{Section: t.RID(), Option: "disk_id"})
 
 	return nil
 }

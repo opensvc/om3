@@ -70,11 +70,11 @@ func genPassphrase() []byte {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"name", t.getName()},
-		{"dev", t.getDev()},
-		{"secret", t.Secret},
-		{"label", t.FormatLabel},
-		{"manage_passphrase", fmt.Sprint(t.ManagePassphrase)},
+		{Key: "name", Value: t.getName()},
+		{Key: "dev", Value: t.getDev()},
+		{Key: "secret", Value: t.Secret},
+		{Key: "label", Value: t.FormatLabel},
+		{Key: "manage_passphrase", Value: fmt.Sprint(t.ManagePassphrase)},
 	}
 	return m, nil
 }
