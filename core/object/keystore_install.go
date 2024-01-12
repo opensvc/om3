@@ -94,7 +94,7 @@ func (t keystore) _install(k string, dst string) error {
 		return err
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key=%s not found", t, k)
+		return fmt.Errorf("%s key=%s not found", t.path, k)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, nil, nil, "", ""); err != nil {
@@ -136,9 +136,9 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 		return false, err
 	}
 	if v, err := file.ExistsAndDir(dst); err != nil {
-		t.Log().Errorf("install %s key=%s directory at location %s: %s", t, vk.Key, dst, err)
+		t.Log().Errorf("install %s key=%s directory at location %s: %s", t.path, vk.Key, dst, err)
 	} else if v {
-		t.Log().Infof("remove %s key=%s directory at location %s", t, vk.Key, dst)
+		t.Log().Infof("remove %s key=%s directory at location %s", t.path, vk.Key, dst)
 		if err := os.RemoveAll(dst); err != nil {
 			return false, err
 		}
@@ -147,7 +147,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	info, err := os.Stat(vdir)
 	switch {
 	case os.IsNotExist(err):
-		t.Log().Infof("create directory %s to host %s key=%s", vdir, t, vk.Key)
+		t.Log().Infof("create directory %s to host %s key=%s", vdir, t.path, vk.Key)
 		if err := os.MkdirAll(vdir, *dirmode); err != nil {
 			return false, err
 		}
@@ -155,7 +155,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	case err != nil:
 		return false, err
 	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
-		t.Log().Infof("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
+		t.Log().Infof("remove %s key=%s file at parent location %s", t.path, vk.Key, vdir)
 		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
