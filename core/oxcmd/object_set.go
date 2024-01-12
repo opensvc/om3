@@ -37,7 +37,7 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 		}
 		switch response.StatusCode() {
 		case 200:
-			return nil
+			fmt.Printf("%s: commited\n", p)
 		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)
 		case 401:
