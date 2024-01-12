@@ -1270,6 +1270,17 @@ type PostInstanceActionStartParams struct {
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionStartStandbyParams defines parameters for PostInstanceActionStartStandby.
+type PostInstanceActionStartStandbyParams struct {
+	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
+	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // PostInstanceActionStopParams defines parameters for PostInstanceActionStop.
 type PostInstanceActionStopParams struct {
 	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
