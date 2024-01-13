@@ -118,7 +118,7 @@ func WithInstalled(installed naming.Paths) funcopt.O {
 	})
 }
 
-func (t Selection) String() string {
+func (t *Selection) String() string {
 	return fmt.Sprintf("Selection{%s}", t.selectorExpression)
 }
 
