@@ -32,7 +32,7 @@ type (
 		data    Data
 		modules Modules
 	}
-	ModuleActions []ModuleAction
+	ModuleActions []*ModuleAction
 	ModuleAction  struct {
 		Action   Action
 		Module   string
@@ -275,8 +275,8 @@ func (t Run) rsetIsExplicitViaModuleset(rset Ruleset) bool {
 	return rset.Filter == "explicit attachment via moduleset"
 }
 
-func (t *Run) autoModuleExec(mod *Module, action Action) (ModuleAction, error) {
-	ma := ModuleAction{
+func (t *Run) autoModuleExec(mod *Module, action Action) (*ModuleAction, error) {
+	ma := &ModuleAction{
 		Action:  action,
 		Module:  mod.Name(),
 		BeginAt: time.Now(),
@@ -291,7 +291,7 @@ func (t *Run) autoModuleExec(mod *Module, action Action) (ModuleAction, error) {
 	vars := rset.Vars
 	sort.Sort(vars)
 	for i, v := range vars {
-		ret := t.autoModuleVarExec(mod, action, v, env, &ma)
+		ret := t.autoModuleVarExec(mod, action, v, env, ma)
 		switch ret {
 		case ExitCodeOk:
 		case ExitCodeNA:
@@ -351,11 +351,11 @@ func (t *Run) objectExec(action Action, v Var, env []string, ma *ModuleAction) i
 	return cmd.ExitCode()
 }
 
-func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
+func (t *Run) moduleExec(mod *Module, action Action) (*ModuleAction, error) {
 	if mod.path == "" {
 		return t.autoModuleExec(mod, action)
 	}
-	ma := ModuleAction{
+	ma := &ModuleAction{
 		Action:  action,
 		Module:  mod.Name(),
 		BeginAt: time.Now(),
@@ -425,7 +425,7 @@ func (t Run) Push() error {
 
 func (t *Run) moduleAction(mod *Module, action Action) error {
 	var (
-		ma  ModuleAction
+		ma  *ModuleAction
 		err error
 	)
 	if t.Force {
