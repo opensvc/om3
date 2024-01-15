@@ -67,7 +67,7 @@ func (t *pendingDRBDAllocationsMap) expire() {
 }
 
 func (t *pendingDRBDAllocationsMap) add(a api.DRBDAllocation) {
-	t.m[a.Id] = a
+	t.m[a.ID] = a
 }
 
 func init() {
@@ -109,7 +109,7 @@ func (a *DaemonApi) getLocalNodeDRBDAllocation(ctx echo.Context) error {
 	pendingDRBDAllocations.expire()
 
 	resp := api.DRBDAllocation{
-		Id:        uuid.New(),
+		ID:        uuid.New(),
 		ExpiredAt: time.Now().Add(5 * time.Second),
 	}
 

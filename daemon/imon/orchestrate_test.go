@@ -650,7 +650,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 				Node: hostname.Hostname(),
 				Value: instance.MonitorUpdate{
 					GlobalExpect:             &g,
-					CandidateOrchestrationId: uuid.New(),
+					CandidateOrchestrationID: uuid.New(),
 				},
 				Err: make(chan error),
 			}

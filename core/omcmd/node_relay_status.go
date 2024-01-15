@@ -110,9 +110,9 @@ func (t relayMessages) Less(i, j int) bool {
 		return true
 	case t[i].ClusterName > t[j].ClusterName:
 		return false
-	case t[i].ClusterId < t[j].ClusterId:
+	case t[i].ClusterID < t[j].ClusterID:
 		return true
-	case t[i].ClusterId > t[j].ClusterId:
+	case t[i].ClusterID > t[j].ClusterID:
 		return false
 	case t[i].Nodename < t[j].Nodename:
 		return true
@@ -128,7 +128,7 @@ func (t relayMessages) Swap(i, j int) {
 func (t relayMessages) Render() string {
 	tree := tree.New()
 	tree.AddColumn().AddText("Relay").SetColor(rawconfig.Color.Bold)
-	tree.AddColumn().AddText("ClusterId").SetColor(rawconfig.Color.Bold)
+	tree.AddColumn().AddText("ClusterID").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("ClusterName").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("NodeName").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("NodeAddr").SetColor(rawconfig.Color.Bold)
@@ -138,7 +138,7 @@ func (t relayMessages) Render() string {
 	for _, e := range t {
 		n := tree.AddNode()
 		n.AddColumn().AddText(e.Relay).SetColor(rawconfig.Color.Primary)
-		n.AddColumn().AddText(e.ClusterId)
+		n.AddColumn().AddText(e.ClusterID)
 		n.AddColumn().AddText(e.ClusterName).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Nodename).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Addr)

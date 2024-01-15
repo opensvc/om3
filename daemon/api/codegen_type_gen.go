@@ -263,7 +263,7 @@ type DNSZone = []DNSRecord
 // DRBDAllocation defines model for DRBDAllocation.
 type DRBDAllocation struct {
 	ExpiredAt time.Time          `json:"expired_at"`
-	Id        openapi_types.UUID `json:"id"`
+	ID        openapi_types.UUID `json:"id"`
 	Minor     int                `json:"minor"`
 	Port      int                `json:"port"`
 }
@@ -313,7 +313,7 @@ type DaemonHbStream struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
 	Configured time.Time              `json:"configured"`
 	CreatedAt  time.Time              `json:"created_at"`
-	Id         string                 `json:"id"`
+	ID         string                 `json:"id"`
 	IsBeating  bool                   `json:"is_beating"`
 	LastAt     time.Time              `json:"last_at"`
 	State      string                 `json:"state"`
@@ -360,7 +360,7 @@ type DaemonSubsystemStatus struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
 	Configured time.Time              `json:"configured"`
 	CreatedAt  time.Time              `json:"created_at"`
-	Id         string                 `json:"id"`
+	ID         string                 `json:"id"`
 	State      string                 `json:"state"`
 }
 
@@ -376,7 +376,7 @@ type Instance struct {
 
 // InstanceActionAccepted defines model for InstanceActionAccepted.
 type InstanceActionAccepted struct {
-	SessionId openapi_types.UUID `json:"session_id"`
+	SessionID openapi_types.UUID `json:"session_id"`
 }
 
 // InstanceConfig defines model for InstanceConfig.
@@ -478,7 +478,7 @@ type NetworkIP struct {
 	Network NetworkIPNetwork `json:"network"`
 	Node    string           `json:"node"`
 	Path    string           `json:"path"`
-	Rid     string           `json:"rid"`
+	RID     string           `json:"rid"`
 }
 
 // NetworkIPItems defines model for NetworkIPItems.
@@ -521,7 +521,7 @@ type Node struct {
 
 // NodeActionAccepted defines model for NodeActionAccepted.
 type NodeActionAccepted struct {
-	SessionId openapi_types.UUID `json:"session_id"`
+	SessionID openapi_types.UUID `json:"session_id"`
 }
 
 // NodeConfig defines model for NodeConfig.
@@ -652,7 +652,7 @@ type Orchestrate string
 
 // OrchestrationQueued defines model for OrchestrationQueued.
 type OrchestrationQueued struct {
-	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
+	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
 // PlacementPolicy object placement policy
@@ -729,13 +729,13 @@ type PostDaemonSubActionAction string
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
-	SessionId openapi_types.UUID `json:"session_id"`
+	SessionID openapi_types.UUID `json:"session_id"`
 	State     string             `json:"state"`
 }
 
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
-	AllocationId openapi_types.UUID `json:"allocation_id"`
+	AllocationID openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
 
@@ -746,7 +746,7 @@ type PostObjectActionSwitch struct {
 
 // PostRelayMessage defines model for PostRelayMessage.
 type PostRelayMessage struct {
-	ClusterId   string `json:"cluster_id"`
+	ClusterID   string `json:"cluster_id"`
 	ClusterName string `json:"cluster_name"`
 	Msg         string `json:"msg"`
 	Nodename    string `json:"nodename"`
@@ -775,7 +775,7 @@ type Provisioned string
 // RelayMessage defines model for RelayMessage.
 type RelayMessage struct {
 	Addr        string    `json:"addr"`
-	ClusterId   string    `json:"cluster_id"`
+	ClusterID   string    `json:"cluster_id"`
 	ClusterName string    `json:"cluster_name"`
 	Msg         string    `json:"msg"`
 	Nodename    string    `json:"nodename"`
@@ -835,7 +835,7 @@ type ResourceLogEntry struct {
 type ResourceMeta struct {
 	Node   string `json:"node"`
 	Object string `json:"object"`
-	Rid    string `json:"rid"`
+	RID    string `json:"rid"`
 }
 
 // ResourceMonitor defines model for ResourceMonitor.

@@ -397,10 +397,10 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		}
 		switch o.state.SessionId {
 		case uuid.Nil:
-		case c.SessionId:
+		case c.SessionID:
 			// pass
 		default:
-			o.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.state.State, o.state.SessionId, c.State, c.SessionId)
+			o.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.state.State, o.state.SessionId, c.State, c.SessionID)
 		}
 		o.log.Infof("set instance monitor state %s -> %s", o.state.State, c.State)
 		o.change = true
@@ -408,7 +408,7 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		if c.State == instance.MonitorStateIdle {
 			o.state.SessionId = uuid.Nil
 		} else {
-			o.state.SessionId = c.SessionId
+			o.state.SessionId = c.SessionID
 		}
 	}
 
@@ -598,11 +598,11 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	}
 
 	if o.change {
-		if o.state.OrchestrationId.String() != c.Value.CandidateOrchestrationId.String() {
-			o.log = o.newLogger(c.Value.CandidateOrchestrationId)
+		if o.state.OrchestrationId.String() != c.Value.CandidateOrchestrationID.String() {
+			o.log = o.newLogger(c.Value.CandidateOrchestrationID)
 		}
-		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
-		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationId
+		o.state.OrchestrationId = c.Value.CandidateOrchestrationID
+		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationID
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
@@ -610,7 +610,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:   o.localhost,
 			Path:   o.path,
-			Id:     c.Value.CandidateOrchestrationId.String(),
+			Id:     c.Value.CandidateOrchestrationID.String(),
 			Reason: fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
 		},
 			o.labelPath,

@@ -241,7 +241,7 @@ func (t *T) orchestrate(g instance.MonitorGlobalExpect) (err error) {
 	msg := msgbus.SetInstanceMonitor{
 		Path:  vipPath,
 		Node:  t.localhost,
-		Value: instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationId: uuid.New()},
+		Value: instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()},
 		Err:   make(chan error),
 	}
 	t.bus.Pub(&msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)

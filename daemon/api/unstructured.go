@@ -201,7 +201,7 @@ func (t ResourceMeta) Unstructured() map[string]any {
 	return map[string]any{
 		"node":   t.Node,
 		"object": t.Object,
-		"rid":    t.Rid,
+		"rid":    t.RID,
 	}
 }
 
@@ -223,7 +223,7 @@ func (t NetworkIP) Unstructured() map[string]any {
 		"network": t.Network,
 		"node":    t.Node,
 		"path":    t.Path,
-		"rid":     t.Rid,
+		"rid":     t.RID,
 	}
 }
 

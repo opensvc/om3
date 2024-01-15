@@ -40,14 +40,14 @@ func (a *DaemonApi) localNodeActionPushPatch(ctx echo.Context, params api.PostNo
 		return err
 	}
 	log := LogHandler(ctx, "PostNodeActionPushPatch")
-	var requesterSid uuid.UUID
+	var requesterSID uuid.UUID
 	args := []string{"node", "push", "patch", "--local"}
 	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+		requesterSID = *params.RequesterSid
 	}
-	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionId: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
 	}
 }

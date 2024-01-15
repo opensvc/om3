@@ -34,7 +34,7 @@ func (a *DaemonApi) PostClusterAction(ctx echo.Context, globalExpect node.Monito
 	}
 	value = node.MonitorUpdate{
 		GlobalExpect:             &globalExpect,
-		CandidateOrchestrationId: uuid.New(),
+		CandidateOrchestrationID: uuid.New(),
 	}
 	msg := msgbus.SetNodeMonitor{
 		Node:  a.localhost,
@@ -56,7 +56,7 @@ func (a *DaemonApi) PostClusterAction(ctx echo.Context, globalExpect node.Monito
 				return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", errs)
 			} else {
 				return ctx.JSON(http.StatusOK, api.OrchestrationQueued{
-					OrchestrationId: value.CandidateOrchestrationId,
+					OrchestrationID: value.CandidateOrchestrationID,
 				})
 			}
 		case <-ctx.Request().Context().Done():

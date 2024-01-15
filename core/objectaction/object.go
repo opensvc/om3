@@ -405,7 +405,7 @@ func (t T) DoAsync() error {
 	type (
 		result struct {
 			Path            string    `json:"path"`
-			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty"`
+			OrchestrationID uuid.UUID `json:"orchestration_id,omitempty"`
 			Error           error     `json:"error,omitempty"`
 		}
 		results []result
@@ -687,7 +687,7 @@ func (t T) DoAsync() error {
 			var orchestrationQueued api.OrchestrationQueued
 			if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
 				r = result{
-					OrchestrationId: orchestrationQueued.OrchestrationId,
+					OrchestrationID: orchestrationQueued.OrchestrationID,
 					Path:            p.String(),
 				}
 			} else {
@@ -703,9 +703,9 @@ func (t T) DoAsync() error {
 		s := ""
 		for _, r := range rs {
 			if r.Error != nil {
-				s += fmt.Sprintf("%s %s %s\n", r.OrchestrationId, r.Path, rawconfig.Colorize.Error(r.Error))
+				s += fmt.Sprintf("%s %s %s\n", r.OrchestrationID, r.Path, rawconfig.Colorize.Error(r.Error))
 			} else {
-				s += fmt.Sprintf("%s %s\n", r.OrchestrationId, r.Path)
+				s += fmt.Sprintf("%s %s\n", r.OrchestrationID, r.Path)
 			}
 		}
 		return s

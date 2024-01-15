@@ -115,7 +115,7 @@ func (t *tx) send(b []byte) {
 	clusterConfig := cluster.ConfigData.Get()
 	params := api.PostRelayMessage{
 		Nodename:    hostname.Hostname(),
-		ClusterId:   clusterConfig.ID,
+		ClusterID:   clusterConfig.ID,
 		ClusterName: clusterConfig.Name,
 		Msg:         string(b),
 	}

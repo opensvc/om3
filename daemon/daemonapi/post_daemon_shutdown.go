@@ -127,7 +127,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			waitingState := instance.MonitorData.Get(p, a.localhost).State
 			if !waitingState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
 				log.Infof("revert %s state %s to idle", p, waitingState)
-				value := instance.MonitorUpdate{CandidateOrchestrationId: orchestrationID, State: &idleState}
+				value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, State: &idleState}
 				if err := setInstanceMonitor(p, value); err != nil {
 					log.Warnf("can't revert %s state %s to idle: %s", p, waitingState, err)
 				}
@@ -142,7 +142,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 			value := instance.MonitorUpdate{
-				CandidateOrchestrationId: orchestrationID,
+				CandidateOrchestrationID: orchestrationID,
 				LocalExpect:              &monitorLocalExpectShutdown,
 			}
 			if err := setInstanceMonitor(p, value); err != nil {

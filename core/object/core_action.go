@@ -164,7 +164,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	p := t.Path()
 	resp, err := c.PostInstanceProgress(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
 		State:     progress,
-		SessionId: xsession.ID,
+		SessionID: xsession.ID,
 		IsPartial: &isPartial,
 	})
 	switch {

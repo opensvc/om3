@@ -632,7 +632,7 @@ func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error
 			continue
 		}
 		if a, ok := allocations[nodename]; ok {
-			allocationID = a.Id
+			allocationID = a.ID
 		} else {
 			return fmt.Errorf("allocation id for node %s not found", nodename)
 		}
@@ -652,7 +652,7 @@ func (t T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) e
 		Name: t.Res,
 	}
 	body := api.PostNodeDRBDConfigRequest{
-		AllocationId: allocationID,
+		AllocationID: allocationID,
 		Data:         b,
 	}
 	resp, err := c.PostNodeDRBDConfigWithResponse(context.Background(), nodename, &params, body)

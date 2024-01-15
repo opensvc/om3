@@ -48,6 +48,6 @@ func (a *DaemonApi) localNodeActionPushAsset(ctx echo.Context, params api.PostNo
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionId: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
 	}
 }

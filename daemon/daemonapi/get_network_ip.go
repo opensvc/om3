@@ -57,7 +57,7 @@ func (a *DaemonApi) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams
 			l = append(l, api.NetworkIP{
 				Path: ip.Path.String(),
 				Node: ip.Node,
-				Rid:  ip.RID,
+				RID:  ip.RID,
 				IP:   ip.IP.String(),
 				Network: api.NetworkIPNetwork{
 					Name:    networkStatus.Name,

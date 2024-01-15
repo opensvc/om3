@@ -43,7 +43,7 @@ func (a *DaemonApi) localNodeActionDrain(ctx echo.Context) error {
 	localExpect := node.MonitorLocalExpectDrained
 	value = node.MonitorUpdate{
 		LocalExpect:              &localExpect,
-		CandidateOrchestrationId: uuid.New(),
+		CandidateOrchestrationID: uuid.New(),
 	}
 	msg := msgbus.SetNodeMonitor{
 		Node:  a.localhost,
@@ -65,7 +65,7 @@ func (a *DaemonApi) localNodeActionDrain(ctx echo.Context) error {
 				return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", errs)
 			} else {
 				return ctx.JSON(http.StatusOK, api.OrchestrationQueued{
-					OrchestrationId: value.CandidateOrchestrationId,
+					OrchestrationID: value.CandidateOrchestrationID,
 				})
 			}
 		case <-ctx.Request().Context().Done():

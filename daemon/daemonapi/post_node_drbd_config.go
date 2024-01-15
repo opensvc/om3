@@ -45,7 +45,7 @@ func (a *DaemonApi) postPeerDRBDConfig(ctx echo.Context, nodename string, params
 }
 
 func (a *DaemonApi) postLocalDRBDConfig(ctx echo.Context, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
-	if a, ok := pendingDRBDAllocations.get(payload.AllocationId); !ok || time.Now().After(a.ExpiredAt) {
+	if a, ok := pendingDRBDAllocations.get(payload.AllocationID); !ok || time.Now().After(a.ExpiredAt) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "drbd allocation expired: %#v", a)
 	}
 	if strings.Contains(params.Name, "..") || strings.HasPrefix(params.Name, "/") {

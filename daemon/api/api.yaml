@@ -2734,6 +2734,7 @@ components:
           format: date-time
         id:
           type: string
+          x-go-name: ID
         state:
           type: string
 
@@ -2773,6 +2774,7 @@ components:
         id:
           type: string
           format: uuid
+          x-go-name: ID
         port:
           type: integer
         minor:
@@ -2920,10 +2922,12 @@ components:
           format: date-time
         orchestration_id:
           type: string
+          x-go-name: OrchestrationID
         orchestration_is_done:
           type: boolean
         session_id:
           type: string
+          x-go-name: SessionID
         state:
           type: string
         state_updated_at:
@@ -3146,6 +3150,7 @@ components:
           type: string
         rid:
           type: string
+          x-go-name: RID
         network:
           $ref: '#/components/schemas/NetworkIPNetwork'
 
@@ -3200,6 +3205,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
       required:
         - session_id
 
@@ -3279,10 +3285,12 @@ components:
           format: date-time
         orchestration_id:
           type: string
+          x-go-name: OrchestrationID
         orchestration_is_done:
           type: boolean
         session_id:
           type: string
+          x-go-name: SessionID
         state:
           type: string
         state_updated_at:
@@ -3537,6 +3545,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
       required:
         - session_id
 
@@ -3546,6 +3555,7 @@ components:
         orchestration_id:
           type: string
           format: uuid
+          x-go-name: OrchestrationID
       required:
         - orchestration_id
 
@@ -3622,6 +3632,7 @@ components:
         allocation_id:
           type: string
           format: uuid
+          x-go-name: AllocationID
         data:
           type: string
           format: byte
@@ -3635,6 +3646,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
         state:
           type: string
         is_partial:
@@ -3833,6 +3845,7 @@ components:
       properties:
         cluster_id:
           type: string
+          x-go-name: ClusterID
         cluster_name:
           type: string
         nodename:
@@ -3888,6 +3901,7 @@ components:
           type: string
         cluster_id:
           type: string
+          x-go-name: ClusterID
         cluster_name:
           type: string
         msg:
@@ -4027,6 +4041,7 @@ components:
           type: string
         rid:
           type: string
+          x-go-name: RID
 
     ResourceMonitor:
       x-go-type: instance.ResourceMonitor
@@ -4433,12 +4448,14 @@ components:
       schema:
         type: string
         format: uuid
+        x-go-name: RequesterSessionID
 
     inQueryRid:
       in: query
       name: rid
       schema:
         type: string
+        x-go-name: RID
 
     inQuerySubset:
       in: query

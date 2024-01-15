@@ -7,7 +7,7 @@ package api
 import "fmt"
 
 func (t OrchestrationQueued) String() (out string) {
-	return fmt.Sprint(t.OrchestrationId)
+	return fmt.Sprint(t.OrchestrationID)
 }
 
 func (t Problem) String() (out string) {
