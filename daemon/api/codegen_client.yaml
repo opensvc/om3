@@ -3,6 +3,4 @@ generate:
   client: true
   models: false
   embedded-spec: false
-output-options:
-  initialism-overrides: true
 output: codegen_client_gen.go
