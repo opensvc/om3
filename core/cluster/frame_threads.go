@@ -104,7 +104,7 @@ func (f Frame) wThreadHeartbeats() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator+"\t")
 	s += f.info.emptyNodes
 	for _, hbStatus := range f.Current.Daemon.Hb.Streams {
-		name := hbStatus.Id
+		name := hbStatus.ID
 		s += bold("\n  "+name) + "\t"
 		switch hbStatus.State {
 		case "running":

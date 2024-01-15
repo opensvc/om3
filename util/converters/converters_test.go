@@ -84,8 +84,8 @@ func TestSizeConvert(t *testing.T) {
 			t.Run(s, func(t *testing.T) {
 				result, err := Size.Convert(s)
 				assert.Nilf(t, err, s)
-				result_i := *result.(*int64)
-				assert.Equalf(t, expected, result_i, "ToSize('%v') -> %v", s, result_i)
+				resultInt64 := *result.(*int64)
+				assert.Equalf(t, expected, resultInt64, "ToSize('%v') -> %v", s, resultInt64)
 			})
 		}
 	})

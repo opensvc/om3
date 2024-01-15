@@ -124,8 +124,8 @@ func (t *T) Stop() error {
 	// this will cancel janitor, msgToTx, msgFromRx and hb drivers context
 	t.cancel()
 
-	hbToStop := make([]hbtype.IdStopper, 0)
-	var failedIds []string
+	hbToStop := make([]hbtype.IDStopper, 0)
+	var failedIDs []string
 	for _, hb := range t.txs {
 		hbToStop = append(hbToStop, hb)
 	}
@@ -135,11 +135,11 @@ func (t *T) Stop() error {
 	for _, hb := range hbToStop {
 		if err := t.stopHb(hb); err != nil {
 			t.log.Errorf("stop %s: %s", hb.Id(), err)
-			failedIds = append(failedIds, hb.Id())
+			failedIDs = append(failedIDs, hb.Id())
 		}
 	}
-	if len(failedIds) > 0 {
-		return fmt.Errorf("failure while stopping heartbeat %s", strings.Join(failedIds, ", "))
+	if len(failedIDs) > 0 {
+		return fmt.Errorf("failure while stopping heartbeat %s", strings.Join(failedIDs, ", "))
 	}
 
 	t.wg.Wait()
@@ -152,17 +152,17 @@ func (t *T) Stop() error {
 	return nil
 }
 
-func (t *T) stopHb(hb hbtype.IdStopper) error {
-	hbId := hb.Id()
+func (t *T) stopHb(hb hbtype.IDStopper) error {
+	hbID := hb.Id()
 	switch hb.(type) {
 	case hbtype.Transmitter:
 		select {
 		case <-t.msgToTxCtx.Done():
 			// don't hang up when context is done
-		case t.msgToTxUnregister <- hbId:
+		case t.msgToTxUnregister <- hbID:
 		}
 	}
-	t.ctrlC <- hbctrl.CmdUnregister{Id: hbId}
+	t.ctrlC <- hbctrl.CmdUnregister{ID: hbID}
 	return hb.Stop()
 }
 
@@ -182,11 +182,11 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	if tx == nil {
 		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id(), Type: hb.Type()}
+	t.ctrlC <- hbctrl.CmdRegister{ID: tx.Id(), Type: hb.Type()}
 	localDataC := make(chan []byte)
 	if err := tx.Start(t.ctrlC, localDataC); err != nil {
 		t.log.Errorf("start %s failed: %s", tx.Id(), err)
-		t.ctrlC <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
+		t.ctrlC <- hbctrl.CmdSetState{ID: tx.Id(), State: "failed"}
 		return err
 	}
 	select {
@@ -203,9 +203,9 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	if rx == nil {
 		return fmt.Errorf("nil rx for %s", hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id(), Type: hb.Type()}
+	t.ctrlC <- hbctrl.CmdRegister{ID: rx.Id(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
-		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
+		t.ctrlC <- hbctrl.CmdSetState{ID: rx.Id(), State: "failed"}
 		t.log.Errorf("start %s failed: %s", rx.Id(), err)
 		return err
 	}
@@ -344,9 +344,9 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case c := <-t.msgToTxRegister:
 				t.log.Debugf("add %s to hb transmitters", c.id)
 				registeredTxMsgQueue[c.id] = c.msgToSendQueue
-			case txId := <-t.msgToTxUnregister:
-				t.log.Debugf("remove %s from hb transmitters", txId)
-				delete(registeredTxMsgQueue, txId)
+			case txID := <-t.msgToTxUnregister:
+				t.log.Debugf("remove %s from hb transmitters", txID)
+				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
 				var rMsg *omcrypto.Message
 				if b, err := json.Marshal(msg); err != nil {
@@ -476,16 +476,16 @@ func (t *T) janitor(ctx context.Context) {
 					_ = t.rescanHb(t.ctx)
 					t.log.Infof("rescan heartbeat configurations done")
 				case *msgbus.DaemonCtl:
-					hbId := msg.Component
+					hbID := msg.Component
 					action := msg.Action
-					if !strings.HasPrefix(hbId, "hb#") {
+					if !strings.HasPrefix(hbID, "hb#") {
 						continue
 					}
 					switch msg.Action {
 					case "stop":
-						t.daemonCtlStop(hbId, action)
+						t.daemonCtlStop(hbID, action)
 					case "start":
-						t.daemonCtlStart(t.ctx, hbId, action)
+						t.daemonCtlStart(t.ctx, hbID, action)
 					}
 				}
 			}
@@ -494,66 +494,66 @@ func (t *T) janitor(ctx context.Context) {
 	<-started
 }
 
-func (t *T) daemonCtlStart(ctx context.Context, hbId string, action string) {
+func (t *T) daemonCtlStart(ctx context.Context, hbID string, action string) {
 	var rid string
-	if strings.HasSuffix(hbId, ".rx") {
-		rid = strings.TrimSuffix(hbId, ".rx")
-	} else if strings.HasSuffix(hbId, ".tx") {
-		rid = strings.TrimSuffix(hbId, ".tx")
+	if strings.HasSuffix(hbID, ".rx") {
+		rid = strings.TrimSuffix(hbID, ".rx")
+	} else if strings.HasSuffix(hbID, ".tx") {
+		rid = strings.TrimSuffix(hbID, ".tx")
 	} else {
-		t.log.Infof("daemonctl %s found no component for %s", action, hbId)
+		t.log.Infof("daemonctl %s found no component for %s", action, hbID)
 		return
 	}
 	h, err := t.getHbConfiguredComponent(ctx, rid)
 	if err != nil {
-		t.log.Infof("daemonctl %s found no component for %s (rid: %s): %s", action, hbId, rid, err)
+		t.log.Infof("daemonctl %s found no component for %s (rid: %s): %s", action, hbID, rid, err)
 		return
 	}
-	if strings.HasSuffix(hbId, ".rx") {
+	if strings.HasSuffix(hbID, ".rx") {
 		if err := t.startHbRx(h); err != nil {
-			t.log.Errorf("daemonctl %s %s start rx failed: %s", action, hbId, err)
+			t.log.Errorf("daemonctl %s %s start rx failed: %s", action, hbID, err)
 			return
 		}
 	} else {
 		if err := t.startHbTx(h); err != nil {
-			t.log.Errorf("daemonctl %s %s start tx failed: %s", action, hbId, err)
+			t.log.Errorf("daemonctl %s %s start tx failed: %s", action, hbID, err)
 			return
 		}
 	}
 }
 
-func (t *T) daemonCtlStop(hbId string, action string) {
+func (t *T) daemonCtlStop(hbID string, action string) {
 	var hbI interface{}
 	var found bool
-	if strings.HasSuffix(hbId, ".rx") {
-		rid := strings.TrimSuffix(hbId, ".rx")
+	if strings.HasSuffix(hbID, ".rx") {
+		rid := strings.TrimSuffix(hbID, ".rx")
 		if hbI, found = t.rxs[rid]; !found {
-			t.log.Infof("daemonctl %s %s found no %s.rx component", action, hbId, rid)
+			t.log.Infof("daemonctl %s %s found no %s.rx component", action, hbID, rid)
 			return
 		}
-	} else if strings.HasSuffix(hbId, ".tx") {
-		rid := strings.TrimSuffix(hbId, ".tx")
+	} else if strings.HasSuffix(hbID, ".tx") {
+		rid := strings.TrimSuffix(hbID, ".tx")
 		if hbI, found = t.txs[rid]; !found {
-			t.log.Infof("daemonctl %s %s found no %s.tx component", action, hbId, rid)
+			t.log.Infof("daemonctl %s %s found no %s.tx component", action, hbID, rid)
 			return
 		}
 	} else {
-		t.log.Infof("daemonctl %s %s found no component", action, hbId)
+		t.log.Infof("daemonctl %s %s found no component", action, hbID)
 		return
 	}
-	t.log.Infof("ask to %s %s", action, hbId)
+	t.log.Infof("ask to %s %s", action, hbID)
 	switch hbI.(type) {
 	case hbtype.Transmitter:
 		select {
 		case <-t.msgToTxCtx.Done():
 		// don't hang up when context is done
-		case t.msgToTxUnregister <- hbId:
+		case t.msgToTxUnregister <- hbID:
 		}
 	}
-	if err := hbI.(hbtype.IdStopper).Stop(); err != nil {
-		t.log.Errorf("daemonctl %s %s stop failed: %s", action, hbId, err)
+	if err := hbI.(hbtype.IDStopper).Stop(); err != nil {
+		t.log.Errorf("daemonctl %s %s stop failed: %s", action, hbID, err)
 	} else {
-		t.ctrlC <- hbctrl.CmdSetState{Id: hbI.(hbtype.IdStopper).Id(), State: "stopped"}
+		t.ctrlC <- hbctrl.CmdSetState{ID: hbI.(hbtype.IDStopper).Id(), State: "stopped"}
 	}
 }
 

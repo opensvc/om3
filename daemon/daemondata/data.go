@@ -412,10 +412,10 @@ func marshalEventData(v any) json.RawMessage {
 }
 
 func (d *data) forwardEvent(i event.Kinder) {
-	eventId++
+	eventID++
 	d.pendingEvs = append(d.pendingEvs, event.Event{
 		Kind: i.Kind(),
-		ID:   eventId,
+		ID:   eventID,
 		At:   time.Now(),
 		Data: marshalEventData(i),
 	})

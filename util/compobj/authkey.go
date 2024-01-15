@@ -39,7 +39,7 @@ var (
 	cacheAllowGroups        []string
 	cacheInstalledKeys      = map[string][]string{}
 	userLookup              = user.Lookup
-	userLookupGroupId       = user.LookupGroupId
+	userLookupGroupID       = user.LookupGroupId
 	getAuthKeyFilesPaths    = CompAuthkeys{}.getAuthKeyFilesPaths
 	getAuthKeyFilePath      = CompAuthkeys{}.getAuthKeyFilePath
 
@@ -491,7 +491,7 @@ func (t CompAuthkeys) getPrimaryGroupName(userName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	primaryGroup, err := userLookupGroupId(user1.Gid)
+	primaryGroup, err := userLookupGroupID(user1.Gid)
 	if err != nil {
 		return "", err
 	}

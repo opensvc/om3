@@ -28,14 +28,14 @@ func New() *Array {
 }
 
 func GetDriver(s string) Driver {
-	drvId := driver.ID{
+	drvID := driver.ID{
 		Group: driver.GroupArray,
 		Name:  s,
 	}
 	type allocator interface {
 		New() any
 	}
-	i := driver.Get(drvId)
+	i := driver.Get(drvID)
 	if i == nil {
 		return nil
 	}

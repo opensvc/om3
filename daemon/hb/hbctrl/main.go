@@ -12,15 +12,15 @@ Example:
 	// from another hb#2.tx routine
 	// Add a watchers for hb#2.rx nodes node2 and node3
 	// watchers are responsible for firing hb_stale/hb_beating event to
-	// controller for hbId + remote nodename
+	// controller for hbID + remote nodename
 	cmdC <- hbctrl.CmdAddWatcher{
-		HbId:     "hb#2.tx",
+		HbID:     "hb#2.tx",
 		Nodename: "node2",
 		Ctx:      ctx,
 		Timeout:  r.timeout,
 	}
 	cmdC <- hbctrl.CmdAddWatcher{
-		HbId:     "hb#2.tx",
+		HbID:     "hb#2.tx",
 		Nodename: "node3",
 		Ctx:      ctx,
 		Timeout:  r.timeout,
@@ -29,7 +29,7 @@ Example:
 	//set the success status of node2
 	c.cmdC() <- hbctrl.CmdSetPeerSuccess{
 		Nodename: "node2",
-		HbId:     "hb#2.tx",
+		HbID:     "hb#2.tx",
 		Success:  true,
 	}
 */
@@ -56,25 +56,25 @@ type (
 		rxCount     int // rx peer watcher count for a remote
 		txBeating   int
 		rxBeating   int
-		cancel      map[string]func()      // cancel function of hbId peer watcher for the remote
-		beatingChan map[string]chan<- bool // beating bool chan of hbId for the remote
+		cancel      map[string]func()      // cancel function of hbID peer watcher for the remote
+		beatingChan map[string]chan<- bool // beating bool chan of hbID for the remote
 	}
 
 	// CmdRegister is the command to register a new heartbeat status
 	CmdRegister struct {
-		Id string // the new hb id (example: hb#1.tx)
+		ID string // the new hb id (example: hb#1.tx)
 		// Type is the hb type
 		Type string
 	}
 
 	// CmdUnregister is the command to unregister a heartbeat status
 	CmdUnregister struct {
-		Id string // the hb id to remove (example: hb#1.tx)
+		ID string // the hb id to remove (example: hb#1.tx)
 	}
 
 	// CmdSetState is the command to update a heartbeat status state
 	CmdSetState struct {
-		Id    string
+		ID    string
 		State string
 	}
 
@@ -82,7 +82,7 @@ type (
 	CmdEvent struct {
 		Name     string
 		Nodename string
-		HbId     string
+		HbID     string
 	}
 
 	// EventStats is a map that holds event counters
@@ -96,20 +96,20 @@ type (
 	// CmdSetPeerSuccess is a command to set a hb peer success value for a node
 	CmdSetPeerSuccess struct {
 		Nodename string
-		HbId     string
+		HbID     string
 		Success  bool
 	}
 
 	// CmdSetPeerStatus is a command to set a hb peer HeartbeatPeerStatus for a node
 	CmdSetPeerStatus struct {
 		Nodename   string
-		HbId       string
+		HbID       string
 		PeerStatus cluster.HeartbeatPeerStatus
 	}
 
 	// CmdAddWatcher is a command to run new instance of a hb watcher for a remote
 	CmdAddWatcher struct {
-		HbId     string
+		HbID     string
 		Nodename string
 		Ctx      context.Context
 		Timeout  time.Duration
@@ -117,13 +117,13 @@ type (
 
 	// CmdDelWatcher is a command to stop one instance of a hb watcher for a remote
 	CmdDelWatcher struct {
-		HbId     string
+		HbID     string
 		Nodename string
 	}
 
 	// GetPeerStatus is command to retrieve remote peer status for a hb
 	GetPeerStatus struct {
-		HbId   string
+		HbID   string
 		result chan<- map[string]cluster.HeartbeatPeerStatus
 	}
 
@@ -199,12 +199,12 @@ func (c *C) run() {
 			return
 		case <-updateDaemonDataHeartbeatsTicker.C:
 			heartbeats := make([]cluster.HeartbeatStream, 0)
-			hbIds := make([]string, 0)
-			for hbId := range heartbeat {
-				hbIds = append(hbIds, hbId)
+			hbIDs := make([]string, 0)
+			for hbID := range heartbeat {
+				hbIDs = append(hbIDs, hbID)
 			}
-			sort.Strings(hbIds)
-			for _, key := range hbIds {
+			sort.Strings(hbIDs)
+			for _, key := range hbIDs {
 				peers := make(map[string]cluster.HeartbeatPeerStatus)
 				for k, v := range heartbeat[key].Peers {
 					peers[k] = v
@@ -220,9 +220,9 @@ func (c *C) run() {
 			switch o := i.(type) {
 			case CmdRegister:
 				now := time.Now()
-				heartbeat[o.Id] = cluster.HeartbeatStream{
+				heartbeat[o.ID] = cluster.HeartbeatStream{
 					DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{
-						Id:           o.Id,
+						ID:           o.ID,
 						CreatedAt:    now,
 						ConfiguredAt: now,
 						State:        "running",
@@ -231,8 +231,8 @@ func (c *C) run() {
 					Peers: make(map[string]cluster.HeartbeatPeerStatus),
 				}
 			case CmdUnregister:
-				if hbStatus, ok := heartbeat[o.Id]; ok {
-					if strings.HasSuffix(o.Id, ".rx") {
+				if hbStatus, ok := heartbeat[o.ID]; ok {
+					if strings.HasSuffix(o.ID, ".rx") {
 						for peerNode, peerStatus := range hbStatus.Peers {
 							if !peerStatus.IsBeating {
 								continue
@@ -245,16 +245,16 @@ func (c *C) run() {
 							}
 						}
 					}
-					delete(heartbeat, o.Id)
+					delete(heartbeat, o.ID)
 				}
 			case CmdSetState:
-				if hbToChange, ok := heartbeat[o.Id]; ok {
+				if hbToChange, ok := heartbeat[o.ID]; ok {
 					hbToChange.State = o.State
-					heartbeat[o.Id] = hbToChange
+					heartbeat[o.ID] = hbToChange
 				}
 			case CmdSetPeerSuccess:
 				if remote, ok := remotes[o.Nodename]; ok {
-					k := o.HbId
+					k := o.HbID
 					if beatC, found := remote.beatingChan[k]; found {
 						go func() {
 							beatC <- o.Success
@@ -269,14 +269,14 @@ func (c *C) run() {
 				}
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
-					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
-					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
+					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
+					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbID, Time: time.Now()}, label)
 				} else {
-					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
-					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
+					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
+					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbID, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
-					if strings.HasSuffix(o.HbId, ".rx") {
+					if strings.HasSuffix(o.HbID, ".rx") {
 						switch o.Name {
 						case evBeating:
 							if remote.rxBeating == 0 {
@@ -300,64 +300,64 @@ func (c *C) run() {
 			case CmdGetEventStats:
 				o.result <- events
 			case GetPeerStatus:
-				if foundHeartbeat, ok := heartbeat[o.HbId]; ok {
+				if foundHeartbeat, ok := heartbeat[o.HbID]; ok {
 					o.result <- foundHeartbeat.Peers
 				} else {
 					o.result <- make(map[string]cluster.HeartbeatPeerStatus)
 				}
 			case CmdSetPeerStatus:
-				hbId := o.HbId
+				hbID := o.HbID
 				peerNode := o.Nodename
-				if foundHeartbeat, ok := heartbeat[hbId]; ok {
+				if foundHeartbeat, ok := heartbeat[hbID]; ok {
 					foundHeartbeat.Peers[peerNode] = o.PeerStatus
-					heartbeat[hbId] = foundHeartbeat
+					heartbeat[hbID] = foundHeartbeat
 				}
 			case CmdAddWatcher:
-				hbId := o.HbId
+				hbID := o.HbID
 				peerNode := o.Nodename
 				remote, ok := remotes[peerNode]
 				if !ok {
 					remote.beatingChan = make(map[string]chan<- bool)
 					remote.cancel = make(map[string]func())
 				}
-				if _, registered := remote.cancel[hbId]; registered {
-					c.log.Errorf("watcher skipped: duplicate %s -> %s", hbId, peerNode)
+				if _, registered := remote.cancel[hbID]; registered {
+					c.log.Errorf("watcher skipped: duplicate %s -> %s", hbID, peerNode)
 					continue
 				}
-				if _, ok := heartbeat[hbId]; ok {
-					heartbeat[hbId].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
+				if _, ok := heartbeat[hbID]; ok {
+					heartbeat[hbID].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
 				} else {
-					c.log.Warnf("watcher skipped: called before register %s -> %s", hbId, peerNode)
+					c.log.Warnf("watcher skipped: called before register %s -> %s", hbID, peerNode)
 					continue
 				}
-				c.log.Infof("watcher starting %s -> %s", hbId, peerNode)
+				c.log.Infof("watcher starting %s -> %s", hbID, peerNode)
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
-				remote.cancel[hbId] = cancel
-				remote.beatingChan[hbId] = beatingC
-				if strings.HasSuffix(hbId, ".rx") {
+				remote.cancel[hbID] = cancel
+				remote.beatingChan[hbID] = beatingC
+				if strings.HasSuffix(hbID, ".rx") {
 					remote.rxCount++
 				} else {
 					remote.txCount++
 				}
 				remotes[peerNode] = remote
-				c.peerWatch(beatingCtx, beatingC, o.HbId, peerNode, o.Timeout)
+				c.peerWatch(beatingCtx, beatingC, o.HbID, peerNode, o.Timeout)
 			case CmdDelWatcher:
-				hbId := o.HbId
+				hbID := o.HbID
 				peerNode := o.Nodename
-				if _, ok := heartbeat[hbId]; ok {
-					delete(heartbeat[hbId].Peers, peerNode)
+				if _, ok := heartbeat[hbID]; ok {
+					delete(heartbeat[hbID].Peers, peerNode)
 				}
 				if remote, ok := remotes[peerNode]; ok {
-					cancel, registered := remote.cancel[hbId]
+					cancel, registered := remote.cancel[hbID]
 					if !registered {
-						c.log.Errorf("del watcher skipped: already unregistered %s -> %s", hbId, peerNode)
+						c.log.Errorf("del watcher skipped: already unregistered %s -> %s", hbID, peerNode)
 						continue
 					}
-					c.log.Infof("del watcher %s -> %s", hbId, peerNode)
+					c.log.Infof("del watcher %s -> %s", hbID, peerNode)
 					cancel()
-					delete(remote.cancel, hbId)
-					if strings.HasSuffix(hbId, ".rx") {
+					delete(remote.cancel, hbID)
+					if strings.HasSuffix(hbID, ".rx") {
 						remote.rxCount--
 					} else {
 						remote.txCount--

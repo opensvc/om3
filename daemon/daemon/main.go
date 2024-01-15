@@ -126,10 +126,10 @@ func (t *T) Start(ctx context.Context) error {
 	// Before any icfg, hb, or listener: ensure omcrypto has cluster name and secret
 	omcrypto.SetClusterName(initialCcfg.Name)
 	omcrypto.SetClusterSecret(initialCcfg.Secret())
-	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HttpPort {
+	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HTTPPort {
 		// update daemonenv.HttpPort from live config value. Discover will need
 		// connect to peers to fetch config...
-		daemonenv.HttpPort = initialCcfg.Listener.Port
+		daemonenv.HTTPPort = initialCcfg.Listener.Port
 	}
 
 	for _, s := range []startStopper{

@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileprop(t *testing.T) {
@@ -49,11 +50,11 @@ func TestFileprop(t *testing.T) {
 		t.Logf("with perms %s for file: '%s'", "0"+strconv.Itoa(int(i)), r.Path)
 	}
 
-	withUid := func(t *testing.T, r *CompFileProp) {
+	withUID := func(t *testing.T, r *CompFileProp) {
 		t.Helper()
 		err := os.Chown(r.Path, r.UID.(int), -1)
 		require.NoError(t, err)
-		t.Logf("with Uid %d for file: '%s'", r.UID.(int), r.Path)
+		t.Logf("with uid %d for file: '%s'", r.UID.(int), r.Path)
 	}
 
 	withGid := func(t *testing.T, r *CompFileProp) {
@@ -63,7 +64,7 @@ func TestFileprop(t *testing.T) {
 		t.Logf("with Gid %d for file: '%s'", r.GID.(int), r.Path)
 	}
 
-	withWrongUid := func(t *testing.T, r *CompFileProp) {
+	withWrongUID := func(t *testing.T, r *CompFileProp) {
 		t.Helper()
 		var err error
 		if r.UID.(int) == 1500 {
@@ -117,7 +118,7 @@ func TestFileprop(t *testing.T) {
 			expectFix:   ExitNok},
 
 		"with uid (file mode)": {
-			envs:        []prepareEnv{withFile, withUid},
+			envs:        []prepareEnv{withFile, withUID},
 			rule:        CompFileProp{UID: 1600},
 			expectCheck: ExitOk,
 			expectFix:   ExitOk,
@@ -131,7 +132,7 @@ func TestFileprop(t *testing.T) {
 			needRoot:    true},
 
 		"with wrong uid (file mode)": {
-			envs:        []prepareEnv{withFile, withWrongUid},
+			envs:        []prepareEnv{withFile, withWrongUID},
 			rule:        CompFileProp{UID: 1600},
 			expectCheck: ExitNok,
 			expectFix:   ExitOk,
@@ -163,7 +164,7 @@ func TestFileprop(t *testing.T) {
 			expectFix:   ExitOk},
 
 		"with uid (dir mode)": {
-			envs:        []prepareEnv{withUid},
+			envs:        []prepareEnv{withUID},
 			rule:        CompFileProp{Path: t.TempDir(), UID: 1600},
 			expectCheck: ExitOk,
 			expectFix:   ExitOk,

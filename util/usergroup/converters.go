@@ -24,8 +24,8 @@ func UidFromS(s string) (uint32, error) {
 	if err != nil {
 		return 0, fmt.Errorf("unable to get userid info for '%v' (%v)", s, lookup.Uid)
 	}
-	userId := uint32(id)
-	return userId, nil
+	userID := uint32(id)
+	return userID, nil
 }
 
 // GidFromS function tries to retrieve group id from a group string 's'
@@ -43,6 +43,6 @@ func GidFromS(s string) (uint32, error) {
 	if err != nil {
 		return 0, fmt.Errorf("unable to get groupid info for '%v' (%v)", s, lookup.Gid)
 	}
-	userId := uint32(id)
-	return userId, nil
+	userID := uint32(id)
+	return userID, nil
 }

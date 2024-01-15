@@ -1,8 +1,9 @@
 package command
 
 import (
-	"github.com/opensvc/om3/util/usergroup"
 	"syscall"
+
+	"github.com/opensvc/om3/util/usergroup"
 )
 
 // credential returns *syscall.Credential for 'user' and 'group' string
@@ -12,19 +13,19 @@ func credential(user, group string) (*syscall.Credential, error) {
 	cred := syscall.Credential{}
 	var needCred bool
 	if user != "" {
-		userId, err := usergroup.UidFromS(user)
+		userID, err := usergroup.UidFromS(user)
 		if err != nil {
 			return nil, err
 		}
-		cred.Uid = userId
+		cred.Uid = userID
 		needCred = true
 	}
 	if group != "" {
-		groupId, err := usergroup.GidFromS(group)
+		groupID, err := usergroup.GidFromS(group)
 		if err != nil {
 			return nil, err
 		}
-		cred.Gid = groupId
+		cred.Gid = groupID
 		needCred = true
 	}
 	if needCred {

@@ -118,7 +118,7 @@ func TestClusterStatusBus(t *testing.T) {
 	assert.Equal(t, nil, exBus.Get("data#1"))
 	exBus.Post("data#1", data1, true)
 	assert.Equal(t, data1, exBus.Get("data#1"))
-	hookId1 := exBus.Register("data#1", func(i interface{}) {
+	hookID1 := exBus.Register("data#1", func(i interface{}) {
 		t.Logf("Value data#1 changed to %v\n", i)
 	})
 
@@ -128,7 +128,7 @@ func TestClusterStatusBus(t *testing.T) {
 	exBus.Post("data#1", data1, false)
 
 	t.Log("unregister hook")
-	exBus.Unregister("data#1", hookId1)
+	exBus.Unregister("data#1", hookID1)
 	exBus.Post("data#1", data2, false)
 	exBus.Post("data#1", data1, false)
 	exBus.Post("data#1", data2, false)

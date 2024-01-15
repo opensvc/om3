@@ -53,6 +53,6 @@ func (a *DaemonApi) postLocalInstanceActionFreeze(ctx echo.Context, namespace st
 	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionId: sid})
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sid})
 	}
 }

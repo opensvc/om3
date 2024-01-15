@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/opensvc/om3/util/file"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"os"
 	"os/user"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opensvc/om3/util/file"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFile(t *testing.T) {
@@ -107,21 +108,21 @@ func TestFile(t *testing.T) {
 		t.Logf("with perms %s for file: '%s'", "0"+strconv.Itoa(int(i)), r.Path)
 	}
 
-	withUid := func(t *testing.T, r *CompFile) {
+	withUID := func(t *testing.T, r *CompFile) {
 		t.Helper()
 		err := os.Chown(r.Path, r.UID.(int), -1)
 		require.NoError(t, err)
-		t.Logf("with Uid %d for file: '%s'", r.UID.(int), r.Path)
+		t.Logf("with uid %d for file: '%s'", r.UID.(int), r.Path)
 	}
 
 	withGid := func(t *testing.T, r *CompFile) {
 		t.Helper()
 		err := os.Chown(r.Path, -1, r.GID.(int))
 		require.NoError(t, err)
-		t.Logf("with Gid %d for file: '%s'", r.GID.(int), r.Path)
+		t.Logf("with gid %d for file: '%s'", r.GID.(int), r.Path)
 	}
 
-	withWrongUid := func(t *testing.T, r *CompFile) {
+	withWrongUID := func(t *testing.T, r *CompFile) {
 		t.Helper()
 		var err error
 		if r.UID.(int) == 1500 {
@@ -221,7 +222,7 @@ func TestFile(t *testing.T) {
 			expectFix:   ExitNok},
 
 		"with uid (file mode)": {
-			envs:        []prepareEnv{withEmptyFile, withUid},
+			envs:        []prepareEnv{withEmptyFile, withUID},
 			rule:        CompFile{UID: 1600},
 			expectCheck: ExitOk,
 			expectFix:   ExitOk,
@@ -235,7 +236,7 @@ func TestFile(t *testing.T) {
 			needRoot:    true},
 
 		"with wrong uid (file mode)": {
-			envs:        []prepareEnv{withEmptyFile, withWrongUid},
+			envs:        []prepareEnv{withEmptyFile, withWrongUID},
 			rule:        CompFile{UID: 1600},
 			expectCheck: ExitNok,
 			expectFix:   ExitOk,
@@ -267,7 +268,7 @@ func TestFile(t *testing.T) {
 			expectFix:   ExitOk},
 
 		"with uid (dir mode)": {
-			envs:        []prepareEnv{withUid},
+			envs:        []prepareEnv{withUID},
 			rule:        CompFile{Path: t.TempDir(), UID: 1600},
 			expectCheck: ExitOk,
 			expectFix:   ExitOk,

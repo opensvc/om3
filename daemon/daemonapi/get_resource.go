@@ -42,7 +42,7 @@ func (a *DaemonApi) GetResources(ctx echo.Context, params api.GetResourcesParams
 				Meta: api.ResourceMeta{
 					Node:   config.Node,
 					Object: config.Path.String(),
-					Rid:    rid,
+					RID:    rid,
 				},
 				Data: api.Resource{
 					Config: &resourceConfig,

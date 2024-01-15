@@ -21,21 +21,21 @@ type (
 		Nodename  string                   `json:"nodename"`
 	}
 
-	// IdStopper is the interface to stop a hb driver
-	IdStopper interface {
+	// IDStopper is the interface to stop a hb driver
+	IDStopper interface {
 		Id() string
 		Stop() error
 	}
 
 	// Transmitter is the interface that wraps the basic methods for hb driver to send hb messages
 	Transmitter interface {
-		IdStopper
+		IDStopper
 		Start(cmdC chan<- interface{}, dataC <-chan []byte) error
 	}
 
 	// Receiver is the interface that wraps the basic methods for hb driver to receive hb messages
 	Receiver interface {
-		IdStopper
+		IDStopper
 		Start(cmdC chan<- interface{}, msgC chan<- *Msg) error
 	}
 )

@@ -559,7 +559,7 @@ paths:
 
   /network/ip:
     get:
-      operationId: GetNetworkIp
+      operationId: GetNetworkIP
       tags:
         - network
       security:
@@ -578,7 +578,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NetworkIpList'
+                $ref: '#/components/schemas/NetworkIPList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2433,7 +2433,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/RelayNodename'
-        - $ref: '#/components/parameters/RelayClusterId'
+        - $ref: '#/components/parameters/RelayClusterID'
       responses:
         200:
           description: OK
@@ -2734,6 +2734,7 @@ components:
           format: date-time
         id:
           type: string
+          x-go-name: ID
         state:
           type: string
 
@@ -2773,6 +2774,7 @@ components:
         id:
           type: string
           format: uuid
+          x-go-name: ID
         port:
           type: integer
         minor:
@@ -2920,10 +2922,12 @@ components:
           format: date-time
         orchestration_id:
           type: string
+          x-go-name: OrchestrationID
         orchestration_is_done:
           type: boolean
         session_id:
           type: string
+          x-go-name: SessionID
         state:
           type: string
         state_updated_at:
@@ -3096,7 +3100,7 @@ components:
         size:
           type: integer
 
-    NetworkIpNetwork:
+    NetworkIPNetwork:
       type: object
       required:
         - name
@@ -3128,7 +3132,7 @@ components:
       items:
         $ref: '#/components/schemas/Network'
 
-    NetworkIp:
+    NetworkIP:
       type: object
       required:
         - ip
@@ -3139,16 +3143,18 @@ components:
       properties:
         ip:
           type: string
+          x-go-name: IP
         node:
           type: string
         path:
           type: string
         rid:
           type: string
+          x-go-name: RID
         network:
-          $ref: '#/components/schemas/NetworkIpNetwork'
+          $ref: '#/components/schemas/NetworkIPNetwork'
 
-    NetworkIpList:
+    NetworkIPList:
       type: object
       required:
         - items
@@ -3157,14 +3163,14 @@ components:
         kind:
           type: string
           enum:
-            - NetworkIpList
+            - NetworkIPList
         items:
-          $ref: '#/components/schemas/NetworkIpItems'
+          $ref: '#/components/schemas/NetworkIPItems'
 
-    NetworkIpItems:
+    NetworkIPItems:
       type: array
       items:
-        $ref: '#/components/schemas/NetworkIp'
+        $ref: '#/components/schemas/NetworkIP'
 
     # ========================================================================
     # node schemas
@@ -3199,6 +3205,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
       required:
         - session_id
 
@@ -3278,10 +3285,12 @@ components:
           format: date-time
         orchestration_id:
           type: string
+          x-go-name: OrchestrationID
         orchestration_is_done:
           type: boolean
         session_id:
           type: string
+          x-go-name: SessionID
         state:
           type: string
         state_updated_at:
@@ -3536,6 +3545,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
       required:
         - session_id
 
@@ -3545,6 +3555,7 @@ components:
         orchestration_id:
           type: string
           format: uuid
+          x-go-name: OrchestrationID
       required:
         - orchestration_id
 
@@ -3621,6 +3632,7 @@ components:
         allocation_id:
           type: string
           format: uuid
+          x-go-name: AllocationID
         data:
           type: string
           format: byte
@@ -3634,6 +3646,7 @@ components:
         session_id:
           type: string
           format: uuid
+          x-go-name: SessionID
         state:
           type: string
         is_partial:
@@ -3832,6 +3845,7 @@ components:
       properties:
         cluster_id:
           type: string
+          x-go-name: ClusterID
         cluster_name:
           type: string
         nodename:
@@ -3887,6 +3901,7 @@ components:
           type: string
         cluster_id:
           type: string
+          x-go-name: ClusterID
         cluster_name:
           type: string
         msg:
@@ -4026,6 +4041,7 @@ components:
           type: string
         rid:
           type: string
+          x-go-name: RID
 
     ResourceMonitor:
       x-go-type: instance.ResourceMonitor
@@ -4432,12 +4448,14 @@ components:
       schema:
         type: string
         format: uuid
+        x-go-name: RequesterSessionID
 
     inQueryRid:
       in: query
       name: rid
       schema:
         type: string
+        x-go-name: RID
 
     inQuerySubset:
       in: query
@@ -4599,7 +4617,7 @@ components:
       schema:
         type: string
         example: fs#1,ip
-    RelayClusterId:
+    RelayClusterID:
       name: cluster_id
       in: query
       description: the cluster id component of the slot id on the relay

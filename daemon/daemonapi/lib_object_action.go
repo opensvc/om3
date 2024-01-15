@@ -28,7 +28,7 @@ func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind na
 	}
 	value = instance.MonitorUpdate{
 		GlobalExpect:             &globalExpect,
-		CandidateOrchestrationId: uuid.New(),
+		CandidateOrchestrationID: uuid.New(),
 	}
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,
@@ -36,7 +36,7 @@ func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind na
 		Value: value,
 		Err:   make(chan error),
 	}
-	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	select {
@@ -47,7 +47,7 @@ func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind na
 			return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", err)
 		} else {
 			return ctx.JSON(http.StatusOK, api.OrchestrationQueued{
-				OrchestrationId: value.CandidateOrchestrationId,
+				OrchestrationID: value.CandidateOrchestrationID,
 			})
 		}
 	case <-ctx.Request().Context().Done():

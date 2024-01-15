@@ -7,7 +7,7 @@ type (
 	// was last configured, when it was created, its current state and its
 	// id.
 	DaemonSubsystemStatus struct {
-		Id           string        `json:"id"`
+		ID           string        `json:"id"`
 		ConfiguredAt time.Time     `json:"configured_at"`
 		CreatedAt    time.Time     `json:"created_at"`
 		State        string        `json:"state"`

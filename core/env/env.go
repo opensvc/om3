@@ -12,10 +12,10 @@ type (
 )
 
 var (
-	ActionOrchestrationIdVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
+	ActionOrchestrationIDVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
 	ActionOriginVar                          = "OSVC_ACTION_ORIGIN"
 	ActionOriginUser            ActionOrigin = "user"
-	ActionOriginDaemonApi       ActionOrigin = "daemon/api"
+	ActionOriginDaemonAPI       ActionOrigin = "daemon/api"
 	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
 	ActionOriginDaemonScheduler ActionOrigin = "daemon/scheduler"
 
@@ -31,7 +31,7 @@ var (
 // it executes.
 func HasDaemonOrigin() bool {
 	switch Origin() {
-	case ActionOriginDaemonMonitor, ActionOriginDaemonApi, ActionOriginDaemonScheduler:
+	case ActionOriginDaemonMonitor, ActionOriginDaemonAPI, ActionOriginDaemonScheduler:
 		return true
 	default:
 		return false

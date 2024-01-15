@@ -103,7 +103,7 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		return nil, err
 	}
 	if !strings.Contains(config.URL[8:], ":") {
-		config.URL += fmt.Sprintf(":%d", daemonenv.HttpPort)
+		config.URL += fmt.Sprintf(":%d", daemonenv.HTTPPort)
 	}
 
 	options := []api.ClientOption{api.WithHTTPClient(httpClient)}

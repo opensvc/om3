@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
-	"github.com/opensvc/om3/util/limits"
 	"runtime"
 	"strings"
+
+	"github.com/opensvc/om3/util/limits"
 )
 
 // ShLimitCommands provides ulimit commands for sh launcher
@@ -33,19 +34,19 @@ func ShLimitCommands(l limits.T) string {
 		}
 		commands = append(commands, fmt.Sprintf("ulimit %s %d", flag, l.LimitNProc))
 	}
-	if l.LimitVMem > 0 && l.LimitVMem >= l.LimitAs {
+	if l.LimitVMem > 0 && l.LimitVMem >= l.LimitAS {
 		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
 		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitVMem/1024))
 	}
-	if l.LimitAs > 0 && l.LimitAs > l.LimitVMem {
+	if l.LimitAS > 0 && l.LimitAS > l.LimitVMem {
 		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
-		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitAs/1024))
+		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitAS/1024))
 	}
 
-	if l.LimitCpu > 0 {
+	if l.LimitCPU > 0 {
 		// -t show or set the limit on CPU time (in seconds)
-		limitCpuSecond := int64(l.LimitCpu.Seconds())
-		commands = append(commands, "ulimit -t "+fmt.Sprintf("%d", limitCpuSecond))
+		limitCPUSecond := int64(l.LimitCPU.Seconds())
+		commands = append(commands, "ulimit -t "+fmt.Sprintf("%d", limitCPUSecond))
 	}
 	if l.LimitCore > 0 {
 		// -c the limit on the largest core dump size that can be produced (in 512-byte blocks)
@@ -59,10 +60,10 @@ func ShLimitCommands(l limits.T) string {
 		// -f the limit on the largest file that can be created (in 512-byte blocks)
 		commands = append(commands, "ulimit -f "+fmt.Sprintf("%d", l.LimitFSize/512))
 	}
-	if l.LimitRss > 0 {
+	if l.LimitRSS > 0 {
 		// -m the limit on the total physical memory that can be in use by a process
 		// (in kilobytes)
-		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", l.LimitRss/1024))
+		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", l.LimitRSS/1024))
 	}
 	return strings.Join(commands, " && ")
 }

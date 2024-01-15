@@ -125,16 +125,16 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 }
 
 func (o *T) startSubscriptions() {
-	clusterId := clusterPath.String()
+	clusterID := clusterPath.String()
 	label := pubsub.Label{"path", o.path.String()}
 	o.sub = o.bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
-	if o.path.String() != clusterId {
+	if o.path.String() != clusterID {
 		o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
 
 		// the scope value may depend on cluster nodes values: *, clusternodes ...
 		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
-		localClusterLabels := []pubsub.Label{{"path", clusterId}, {"node", o.localhost}}
+		localClusterLabels := []pubsub.Label{{"path", clusterID}, {"node", o.localhost}}
 		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, localClusterLabels...)
 	} else {
 		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for

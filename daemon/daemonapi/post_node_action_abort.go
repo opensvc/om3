@@ -38,9 +38,9 @@ func (a *DaemonApi) localNodeActionAbort(ctx echo.Context) error {
 		Node: a.localhost,
 		Value: node.MonitorUpdate{
 			LocalExpect:              &v,
-			CandidateOrchestrationId: uuid.New(),
+			CandidateOrchestrationID: uuid.New(),
 		},
 	}
-	a.EventBus.Pub(&msg, labelApi)
-	return ctx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationId: msg.Value.CandidateOrchestrationId})
+	a.EventBus.Pub(&msg, labelAPI)
+	return ctx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: msg.Value.CandidateOrchestrationID})
 }

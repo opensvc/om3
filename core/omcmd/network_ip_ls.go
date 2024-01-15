@@ -11,22 +11,22 @@ import (
 )
 
 type (
-	CmdNetworkIpLs struct {
+	CmdNetworkIPLs struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdNetworkIpLs) Run() error {
+func (t *CmdNetworkIPLs) Run() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	params := api.GetNetworkIpParams{}
+	params := api.GetNetworkIPParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetNetworkIpWithResponse(context.Background(), &params)
+	resp, err := c.GetNetworkIPWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}

@@ -661,7 +661,7 @@ type (
 		Path       naming.Path           `json:"path" yaml:"path"`
 		Node       string                `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
-		SessionId  uuid.UUID             `json:"sessionId" yaml:"sessionId"`
+		SessionID  uuid.UUID             `json:"sessionId" yaml:"sessionId"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 

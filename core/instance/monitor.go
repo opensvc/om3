@@ -66,8 +66,8 @@ type (
 		LocalExpect         *MonitorLocalExpect  `json:"local_expect"`
 		State               *MonitorState        `json:"state"`
 
-		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
+		// CandidateOrchestrationID is a candidate orchestration id for a new imon orchestration.
+		CandidateOrchestrationID uuid.UUID `json:"orchestration_id"`
 	}
 
 	// ResourceMonitor describes the restart states maintained by the daemon

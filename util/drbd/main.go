@@ -78,7 +78,7 @@ var (
 	KeyConnectionMesh = "connection-mesh "
 	KeyHosts          = "hosts "
 	KeyOn             = "on "
-	KeyNodeId         = "node-id "
+	KeyNodeID         = "node-id "
 	KeyDevice         = "device "
 	KeyDisk           = "disk "
 	KeyMetaDisk       = "meta-disk "
@@ -89,7 +89,7 @@ var (
 	KeyConnectionMeshLen = len(KeyConnectionMesh)
 	KeyHostsLen          = len(KeyHosts)
 	KeyOnLen             = len(KeyOn)
-	KeyNodeIdLen         = len(KeyNodeId)
+	KeyNodeIDLen         = len(KeyNodeID)
 	KeyDeviceLen         = len(KeyDevice)
 	KeyDiskLen           = len(KeyDisk)
 	KeyMetaDiskLen       = len(KeyMetaDisk)

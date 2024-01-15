@@ -471,12 +471,12 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 func (b *Bus) onPubCmd(c cmdPub) {
 	for _, toFilterKey := range c.keys() {
 		// search publication that listen on one of cmdPub.keys
-		if subIdM, ok := b.subMap[toFilterKey]; ok {
-			for subId := range subIdM {
-				sub, ok := b.subs[subId]
+		if subIDMap, ok := b.subMap[toFilterKey]; ok {
+			for subID := range subIDMap {
+				sub, ok := b.subs[subID]
 				if !ok {
 					// This should not happen
-					b.log.Warnf("filter key %s has a dead subscription %s", toFilterKey, subId)
+					b.log.Warnf("filter key %s has a dead subscription %s", toFilterKey, subID)
 					continue
 				}
 				b.log.Debugf("route %s to %s", c, sub)
