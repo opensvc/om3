@@ -102,7 +102,7 @@ func (t T) Label() string {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"file", t.File},
+		{Key: "file", Value: t.File},
 	}
 	return m, nil
 }

@@ -983,14 +983,14 @@ func parseOneCalendarExpression(spec string, all []int) (map[int]interface{}, er
 			//  days are 1 to 7
 			//  weeks are 1 to 53
 			//  months are 1 to 12
-			for i := begin; i <= len(all); i += 1 {
+			for i := begin; i <= len(all); i++ {
 				m[i] = nil
 			}
-			for i := 1; i <= end; i += 1 {
+			for i := 1; i <= end; i++ {
 				m[i] = nil
 			}
 		} else {
-			for i := begin; i <= end; i += 1 {
+			for i := begin; i <= end; i++ {
 				m[i] = nil
 			}
 		}
@@ -1193,7 +1193,7 @@ func getNext(data Schedule, options nextOptionsT, excludes Schedules) (time.Time
 	tm := options.Time
 	year1 := tm.Year()
 	month1 := int(tm.Month())
-	for year := year1; year <= year1+1; year += 1 {
+	for year := year1; year <= year1+1; year++ {
 		for _, month := range data.months {
 			var firstDay int
 			if year == year1 {

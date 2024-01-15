@@ -77,7 +77,7 @@ func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.Unset(key.T{"DEFAULT", "disable"})
+	config.Unset(key.T{Section: "DEFAULT", Option: "disable"})
 	return config.Ops(), nil
 }
 

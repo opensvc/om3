@@ -182,7 +182,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	var encMsg *omcrypto.Message
 	if f.Total > 1 {
 		var message []byte
-		for i := 1; i <= f.Total; i += 1 {
+		for i := 1; i <= f.Total; i++ {
 			chunk, ok := chunks[i]
 			if !ok {
 				t.log.Warnf("missing fragment %d in msg %s from src %s => purge", i, f.MsgID, s)

@@ -129,7 +129,7 @@ func (t *actor) actionTimeout(kwNames []string) (time.Duration, string) {
 	return 0, ""
 }
 
-func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
+func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a, ok := r.(resource.Aborter)
 	if !ok {

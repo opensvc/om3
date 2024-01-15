@@ -2,7 +2,7 @@ package object
 
 import "github.com/opensvc/om3/util/compliance"
 
-func (t core) NewCompliance() (*compliance.T, error) {
+func (t *core) NewCompliance() (*compliance.T, error) {
 	n, err := t.Node()
 	if err != nil {
 		return nil, err

@@ -45,7 +45,7 @@ func NewCfg(p any, opts ...funcopt.O) (*cfg, error) {
 	return s, nil
 }
 
-func (t cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

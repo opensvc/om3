@@ -323,7 +323,7 @@ func (t CompKeyvals) checkNoReset(rule CompKeyval) ExitCode {
 		return ExitOk
 	}
 	if _, ok := keyValResetMap[rule.Key]; ok {
-		keyValResetMap[rule.Key] += 1
+		keyValResetMap[rule.Key]++
 	}
 	if len(valuesFromFile) < 1 {
 		t.VerboseErrorf("%s: %s is unset and should be set\n", keyValpath, rule.Key)
@@ -454,7 +454,7 @@ func (t CompKeyvals) fixReset(rule CompKeyval) ExitCode {
 					t.Errorf("%s\n", err)
 					return ExitNok
 				}
-				keyToResetCount += 1
+				keyToResetCount++
 			}
 		} else {
 			if _, err = newFile.Write([]byte(line + "\n")); err != nil {

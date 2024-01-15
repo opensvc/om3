@@ -568,7 +568,7 @@ func (b *Bus) drain() {
 	for {
 		select {
 		case <-b.cmdC:
-			i += 1
+			i++
 		case <-tC:
 			b.log.Infof("drained dropped %d pending messages from the bus on stop", i)
 			return

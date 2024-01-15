@@ -367,7 +367,7 @@ func (t T) DoLocal() error {
 		if result.Error != nil {
 			errs = errors.Join(errs, result.Error)
 		}
-		done += 1
+		done++
 		if done >= todo {
 			break
 		}
@@ -736,6 +736,10 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
+	if t.RemoteFunc == nil {
+		return fmt.Errorf("no remote function defined")
+	}
+
 	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
@@ -811,7 +815,7 @@ func (t T) DoRemote() error {
 			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
 			})
-			todo += 1
+			todo++
 		}
 	}
 	if todo == 0 {
@@ -828,7 +832,7 @@ func (t T) DoRemote() error {
 			errs = errors.New("remote action error")
 		}
 		results = append(results, result)
-		done += 1
+		done++
 		if done >= todo {
 			break
 		}

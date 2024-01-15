@@ -21,7 +21,7 @@ func validatePRKey(s string) error {
 	length := len(s)
 	if rest := length % 2; rest != 0 {
 		s = "0" + s
-		length += 1
+		length++
 	}
 	if length < minLength {
 		err := fmt.Errorf("prkey %s is too short: %d < %d chars", s, length, minLength)

@@ -100,7 +100,7 @@ func (t T) lookupModule(s string) (string, error) {
 
 func parseModuleOrder(path string) int {
 	base := filepath.Base(path)
-	for i := 0; i < len(base); i += 1 {
+	for i := 0; i < len(base); i++ {
 		if !unicode.IsDigit(rune(base[i])) {
 			n, _ := strconv.Atoi(base[:i])
 			return n

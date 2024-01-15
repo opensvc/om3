@@ -46,7 +46,14 @@ func TestHelperProcess(t *testing.T) {
 	case strings.Contains(cmd, "succeedWithOut"):
 		data := check.ResultSet{
 			Data: []check.Result{
-				{"group1", cmd, "path/" + cmd, "1", "count", 2},
+				{
+					DriverGroup: "group1",
+					DriverName:  cmd,
+					Path:        "path/" + cmd,
+					Instance:    "1",
+					Unit:        "count",
+					Value:       2,
+				},
 			},
 		}
 		outB, err := json.Marshal(data)
@@ -55,8 +62,17 @@ func TestHelperProcess(t *testing.T) {
 		}
 		out = string(outB)
 	case cmd == "failWithCorrectOut":
-		data := check.ResultSet{Data: []check.Result{
-			{"group1", cmd, "path/" + cmd, "1", "count", 2}},
+		data := check.ResultSet{
+			Data: []check.Result{
+				{
+					DriverGroup: "group1",
+					DriverName:  cmd,
+					Path:        "path/" + cmd,
+					Instance:    "1",
+					Unit:        "count",
+					Value:       2,
+				},
+			},
 		}
 		outB, err := json.Marshal(data)
 		if err != nil {

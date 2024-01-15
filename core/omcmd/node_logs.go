@@ -48,7 +48,6 @@ func (t *CmdNodeLogs) local() error {
 			ev.Render(t.Output)
 		}
 	}
-	return nil
 }
 
 func (t *CmdNodeLogs) Run() error {

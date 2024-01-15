@@ -103,7 +103,6 @@ func (t T) usageVG() (pool.Usage, error) {
 	}
 	var used int64
 	if size > 0 {
-		free = free
 		used = size - free
 	} else {
 		size = 0

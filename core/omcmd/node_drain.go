@@ -120,7 +120,7 @@ func (t *CmdNodeDrain) doRemote() error {
 	for {
 		err := <-errC
 		errs = errors.Join(errs, err)
-		count += 1
+		count++
 		if count == len(nodenames) {
 			break
 		}

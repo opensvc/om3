@@ -69,7 +69,7 @@ type (
 		TemplateOptions          []string       `json:"template_options"`
 		CreateSecretsEnvironment []string       `json:"create_secrets_environment"`
 		CreateConfigsEnvironment []string       `json:"create_configs_environment"`
-		CreateEnvironment        []string       `json:"create_configs_environment"`
+		CreateEnvironment        []string       `json:"create_environment"`
 		RCmd                     []string       `json:"rcmd"`
 		StartTimeout             *time.Duration `json:"start_timeout"`
 		StopTimeout              *time.Duration `json:"stop_timeout"`

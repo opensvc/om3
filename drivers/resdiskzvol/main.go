@@ -68,9 +68,9 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"name", t.Name},
-		{"pool", zfs.ZfsName(t.Name).PoolName()},
-		{"device", t.devpath()},
+		{Key: "name", Value: t.Name},
+		{Key: "pool", Value: zfs.ZfsName(t.Name).PoolName()},
+		{Key: "device", Value: t.devpath()},
 	}
 	return m, nil
 }

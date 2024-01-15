@@ -80,10 +80,10 @@ func (t *Node) Schedules() schedule.Table {
 			// no schedule
 			continue
 		}
-		drvType := t.config.GetString(key.T{s, "type"})
+		drvType := t.config.GetString(key.T{Section: s, Option: "type"})
 		base := fmt.Sprintf("%s_%s_push", s, drvType)
 		action := "push" + drvType
-		e := t.newScheduleEntry(action, key.T{s, "schedule"}.String(), rid.String(), base)
+		e := t.newScheduleEntry(action, key.T{Section: s, Option: "schedule"}.String(), rid.String(), base)
 		table = table.Add(e)
 	}
 	return table

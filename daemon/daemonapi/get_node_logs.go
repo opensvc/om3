@@ -153,6 +153,7 @@ func (a *DaemonApi) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			return nil
 		case ev := <-stream.Events():
 			if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
+				log.Debugf("sseWriter.Write: %s", err)
 				break
 			}
 			w.Flush()
@@ -163,7 +164,6 @@ func (a *DaemonApi) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			log.Debugf("stream.Error: %s", err)
 		}
 	}
-	return nil
 }
 
 // parseLogFilters return filters from b.Filter

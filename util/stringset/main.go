@@ -13,7 +13,7 @@ func (t Set) Slice() []string {
 	i := 0
 	for k := range t {
 		l[i] = k
-		i += 1
+		i++
 	}
 	return l
 }

@@ -121,7 +121,7 @@ func (t *tx) send(b []byte) {
 	msgLength := len(b)
 	total := msgLength / MaxChunkSize
 	if (msgLength % MaxChunkSize) != 0 {
-		total += 1
+		total++
 	}
 	if total > MaxFragments {
 		// the message will not be sent by this heart beat.
@@ -129,7 +129,7 @@ func (t *tx) send(b []byte) {
 			t.udpAddr, total, msgLength)
 		return
 	}
-	for i := 1; i <= total; i += 1 {
+	for i := 1; i <= total; i++ {
 		f := fragment{
 			MsgID: msgID,
 			Index: i,

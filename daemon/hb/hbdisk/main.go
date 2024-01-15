@@ -113,17 +113,15 @@ func (d *device) open() error {
 		}
 		d.mode = "directio"
 		if d.file, err = directio.OpenFile(d.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			return fmt.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%s open block device: %w", d.path, err)
 		}
 	} else {
-		if isCharDevice {
-			return fmt.Errorf("using char device %s", d.path)
-		} else {
-			return fmt.Errorf("%s must be a block device", d.path)
+		if !isCharDevice {
+			return fmt.Errorf("must be a char device %s", d.path)
 		}
 		d.mode = "raw"
 		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
-			return fmt.Errorf("%s must be a block device: %w", d.path, err)
+			return fmt.Errorf("%s open char device: %w", d.path, err)
 		}
 	}
 	return nil
@@ -271,7 +269,7 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 	for _, node := range append(nodes, hostname.Hostname()) {
 		t.peerConfigs[node] = newPeerConfig()
 	}
-	for slot := 0; slot < MaxSlots; slot += 1 {
+	for slot := 0; slot < MaxSlots; slot++ {
 		b, err := t.device.ReadMetaSlot(slot)
 		if err != nil {
 			errs := errors.Join(errs, err)
@@ -339,7 +337,7 @@ func (t peerConfigs) UsedSlots() map[int]any {
 
 func (t peerConfigs) FreeSlot() int {
 	used := t.UsedSlots()
-	for slot := 0; slot < MaxSlots; slot += 1 {
+	for slot := 0; slot < MaxSlots; slot++ {
 		if _, ok := used[slot]; !ok {
 			return slot
 		}

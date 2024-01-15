@@ -69,5 +69,5 @@ func (t Array) Key(s string) key.T {
 	if t.name == "" {
 		panic("array has no name")
 	}
-	return key.T{t.name, s}
+	return key.T{Section: t.name, Option: s}
 }

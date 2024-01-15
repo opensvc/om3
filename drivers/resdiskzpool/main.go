@@ -171,7 +171,7 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{"name", t.Name},
+		{Key: "name", Value: t.Name},
 	}
 	return m, nil
 }
@@ -271,7 +271,7 @@ func (t T) Label() string {
 // pool exists.
 func (t T) poolImport() error {
 	var err error
-	for i := 0; i < 10; i += 1 {
+	for i := 0; i < 10; i++ {
 		err = t.poolImportTryDevice(false)
 		if err == nil {
 			return nil

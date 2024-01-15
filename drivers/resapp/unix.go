@@ -275,16 +275,16 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	}
 	result := append(
 		resource.InfoKeys{},
-		resource.InfoKey{"script", t.ScriptPath},
-		resource.InfoKey{"start", t.StartCmd},
-		resource.InfoKey{"stop", t.StopCmd},
-		resource.InfoKey{"check", t.CheckCmd},
-		resource.InfoKey{"info", t.InfoCmd},
-		resource.InfoKey{"timeout", durationToString(t.Timeout)},
-		resource.InfoKey{"start_timeout", durationToString(t.StartTimeout)},
-		resource.InfoKey{"stop_timeout", durationToString(t.StopTimeout)},
-		resource.InfoKey{"check_timeout", durationToString(t.CheckTimeout)},
-		resource.InfoKey{"info_timeout", durationToString(t.InfoTimeout)},
+		resource.InfoKey{Key: "script", Value: t.ScriptPath},
+		resource.InfoKey{Key: "start", Value: t.StartCmd},
+		resource.InfoKey{Key: "stop", Value: t.StopCmd},
+		resource.InfoKey{Key: "check", Value: t.CheckCmd},
+		resource.InfoKey{Key: "info", Value: t.InfoCmd},
+		resource.InfoKey{Key: "timeout", Value: durationToString(t.Timeout)},
+		resource.InfoKey{Key: "start_timeout", Value: durationToString(t.StartTimeout)},
+		resource.InfoKey{Key: "stop_timeout", Value: durationToString(t.StopTimeout)},
+		resource.InfoKey{Key: "check_timeout", Value: durationToString(t.CheckTimeout)},
+		resource.InfoKey{Key: "info_timeout", Value: durationToString(t.InfoTimeout)},
 	)
 	var opts []funcopt.O
 	var err error
@@ -316,7 +316,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		}
 		key := strings.Trim(lineSplit[0], "\n ")
 		value := strings.Trim(lineSplit[1], "\n ")
-		result = append(result, resource.InfoKey{key, value})
+		result = append(result, resource.InfoKey{Key: key, Value: value})
 	}
 	return result, nil
 }

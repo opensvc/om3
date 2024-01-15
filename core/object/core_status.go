@@ -76,7 +76,7 @@ func (t *core) statusDumpModTime() time.Time {
 
 // statusFilePair returns a pair of file path suitable for a tmp-to-final move
 // after change.
-func (t core) statusFilePair() (final string, tmp string) {
+func (t *core) statusFilePair() (final string, tmp string) {
 	final = t.statusFile()
 	tmp = filepath.Join(filepath.Dir(final), "."+filepath.Base(final)+".swp")
 	return

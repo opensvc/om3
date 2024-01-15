@@ -29,7 +29,7 @@ func drvDoc(drvID driver.ID, kwName string) (string, error) {
 	return buff, nil
 }
 
-func (t core) defaultDoc() (string, error) {
+func (t *core) defaultDoc() (string, error) {
 	buff := ""
 	sort.Sort(keywordStore)
 	for _, kw := range keywordStore {

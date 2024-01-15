@@ -51,15 +51,15 @@ var (
 )
 
 func (t *CmdObjectCreate) Run(selector, kind string) error {
-	if p, err := t.parseSelector(selector, kind); err != nil {
-		return err
-	} else {
-		t.path = p
-	}
 	if c, err := client.New(client.WithURL(t.Server)); err != nil {
 		return err
 	} else {
 		t.client = c
+	}
+	if p, err := t.parseSelector(selector, kind); err != nil {
+		return err
+	} else {
+		t.path = p
 	}
 	return t.Do()
 }

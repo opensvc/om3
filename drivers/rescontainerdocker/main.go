@@ -109,7 +109,7 @@ func NewImageCacheMap() *imageCacheMap {
 	}
 }
 
-func (t imageCacheMap) Get(name string) (imageapi.Image, bool) {
+func (t *imageCacheMap) Get(name string) (imageapi.Image, bool) {
 	t.mu.Lock()
 	img, ok := t.m[name]
 	t.mu.Unlock()

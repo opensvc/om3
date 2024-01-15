@@ -49,12 +49,12 @@ func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
 }
 
-func (t keystore) HasKey(name string) bool {
+func (t *keystore) HasKey(name string) bool {
 	k := keyFromName(name)
 	return t.config.HasKey(k)
 }
 
-func (t keystore) temporaryKeyFile(name string) (f *os.File, err error) {
+func (t *keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	var (
 		b []byte
 	)
@@ -70,6 +70,6 @@ func (t keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	return
 }
 
-func (t keystore) postCommit() error {
+func (t *keystore) postCommit() error {
 	return t.postInstall("")
 }

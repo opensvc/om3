@@ -176,7 +176,7 @@ func (t Lookup) ConfigureVolume(volume volumer, obj interface{}) error {
 		return err
 	}
 	var nodes []string
-	if i, err := c.Config().Eval(key.T{"DEFAULT", "nodes"}); err != nil {
+	if i, err := c.Config().Eval(key.T{Section: "DEFAULT", Option: "nodes"}); err != nil {
 		return err
 	} else {
 		nodes = i.([]string)
