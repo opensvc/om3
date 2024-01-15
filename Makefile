@@ -9,10 +9,11 @@ GOVET = $(GOCMD) vet
 
 OM = ./bin/om
 OX = ./bin/ox
+COMPOBJ = ./bin/compobj
 
 all: test build
 
-build: om ox
+build: om ox compobj
 
 api:
 	$(GOGEN) ./daemon/api
@@ -26,6 +27,9 @@ om: api
 
 ox: api
 	$(GOBUILD) -o $(OX) -v ./cmd/ox/
+
+compobj:
+	$(GOBUILD) -o $(COMPOBJ) -v ./util/compobj/
 
 test:
 	$(GOTEST) ./...
