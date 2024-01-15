@@ -150,7 +150,6 @@ func (t *CmdObjectLogs) local(selStr string) error {
 			ev.Render(t.Output)
 		}
 	}
-	return nil
 }
 
 func (t *CmdObjectLogs) Run(selector, kind string) error {

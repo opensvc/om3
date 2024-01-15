@@ -136,5 +136,4 @@ func NewDeviceMapper() *DeviceMapper {
 
 func (t DeviceMapper) Remove(dev device) error {
 	panic("not implemented")
-	return nil
 }

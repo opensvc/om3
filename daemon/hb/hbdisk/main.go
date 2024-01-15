@@ -113,17 +113,15 @@ func (d *device) open() error {
 		}
 		d.mode = "directio"
 		if d.file, err = directio.OpenFile(d.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			return fmt.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%s open block device: %w", d.path, err)
 		}
 	} else {
-		if isCharDevice {
-			return fmt.Errorf("using char device %s", d.path)
-		} else {
-			return fmt.Errorf("%s must be a block device", d.path)
+		if !isCharDevice {
+			return fmt.Errorf("must be a char device %s", d.path)
 		}
 		d.mode = "raw"
 		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
-			return fmt.Errorf("%s must be a block device: %w", d.path, err)
+			return fmt.Errorf("%s open char device: %w", d.path, err)
 		}
 	}
 	return nil
