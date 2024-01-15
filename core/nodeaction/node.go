@@ -416,7 +416,7 @@ func (t T) DoRemote() error {
 		t.nodeDo(ctx, resultQ, nodename, func(ctx context.Context, nodename string) (any, error) {
 			return t.RemoteFunc(ctx, nodename)
 		})
-		todo += 1
+		todo++
 	}
 	if todo == 0 {
 		return nil
@@ -432,7 +432,7 @@ func (t T) DoRemote() error {
 			errs = errors.New("remote action error")
 		}
 		results = append(results, result)
-		done += 1
+		done++
 		if done >= todo {
 			break
 		}

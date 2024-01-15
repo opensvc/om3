@@ -51,7 +51,7 @@ func (m *Meta) Nodes() []string {
 	l := make([]string, len(m.pathMap))
 	for s, _ := range m.nodeMap {
 		l[i] = s
-		i += 1
+		i++
 	}
 	return l
 }
@@ -62,7 +62,7 @@ func (m *Meta) Paths() naming.Paths {
 	for s, _ := range m.pathMap {
 		p, _ := naming.ParsePath(s)
 		l[i] = p
-		i += 1
+		i++
 	}
 	return l
 }

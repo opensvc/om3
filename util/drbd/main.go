@@ -593,7 +593,7 @@ func (t Digest) FreeMinor(exclude []int) (int, error) {
 	if exclude == nil {
 		exclude = []int{}
 	}
-	for i := 0; i < MaxDRBD; i += 1 {
+	for i := 0; i < MaxDRBD; i++ {
 		s := fmt.Sprint(i)
 		if _, ok := t.Minors[s]; ok {
 			continue
@@ -610,7 +610,7 @@ func (t Digest) FreePort(exclude []int) (int, error) {
 	if exclude == nil {
 		exclude = []int{}
 	}
-	for i := MinPort; i < MaxPort; i += 1 {
+	for i := MinPort; i < MaxPort; i++ {
 		s := fmt.Sprint(i)
 		if _, ok := t.Ports[s]; ok {
 			continue

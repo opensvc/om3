@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/goccy/go-json"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
+
+	"github.com/goccy/go-json"
 )
 
 type (
@@ -350,10 +351,10 @@ func (t CompFileincs) fixCheck(rule CompFileinc) ExitCode {
 	i := 0
 	scanner := bufio.NewScanner(bytes.NewReader(fileContentCache[rule.Path]))
 	for scanner.Scan() {
-		i += 1
+		i++
 		line := scanner.Text()
 		if reg.Match([]byte(line)) {
-			match += 1
+			match++
 			if match == 1 {
 				if rule.StrictFmt && line != string(lineToAdd) {
 					t.Infof("rewrite %s:%d:'%s', new content: '%s'\n", rule.Path, i, line, lineToAdd)

@@ -311,7 +311,7 @@ func (t node) render(widths []int, depth int, last bool) {
 	cursor.ClearLine()
 	padding := ""
 	if depth > 0 {
-		for i := 0; i < depth-1; i += 1 {
+		for i := 0; i < depth-1; i++ {
 			padding += PadFiller
 		}
 		if last {

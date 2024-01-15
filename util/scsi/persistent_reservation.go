@@ -54,7 +54,7 @@ func (t PersistentReservationHandle) countHandledRegistrations(registrations []s
 	n := 0
 	for _, r := range registrations {
 		if r == t.Key {
-			n += 1
+			n++
 		}
 	}
 	return n

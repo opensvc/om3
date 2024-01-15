@@ -512,7 +512,7 @@ func (t *T) set(op keyop.T) error {
 		removed := 0
 		for _, e := range current {
 			if e == op.Value {
-				removed += 1
+				removed++
 				continue
 			}
 			target = append(target, e)

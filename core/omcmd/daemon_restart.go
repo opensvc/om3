@@ -66,7 +66,7 @@ func (t *CmdDaemonRestart) doNodes() error {
 			needDoLocal = true
 			continue
 		}
-		running += 1
+		running++
 		go func(nodename string) {
 			err := t.doNode(ctx, c, nodename)
 			errC <- err

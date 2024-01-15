@@ -58,7 +58,7 @@ func (t *CmdDaemonShutdown) doNodes() error {
 			needDoLocal = true
 			continue
 		}
-		running += 1
+		running++
 		go func(nodename string) {
 			_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on remote %s\n", nodename)
 			err := t.doRemote(ctx, c, nodename, params)

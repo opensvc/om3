@@ -269,7 +269,7 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 	for _, node := range append(nodes, hostname.Hostname()) {
 		t.peerConfigs[node] = newPeerConfig()
 	}
-	for slot := 0; slot < MaxSlots; slot += 1 {
+	for slot := 0; slot < MaxSlots; slot++ {
 		b, err := t.device.ReadMetaSlot(slot)
 		if err != nil {
 			errs := errors.Join(errs, err)
@@ -337,7 +337,7 @@ func (t peerConfigs) UsedSlots() map[int]any {
 
 func (t peerConfigs) FreeSlot() int {
 	used := t.UsedSlots()
-	for slot := 0; slot < MaxSlots; slot += 1 {
+	for slot := 0; slot < MaxSlots; slot++ {
 		if _, ok := used[slot]; !ok {
 			return slot
 		}

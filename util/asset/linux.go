@@ -194,7 +194,7 @@ func memSlots() (int, error) {
 		if s.Header.Type != 17 {
 			continue
 		}
-		n += 1
+		n++
 	}
 	return n, nil
 }
@@ -212,7 +212,7 @@ func memBanks() (int, error) {
 		if fmtSize(s) == "" {
 			continue
 		}
-		n += 1
+		n++
 	}
 	return n, nil
 }

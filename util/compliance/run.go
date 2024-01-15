@@ -492,11 +492,11 @@ func (t Run) Stat() RunStat {
 	for _, x := range m {
 		switch x {
 		case 0:
-			stat.Ok += 1
+			stat.Ok++
 		case 2:
-			stat.NA += 1
+			stat.NA++
 		default:
-			stat.Nok += 1
+			stat.Nok++
 		}
 	}
 	stat.Total = len(m)

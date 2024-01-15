@@ -42,7 +42,7 @@ func (t *pendingDRBDAllocationsMap) minors() []int {
 	i := 0
 	for _, a := range t.m {
 		l[i] = a.Minor
-		i += 1
+		i++
 	}
 	return l
 }
@@ -52,7 +52,7 @@ func (t *pendingDRBDAllocationsMap) ports() []int {
 	i := 0
 	for _, a := range t.m {
 		l[i] = a.Port
-		i += 1
+		i++
 	}
 	return l
 }

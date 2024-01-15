@@ -335,7 +335,7 @@ func (o *T) updateStatus() {
 			false: 0,
 		}
 		for _, instStatus := range o.instStatus {
-			m[instStatus.FrozenAt.IsZero()] += 1
+			m[instStatus.FrozenAt.IsZero()]++
 		}
 		n := len(o.instStatus)
 		switch {

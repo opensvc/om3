@@ -363,7 +363,7 @@ func (t CompMpaths) loadSection(buff []byte, section string) ([]byte, []byte) {
 	buff = buff[start+1:]
 	for i, c := range buff {
 		if c == '{' {
-			depth += 1
+			depth++
 		} else if c == '}' {
 			depth -= 1
 		}
