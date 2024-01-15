@@ -42,7 +42,7 @@ func NewVol(p any, opts ...funcopt.O) (*vol, error) {
 	return s, err
 }
 
-func (t vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

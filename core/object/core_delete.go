@@ -17,7 +17,7 @@ import (
 //
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
-func (t core) DeleteSection(ctx context.Context, rids ...string) error {
+func (t *core) DeleteSection(ctx context.Context, rids ...string) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func (t core) DeleteSection(ctx context.Context, rids ...string) error {
 	return t.config.DeleteSections(rids...)
 }
 
-func (t core) Delete(ctx context.Context) error {
+func (t *core) Delete(ctx context.Context) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
@@ -37,7 +37,7 @@ func (t core) Delete(ctx context.Context) error {
 	return t.deleteInstance()
 }
 
-func (t core) deleteInstance() error {
+func (t *core) deleteInstance() error {
 	if err := t.deleteInstanceFiles(); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (t core) deleteInstance() error {
 	return nil
 }
 
-func (t core) deleteInstanceFiles() error {
+func (t *core) deleteInstanceFiles() error {
 	patterns := []string{
 		filepath.Join(t.logDir(), t.path.Name+".log*"),
 		filepath.Join(t.logDir(), t.path.Name+".debug.log*"),
@@ -73,7 +73,7 @@ func (t core) deleteInstanceFiles() error {
 	return nil
 }
 
-func (t core) tryDeleteInstanceFile(fpath string) bool {
+func (t *core) tryDeleteInstanceFile(fpath string) bool {
 	if file.IsProtected(fpath) {
 		t.log.Attr("path", fpath).Warnf("block attempt to remove the protected file %s", fpath)
 		return false
@@ -86,10 +86,10 @@ func (t core) tryDeleteInstanceFile(fpath string) bool {
 	return true
 }
 
-func (t core) deleteInstanceLogs() error {
+func (t *core) deleteInstanceLogs() error {
 	return nil
 }
 
-func (t core) setPurgeCollectorTag() error {
+func (t *core) setPurgeCollectorTag() error {
 	return nil
 }

@@ -34,7 +34,7 @@ const (
 	vKeyDir
 )
 
-func (t keystore) resolveKey(k string) ([]vKey, error) {
+func (t *keystore) resolveKey(k string) ([]vKey, error) {
 	var (
 		dirs, keys []string
 		err        error
@@ -88,7 +88,7 @@ func resolveKeyRecurse(k string, done map[string]interface{}, dirs, keys []strin
 	return data, done
 }
 
-func (t keystore) _install(k string, dst string) error {
+func (t *keystore) _install(k string, dst string) error {
 	keys, err := t.resolveKey(k)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (t keystore) _install(k string, dst string) error {
 }
 
 // keyPath returns the full path to host's file containing the key decoded data.
-func (t keystore) keyPath(vk vKey, dst string) string {
+func (t *keystore) keyPath(vk vKey, dst string) string {
 	if strings.HasSuffix(dst, "/") {
 		name := filepath.Base(strings.TrimRight(vk.Path, "/"))
 		return filepath.Join(dst, name)
@@ -113,7 +113,7 @@ func (t keystore) keyPath(vk vKey, dst string) string {
 	return dst
 }
 
-func (t keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
+func (t *keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	switch vk.Type {
 	case vKeyFile:
 		vpath := t.keyPath(vk, dst)
@@ -126,7 +126,7 @@ func (t keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os
 }
 
 // installFileKey installs a key content in the host storage
-func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
+func (t *keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	if strings.Contains(dst, "..") {
 		// paranoid checks before RemoveAll() and Remove()
 		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", dst)
@@ -164,7 +164,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 }
 
 // installDirKey creates a directory to host projected keys
-func (t keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
+func (t *keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	if strings.HasSuffix(dst, "/") {
 		dirname := filepath.Base(vk.Path)
 		dst = filepath.Join(dst, dirname, "")
@@ -183,14 +183,14 @@ func (t keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode 
 	return changed, nil
 }
 
-func (t keystore) chmod(p string, mode *os.FileMode) error {
+func (t *keystore) chmod(p string, mode *os.FileMode) error {
 	if mode == nil {
 		return nil
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t keystore) chown(p string, usr, grp string) error {
+func (t *keystore) chown(p string, usr, grp string) error {
 	uid := -1
 	gid := -1
 	if usr != "" {
@@ -216,7 +216,7 @@ func (t keystore) chown(p string, usr, grp string) error {
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
-func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
+func (t *keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
 	mtime := t.configModTime()
 	if file.Exists(dst) {
 		if err := t.chmod(dst, mode); err != nil {
@@ -253,11 +253,11 @@ func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 	return true, os.Chtimes(dst, mtime, mtime)
 }
 
-func (t keystore) InstallKey(keyName string) error {
+func (t *keystore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
+func (t *keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
 	t.log.Debugf("install %s key %s to %s", t.path, keyName, dst)
 	keys, err := t.resolveKey(keyName)
 	if err != nil {
@@ -274,7 +274,7 @@ func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, di
 	return nil
 }
 
-func (t keystore) postInstall(k string) error {
+func (t *keystore) postInstall(k string) error {
 	changedVolumes := make(map[naming.Path]interface{})
 	type resvoler interface {
 		InstallDataByKind(naming.Kind) (bool, error)

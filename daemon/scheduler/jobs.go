@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (o T) action(e schedule.Entry) error {
+func (o *T) action(e schedule.Entry) error {
 	sid := uuid.New().String()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}, {"sid", sid}}
 	cmdArgs := []string{}

@@ -51,7 +51,7 @@ func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	return nil
 }
 
-func (t core) Config() *xconfig.T {
+func (t *core) Config() *xconfig.T {
 	return t.config
 }
 
@@ -80,17 +80,17 @@ func (t *core) ID() uuid.UUID {
 	return t.id
 }
 
-func (t core) Orchestrate() string {
+func (t *core) Orchestrate() string {
 	k := key.Parse("orchestrate")
 	return t.config.GetString(k)
 }
 
-func (t core) FQDN() string {
+func (t *core) FQDN() string {
 	clusterName := rawconfig.ClusterSection().Name
 	return naming.NewFQDN(t.path, clusterName).String()
 }
 
-func (t core) Env() string {
+func (t *core) Env() string {
 	k := key.Parse("env")
 	if s := t.config.GetString(k); s != "" {
 		return s
@@ -98,24 +98,24 @@ func (t core) Env() string {
 	return rawconfig.NodeSection().Env
 }
 
-func (t core) App() string {
+func (t *core) App() string {
 	k := key.Parse("app")
 	return t.config.GetString(k)
 }
 
-func (t core) Topology() topology.T {
+func (t *core) Topology() topology.T {
 	k := key.Parse("topology")
 	s := t.config.GetString(k)
 	return topology.New(s)
 }
 
-func (t core) Placement() placement.Policy {
+func (t *core) Placement() placement.Policy {
 	k := key.Parse("placement")
 	s := t.config.GetString(k)
 	return placement.NewPolicy(s)
 }
 
-func (t core) Priority() priority.T {
+func (t *core) Priority() priority.T {
 	k := key.Parse("priority")
 	if i, err := t.config.GetIntStrict(k); err != nil {
 		//t.log.Error().Err(err).Send()
@@ -125,7 +125,7 @@ func (t core) Priority() priority.T {
 	}
 }
 
-func (t core) Peers() ([]string, error) {
+func (t *core) Peers() ([]string, error) {
 	impersonate := hostname.Hostname()
 	if v, err := t.config.IsInNodes(impersonate); err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (t core) Peers() ([]string, error) {
 	return nil, fmt.Errorf("node %s has no peers: not in nodes nor drpnodes", impersonate)
 }
 
-func (t core) Children() []naming.Relation {
+func (t *core) Children() []naming.Relation {
 	data := make([]naming.Relation, 0)
 	k := key.Parse("children")
 	l, err := t.config.GetStringsStrict(k)
@@ -154,7 +154,7 @@ func (t core) Children() []naming.Relation {
 	return data
 }
 
-func (t core) Parents() []naming.Relation {
+func (t *core) Parents() []naming.Relation {
 	data := make([]naming.Relation, 0)
 	k := key.Parse("parents")
 	l, err := t.config.GetStringsStrict(k)
@@ -168,7 +168,7 @@ func (t core) Parents() []naming.Relation {
 	return data
 }
 
-func (t core) FlexMin() (int, error) {
+func (t *core) FlexMin() (int, error) {
 	var (
 		i, maxValue int
 		err         error
@@ -189,7 +189,7 @@ func (t core) FlexMin() (int, error) {
 	return i, nil
 }
 
-func (t core) FlexMax() (int, error) {
+func (t *core) FlexMax() (int, error) {
 	var (
 		i   int
 		err error
@@ -212,7 +212,7 @@ func (t core) FlexMax() (int, error) {
 	return i, nil
 }
 
-func (t core) FlexTarget() (int, error) {
+func (t *core) FlexTarget() (int, error) {
 	var (
 		i, minValue, maxValue int
 		err                   error
@@ -236,7 +236,7 @@ func (t core) FlexTarget() (int, error) {
 	return i, nil
 }
 
-func (t core) dereferenceExposedDevices(ref string) (string, error) {
+func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
 	var i any = t.config.Referrer
 	actor, ok := i.(Actor)
@@ -288,7 +288,7 @@ func (t core) dereferenceExposedDevices(ref string) (string, error) {
 	return xdevs[idx].String(), nil
 }
 
-func (t core) Dereference(ref string) (string, error) {
+func (t *core) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
 		return t.ID().String(), nil
@@ -371,7 +371,7 @@ func (t core) Dereference(ref string) (string, error) {
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
-func (t core) Nodes() ([]string, error) {
+func (t *core) Nodes() ([]string, error) {
 	l, err := t.config.Eval(key.Parse("nodes"))
 	if err != nil {
 		return []string{}, err
@@ -379,7 +379,7 @@ func (t core) Nodes() ([]string, error) {
 	return l.([]string), nil
 }
 
-func (t core) DRPNodes() ([]string, error) {
+func (t *core) DRPNodes() ([]string, error) {
 	l, err := t.config.Eval(key.Parse("drpnodes"))
 	if err != nil {
 		return nil, err
@@ -387,7 +387,7 @@ func (t core) DRPNodes() ([]string, error) {
 	return l.([]string), nil
 }
 
-func (t core) EncapNodes() ([]string, error) {
+func (t *core) EncapNodes() ([]string, error) {
 	l, err := t.config.Eval(key.Parse("encapnodes"))
 	if err != nil {
 		return nil, err
@@ -395,22 +395,22 @@ func (t core) EncapNodes() ([]string, error) {
 	return l.([]string), nil
 }
 
-func (t core) HardAffinity() []string {
+func (t *core) HardAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("hard_affinity"))
 	return l.([]string)
 }
 
-func (t core) HardAntiAffinity() []string {
+func (t *core) HardAntiAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
 	return l.([]string)
 }
 
-func (t core) SoftAffinity() []string {
+func (t *core) SoftAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("soft_affinity"))
 	return l.([]string)
 }
 
-func (t core) SoftAntiAffinity() []string {
+func (t *core) SoftAntiAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
 	return l.([]string)
 }

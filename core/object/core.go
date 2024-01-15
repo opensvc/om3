@@ -103,7 +103,7 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 	return nil
 }
 
-func (t core) String() string {
+func (t *core) String() string {
 	return t.path.String()
 }
 
@@ -111,7 +111,7 @@ func (t *core) SetVolatile(v bool) {
 	t.volatile = v
 }
 
-func (t core) IsVolatile() bool {
+func (t *core) IsVolatile() bool {
 	return t.volatile
 }
 
@@ -121,7 +121,7 @@ func (t *core) Path() naming.Path {
 
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.
-func (t core) ConfigFile() string {
+func (t *core) ConfigFile() string {
 	if t.configFile == "" {
 		t.configFile = t.path.ConfigFile()
 	}
@@ -142,16 +142,16 @@ func (t *core) Node() (*Node, error) {
 	}
 }
 
-func (t core) Log() *plog.Logger {
+func (t *core) Log() *plog.Logger {
 	return t.log
 }
 
-func (t core) ProgressKey() []string {
+func (t *core) ProgressKey() []string {
 	p := rawconfig.Colorize.Bold(t.path.String())
 	return []string{p}
 }
 
-func (t core) Progress(ctx context.Context, cols ...any) {
+func (t *core) Progress(ctx context.Context, cols ...any) {
 	if view := progress.ViewFromContext(ctx); view != nil {
 		key := t.ProgressKey()
 		view.Info(key, cols)

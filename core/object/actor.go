@@ -173,7 +173,7 @@ func (t *actor) ResourceSets() resourceset.L {
 	return l
 }
 
-func (t actor) getConfiguringResourceByID(rid string) resource.Driver {
+func (t *actor) getConfiguringResourceByID(rid string) resource.Driver {
 	for _, r := range t._resources {
 		if r.RID() == rid {
 			return r
@@ -182,7 +182,7 @@ func (t actor) getConfiguringResourceByID(rid string) resource.Driver {
 	return nil
 }
 
-func (t actor) getConfiguredResourceByID(rid string) resource.Driver {
+func (t *actor) getConfiguredResourceByID(rid string) resource.Driver {
 	for _, r := range t.resources {
 		if r.RID() == rid {
 			return r
@@ -191,7 +191,7 @@ func (t actor) getConfiguredResourceByID(rid string) resource.Driver {
 	return nil
 }
 
-func (t actor) ResourceByID(rid string) resource.Driver {
+func (t *actor) ResourceByID(rid string) resource.Driver {
 	if r := t.getConfiguredResourceByID(rid); r != nil {
 		return r
 	}
@@ -417,7 +417,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 	return nil
 }
 
-func (t actor) GetActionResDeps() *actionresdeps.Store {
+func (t *actor) GetActionResDeps() *actionresdeps.Store {
 	return t.actionResourceDeps
 }
 
@@ -428,7 +428,7 @@ func (t *actor) IsDesc() bool {
 
 // IsDisabled returns true if the object config evaluates DEFAULT.disable as true.
 // CRM actions are skipped on a disabled instance.
-func (t actor) IsDisabled() bool {
+func (t *actor) IsDisabled() bool {
 	k := key.Parse("disable")
 	return t.config.GetBool(k)
 }
