@@ -23,7 +23,7 @@ var (
 		return exec.Command("getent", file, name)
 	}
 
-	execId = func(userName string) *exec.Cmd {
+	execID = func(userName string) *exec.Cmd {
 		return exec.Command("id", "-gn", userName)
 	}
 
@@ -207,7 +207,7 @@ func (t CompGroupsMemberships) getGroupMembers(groupName string) (map[string]any
 }
 
 func (t CompGroupsMemberships) getPrimaryGroup(userName string) (string, error) {
-	cmd := execId(userName)
+	cmd := execID(userName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%w,%s \n", err, output)

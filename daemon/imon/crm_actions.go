@@ -125,7 +125,7 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 		command.WithLogger(o.log),
 		command.WithVarEnv(
 			env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
-			env.ActionOrchestrationIdVar+"="+o.state.OrchestrationId.String(),
+			env.ActionOrchestrationIDVar+"="+o.state.OrchestrationId.String(),
 			"OSVC_SESSION_ID="+sid.String(),
 		),
 	)

@@ -558,8 +558,8 @@ func (t T) trigger(ctx context.Context, s string) error {
 
 func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
 	var cmd string
-	hookId := trigger.Format(blocking, hook, action)
-	switch hookId {
+	hookID := trigger.Format(blocking, hook, action)
+	switch hookID {
 	case "blocking_pre_start":
 		cmd = t.BlockingPreStart
 	case "pre_start":
@@ -611,7 +611,7 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 		return nil
 	}
 	t.Log().Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
-	t.Progress(ctx, "▶ "+hookId)
+	t.Progress(ctx, "▶ "+hookID)
 	return t.trigger(ctx, cmd)
 }
 

@@ -11,13 +11,13 @@ import (
 )
 
 type (
-	CmdNetworkIpLs struct {
+	CmdNetworkIPLs struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdNetworkIpLs) Run() error {
+func (t *CmdNetworkIPLs) Run() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err

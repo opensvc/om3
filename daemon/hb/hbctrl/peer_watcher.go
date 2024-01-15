@@ -89,11 +89,11 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 						c.cmd <- CmdEvent{
 							Name:     evName,
 							Nodename: nodename,
-							HbId:     hbId,
+							HbID:     hbId,
 						}
 						c.cmd <- CmdSetPeerStatus{
 							Nodename:   nodename,
-							HbId:       hbId,
+							HbID:       hbId,
 							PeerStatus: peer,
 						}
 						beatingOnLastPub = peer.IsBeating

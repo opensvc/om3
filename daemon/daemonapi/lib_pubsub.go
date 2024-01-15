@@ -19,6 +19,6 @@ func (a *DaemonApi) announceUnsub(name string) {
 
 func (a *DaemonApi) announceNodeState(log *plog.Logger, state node.MonitorState) {
 	log.Infof("announce node state %s", state)
-	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}}, labelApi)
+	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}}, labelAPI)
 	time.Sleep(2 * daemondata.PropagationInterval())
 }

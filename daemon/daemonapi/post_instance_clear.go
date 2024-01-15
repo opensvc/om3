@@ -49,6 +49,6 @@ func (a *DaemonApi) postLocalInstanceClear(ctx echo.Context, namespace string, k
 		Node:  a.localhost,
 		Value: instMonitor,
 	}
-	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }

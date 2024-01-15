@@ -38,6 +38,6 @@ func (a *DaemonApi) localPostDaemonStop(ctx echo.Context) error {
 	a.announceNodeState(log, node.MonitorStateMaintenance)
 
 	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
-		pubsub.Label{"id", "daemon"}, labelApi, a.LabelNode)
+		pubsub.Label{"id", "daemon"}, labelAPI, a.LabelNode)
 	return JSONProblem(ctx, http.StatusOK, "announce maintenance state and ask daemon to stop", "")
 }

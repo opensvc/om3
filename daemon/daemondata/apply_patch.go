@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	eventId uint64
+	eventID uint64
 )
 
 func (d *data) applyMsgEvents(msg *hbtype.Msg) error {

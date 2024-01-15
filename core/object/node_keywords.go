@@ -459,7 +459,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Aliases:   []string{"tls_port"},
 		Scopable:  true,
 		Converter: converters.Int,
-		Default:   fmt.Sprintf("%d", daemonenv.HttpPort),
+		Default:   fmt.Sprintf("%d", daemonenv.HTTPPort),
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	},
 	{

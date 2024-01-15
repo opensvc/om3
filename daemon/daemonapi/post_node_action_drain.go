@@ -50,7 +50,7 @@ func (a *DaemonApi) localNodeActionDrain(ctx echo.Context) error {
 		Value: value,
 		Err:   make(chan error),
 	}
-	a.EventBus.Pub(&msg, labelApi, a.LabelNode)
+	a.EventBus.Pub(&msg, labelAPI, a.LabelNode)
 	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
 	var errs error

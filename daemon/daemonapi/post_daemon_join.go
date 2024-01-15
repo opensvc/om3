@@ -24,6 +24,6 @@ func (a *DaemonApi) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinPa
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
 	}
 	log.Infof("publish join request for node %s", node)
-	a.EventBus.Pub(&msgbus.JoinRequest{Node: node}, labelApi, a.LabelNode)
+	a.EventBus.Pub(&msgbus.JoinRequest{Node: node}, labelAPI, a.LabelNode)
 	return ctx.JSON(http.StatusOK, nil)
 }

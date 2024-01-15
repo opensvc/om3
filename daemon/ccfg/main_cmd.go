@@ -66,7 +66,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 		keyListenerCRL             = key.New("listener", "crl")
 		keyListenerAddr            = key.New("listener", "addr")
 		keyListenerPort            = key.New("listener", "port")
-		keyListenerOpenIdWellKnown = key.New("listener", "openid_well_known")
+		keyListenerOpenIDWellKnown = key.New("listener", "openid_well_known")
 		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
 		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
 	)
@@ -91,7 +91,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	} else {
 		cfg.Listener.Port = v.(int)
 	}
-	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIdWellKnown)
+	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIDWellKnown)
 	cfg.Listener.DNSSockGID = o.clusterConfig.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = o.clusterConfig.GetString(keyListenerDNSSockUID)
 

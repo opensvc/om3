@@ -36,7 +36,7 @@ func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind na
 		Value: value,
 		Err:   make(chan error),
 	}
-	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelApi)
+	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	select {

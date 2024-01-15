@@ -385,7 +385,7 @@ func newDaemonClient(n string) (*client.T, error) {
 
 func peerUrl(s string) string {
 	addr := s
-	port := fmt.Sprintf("%d", daemonenv.HttpPort)
+	port := fmt.Sprintf("%d", daemonenv.HTTPPort)
 	if lsnr := node.LsnrData.Get(s); lsnr != nil {
 		if lsnr.Port != "" {
 			port = lsnr.Port

@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/opensvc/om3/util/file"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/opensvc/om3/util/file"
 )
 
 type (
@@ -82,11 +83,11 @@ var (
 		return ExitOk
 	}
 
-	execChUserGid = func(user string, gid int) *exec.Cmd {
+	execChangeGID = func(user string, gid int) *exec.Cmd {
 		return exec.Command("usermod", "-g", fmt.Sprintf("%d", gid), user)
 	}
 
-	execChUid = func(user string, uid int) *exec.Cmd {
+	execChangeUID = func(user string, uid int) *exec.Cmd {
 		return exec.Command("usermod", "-u", fmt.Sprintf("%d", uid), user)
 	}
 
@@ -602,7 +603,7 @@ func (t *CompUsers) fixRule(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixGid(rule CompUser) ExitCode {
-	cmd := execChUserGid(rule.User, *rule.Gid)
+	cmd := execChangeGID(rule.User, *rule.Gid)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -614,7 +615,7 @@ func (t CompUsers) fixGid(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixUid(rule CompUser) ExitCode {
-	cmd := execChUid(rule.User, *rule.Uid)
+	cmd := execChangeUID(rule.User, *rule.Uid)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

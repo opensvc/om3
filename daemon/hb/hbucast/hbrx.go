@@ -60,7 +60,7 @@ func (t *rx) Stop() error {
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
-			HbId:     t.id,
+			HbID:     t.id,
 			Nodename: node,
 		}
 	}
@@ -88,13 +88,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		otherNodeIpM := make(map[string]struct{})
-		otherNodeIpL := make([]string, 0)
+		otherNodeIPM := make(map[string]struct{})
+		otherNodeIPL := make([]string, 0)
 		resolver := net.Resolver{}
 
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
-				HbId:     t.id,
+				HbID:     t.id,
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
@@ -104,8 +104,8 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				continue
 			}
 			for _, addr := range addrs {
-				otherNodeIpM[addr] = struct{}{}
-				otherNodeIpL = append(otherNodeIpL, addr)
+				otherNodeIPM[addr] = struct{}{}
+				otherNodeIPL = append(otherNodeIPL, addr)
 			}
 		}
 		t.Add(1)
@@ -120,7 +120,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				return
 			}
 		}()
-		t.log.Infof("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIpL)
+		t.log.Infof("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIPL)
 		started <- true
 		for {
 			conn, err := listener.Accept()
@@ -133,7 +133,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				}
 			}
 			connAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
-			if _, ok := otherNodeIpM[connAddr]; !ok {
+			if _, ok := otherNodeIPM[connAddr]; !ok {
 				t.log.Warnf("drop message from unexpected connection from %s", connAddr)
 				if err := conn.Close(); err != nil {
 					t.log.Warnf("close unexpected connection from %s: %s", connAddr, err)
@@ -179,7 +179,7 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
-		HbId:     t.id,
+		HbID:     t.id,
 		Success:  true,
 	}
 	t.msgC <- &msg

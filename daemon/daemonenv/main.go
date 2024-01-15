@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	HttpPort = 1215
+	HTTPPort = 1215
 
 	DrainChanDuration = 40 * time.Millisecond
 
@@ -25,8 +25,8 @@ var (
 	// Groupname is the current group name from user.Current, or "root" if user.LookupGroupId has error
 	Groupname string
 
-	// BaseHttpSock is the basename of http listener unix socket
-	BaseHttpSock = "http.sock"
+	// BaseHTTPSock is the basename of http listener unix socket
+	BaseHTTPSock = "http.sock"
 )
 
 func CAKeyFile() string {
@@ -54,11 +54,11 @@ func KeyFile() string {
 }
 
 func UrlInetHttp() string {
-	return fmt.Sprintf("https://localhost:%d", HttpPort)
+	return fmt.Sprintf("https://localhost:%d", HTTPPort)
 }
 
 func UrlHttpNode(node string) string {
-	return fmt.Sprintf("https://%s:%d", node, HttpPort)
+	return fmt.Sprintf("https://%s:%d", node, HTTPPort)
 }
 
 func UrlHttpNodeAndPort(node, port string) string {
@@ -74,7 +74,7 @@ func PathUxProfile() string {
 }
 
 func PathUxHttp() string {
-	return filepath.Join(rawconfig.Paths.Lsnr, BaseHttpSock)
+	return filepath.Join(rawconfig.Paths.Lsnr, BaseHTTPSock)
 }
 
 func init() {

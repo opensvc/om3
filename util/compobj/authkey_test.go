@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/user"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthkeyAdd(t *testing.T) {
@@ -227,14 +228,14 @@ func TestAuthkeyCheckAllowGroupsCheckAllowUsers(t *testing.T) {
 		},
 	}
 
-	oriUserLookup := userLookup
-	defer func() { userLookup = oriUserLookup }()
+	originalUserLookup := userLookup
+	defer func() { userLookup = originalUserLookup }()
 
-	oriUserLookGroupId := userLookupGroupId
-	defer func() { userLookupGroupId = oriUserLookGroupId }()
+	originalUserLookGroupID := userLookupGroupID
+	defer func() { userLookupGroupID = originalUserLookGroupID }()
 
-	oriOsOpen := osOpen
-	defer func() { osOpen = oriOsOpen }()
+	originalOsOpen := osOpen
+	defer func() { osOpen = originalOsOpen }()
 
 	userLookup = func(username string) (*user.User, error) {
 		user1 := &user.User{
@@ -247,7 +248,7 @@ func TestAuthkeyCheckAllowGroupsCheckAllowUsers(t *testing.T) {
 		return user1, nil
 	}
 
-	userLookupGroupId = func(gid string) (*user.Group, error) {
+	userLookupGroupID = func(gid string) (*user.Group, error) {
 		if gid == "1000" {
 			//toto gid
 			group := &user.Group{
@@ -562,8 +563,8 @@ func TestDelAuthKey(t *testing.T) {
 
 func TestAddAllowGroup(t *testing.T) {
 
-	oriUserLookGroupId := userLookupGroupId
-	defer func() { userLookupGroupId = oriUserLookGroupId }()
+	oriUserLookGroupID := userLookupGroupID
+	defer func() { userLookupGroupID = oriUserLookGroupID }()
 
 	oriUserLookup := userLookup
 	defer func() { userLookup = oriUserLookup }()
@@ -604,7 +605,7 @@ func TestAddAllowGroup(t *testing.T) {
 	obj := CompAuthkeys{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
-			userLookupGroupId = func(gid string) (*user.Group, error) {
+			userLookupGroupID = func(gid string) (*user.Group, error) {
 				group := &user.Group{
 					Gid:  "1000",
 					Name: "totoGroup",

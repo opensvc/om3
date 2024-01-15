@@ -33,7 +33,7 @@ type (
 )
 
 var (
-	labelApi = pubsub.Label{"origin", "api"}
+	labelAPI = pubsub.Label{"origin", "api"}
 )
 
 func New(ctx context.Context) *DaemonApi {

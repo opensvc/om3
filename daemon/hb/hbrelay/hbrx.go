@@ -50,7 +50,7 @@ func (t *rx) Stop() error {
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
-			HbId:     t.id,
+			HbID:     t.id,
 			Nodename: node,
 		}
 	}
@@ -69,7 +69,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 
 	for _, node := range t.nodes {
 		cmdC <- hbctrl.CmdAddWatcher{
-			HbId:     t.id,
+			HbID:     t.id,
 			Nodename: node,
 			Ctx:      ctx,
 			Timeout:  t.timeout,
@@ -102,7 +102,7 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	clusterId := cluster.ConfigData.Get().ID
+	clusterID := cluster.ConfigData.Get().ID
 	cli, err := client.New(
 		client.WithURL(t.relay),
 		client.WithUsername(t.username),
@@ -116,7 +116,7 @@ func (t *rx) recv(nodename string) {
 
 	params := api.GetRelayMessageParams{
 		Nodename:  &nodename,
-		ClusterId: &clusterId,
+		ClusterId: &clusterID,
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
@@ -169,7 +169,7 @@ func (t *rx) recv(nodename string) {
 	t.log.Debugf("recv: node %s", nodename)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
-		HbId:     t.id,
+		HbID:     t.id,
 		Success:  true,
 	}
 	t.msgC <- &msg

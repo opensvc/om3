@@ -11,7 +11,7 @@ var (
 		Aliases: []string{"net"},
 		Long:    `A backend network provides ip addresses to svc objects via ip.cni resources. These addresses are automatically allocated, accessible from all cluster nodes, and resolved by the cluster dns.`,
 	}
-	cmdNetworkIp = &cobra.Command{
+	cmdNetworkIP = &cobra.Command{
 		Use:   "ip",
 		Short: "Manage ip on backend networks",
 	}
@@ -22,11 +22,11 @@ func init() {
 		cmdNetwork,
 	)
 	cmdNetwork.AddCommand(
-		cmdNetworkIp,
+		cmdNetworkIP,
 		newCmdNetworkLs(),
 		newCmdNetworkSetup(),
 	)
-	cmdNetworkIp.AddCommand(
-		newCmdNetworkIpLs(),
+	cmdNetworkIP.AddCommand(
+		newCmdNetworkIPLs(),
 	)
 }

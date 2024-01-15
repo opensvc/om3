@@ -41,6 +41,6 @@ func (a *DaemonApi) localNodeActionAbort(ctx echo.Context) error {
 			CandidateOrchestrationId: uuid.New(),
 		},
 	}
-	a.EventBus.Pub(&msg, labelApi)
+	a.EventBus.Pub(&msg, labelAPI)
 	return ctx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationId: msg.Value.CandidateOrchestrationId})
 }

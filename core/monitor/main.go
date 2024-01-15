@@ -176,7 +176,7 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		eventC = make(chan event.Event, 100)
 		dataC  = make(chan *cluster.Data)
 
-		nextEvId uint64
+		nextEventID uint64
 
 		displayInterval = 500 * time.Millisecond
 
@@ -233,14 +233,14 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		case err := <-errC:
 			return err
 		case e := <-eventC:
-			if nextEvId == 0 {
-				nextEvId = e.ID
-			} else if e.ID != nextEvId {
-				err := fmt.Errorf("broken event chain: received event id %d, expected %d", e.ID, nextEvId)
+			if nextEventID == 0 {
+				nextEventID = e.ID
+			} else if e.ID != nextEventID {
+				err := fmt.Errorf("broken event chain: received event id %d, expected %d", e.ID, nextEventID)
 				_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 				return err
 			}
-			nextEvId++
+			nextEventID++
 			changes = true
 			msg, err := msgbus.EventToMessage(e)
 			if err != nil {

@@ -16,8 +16,8 @@ func Test_init(t *testing.T) {
 	})
 
 	t.Run("ID value is value of env var OSVC_SESSION_ID when defined", func(t *testing.T) {
-		origId := ID
-		defer func() { ID = origId }()
+		origID := ID
+		defer func() { ID = origID }()
 		varName := "OSVC_SESSION_ID"
 		envVarValue, ok := os.LookupEnv(varName)
 		if ok {
@@ -32,8 +32,8 @@ func Test_init(t *testing.T) {
 	})
 
 	t.Run("invalid env var OSVC_SESSION_ID value are ignored and a valid ID is created", func(t *testing.T) {
-		origId := ID
-		defer func() { ID = origId }()
+		origID := ID
+		defer func() { ID = origID }()
 		varName := "OSVC_SESSION_ID"
 		envVarValue, ok := os.LookupEnv(varName)
 		if ok {

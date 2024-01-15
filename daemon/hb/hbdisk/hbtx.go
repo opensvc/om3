@@ -41,7 +41,7 @@ func (t *tx) Stop() error {
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
-			HbId:     t.id,
+			HbID:     t.id,
 			Nodename: node,
 		}
 	}
@@ -69,7 +69,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		defer t.log.Infof("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
-				HbId:     t.id,
+				HbID:     t.id,
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
@@ -116,7 +116,7 @@ func (t *tx) send(b []byte) {
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{
 			Nodename: node,
-			HbId:     t.id,
+			HbID:     t.id,
 			Success:  true,
 		}
 	}

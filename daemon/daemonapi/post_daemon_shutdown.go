@@ -52,7 +52,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 	var (
 		log                        = LogHandler(ctx, "PostDaemonShutdown")
 		monitorLocalExpectShutdown = instance.MonitorLocalExpectShutdown
-		orchestrationId            = uuid.New()
+		orchestrationID            = uuid.New()
 		shutdownCancel             context.CancelFunc
 		shutdownCtx                = context.Background()
 		toWait                     = make(map[naming.Path]instance.MonitorState)
@@ -96,7 +96,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 	setInstanceMonitor := func(p naming.Path, value instance.MonitorUpdate) error {
 		errC := make(chan error)
 		a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: a.localhost, Value: value, Err: errC},
-			pubsub.Label{"path", p.String()}, labelApi)
+			pubsub.Label{"path", p.String()}, labelAPI)
 		return <-errC
 	}
 
@@ -127,7 +127,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			waitingState := instance.MonitorData.Get(p, a.localhost).State
 			if !waitingState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
 				log.Infof("revert %s state %s to idle", p, waitingState)
-				value := instance.MonitorUpdate{CandidateOrchestrationId: orchestrationId, State: &idleState}
+				value := instance.MonitorUpdate{CandidateOrchestrationId: orchestrationID, State: &idleState}
 				if err := setInstanceMonitor(p, value); err != nil {
 					log.Warnf("can't revert %s state %s to idle: %s", p, waitingState, err)
 				}
@@ -142,7 +142,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 			value := instance.MonitorUpdate{
-				CandidateOrchestrationId: orchestrationId,
+				CandidateOrchestrationId: orchestrationID,
 				LocalExpect:              &monitorLocalExpectShutdown,
 			}
 			if err := setInstanceMonitor(p, value); err != nil {
@@ -167,7 +167,7 @@ func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 					a.announceNodeState(log, node.MonitorStateShutdown)
 					log.Infof("ask daemon do stop")
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
-						pubsub.Label{"id", "daemon"}, labelApi, a.LabelNode)
+						pubsub.Label{"id", "daemon"}, labelAPI, a.LabelNode)
 					log.Infof("succeed")
 					return JSONProblem(ctx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
 				}

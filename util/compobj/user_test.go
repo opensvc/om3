@@ -952,14 +952,14 @@ func TestUserFix(t *testing.T) {
 				return ExitOk
 			}
 
-			execChUid = func(user string, uid int) *exec.Cmd {
+			execChangeUID = func(user string, uid int) *exec.Cmd {
 				c.FixAction = uidFix
 				c.currentPasswdFile = "./testdata/user_passwd"
 				c.currentShadowFile = "./testdata/user_shadow"
 				return exec.Command("pwd")
 			}
 
-			execChUserGid = func(user string, uid int) *exec.Cmd {
+			execChangeGID = func(user string, uid int) *exec.Cmd {
 				c.FixAction = gidFix
 				c.currentPasswdFile = "./testdata/user_passwd"
 				c.currentShadowFile = "./testdata/user_shadow"

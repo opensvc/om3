@@ -42,7 +42,7 @@ func New(ctx context.Context, enableUi bool) *T {
 	api.RegisterHandlers(e, daemonapi.New(ctx))
 	g := e.Group("/public/ui")
 	if enableUi {
-		g.Use(daemonapi.UiMiddleware(ctx))
+		g.Use(daemonapi.UIMiddleware(ctx))
 	}
 
 	return &T{mux: e}

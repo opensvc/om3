@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGroupMembershipAdd(t *testing.T) {
@@ -109,11 +110,11 @@ func TestGroupMembershipAdd(t *testing.T) {
 }
 
 func TestGroupMembershipCheckRule(t *testing.T) {
-	oriExecGetent := execGetent
-	defer func() { execGetent = oriExecGetent }()
+	originalExecGetent := execGetent
+	defer func() { execGetent = originalExecGetent }()
 
-	oriExecId := execId
-	defer func() { execId = oriExecId }()
+	originalExecID := execID
+	defer func() { execID = originalExecID }()
 
 	getLine := func(FileContent []byte, name string) string {
 		scanner := bufio.NewScanner(bytes.NewReader(FileContent))
@@ -126,7 +127,7 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 		return ""
 	}
 
-	getGroupNameFromId := func(groupFileContent []byte, id string) string {
+	getGroupNameFromID := func(groupFileContent []byte, id string) string {
 		scanner := bufio.NewScanner(bytes.NewReader(groupFileContent))
 		for scanner.Scan() {
 			line := strings.Split(scanner.Text(), ":")
@@ -140,7 +141,7 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 		return ""
 	}
 
-	getPrimaryGroupId := func(passwdFileContent []byte, userName string) string {
+	getPrimaryGroupID := func(passwdFileContent []byte, userName string) string {
 		scanner := bufio.NewScanner(bytes.NewReader(passwdFileContent))
 		for scanner.Scan() {
 			line := strings.Split(scanner.Text(), ":")
@@ -272,13 +273,13 @@ func TestGroupMembershipCheckRule(t *testing.T) {
 				}
 				return exec.Command("echo", "-n", line)
 			}
-			execId = func(userName string) *exec.Cmd {
+			execID = func(userName string) *exec.Cmd {
 				passwdFileContent, err := os.ReadFile(c.passwdFile)
 				require.NoError(t, err)
 				groupFileContent, err := os.ReadFile(c.groupFile)
 				require.NoError(t, err)
-				id := getPrimaryGroupId(passwdFileContent, userName)
-				return exec.Command("echo", "-n", getGroupNameFromId(groupFileContent, id))
+				id := getPrimaryGroupID(passwdFileContent, userName)
+				return exec.Command("echo", "-n", getGroupNameFromID(groupFileContent, id))
 			}
 
 			require.Equal(t, c.expectedCheckOutput, obj.checkRule(c.rule))
@@ -290,14 +291,14 @@ func TestGroupMembershipFixRule(t *testing.T) {
 	oriExecGetent := execGetent
 	defer func() { execGetent = oriExecGetent }()
 
-	oriExecId := execId
-	defer func() { execId = oriExecId }()
+	originalExecID := execID
+	defer func() { execID = originalExecID }()
 
-	oriExecUsermodAdd := execUsermodAdd
-	defer func() { execUsermodAdd = oriExecUsermodAdd }()
+	originalExecUsermodAdd := execUsermodAdd
+	defer func() { execUsermodAdd = originalExecUsermodAdd }()
 
-	oriExecGpasswdDel := execGpasswdDel
-	defer func() { execGpasswdDel = oriExecGpasswdDel }()
+	originalExecGpasswdDel := execGpasswdDel
+	defer func() { execGpasswdDel = originalExecGpasswdDel }()
 
 	type fixAction int
 
@@ -317,7 +318,7 @@ func TestGroupMembershipFixRule(t *testing.T) {
 		return ""
 	}
 
-	getGroupNameFromId := func(groupFileContent []byte, id string) string {
+	getGroupNameFromID := func(groupFileContent []byte, id string) string {
 		scanner := bufio.NewScanner(bytes.NewReader(groupFileContent))
 		for scanner.Scan() {
 			line := strings.Split(scanner.Text(), ":")
@@ -331,7 +332,7 @@ func TestGroupMembershipFixRule(t *testing.T) {
 		return ""
 	}
 
-	getPrimaryGroupId := func(passwdFileContent []byte, userName string) string {
+	getPrimaryGroupID := func(passwdFileContent []byte, userName string) string {
 		scanner := bufio.NewScanner(bytes.NewReader(passwdFileContent))
 		for scanner.Scan() {
 			line := strings.Split(scanner.Text(), ":")
@@ -441,13 +442,13 @@ func TestGroupMembershipFixRule(t *testing.T) {
 				}
 				return exec.Command("echo", "-n", line)
 			}
-			execId = func(userName string) *exec.Cmd {
+			execID = func(userName string) *exec.Cmd {
 				passwdFileContent, err := os.ReadFile(c.passwdFile)
 				require.NoError(t, err)
 				groupFileContent, err := os.ReadFile(c.groupFile)
 				require.NoError(t, err)
-				id := getPrimaryGroupId(passwdFileContent, userName)
-				return exec.Command("echo", "-n", getGroupNameFromId(groupFileContent, id))
+				id := getPrimaryGroupID(passwdFileContent, userName)
+				return exec.Command("echo", "-n", getGroupNameFromID(groupFileContent, id))
 			}
 			execUsermodAdd = func(group string, user string) *exec.Cmd {
 				actionOnMembers[group+":"+user] = addAction
