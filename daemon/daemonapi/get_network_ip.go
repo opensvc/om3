@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func GetClusterIps() clusterip.L {
+func GetClusterIPs() clusterip.L {
 	cips := make(clusterip.L, 0)
 	for _, instStatusData := range instance.StatusData.GetAll() {
 		for rid, resStatus := range instStatusData.Value.Resources {
@@ -38,28 +38,28 @@ func GetClusterIps() clusterip.L {
 	return cips
 }
 
-// GetNetworkIp returns network status list.
-func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams) error {
+// GetNetworkIP returns network status list.
+func (a *DaemonApi) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams) error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
 	}
-	cips := GetClusterIps()
+	cips := GetClusterIPs()
 	var networkStatusList network.StatusList
 	if params.Name != nil {
 		networkStatusList = network.ShowNetworksByName(n, *params.Name, cips)
 	} else {
 		networkStatusList = network.ShowNetworks(n, cips)
 	}
-	var l api.NetworkIpItems
+	var l api.NetworkIPItems
 	for _, networkStatus := range networkStatusList {
 		for _, ip := range networkStatus.IPs {
-			l = append(l, api.NetworkIp{
+			l = append(l, api.NetworkIP{
 				Path: ip.Path.String(),
 				Node: ip.Node,
 				Rid:  ip.RID,
-				Ip:   ip.IP.String(),
-				Network: api.NetworkIpNetwork{
+				IP:   ip.IP.String(),
+				Network: api.NetworkIPNetwork{
 					Name:    networkStatus.Name,
 					Type:    networkStatus.Type,
 					Network: networkStatus.Network,
@@ -67,5 +67,5 @@ func (a *DaemonApi) GetNetworkIp(ctx echo.Context, params api.GetNetworkIpParams
 			})
 		}
 	}
-	return ctx.JSON(http.StatusOK, api.NetworkIpList{Kind: "NetworkIpList", Items: l})
+	return ctx.JSON(http.StatusOK, api.NetworkIPList{Kind: "NetworkIPList", Items: l})
 }

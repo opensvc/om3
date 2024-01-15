@@ -213,13 +213,13 @@ func (t ResourceItem) Unstructured() map[string]any {
 	}
 }
 
-func (t NetworkIpList) GetItems() any {
+func (t NetworkIPList) GetItems() any {
 	return t.Items
 }
 
-func (t NetworkIp) Unstructured() map[string]any {
+func (t NetworkIP) Unstructured() map[string]any {
 	return map[string]any{
-		"ip":      t.Ip,
+		"ip":      t.IP,
 		"network": t.Network,
 		"node":    t.Node,
 		"path":    t.Path,

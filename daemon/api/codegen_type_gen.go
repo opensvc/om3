@@ -48,9 +48,9 @@ const (
 	KeywordListKindKeywordList KeywordListKind = "KeywordList"
 )
 
-// Defines values for NetworkIpListKind.
+// Defines values for NetworkIPListKind.
 const (
-	NetworkIpListKindNetworkIpList NetworkIpListKind = "NetworkIpList"
+	NetworkIPListKindNetworkIPList NetworkIPListKind = "NetworkIPList"
 )
 
 // Defines values for NetworkListKind.
@@ -472,29 +472,29 @@ type Network struct {
 	Used    int       `json:"used"`
 }
 
-// NetworkIp defines model for NetworkIp.
-type NetworkIp struct {
-	Ip      string           `json:"ip"`
-	Network NetworkIpNetwork `json:"network"`
+// NetworkIP defines model for NetworkIP.
+type NetworkIP struct {
+	IP      string           `json:"ip"`
+	Network NetworkIPNetwork `json:"network"`
 	Node    string           `json:"node"`
 	Path    string           `json:"path"`
 	Rid     string           `json:"rid"`
 }
 
-// NetworkIpItems defines model for NetworkIpItems.
-type NetworkIpItems = []NetworkIp
+// NetworkIPItems defines model for NetworkIPItems.
+type NetworkIPItems = []NetworkIP
 
-// NetworkIpList defines model for NetworkIpList.
-type NetworkIpList struct {
-	Items NetworkIpItems    `json:"items"`
-	Kind  NetworkIpListKind `json:"kind"`
+// NetworkIPList defines model for NetworkIPList.
+type NetworkIPList struct {
+	Items NetworkIPItems    `json:"items"`
+	Kind  NetworkIPListKind `json:"kind"`
 }
 
-// NetworkIpListKind defines model for NetworkIpList.Kind.
-type NetworkIpListKind string
+// NetworkIPListKind defines model for NetworkIPList.Kind.
+type NetworkIPListKind string
 
-// NetworkIpNetwork defines model for NetworkIpNetwork.
-type NetworkIpNetwork struct {
+// NetworkIPNetwork defines model for NetworkIPNetwork.
+type NetworkIPNetwork struct {
 	Name    string `json:"name"`
 	Network string `json:"network"`
 	Type    string `json:"type"`
@@ -1118,8 +1118,8 @@ type GetNetworksParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
-// GetNetworkIpParams defines parameters for GetNetworkIp.
-type GetNetworkIpParams struct {
+// GetNetworkIPParams defines parameters for GetNetworkIP.
+type GetNetworkIPParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }

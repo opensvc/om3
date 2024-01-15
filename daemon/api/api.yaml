@@ -559,7 +559,7 @@ paths:
 
   /network/ip:
     get:
-      operationId: GetNetworkIp
+      operationId: GetNetworkIP
       tags:
         - network
       security:
@@ -578,7 +578,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NetworkIpList'
+                $ref: '#/components/schemas/NetworkIPList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -3096,7 +3096,7 @@ components:
         size:
           type: integer
 
-    NetworkIpNetwork:
+    NetworkIPNetwork:
       type: object
       required:
         - name
@@ -3128,7 +3128,7 @@ components:
       items:
         $ref: '#/components/schemas/Network'
 
-    NetworkIp:
+    NetworkIP:
       type: object
       required:
         - ip
@@ -3139,6 +3139,7 @@ components:
       properties:
         ip:
           type: string
+          x-go-name: IP
         node:
           type: string
         path:
@@ -3146,9 +3147,9 @@ components:
         rid:
           type: string
         network:
-          $ref: '#/components/schemas/NetworkIpNetwork'
+          $ref: '#/components/schemas/NetworkIPNetwork'
 
-    NetworkIpList:
+    NetworkIPList:
       type: object
       required:
         - items
@@ -3157,14 +3158,14 @@ components:
         kind:
           type: string
           enum:
-            - NetworkIpList
+            - NetworkIPList
         items:
-          $ref: '#/components/schemas/NetworkIpItems'
+          $ref: '#/components/schemas/NetworkIPItems'
 
-    NetworkIpItems:
+    NetworkIPItems:
       type: array
       items:
-        $ref: '#/components/schemas/NetworkIp'
+        $ref: '#/components/schemas/NetworkIP'
 
     # ========================================================================
     # node schemas

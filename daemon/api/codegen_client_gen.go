@@ -142,8 +142,8 @@ type ClientInterface interface {
 	// GetNetworks request
 	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNetworkIp request
-	GetNetworkIp(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetNetworkIP request
+	GetNetworkIP(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodes request
 	GetNodes(ctx context.Context, params *GetNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -579,8 +579,8 @@ func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNetworkIp(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNetworkIpRequest(c.Server, params)
+func (c *Client) GetNetworkIP(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNetworkIPRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2102,8 +2102,8 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 	return req, nil
 }
 
-// NewGetNetworkIpRequest generates requests for GetNetworkIp
-func NewGetNetworkIpRequest(server string, params *GetNetworkIpParams) (*http.Request, error) {
+// NewGetNetworkIPRequest generates requests for GetNetworkIP
+func NewGetNetworkIPRequest(server string, params *GetNetworkIPParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -6731,8 +6731,8 @@ type ClientWithResponsesInterface interface {
 	// GetNetworksWithResponse request
 	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
 
-	// GetNetworkIpWithResponse request
-	GetNetworkIpWithResponse(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*GetNetworkIpResponse, error)
+	// GetNetworkIPWithResponse request
+	GetNetworkIPWithResponse(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*GetNetworkIPResponse, error)
 
 	// GetNodesWithResponse request
 	GetNodesWithResponse(ctx context.Context, params *GetNodesParams, reqEditors ...RequestEditorFn) (*GetNodesResponse, error)
@@ -7326,17 +7326,17 @@ func (r GetNetworksResponse) StatusCode() int {
 	return 0
 }
 
-type GetNetworkIpResponse struct {
+type GetNetworkIPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *NetworkIpList
+	JSON200      *NetworkIPList
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
 }
 
 // Status returns HTTPResponse.Status
-func (r GetNetworkIpResponse) Status() string {
+func (r GetNetworkIPResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7344,7 +7344,7 @@ func (r GetNetworkIpResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetNetworkIpResponse) StatusCode() int {
+func (r GetNetworkIPResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -9216,13 +9216,13 @@ func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, param
 	return ParseGetNetworksResponse(rsp)
 }
 
-// GetNetworkIpWithResponse request returning *GetNetworkIpResponse
-func (c *ClientWithResponses) GetNetworkIpWithResponse(ctx context.Context, params *GetNetworkIpParams, reqEditors ...RequestEditorFn) (*GetNetworkIpResponse, error) {
-	rsp, err := c.GetNetworkIp(ctx, params, reqEditors...)
+// GetNetworkIPWithResponse request returning *GetNetworkIPResponse
+func (c *ClientWithResponses) GetNetworkIPWithResponse(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*GetNetworkIPResponse, error) {
+	rsp, err := c.GetNetworkIP(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetNetworkIpResponse(rsp)
+	return ParseGetNetworkIPResponse(rsp)
 }
 
 // GetNodesWithResponse request returning *GetNodesResponse
@@ -10632,22 +10632,22 @@ func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) 
 	return response, nil
 }
 
-// ParseGetNetworkIpResponse parses an HTTP response from a GetNetworkIpWithResponse call
-func ParseGetNetworkIpResponse(rsp *http.Response) (*GetNetworkIpResponse, error) {
+// ParseGetNetworkIPResponse parses an HTTP response from a GetNetworkIPWithResponse call
+func ParseGetNetworkIPResponse(rsp *http.Response) (*GetNetworkIPResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetNetworkIpResponse{
+	response := &GetNetworkIPResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest NetworkIpList
+		var dest NetworkIPList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
