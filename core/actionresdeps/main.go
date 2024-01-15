@@ -64,7 +64,7 @@ func NewStore() *Store {
 	return &t
 }
 
-func (t Store) String() string {
+func (t *Store) String() string {
 	s := ""
 	for key, bs := range t.m {
 		s += fmt.Sprintf("on %s %s, %s depends on %s\n", key.Action, key.Kind, key.A, strings.Join(xmap.Keys(bs), ","))
@@ -90,15 +90,15 @@ func (t *Store) Register(dep Dep) {
 	bs[dep.B] = nil
 }
 
-func (t Store) SelectDependencies(action, rid string) []string {
+func (t *Store) SelectDependencies(action, rid string) []string {
 	return t.dependencies(action, rid, KindSelect)
 }
 
-func (t Store) ActDependencies(action, rid string) []string {
+func (t *Store) ActDependencies(action, rid string) []string {
 	return t.dependencies(action, rid, KindAct)
 }
 
-func (t Store) dependencies(action, rid string, kd kind) []string {
+func (t *Store) dependencies(action, rid string, kd kind) []string {
 	switch action {
 	case "provision", "start":
 		action = "start"
