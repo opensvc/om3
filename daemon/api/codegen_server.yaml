@@ -3,4 +3,6 @@ generate:
   echo-server: true
   models: false
   embedded-spec: true
+output-options:
+  initialism-overrides: true
 output: codegen_server_gen.go
