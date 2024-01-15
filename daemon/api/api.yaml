@@ -4190,9 +4190,6 @@ components:
         data:
           $ref: '#/components/schemas/Schedule'
 
-    ScheduleTable:
-      type: array
-
     Status:
       type: string
       enum:
