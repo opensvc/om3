@@ -22,7 +22,7 @@ type (
 		LVName          string `json:"lv_name"`
 		VGName          string `json:"vg_name"`
 		LVAttr          string `json:"lv_attr"`
-		LVSize          string `json:"lv_name"`
+		LVSize          string `json:"lv_size"`
 		Origin          string `json:"origin"`
 		DataPercent     string `json:"data_percent"`
 		CopyPercent     string `json:"copy_percent"`
