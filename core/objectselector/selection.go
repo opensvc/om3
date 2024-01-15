@@ -12,6 +12,7 @@ import (
 	"github.com/goombaio/orderedset"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -118,7 +119,7 @@ func WithInstalled(installed naming.Paths) funcopt.O {
 	})
 }
 
-func (t Selection) String() string {
+func (t *Selection) String() string {
 	return fmt.Sprintf("Selection{%s}", t.selectorExpression)
 }
 
@@ -207,17 +208,27 @@ func (t *Selection) add(p naming.Path) {
 	t.expandPaths = append(t.expandPaths, p)
 }
 
-func (t *Selection) expand() (err error) {
+func (t *Selection) expand() error {
+	var (
+		err        error
+		usedExpand string
+	)
 	t.expandPaths = make(naming.Paths, 0)
 	if t.local {
+		usedExpand = "local"
 		err = t.localExpand()
 	} else {
+		usedExpand = "daemon"
 		err = t.daemonExpand()
+		if err != nil && !clientcontext.IsSet() {
+			usedExpand = "fallback local"
+			err = t.localExpand()
+		}
 	}
 	if err != nil {
-		err = fmt.Errorf("selection can't expand with local %v: %w", t.local, err)
+		return fmt.Errorf("%s expand object selection: %w", usedExpand, err)
 	}
-	return
+	return nil
 }
 
 func (t *Selection) localExpand() error {

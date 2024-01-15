@@ -186,6 +186,17 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	a.announceSub(name)
 	defer a.announceUnsub(name)
 
+	// objectSelectionSub is a subscription dedicated to object create/delete events.
+	objectSelectionSub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
+	objectSelectionSub.AddFilter(&msgbus.ObjectCreated{})
+	objectSelectionSub.AddFilter(&msgbus.ObjectDeleted{})
+	objectSelectionSub.Start()
+	defer func() {
+		if err := objectSelectionSub.Stop(); err != nil {
+			log.Debugf("objectSelectionSub.Stop: %s", err)
+		}
+	}()
+
 	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
@@ -224,8 +235,8 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		}
 		if selected, err := getSelectedMap(); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError,
-				"get object paths", "from selector %s: %s", params.Selector,
-				err)
+				"get object paths", "from selector %s: %s",
+				*params.Selector, err)
 		} else {
 			pathSelected = selected
 		}
