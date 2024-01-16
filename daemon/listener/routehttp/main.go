@@ -7,7 +7,9 @@ package routehttp
 
 import (
 	"context"
+	"github.com/opensvc/om3/core/rawconfig"
 	"net/http"
+	"path/filepath"
 
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo-contrib/pprof"
@@ -35,6 +37,9 @@ func New(ctx context.Context, enableUi bool) *T {
 	pprof.Register(e)
 	e.Use(mwProm)
 	e.GET("/metrics", echoprometheus.NewHandler())
+	e.File("/", filepath.Join(rawconfig.Paths.HTML, "index.html"))
+	e.File("/index.js", filepath.Join(rawconfig.Paths.HTML, "index.js"))
+	e.File("/favicon.ico", filepath.Join(rawconfig.Paths.HTML, "favicon.ico"))
 	e.Use(daemonapi.LogMiddleware(ctx))
 	e.Use(daemonapi.AuthMiddleware(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
