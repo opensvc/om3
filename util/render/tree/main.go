@@ -173,50 +173,39 @@ func (t *Tree) AddColumn() *Column {
 	return t.head.AddColumn()
 }
 
-// assignNode set the Forest and Parent fields on child and recursively all descendent nodes of child.
-func assignNode(parent, child *Node) {
-	if child == nil {
-		return
+// Recurse the data and return the tree buffer string.
+func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) string {
+	var (
+		i     int
+		col   *Column
+		cell  *Cell
+		child *Node
+	)
+	nChildren := len(n.children)
+	lastChildIndex := nChildren - 1
+	for j := 0; j < n.cellCount; j++ {
+		prefix := formatPrefix(lasts, nChildren, j == 0)
+		buff += prefix
+		for i, col = range n.columns {
+			width := t.pads[i]
+			if i == 0 {
+				// adjust for col0 alignment shifting due to the prefix
+				width += (t.depth - depth) * prefixLen
+			}
+			if j >= len(col.Cells) {
+				cell = &Cell{}
+			} else {
+				cell = col.Cells[j]
+			}
+			buff += col.formatCell(cell.Text, width, cell.color)
+		}
+		buff += "\n"
 	}
-	child.Forest = parent.Forest
-	child.Parent = parent
-	child.depth = parent.depth + 1
-	if child.depth > parent.Forest.depth {
-		parent.Forest.depth = child.depth
+	for i, child = range n.children {
+		cLasts := append(lasts, i == lastChildIndex)
+		buff = t.renderRecurse(child, buff, depth+1, cLasts)
 	}
-	columnCount := len(child.columns)
-	if columnCount > child.Forest.columnCount {
-		child.Forest.columnCount = columnCount
-		child.Forest.Widths = make([]Width, columnCount)
-	}
-	for _, grandchild := range child.children {
-		assignNode(child, grandchild)
-	}
-}
-
-// PlugTree add an existing tree head Node as child this node.
-func (t *Node) PlugTree(n *Tree) {
-	t.PlugNode(n.Head())
-}
-
-// PlugNode adds and existing Node as child of this node.
-func (n *Node) PlugNode(child *Node) {
-	assignNode(n, child)
-	n.children = append(n.children, child)
-}
-
-// AddNode adds and returns a new Node, child of this node.
-func (n *Node) AddNode() *Node {
-	newNode := &Node{
-		Forest: n.Forest,
-		Parent: n,
-		depth:  n.depth + 1,
-	}
-	n.children = append(n.children, newNode)
-	if newNode.depth > n.Forest.depth {
-		n.Forest.depth = newNode.depth
-	}
-	return newNode
+	return buff
 }
 
 func (t *Tree) setTotalWidth() {
@@ -262,32 +251,6 @@ func (t *Tree) getPads() {
 	t.head.getPads()
 }
 
-// getPads recursively analyses nodes
-func (n *Node) getPads() {
-	for idx, col := range n.columns {
-		width := n.Forest.Widths[idx]
-		if width.Exact > 0 {
-			n.Forest.pads[idx] = width.Exact
-			continue
-		}
-		for _, fragment := range col.Text {
-			fragmentWidth := realLen(fragment.Text) + len(n.Forest.Separator)
-			if fragmentWidth > n.Forest.pads[idx] {
-				if width.Min > 0 && n.Forest.pads[idx] < width.Min {
-					n.Forest.pads[idx] = width.Min
-				} else if width.Max > 0 && n.Forest.pads[idx] > width.Max {
-					n.Forest.pads[idx] = width.Max
-				} else {
-					n.Forest.pads[idx] = fragmentWidth
-				}
-			}
-		}
-	}
-	for _, child := range n.children {
-		child.getPads()
-	}
-}
-
 // adjustPads distributes the termincal width amongst columns.
 func (t *Tree) adjustPads() {
 	var (
@@ -318,6 +281,231 @@ func (t *Tree) adjustPads() {
 		if pad > avgColumnWidth {
 			t.pads[i+1] = maxWidth
 		}
+	}
+}
+
+// wrapData transforms column textblocks into cells
+func (t *Tree) wrapData() {
+	t.head.wrapData()
+}
+
+// PlugTree add an existing tree head Node as child this node.
+func (t *Node) PlugTree(n *Tree) {
+	t.PlugNode(n.Head())
+}
+
+// PlugNode adds and existing Node as child of this node.
+func (t *Node) PlugNode(child *Node) {
+	assignNode(t, child)
+	t.children = append(t.children, child)
+}
+
+// AddNode adds and returns a new Node, child of this node.
+func (t *Node) AddNode() *Node {
+	newNode := &Node{
+		Forest: t.Forest,
+		Parent: t,
+		depth:  t.depth + 1,
+	}
+	t.children = append(t.children, newNode)
+	if newNode.depth > t.Forest.depth {
+		t.Forest.depth = newNode.depth
+	}
+	return newNode
+}
+
+// getPads recursively analyses nodes
+func (t *Node) getPads() {
+	for idx, col := range t.columns {
+		width := t.Forest.Widths[idx]
+		if width.Exact > 0 {
+			t.Forest.pads[idx] = width.Exact
+			continue
+		}
+		for _, fragment := range col.Text {
+			fragmentWidth := realLen(fragment.Text) + len(t.Forest.Separator)
+			if fragmentWidth > t.Forest.pads[idx] {
+				if width.Min > 0 && t.Forest.pads[idx] < width.Min {
+					t.Forest.pads[idx] = width.Min
+				} else if width.Max > 0 && t.Forest.pads[idx] > width.Max {
+					t.Forest.pads[idx] = width.Max
+				} else {
+					t.Forest.pads[idx] = fragmentWidth
+				}
+			}
+		}
+	}
+	for _, child := range t.children {
+		child.getPads()
+	}
+}
+
+func (t *Node) wrapData() {
+	var (
+		i   int
+		col *Column
+	)
+	for i, col = range t.columns {
+		for _, fragment := range col.Text {
+			for _, line := range col.wrappedLines(fragment.Text, t.Forest.pads[i]) {
+				cell := &Cell{
+					Text:  line,
+					color: fragment.color,
+					align: col.Align,
+				}
+				col.Cells = append(col.Cells, cell)
+			}
+		}
+		colLineCount := len(col.Cells)
+		if colLineCount > t.cellCount {
+			t.cellCount = colLineCount
+		}
+	}
+	for _, child := range t.children {
+		child.wrapData()
+	}
+}
+
+func (t *Node) String() string {
+	s := ""
+	s += fmt.Sprintf("<node Forest:%p >", t.Forest)
+	return s
+}
+
+// IsEmpty returns true if the node has one or more columns
+func (t *Node) IsEmpty() bool {
+	return len(t.columns) == 0
+}
+
+// AddColumn adds and returns a column to the node.
+// Phrases can be added through the returned Column object.
+func (t *Node) AddColumn() *Column {
+	c := &Column{}
+	columnCount := len(t.columns)
+	c.node = t
+	c.index = columnCount
+	t.columns = append(t.columns, c)
+	columnCount++
+	if columnCount > t.Forest.columnCount {
+		t.Forest.columnCount = columnCount
+		t.Forest.Widths = append(t.Forest.Widths, Width{})
+	}
+	return c
+}
+
+// Load loads data in the node
+//
+// Example dataset:
+//
+//	{
+//	    "data": [
+//	        {
+//	            "text": "node1",
+//	            "color": color.BOLD
+//	        }
+//	    ],
+//	    "children": [
+//	        {
+//	            "data": [
+//	                {
+//	                    "text": "node2"
+//	                },
+//	                {
+//	                    "text": "foo",
+//	                    "color": color.RED
+//	                }
+//	            ],
+//	            "children": [
+//	            ]
+//	        }
+//	    ]
+//	}
+//
+// would be rendered as:
+//
+// node1
+// `- node2 foo
+func (t *Node) Load(data interface{}, title string) {
+	head := t
+	if title == "" {
+		head.AddColumn().AddText(title).SetColor(color.Bold)
+	}
+	loadRecurse(head, data)
+}
+
+// formatCell returns the table cell, happending the separator, coloring the
+// text and applying the padding for alignment.
+func (c *Column) formatCell(text string, width int, textColor color.Attribute) string {
+	var f string
+	width += len(text) - realLen(text)
+	switch c.Align {
+	case AlignRight:
+		f = fmt.Sprintf("%%%ds", width)
+	case AlignLeft:
+		f = fmt.Sprintf("%%-%ds", width)
+	}
+	buff := fmt.Sprintf(f, text)
+	return color.New(textColor).Sprint(buff)
+}
+
+// wrappedLines return lines split by the text wrapper wrapping at <width>.
+func (c *Column) wrappedLines(text string, width int) []string {
+	lines := make([]string, 0)
+	if width == 0 {
+		return lines
+	}
+	offset := 0
+	remain := realLen(text)
+	for remain > width {
+		lines = append(lines, text[:width])
+		text = text[width:]
+		remain -= width
+	}
+	lines = append(lines, text[offset:])
+	return lines
+}
+
+// AddText adds a colored and aligned phrase to this column.
+func (c *Column) AddText(text string) *TextBlock {
+	t := &TextBlock{
+		Text: text,
+	}
+	c.Text = append(c.Text, t)
+	return t
+}
+
+// SetColor sets the text block color and returns the textBlock ref
+// so the caller can chain AddText("").SetColor().SetAlign()
+func (t *TextBlock) SetColor(textColor color.Attribute) *TextBlock {
+	t.color = textColor
+	return t
+}
+
+// SetAlign sets the text block alignment and returns the textBlock ref
+// so the caller can chain AddText("").SetColor().SetAlign()
+func (t *TextBlock) SetAlign(align Alignment) *TextBlock {
+	t.align = align
+	return t
+}
+
+// assignNode set the Forest and Parent fields on child and recursively all descendent nodes of child.
+func assignNode(parent, child *Node) {
+	if child == nil {
+		return
+	}
+	child.Forest = parent.Forest
+	child.Parent = parent
+	child.depth = parent.depth + 1
+	if child.depth > parent.Forest.depth {
+		parent.Forest.depth = child.depth
+	}
+	columnCount := len(child.columns)
+	if columnCount > child.Forest.columnCount {
+		child.Forest.columnCount = columnCount
+		child.Forest.Widths = make([]Width, columnCount)
+	}
+	for _, grandchild := range child.children {
+		assignNode(child, grandchild)
 	}
 }
 
@@ -358,194 +546,6 @@ func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
 		}
 	}
 	return buff
-}
-
-// formatCell returns the table cell, happending the separator, coloring the
-// text and applying the padding for alignment.
-func (c *Column) formatCell(text string, width int, textColor color.Attribute) string {
-	var f string
-	width += len(text) - realLen(text)
-	switch c.Align {
-	case AlignRight:
-		f = fmt.Sprintf("%%%ds", width)
-	case AlignLeft:
-		f = fmt.Sprintf("%%-%ds", width)
-	}
-	buff := fmt.Sprintf(f, text)
-	return color.New(textColor).Sprint(buff)
-}
-
-// wrappedLines return lines split by the text wrapper wrapping at <width>.
-func (c *Column) wrappedLines(text string, width int) []string {
-	lines := make([]string, 0)
-	if width == 0 {
-		return lines
-	}
-	offset := 0
-	remain := realLen(text)
-	for remain > width {
-		lines = append(lines, text[:width])
-		text = text[width:]
-		remain -= width
-	}
-	lines = append(lines, text[offset:])
-	return lines
-}
-
-// wrapData transforms column textblocks into cells
-func (t *Tree) wrapData() {
-	t.head.wrapData()
-}
-
-func (n *Node) wrapData() {
-	var (
-		i   int
-		col *Column
-	)
-	for i, col = range n.columns {
-		for _, fragment := range col.Text {
-			for _, line := range col.wrappedLines(fragment.Text, n.Forest.pads[i]) {
-				cell := &Cell{
-					Text:  line,
-					color: fragment.color,
-					align: col.Align,
-				}
-				col.Cells = append(col.Cells, cell)
-			}
-		}
-		colLineCount := len(col.Cells)
-		if colLineCount > n.cellCount {
-			n.cellCount = colLineCount
-		}
-	}
-	for _, child := range n.children {
-		child.wrapData()
-	}
-}
-
-// Recurse the data and return the tree buffer string.
-func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) string {
-	var (
-		i     int
-		col   *Column
-		cell  *Cell
-		child *Node
-	)
-	nChildren := len(n.children)
-	lastChildIndex := nChildren - 1
-	for j := 0; j < n.cellCount; j++ {
-		prefix := formatPrefix(lasts, nChildren, j == 0)
-		buff += prefix
-		for i, col = range n.columns {
-			width := t.pads[i]
-			if i == 0 {
-				// adjust for col0 alignment shifting due to the prefix
-				width += (t.depth - depth) * prefixLen
-			}
-			if j >= len(col.Cells) {
-				cell = &Cell{}
-			} else {
-				cell = col.Cells[j]
-			}
-			buff += col.formatCell(cell.Text, width, cell.color)
-		}
-		buff += "\n"
-	}
-	for i, child = range n.children {
-		cLasts := append(lasts, i == lastChildIndex)
-		buff = t.renderRecurse(child, buff, depth+1, cLasts)
-	}
-	return buff
-}
-
-// AddText adds a colored and aligned phrase to this column.
-func (c *Column) AddText(text string) *TextBlock {
-	t := &TextBlock{
-		Text: text,
-	}
-	c.Text = append(c.Text, t)
-	return t
-}
-
-// SetColor sets the text block color and returns the textBlock ref
-// so the caller can chain AddText("").SetColor().SetAlign()
-func (t *TextBlock) SetColor(textColor color.Attribute) *TextBlock {
-	t.color = textColor
-	return t
-}
-
-// SetAlign sets the text block alignment and returns the textBlock ref
-// so the caller can chain AddText("").SetColor().SetAlign()
-func (t *TextBlock) SetAlign(align Alignment) *TextBlock {
-	t.align = align
-	return t
-}
-
-func (n *Node) String() string {
-	s := ""
-	s += fmt.Sprintf("<node Forest:%p >", n.Forest)
-	return s
-}
-
-// IsEmpty returns true if the node has one or more columns
-func (n *Node) IsEmpty() bool {
-	return len(n.columns) == 0
-}
-
-// AddColumn adds and returns a column to the node.
-// Phrases can be added through the returned Column object.
-func (n *Node) AddColumn() *Column {
-	c := &Column{}
-	columnCount := len(n.columns)
-	c.node = n
-	c.index = columnCount
-	n.columns = append(n.columns, c)
-	columnCount++
-	if columnCount > n.Forest.columnCount {
-		n.Forest.columnCount = columnCount
-		n.Forest.Widths = append(n.Forest.Widths, Width{})
-	}
-	return c
-}
-
-// Load loads data in the node
-//
-// Example dataset:
-//
-//	{
-//	    "data": [
-//	        {
-//	            "text": "node1",
-//	            "color": color.BOLD
-//	        }
-//	    ],
-//	    "children": [
-//	        {
-//	            "data": [
-//	                {
-//	                    "text": "node2"
-//	                },
-//	                {
-//	                    "text": "foo",
-//	                    "color": color.RED
-//	                }
-//	            ],
-//	            "children": [
-//	            ]
-//	        }
-//	    ]
-//	}
-//
-// would be rendered as:
-//
-// node1
-// `- node2 foo
-func (n *Node) Load(data interface{}, title string) {
-	head := n
-	if title == "" {
-		head.AddColumn().AddText(title).SetColor(color.Bold)
-	}
-	loadRecurse(head, data)
 }
 
 // loadRecurse switches between data loaders

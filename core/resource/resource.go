@@ -1228,16 +1228,6 @@ func getStatusInfoSched(t Scheduler) map[string]StatusInfoSchedAction {
 	return data
 }
 
-func (rstat Status) DeepCopy() *Status {
-	newValue := Status{}
-	if b, err := json.Marshal(rstat); err != nil {
-		return &Status{}
-	} else if err := json.Unmarshal(b, &newValue); err == nil {
-		return &newValue
-	}
-	return &Status{}
-}
-
 func (t SCSIPersistentReservation) IsSCSIPersistentReservationPreemptAbortDisabled() bool {
 	return t.NoPreemptAbort
 }
@@ -1275,6 +1265,16 @@ func (t *T) Progress(ctx context.Context, cols ...any) {
 		key := t.ProgressKey()
 		view.Info(key, cols)
 	}
+}
+
+func (t Status) DeepCopy() *Status {
+	newValue := Status{}
+	if b, err := json.Marshal(t); err != nil {
+		return &Status{}
+	} else if err := json.Unmarshal(b, &newValue); err == nil {
+		return &newValue
+	}
+	return &Status{}
 }
 
 func (t Status) Unstructured() map[string]any {

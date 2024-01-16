@@ -78,55 +78,6 @@ func init() {
 	hbcfg.Register("disk", New)
 }
 
-func (d *device) open() error {
-	if d.path == "" {
-		return fmt.Errorf("the 'dev' keyword is not set")
-	}
-	newDev, err := filepath.EvalSymlinks(d.path)
-	if err != nil {
-		return fmt.Errorf("%s eval symlink: %w", d.path, err)
-	}
-
-	isBlockDevice, err := file.IsBlockDevice(newDev)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("%s does not exist: %w", d.path, err)
-	} else if err != nil {
-		return err
-	}
-
-	isCharDevice, err := file.IsCharDevice(newDev)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("%s does not exist: %w", d.path, err)
-	} else if err != nil {
-		return err
-	}
-
-	if runtime.GOOS == "linux" {
-		if !isBlockDevice {
-			return fmt.Errorf("%s must be a block device", d.path)
-		}
-		if strings.HasPrefix("/dev/dm-", d.path) {
-			return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", d.path)
-		}
-		if strings.HasPrefix("/dev/sd", d.path) {
-			return fmt.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", d.path)
-		}
-		d.mode = "directio"
-		if d.file, err = directio.OpenFile(d.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			return fmt.Errorf("%s open block device: %w", d.path, err)
-		}
-	} else {
-		if !isCharDevice {
-			return fmt.Errorf("must be a char device %s", d.path)
-		}
-		d.mode = "raw"
-		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
-			return fmt.Errorf("%s open char device: %w", d.path, err)
-		}
-	}
-	return nil
-}
-
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: disk: " + t.Name() + ": configure:")
@@ -157,12 +108,61 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetRx(rx)
 }
 
+func (t *device) open() error {
+	if t.path == "" {
+		return fmt.Errorf("the 'dev' keyword is not set")
+	}
+	newDev, err := filepath.EvalSymlinks(t.path)
+	if err != nil {
+		return fmt.Errorf("%s eval symlink: %w", t.path, err)
+	}
+
+	isBlockDevice, err := file.IsBlockDevice(newDev)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("%s does not exist: %w", t.path, err)
+	} else if err != nil {
+		return err
+	}
+
+	isCharDevice, err := file.IsCharDevice(newDev)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("%s does not exist: %w", t.path, err)
+	} else if err != nil {
+		return err
+	}
+
+	if runtime.GOOS == "linux" {
+		if !isBlockDevice {
+			return fmt.Errorf("%s must be a block device", t.path)
+		}
+		if strings.HasPrefix("/dev/dm-", t.path) {
+			return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", t.path)
+		}
+		if strings.HasPrefix("/dev/sd", t.path) {
+			return fmt.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", t.path)
+		}
+		t.mode = "directio"
+		if t.file, err = directio.OpenFile(t.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
+			return fmt.Errorf("%s open block device: %w", t.path, err)
+		}
+	} else {
+		if !isCharDevice {
+			return fmt.Errorf("must be a char device %s", t.path)
+		}
+		t.mode = "raw"
+		if t.file, err = os.OpenFile(t.path, os.O_RDWR, 0755); err != nil {
+			return fmt.Errorf("%s open char device: %w", t.path, err)
+		}
+	}
+	return nil
+}
+
 // SlotOffset returns the offset of the meta page of the slot.
-func (t device) MetaSlotOffset(slot int) int64 {
+func (t *device) MetaSlotOffset(slot int) int64 {
 	return int64(slot) * int64(PageSize)
 }
 
-func (t device) ReadMetaSlot(slot int) ([]byte, error) {
+func (t *device) ReadMetaSlot(slot int) ([]byte, error) {
 	offset := t.MetaSlotOffset(slot)
 	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (t device) ReadMetaSlot(slot int) ([]byte, error) {
 	return block, nil
 }
 
-func (t device) WriteMetaSlot(slot int, b []byte) error {
+func (t *device) WriteMetaSlot(slot int, b []byte) error {
 	if len(b) > PageSize {
 		return fmt.Errorf("attempt to write too long data in meta slot %d", slot)
 	}
@@ -188,11 +188,11 @@ func (t device) WriteMetaSlot(slot int, b []byte) error {
 	return err
 }
 
-func (t device) DataSlotOffset(slot int) int64 {
+func (t *device) DataSlotOffset(slot int) int64 {
 	return int64(MetaSize) + int64(slot)*int64(SlotSize)
 }
 
-func (t device) ReadDataSlot(slot int) (capsule, error) {
+func (t *device) ReadDataSlot(slot int) (capsule, error) {
 	c := capsule{}
 	offset := t.DataSlotOffset(slot)
 	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
@@ -227,7 +227,7 @@ func (t device) ReadDataSlot(slot int) (capsule, error) {
 	return c, nil
 }
 
-func (t device) WriteDataSlot(slot int, b []byte) error {
+func (t *device) WriteDataSlot(slot int, b []byte) error {
 	c := capsule{
 		Msg:     b,
 		Updated: time.Now(),

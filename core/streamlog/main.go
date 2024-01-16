@@ -114,9 +114,9 @@ func (events Events) Sort() {
 	})
 }
 
-func (t Events) MatchString(key, pattern string) bool {
-	for _, ev := range t {
-		if val, ok := ev.M[key]; !ok {
+func (events Events) MatchString(key, pattern string) bool {
+	for _, event := range events {
+		if val, ok := event.M[key]; !ok {
 			continue
 		} else {
 			switch s := val.(type) {

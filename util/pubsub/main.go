@@ -729,21 +729,6 @@ func BusFromContext(ctx context.Context) *Bus {
 	panic("unable to retrieve pubsub bus from context")
 }
 
-func (pub cmdPub) String() string {
-	var dataS string
-	switch data := pub.data.(type) {
-	case stringer:
-		dataS = data.String()
-	default:
-		dataS = "type " + pub.dataType
-	}
-	s := fmt.Sprintf("publication %s", dataS)
-	if len(pub.labels) > 0 {
-		s += " with " + pub.labels.String()
-	}
-	return s
-}
-
 func (cmd cmdSubAddFilter) String() string {
 	s := fmt.Sprintf("add subscription %s filter type %s", cmd.id, cmd.dataType)
 	if len(cmd.labels) > 0 {
@@ -818,16 +803,31 @@ func (sub *Subscription) keys() []string {
 	return l
 }
 
-func (t cmdPub) key() string {
-	return fmtKey(t.dataType, t.labels)
+func (pub cmdPub) String() string {
+	var dataS string
+	switch data := pub.data.(type) {
+	case stringer:
+		dataS = data.String()
+	default:
+		dataS = "type " + pub.dataType
+	}
+	s := fmt.Sprintf("publication %s", dataS)
+	if len(pub.labels) > 0 {
+		s += " with " + pub.labels.String()
+	}
+	return s
 }
 
-func (t filter) key() string {
-	return fmtKey(t.dataType, t.labels)
+func (pub cmdPub) key() string {
+	return fmtKey(pub.dataType, pub.labels)
 }
 
 func (pub cmdPub) keys() []string {
 	return pubKeys(pub.dataType, pub.labels)
+}
+
+func (t filter) key() string {
+	return fmtKey(t.dataType, t.labels)
 }
 
 func fmtKey(dataType string, labels Labels) string {
