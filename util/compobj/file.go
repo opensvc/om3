@@ -140,12 +140,14 @@ func (t *CompFiles) Add(s string) error {
 		return err
 	}
 	if data.Path == "" {
-		t.Errorf("path should be in the dict: %s\n", s)
-		return fmt.Errorf("path should be in the dict: %s\n", s)
+		err := fmt.Errorf("path should be in the dict: %s", s)
+		t.Errorf("%s\n", err)
+		return err
 	}
 	if data.Ref == "" && data.Fmt == nil {
-		t.Errorf("ref or fmt should be in the dict: %s\n", s)
-		return fmt.Errorf("ref or fmt should be in the dict: %s\n", s)
+		err := fmt.Errorf("ref or fmt should be in the dict: %s", s)
+		t.Errorf("%s\n", err)
+		return err
 	}
 	t.Obj.Add(data)
 	return nil

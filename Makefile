@@ -11,9 +11,9 @@ OM = ./bin/om
 OX = ./bin/ox
 COMPOBJ = ./bin/compobj
 
-all: test build
+all: vet test build
 
-build: om ox compobj
+build: api om ox compobj
 
 api:
 	$(GOGEN) ./daemon/api
@@ -22,10 +22,10 @@ clean:
 	$(GOCLEAN)
 	rm -f $(OM) $(OX)
 
-om: api
+om:
 	$(GOBUILD) -o $(OM) -v ./cmd/om/
 
-ox: api
+ox:
 	$(GOBUILD) -o $(OX) -v ./cmd/ox/
 
 compobj:

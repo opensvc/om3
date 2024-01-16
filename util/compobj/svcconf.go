@@ -137,7 +137,7 @@ func (t *CompSvcconfs) Add(s string) error {
 	svcRessourcesNames = t.addEnvInRessourcesNamesIfNotPresent(svcRessourcesNames)
 	for _, rule := range data {
 		if rule.Key == "" {
-			return fmt.Errorf("key is mandatory in dict : %s \n", s)
+			return fmt.Errorf("key is mandatory in dict : %s", s)
 		}
 		if rule.Op == "" {
 			rule.Op = "="
@@ -149,7 +149,7 @@ func (t *CompSvcconfs) Add(s string) error {
 			if rule.Op == "unset" {
 				rule.Value = "nil"
 			} else {
-				return fmt.Errorf("value is mandatory in dict : %s \n", s)
+				return fmt.Errorf("value is mandatory in dict : %s", s)
 			}
 		}
 		rule.Value = fmt.Sprint(rule.Value)

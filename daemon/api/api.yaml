@@ -3997,9 +3997,6 @@ components:
           type: string
           format: duration
 
-    ResourceId:
-      type: string
-
     ResourceLog:
       type: array
       items:
@@ -4621,6 +4618,7 @@ components:
       name: cluster_id
       in: query
       description: the cluster id component of the slot id on the relay
+      x-go-name: ClusterID
       schema:
         type: string
     RelayNodename:

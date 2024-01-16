@@ -23,7 +23,7 @@ type (
 
 	// IDStopper is the interface to stop a hb driver
 	IDStopper interface {
-		Id() string
+		ID() string
 		Stop() error
 	}
 

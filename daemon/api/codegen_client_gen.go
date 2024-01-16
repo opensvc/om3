@@ -6487,9 +6487,9 @@ func NewGetRelayMessageRequest(server string, params *GetRelayMessageParams) (*h
 
 		}
 
-		if params.ClusterId != nil {
+		if params.ClusterID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cluster_id", runtime.ParamLocationQuery, *params.ClusterId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cluster_id", runtime.ParamLocationQuery, *params.ClusterID); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

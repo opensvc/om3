@@ -208,16 +208,16 @@ func isTooSoon(tm, last time.Time, interval time.Duration) bool {
 }
 
 // After returns true if Begin > <tm>
-func (t timerange) After(tm time.Time) bool {
-	begin := t.begin
+func (tr timerange) After(tm time.Time) bool {
+	begin := tr.begin
 	seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
 	return begin >= seconds
 }
 
 // TestIncludes returns ErrNotAllowed if <tm> is not in the Timerange
-func (t timerange) TestIncludes(tm time.Time) error {
-	begin := t.begin
-	end := t.end
+func (tr timerange) TestIncludes(tm time.Time) error {
+	begin := tr.begin
+	end := tr.end
 	seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
 
 	switch {
@@ -237,12 +237,12 @@ func (t timerange) TestIncludes(tm time.Time) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: not in timerange %s-%s", ErrNotAllowed, t.begin, t.end)
+	return fmt.Errorf("%w: not in timerange %s-%s", ErrNotAllowed, tr.begin, tr.end)
 }
 
 // Includes returns true if <tm> is in the Timerange
-func (t timerange) Includes(tm time.Time) bool {
-	err := t.TestIncludes(tm)
+func (tr timerange) Includes(tm time.Time) bool {
+	err := tr.TestIncludes(tm)
 	return err == nil
 }
 

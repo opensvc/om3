@@ -143,12 +143,14 @@ func (t *CompGroups) Add(s string) error {
 	}
 	for groupName, rule := range data {
 		if groupName == "" {
-			t.Errorf("group should be in the dict: %s\n", s)
-			return fmt.Errorf("group should be in the dict: %s\n", s)
+			err := fmt.Errorf("group should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Gid == nil && !strings.HasPrefix(groupName, "-") {
-			t.Errorf("gid should be in the dict: %s\n", s)
-			return fmt.Errorf("gid should be in the dict: %s\n", s)
+			err := fmt.Errorf("gid should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		rule.Group = groupName
 		if i := t.locatePresenceInRules(rule.Group); i != -1 {

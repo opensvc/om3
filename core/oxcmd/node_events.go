@@ -201,7 +201,7 @@ func (t *CmdNodeEvents) doNodes() error {
 			select {
 			case <-ctx.Done():
 				if t.templ != nil && t.Wait && !t.helper.Success {
-					err := fmt.Errorf("wait failed after %s (%s)\n", time.Now().Sub(now), ctx.Err())
+					err := fmt.Errorf("wait failed after %s (%s)", time.Now().Sub(now), ctx.Err())
 					return err
 				}
 				return ctx.Err()
@@ -223,7 +223,7 @@ func (t *CmdNodeEvents) doNodes() error {
 				}
 				if t.Limit > 0 && count >= t.Limit {
 					if t.templ != nil && t.Wait && !t.helper.Success {
-						err := fmt.Errorf("wait failed after %s (event count limit)\n", time.Now().Sub(now))
+						err := fmt.Errorf("wait failed after %s (event count limit)", time.Now().Sub(now))
 						return err
 					}
 					return nil

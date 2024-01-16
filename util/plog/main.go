@@ -117,14 +117,14 @@ func (t *Logger) Logger() zerolog.Logger {
 	return t.logger
 }
 
-func (l *Logger) WithContext(ctx context.Context) context.Context {
+func (t *Logger) WithContext(ctx context.Context) context.Context {
 	if lp, ok := ctx.Value(ctxKey{}).(*Logger); ok {
-		if lp == l {
+		if lp == t {
 			// Do not store same logger.
 			return ctx
 		}
 	}
-	return context.WithValue(ctx, ctxKey{}, l)
+	return context.WithValue(ctx, ctxKey{}, t)
 }
 
 func Ctx(ctx context.Context) *Logger {

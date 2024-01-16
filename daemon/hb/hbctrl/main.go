@@ -270,10 +270,10 @@ func (c *C) run() {
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
-					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbID, Time: time.Now()}, label)
+					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				} else {
 					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
-					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbID, Time: time.Now()}, label)
+					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbID, ".rx") {

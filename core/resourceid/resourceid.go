@@ -70,7 +70,7 @@ func (t T) MarshalJSON() ([]byte, error) {
 func (t *T) UnmarshalJSON(b []byte) error {
 	var temp string
 	if err := json.Unmarshal(b, &temp); err != nil {
-		return fmt.Errorf("unmarshal ResourceId")
+		return fmt.Errorf("unmarshal ResourceID")
 	}
 	t.Name = temp
 	return nil

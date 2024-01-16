@@ -51,17 +51,17 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 	}
 	pendingNodeGen := d.hbGens[local][remote]
 	if msg.Gen[remote] < pendingNodeGen {
-		var evIds []string
+		var evIDs []string
 		for k := range msg.Events {
-			evIds = append(evIds, k)
+			evIDs = append(evIDs, k)
 		}
 		d.log.Infof(
 			"apply patch skipped %s gen %v (ask full from restarted remote) len delta:%d hbGens:%+v "+
-				"evIds: %+v "+
+				"evIDs: %+v "+
 				"hbGens[%s][%s]:%d "+
 				"hbGens[%s]:%+v ",
 			remote, msg.Gen[remote], len(msg.Events), d.hbGens,
-			evIds,
+			evIDs,
 			remote, remote, pendingNodeGen,
 			remote, d.hbGens[remote],
 		)
@@ -69,13 +69,13 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 		return nil
 	}
 	if len(msg.Events) == 0 && msg.Gen[remote] > pendingNodeGen {
-		var eventIds []string
+		var eventIDs []string
 		for k := range msg.Events {
-			eventIds = append(eventIds, k)
+			eventIDs = append(eventIDs, k)
 		}
 		d.log.Infof(
-			"apply patch skipped %s gen %d (ask full from empty patch) len events: %d gens:%+v eventIds: %+v hbGens[%s]: %v",
-			remote, msg.Gen[remote], len(msg.Events), d.hbGens, eventIds, remote, d.hbGens[remote])
+			"apply patch skipped %s gen %d (ask full from empty patch) len events: %d gens:%+v eventIDs: %+v hbGens[%s]: %v",
+			remote, msg.Gen[remote], len(msg.Events), d.hbGens, eventIDs, remote, d.hbGens[remote])
 		d.log.Infof("Msg is : %+v", *msg)
 
 		setNeedFull()

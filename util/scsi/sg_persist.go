@@ -272,7 +272,7 @@ func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O
 				return err
 			}
 			t.Log.Warnf("Unit Attention received from %s. ack and retry in 0.1s", dev)
-			countdown -= 1
+			countdown--
 			time.Sleep(100 * time.Millisecond)
 			t.ackUnitAttention(dev)
 			continue

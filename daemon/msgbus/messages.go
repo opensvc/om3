@@ -283,7 +283,7 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string    `json:"origin" yaml:"origin"`
 		Title     string    `json:"title" yaml:"title"`
-		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
+		SessionID uuid.UUID `json:"session_id" yaml:"session_id"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -297,7 +297,7 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string    `json:"origin" yaml:"origin"`
 		Title     string    `json:"title" yaml:"title"`
-		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
+		SessionID uuid.UUID `json:"session_id" yaml:"session_id"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -310,7 +310,7 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string    `json:"origin" yaml:"origin"`
 		Title     string    `json:"title" yaml:"title"`
-		SessionId uuid.UUID `json:"sessionId" yaml:"sessionId"`
+		SessionID uuid.UUID `json:"session_id" yaml:"session_id"`
 	}
 
 	Exit struct {
@@ -332,7 +332,7 @@ type (
 	HbPing struct {
 		pubsub.Msg `yaml:",inline"`
 		Nodename   string    `json:"to" yaml:"to"`
-		HbId       string    `json:"hb_id" yaml:"hb_id"`
+		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
@@ -353,7 +353,7 @@ type (
 	HbStale struct {
 		pubsub.Msg `yaml:",inline"`
 		Nodename   string    `json:"node" yaml:"node"`
-		HbId       string    `json:"hb_id" yaml:"hb_id"`
+		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
@@ -624,14 +624,14 @@ type (
 
 	ObjectOrchestrationEnd struct {
 		pubsub.Msg `yaml:",inline"`
-		Id         string      `json:"id" yaml:"id"`
+		ID         string      `json:"id" yaml:"id"`
 		Node       string      `json:"node" yaml:"node"`
 		Path       naming.Path `json:"path" yaml:"path"`
 	}
 
 	ObjectOrchestrationRefused struct {
 		pubsub.Msg `yaml:",inline"`
-		Id         string      `json:"id" yaml:"id"`
+		ID         string      `json:"id" yaml:"id"`
 		Node       string      `json:"node" yaml:"node"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Reason     string      `json:"reason" yaml:"reason"`
@@ -661,7 +661,7 @@ type (
 		Path       naming.Path           `json:"path" yaml:"path"`
 		Node       string                `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
-		SessionID  uuid.UUID             `json:"sessionId" yaml:"sessionId"`
+		SessionID  uuid.UUID             `json:"session_id" yaml:"session_id"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 
@@ -832,7 +832,7 @@ func (e *HbNodePing) Kind() string {
 }
 
 func (e *HbPing) String() string {
-	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbId, e.Time)
+	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
 	return s
 }
 
@@ -841,7 +841,7 @@ func (e *HbPing) Kind() string {
 }
 
 func (e *HbStale) String() string {
-	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbId, e.Time)
+	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
 	return s
 }
 

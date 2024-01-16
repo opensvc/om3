@@ -233,19 +233,22 @@ func (t *CompUsers) Add(s string) error {
 	for name, rule := range data {
 
 		if name == "" {
-			t.Errorf("name should be in the dict: %s\n", s)
-			return fmt.Errorf("name should be in the dict: %s\n", s)
+			err := fmt.Errorf("name should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 
 		if !strings.HasPrefix(name, "-") {
 			if rule.Uid == nil {
-				t.Errorf("uid should be in the dict: %s\n", s)
-				return fmt.Errorf("uid should be in the dict: %s\n", s)
+				err := fmt.Errorf("uid should be in the dict: %s", s)
+				t.Errorf("%s\n", err)
+				return err
 			}
 
 			if rule.Gid == nil {
-				t.Errorf("gid should be in the dict: %s\n", s)
-				return fmt.Errorf("gid should be in the dict: %s\n", s)
+				err := fmt.Errorf("gid should be in the dict: %s", s)
+				t.Errorf("%s\n", err)
+				return err
 			}
 		}
 

@@ -145,6 +145,7 @@ func (t *CompAuthkeys) Add(s string) error {
 	}
 	for _, rule := range data {
 		if err := t.addASingleCompauthkey(rule); err != nil {
+			t.Errorf("%s\n", err)
 			return err
 		}
 	}
@@ -153,20 +154,16 @@ func (t *CompAuthkeys) Add(s string) error {
 
 func (t *CompAuthkeys) addASingleCompauthkey(rule CompAuthKey) error {
 	if !(rule.Action == "add" || rule.Action == "del") {
-		t.Errorf("action should be equal to add or del in the dict: %s\n", rule)
-		return fmt.Errorf("action should be equal to add or del in the dict: %s\n", rule)
+		return fmt.Errorf("action should be equal to add or del in the dict: %s", rule)
 	}
 	if !(rule.Authfile == "authorized_keys" || rule.Authfile == "authorized_keys2") {
-		t.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
-		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s\n", rule)
+		return fmt.Errorf("authfile should equal to authorized_keys or authorized_keys2 in the dict: %s", rule)
 	}
 	if rule.User == "" {
-		t.Errorf("user should be in the dict: %s\n", rule)
-		return fmt.Errorf("user should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s", rule)
 	}
 	if rule.Key == "" {
-		t.Errorf("key should be in the dict: %s\n", rule)
-		return fmt.Errorf("user should be in the dict: %s\n", rule)
+		return fmt.Errorf("user should be in the dict: %s", rule)
 	}
 	if rule.ConfigFile == "" {
 		rule.ConfigFile = "/etc/ssh/sshd_config"

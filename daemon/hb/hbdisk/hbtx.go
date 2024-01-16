@@ -30,8 +30,8 @@ type (
 	}
 )
 
-// Id implements the Id function of Transmitter interface for tx
-func (t *tx) Id() string {
+// ID implements the ID function of Transmitter interface for tx
+func (t *tx) ID() string {
 	return t.id
 }
 

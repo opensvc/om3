@@ -39,8 +39,8 @@ type (
 	}
 )
 
-// Id implements the Id function of the Receiver interface for rx
-func (t *rx) Id() string {
+// ID implements the ID function of the Receiver interface for rx
+func (t *rx) ID() string {
 	return t.id
 }
 
@@ -116,7 +116,7 @@ func (t *rx) recv(nodename string) {
 
 	params := api.GetRelayMessageParams{
 		Nodename:  &nodename,
-		ClusterId: &clusterID,
+		ClusterID: &clusterID,
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {

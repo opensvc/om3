@@ -500,7 +500,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					} else {
 						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
 					previous := sub.queuedMax
 					sub.queuedMax /= 8
@@ -513,7 +513,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					} else {
 						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
 			}
 		}
@@ -729,21 +729,6 @@ func BusFromContext(ctx context.Context) *Bus {
 	panic("unable to retrieve pubsub bus from context")
 }
 
-func (pub cmdPub) String() string {
-	var dataS string
-	switch data := pub.data.(type) {
-	case stringer:
-		dataS = data.String()
-	default:
-		dataS = "type " + pub.dataType
-	}
-	s := fmt.Sprintf("publication %s", dataS)
-	if len(pub.labels) > 0 {
-		s += " with " + pub.labels.String()
-	}
-	return s
-}
-
 func (cmd cmdSubAddFilter) String() string {
 	s := fmt.Sprintf("add subscription %s filter type %s", cmd.id, cmd.dataType)
 	if len(cmd.labels) > 0 {
@@ -818,16 +803,31 @@ func (sub *Subscription) keys() []string {
 	return l
 }
 
-func (t cmdPub) key() string {
-	return fmtKey(t.dataType, t.labels)
+func (pub cmdPub) String() string {
+	var dataS string
+	switch data := pub.data.(type) {
+	case stringer:
+		dataS = data.String()
+	default:
+		dataS = "type " + pub.dataType
+	}
+	s := fmt.Sprintf("publication %s", dataS)
+	if len(pub.labels) > 0 {
+		s += " with " + pub.labels.String()
+	}
+	return s
 }
 
-func (t filter) key() string {
-	return fmtKey(t.dataType, t.labels)
+func (pub cmdPub) key() string {
+	return fmtKey(pub.dataType, pub.labels)
 }
 
 func (pub cmdPub) keys() []string {
 	return pubKeys(pub.dataType, pub.labels)
+}
+
+func (t filter) key() string {
+	return fmtKey(t.dataType, t.labels)
 }
 
 func fmtKey(dataType string, labels Labels) string {
@@ -936,7 +936,7 @@ func (sub *Subscription) Start() {
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warnf("%s error: %s. stop subscription", sub, err)
-					go sub.bus.Pub(&SubscriptionError{Name: sub.name, Id: sub.id, ErrS: err.Error()})
+					go sub.bus.Pub(&SubscriptionError{Name: sub.name, ID: sub.id, ErrS: err.Error()})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {

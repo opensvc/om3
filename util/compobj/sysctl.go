@@ -115,23 +115,23 @@ func (t *CompSysctls) Add(s string) error {
 	}
 	for _, rule := range data {
 		if rule.Key == "" {
-			return fmt.Errorf("key is mandatory in dict : %s \n", s)
+			return fmt.Errorf("key is mandatory in dict : %s", s)
 		}
 		if rule.Index == nil {
-			return fmt.Errorf("index is mandatory in dict : %s \n", s)
+			return fmt.Errorf("index is mandatory in dict : %s", s)
 		}
 		if *rule.Index < 0 {
-			return fmt.Errorf("index must not be <0 in dict : %s \n", s)
+			return fmt.Errorf("index must not be <0 in dict : %s", s)
 		}
 		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
-			return fmt.Errorf("operator must be =, >= or <= in dict : %s \n", s)
+			return fmt.Errorf("operator must be =, >= or <= in dict : %s", s)
 		}
 		if rule.Value == nil {
-			return fmt.Errorf("value must be in dict : %s \n", s)
+			return fmt.Errorf("value must be in dict : %s", s)
 		}
 		if _, ok := rule.Value.(string); !ok {
 			if rule.Value.(float64) != math.Floor(rule.Value.(float64)) {
-				return fmt.Errorf("value must not be a float in dict : %s \n", s)
+				return fmt.Errorf("value must not be a float in dict : %s", s)
 			}
 		}
 		t.Obj.Add(rule)

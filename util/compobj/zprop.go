@@ -32,30 +32,36 @@ func (t *CompZprops) add(s string) error {
 	}
 	for _, rule := range data {
 		if rule.Name == "" {
-			t.Errorf("name should be in dict: %s\n", s)
-			return fmt.Errorf("name should be in dict: %s", s)
+			err := fmt.Errorf("name should be in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Prop == "" {
-			t.Errorf("prop should be in dict: %s\n", s)
-			return fmt.Errorf("prop should be in dict: %s", s)
+			err := fmt.Errorf("prop should be in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
-			t.Errorf("op should equal to =, >= or <= dict: %s\n", s)
-			return fmt.Errorf("op should equal to =, >= or <= dict: %s", s)
+			err := fmt.Errorf("op should equal to =, >= or <= dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Value == nil {
-			t.Errorf("value should be in dict: %s\n", s)
-			return fmt.Errorf("value should be in dict: %s", s)
+			err := fmt.Errorf("value should be in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		_, okString := rule.Value.(string)
 		_, okFloat64 := rule.Value.(float64)
 		if !(okString || okFloat64) {
-			t.Errorf("value should be a string or an int in dict: %s\n", s)
-			return fmt.Errorf("value should be a string or an int in dict: %s", s)
+			err := fmt.Errorf("value should be a string or an int in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if okString && (rule.Op == ">=" || rule.Op == "<=") {
-			t.Errorf("op should be = if value is a string in dict: %s\n", s)
-			return fmt.Errorf("op should be = if value is a string in dict: %s", s)
+			err := fmt.Errorf("op should be = if value is a string in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		t.Obj.Add(rule)
 	}
