@@ -154,26 +154,31 @@ func (t *CompMpaths) Add(s string) error {
 	for _, rule := range data {
 		rule.Key = strings.TrimSpace(rule.Key)
 		if rule.Key == "" {
-			t.Errorf("key should be in the dict: %s\n", s)
-			return fmt.Errorf("symlink should be in the dict: %s\n", s)
+			err := fmt.Errorf("symlink should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if !(rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=") {
-			t.Errorf("op should be equal to =, >=, or <= in dict: %s\n", s)
-			return fmt.Errorf("op should be equal to =, >=, or <= in dict: %s\n", s)
+			err := fmt.Errorf("op should be equal to =, >=, or <= in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Value == nil {
-			t.Errorf("value should be in dict: %s\n", s)
-			return fmt.Errorf("value should be in dict: %s\n", s)
+			err := fmt.Errorf("value should be in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if _, ok := rule.Value.(float64); (rule.Op == ">=" || rule.Op == "<=") && !ok {
-			t.Errorf("value should be an int when using operators >= or <= in dict: %s\n", s)
-			return fmt.Errorf("value should be an int when using operators >= or <= in dict: %s\n", s)
+			err := fmt.Errorf("value should be an int when using operators >= or <= in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		_, okString := rule.Value.(string)
 		_, okFloat64 := rule.Value.(float64)
 		if !(okString || okFloat64) {
-			t.Errorf("value should be an int or a string in dict: %s\n", s)
-			return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
+			err := fmt.Errorf("value should be an int or a string in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if err := t.verifyDeviceAndMultipathInfos(rule.Key, s); err != nil {
 			t.Errorf("%s\n", err)
@@ -706,7 +711,7 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 	lines := strings.Split(string(fileContent), "\n")
 	indexLineToChange := t.getLineIndex(&lines, splitKey, indexs, 0, len(lines)-1)
 	if indexLineToChange == -1 {
-		t.Errorf("%s\n", fmt.Errorf("error during the fix: the key is supposed to exist but can't find it"))
+		t.Errorf("error during the fix: the key is supposed to exist but can't find it\n")
 		return ExitNok
 	}
 	comment := ""

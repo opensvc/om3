@@ -97,8 +97,9 @@ func (t CompGroupsMemberships) Add(s string) error {
 	}
 	for groupName, rule := range data {
 		if groupName == "" {
-			t.Errorf("group should be in the dict: %s\n", s)
-			return fmt.Errorf("group should be in the dict: %s\n", s)
+			err := fmt.Errorf("group should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		rule.Group = groupName
 		if i := t.locatePresenceInRules(rule.Group); i != -1 {
@@ -194,7 +195,7 @@ func (t CompGroupsMemberships) getGroupMembers(groupName string) (map[string]any
 	}
 	lineFields := strings.Split(string(output), ":")
 	if len(lineFields) < 4 {
-		return nil, fmt.Errorf("error : can't read group members in getent group output command: %s \n", output)
+		return nil, fmt.Errorf("error : can't read group members in getent group output command: %s", output)
 	}
 	groupMembersList := strings.Split(lineFields[3], ",")
 	for _, member := range groupMembersList {
@@ -210,7 +211,7 @@ func (t CompGroupsMemberships) getPrimaryGroup(userName string) (string, error) 
 	cmd := execID(userName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("%w,%s \n", err, output)
+		return "", fmt.Errorf("%w: %s", err, output)
 	}
 	return string(output), nil
 }
@@ -244,7 +245,7 @@ func (t CompGroupsMemberships) isGroupExisting(groupName string) (bool, error) {
 				return false, nil
 			}
 		}
-		return false, fmt.Errorf("can't read /etc/group %w:%s \n", err, output)
+		return false, fmt.Errorf("can't read /etc/group %w:%s", err, output)
 	}
 	return true, nil
 }
@@ -262,7 +263,7 @@ func (t CompGroupsMemberships) isUserMissing(member string) (bool, error) {
 				return true, nil
 			}
 		}
-		return true, fmt.Errorf("can't read /etc/passwd :%w/%s \n", err, output)
+		return true, fmt.Errorf("can't read /etc/passwd :%w/%s", err, output)
 	}
 	return false, nil
 }

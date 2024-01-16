@@ -488,7 +488,7 @@ func (t T) getLstree() ([]string, error) {
 	case []string:
 		return l, nil
 	default:
-		return nil, fmt.Errorf("unexpected sysreport_lstree rpc result: %+v\n", response.Result)
+		return nil, fmt.Errorf("unexpected sysreport_lstree rpc result: %+v", response.Result)
 	}
 }
 

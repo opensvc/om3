@@ -78,12 +78,14 @@ func (t *CompSymlinks) Add(s string) error {
 		return err
 	}
 	if data.Symlink == "" {
-		t.Errorf("symlink should be in the dict: %s\n", s)
-		return fmt.Errorf("symlink should be in the dict: %s\n", s)
+		err := fmt.Errorf("symlink should be in the dict: %s", s)
+		t.Errorf("%s\n", err)
+		return err
 	}
 	if data.Target == "" {
-		t.Errorf("target should be in the dict: %s\n", s)
-		return fmt.Errorf("target should be in the dict: %s\n", s)
+		err := fmt.Errorf("target should be in the dict: %s", s)
+		t.Errorf("%s\n", err)
+		return err
 	}
 	t.Obj.Add(data)
 	return nil

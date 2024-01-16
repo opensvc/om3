@@ -116,26 +116,30 @@ func (t *CompKeyvals) Add(s string) error {
 		return err
 	}
 	if dataPath.Path == "" {
-		t.Errorf("path should be in the dict: %s\n", s)
-		return fmt.Errorf("path should be in the dict: %s\n", s)
+		err := fmt.Errorf("path should be in the dict: %s", s)
+		t.Errorf("%s\n", err)
+		return err
 	}
 	keyValpath = dataPath.Path
 	for _, rule := range dataPath.Keys {
 		rule.path = keyValpath
 		if rule.Key == "" {
-			t.Errorf("key should be in the dict: %s\n", s)
-			return fmt.Errorf("key should be in the dict: %s\n", s)
+			err := fmt.Errorf("key should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Op == "" {
 			rule.Op = "="
 		}
 		if rule.Value == nil && (rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
-			t.Errorf("value should be set in the dict: %s\n", s)
-			return fmt.Errorf("value should be set in the dict: %s\n", s)
+			err := fmt.Errorf("value should be set in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if !(rule.Op == "reset" || rule.Op == "unset" || rule.Op == "=" || rule.Op == ">=" || rule.Op == "<=" || rule.Op == "IN") {
-			t.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
-			return fmt.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s\n", s)
+			err := fmt.Errorf("op should be in: reset, unset, =, >=, <=, IN in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 		if rule.Op != "unset" {
 			switch rule.Value.(type) {
@@ -145,16 +149,19 @@ func (t *CompKeyvals) Add(s string) error {
 			//skip
 			default:
 				if rule.Op != "IN" {
-					t.Errorf("value should be an int or a string in dict: %s\n", s)
-					return fmt.Errorf("value should be an int or a string in dict: %s\n", s)
+					err := fmt.Errorf("value should be an int or a string in dict: %s", s)
+					t.Errorf("%s\n", err)
+					return err
 				}
 				if _, ok := rule.Value.([]any); !ok {
-					t.Errorf("value should be a list in dict: %s\n", s)
-					return fmt.Errorf("value should be a list in dict: %s\n", s)
+					err := fmt.Errorf("value should be a list in dict: %s", s)
+					t.Errorf("%s\n", err)
+					return err
 				}
 				if len(rule.Value.([]any)) == 0 {
-					t.Errorf("list should not be empty in dict: %s\n", s)
-					return fmt.Errorf("list should not be empty in dict: %s\n", s)
+					err := fmt.Errorf("list should not be empty in dict: %s", s)
+					t.Errorf("%s\n", err)
+					return err
 				}
 				for _, val := range rule.Value.([]any) {
 					if _, ok := val.(float64); ok {
@@ -163,15 +170,17 @@ func (t *CompKeyvals) Add(s string) error {
 					if _, ok := val.(string); ok {
 						continue
 					}
-					t.Errorf("the values in value list should be string or int in dict: %s\n", s)
-					return fmt.Errorf("the values in value should be string or int in dict: %s\n", s)
+					err := fmt.Errorf("the values in value should be string or int in dict: %s", s)
+					t.Errorf("%s\n", err)
+					return err
 				}
 			}
 		}
 
 		if _, ok := rule.Value.(float64); !ok && (rule.Op == "<=" || rule.Op == ">=") {
-			t.Errorf("can't use >= and <= if the value is not an int in dict: %s\n", s)
-			return fmt.Errorf("can't use >= and <= if the value is not an int in dict: %s\n", s)
+			err := fmt.Errorf("can't use >= and <= if the value is not an int in dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
 		}
 
 		switch rule.Op {

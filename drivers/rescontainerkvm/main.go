@@ -678,7 +678,7 @@ func (t T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
 	}
-	return nil, fmt.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
+	return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
 }
 
 func (t T) rexec(cmd string) error {
