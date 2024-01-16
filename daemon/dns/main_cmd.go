@@ -95,7 +95,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			change = true
 		case existingRecord.Type != record.Type:
 			change = true
-		case existingRecord.DomainId != record.DomainId:
+		case existingRecord.DomainID != record.DomainID:
 			change = true
 		case existingRecord.TTL != record.TTL:
 			change = true
@@ -119,7 +119,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 		stage(Record{
 			Name:     fmt.Sprintf("_%d._%s.%s", expose.FrontendPort, expose.Network, name),
-			DomainId: -1,
+			DomainID: -1,
 			Type:     "SRV",
 			TTL:      60,
 			Content:  fmt.Sprintf("%d %d %d %s", defaultPrio, weight, expose.BackendPort, nameOnNode),
@@ -163,7 +163,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		// Add a direct record (node agnostic)
 		stage(Record{
 			Name:     name,
-			DomainId: -1,
+			DomainID: -1,
 			Type:     aType,
 			TTL:      60,
 			Content:  ipAddr,
@@ -172,7 +172,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		// Add a reverse record (node agnostic)
 		stage(Record{
 			Name:     reverseAddr(ip),
-			DomainId: -1,
+			DomainID: -1,
 			Type:     ptrType,
 			TTL:      60,
 			Content:  name,
@@ -181,7 +181,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		// Add a direct record (node affine)
 		stage(Record{
 			Name:     nameOnNode,
-			DomainId: -1,
+			DomainID: -1,
 			Type:     aType,
 			TTL:      60,
 			Content:  ipAddr,
@@ -190,7 +190,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		// Add a reverse record (node affine)
 		stage(Record{
 			Name:     reverseAddr(ip),
-			DomainId: -1,
+			DomainID: -1,
 			Type:     ptrType,
 			TTL:      60,
 			Content:  nameOnNode,
@@ -203,7 +203,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			// Add a resource direct record (node agnostic)
 			stage(Record{
 				Name:     nameWithResourceName,
-				DomainId: -1,
+				DomainID: -1,
 				Type:     aType,
 				TTL:      60,
 				Content:  ipAddr,
@@ -212,7 +212,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			// Add a resource reverse record (node agnostic)
 			stage(Record{
 				Name:     reverseAddr(ip),
-				DomainId: -1,
+				DomainID: -1,
 				Type:     ptrType,
 				TTL:      60,
 				Content:  nameWithResourceName,
@@ -221,7 +221,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			// Add a direct record (node affine)
 			stage(Record{
 				Name:     nameOnNodeWithResourceName,
-				DomainId: -1,
+				DomainID: -1,
 				Type:     aType,
 				TTL:      60,
 				Content:  ipAddr,
@@ -230,7 +230,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			// Add a reverse record (node affine)
 			stage(Record{
 				Name:     reverseAddr(ip),
-				DomainId: -1,
+				DomainID: -1,
 				Type:     ptrType,
 				TTL:      60,
 				Content:  nameOnNodeWithResourceName,
@@ -280,21 +280,21 @@ func (t *dns) zone() Zone {
 		zone = append(zone,
 			Record{
 				Name:     zoneName,
-				DomainId: -1,
+				DomainID: -1,
 				Type:     "SOA",
 				TTL:      60,
 				Content:  soaContent,
 			},
 			Record{
 				Name:     nsName,
-				DomainId: -1,
+				DomainID: -1,
 				Type:     "A",
 				TTL:      60,
 				Content:  dns,
 			},
 			Record{
 				Name:     zoneName,
-				DomainId: -1,
+				DomainID: -1,
 				Type:     "NS",
 				TTL:      3600,
 				Content:  nsName,

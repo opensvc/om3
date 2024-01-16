@@ -24,7 +24,7 @@ type (
 		CRL             string `json:"crl"`
 		Addr            string `json:"addr"`
 		Port            int    `json:"port"`
-		OpenIdWellKnown string `json:"openid_well_known"`
+		OpenIDWellKnown string `json:"openid_well_known"`
 		DNSSockGID      string `json:"dns_sock_gid"`
 		DNSSockUID      string `json:"dns_sock_uid"`
 	}

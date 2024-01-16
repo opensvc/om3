@@ -27,7 +27,7 @@ type (
 		Type     string `json:"qtype"`
 		TTL      int    `json:"ttl"`
 		Content  string `json:"content"`
-		DomainId int    `json:"domain_id"`
+		DomainID int    `json:"domain_id"`
 	}
 	Zone []Record
 

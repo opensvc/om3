@@ -977,8 +977,8 @@ type PathOptional = string
 // Paths defines model for Paths.
 type Paths = []string
 
-// RelayClusterID defines model for RelayClusterID.
-type RelayClusterID = string
+// ClusterID defines model for RelayClusterID.
+type ClusterID = string
 
 // RelayNodename defines model for RelayNodename.
 type RelayNodename = string
@@ -1387,7 +1387,7 @@ type GetRelayMessageParams struct {
 	Nodename *RelayNodename `form:"nodename,omitempty" json:"nodename,omitempty"`
 
 	// ClusterId the cluster id component of the slot id on the relay
-	ClusterId *RelayClusterID `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
+	ClusterID *ClusterID `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
 }
 
 // GetResourcesParams defines parameters for GetResources.

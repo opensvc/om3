@@ -610,7 +610,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:   o.localhost,
 			Path:   o.path,
-			Id:     c.Value.CandidateOrchestrationID.String(),
+			ID:     c.Value.CandidateOrchestrationID.String(),
 			Reason: fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
 		},
 			o.labelPath,

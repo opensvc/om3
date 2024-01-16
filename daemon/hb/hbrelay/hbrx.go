@@ -116,7 +116,7 @@ func (t *rx) recv(nodename string) {
 
 	params := api.GetRelayMessageParams{
 		Nodename:  &nodename,
-		ClusterId: &clusterID,
+		ClusterID: &clusterID,
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {

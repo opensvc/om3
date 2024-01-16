@@ -91,7 +91,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	} else {
 		cfg.Listener.Port = v.(int)
 	}
-	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIDWellKnown)
+	cfg.Listener.OpenIDWellKnown = o.clusterConfig.GetString(keyListenerOpenIDWellKnown)
 	cfg.Listener.DNSSockGID = o.clusterConfig.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = o.clusterConfig.GetString(keyListenerDNSSockUID)
 

@@ -155,7 +155,7 @@ func (o *imon) endOrchestration() {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node: o.localhost,
 			Path: o.path,
-			Id:   o.acceptedOrchestrationId.String(),
+			ID:   o.acceptedOrchestrationId.String(),
 		},
 			o.labelPath,
 			o.labelLocalhost,
