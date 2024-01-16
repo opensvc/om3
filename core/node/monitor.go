@@ -21,9 +21,9 @@ type (
 		StateUpdatedAt        time.Time `json:"state_updated_at"`
 		UpdatedAt             time.Time `json:"updated_at"`
 
-		OrchestrationId     uuid.UUID `json:"orchestration_id"`
+		OrchestrationID     uuid.UUID `json:"orchestration_id"`
 		OrchestrationIsDone bool      `json:"orchestration_is_done"`
-		SessionId           uuid.UUID `json:"session_id"`
+		SessionID           uuid.UUID `json:"session_id"`
 	}
 
 	// MonitorUpdate is embedded in the SetNodeMonitor message to
@@ -259,8 +259,8 @@ func (t *Monitor) Unstructured() map[string]any {
 		"local_expect_updated_at":  t.LocalExpectUpdatedAt,
 		"state_updated_at":         t.StateUpdatedAt,
 		"updated_at":               t.UpdatedAt,
-		"orchestration_id":         t.OrchestrationId,
+		"orchestration_id":         t.OrchestrationID,
 		"orchestration_is_done":    t.OrchestrationIsDone,
-		"session_id":               t.SessionId,
+		"session_id":               t.SessionID,
 	}
 }

@@ -29,15 +29,15 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 		o.state.GlobalExpect = o.instMonitor[mostRecentNode].GlobalExpect
 		o.state.GlobalExpectUpdatedAt = o.instMonitor[mostRecentNode].GlobalExpectUpdatedAt
 		o.state.GlobalExpectOptions = o.instMonitor[mostRecentNode].GlobalExpectOptions
-		o.state.OrchestrationId = o.instMonitor[mostRecentNode].OrchestrationId
+		o.state.OrchestrationID = o.instMonitor[mostRecentNode].OrchestrationID
 		o.state.State = instance.MonitorStateIdle
 		strVal := o.instMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
 		o.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
-			mostRecentNode, strVal, o.state.OrchestrationId, mostRecentUpdated)
-		o.log = o.newLogger(o.state.OrchestrationId)
+			mostRecentNode, strVal, o.state.OrchestrationID, mostRecentUpdated)
+		o.log = o.newLogger(o.state.OrchestrationID)
 	}
 }
 

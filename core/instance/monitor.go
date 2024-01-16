@@ -35,15 +35,15 @@ type (
 		LocalExpect          MonitorLocalExpect `json:"local_expect"`
 		LocalExpectUpdatedAt time.Time          `json:"local_expect_updated_at"`
 
-		// OrchestrationId is the accepted orchestration id that will be unset
+		// OrchestrationID is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
-		OrchestrationId uuid.UUID `json:"orchestration_id"`
+		OrchestrationID uuid.UUID `json:"orchestration_id"`
 
 		// OrchestrationIsDone is set by the orchestration when it decides the instance state has reached its target.
 		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done"`
 
-		SessionId               uuid.UUID        `json:"session_id"`
+		SessionID               uuid.UUID        `json:"session_id"`
 		State                   MonitorState     `json:"state"`
 		StateUpdatedAt          time.Time        `json:"state_updated_at"`
 		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at"`
@@ -474,9 +474,9 @@ func (t Monitor) Unstructured() map[string]any {
 		"is_ha_leader":               t.IsHALeader,
 		"local_expect":               t.LocalExpect,
 		"local_expect_updated_at":    t.LocalExpectUpdatedAt,
-		"orchestration_id":           t.OrchestrationId,
+		"orchestration_id":           t.OrchestrationID,
 		"orchestration_is_done":      t.OrchestrationIsDone,
-		"session_id":                 t.SessionId,
+		"session_id":                 t.SessionID,
 		"state":                      t.State,
 		"state_updated_at":           t.StateUpdatedAt,
 		"monitor_action_executed_at": t.MonitorActionExecutedAt,

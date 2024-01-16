@@ -502,7 +502,7 @@ func TestAppStopStartSequence(t *testing.T) {
 	env.InstallFile("../../testdata/svcapp1.conf", "etc/svcapp.conf")
 
 	for name := range cases {
-		t.Run("orderBasedOnStartId:"+name, func(t *testing.T) {
+		t.Run("orderBasedOnStartID:"+name, func(t *testing.T) {
 			args := getCmd(name)
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)

@@ -98,7 +98,7 @@ func TestHelperProcess(t *testing.T) {
 type fakeChecker struct {
 	DriverGroup string
 	DriverName  string
-	Ids         []string
+	IDs         []string
 	Unit        string
 }
 
@@ -107,7 +107,7 @@ func (t fakeChecker) Check(objs []interface{}) (*check.ResultSet, error) {
 	if strings.Contains(t.DriverGroup, "error") {
 		return &check.ResultSet{}, fmt.Errorf("something wrong happen")
 	}
-	for _, id := range t.Ids {
+	for _, id := range t.IDs {
 		results = append(results, check.Result{
 			DriverGroup: t.DriverGroup,
 			DriverName:  t.DriverName,
@@ -127,19 +127,19 @@ func TestRunnerDo(t *testing.T) {
 	checker1 = &fakeChecker{
 		DriverGroup: "checker1Grp",
 		DriverName:  "checker1Drv",
-		Ids:         []string{"a", "b"},
+		IDs:         []string{"a", "b"},
 		Unit:        "",
 	}
 	checker2 = &fakeChecker{
 		DriverGroup: "checker2Grp",
 		DriverName:  "checker2Drv",
-		Ids:         []string{"a"},
+		IDs:         []string{"a"},
 		Unit:        "",
 	}
 	errorChecker = &fakeChecker{
 		DriverGroup: "error",
 		DriverName:  "checker",
-		Ids:         []string{"a"},
+		IDs:         []string{"a"},
 		Unit:        "",
 	}
 	cases := []struct {

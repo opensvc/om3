@@ -395,20 +395,20 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		if prevState == c.State {
 			return
 		}
-		switch o.state.SessionId {
+		switch o.state.SessionID {
 		case uuid.Nil:
 		case c.SessionID:
 			// pass
 		default:
-			o.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.state.State, o.state.SessionId, c.State, c.SessionID)
+			o.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.state.State, o.state.SessionID, c.State, c.SessionID)
 		}
 		o.log.Infof("set instance monitor state %s -> %s", o.state.State, c.State)
 		o.change = true
 		o.state.State = c.State
 		if c.State == instance.MonitorStateIdle {
-			o.state.SessionId = uuid.Nil
+			o.state.SessionID = uuid.Nil
 		} else {
-			o.state.SessionId = c.SessionID
+			o.state.SessionID = c.SessionID
 		}
 	}
 
@@ -477,8 +477,8 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			globalExpectRefused()
 			return
 		}
-		if o.state.OrchestrationId != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
-			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, o.state.GlobalExpect, o.state.OrchestrationId)
+		if o.state.OrchestrationID != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
+			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, o.state.GlobalExpect, o.state.OrchestrationID)
 			addError(err)
 			return
 		}
@@ -598,10 +598,10 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	}
 
 	if o.change {
-		if o.state.OrchestrationId.String() != c.Value.CandidateOrchestrationID.String() {
+		if o.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
 			o.log = o.newLogger(c.Value.CandidateOrchestrationID)
 		}
-		o.state.OrchestrationId = c.Value.CandidateOrchestrationID
+		o.state.OrchestrationID = c.Value.CandidateOrchestrationID
 		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationID
 		o.updateIsLeader()
 		o.orchestrate()
