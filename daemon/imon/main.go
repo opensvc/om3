@@ -84,7 +84,7 @@ type (
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
 
-		acceptedOrchestrationId uuid.UUID
+		acceptedOrchestrationID uuid.UUID
 
 		drainDuration time.Duration
 

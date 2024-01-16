@@ -3997,9 +3997,6 @@ components:
           type: string
           format: duration
 
-    ResourceId:
-      type: string
-
     ResourceLog:
       type: array
       items:

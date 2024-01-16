@@ -134,8 +134,8 @@ func (t *T) Stop() error {
 	}
 	for _, hb := range hbToStop {
 		if err := t.stopHb(hb); err != nil {
-			t.log.Errorf("stop %s: %s", hb.Id(), err)
-			failedIDs = append(failedIDs, hb.Id())
+			t.log.Errorf("stop %s: %s", hb.ID(), err)
+			failedIDs = append(failedIDs, hb.ID())
 		}
 	}
 	if len(failedIDs) > 0 {
@@ -153,7 +153,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) stopHb(hb hbtype.IDStopper) error {
-	hbID := hb.Id()
+	hbID := hb.ID()
 	switch hb.(type) {
 	case hbtype.Transmitter:
 		select {
@@ -182,17 +182,17 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	if tx == nil {
 		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{ID: tx.Id(), Type: hb.Type()}
+	t.ctrlC <- hbctrl.CmdRegister{ID: tx.ID(), Type: hb.Type()}
 	localDataC := make(chan []byte)
 	if err := tx.Start(t.ctrlC, localDataC); err != nil {
-		t.log.Errorf("start %s failed: %s", tx.Id(), err)
-		t.ctrlC <- hbctrl.CmdSetState{ID: tx.Id(), State: "failed"}
+		t.log.Errorf("start %s failed: %s", tx.ID(), err)
+		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
 		return err
 	}
 	select {
 	case <-t.msgToTxCtx.Done():
 		// don't hang up when context is done
-	case t.msgToTxRegister <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}:
+	case t.msgToTxRegister <- registerTxQueue{id: tx.ID(), msgToSendQueue: localDataC}:
 		t.txs[hb.Name()] = tx
 	}
 	return nil
@@ -203,10 +203,10 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	if rx == nil {
 		return fmt.Errorf("nil rx for %s", hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{ID: rx.Id(), Type: hb.Type()}
+	t.ctrlC <- hbctrl.CmdRegister{ID: rx.ID(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
-		t.ctrlC <- hbctrl.CmdSetState{ID: rx.Id(), State: "failed"}
-		t.log.Errorf("start %s failed: %s", rx.Id(), err)
+		t.ctrlC <- hbctrl.CmdSetState{ID: rx.ID(), State: "failed"}
+		t.log.Errorf("start %s failed: %s", rx.ID(), err)
 		return err
 	}
 	t.rxs[hb.Name()] = rx
@@ -553,7 +553,7 @@ func (t *T) daemonCtlStop(hbID string, action string) {
 	if err := hbI.(hbtype.IDStopper).Stop(); err != nil {
 		t.log.Errorf("daemonctl %s %s stop failed: %s", action, hbID, err)
 	} else {
-		t.ctrlC <- hbctrl.CmdSetState{ID: hbI.(hbtype.IDStopper).Id(), State: "stopped"}
+		t.ctrlC <- hbctrl.CmdSetState{ID: hbI.(hbtype.IDStopper).ID(), State: "stopped"}
 	}
 }
 

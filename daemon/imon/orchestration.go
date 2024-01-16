@@ -48,7 +48,7 @@ func (o *imon) orchestrate() {
 		if o.orchestrationIsAllDone() {
 			o.endOrchestration()
 		}
-		o.log.Debugf("orchestrate return on o.state.OrchestrationId != uuid.Nil && o.state.OrchestrationIsDone")
+		o.log.Debugf("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
 		return
 	}
 	if o.isDone() {
@@ -151,16 +151,16 @@ func (o *imon) endOrchestration() {
 	o.state.OrchestrationID = uuid.UUID{}
 	o.clearPending()
 	o.updateIfChange()
-	if o.acceptedOrchestrationId != uuid.Nil {
+	if o.acceptedOrchestrationID != uuid.Nil {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node: o.localhost,
 			Path: o.path,
-			ID:   o.acceptedOrchestrationId.String(),
+			ID:   o.acceptedOrchestrationID.String(),
 		},
 			o.labelPath,
 			o.labelLocalhost,
 		)
-		o.acceptedOrchestrationId = uuid.UUID{}
+		o.acceptedOrchestrationID = uuid.UUID{}
 	}
 	o.log = o.newLogger(uuid.Nil)
 }
@@ -183,15 +183,15 @@ func (o *imon) done() {
 func (o *imon) orchestrationIsAllDone() bool {
 	for nodename, oImon := range o.AllInstanceMonitors() {
 		if !oImon.OrchestrationIsDone && oImon.OrchestrationID != uuid.Nil {
-			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationID)
+			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Infof("orchestration progress on node %s: %s", nodename, msg)
 				o.waitConvergedOrchestrationMsg[nodename] = msg
 			}
 			return false
 		} else {
-			// OrchestrationIsDone or no OrchestrationId
-			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationID)
+			// OrchestrationIsDone or no OrchestrationID
+			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Infof("orchestration done on node %s: %s", nodename, msg)
 				o.waitConvergedOrchestrationMsg[nodename] = msg

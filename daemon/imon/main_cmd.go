@@ -602,7 +602,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			o.log = o.newLogger(c.Value.CandidateOrchestrationID)
 		}
 		o.state.OrchestrationID = c.Value.CandidateOrchestrationID
-		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationID
+		o.acceptedOrchestrationID = c.Value.CandidateOrchestrationID
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
