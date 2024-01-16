@@ -67,7 +67,7 @@ func (t *CmdDaemonRestart) doNodes() error {
 		}
 		err := <-errC
 		errs = errors.Join(errs, err)
-		running -= 1
+		running--
 	}
 	if needDoLocal {
 		_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on localhost\n")

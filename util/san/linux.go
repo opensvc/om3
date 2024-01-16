@@ -102,7 +102,7 @@ func GetISCSIPaths() (Paths, error) {
 	}
 	for _, line := range strings.Split(buff, "\n") {
 		v := strings.Fields(line)
-		for i := len(v) - 1; i >= 0; i -= 1 {
+		for i := len(v) - 1; i >= 0; i-- {
 			name := v[i]
 			if !strings.HasPrefix(name, "iqn.") {
 				continue

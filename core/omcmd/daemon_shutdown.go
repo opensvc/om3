@@ -77,7 +77,7 @@ func (t *CmdDaemonShutdown) doNodes() error {
 		}
 		err := <-errC
 		errs = errors.Join(errs, err)
-		running -= 1
+		running--
 	}
 
 	// make sure the local host is shutdown last, as it relays the api calls
