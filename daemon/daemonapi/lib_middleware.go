@@ -72,7 +72,23 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 		}
 		usrPath := c.Path()
 		// TODO confirm no auth GET /metrics
-		return strings.HasPrefix(usrPath, "/public") || strings.HasPrefix(usrPath, "/metrics")
+		isPublicPath := func(usrPath string) bool {
+			switch {
+			case strings.HasPrefix(usrPath, "/public/"):
+				return true
+			case strings.HasPrefix(usrPath, "/metrics"):
+				return true
+			case usrPath == "/index.js":
+				return true
+			case usrPath == "/favicon":
+				return true
+			case usrPath == "/":
+				return true
+			default:
+				return false
+			}
+		}
+		return isPublicPath(usrPath)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
