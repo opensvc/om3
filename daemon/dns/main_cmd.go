@@ -29,23 +29,23 @@ var (
 	defaultWeight = 10
 )
 
-func (t *dns) stateKey(p naming.Path, node string) stateKey {
+func (t *Manager) stateKey(p naming.Path, node string) stateKey {
 	return stateKey{
 		path: p.String(),
 		node: node,
 	}
 }
 
-func (t *dns) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
+func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.score[c.Node] = c.Value.Score
 }
 
-func (t *dns) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
+func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
 	_ = t.sockChown()
 }
 
-func (t *dns) pubDeleted(record Record, p naming.Path, node string) {
+func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
 	t.bus.Pub(&msgbus.ZoneRecordDeleted{
 		Path:    p,
 		Node:    node,
@@ -56,7 +56,7 @@ func (t *dns) pubDeleted(record Record, p naming.Path, node string) {
 	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
-func (t *dns) pubUpdated(record Record, p naming.Path, node string) {
+func (t *Manager) pubUpdated(record Record, p naming.Path, node string) {
 	t.bus.Pub(&msgbus.ZoneRecordUpdated{
 		Path:    p,
 		Node:    node,
@@ -67,7 +67,7 @@ func (t *dns) pubUpdated(record Record, p naming.Path, node string) {
 	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
-func (t *dns) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	key := t.stateKey(c.Path, c.Node)
 	if records, ok := t.state[key]; ok {
 		for _, record := range records {
@@ -77,7 +77,7 @@ func (t *dns) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	}
 }
 
-func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
 	name := naming.NewFQDN(c.Path, t.cluster.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
@@ -251,7 +251,7 @@ func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	}
 }
 
-func (t *dns) onCmdGet(c cmdGet) {
+func (t *Manager) onCmdGet(c cmdGet) {
 	zone := make(Zone, 0)
 	for _, record := range t.zone() {
 		if record.Name != c.Name {
@@ -266,12 +266,12 @@ func (t *dns) onCmdGet(c cmdGet) {
 	c.resp <- zone
 }
 
-func (t *dns) onCmdGetZone(c cmdGetZone) {
+func (t *Manager) onCmdGetZone(c cmdGetZone) {
 	c.errC <- nil
 	c.resp <- t.zone()
 }
 
-func (t *dns) zone() Zone {
+func (t *Manager) zone() Zone {
 	zone := make(Zone, 0)
 	zoneName := t.cluster.Name + "."
 	for i, dns := range t.cluster.DNS {
@@ -307,7 +307,7 @@ func (t *dns) zone() Zone {
 	return zone
 }
 
-func (t *dns) getExistingRecords(key stateKey) map[string]Record {
+func (t *Manager) getExistingRecords(key stateKey) map[string]Record {
 	m := make(map[string]Record)
 	records, ok := t.state[key]
 	if !ok {
