@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceStatus(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostInstanceStatus(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	var payload api.InstanceStatus
 	log := LogHandler(ctx, "PostInstanceStatus")
 	log.Debugf("starting")

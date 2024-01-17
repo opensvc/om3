@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
+func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
 	var items api.PoolItems
 	for _, e := range pool.StatusData.GetAll() {
 		if params.Name != nil && *params.Name != e.Name {

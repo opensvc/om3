@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
+func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
 	var (
 		evaluate    bool
 		impersonate string

@@ -1,4 +1,2 @@
-// Package cmd create opensvc command line assembly
-//
-// It provides the Execute function for opensvc cli
+// Package om create opensvc command line assembly
 package om

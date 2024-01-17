@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
+func (a *DaemonAPI) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
 	logName := "GetObjects"
 	log := LogHandler(ctx, logName)
 	if l, err := a.getObjects(ctx, params.Path); err != nil {
@@ -22,7 +22,7 @@ func (a *DaemonApi) GetObjects(ctx echo.Context, params api.GetObjectsParams) er
 	}
 }
 
-func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetObject(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	logName := "GetObject"
 	log := LogHandler(ctx, logName)
 	p, err := naming.NewPath(namespace, kind, name)
@@ -40,7 +40,7 @@ func (a *DaemonApi) GetObject(ctx echo.Context, namespace string, kind naming.Ki
 	}
 }
 
-func (a *DaemonApi) getObjects(ctx echo.Context, pathSelector *string) (api.ObjectItems, error) {
+func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.ObjectItems, error) {
 	meta := Meta{
 		Context: ctx,
 		Path:    pathSelector,

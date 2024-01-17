@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (a *DaemonApi) PostPeerActionAbort(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) PostPeerActionAbort(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localNodeActionAbort(ctx)
 	} else if !clusternode.Has(nodename) {
@@ -32,7 +32,7 @@ func (a *DaemonApi) PostPeerActionAbort(ctx echo.Context, nodename string) error
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionAbort(ctx echo.Context) error {
+func (a *DaemonAPI) localNodeActionAbort(ctx echo.Context) error {
 	v := node.MonitorLocalExpectNone
 	msg := msgbus.SetNodeMonitor{
 		Node: a.localhost,

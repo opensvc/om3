@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
+func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionSysreport(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -21,7 +21,7 @@ func (a *DaemonApi) PostNodeActionSysreport(ctx echo.Context, nodename string, p
 	return a.remoteNodeActionSysreport(ctx, nodename, params)
 }
 
-func (a *DaemonApi) remoteNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
+func (a *DaemonAPI) remoteNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) remoteNodeActionSysreport(ctx echo.Context, nodename string,
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionSysreport(ctx echo.Context, params api.PostNodeActionSysreportParams) error {
+func (a *DaemonAPI) localNodeActionSysreport(ctx echo.Context, params api.PostNodeActionSysreportParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}

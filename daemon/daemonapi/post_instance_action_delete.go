@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostInstanceActionDelete(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
+func (a *DaemonAPI) PostInstanceActionDelete(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionDelete(ctx, namespace, kind, name, params)
 	} else if !clusternode.Has(nodename) {
@@ -22,7 +22,7 @@ func (a *DaemonApi) PostInstanceActionDelete(ctx echo.Context, nodename, namespa
 	}
 }
 
-func (a *DaemonApi) postPeerInstanceActionDelete(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
+func (a *DaemonAPI) postPeerInstanceActionDelete(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) postPeerInstanceActionDelete(ctx echo.Context, nodename, nam
 	return nil
 }
 
-func (a *DaemonApi) postLocalInstanceActionDelete(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
+func (a *DaemonAPI) postLocalInstanceActionDelete(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionDeleteParams) error {
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
 		return err
 	}

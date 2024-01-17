@@ -74,7 +74,7 @@ func init() {
 	pendingDRBDAllocations = newPendingDRBDAllocationsMap()
 }
 
-func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}
@@ -87,7 +87,7 @@ func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 	}
 }
 
-func (a *DaemonApi) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -100,7 +100,7 @@ func (a *DaemonApi) getPeerDRBDAllocation(ctx echo.Context, nodename string) err
 	return nil
 }
 
-func (a *DaemonApi) getLocalNodeDRBDAllocation(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeDRBDAllocation(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodeDRBDAllocation")
 	log.Debugf("starting")
 

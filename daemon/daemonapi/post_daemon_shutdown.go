@@ -19,7 +19,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, nodename string, params api.PostDaemonShutdownParams) error {
+func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params api.PostDaemonShutdownParams) error {
 	if nodename == a.localhost {
 		return a.localPostDaemonShutdown(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -48,7 +48,7 @@ func (a *DaemonApi) PostDaemonShutdown(ctx echo.Context, nodename string, params
 //   - publishes DaemonCtl stop
 //
 // On unexpected errors it reverts pending local expect, and announces node monitor state shutdown failed
-func (a *DaemonApi) localPostDaemonShutdown(ctx echo.Context, params api.PostDaemonShutdownParams) error {
+func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDaemonShutdownParams) error {
 	var (
 		log                        = LogHandler(ctx, "PostDaemonShutdown")
 		monitorLocalExpectShutdown = instance.MonitorLocalExpectShutdown

@@ -378,7 +378,7 @@ func newCmdDaemonStart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForeground(flags, &options.Foreground)
-	addFlagCpuProfile(flags, &options.CpuProfile)
+	addFlagCPUProfile(flags, &options.CPUProfile)
 	return cmd
 }
 

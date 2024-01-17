@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/util/capabilities"
 )
 
-func (a *DaemonApi) GetNodeCapabilities(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) GetNodeCapabilities(ctx echo.Context, nodename string) error {
 	if a.localhost == nodename {
 		return a.getLocalCapabilities(ctx)
 	} else if !clusternode.Has(nodename) {
@@ -20,7 +20,7 @@ func (a *DaemonApi) GetNodeCapabilities(ctx echo.Context, nodename string) error
 	}
 }
 
-func (a *DaemonApi) getPeerCapabilities(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerCapabilities(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) getPeerCapabilities(ctx echo.Context, nodename string) error
 	return nil
 }
 
-func (a *DaemonApi) getLocalCapabilities(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalCapabilities(ctx echo.Context) error {
 	caps, err := capabilities.Load()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Load capabilities", "%s", err)

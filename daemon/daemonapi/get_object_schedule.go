@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	if a.localhost == nodename {
 		return a.getLocalObjectSchedule(ctx, namespace, kind, name)
 	} else if !clusternode.Has(nodename) {
@@ -22,7 +22,7 @@ func (a *DaemonApi) GetObjectSchedule(ctx echo.Context, nodename, namespace stri
 	}
 }
 
-func (a *DaemonApi) getPeerObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) getPeerObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -37,7 +37,7 @@ func (a *DaemonApi) getPeerObjectSchedule(ctx echo.Context, nodename, namespace 
 	return nil
 }
 
-func (a *DaemonApi) getLocalObjectSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) getLocalObjectSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)

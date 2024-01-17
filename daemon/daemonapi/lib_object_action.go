@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) postObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
+func (a *DaemonAPI) postObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
 	var (
 		value = instance.MonitorUpdate{}
 		p     naming.Path

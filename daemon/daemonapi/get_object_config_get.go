@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
+func (a *DaemonAPI) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
 	log := LogHandler(ctx, "GetObjectConfigGet")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleGuest, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {

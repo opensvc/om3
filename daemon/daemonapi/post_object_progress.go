@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceProgress(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	var (
 		payload   = api.PostInstanceProgress{}
 		isPartial bool

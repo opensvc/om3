@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) PostNodeConfigUpdate(ctx echo.Context, nodename string, params api.PostNodeConfigUpdateParams) error {
+func (a *DaemonAPI) PostNodeConfigUpdate(ctx echo.Context, nodename string, params api.PostNodeConfigUpdateParams) error {
 	//log := LogHandler(ctx, "PostObjectConfigUpdate")
 
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {

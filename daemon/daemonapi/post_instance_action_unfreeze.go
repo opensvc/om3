@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostInstanceActionUnfreeze(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
+func (a *DaemonAPI) PostInstanceActionUnfreeze(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionUnfreeze(ctx, namespace, kind, name, params)
 	} else if !clusternode.Has(nodename) {
@@ -22,7 +22,7 @@ func (a *DaemonApi) PostInstanceActionUnfreeze(ctx echo.Context, nodename, names
 	}
 }
 
-func (a *DaemonApi) postPeerInstanceActionUnfreeze(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
+func (a *DaemonAPI) postPeerInstanceActionUnfreeze(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) postPeerInstanceActionUnfreeze(ctx echo.Context, nodename, n
 	return nil
 }
 
-func (a *DaemonApi) postLocalInstanceActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
+func (a *DaemonAPI) postLocalInstanceActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
 		return err
 	}

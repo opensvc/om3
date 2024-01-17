@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams) error {
+func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,
@@ -50,7 +50,7 @@ func (a *DaemonApi) GetInstances(ctx echo.Context, params api.GetInstancesParams
 	return ctx.JSON(http.StatusOK, api.InstanceList{Kind: "InstanceList", Items: l})
 }
 
-func (a *DaemonApi) GetInstance(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "GetInstance")
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {

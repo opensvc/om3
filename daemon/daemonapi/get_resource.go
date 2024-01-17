@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetResources(ctx echo.Context, params api.GetResourcesParams) error {
+func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams) error {
 	name := "GetResources"
 	log := LogHandler(ctx, name)
 	meta := Meta{

@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
+func (a *DaemonAPI) GetNodeDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
 	log := LogHandler(ctx, "GetNodeDRBDConfig")
 	log.Debugf("starting")
 	if params.Name == "" {
@@ -32,7 +32,7 @@ func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, nodename string, params 
 	}
 }
 
-func (a *DaemonApi) getPeerDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
+func (a *DaemonAPI) getPeerDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -47,7 +47,7 @@ func (a *DaemonApi) getPeerDRBDConfig(ctx echo.Context, nodename string, params 
 	return nil
 }
 
-func (a *DaemonApi) getLocalDRBDConfig(ctx echo.Context, params api.GetNodeDRBDConfigParams) error {
+func (a *DaemonAPI) getLocalDRBDConfig(ctx echo.Context, params api.GetNodeDRBDConfigParams) error {
 	filename := fmt.Sprintf("/etc/drbd.d/%s.res", params.Name)
 	resp := api.DRBDConfig{}
 

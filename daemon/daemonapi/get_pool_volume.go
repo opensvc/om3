@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetPoolVolumes(ctx echo.Context, params api.GetPoolVolumesParams) error {
+func (a *DaemonAPI) GetPoolVolumes(ctx echo.Context, params api.GetPoolVolumesParams) error {
 	l := getPoolVolumes(params.Name)
 	return ctx.JSON(http.StatusOK, api.PoolVolumeList{Kind: "PoolVolumeList", Items: l})
 }

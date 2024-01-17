@@ -7,6 +7,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 )
 
-func (a *DaemonApi) PostObjectActionPurge(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostObjectActionPurge(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPurged)
 }

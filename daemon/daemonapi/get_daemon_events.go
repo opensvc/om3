@@ -33,7 +33,7 @@ type (
 )
 
 // GetDaemonEvents feeds node daemon event publications in rss format.
-func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
+func (a *DaemonAPI) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
 	if nodename == a.localhost || nodename == "localhost" {
 		return a.getLocalDaemonEvents(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -43,7 +43,7 @@ func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, nodename string, params ap
 	}
 }
 
-func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
+func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
 	var (
 		handlerName   = "getPeerDaemonEvents"
 		limit         uint64
@@ -120,7 +120,7 @@ func (a *DaemonApi) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 
 // getLocalDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
-func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
+func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); err != nil {
 		return err
 	} else if !v {

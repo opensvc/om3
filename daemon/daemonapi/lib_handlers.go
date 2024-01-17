@@ -22,7 +22,7 @@ type (
 		CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error)
 	}
 
-	DaemonApi struct {
+	DaemonAPI struct {
 		Daemondata *daemondata.T
 		EventBus   *pubsub.Bus
 		JWTcreator JWTCreater
@@ -37,9 +37,9 @@ var (
 	labelAPI = pubsub.Label{"origin", "api"}
 )
 
-func New(ctx context.Context) *DaemonApi {
+func New(ctx context.Context) *DaemonAPI {
 	localhost := hostname.Hostname()
-	return &DaemonApi{
+	return &DaemonAPI{
 		Daemondata: daemondata.FromContext(ctx),
 		EventBus:   pubsub.BusFromContext(ctx),
 		JWTcreator: daemonauth.JWTCreatorFromContext(ctx),

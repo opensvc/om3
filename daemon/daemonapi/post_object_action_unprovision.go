@@ -6,6 +6,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 )
 
-func (a *DaemonApi) PostObjectActionUnprovision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostObjectActionUnprovision(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectUnprovisioned)
 }

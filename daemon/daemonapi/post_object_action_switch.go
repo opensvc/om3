@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectActionSwitch(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostObjectActionSwitch(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	var (
 		payload = api.PostObjectActionSwitch{}
 		value   = instance.MonitorUpdate{}

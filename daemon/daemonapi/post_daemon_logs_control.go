@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) PostDaemonLogsControl(ctx echo.Context) error {
+func (a *DaemonAPI) PostDaemonLogsControl(ctx echo.Context) error {
 	var (
 		payload api.PostDaemonLogsControl
 	)

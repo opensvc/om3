@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeActionScanCapabilities(ctx echo.Context, nodename string, params api.PostNodeActionScanCapabilitiesParams) error {
+func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename string, params api.PostNodeActionScanCapabilitiesParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionScanCapabilities(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -21,7 +21,7 @@ func (a *DaemonApi) PostNodeActionScanCapabilities(ctx echo.Context, nodename st
 	return a.remoteNodeActionScanCapabilities(ctx, nodename, params)
 }
 
-func (a *DaemonApi) remoteNodeActionScanCapabilities(ctx echo.Context, nodename string, params api.PostNodeActionScanCapabilitiesParams) error {
+func (a *DaemonAPI) remoteNodeActionScanCapabilities(ctx echo.Context, nodename string, params api.PostNodeActionScanCapabilitiesParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) remoteNodeActionScanCapabilities(ctx echo.Context, nodename 
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionScanCapabilities(ctx echo.Context, params api.PostNodeActionScanCapabilitiesParams) error {
+func (a *DaemonAPI) localNodeActionScanCapabilities(ctx echo.Context, params api.PostNodeActionScanCapabilitiesParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}

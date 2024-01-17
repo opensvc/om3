@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
+func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
 	log := LogHandler(ctx, "PostObjectConfigUpdate")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {

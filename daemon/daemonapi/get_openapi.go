@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetSwagger(ctx echo.Context) error {
+func (a *DaemonAPI) GetSwagger(ctx echo.Context) error {
 	swagger, err := api.GetSwagger()
 	if err != nil {
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", err.Error())
