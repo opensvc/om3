@@ -26,7 +26,12 @@ type (
 	// Store is the action resource dependencies data store.
 	Store struct {
 		sync.Mutex
+
+		// bMap holds the dependency relations, where A is the key and B the value.
 		m map[depKey]bMap
+
+		// actionMap is a action identity map. For example actionMap{"provision": "start"} tells the Store to consider the "provision" action as a "start".
+		actionMap map[string]string
 	}
 
 	bMap map[string]interface{}
@@ -34,7 +39,10 @@ type (
 )
 
 const (
+	// KindSelect selects the dependency target <B> upon action <Action> so <Action> is also executed on <B> without changing <B> position in the action sequence.
 	KindSelect kind = iota
+
+	// KindAct selects the dependency target <B> upon action <Action> so <Action> is executed on <B> before <A>.
 	KindAct
 )
 
@@ -61,6 +69,7 @@ func (t Dep) key() depKey {
 func NewStore() *Store {
 	t := Store{}
 	t.m = make(map[depKey]bMap)
+	t.actionMap = make(map[string]string)
 	return &t
 }
 
@@ -70,6 +79,12 @@ func (t *Store) String() string {
 		s += fmt.Sprintf("on %s %s, %s depends on %s\n", key.Action, key.Kind, key.A, strings.Join(xmap.Keys(bs), ","))
 	}
 	return s
+}
+
+func (t *Store) SetActionMap(m map[string]string) {
+	t.Lock()
+	defer t.Unlock()
+	t.actionMap = m
 }
 
 func (t *Store) RegisterSlice(deps []Dep) {
@@ -98,15 +113,15 @@ func (t *Store) ActDependencies(action, rid string) []string {
 	return t.dependencies(action, rid, KindAct)
 }
 
-func (t *Store) dependencies(action, rid string, kd kind) []string {
-	switch action {
-	case "provision", "start":
-		action = "start"
-	case "shutdown", "unprovision", "stop", "toc":
-		action = "stop"
-	default:
-		return []string{}
+func (t *Store) mappedAction(action string) string {
+	if a, ok := t.actionMap[action]; ok {
+		return a
 	}
+	return action
+}
+
+func (t *Store) dependencies(action, rid string, kd kind) []string {
+	action = t.mappedAction(action)
 	key := depKey{
 		Action: action,
 		Kind:   kd,
