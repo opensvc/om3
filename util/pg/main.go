@@ -33,7 +33,7 @@ type (
 		State  State
 		Config *Config
 	}
-	run struct {
+	Run struct {
 		Err     error
 		Config  *Config
 		Changed bool
@@ -52,8 +52,8 @@ var (
 	UnifiedPath string = "/sys/fs/cgroup/unified"
 )
 
-func (e entry) NewRun() *run {
-	r := run{Config: e.Config}
+func (e entry) NewRun() *Run {
+	r := Run{Config: e.Config}
 	return &r
 }
 
@@ -112,8 +112,8 @@ func (t Mgr) RevIDs() []string {
 	return l
 }
 
-func (t Mgr) Clean() []run {
-	runs := make([]run, 0)
+func (t Mgr) Clean() []Run {
+	runs := make([]Run, 0)
 	for _, p := range t.RevIDs() {
 		e, ok := t[p]
 		if !ok {
@@ -133,7 +133,7 @@ func (t Mgr) Clean() []run {
 	return runs
 }
 
-func (e *entry) Run() *run {
+func (e *entry) Run() *Run {
 	r := e.NewRun()
 	if e.Config == nil {
 		r.Err = fmt.Errorf("no pg config")
@@ -152,8 +152,8 @@ func (e *entry) Run() *run {
 	return r
 }
 
-func (t Mgr) Apply(id string) []run {
-	runs := make([]run, 0)
+func (t Mgr) Apply(id string) []Run {
+	runs := make([]Run, 0)
 	for _, p := range Chain(id) {
 		if e, ok := t[p]; ok {
 			r := e.Run()
