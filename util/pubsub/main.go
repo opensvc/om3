@@ -288,7 +288,7 @@ func (t Labels) Key() string {
 //	 {l2=foo}{l3=foo}{l1=foo}
 //	 {l3=foo}{l1=foo}{l2=foo}
 //	 {l3=foo}{l2=foo}{l1=foo}
-func (t Labels) keys() []string {
+func (t Labels) Keys() []string {
 	m := map[string]any{"": nil}
 	keys := xmap.Keys(t)
 	total := len(keys)
@@ -304,6 +304,11 @@ func (t Labels) keys() []string {
 		}
 	}
 	return xmap.Keys(m)
+}
+
+// FilterFmt returns a string that identify a filter
+func FilterFmt(kind string, labels ...Label) string {
+	return fmtKey(kind, newLabels(labels...))
 }
 
 func (t Labels) Is(labels Labels) bool {
@@ -846,7 +851,7 @@ func keys(dataType string, labels Labels) []string {
 	if len(labels) == 0 {
 		return []string{dataType + ":"}
 	}
-	for _, key := range labels.keys() {
+	for _, key := range labels.Keys() {
 		l = append(l, dataType+":"+key)
 	}
 	return l
