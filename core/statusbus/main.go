@@ -1,10 +1,9 @@
 // Package statusbus collects and dispatches object rid status changes
 //
 // It allows:
-//    Post object rid status
-//    Get object rid status
 //
-
+//	Post object rid status
+//	Get object rid status
 package statusbus
 
 import (

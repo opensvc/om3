@@ -1,5 +1,4 @@
 // Package timestamp manage Unix timestamps
-
 package timestamp
 
 import (

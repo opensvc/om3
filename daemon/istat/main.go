@@ -1,5 +1,4 @@
 // Package istat implements the management of local instance status
-
 package istat
 
 import (

@@ -1,6 +1,4 @@
 // Package usergroup provides helpers for user and group
-//
-
 package usergroup
 
 import (

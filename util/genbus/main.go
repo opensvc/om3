@@ -1,10 +1,9 @@
 // Package genbus provide bus maintain struct associated with ids
 //
 // It allows:
-//    Post object id status
-//    Get object id status
 //
-
+//	Post object id status
+//	Get object id status
 package genbus
 
 import (
