@@ -13,7 +13,6 @@ import (
 	"github.com/ssrathi/go-attr"
 )
 
-// Keyword represents a configuration option in an object or node configuration file
 type (
 	Converter interface {
 		Convert(string) (interface{}, error)
@@ -24,6 +23,7 @@ type (
 		path string
 	}
 
+	// Keyword represents a configuration option in an object or node configuration file
 	Keyword struct {
 		Section string
 		Option  string

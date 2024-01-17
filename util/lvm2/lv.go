@@ -58,6 +58,7 @@ const (
 
 const (
 	// State attrs field (index 4)
+
 	LVAttrStateActive                               LVAttr = 'a'
 	LVAttrStateHistorical                           LVAttr = 'h'
 	LVAttrStateSuspended                            LVAttr = 's'

@@ -12,7 +12,7 @@ import (
 var ExecCommand = exec.Command
 
 type (
-	// aggregate results and format the output.
+	// Runner collects results and format the output.
 	Runner struct {
 		customCheckPaths []string
 		objects          []interface{}

@@ -41,6 +41,7 @@ const (
 
 const (
 	// State attrs field
+
 	VGAttrStateWriteable       VGAttr = 'w'
 	VGAttrStateReadOnly        VGAttr = 'r'
 	VGAttrStateResizeable      VGAttr = 'z'
