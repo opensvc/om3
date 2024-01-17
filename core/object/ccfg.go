@@ -8,18 +8,14 @@ import (
 )
 
 type (
-	ccfg struct {
-		core
-	}
-
 	//
 	// Ccfg is the clusterwide configuration store.
 	//
 	// The content is the same as node.conf, and is overriden by
 	// the definition found in node.conf.
 	//
-	Ccfg interface {
-		Core
+	Ccfg struct {
+		core
 	}
 )
 
@@ -35,36 +31,36 @@ var ccfgPrivateKeywords = []keywords.Keyword{
 
 var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
 
-func NewCluster(opts ...funcopt.O) (*ccfg, error) {
+func NewCluster(opts ...funcopt.O) (*Ccfg, error) {
 	return newCcfg(naming.Cluster, opts...)
 }
 
 // newCcfg allocates a ccfg kind object.
-func newCcfg(p any, opts ...funcopt.O) (*ccfg, error) {
-	s := &ccfg{}
+func newCcfg(p any, opts ...funcopt.O) (*Ccfg, error) {
+	s := &Ccfg{}
 	err := s.init(s, p, opts...)
 	return s, err
 }
 
-func (t *ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *Ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(ccfgKeywordStore, k, t.path.Kind, sectionType)
 }
 
-func (t *ccfg) Name() string {
+func (t *Ccfg) Name() string {
 	k := key.New("cluster", "name")
 	return t.config.GetString(k)
 }
 
 // Nodes implements Nodes() ([]string, error) to retrieve cluster nodes from config cluster.nodes
 // This is required because embedded implementation from core is not valid for ccfg
-func (t *ccfg) Nodes() ([]string, error) {
+func (t *Ccfg) Nodes() ([]string, error) {
 	k := key.New("cluster", "nodes")
 	return t.config.GetStrings(k), nil
 }
 
 // DRPNodes implements DRPNodes() ([]string, error) to retrieve cluster drpnodes from config cluster.drpnodes
 // This is required because embedded implementation from core is not valid for ccfg
-func (t *ccfg) DRPNodes() ([]string, error) {
+func (t *Ccfg) DRPNodes() ([]string, error) {
 	k := key.New("cluster", "drpnodes")
 	return t.config.GetStrings(k), nil
 }
