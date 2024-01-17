@@ -48,8 +48,8 @@ type (
 		NSDev        string         `json:"nsdev"`
 		MacAddr      string         `json:"mac_addr"`
 		DelNetRoute  bool           `json:"del_net_route"`
-		IpName       string         `json:"ipname"`
-		IpDev        string         `json:"ipdev"`
+		IPName       string         `json:"ipname"`
+		IPDev        string         `json:"ipdev"`
 		Netmask      string         `json:"netmask"`
 		Gateway      string         `json:"gateway"`
 		Network      string         `json:"network"`
@@ -108,7 +108,7 @@ func (t *T) StatusInfo() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
-	data["ipdev"] = t.IpDev
+	data["ipdev"] = t.IPDev
 	data["netmask"] = netmask
 	return data
 }
@@ -381,9 +381,9 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t T) devMTU() (int, error) {
-	iface, err := net.InterfaceByName(t.IpDev)
+	iface, err := net.InterfaceByName(t.IPDev)
 	if err != nil {
-		return 0, fmt.Errorf("%s mtu: %w", t.IpDev, err)
+		return 0, fmt.Errorf("%s mtu: %w", t.IPDev, err)
 	}
 	return iface.MTU, nil
 }
@@ -393,11 +393,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		err     error
 		carrier bool
 	)
-	if t.IpName == "" {
+	if t.IPName == "" {
 		t.StatusLog().Warn("ipname not set")
 		return status.NotApplicable
 	}
-	if t.IpDev == "" {
+	if t.IPDev == "" {
 		t.StatusLog().Warn("ipdev not set")
 		return status.NotApplicable
 	}
@@ -407,7 +407,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if t.CheckCarrier {
 		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", t.IpDev)
+			t.StatusLog().Error("interface %s no-carrier.", t.IPDev)
 			return status.Down
 		}
 	}
@@ -465,7 +465,7 @@ func (t T) Abort(ctx context.Context) bool {
 }
 
 func (t T) hasCarrier() (bool, error) {
-	return netif.HasCarrier(t.IpDev)
+	return netif.HasCarrier(t.IPDev)
 }
 
 func (t T) abortPing() bool {
@@ -551,12 +551,12 @@ func (t *T) defaultMask() (net.IPMask, error) {
 
 func (t T) getIPAddr() net.IP {
 	switch {
-	case naming.IsValidFQDN(t.IpName) || hostname.IsValid(t.IpName):
+	case naming.IsValidFQDN(t.IPName) || hostname.IsValid(t.IPName):
 		var (
 			l   []net.IP
 			err error
 		)
-		l, err = net.LookupIP(t.IpName)
+		l, err = net.LookupIP(t.IPName)
 		if err != nil {
 			t.Log().Errorf("%s", err)
 			return nil
@@ -564,20 +564,20 @@ func (t T) getIPAddr() net.IP {
 		n := len(l)
 		switch n {
 		case 0:
-			t.Log().Errorf("ipname %s is unresolvable", t.IpName)
+			t.Log().Errorf("ipname %s is unresolvable", t.IPName)
 		case 1:
 			// ok
 		default:
-			t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", t.IpName, n)
+			t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", t.IPName, n)
 		}
 		return l[0]
 	default:
-		return net.ParseIP(t.IpName)
+		return net.ParseIP(t.IPName)
 	}
 }
 
 func (t T) netInterface() (*net.Interface, error) {
-	return net.InterfaceByName(t.IpDev)
+	return net.InterfaceByName(t.IPDev)
 }
 
 func (t Addrs) Has(ip net.IP) bool {

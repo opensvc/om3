@@ -152,12 +152,12 @@ func (t T) allocateSubnets() error {
 		return err
 	}
 	ones, bits := network.Mask.Size()
-	maxIps := 1 << (bits - ones)
-	maxIpsPerNodes := maxIps / len(nodes)
-	subnetOnes := int(math.Log2(float64(maxIpsPerNodes)))
-	maxIpsPerNodes = 1 << subnetOnes
-	if ipsPerNode > maxIpsPerNodes {
-		return fmt.Errorf("ips_per_node=%d must be <=%d (%s has %d ips to distribute to %d nodes)", ipsPerNode, maxIpsPerNodes, network, maxIps, len(nodes))
+	maxIPs := 1 << (bits - ones)
+	maxIPsPerNodes := maxIPs / len(nodes)
+	subnetOnes := int(math.Log2(float64(maxIPsPerNodes)))
+	maxIPsPerNodes = 1 << subnetOnes
+	if ipsPerNode > maxIPsPerNodes {
+		return fmt.Errorf("ips_per_node=%d must be <=%d (%s has %d ips to distribute to %d nodes)", ipsPerNode, maxIPsPerNodes, network, maxIPs, len(nodes))
 	}
 	addr, err := netip.ParseAddr(ip.String())
 	if err != nil {
@@ -167,7 +167,7 @@ func (t T) allocateSubnets() error {
 	kops := make([]keyop.T, 0)
 	for _, nodename := range nodes {
 		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
-		for i := 0; i < maxIpsPerNodes; i++ {
+		for i := 0; i < maxIPsPerNodes; i++ {
 			addr = addr.Next()
 		}
 		kops = append(kops, keyop.T{

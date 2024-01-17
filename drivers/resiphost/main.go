@@ -33,8 +33,8 @@ type (
 		Path naming.Path
 
 		// config
-		IpName       string         `json:"ipname"`
-		IpDev        string         `json:"ipdev"`
+		IPName       string         `json:"ipname"`
+		IPDev        string         `json:"ipdev"`
 		Netmask      string         `json:"netmask"`
 		Network      string         `json:"network"`
 		Gateway      string         `json:"gateway"`
@@ -63,14 +63,14 @@ func (t *T) StatusInfo() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
-	data["ipdev"] = t.IpDev
+	data["ipdev"] = t.IPDev
 	data["netmask"] = netmask
 	return data
 }
 
 func (t *T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
-		t.Log().Infof("%s is already up on %s", t.IpName, t.IpDev)
+		t.Log().Infof("%s is already up on %s", t.IPName, t.IPDev)
 		return nil
 	}
 	if err := t.start(); err != nil {
@@ -90,7 +90,7 @@ func (t *T) Start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Down {
-		t.Log().Infof("%s is already down on %s", t.IpName, t.IpDev)
+		t.Log().Infof("%s is already down on %s", t.IPName, t.IPDev)
 		return nil
 	}
 	if err := t.stop(); err != nil {
@@ -107,17 +107,17 @@ func (t *T) Status(ctx context.Context) status.T {
 		carrier bool
 	)
 	ip := t.ipaddr()
-	if t.IpName == "" {
+	if t.IPName == "" {
 		t.StatusLog().Warn("ipname not set")
 		return status.NotApplicable
 	}
-	if t.IpDev == "" {
+	if t.IPDev == "" {
 		t.StatusLog().Warn("ipdev not set")
 		return status.NotApplicable
 	}
 	if i, err = t.netInterface(); err != nil {
 		if fmt.Sprint(err.(*net.OpError).Unwrap()) == "no such network interface" {
-			t.StatusLog().Warn("interface %s not found", t.IpDev)
+			t.StatusLog().Warn("interface %s not found", t.IPDev)
 		} else {
 			t.StatusLog().Error("%s", err)
 		}
@@ -125,7 +125,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if t.CheckCarrier {
 		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", t.IpDev)
+			t.StatusLog().Error("interface %s no-carrier.", t.IPDev)
 			return status.Down
 		}
 	}
@@ -141,7 +141,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) Label() string {
-	return fmt.Sprintf("%s %s", t.ipnet(), t.IpDev)
+	return fmt.Sprintf("%s %s", t.ipnet(), t.IPDev)
 }
 
 func (t *T) Provision(ctx context.Context) error {
@@ -168,7 +168,7 @@ func (t T) Abort(ctx context.Context) bool {
 	}
 	if t.CheckCarrier {
 		if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
-			t.Log().Errorf("interface %s no-carrier.", t.IpDev)
+			t.Log().Errorf("interface %s no-carrier.", t.IPDev)
 			return true
 		}
 	}
@@ -179,7 +179,7 @@ func (t T) Abort(ctx context.Context) bool {
 }
 
 func (t T) hasCarrier() (bool, error) {
-	return netif.HasCarrier(t.IpDev)
+	return netif.HasCarrier(t.IPDev)
 }
 
 func (t T) abortPing() bool {
@@ -265,12 +265,12 @@ func (t *T) defaultMask() (net.IPMask, error) {
 
 func (t T) getIPAddr() net.IP {
 	switch {
-	case naming.IsValidFQDN(t.IpName) || hostname.IsValid(t.IpName):
+	case naming.IsValidFQDN(t.IPName) || hostname.IsValid(t.IPName):
 		var (
 			l   []net.IP
 			err error
 		)
-		l, err = net.LookupIP(t.IpName)
+		l, err = net.LookupIP(t.IPName)
 		if err != nil {
 			t.Log().Errorf("%s", err)
 			return nil
@@ -278,20 +278,20 @@ func (t T) getIPAddr() net.IP {
 		n := len(l)
 		switch n {
 		case 0:
-			t.Log().Errorf("ipname %s is unresolvable", t.IpName)
+			t.Log().Errorf("ipname %s is unresolvable", t.IPName)
 		case 1:
 			// ok
 		default:
-			t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", t.IpName, n)
+			t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", t.IPName, n)
 		}
 		return l[0]
 	default:
-		return net.ParseIP(t.IpName)
+		return net.ParseIP(t.IPName)
 	}
 }
 
 func (t T) netInterface() (*net.Interface, error) {
-	return net.InterfaceByName(t.IpDev)
+	return net.InterfaceByName(t.IPDev)
 }
 
 func (t Addrs) Has(ip net.IP) bool {
@@ -364,10 +364,10 @@ func (t T) arpAnnounce() error {
 		return nil
 	}
 	if i, err := t.netInterface(); err == nil && i.Flags&net.FlagLoopback != 0 {
-		t.Log().Debugf("skip arp announce on loopback interface %s", t.IpDev)
+		t.Log().Debugf("skip arp announce on loopback interface %s", t.IPDev)
 		return nil
 	}
-	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
+	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IPDev)
 	return t.arpGratuitous()
 }
 
@@ -378,8 +378,8 @@ func (t *T) start() error {
 		t.Log().Errorf("%s", err)
 		return err
 	}
-	t.Log().Infof("add %s to %s", ipnet, t.IpDev)
-	return netif.AddAddr(t.IpDev, ipnet)
+	t.Log().Infof("add %s to %s", ipnet, t.IPDev)
+	return netif.AddAddr(t.IPDev, ipnet)
 }
 
 func (t *T) stop() error {
@@ -389,6 +389,6 @@ func (t *T) stop() error {
 		t.Log().Errorf("%s", err)
 		return err
 	}
-	t.Log().Infof("delete %s from %s", t.ipnet(), t.IpDev)
-	return netif.DelAddr(t.IpDev, t.ipnet())
+	t.Log().Infof("delete %s from %s", t.ipnet(), t.IPDev)
+	return netif.DelAddr(t.IPDev, t.ipnet())
 }

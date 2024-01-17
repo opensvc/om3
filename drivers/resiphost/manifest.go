@@ -29,14 +29,14 @@ func (t T) Manifest() *manifest.T {
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Option:   "ipname",
-			Attr:     "IpName",
+			Attr:     "IPName",
 			Scopable: true,
 			Example:  "1.2.3.4",
 			Text:     keywords.NewText(fs, "text/kw/ipname"),
 		},
 		keywords.Keyword{
 			Option:   "ipdev",
-			Attr:     "IpDev",
+			Attr:     "IPDev",
 			Scopable: true,
 			Example:  "eth0",
 			Required: true,
