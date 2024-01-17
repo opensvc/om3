@@ -76,7 +76,7 @@ type (
 	}
 )
 
-func NewExampleBus() *exampleBus {
+func newExampleBus() *exampleBus {
 	ctx, stopFunc := WithContext(context.Background(), "example")
 	return &exampleBus{
 		ObjT:     FromContext(ctx),
