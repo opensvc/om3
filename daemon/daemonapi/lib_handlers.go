@@ -10,6 +10,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/hostname"
@@ -41,7 +42,7 @@ func New(ctx context.Context) *DaemonApi {
 	return &DaemonApi{
 		Daemondata: daemondata.FromContext(ctx),
 		EventBus:   pubsub.BusFromContext(ctx),
-		JWTcreator: ctx.Value("JWTCreator").(JWTCreater),
+		JWTcreator: daemonauth.JWTCreatorFromContext(ctx),
 		LabelNode:  pubsub.Label{"node", localhost},
 		localhost:  localhost,
 	}

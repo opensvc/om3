@@ -12,10 +12,6 @@ import (
 	"github.com/opensvc/om3/util/plog"
 )
 
-var (
-	cache libcache.Cache
-)
-
 type (
 	// AllStrategieser defines interfaces that allows all strategies
 	AllStrategieser interface {
@@ -25,6 +21,13 @@ type (
 		NodeAuthenticater
 		UserGranter
 	}
+	contextKey int
+)
+
+var (
+	cache                libcache.Cache
+	strategiesContextKey contextKey = 0
+	jwtCreatorContextKey contextKey = 1
 )
 
 // authenticatedExtensions returns extensions with grants and used strategy
@@ -48,6 +51,22 @@ func initCache() error {
 		}()
 	*/
 	return nil
+}
+
+func ContextWithStrategies(ctx context.Context, strategies union.Union) context.Context {
+	return context.WithValue(ctx, strategiesContextKey, strategies)
+}
+
+func StrategiesFromContext(ctx context.Context) union.Union {
+	return ctx.Value(strategiesContextKey).(union.Union)
+}
+
+func ContextWithJWTCreator(ctx context.Context) context.Context {
+	return context.WithValue(ctx, jwtCreatorContextKey, &JWTCreator{})
+}
+
+func JWTCreatorFromContext(ctx context.Context) *JWTCreator {
+	return ctx.Value(jwtCreatorContextKey).(*JWTCreator)
 }
 
 // InitStategies initialize and returns strategies
