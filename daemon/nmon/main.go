@@ -54,7 +54,7 @@ import (
 )
 
 type (
-	nmon struct {
+	Manager struct {
 		// config is the node merged config
 		config *xconfig.T
 
@@ -146,9 +146,9 @@ var (
 	unexpectedDelay = 500 * time.Millisecond
 )
 
-func New(drainDuration time.Duration) *nmon {
+func NewManager(drainDuration time.Duration) *Manager {
 	localhost := hostname.Hostname()
-	return &nmon{
+	return &Manager{
 		drainDuration: drainDuration,
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
@@ -179,23 +179,23 @@ func New(drainDuration time.Duration) *nmon {
 }
 
 // Start launches the nmon worker goroutine
-func (o *nmon) Start(parent context.Context) error {
-	o.log.Infof("starting")
-	o.ctx, o.cancel = context.WithCancel(parent)
-	o.databus = daemondata.FromContext(o.ctx)
-	o.bus = pubsub.BusFromContext(o.ctx)
-	o.nodeStatus.Pid = os.Getpid()
+func (t *Manager) Start(parent context.Context) error {
+	t.log.Infof("starting")
+	t.ctx, t.cancel = context.WithCancel(parent)
+	t.databus = daemondata.FromContext(t.ctx)
+	t.bus = pubsub.BusFromContext(t.ctx)
+	t.nodeStatus.Pid = os.Getpid()
 
 	// trigger an initial pool status eval
-	o.poolC <- nil
+	t.poolC <- nil
 
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
-	if err := o.loadAndPublishConfig(); err != nil {
+	if err := t.loadAndPublishConfig(); err != nil {
 		return err
 	}
 	// ensure saveNodesInfo is called once.
-	o.saveNodesInfo()
+	t.saveNodesInfo()
 
 	bootID := bootid.Get()
 	if len(bootID) > 0 {
@@ -206,12 +206,12 @@ func (o *nmon) Start(parent context.Context) error {
 		if b, err := os.ReadFile(fileLastBootID); err == nil && len(b) > 0 {
 			lastBootID = string(b)
 			if lastBootID != bootID {
-				o.log.Infof("first daemon startup since node boot")
+				t.log.Infof("first daemon startup since node boot")
 				if osBootedWithOpensvcFreeze() {
-					o.log.Infof("will freeze node due to kernel cmdline flag")
-					err := o.crmFreeze()
+					t.log.Infof("will freeze node due to kernel cmdline flag")
+					err := t.crmFreeze()
 					if err != nil {
-						o.log.Errorf("freeze node due to kernel cmdline flag: %s", err)
+						t.log.Errorf("freeze node due to kernel cmdline flag: %s", err)
 						return err
 					}
 				}
@@ -219,67 +219,67 @@ func (o *nmon) Start(parent context.Context) error {
 		}
 		if lastBootID != bootID {
 			if err := os.WriteFile(fileLastBootID, []byte(bootID), 0644); err != nil {
-				o.log.Errorf("unable to write %s '%s': %s", fileLastBootID, bootID, err)
+				t.log.Errorf("unable to write %s '%s': %s", fileLastBootID, bootID, err)
 			}
 		}
 	}
 
-	o.setArbitratorConfig()
+	t.setArbitratorConfig()
 
-	o.startSubscriptions()
-	o.wg.Add(1)
+	t.startSubscriptions()
+	t.wg.Add(1)
 	go func() {
-		defer o.wg.Done()
+		defer t.wg.Done()
 		defer func() {
 			go func() {
-				tC := time.After(o.drainDuration)
+				tC := time.After(t.drainDuration)
 				for {
 					select {
 					case <-tC:
 						return
-					case <-o.cmdC:
+					case <-t.cmdC:
 					}
 				}
 			}()
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Errorf("subscription stop: %s", err)
+			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
-		o.worker()
+		t.worker()
 	}()
 
 	// pool status janitor
-	o.wg.Add(1)
+	t.wg.Add(1)
 	go func() {
-		defer o.wg.Done()
+		defer t.wg.Done()
 		defer func() {
 			go func() {
-				tC := time.After(o.drainDuration)
+				tC := time.After(t.drainDuration)
 				for {
 					select {
 					case <-tC:
 						return
-					case <-o.poolC:
+					case <-t.poolC:
 					}
 				}
 			}()
 		}()
-		o.poolWorker()
+		t.poolWorker()
 	}()
-	o.log.Infof("started")
+	t.log.Infof("started")
 	return nil
 }
 
-func (o *nmon) Stop() error {
-	o.log.Infof("stopping")
-	defer o.log.Infof("stopped")
-	o.cancel()
-	o.wg.Wait()
+func (t *Manager) Stop() error {
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
+	t.cancel()
+	t.wg.Wait()
 	return nil
 }
 
-func (o *nmon) startSubscriptions() {
-	sub := o.bus.Sub("nmon")
+func (t *Manager) startSubscriptions() {
+	sub := t.bus.Sub("nmon")
 
 	// watching for ClusterConfigUpdated (so we get notified when cluster config file
 	// has been changed and reloaded
@@ -290,8 +290,8 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(&msgbus.ForgetPeer{})
 	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
-	sub.AddFilter(&msgbus.JoinRequest{}, o.labelLocalhost)
-	sub.AddFilter(&msgbus.LeaveRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.ListenerUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
@@ -299,209 +299,209 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, pubsub.Label{"from", "peer"})
-	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
-	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.Start()
-	o.sub = sub
+	t.sub = sub
 }
 
-func (o *nmon) startRejoin() {
-	hbMessageType := o.databus.GetHbMessageType()
+func (t *Manager) startRejoin() {
+	hbMessageType := t.databus.GetHbMessageType()
 	l := missingNodes(hbMessageType.Nodes, hbMessageType.JoinedNodes)
 	if (hbMessageType.Type == "patch") && len(l) == 0 {
 		// Skip the rejoin state phase.
-		o.rejoinTicker = time.NewTicker(time.Second)
-		o.rejoinTicker.Stop()
-		o.transitionTo(node.MonitorStateIdle)
+		t.rejoinTicker = time.NewTicker(time.Second)
+		t.rejoinTicker.Stop()
+		t.transitionTo(node.MonitorStateIdle)
 	} else {
 		// Begin the rejoin state phase.
 		// Arm the re-join grace period ticker.
 		// The onHbMessageTypeUpdated() event handler can stop it.
-		rejoinGracePeriod := o.nodeConfig.RejoinGracePeriod
-		o.rejoinTicker = time.NewTicker(rejoinGracePeriod)
-		o.log.Infof("rejoin grace period timer set to %s", rejoinGracePeriod)
-		o.transitionTo(node.MonitorStateRejoin)
+		rejoinGracePeriod := t.nodeConfig.RejoinGracePeriod
+		t.rejoinTicker = time.NewTicker(rejoinGracePeriod)
+		t.log.Infof("rejoin grace period timer set to %s", rejoinGracePeriod)
+		t.transitionTo(node.MonitorStateRejoin)
 	}
 }
 
-func (o *nmon) touchLastShutdown() {
+func (t *Manager) touchLastShutdown() {
 	// remember the last shutdown date via a file mtime
 	if err := file.Touch(rawconfig.Paths.LastShutdown, time.Now()); err != nil {
-		o.log.Errorf("touch %s: %s", rawconfig.Paths.LastShutdown, err)
+		t.log.Errorf("touch %s: %s", rawconfig.Paths.LastShutdown, err)
 	} else {
-		o.log.Infof("touch %s", rawconfig.Paths.LastShutdown)
+		t.log.Infof("touch %s", rawconfig.Paths.LastShutdown)
 	}
 }
 
-func (o *nmon) poolWorker() {
+func (t *Manager) poolWorker() {
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case <-o.poolC:
-			o.loadPools()
+		case <-t.poolC:
+			t.loadPools()
 		case <-ticker.C:
-			o.loadPools()
+			t.loadPools()
 		}
 	}
 }
 
 // worker watch for local nmon updates
-func (o *nmon) worker() {
-	defer o.log.Debugf("done")
+func (t *Manager) worker() {
+	defer t.log.Debugf("done")
 
-	o.startedAt = time.Now()
+	t.startedAt = time.Now()
 
 	// cluster nodes at the time the worker starts
-	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
+	initialNodes := t.config.GetStrings(key.New("cluster", "nodes"))
 	for _, name := range initialNodes {
 		if nodeMon := node.MonitorData.Get(name); nodeMon != nil {
-			o.nodeMonitor[name] = *nodeMon
+			t.nodeMonitor[name] = *nodeMon
 		} else {
-			o.nodeMonitor[name] = node.Monitor{}
+			t.nodeMonitor[name] = node.Monitor{}
 		}
 	}
-	o.updateStats()
-	o.refreshSanPaths()
-	o.updateIfChange()
-	defer o.bus.Pub(&msgbus.NodeMonitorDeleted{Node: o.localhost}, o.labelLocalhost)
-	defer node.MonitorData.Unset(o.localhost)
+	t.updateStats()
+	t.refreshSanPaths()
+	t.updateIfChange()
+	defer t.bus.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
+	defer node.MonitorData.Unset(t.localhost)
 
-	o.getAndUpdateStatusArbitrator()
+	t.getAndUpdateStatusArbitrator()
 
 	if len(initialNodes) > 1 {
-		o.startRejoin()
+		t.startRejoin()
 	} else {
-		o.rejoinTicker = time.NewTicker(time.Millisecond)
-		o.rejoinTicker.Stop()
-		o.log.Infof("single cluster node, transition to idle")
-		o.transitionTo(node.MonitorStateIdle)
+		t.rejoinTicker = time.NewTicker(time.Millisecond)
+		t.rejoinTicker.Stop()
+		t.log.Infof("single cluster node, transition to idle")
+		t.transitionTo(node.MonitorStateIdle)
 	}
 
 	statsTicker := time.NewTicker(statsInterval)
 	defer statsTicker.Stop()
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
-	defer o.touchLastShutdown()
+	defer t.touchLastShutdown()
 
 	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case i := <-o.sub.C:
+		case i := <-t.sub.C:
 			switch c := i.(type) {
 			case *msgbus.ClusterConfigUpdated:
-				o.onClusterConfigUpdated(c)
+				t.onClusterConfigUpdated(c)
 			case *msgbus.ConfigFileUpdated:
-				o.onConfigFileUpdated(c)
+				t.onConfigFileUpdated(c)
 			case *msgbus.ForgetPeer:
-				o.onForgetPeer(c)
+				t.onForgetPeer(c)
 			case *msgbus.JoinRequest:
-				o.onJoinRequest(c)
+				t.onJoinRequest(c)
 			case *msgbus.HbMessageTypeUpdated:
-				o.onHbMessageTypeUpdated(c)
+				t.onHbMessageTypeUpdated(c)
 			case *msgbus.ListenerUpdated:
-				o.onListenerUpdated(c)
+				t.onListenerUpdated(c)
 			case *msgbus.NodeConfigUpdated:
-				o.onPeerNodeConfigUpdated(c)
+				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
-				o.onNodeMonitorDeleted(c)
+				t.onNodeMonitorDeleted(c)
 			case *msgbus.NodeMonitorUpdated:
-				o.onPeerNodeMonitorUpdated(c)
+				t.onPeerNodeMonitorUpdated(c)
 			case *msgbus.NodeOsPathsUpdated:
-				o.onPeerNodeOsPathsUpdated(c)
+				t.onPeerNodeOsPathsUpdated(c)
 			case *msgbus.NodeFrozenFileRemoved:
-				o.onNodeFrozenFileRemoved(c)
+				t.onNodeFrozenFileRemoved(c)
 			case *msgbus.NodeFrozenFileUpdated:
-				o.onNodeFrozenFileUpdated(c)
+				t.onNodeFrozenFileUpdated(c)
 			case *msgbus.NodeStatusLabelsUpdated:
-				o.onPeerNodeStatusLabelsUpdated(c)
+				t.onPeerNodeStatusLabelsUpdated(c)
 			case *msgbus.NodeStatusGenUpdates:
-				o.onNodeStatusGenUpdates(c)
+				t.onNodeStatusGenUpdates(c)
 			case *msgbus.LeaveRequest:
-				o.onLeaveRequest(c)
+				t.onLeaveRequest(c)
 			case *msgbus.NodeRejoin:
-				o.onNodeRejoin(c)
+				t.onNodeRejoin(c)
 			case *msgbus.SetNodeMonitor:
-				o.onSetNodeMonitor(c)
+				t.onSetNodeMonitor(c)
 			}
-		case i := <-o.cmdC:
+		case i := <-t.cmdC:
 			switch c := i.(type) {
 			case cmdOrchestrate:
-				o.onOrchestrate(c)
+				t.onOrchestrate(c)
 			}
 		case <-statsTicker.C:
-			o.updateStats()
+			t.updateStats()
 		case <-arbitratorTicker.C:
-			o.onArbitratorTicker()
-		case <-o.rejoinTicker.C:
-			o.onRejoinGracePeriodExpire()
+			t.onArbitratorTicker()
+		case <-t.rejoinTicker.C:
+			t.onRejoinGracePeriodExpire()
 		}
 	}
 }
 
-func (o *nmon) onRejoinGracePeriodExpire() {
+func (t *Manager) onRejoinGracePeriodExpire() {
 	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
 	frozen := file.ModTime(nodeFrozenFile)
 	if frozen.Equal(time.Time{}) {
 		f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
 		if err != nil {
-			o.log.Errorf("rejoin grace period expired: freeze node: %s", err)
-			o.rejoinTicker.Reset(2 * time.Second)
+			t.log.Errorf("rejoin grace period expired: freeze node: %s", err)
+			t.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
-		o.log.Infof("rejoin grace period expired: freeze node")
+		t.log.Infof("rejoin grace period expired: freeze node")
 		if err := f.Close(); err != nil {
-			o.log.Errorf("rejoin grace period expired: freeze node: %s", err)
-			o.rejoinTicker.Reset(2 * time.Second)
+			t.log.Errorf("rejoin grace period expired: freeze node: %s", err)
+			t.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
-		o.transitionTo(node.MonitorStateIdle)
+		t.transitionTo(node.MonitorStateIdle)
 	} else {
-		o.log.Infof("rejoin grace period expired: the node is already frozen")
-		o.transitionTo(node.MonitorStateIdle)
+		t.log.Infof("rejoin grace period expired: the node is already frozen")
+		t.transitionTo(node.MonitorStateIdle)
 	}
-	o.rejoinTicker.Stop()
+	t.rejoinTicker.Stop()
 }
 
-func (o *nmon) update() {
-	newValue := o.state
-	node.MonitorData.Set(o.localhost, newValue.DeepCopy())
-	o.bus.Pub(&msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()}, o.labelLocalhost)
+func (t *Manager) update() {
+	newValue := t.state
+	node.MonitorData.Set(t.localhost, newValue.DeepCopy())
+	t.bus.Pub(&msgbus.NodeMonitorUpdated{Node: t.localhost, Value: *newValue.DeepCopy()}, t.labelLocalhost)
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
-	o.nodeMonitor[o.localhost] = o.state
+	t.nodeMonitor[t.localhost] = t.state
 }
 
 // updateIfChange log updates and publish new state value when changed
-func (o *nmon) updateIfChange() {
-	if !o.change {
+func (t *Manager) updateIfChange() {
+	if !t.change {
 		return
 	}
-	o.change = false
-	o.state.StateUpdatedAt = time.Now()
-	previousVal := o.previousState
-	newVal := o.state
+	t.change = false
+	t.state.StateUpdatedAt = time.Now()
+	previousVal := t.previousState
+	newVal := t.state
 	if newVal.State != previousVal.State {
-		o.log.Infof("change monitor state %s -> %s", previousVal.State, newVal.State)
+		t.log.Infof("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		o.log.Infof("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
+		t.log.Infof("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		o.log.Infof("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
+		t.log.Infof("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
-	o.previousState = o.state
-	o.update()
+	t.previousState = t.state
+	t.update()
 }
 
-func (o *nmon) hasOtherNodeActing() bool {
-	for remoteNode, remoteNodeMonitor := range o.nodeMonitor {
-		if remoteNode == o.localhost {
+func (t *Manager) hasOtherNodeActing() bool {
+	for remoteNode, remoteNodeMonitor := range t.nodeMonitor {
+		if remoteNode == t.localhost {
 			continue
 		}
 		if remoteNodeMonitor.State.IsDoing() {
@@ -511,23 +511,23 @@ func (o *nmon) hasOtherNodeActing() bool {
 	return false
 }
 
-func (o *nmon) createPendingWithCancel() {
-	o.pendingCtx, o.pendingCancel = context.WithCancel(o.ctx)
+func (t *Manager) createPendingWithCancel() {
+	t.pendingCtx, t.pendingCancel = context.WithCancel(t.ctx)
 }
 
-func (o *nmon) createPendingWithDuration(duration time.Duration) {
-	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
+func (t *Manager) createPendingWithDuration(duration time.Duration) {
+	t.pendingCtx, t.pendingCancel = context.WithTimeout(t.ctx, duration)
 }
 
-func (o *nmon) clearPending() {
-	if o.pendingCancel != nil {
-		o.pendingCancel()
-		o.pendingCancel = nil
-		o.pendingCtx = nil
+func (t *Manager) clearPending() {
+	if t.pendingCancel != nil {
+		t.pendingCancel()
+		t.pendingCancel = nil
+		t.pendingCtx = nil
 	}
 }
 
-func (o *nmon) getStats() (node.Stats, error) {
+func (t *Manager) getStats() (node.Stats, error) {
 	stats := node.Stats{}
 	if runtime.GOOS != "linux" {
 		return stats, nil
@@ -562,133 +562,133 @@ func (o *nmon) getStats() (node.Stats, error) {
 	return stats, nil
 }
 
-func (o *nmon) updateStats() {
-	stats, err := o.getStats()
+func (t *Manager) updateStats() {
+	stats, err := t.getStats()
 	if err != nil {
-		o.log.Errorf("get stats: %s", err)
+		t.log.Errorf("get stats: %s", err)
 	}
-	node.StatsData.Set(o.localhost, stats.DeepCopy())
-	o.bus.Pub(&msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()}, o.labelLocalhost)
+	node.StatsData.Set(t.localhost, stats.DeepCopy())
+	t.bus.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
 }
 
-func (o *nmon) refreshSanPaths() {
+func (t *Manager) refreshSanPaths() {
 	paths, err := san.GetPaths()
 	if err != nil {
-		o.log.Errorf("get san paths: %s", err)
+		t.log.Errorf("get san paths: %s", err)
 		return
 	}
-	localNodeInfo := o.cacheNodesInfo[o.localhost]
+	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	localNodeInfo.Paths = append(san.Paths{}, paths...)
-	o.cacheNodesInfo[o.localhost] = localNodeInfo
-	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths}, o.labelLocalhost)
+	t.cacheNodesInfo[t.localhost] = localNodeInfo
+	t.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: paths}, t.labelLocalhost)
 }
 
-func (o *nmon) onListenerUpdated(m *msgbus.ListenerUpdated) {
-	nodeInfo := o.cacheNodesInfo[m.Node]
+func (t *Manager) onListenerUpdated(m *msgbus.ListenerUpdated) {
+	nodeInfo := t.cacheNodesInfo[m.Node]
 	nodeInfo.Lsnr = m.Lsnr
-	o.cacheNodesInfo[m.Node] = nodeInfo
-	o.saveNodesInfo()
+	t.cacheNodesInfo[m.Node] = nodeInfo
+	t.saveNodesInfo()
 
-	if m.Node == o.localhost {
-		o.nodeStatus.Lsnr = m.Lsnr
-		o.publishNodeStatus()
+	if m.Node == t.localhost {
+		t.nodeStatus.Lsnr = m.Lsnr
+		t.publishNodeStatus()
 	}
 }
 
-func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
-	peerNodeInfo := o.cacheNodesInfo[m.Node]
+func (t *Manager) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
+	peerNodeInfo := t.cacheNodesInfo[m.Node]
 	peerNodeInfo.Env = m.Value.Env
-	o.cacheNodesInfo[m.Node] = peerNodeInfo
-	o.saveNodesInfo()
+	t.cacheNodesInfo[m.Node] = peerNodeInfo
+	t.saveNodesInfo()
 }
 
-func (o *nmon) onPeerNodeOsPathsUpdated(m *msgbus.NodeOsPathsUpdated) {
-	peerNodeInfo := o.cacheNodesInfo[m.Node]
+func (t *Manager) onPeerNodeOsPathsUpdated(m *msgbus.NodeOsPathsUpdated) {
+	peerNodeInfo := t.cacheNodesInfo[m.Node]
 	peerNodeInfo.Paths = m.Value
-	o.cacheNodesInfo[m.Node] = peerNodeInfo
-	o.saveNodesInfo()
+	t.cacheNodesInfo[m.Node] = peerNodeInfo
+	t.saveNodesInfo()
 }
 
-func (o *nmon) onPeerNodeStatusLabelsUpdated(m *msgbus.NodeStatusLabelsUpdated) {
-	peerNodeInfo := o.cacheNodesInfo[m.Node]
+func (t *Manager) onPeerNodeStatusLabelsUpdated(m *msgbus.NodeStatusLabelsUpdated) {
+	peerNodeInfo := t.cacheNodesInfo[m.Node]
 	peerNodeInfo.Labels = m.Value
-	o.cacheNodesInfo[m.Node] = peerNodeInfo
-	o.saveNodesInfo()
+	t.cacheNodesInfo[m.Node] = peerNodeInfo
+	t.saveNodesInfo()
 }
 
 // onNodeStatusGenUpdates updates the localhost node status gen from daemondata
 // msgbus.NodeStatusGenUpdates publication. It is daemondata that is responsible for
 // localhost gens management. The value stored here is lazy updated for debug.
 // We must not publish a msgbus.NodeStatusUpdated to avoid ping pong nmon<->data
-func (o *nmon) onNodeStatusGenUpdates(m *msgbus.NodeStatusGenUpdates) {
+func (t *Manager) onNodeStatusGenUpdates(m *msgbus.NodeStatusGenUpdates) {
 	gens := make(map[string]uint64)
 	for k, v := range m.Value {
 		gens[k] = v
 	}
-	o.nodeStatus.Gen = gens
+	t.nodeStatus.Gen = gens
 }
 
-func (o *nmon) saveNodesInfo() {
-	if err := nodesinfo.Save(o.cacheNodesInfo); err != nil {
-		o.log.Errorf("save nodes info: %s", err)
+func (t *Manager) saveNodesInfo() {
+	if err := nodesinfo.Save(t.cacheNodesInfo); err != nil {
+		t.log.Errorf("save nodes info: %s", err)
 	} else {
-		o.log.Infof("nodes info cache refreshed")
+		t.log.Infof("nodes info cache refreshed")
 	}
 }
 
-func (o *nmon) publishNodeStatus() {
-	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+func (t *Manager) publishNodeStatus() {
+	node.StatusData.Set(t.localhost, t.nodeStatus.DeepCopy())
+	t.bus.Pub(&msgbus.NodeStatusUpdated{Node: t.localhost, Value: *t.nodeStatus.DeepCopy()}, t.labelLocalhost)
 }
 
-func (o *nmon) loadConfig() error {
+func (t *Manager) loadConfig() error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return err
 	}
-	localNodeInfo := o.cacheNodesInfo[o.localhost]
+	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	localNodeInfo.Labels = n.Labels()
-	o.config = n.MergedConfig()
-	o.nodeConfig = o.getNodeConfig()
-	localNodeInfo.Env = o.nodeConfig.Env
+	t.config = n.MergedConfig()
+	t.nodeConfig = t.getNodeConfig()
+	localNodeInfo.Env = t.nodeConfig.Env
 
-	if lsnr := node.LsnrData.Get(o.localhost); lsnr != nil {
+	if lsnr := node.LsnrData.Get(t.localhost); lsnr != nil {
 		localNodeInfo.Lsnr = *lsnr
-		o.nodeStatus.Lsnr = *lsnr
+		t.nodeStatus.Lsnr = *lsnr
 	}
-	o.cacheNodesInfo[o.localhost] = localNodeInfo
+	t.cacheNodesInfo[t.localhost] = localNodeInfo
 	return nil
 }
 
-func (o *nmon) loadAndPublishConfig() error {
-	if err := o.loadConfig(); err != nil {
+func (t *Manager) loadAndPublishConfig() error {
+	if err := t.loadConfig(); err != nil {
 		return err
 	}
 
-	node.ConfigData.Set(o.localhost, o.nodeConfig.DeepCopy())
-	o.bus.Pub(&msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
+	node.ConfigData.Set(t.localhost, t.nodeConfig.DeepCopy())
+	t.bus.Pub(&msgbus.NodeConfigUpdated{Node: t.localhost, Value: t.nodeConfig}, t.labelLocalhost)
 
-	localNodeInfo := o.cacheNodesInfo[o.localhost]
-	o.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
+	localNodeInfo := t.cacheNodesInfo[t.localhost]
+	t.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
 
-	o.nodeStatus.Labels = localNodeInfo.Labels
-	o.publishNodeStatus()
+	t.nodeStatus.Labels = localNodeInfo.Labels
+	t.publishNodeStatus()
 
 	paths := localNodeInfo.Paths.DeepCopy()
-	node.OsPathsData.Set(o.localhost, &paths)
-	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
+	node.OsPathsData.Set(t.localhost, &paths)
+	t.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 
 	select {
-	case o.poolC <- nil:
+	case t.poolC <- nil:
 	default:
 	}
 	return nil
 }
 
-func (o *nmon) loadPools() {
+func (t *Manager) loadPools() {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		o.log.Warnf("load pools status: %s", err)
+		t.log.Warnf("load pools status: %s", err)
 		return
 	}
 	renewed := make(map[string]any)

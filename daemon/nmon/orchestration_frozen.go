@@ -2,34 +2,34 @@ package nmon
 
 import "github.com/opensvc/om3/core/node"
 
-func (o *nmon) orchestrateFrozen() {
-	switch o.state.State {
+func (t *Manager) orchestrateFrozen() {
+	switch t.state.State {
 	case node.MonitorStateIdle:
-		o.frozenFromIdle()
+		t.frozenFromIdle()
 	}
 }
 
-func (o *nmon) frozenFromIdle() {
-	if o.frozenClearIfReached() {
+func (t *Manager) frozenFromIdle() {
+	if t.frozenClearIfReached() {
 		return
 	}
-	o.state.State = node.MonitorStateFreezing
-	o.updateIfChange()
-	o.log.Infof("run action freeze")
+	t.state.State = node.MonitorStateFreezing
+	t.updateIfChange()
+	t.log.Infof("run action freeze")
 	nextState := node.MonitorStateIdle
-	if err := o.crmFreeze(); err != nil {
+	if err := t.crmFreeze(); err != nil {
 		nextState = node.MonitorStateFreezeFailed
 	}
-	go o.orchestrateAfterAction(node.MonitorStateFreezing, nextState)
+	go t.orchestrateAfterAction(node.MonitorStateFreezing, nextState)
 	return
 }
 
-func (o *nmon) frozenClearIfReached() bool {
-	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
-		o.log.Infof("instance state is frozen, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = node.MonitorGlobalExpectNone
-		o.clearPending()
+func (t *Manager) frozenClearIfReached() bool {
+	if nodeStatus := node.StatusData.Get(t.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
+		t.log.Infof("instance state is frozen, unset global expect")
+		t.change = true
+		t.state.GlobalExpect = node.MonitorGlobalExpectNone
+		t.clearPending()
 		return true
 	}
 	return false

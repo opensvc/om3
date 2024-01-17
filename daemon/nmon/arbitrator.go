@@ -24,57 +24,57 @@ type (
 )
 
 // setArbitratorConfig load config to sets arbitrators
-func (o *nmon) setArbitratorConfig() {
+func (t *Manager) setArbitratorConfig() {
 	arbitrators := make(map[string]arbitratorConfig)
-	for _, s := range o.config.SectionStrings() {
+	for _, s := range t.config.SectionStrings() {
 		if !strings.HasPrefix(s, "arbitrator#") {
 			continue
 		}
 		name := strings.TrimPrefix(s, "arbitrator#")
 		a := arbitratorConfig{
 			Name:     name,
-			Uri:      o.config.GetString(key.New(s, "uri")),
-			Insecure: o.config.GetBool(key.New(s, "insecure")),
+			Uri:      t.config.GetString(key.New(s, "uri")),
+			Insecure: t.config.GetBool(key.New(s, "insecure")),
 		}
 		if a.Uri == "" {
-			o.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
-			a.Uri = o.config.GetString(key.New(s, "name"))
+			t.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
+			a.Uri = t.config.GetString(key.New(s, "name"))
 		}
 		if a.Uri == "" {
-			o.log.Warnf("ignored arbitrator %s (empty uri)", s)
+			t.log.Warnf("ignored arbitrator %s (empty uri)", s)
 			continue
 		}
 		arbitrators[name] = a
 	}
-	o.arbitrators = arbitrators
+	t.arbitrators = arbitrators
 }
 
 // getStatusArbitrators checks all arbitrators and returns result
-func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
+func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	type res struct {
 		name string
 		err  error
 	}
-	ctx, cancel := context.WithTimeout(o.ctx, arbitratorCheckDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, arbitratorCheckDuration)
 	defer cancel()
-	c := make(chan res, len(o.arbitrators))
-	for _, a := range o.arbitrators {
+	c := make(chan res, len(t.arbitrators))
+	for _, a := range t.arbitrators {
 		go func(a arbitratorConfig) {
-			c <- res{name: a.Name, err: o.arbitratorCheck(ctx, a)}
+			c <- res{name: a.Name, err: t.arbitratorCheck(ctx, a)}
 		}(a)
 	}
 	result := make(map[string]node.ArbitratorStatus)
-	for i := 0; i < len(o.arbitrators); i++ {
+	for i := 0; i < len(t.arbitrators); i++ {
 		r := <-c
 		name := r.name
-		url := o.arbitrators[name].Uri
+		url := t.arbitrators[name].Uri
 		aStatus := status.Up
 		if r.err != nil {
-			o.log.Warnf("arbitrator#%s is down", name)
-			o.log.Debugf("arbitrator#%s is down: %s", name, r.err)
+			t.log.Warnf("arbitrator#%s is down", name)
+			t.log.Debugf("arbitrator#%s is down: %s", name, r.err)
 			aStatus = status.Down
-			o.bus.Pub(&msgbus.ArbitratorError{
-				Node: o.localhost,
+			t.bus.Pub(&msgbus.ArbitratorError{
+				Node: t.localhost,
 				Name: name,
 				ErrS: r.err.Error(),
 			})
@@ -84,18 +84,18 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	return result
 }
 
-func (o *nmon) getAndUpdateStatusArbitrator() {
-	o.nodeStatus.Arbitrators = o.getStatusArbitrators()
-	o.publishNodeStatus()
+func (t *Manager) getAndUpdateStatusArbitrator() {
+	t.nodeStatus.Arbitrators = t.getStatusArbitrators()
+	t.publishNodeStatus()
 	pubValue := make(map[string]node.ArbitratorStatus)
-	for k, v := range o.nodeStatus.Arbitrators {
+	for k, v := range t.nodeStatus.Arbitrators {
 		pubValue[k] = v
 	}
-	o.bus.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: pubValue}, o.labelLocalhost)
+	t.bus.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: t.localhost, Value: pubValue}, t.labelLocalhost)
 }
 
-func (o *nmon) arbitratorVotes() (votes []string) {
-	for s, v := range o.getStatusArbitrators() {
+func (t *Manager) arbitratorVotes() (votes []string) {
+	for s, v := range t.getStatusArbitrators() {
 		if v.Status == status.Up {
 			votes = append(votes, s)
 		}
@@ -103,7 +103,7 @@ func (o *nmon) arbitratorVotes() (votes []string) {
 	return
 }
 
-func (o *nmon) arbitratorCheck(ctx context.Context, a arbitratorConfig) error {
+func (t *Manager) arbitratorCheck(ctx context.Context, a arbitratorConfig) error {
 	if strings.HasPrefix(a.Uri, "http") {
 		return a.checkUrl(ctx)
 	}
