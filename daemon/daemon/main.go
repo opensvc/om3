@@ -342,5 +342,5 @@ func startProfiling() {
 	// Usage example from cluster node1:
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
-	cannula.Start(daemonenv.PathUxProfile())
+	cannula.Start(daemonenv.ProfileUnixFile())
 }

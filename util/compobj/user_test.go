@@ -32,8 +32,8 @@ func TestUserAdd(t *testing.T) {
 	totoUserAddFieldsData := `"toto" : {"uid" : 10100, "gid" : 10100,"shell" : "/bin/totoShell","gecos" : "i am toto","check_home" : "no"}`
 	totoCompUser := CompUser{
 		User:      "toto",
-		Uid:       pti(10100),
-		Gid:       pti(10100),
+		UID:       pti(10100),
+		GID:       pti(10100),
 		Shell:     "",
 		Home:      "",
 		Password:  "",
@@ -42,8 +42,8 @@ func TestUserAdd(t *testing.T) {
 	}
 	totoCompUserFieldAdded := CompUser{
 		User:      "toto",
-		Uid:       pti(10100),
-		Gid:       pti(10100),
+		UID:       pti(10100),
+		GID:       pti(10100),
 		Shell:     "/bin/totoShell",
 		Home:      "",
 		Password:  "",
@@ -54,8 +54,8 @@ func TestUserAdd(t *testing.T) {
 	titiUserFieldOverWritingData := `"titi" : {"uid" : 10800, "gid" : 10800, "shell" : "/bin/overWriting","home" : "/home/overWriting","password" : "HashOverWriting","gecos" : "i am over-writing titi","check_home" : "no"}`
 	titiCompUser := CompUser{
 		User:      "titi",
-		Uid:       pti(10200),
-		Gid:       pti(10200),
+		UID:       pti(10200),
+		GID:       pti(10200),
 		Shell:     "/bin/ksh",
 		Home:      "/home/titi",
 		Password:  "123",
@@ -258,11 +258,11 @@ func TestUserCheckRule(t *testing.T) {
 	}
 
 	withHomeOwnerShip := func(pRule *CompUser) error {
-		return os.Chown(pRule.Home, *pRule.Uid, 1234)
+		return os.Chown(pRule.Home, *pRule.UID, 1234)
 	}
 
 	withHomeWrongOwnerShip := func(pRule *CompUser) error {
-		return os.Chown(pRule.Home, *pRule.Uid+1, 1234)
+		return os.Chown(pRule.Home, *pRule.UID+1, 1234)
 	}
 
 	DelHomeDirInRule := func(pRule *CompUser) error {
@@ -279,8 +279,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with only mandatory fields": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -293,8 +293,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with all the field": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -309,8 +309,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong uid": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(3000),
-				Gid:       pti(2000),
+				UID:       pti(3000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -324,8 +324,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong gid": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(3000),
+				UID:       pti(2000),
+				GID:       pti(3000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -339,8 +339,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong shell": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/wrongShell",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -354,8 +354,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong home dir": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/wrongHome",
 				Password:  "zozohash",
@@ -369,8 +369,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong password hash": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "wrongHash",
@@ -384,8 +384,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong gecos": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -399,8 +399,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check with wrong home dir owner": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -415,8 +415,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check home owner ship if the home field the not filled": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -431,8 +431,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check not supposed to exist but exist": {
 			rule: CompUser{
 				User:      "-zozo",
-				Uid:       nil,
-				Gid:       nil,
+				UID:       nil,
+				GID:       nil,
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -446,8 +446,8 @@ func TestUserCheckRule(t *testing.T) {
 		"check not supposed to exist and does not exist": {
 			rule: CompUser{
 				User:      "-iDontExist",
-				Uid:       nil,
-				Gid:       nil,
+				UID:       nil,
+				GID:       nil,
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -573,19 +573,19 @@ func TestUserFix(t *testing.T) {
 	}
 
 	withHomeWrongOwnerShip := func(pRule *CompUser) error {
-		return os.Chown(pRule.Home, *pRule.Uid+1, 1234)
+		return os.Chown(pRule.Home, *pRule.UID+1, 1234)
 	}
 
 	withHomeOwnerShip := func(pRule *CompUser) error {
-		return os.Chown(pRule.Home, *pRule.Uid, 1234)
+		return os.Chown(pRule.Home, *pRule.UID, 1234)
 	}
 
 	testCases := map[string]test{
 		"with a minimum true rule": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -606,8 +606,8 @@ func TestUserFix(t *testing.T) {
 		"with a full true rule": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -629,8 +629,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong shell": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "",
@@ -652,8 +652,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong home dir (home dir does no exist + wrong)": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "",
@@ -675,8 +675,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong home dir (home dir exist but is wrong)": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "",
@@ -698,8 +698,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong password hash": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -721,8 +721,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong gecos": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -744,8 +744,8 @@ func TestUserFix(t *testing.T) {
 		"with a wrong home dir ownership": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "/bin/bash",
 				Home:      "/home/zozo",
 				Password:  "zozohash",
@@ -767,8 +767,8 @@ func TestUserFix(t *testing.T) {
 		"with to zozobis user to be deleted but zozobis is not present": {
 			rule: CompUser{
 				User:      "-zozobis",
-				Uid:       nil,
-				Gid:       nil,
+				UID:       nil,
+				GID:       nil,
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -790,8 +790,8 @@ func TestUserFix(t *testing.T) {
 		"with to zozobis user to be deleted but zozobis is not present (filling other fields with random info)": {
 			rule: CompUser{
 				User:      "-zozobis",
-				Uid:       pti(1234),
-				Gid:       pti(1234),
+				UID:       pti(1234),
+				GID:       pti(1234),
 				Shell:     "randomShel",
 				Home:      "randomHome",
 				Password:  "randomHash",
@@ -813,8 +813,8 @@ func TestUserFix(t *testing.T) {
 		"with to zozobis user to be deleted but zozobis is present": {
 			rule: CompUser{
 				User:      "-zozobis",
-				Uid:       pti(1234),
-				Gid:       pti(1234),
+				UID:       pti(1234),
+				GID:       pti(1234),
 				Shell:     "randomShel",
 				Home:      "randomHome",
 				Password:  "randomHash",
@@ -836,8 +836,8 @@ func TestUserFix(t *testing.T) {
 		"with to zozoadd user to be added ": {
 			rule: CompUser{
 				User:      "zozoadd",
-				Uid:       pti(3000),
-				Gid:       pti(3000),
+				UID:       pti(3000),
+				GID:       pti(3000),
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -859,8 +859,8 @@ func TestUserFix(t *testing.T) {
 		"try to delete a blacklisted user (daemon) ": {
 			rule: CompUser{
 				User:      "-daemon",
-				Uid:       nil,
-				Gid:       nil,
+				UID:       nil,
+				GID:       nil,
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -882,8 +882,8 @@ func TestUserFix(t *testing.T) {
 		"with wrong Uid ": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "",
 				Home:      "",
 				Password:  "",
@@ -905,8 +905,8 @@ func TestUserFix(t *testing.T) {
 		"with wrong Gid ": {
 			rule: CompUser{
 				User:      "zozo",
-				Uid:       pti(2000),
-				Gid:       pti(2000),
+				UID:       pti(2000),
+				GID:       pti(2000),
 				Shell:     "",
 				Home:      "",
 				Password:  "",

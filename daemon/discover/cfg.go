@@ -310,7 +310,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)
 		time.Sleep(250 * time.Millisecond)
-		url := peerUrl(peer)
+		url := peerURL(peer)
 		if url == cli.URL() {
 			return
 		} else {
@@ -376,14 +376,14 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 func newDaemonClient(n string) (*client.T, error) {
 	// TODO add WithRootCa to avoid send password to wrong url ?
 	return client.New(
-		client.WithURL(peerUrl(n)),
+		client.WithURL(peerURL(n)),
 		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(cluster.ConfigData.Get().Secret()),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }
 
-func peerUrl(s string) string {
+func peerURL(s string) string {
 	addr := s
 	port := fmt.Sprintf("%d", daemonenv.HTTPPort)
 	if lsnr := node.LsnrData.Get(s); lsnr != nil {
@@ -394,5 +394,5 @@ func peerUrl(s string) string {
 			addr = lsnr.Addr
 		}
 	}
-	return daemonenv.UrlHttpNodeAndPort(addr, port)
+	return daemonenv.HTTPNodeAndPortURL(addr, port)
 }

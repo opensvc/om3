@@ -68,7 +68,7 @@ func (t *CmdDaemonJoin) run() error {
 
 	var url string
 	if t.Server == "" {
-		url = daemonenv.UrlHttpNode(t.Node)
+		url = daemonenv.HTTPNodeURL(t.Node)
 	} else {
 		url = t.Server
 	}

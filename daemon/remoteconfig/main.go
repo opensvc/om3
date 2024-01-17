@@ -22,7 +22,7 @@ func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updat
 		b       []byte
 		tmpFile *os.File
 	)
-	b, updated, err = fetchFromApi(cli, p)
+	b, updated, err = fetchFromAPI(cli, p)
 	if err != nil {
 		return
 	}
@@ -53,7 +53,7 @@ func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updat
 	return
 }
 
-func fetchFromApi(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
+func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
 	var (
 		resp *api.GetObjectConfigFileResponse
 	)

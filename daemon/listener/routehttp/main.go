@@ -7,9 +7,10 @@ package routehttp
 
 import (
 	"context"
-	"github.com/opensvc/om3/core/rawconfig"
 	"net/http"
 	"path/filepath"
+
+	"github.com/opensvc/om3/core/rawconfig"
 
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo-contrib/pprof"
@@ -31,8 +32,8 @@ var (
 
 // New returns *T with log, rootDaemon
 // it prepares middlewares and routes for Opensvc daemon listeners
-// when enableUi is true swagger-ui is serverd from /ui
-func New(ctx context.Context, enableUi bool) *T {
+// when enableUI is true swagger-ui is serverd from /ui
+func New(ctx context.Context, enableUI bool) *T {
 	e := echo.New()
 	pprof.Register(e)
 	e.Use(mwProm)
@@ -46,7 +47,7 @@ func New(ctx context.Context, enableUi bool) *T {
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
 	api.RegisterHandlers(e, daemonapi.New(ctx))
 	g := e.Group("/public/ui")
-	if enableUi {
+	if enableUI {
 		g.Use(daemonapi.UIMiddleware(ctx))
 	}
 

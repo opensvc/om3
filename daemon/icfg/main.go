@@ -63,7 +63,7 @@ type (
 var (
 	clusterPath = naming.Path{Name: "cluster", Kind: naming.KindCcfg}
 
-	configFileCheckError = errors.New("config file check")
+	errConfigFileCheck = errors.New("config file check")
 
 	keyApp              = key.New("DEFAULT", "app")
 	keyChildren         = key.New("DEFAULT", "children")
@@ -247,7 +247,7 @@ func (t *Manager) configFileCheck() error {
 	mtime := file.ModTime(t.filename)
 	if mtime.IsZero() {
 		t.log.Infof("configFile no mtime %s", t.filename)
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	if mtime.Equal(t.lastMtime) && !t.forceRefresh {
 		t.log.Debugf("same mtime, skip")
@@ -256,26 +256,26 @@ func (t *Manager) configFileCheck() error {
 	checksum, err := file.MD5(t.filename)
 	if err != nil {
 		t.log.Infof("configFile no present(md5sum)")
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	if err := t.setConfigure(); err != nil {
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	t.forceRefresh = false
 	cf := t.configure.Config()
 	scope, err := t.getScope(cf)
 	if err != nil {
 		t.log.Errorf("can't get scope: %s", err)
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	if len(scope) == 0 {
 		t.log.Infof("empty scope")
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	newMtime := file.ModTime(t.filename)
 	if newMtime.IsZero() {
 		t.log.Infof("configFile no more mtime %s", t.filename)
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 	if !newMtime.Equal(mtime) {
 		t.log.Infof("configFile changed(wait next evaluation)")
@@ -283,7 +283,7 @@ func (t *Manager) configFileCheck() error {
 	}
 	if !stringslice.Has(t.localhost, scope) {
 		t.log.Infof("localhost not anymore an instance node")
-		return configFileCheckError
+		return errConfigFileCheck
 	}
 
 	cfg := t.instanceConfig

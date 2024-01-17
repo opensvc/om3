@@ -13,7 +13,7 @@ func credential(user, group string) (*syscall.Credential, error) {
 	cred := syscall.Credential{}
 	var needCred bool
 	if user != "" {
-		userID, err := usergroup.UidFromS(user)
+		userID, err := usergroup.UIDFromString(user)
 		if err != nil {
 			return nil, err
 		}
@@ -21,7 +21,7 @@ func credential(user, group string) (*syscall.Credential, error) {
 		needCred = true
 	}
 	if group != "" {
-		groupID, err := usergroup.GidFromS(group)
+		groupID, err := usergroup.GIDFromString(group)
 		if err != nil {
 			return nil, err
 		}

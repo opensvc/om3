@@ -174,7 +174,7 @@ func (t *T) configure() error {
 			return err
 		}
 	} else if t.url == "" {
-		t.url = daemonenv.UrlUxHttp()
+		t.url = daemonenv.HTTPUnixURL()
 	} else if t.bearer == "" && t.username == "" && t.authorization == "" {
 		// TODO: need refactor or remove, this may send credential to unexpected url
 		t.username = hostname.Hostname()
@@ -202,7 +202,7 @@ func (t *T) newRequester() (err error) {
 			URL:     t.url,
 			Timeout: t.timeout,
 		})
-	case strings.HasSuffix(t.url, daemonenv.BaseHTTPSock):
+	case strings.HasSuffix(t.url, daemonenv.HTTPUnixFileBasename):
 		t.ClientWithResponses, err = reqh2.NewUDS(reqh2.Config{
 			URL:     t.url,
 			Timeout: t.timeout,

@@ -18,7 +18,7 @@ import (
 type (
 	arbitratorConfig struct {
 		Name     string `json:"name"`
-		Uri      string `json:"uri"`
+		URI      string `json:"uri"`
 		Insecure bool
 	}
 )
@@ -33,14 +33,14 @@ func (t *Manager) setArbitratorConfig() {
 		name := strings.TrimPrefix(s, "arbitrator#")
 		a := arbitratorConfig{
 			Name:     name,
-			Uri:      t.config.GetString(key.New(s, "uri")),
+			URI:      t.config.GetString(key.New(s, "uri")),
 			Insecure: t.config.GetBool(key.New(s, "insecure")),
 		}
-		if a.Uri == "" {
+		if a.URI == "" {
 			t.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
-			a.Uri = t.config.GetString(key.New(s, "name"))
+			a.URI = t.config.GetString(key.New(s, "name"))
 		}
-		if a.Uri == "" {
+		if a.URI == "" {
 			t.log.Warnf("ignored arbitrator %s (empty uri)", s)
 			continue
 		}
@@ -67,7 +67,7 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	for i := 0; i < len(t.arbitrators); i++ {
 		r := <-c
 		name := r.name
-		url := t.arbitrators[name].Uri
+		url := t.arbitrators[name].URI
 		aStatus := status.Up
 		if r.err != nil {
 			t.log.Warnf("arbitrator#%s is down", name)
@@ -79,7 +79,7 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 				ErrS: r.err.Error(),
 			})
 		}
-		result[name] = node.ArbitratorStatus{Url: url, Status: aStatus}
+		result[name] = node.ArbitratorStatus{URL: url, Status: aStatus}
 	}
 	return result
 }
@@ -104,16 +104,16 @@ func (t *Manager) arbitratorVotes() (votes []string) {
 }
 
 func (t *Manager) arbitratorCheck(ctx context.Context, a arbitratorConfig) error {
-	if strings.HasPrefix(a.Uri, "http") {
-		return a.checkUrl(ctx)
+	if strings.HasPrefix(a.URI, "http") {
+		return a.checkURL(ctx)
 	}
-	if a.Uri != "" {
+	if a.URI != "" {
 		return a.checkDial(ctx)
 	}
 	return fmt.Errorf("invalid arbitrator uri")
 }
 
-func (a *arbitratorConfig) checkUrl(ctx context.Context) error {
+func (a *arbitratorConfig) checkURL(ctx context.Context) error {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -121,7 +121,7 @@ func (a *arbitratorConfig) checkUrl(ctx context.Context) error {
 			},
 		},
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", a.Uri, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", a.URI, nil)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (a *arbitratorConfig) checkUrl(ctx context.Context) error {
 
 func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	d := net.Dialer{}
-	addr := a.Uri
+	addr := a.URI
 	if !strings.Contains(addr, ":") {
 		addr = fmt.Sprintf("%s:%d", addr, cluster.ConfigData.Get().Listener.Port)
 	}

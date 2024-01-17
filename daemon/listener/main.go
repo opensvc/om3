@@ -82,7 +82,7 @@ func (t *T) Start(ctx context.Context) error {
 	for _, lsnr := range []startStopper{
 		lsnrhttpux.New(
 			ctx,
-			lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
+			lsnrhttpux.WithAddr(daemonenv.HTTPUnixFile()),
 		),
 		lsnrhttpinet.New(
 			ctx,

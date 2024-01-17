@@ -20,8 +20,8 @@ type (
 
 	CompUser struct {
 		User      string `json:"-"`
-		Uid       *int   `json:"uid"`
-		Gid       *int   `json:"gid"`
+		UID       *int   `json:"uid"`
+		GID       *int   `json:"gid"`
 		Shell     string `json:"shell"`
 		Home      string `json:"home"`
 		Password  string `json:"password"`
@@ -239,13 +239,13 @@ func (t *CompUsers) Add(s string) error {
 		}
 
 		if !strings.HasPrefix(name, "-") {
-			if rule.Uid == nil {
+			if rule.UID == nil {
 				err := fmt.Errorf("uid should be in the dict: %s", s)
 				t.Errorf("%s\n", err)
 				return err
 			}
 
-			if rule.Gid == nil {
+			if rule.GID == nil {
 				err := fmt.Errorf("gid should be in the dict: %s", s)
 				t.Errorf("%s\n", err)
 				return err
@@ -350,8 +350,8 @@ func (t CompUsers) checkRule(rule CompUser) ExitCode {
 		return e
 	}
 
-	e = e.Merge(t.checkUserGid(rule, userInfos))
-	e = e.Merge(t.checkUserUid(rule, userInfos))
+	e = e.Merge(t.checkUserGID(rule, userInfos))
+	e = e.Merge(t.checkUserUID(rule, userInfos))
 	if rule.Shell != "" {
 		e = e.Merge(t.checkUserShell(rule, userInfos))
 	}
@@ -371,34 +371,34 @@ func (t CompUsers) checkRule(rule CompUser) ExitCode {
 	return e
 }
 
-func (t CompUsers) checkUserUid(rule CompUser, userInfos []string) ExitCode {
-	uid, err := t.getUid(userInfos)
+func (t CompUsers) checkUserUID(rule CompUser, userInfos []string) ExitCode {
+	uid, err := t.getUID(userInfos)
 	if err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
 
-	if uid != *rule.Uid {
-		t.VerboseErrorf("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.Uid)
+	if uid != *rule.UID {
+		t.VerboseErrorf("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.UID)
 		return ExitNok
 	}
-	t.VerboseInfof("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.Uid)
+	t.VerboseInfof("the uid of the user %s is %d and should be %d\n", rule.User, uid, *rule.UID)
 	return ExitOk
 }
 
-func (t CompUsers) checkUserGid(rule CompUser, userInfos []string) ExitCode {
+func (t CompUsers) checkUserGID(rule CompUser, userInfos []string) ExitCode {
 
-	gid, err := t.getGid(userInfos)
+	gid, err := t.getGID(userInfos)
 	if err != nil {
 		t.Errorf("%s", err)
 		return ExitNok
 	}
 
-	if gid != *rule.Gid {
-		t.VerboseErrorf("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.Gid)
+	if gid != *rule.GID {
+		t.VerboseErrorf("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.GID)
 		return ExitNok
 	}
-	t.VerboseInfof("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.Gid)
+	t.VerboseInfof("the gid of the user %s is %d and should be %d\n", rule.User, gid, *rule.GID)
 	return ExitOk
 }
 
@@ -432,11 +432,11 @@ func (t CompUsers) checkUserHomeDirOwnerShip(rule CompUser, userInfos []string) 
 		t.Errorf("%s", err)
 		return ExitNok
 	}
-	if uid != *rule.Uid {
-		t.VerboseErrorf("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.Uid)
+	if uid != *rule.UID {
+		t.VerboseErrorf("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.UID)
 		return ExitNok
 	}
-	t.VerboseInfof("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.Uid)
+	t.VerboseInfof("the home dir of the user %s is owned be the uid %d and should be owned be the uid %d\n", rule.User, uid, *rule.UID)
 	return ExitOk
 }
 
@@ -468,11 +468,11 @@ func (t CompUsers) checkHash(rule CompUser, shadow []byte) ExitCode {
 	return ExitNok
 }
 
-func (t CompUsers) getUid(userInfos []string) (int, error) {
+func (t CompUsers) getUID(userInfos []string) (int, error) {
 	return strconv.Atoi(userInfos[2])
 }
 
-func (t CompUsers) getGid(userInfos []string) (int, error) {
+func (t CompUsers) getGID(userInfos []string) (int, error) {
 	return strconv.Atoi(userInfos[3])
 }
 
@@ -548,14 +548,14 @@ func (t *CompUsers) fixRule(rule CompUser) ExitCode {
 		userInfos, e = t.checkUserExistence(rule.User, passwdFileContent)
 	}
 
-	if t.checkUserGid(rule, userInfos) == ExitNok {
-		if t.fixGid(rule) == ExitNok {
+	if t.checkUserGID(rule, userInfos) == ExitNok {
+		if t.fixGID(rule) == ExitNok {
 			return ExitNok
 		}
 	}
 
-	if t.checkUserUid(rule, userInfos) == ExitNok {
-		if t.fixUid(rule) == ExitNok {
+	if t.checkUserUID(rule, userInfos) == ExitNok {
+		if t.fixUID(rule) == ExitNok {
 			return ExitNok
 		}
 	}
@@ -605,32 +605,32 @@ func (t *CompUsers) fixRule(rule CompUser) ExitCode {
 	return ExitOk
 }
 
-func (t CompUsers) fixGid(rule CompUser) ExitCode {
-	cmd := execChangeGID(rule.User, *rule.Gid)
+func (t CompUsers) fixGID(rule CompUser) ExitCode {
+	cmd := execChangeGID(rule.User, *rule.GID)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
-	t.Infof("set the primary gid of the user %s to %d\n", rule.User, *rule.Gid)
+	t.Infof("set the primary gid of the user %s to %d\n", rule.User, *rule.GID)
 	return ExitOk
 }
 
-func (t CompUsers) fixUid(rule CompUser) ExitCode {
-	cmd := execChangeUID(rule.User, *rule.Uid)
+func (t CompUsers) fixUID(rule CompUser) ExitCode {
+	cmd := execChangeUID(rule.User, *rule.UID)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("%s: %s\n", err, output)
 		return ExitNok
 	}
-	t.Infof("set the uid of the user %s to %d\n", rule.User, *rule.Uid)
+	t.Infof("set the uid of the user %s to %d\n", rule.User, *rule.UID)
 	return ExitOk
 }
 
 func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
-	cmdArgs := []string{"-u", fmt.Sprintf("%d", *rule.Uid), "-g", fmt.Sprintf("%d", *rule.Gid)}
+	cmdArgs := []string{"-u", fmt.Sprintf("%d", *rule.UID), "-g", fmt.Sprintf("%d", *rule.GID)}
 
 	if rule.Home != "" {
 		cmdArgs = append(cmdArgs, "--home", rule.Home, "--create-home")
@@ -647,7 +647,7 @@ func (t CompUsers) fixUserExistence(rule CompUser) ExitCode {
 }
 
 func (t CompUsers) fixHomeOwnerShip(rule CompUser, userInfos []string) ExitCode {
-	err := os.Chown(getHomeDir(userInfos), *rule.Uid, -1)
+	err := os.Chown(getHomeDir(userInfos), *rule.UID, -1)
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
