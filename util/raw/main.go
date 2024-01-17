@@ -113,7 +113,7 @@ func (t T) modprobe() error {
 	return nil
 }
 
-func RawMajor() int {
+func DriverMajor() int {
 	l := devicedriver.DriverMajors("raw")
 	if len(l) == 0 {
 		return 0
