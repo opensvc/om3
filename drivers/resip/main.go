@@ -36,7 +36,7 @@ func WaitDNSRecord(ctx context.Context, timeout *time.Duration, p naming.Path) e
 	logger := plog.Ctx(ctx)
 	limit := time.Now().Add(*timeout)
 	todo := stringset.New()
-	clusterSection := rawconfig.ClusterSection()
+	clusterSection := rawconfig.GetClusterSection()
 	name := naming.NewFQDN(p, clusterSection.Name).String()
 
 	for _, dns := range strings.Fields(clusterSection.DNS) {

@@ -397,7 +397,7 @@ func (t *Selection) daemonExpand() error {
 		c, err := client.New(
 			client.WithURL(t.server),
 			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(rawconfig.ClusterSection().Secret),
+			client.WithPassword(rawconfig.GetClusterSection().Secret),
 		)
 		if err != nil {
 			return fmt.Errorf("create client: %w", err)

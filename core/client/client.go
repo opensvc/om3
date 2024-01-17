@@ -178,7 +178,7 @@ func (t *T) configure() error {
 	} else if t.bearer == "" && t.username == "" && t.authorization == "" {
 		// TODO: need refactor or remove, this may send credential to unexpected url
 		t.username = hostname.Hostname()
-		t.password = rawconfig.ClusterSection().Secret
+		t.password = rawconfig.GetClusterSection().Secret
 	}
 
 	err := t.newRequester()
