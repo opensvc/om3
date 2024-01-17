@@ -267,11 +267,9 @@ func (t *T) StatusInfo() map[string]interface{} {
 
 func (t T) ActionResourceDeps() []actionresdeps.Dep {
 	return []actionresdeps.Dep{
-		{Action: "start", Kind: actionresdeps.KindSelect, A: t.RID(), B: t.NetNS},
-		{Action: "start", Kind: actionresdeps.KindSelect, A: t.NetNS, B: t.RID()},
-		{Action: "stop", Kind: actionresdeps.KindSelect, A: t.NetNS, B: t.RID()},
-		{Action: "start", Kind: actionresdeps.KindAct, A: t.RID(), B: t.NetNS},
-		{Action: "stop", Kind: actionresdeps.KindAct, A: t.NetNS, B: t.RID()},
+		{Action: "start", A: t.RID(), B: t.NetNS},
+		{Action: "start", A: t.NetNS, B: t.RID()},
+		{Action: "stop", A: t.NetNS, B: t.RID()},
 	}
 }
 
