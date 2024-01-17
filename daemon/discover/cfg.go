@@ -28,8 +28,8 @@ var (
 	SubscriptionQueueSizeCfg = 30000
 )
 
-func (d *discover) startSubscriptions() *pubsub.Subscription {
-	bus := pubsub.BusFromContext(d.ctx)
+func (t *T) startSubscriptions() *pubsub.Subscription {
+	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("discover.cfg", pubsub.WithQueueSize(SubscriptionQueueSizeCfg))
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
@@ -41,90 +41,90 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 	return sub
 }
 
-func (d *discover) cfg(started chan<- bool) {
-	d.log.Infof("cfg: started")
-	defer d.log.Infof("cfg: stopped")
+func (t *T) cfg(started chan<- bool) {
+	t.log.Infof("cfg: started")
+	defer t.log.Infof("cfg: stopped")
 	defer func() {
-		d.log.Debugf("cfg: flushing the command bus message queue")
-		defer d.log.Debugf("cfg: flushed the command bus message queue")
-		t := time.NewTicker(d.drainDuration)
-		defer t.Stop()
+		t.log.Debugf("cfg: flushing the command bus message queue")
+		defer t.log.Debugf("cfg: flushed the command bus message queue")
+		ticker := time.NewTicker(t.drainDuration)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-d.ctx.Done():
+			case <-t.ctx.Done():
 				return
-			case <-t.C:
+			case <-ticker.C:
 				return
-			case <-d.cfgCmdC:
+			case <-t.cfgCmdC:
 			}
 		}
 	}()
-	sub := d.startSubscriptions()
+	sub := t.startSubscriptions()
 	defer func() {
 		if err := sub.Stop(); err != nil {
-			d.log.Errorf("cfg: subscription stop: %s", err)
+			t.log.Errorf("cfg: subscription stop: %s", err)
 		}
 	}()
 	if last := cluster.ConfigData.Get(); last != nil {
 		msg := &msgbus.ClusterConfigUpdated{Value: *last}
-		d.onClusterConfigUpdated(msg)
+		t.onClusterConfigUpdated(msg)
 	}
 	started <- true
 	for {
 		select {
-		case <-d.ctx.Done():
+		case <-t.ctx.Done():
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.InstanceConfigUpdated:
-				d.onInstanceConfigUpdated(c)
+				t.onInstanceConfigUpdated(c)
 			case *msgbus.InstanceConfigDeleted:
-				d.onInstanceConfigDeleted(c)
+				t.onInstanceConfigDeleted(c)
 			case *msgbus.ConfigFileUpdated:
-				d.onConfigFileUpdated(c)
+				t.onConfigFileUpdated(c)
 			case *msgbus.ClusterConfigUpdated:
-				d.onClusterConfigUpdated(c)
+				t.onClusterConfigUpdated(c)
 			case *msgbus.ObjectStatusUpdated:
-				d.onObjectStatusUpdated(c)
+				t.onObjectStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
-				d.onObjectStatusDeleted(c)
+				t.onObjectStatusDeleted(c)
 			}
-		case i := <-d.cfgCmdC:
+		case i := <-t.cfgCmdC:
 			switch c := i.(type) {
 			case *msgbus.RemoteFileConfig:
-				d.onRemoteConfigFetched(c)
+				t.onRemoteConfigFetched(c)
 			case *msgbus.InstanceConfigManagerDone:
-				d.onMonConfigDone(c)
+				t.onMonConfigDone(c)
 			default:
-				d.log.Errorf("cfg: unsupported command bus message type: %#v", i)
+				t.log.Errorf("cfg: unsupported command bus message type: %#v", i)
 			}
-		case nfo := <-d.objectList.InfoC:
-			d.log.Infof("cfg: object list: " + nfo)
-		case err := <-d.objectList.ErrC:
-			d.log.Infof("cfg: object list error: %s", err)
-		case nfo := <-d.nodeList.InfoC:
-			d.log.Infof("cfg: node list: " + nfo)
-		case err := <-d.nodeList.ErrC:
-			d.log.Infof("cfg: node list: error: %s", err)
+		case nfo := <-t.objectList.InfoC:
+			t.log.Infof("cfg: object list: " + nfo)
+		case err := <-t.objectList.ErrC:
+			t.log.Infof("cfg: object list error: %s", err)
+		case nfo := <-t.nodeList.InfoC:
+			t.log.Infof("cfg: node list: " + nfo)
+		case err := <-t.nodeList.ErrC:
+			t.log.Infof("cfg: node list: error: %s", err)
 		}
 	}
 }
 
-func (d *discover) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	d.clusterConfig = c.Value
-	d.nodeList.Add(c.NodesAdded...)
-	d.nodeList.Del(c.NodesRemoved...)
+func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
+	t.clusterConfig = c.Value
+	t.nodeList.Add(c.NodesAdded...)
+	t.nodeList.Del(c.NodesRemoved...)
 }
 
-func (d *discover) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
-	d.objectList.Add(c.Path.String())
+func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	t.objectList.Add(c.Path.String())
 }
 
-func (d *discover) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
-	d.objectList.Del(c.Path.String())
+func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	t.objectList.Del(c.Path.String())
 }
 
-func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
+func (t *T) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	if c.Path.Kind == naming.KindInvalid {
 		// may be node.conf
 		return
@@ -132,49 +132,49 @@ func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	s := c.Path.String()
 	mtime := file.ModTime(c.File)
 	if mtime.IsZero() {
-		d.objectLogger(c.Path).Infof("cfg: config file %s mtime is zero", c.File)
+		t.objectLogger(c.Path).Infof("cfg: config file %s mtime is zero", c.File)
 		return
 	}
-	if _, ok := d.cfgMTime[s]; !ok {
-		if err := icfg.Start(d.ctx, c.Path, c.File, d.cfgCmdC); err != nil {
+	if _, ok := t.cfgMTime[s]; !ok {
+		if err := icfg.Start(t.ctx, c.Path, c.File, t.cfgCmdC); err != nil {
 			return
 		}
 	}
-	d.cfgMTime[s] = mtime
+	t.cfgMTime[s] = mtime
 }
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
-func (d *discover) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
+func (t *T) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
 	s := p.String()
 
-	delete(d.cfgMTime, s)
+	delete(t.cfgMTime, s)
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
 		return
 	}
-	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
+	if err := icfg.Start(t.ctx, p, filename, t.cfgCmdC); err != nil {
 		return
 	}
-	d.cfgMTime[s] = mtime
+	t.cfgMTime[s] = mtime
 }
 
-func (d *discover) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
-	if c.Node == d.localhost {
+func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+	if c.Node == t.localhost {
 		return
 	}
-	d.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
+	t.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
 }
 
-func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
+func (t *T) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
 	s := p.String()
-	log := d.objectLogger(p)
+	log := t.objectLogger(p)
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	// Never drop local cluster config, ignore remote config older that local
-	if !p.Equal(naming.Cluster) && remoteInstanceConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteInstanceConfig) {
-		d.cancelFetcher(s)
+	if !p.Equal(naming.Cluster) && remoteInstanceConfig.UpdatedAt.After(localUpdated) && !t.inScope(&remoteInstanceConfig) {
+		t.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
 			log.Infof("cfg: remove local config %s (localnode not in node %s config scope)", s, node)
@@ -184,7 +184,7 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInsta
 		}
 		return
 	}
-	if mtime, ok := d.cfgMTime[s]; ok {
+	if mtime, ok := t.cfgMTime[s]; ok {
 		if !remoteInstanceConfig.UpdatedAt.After(mtime) {
 			// our version is more recent than remote one
 			return
@@ -193,49 +193,49 @@ func (d *discover) onRemoteConfigUpdated(p naming.Path, node string, remoteInsta
 		// Not yet started icfg, but file exists
 		return
 	}
-	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
+	if remoteFetcherUpdated, ok := t.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required
 		if remoteInstanceConfig.UpdatedAt.After(remoteFetcherUpdated) {
 			log.Warnf("cfg: cancel pending remote cfg fetcher, a more recent %s config is available on node %s", s, node)
-			d.cancelFetcher(s)
+			t.cancelFetcher(s)
 		} else {
 			// let running fetcher does its job
 			return
 		}
 	}
 	log.Infof("cfg: fetch %s config from node %s", s, node)
-	d.fetchConfigFromRemote(p, node, remoteInstanceConfig)
+	t.fetchConfigFromRemote(p, node, remoteInstanceConfig)
 }
 
-func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
-	if c.Node == "" || c.Node == d.localhost {
+func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
+	if c.Node == "" || c.Node == t.localhost {
 		return
 	}
 	s := c.Path.String()
-	if fetchFrom, ok := d.fetcherFrom[s]; ok {
+	if fetchFrom, ok := t.fetcherFrom[s]; ok {
 		if fetchFrom == c.Node {
-			d.objectLogger(c.Path).Infof("cfg: cancel pending remote cfg fetcher, instance %s@%s is no longer present", s, c.Node)
-			d.cancelFetcher(s)
+			t.objectLogger(c.Path).Infof("cfg: cancel pending remote cfg fetcher, instance %s@%s is no longer present", s, c.Node)
+			t.cancelFetcher(s)
 		}
 	}
 }
 
-func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
-	log := d.objectLogger(c.Path)
+func (t *T) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
+	log := t.objectLogger(c.Path)
 
 	freezeIfOrchestrateHA := func(confFile string) error {
 		if !c.Freeze {
 			return nil
 		}
 		if err := freeze.Freeze(c.Path.FrozenFile()); err != nil {
-			d.log.Errorf("cfg: can't freeze instance before installing %s config fetched from node %s: %s", c.Path, c.Node, err)
+			t.log.Errorf("cfg: can't freeze instance before installing %s config fetched from node %s: %s", c.Path, c.Node, err)
 			return err
 		}
 		log.Infof("cfg: freeze instance before installing %s config fetched from node %s", c.Path, c.Node)
 		return nil
 	}
 
-	defer d.cancelFetcher(c.Path.String())
+	defer t.cancelFetcher(c.Path.String())
 	select {
 	case <-c.Ctx.Done():
 		c.Err <- nil
@@ -255,8 +255,8 @@ func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	}
 }
 
-func (d *discover) inScope(cfg *instance.Config) bool {
-	localhost := d.localhost
+func (t *T) inScope(cfg *instance.Config) bool {
+	localhost := t.localhost
 	for _, s := range cfg.Scope {
 		if s == localhost {
 			return true
@@ -265,40 +265,40 @@ func (d *discover) inScope(cfg *instance.Config) bool {
 	return false
 }
 
-func (d *discover) cancelFetcher(s string) {
-	if cancel, ok := d.fetcherCancel[s]; ok {
-		d.log.Debugf("cfg: cancelFetcher %s", s)
+func (t *T) cancelFetcher(s string) {
+	if cancel, ok := t.fetcherCancel[s]; ok {
+		t.log.Debugf("cfg: cancelFetcher %s", s)
 		cancel()
-		peer := d.fetcherFrom[s]
-		delete(d.fetcherCancel, s)
-		delete(d.fetcherNodeCancel[peer], s)
-		delete(d.fetcherUpdated, s)
-		delete(d.fetcherFrom, s)
+		peer := t.fetcherFrom[s]
+		delete(t.fetcherCancel, s)
+		delete(t.fetcherNodeCancel[peer], s)
+		delete(t.fetcherUpdated, s)
+		delete(t.fetcherFrom, s)
 	}
 }
 
-func (d *discover) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
+func (t *T) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
 	s := p.String()
-	if n, ok := d.fetcherFrom[s]; ok {
-		d.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
+	if n, ok := t.fetcherFrom[s]; ok {
+		t.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
 		return
 	}
-	ctx, cancel := context.WithCancel(d.ctx)
-	d.fetcherCancel[s] = cancel
-	d.fetcherFrom[s] = peer
-	d.fetcherUpdated[s] = remoteInstanceConfig.UpdatedAt
-	if _, ok := d.fetcherNodeCancel[peer]; ok {
-		d.fetcherNodeCancel[peer][s] = cancel
+	ctx, cancel := context.WithCancel(t.ctx)
+	t.fetcherCancel[s] = cancel
+	t.fetcherFrom[s] = peer
+	t.fetcherUpdated[s] = remoteInstanceConfig.UpdatedAt
+	if _, ok := t.fetcherNodeCancel[peer]; ok {
+		t.fetcherNodeCancel[peer][s] = cancel
 	} else {
-		d.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
+		t.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
 	}
 
 	cli, err := newDaemonClient(peer)
 	if err != nil {
-		d.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
+		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
 	}
-	go fetch(ctx, cli, p, peer, d.cfgCmdC, remoteInstanceConfig)
+	go fetch(ctx, cli, p, peer, t.cfgCmdC, remoteInstanceConfig)
 }
 
 func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, remoteInstanceConfig instance.Config) {

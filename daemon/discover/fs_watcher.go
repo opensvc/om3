@@ -52,9 +52,9 @@ func dirRemoved(event fsnotify.Event) bool {
 	return true
 }
 
-func (d *discover) fsWatcherStart() (func(), error) {
+func (t *T) fsWatcherStart() (func(), error) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: fs: ")
-	bus := pubsub.BusFromContext(d.ctx)
+	bus := pubsub.BusFromContext(t.ctx)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Errorf("start: %s", err)
@@ -65,9 +65,9 @@ func (d *discover) fsWatcherStart() (func(), error) {
 			log.Errorf("close: %s", err)
 		}
 	}
-	d.fsWatcher = watcher
+	t.fsWatcher = watcher
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(d.ctx)
+	ctx, cancel := context.WithCancel(t.ctx)
 	stop := func() {
 		log.Infof("stopping")
 		cancel()
@@ -84,7 +84,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 			func(filename string, entry fs.DirEntry, err error) error {
 				switch {
 				case entry.IsDir():
-					if err := d.fsWatcher.Add(filename); err != nil {
+					if err := t.fsWatcher.Add(filename); err != nil {
 						log.Errorf("add dir watch %s: %s", filename, err)
 					} else {
 						log.Infof("add dir watch %s", filename)
@@ -134,7 +134,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
 		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
 		for _, dir := range []string{rawconfig.Paths.Etc, varNodeDir} {
-			if err := d.fsWatcher.Add(dir); err != nil {
+			if err := t.fsWatcher.Add(dir); err != nil {
 				log.Errorf("add dir watch %s: %s", dir, err)
 			} else {
 				log.Infof("add dir watch %s", dir)
@@ -143,10 +143,10 @@ func (d *discover) fsWatcherStart() (func(), error) {
 
 		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Infof("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(&msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, pubsub.Label{"node", d.localhost})
+			bus.Pub(&msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, pubsub.Label{"node", t.localhost})
 		} else {
 			log.Infof("detect %s initially absent", nodeFrozenFile)
-			bus.Pub(&msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, pubsub.Label{"node", d.localhost})
+			bus.Pub(&msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, pubsub.Label{"node", t.localhost})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -173,7 +173,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debugf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", d.localhost})
+							bus.Pub(&msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", t.localhost})
 						}
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -191,7 +191,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						}
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", d.localhost})
+							bus.Pub(&msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", t.localhost})
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
@@ -231,7 +231,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Debugf("skip event %s", event)
 						continue
 					}
-					if err := d.fsWatcher.Add(filename); err != nil {
+					if err := t.fsWatcher.Add(filename); err != nil {
 						log.Errorf("add dir watch %s: %s", filename, err)
 					} else {
 						log.Infof("add dir watch %s", filename)
@@ -240,7 +240,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Errorf("init fs watches walking %s: %s", filename, err)
 					}
 				case dirRemoved(event):
-					if err := d.fsWatcher.Remove(filename); err != nil {
+					if err := t.fsWatcher.Remove(filename); err != nil {
 						log.Errorf("remove dir watch %s: %s", filename, err)
 					} else {
 						log.Infof("remove dir watch %s", filename)
