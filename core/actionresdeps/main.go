@@ -49,7 +49,7 @@ func (t kind) String() string {
 	}
 }
 
-func (t Dep) Key() depKey {
+func (t Dep) key() depKey {
 	o := depKey{
 		Action: t.Action,
 		Kind:   t.Kind,
@@ -81,7 +81,7 @@ func (t *Store) RegisterSlice(deps []Dep) {
 func (t *Store) Register(dep Dep) {
 	t.Lock()
 	defer t.Unlock()
-	key := dep.Key()
+	key := dep.key()
 	bs, ok := t.m[key]
 	if !ok {
 		t.m[key] = make(bMap)
