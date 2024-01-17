@@ -126,7 +126,7 @@ func (t *Manager) worker() {
 }
 
 // AuthenticateNode returns nil if nodename is a cluster node and password is cluster secret
-func (_ *NodeDB) AuthenticateNode(nodename, password string) error {
+func (*NodeDB) AuthenticateNode(nodename, password string) error {
 	if nodename == "" {
 		return fmt.Errorf("can't authenticate: nodename is empty")
 	}
