@@ -6,54 +6,54 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (o *imon) orchestrateUnprovisioned() {
-	switch o.state.State {
+func (t *Manager) orchestrateUnprovisioned() {
+	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateProvisionFailed,
 		instance.MonitorStateStartFailed:
-		o.UnprovisionedFromIdle()
+		t.UnprovisionedFromIdle()
 	case instance.MonitorStateWaitNonLeader:
-		o.UnprovisionedFromWaitNonLeader()
+		t.UnprovisionedFromWaitNonLeader()
 	}
 }
 
-func (o *imon) UnprovisionedFromIdle() {
-	if o.unprovisionedClearIfReached() {
+func (t *Manager) UnprovisionedFromIdle() {
+	if t.unprovisionedClearIfReached() {
 		return
 	}
-	if o.isUnprovisionLeader() {
-		if o.hasNonLeaderProvisioned() {
-			o.transitionTo(instance.MonitorStateWaitNonLeader)
+	if t.isUnprovisionLeader() {
+		if t.hasNonLeaderProvisioned() {
+			t.transitionTo(instance.MonitorStateWaitNonLeader)
 		} else {
-			o.doAction(o.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+			t.doAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 		}
 	} else {
 		// immediate action on non-leaders
-		o.doAction(o.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+		t.doAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 	}
 }
 
-func (o *imon) UnprovisionedFromWaitNonLeader() {
-	if o.unprovisionedClearIfReached() {
-		o.transitionTo(instance.MonitorStateIdle)
+func (t *Manager) UnprovisionedFromWaitNonLeader() {
+	if t.unprovisionedClearIfReached() {
+		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if !o.isUnprovisionLeader() {
-		o.transitionTo(instance.MonitorStateIdle)
+	if !t.isUnprovisionLeader() {
+		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if o.hasNonLeaderProvisioned() {
+	if t.hasNonLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+	t.doAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 }
 
-func (o *imon) hasNonLeaderProvisioned() bool {
-	for node, otherInstStatus := range o.instStatus {
+func (t *Manager) hasNonLeaderProvisioned() bool {
+	for node, otherInstStatus := range t.instStatus {
 		var isLeader bool
-		if node == o.localhost {
-			isLeader = o.state.IsLeader
-		} else if instMon, ok := o.instMonitor[node]; ok {
+		if node == t.localhost {
+			isLeader = t.state.IsLeader
+		} else if instMon, ok := t.instMonitor[node]; ok {
 			isLeader = instMon.IsLeader
 		}
 		if isLeader {
@@ -66,23 +66,23 @@ func (o *imon) hasNonLeaderProvisioned() bool {
 	return false
 }
 
-func (o *imon) unprovisionedClearIfReached() bool {
+func (t *Manager) unprovisionedClearIfReached() bool {
 	reached := func(msg string) bool {
-		o.log.Infof(msg)
-		o.doneAndIdle()
-		o.state.LocalExpect = instance.MonitorLocalExpectNone
-		o.updateIfChange()
+		t.log.Infof(msg)
+		t.doneAndIdle()
+		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.updateIfChange()
 		return true
 	}
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
 		return reached("unprovisioned orchestration: instance is not provisioned -> set reached, clear local expect")
 	}
-	if o.instStatus[o.localhost].Avail == status.NotApplicable {
+	if t.instStatus[t.localhost].Avail == status.NotApplicable {
 		return reached("unprovisioned orchestration: instance availability is n/a -> set reached, clear local expect")
 	}
 	return false
 }
 
-func (o *imon) isUnprovisionLeader() bool {
-	return o.isProvisioningLeader()
+func (t *Manager) isUnprovisionLeader() bool {
+	return t.isProvisioningLeader()
 }

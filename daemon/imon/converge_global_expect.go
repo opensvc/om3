@@ -8,10 +8,10 @@ import (
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
-func (o *imon) convergeGlobalExpectFromRemote() {
+func (t *Manager) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
-	for node, instMon := range o.instMonitor {
+	for node, instMon := range t.instMonitor {
 		if instMon.GlobalExpect == instance.MonitorGlobalExpectZero {
 			continue
 		}
@@ -24,33 +24,33 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 	if mostRecentUpdated.IsZero() {
 		return
 	}
-	if mostRecentUpdated.After(o.state.GlobalExpectUpdatedAt) {
-		o.change = true
-		o.state.GlobalExpect = o.instMonitor[mostRecentNode].GlobalExpect
-		o.state.GlobalExpectUpdatedAt = o.instMonitor[mostRecentNode].GlobalExpectUpdatedAt
-		o.state.GlobalExpectOptions = o.instMonitor[mostRecentNode].GlobalExpectOptions
-		o.state.OrchestrationID = o.instMonitor[mostRecentNode].OrchestrationID
-		o.state.State = instance.MonitorStateIdle
-		strVal := o.instMonitor[mostRecentNode].GlobalExpect.String()
+	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
+		t.change = true
+		t.state.GlobalExpect = t.instMonitor[mostRecentNode].GlobalExpect
+		t.state.GlobalExpectUpdatedAt = t.instMonitor[mostRecentNode].GlobalExpectUpdatedAt
+		t.state.GlobalExpectOptions = t.instMonitor[mostRecentNode].GlobalExpectOptions
+		t.state.OrchestrationID = t.instMonitor[mostRecentNode].OrchestrationID
+		t.state.State = instance.MonitorStateIdle
+		strVal := t.instMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
-			mostRecentNode, strVal, o.state.OrchestrationID, mostRecentUpdated)
-		o.log = o.newLogger(o.state.OrchestrationID)
+		t.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
+			mostRecentNode, strVal, t.state.OrchestrationID, mostRecentUpdated)
+		t.log = t.newLogger(t.state.OrchestrationID)
 	}
 }
 
-func (o *imon) isConvergedGlobalExpect() bool {
-	localUpdated := o.state.GlobalExpectUpdatedAt
-	for s, v := range o.instMonitor {
-		if s == o.localhost {
+func (t *Manager) isConvergedGlobalExpect() bool {
+	localUpdated := t.state.GlobalExpectUpdatedAt
+	for s, v := range t.instMonitor {
+		if s == t.localhost {
 			err := fmt.Errorf("bug: isConvergedGlobalExpect detect unexpected localhost in internal instance monitor cache keys")
-			o.log.Errorf("isConvergedGlobalExpect: %s", err)
+			t.log.Errorf("isConvergedGlobalExpect: %s", err)
 			panic(err)
 		}
 		if localUpdated.After(v.GlobalExpectUpdatedAt) {
-			o.log.Debugf("wait GlobalExpect propagation on %s", s)
+			t.log.Debugf("wait GlobalExpect propagation on %s", s)
 			return false
 		}
 	}

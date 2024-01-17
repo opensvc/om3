@@ -25,37 +25,37 @@ import (
 //		   -> 'shutdown failed' if crmShutdown fails (done)
 //	  from state 'shutdown':
 //		   => 'shutdown' no change (done)
-func (o *imon) orchestrateLocalExpectShutdown() {
-	o.log.Debugf("orchestrateLocalExpectShutdown from state %s", o.state.State)
-	switch o.state.State {
+func (t *Manager) orchestrateLocalExpectShutdown() {
+	t.log.Debugf("orchestrateLocalExpectShutdown from state %s", t.state.State)
+	switch t.state.State {
 	case instance.MonitorStateShutdown:
 		// already in expected state, no more actions
 	case instance.MonitorStateIdle:
-		o.doShutdown()
+		t.doShutdown()
 	case instance.MonitorStateWaitChildren:
-		o.setWaitChildren()
+		t.setWaitChildren()
 	case instance.MonitorStateShutting:
 		// already shutting in progress
-		o.log.Warnf("unexpected orchestrate local expect shutdown from state %s", o.state.State)
+		t.log.Warnf("unexpected orchestrate local expect shutdown from state %s", t.state.State)
 	case instance.MonitorStateShutdownFailed:
 		// wait for clear or abort
 	default:
-		o.log.Errorf("don't know how to shutdown from %s", o.state.State)
+		t.log.Errorf("don't know how to shutdown from %s", t.state.State)
 	}
 }
 
-func (o *imon) doShutdown() {
-	if o.isLocalShutdown() {
-		o.log.Infof("shutdown reached")
-		o.transitionTo(instance.MonitorStateShutdown)
+func (t *Manager) doShutdown() {
+	if t.isLocalShutdown() {
+		t.log.Infof("shutdown reached")
+		t.transitionTo(instance.MonitorStateShutdown)
 		return
 	}
-	if o.setWaitChildren() {
+	if t.setWaitChildren() {
 		return
 	}
-	o.doAction(o.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
+	t.doAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
 }
 
-func (o *imon) isLocalShutdown() bool {
-	return o.instStatus[o.localhost].Avail.Is(status.Down, status.StandbyDown)
+func (t *Manager) isLocalShutdown() bool {
+	return t.instStatus[t.localhost].Avail.Is(status.Down, status.StandbyDown)
 }

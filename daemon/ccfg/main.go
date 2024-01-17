@@ -57,13 +57,12 @@ type (
 )
 
 func New(drainDuration time.Duration) *Manager {
-	o := &Manager{
+	return &Manager{
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
 		log:           plog.NewDefaultLogger().WithPrefix("daemon: ccfg: ").Attr("pkg", "daemon/ccfg"),
 		networkSigs:   make(map[string]string),
 	}
-	return o
 }
 
 // Start launches the ccfg worker goroutine

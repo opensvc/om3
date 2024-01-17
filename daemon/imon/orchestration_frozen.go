@@ -2,8 +2,8 @@ package imon
 
 import "github.com/opensvc/om3/core/instance"
 
-func (o *imon) orchestrateFrozen() {
-	switch o.state.State {
+func (t *Manager) orchestrateFrozen() {
+	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStartFailed,
 		instance.MonitorStateStopFailed,
@@ -11,25 +11,25 @@ func (o *imon) orchestrateFrozen() {
 		instance.MonitorStateProvisionFailed,
 		instance.MonitorStateUnprovisionFailed,
 		instance.MonitorStateReady:
-		o.frozenFromIdle()
+		t.frozenFromIdle()
 	default:
-		o.log.Warnf("orchestrateFrozen has no solution from state %s", o.state.State)
+		t.log.Warnf("orchestrateFrozen has no solution from state %s", t.state.State)
 	}
 }
 
-func (o *imon) frozenFromIdle() {
-	if o.frozenClearIfReached() {
+func (t *Manager) frozenFromIdle() {
+	if t.frozenClearIfReached() {
 		return
 	}
-	o.doTransitionAction(o.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
+	t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
 }
 
-func (o *imon) frozenClearIfReached() bool {
-	if o.instStatus[o.localhost].IsFrozen() {
-		o.log.Infof("instance state is frozen -> set reached, clear local expect")
-		o.doneAndIdle()
-		o.state.LocalExpect = instance.MonitorLocalExpectNone
-		o.clearPending()
+func (t *Manager) frozenClearIfReached() bool {
+	if t.instStatus[t.localhost].IsFrozen() {
+		t.log.Infof("instance state is frozen -> set reached, clear local expect")
+		t.doneAndIdle()
+		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.clearPending()
 		return true
 	}
 	return false

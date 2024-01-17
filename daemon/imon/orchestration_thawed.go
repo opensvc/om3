@@ -4,8 +4,8 @@ import (
 	"github.com/opensvc/om3/core/instance"
 )
 
-func (o *imon) orchestrateThawed() {
-	switch o.state.State {
+func (t *Manager) orchestrateThawed() {
+	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStartFailed,
 		instance.MonitorStateStarted,
@@ -17,23 +17,23 @@ func (o *imon) orchestrateThawed() {
 		instance.MonitorStateUnprovisionFailed,
 		instance.MonitorStateUnprovisioned,
 		instance.MonitorStateReady:
-		o.ThawedFromIdle()
+		t.ThawedFromIdle()
 	}
 }
 
-func (o *imon) ThawedFromIdle() {
-	if o.thawedClearIfReached() {
+func (t *Manager) ThawedFromIdle() {
+	if t.thawedClearIfReached() {
 		return
 	}
-	o.doTransitionAction(o.unfreeze, instance.MonitorStateThawing, instance.MonitorStateIdle, instance.MonitorStateThawedFailed)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateIdle, instance.MonitorStateThawedFailed)
 }
 
-func (o *imon) thawedClearIfReached() bool {
-	if o.instStatus[o.localhost].IsThawed() {
-		o.log.Infof("instance state is thawed -> set reached, clear local expect")
-		o.doneAndIdle()
-		o.state.LocalExpect = instance.MonitorLocalExpectNone
-		o.clearPending()
+func (t *Manager) thawedClearIfReached() bool {
+	if t.instStatus[t.localhost].IsThawed() {
+		t.log.Infof("instance state is thawed -> set reached, clear local expect")
+		t.doneAndIdle()
+		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.clearPending()
 		return true
 	}
 	return false

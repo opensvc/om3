@@ -6,221 +6,221 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 )
 
-func (o *imon) orchestrateFailoverPlacedStart() {
-	switch o.state.State {
+func (t *Manager) orchestrateFailoverPlacedStart() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.placedUnfreeze()
+		t.placedUnfreeze()
 	case instance.MonitorStateThawed:
-		o.orchestrateFailoverPlacedStartFromThawed()
+		t.orchestrateFailoverPlacedStartFromThawed()
 	case instance.MonitorStateStarted:
-		o.orchestrateFailoverPlacedStartFromStarted()
+		t.orchestrateFailoverPlacedStartFromStarted()
 	case instance.MonitorStateStopped:
-		o.orchestrateFailoverPlacedStartFromStopped()
+		t.orchestrateFailoverPlacedStartFromStopped()
 	case instance.MonitorStateStartFailed:
-		o.orchestratePlacedFromStartFailed()
+		t.orchestratePlacedFromStartFailed()
 	case instance.MonitorStateThawing:
 	case instance.MonitorStateFreezing:
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Errorf("don't know how to orchestrate placed start from %s", o.state.State)
+		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
 }
 
-func (o *imon) orchestrateFlexPlacedStart() {
-	switch o.state.State {
+func (t *Manager) orchestrateFlexPlacedStart() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.placedUnfreeze()
+		t.placedUnfreeze()
 	case instance.MonitorStateThawed:
-		o.orchestrateFlexPlacedStartFromThawed()
+		t.orchestrateFlexPlacedStartFromThawed()
 	case instance.MonitorStateStarted:
-		o.orchestrateFlexPlacedStartFromStarted()
+		t.orchestrateFlexPlacedStartFromStarted()
 	case instance.MonitorStateStopped:
-		o.transitionTo(instance.MonitorStateIdle)
+		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailed:
-		o.orchestratePlacedFromStartFailed()
+		t.orchestratePlacedFromStartFailed()
 	case instance.MonitorStateThawing:
 	case instance.MonitorStateFreezing:
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Errorf("don't know how to orchestrate placed start from %s", o.state.State)
+		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
 }
 
-func (o *imon) orchestrateFailoverPlacedStop() {
-	switch o.state.State {
+func (t *Manager) orchestrateFailoverPlacedStop() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.placedUnfreeze()
+		t.placedUnfreeze()
 	case instance.MonitorStateThawed:
-		o.placedStop()
+		t.placedStop()
 	case instance.MonitorStateStopFailed:
-		o.clearStopFailedIfDown()
+		t.clearStopFailedIfDown()
 	case instance.MonitorStateStopped:
-		o.clearStopped()
+		t.clearStopped()
 	case instance.MonitorStateReady:
-		o.transitionTo(instance.MonitorStateIdle)
+		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailed:
-		o.orchestratePlacedFromStartFailed()
+		t.orchestratePlacedFromStartFailed()
 	case instance.MonitorStateThawing:
 	case instance.MonitorStateFreezing:
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Errorf("don't know how to orchestrate placed stop from %s", o.state.State)
+		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
 }
 
-func (o *imon) orchestrateFlexPlacedStop() {
-	switch o.state.State {
+func (t *Manager) orchestrateFlexPlacedStop() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.placedUnfreeze()
+		t.placedUnfreeze()
 	case instance.MonitorStateThawed:
-		o.placedStop()
+		t.placedStop()
 	case instance.MonitorStateStopFailed:
-		o.clearStopFailedIfDown()
+		t.clearStopFailedIfDown()
 	case instance.MonitorStateStopped:
-		o.clearStopped()
+		t.clearStopped()
 	case instance.MonitorStateReady:
-		o.transitionTo(instance.MonitorStateIdle)
+		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailed:
-		o.orchestratePlacedFromStartFailed()
+		t.orchestratePlacedFromStartFailed()
 	case instance.MonitorStateThawing:
 	case instance.MonitorStateFreezing:
 	case instance.MonitorStateStopping:
 	case instance.MonitorStateStarting:
 	default:
-		o.log.Errorf("don't know how to orchestrate placed stop from %s", o.state.State)
+		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
 }
 
-func (o *imon) getPlacedAtDestination() ([]string, bool) {
-	options, ok := o.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
+func (t *Manager) getPlacedAtDestination() ([]string, bool) {
+	options, ok := t.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 	if !ok {
 		return nil, ok
 	}
 	return options.Destination, true
 }
 
-func (o *imon) orchestratePlacedAt() {
-	dstNodes, ok := o.getPlacedAtDestination()
+func (t *Manager) orchestratePlacedAt() {
+	dstNodes, ok := t.getPlacedAtDestination()
 	if !ok {
-		o.log.Errorf("missing placed@ destination")
+		t.log.Errorf("missing placed@ destination")
 		return
 	}
-	if stringslice.Has(o.localhost, dstNodes) {
-		o.orchestratePlacedStart()
+	if stringslice.Has(t.localhost, dstNodes) {
+		t.orchestratePlacedStart()
 	} else {
-		o.orchestratePlacedStop()
+		t.orchestratePlacedStop()
 	}
 }
 
-func (o *imon) placedUnfreeze() {
-	if o.instStatus[o.localhost].IsThawed() {
-		o.transitionTo(instance.MonitorStateThawed)
+func (t *Manager) placedUnfreeze() {
+	if t.instStatus[t.localhost].IsThawed() {
+		t.transitionTo(instance.MonitorStateThawed)
 	} else {
-		o.doUnfreeze()
+		t.doUnfreeze()
 	}
 }
 
-func (o *imon) doPlacedStart() {
-	o.doAction(o.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
+func (t *Manager) doPlacedStart() {
+	t.doAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
 }
 
-func (o *imon) placedStart() {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) placedStart() {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown, status.StandbyUp:
-		o.doPlacedStart()
+		t.doPlacedStart()
 	case status.Up, status.Warn:
-		o.skipPlacedStart()
+		t.skipPlacedStart()
 	default:
 		return
 	}
 }
 
-func (o *imon) placedStop() {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) placedStop() {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown, status.StandbyUp:
-		o.skipPlacedStop()
+		t.skipPlacedStop()
 	case status.Up, status.Warn:
-		o.doPlacedStop()
+		t.doPlacedStop()
 	default:
 		return
 	}
 }
 
-func (o *imon) doPlacedStop() {
-	o.createPendingWithDuration(stopDuration)
-	o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+func (t *Manager) doPlacedStop() {
+	t.createPendingWithDuration(stopDuration)
+	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
-func (o *imon) skipPlacedStop() {
-	o.loggerWithState().Infof("instance is already down")
-	o.change = true
-	o.state.State = instance.MonitorStateStopped
-	o.clearPending()
+func (t *Manager) skipPlacedStop() {
+	t.loggerWithState().Infof("instance is already down")
+	t.change = true
+	t.state.State = instance.MonitorStateStopped
+	t.clearPending()
 }
 
-func (o *imon) skipPlacedStart() {
-	o.loggerWithState().Infof("instance is already up")
-	o.change = true
-	o.state.State = instance.MonitorStateStarted
-	o.clearPending()
+func (t *Manager) skipPlacedStart() {
+	t.loggerWithState().Infof("instance is already up")
+	t.change = true
+	t.state.State = instance.MonitorStateStarted
+	t.clearPending()
 }
 
-func (o *imon) clearStopFailedIfDown() {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) clearStopFailedIfDown() {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown:
-		o.loggerWithState().Infof("instance is down, clear stop failed")
-		o.change = true
-		o.state.State = instance.MonitorStateStopped
-		o.clearPending()
+		t.loggerWithState().Infof("instance is down, clear stop failed")
+		t.change = true
+		t.state.State = instance.MonitorStateStopped
+		t.clearPending()
 	}
 }
 
-func (o *imon) clearStopped() {
-	o.doneAndIdle()
-	o.state.LocalExpect = instance.MonitorLocalExpectNone
-	o.clearPending()
+func (t *Manager) clearStopped() {
+	t.doneAndIdle()
+	t.state.LocalExpect = instance.MonitorLocalExpectNone
+	t.clearPending()
 }
 
-func (o *imon) orchestrateFailoverPlacedStartFromThawed() {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) orchestrateFailoverPlacedStartFromThawed() {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Up:
-		o.transitionTo(instance.MonitorStateStarted)
+		t.transitionTo(instance.MonitorStateStarted)
 	default:
-		o.transitionTo(instance.MonitorStateStopped)
+		t.transitionTo(instance.MonitorStateStopped)
 	}
 }
 
-func (o *imon) orchestrateFailoverPlacedStartFromStopped() {
-	switch o.objStatus.Avail {
+func (t *Manager) orchestrateFailoverPlacedStartFromStopped() {
+	switch t.objStatus.Avail {
 	case status.NotApplicable, status.Undef:
-		o.startedClearIfReached()
+		t.startedClearIfReached()
 	case status.Down:
-		o.placedStart()
+		t.placedStart()
 	default:
 		return
 	}
 }
 
-func (o *imon) orchestrateFailoverPlacedStartFromStarted() {
-	o.startedClearIfReached()
+func (t *Manager) orchestrateFailoverPlacedStartFromStarted() {
+	t.startedClearIfReached()
 }
 
-func (o *imon) orchestrateFlexPlacedStartFromThawed() {
-	o.placedStart()
+func (t *Manager) orchestrateFlexPlacedStartFromThawed() {
+	t.placedStart()
 }
 
-func (o *imon) orchestrateFlexPlacedStartFromStarted() {
-	o.startedClearIfReached()
+func (t *Manager) orchestrateFlexPlacedStartFromStarted() {
+	t.startedClearIfReached()
 }
 
-func (o *imon) orchestratePlacedFromStartFailed() {
+func (t *Manager) orchestratePlacedFromStartFailed() {
 	switch {
 	/*
 		case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
@@ -228,11 +228,11 @@ func (o *imon) orchestratePlacedFromStartFailed() {
 			o.done()
 			o.clearPending()
 	*/
-	case o.objStatus.Avail == status.Up:
-		o.startedClearIfReached()
+	case t.objStatus.Avail == status.Up:
+		t.startedClearIfReached()
 	default:
-		o.loggerWithState().Infof("local instance is start failed -> set done")
-		o.done()
-		o.clearPending()
+		t.loggerWithState().Infof("local instance is start failed -> set done")
+		t.done()
+		t.clearPending()
 	}
 }
