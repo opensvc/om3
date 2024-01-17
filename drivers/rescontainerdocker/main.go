@@ -100,10 +100,10 @@ var (
 	// Allocate a single client socket for all container.docker resources
 	// Get/Init it via cli()
 	clientCache *docker.Client
-	imageCache  = NewImageCacheMap()
+	imageCache  = newImageCacheMap()
 )
 
-func NewImageCacheMap() *imageCacheMap {
+func newImageCacheMap() *imageCacheMap {
 	return &imageCacheMap{
 		m: make(map[string]imageapi.Image),
 	}
