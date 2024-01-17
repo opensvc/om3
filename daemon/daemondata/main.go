@@ -27,7 +27,7 @@ import (
 type (
 	// T struct holds a daemondata manager cmdC to submit orders
 	T struct {
-		cmdC   chan<- caller
+		cmdC   chan<- Caller
 		cancel func()
 	}
 )
@@ -35,9 +35,9 @@ type (
 // Start runs the daemon journaled data manager
 //
 // It returns a cmdC chan to submit actions on cluster data
-func Start(parent context.Context, drainDuration time.Duration) (chan<- caller, chan<- *hbtype.Msg, context.CancelFunc) {
+func Start(parent context.Context, drainDuration time.Duration) (chan<- Caller, chan<- *hbtype.Msg, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
-	cmdC := make(chan caller)
+	cmdC := make(chan Caller)
 	hbRecvMsgQ := make(chan *hbtype.Msg)
 	var wg sync.WaitGroup
 	d := newData()
@@ -55,6 +55,6 @@ func Start(parent context.Context, drainDuration time.Duration) (chan<- caller, 
 }
 
 // New returns a new *T from an existing daemondata manager
-func New(cmd chan<- caller) *T {
+func New(cmd chan<- Caller) *T {
 	return &T{cmdC: cmd}
 }
