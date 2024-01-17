@@ -314,7 +314,7 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 							log.Errorf("can't filter on object created")
 							return err
 						} else if selected.Has(s) {
-							log.Infof("add created object %s to selection", s)
+							log.Debugf("add created object %s to selection", s)
 							pathSelected[s] = nil
 						}
 					}
@@ -333,7 +333,7 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 						s := ev.Path.String()
 						if pathSelected.Has(s) {
 							notAnymoreSelected = true
-							log.Infof("remove deleted object %s from selection", s)
+							log.Debugf("remove deleted object %s from selection", s)
 							delete(pathSelected, s)
 						}
 						if _, ok := pathM[s]; ok {
