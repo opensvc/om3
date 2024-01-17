@@ -74,7 +74,7 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		return nil
 	}
 
-	for nodename, _ := range instanceConfigData {
+	for nodename := range instanceConfigData {
 		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
