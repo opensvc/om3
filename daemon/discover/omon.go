@@ -14,7 +14,7 @@ var (
 	SubscriptionQueueSizeOmon = 16000
 )
 
-func (t *T) omon(started chan<- bool) {
+func (t *Manager) omon(started chan<- bool) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: omon: ")
 	log.Infof("started")
 	defer log.Infof("stopped")

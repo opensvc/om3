@@ -33,7 +33,7 @@ import (
 )
 
 type (
-	T struct {
+	Manager struct {
 		cfgCmdC           chan any
 		objectMonitorCmdC chan any
 		ctx               context.Context
@@ -87,9 +87,9 @@ type (
 	}
 )
 
-// New prepares Discover with drainDuration.
-func New(drainDuration time.Duration) *T {
-	return &T{
+// NewManager prepares Discover with drainDuration.
+func NewManager(drainDuration time.Duration) *Manager {
+	return &Manager{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
 		cfgMTime:          make(map[string]time.Time),
@@ -108,7 +108,7 @@ func New(drainDuration time.Duration) *T {
 
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create.
-func (t *T) Start(ctx context.Context) (err error) {
+func (t *Manager) Start(ctx context.Context) (err error) {
 	t.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
 	t.log.Infof("discover starting")
 
@@ -160,7 +160,7 @@ func (t *T) Start(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *T) Stop() error {
+func (t *Manager) Stop() error {
 	t.log.Infof("stopping")
 	defer t.log.Infof("stopped")
 	if t.fsWatcherStop != nil {
@@ -171,6 +171,6 @@ func (t *T) Stop() error {
 	return nil
 }
 
-func (t *T) objectLogger(p naming.Path) *plog.Logger {
+func (t *Manager) objectLogger(p naming.Path) *plog.Logger {
 	return naming.LogWithPath(t.log, p)
 }

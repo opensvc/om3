@@ -139,7 +139,7 @@ func (t *T) Start(ctx context.Context) error {
 		listener.New(t.ctx),
 		nmon.New(daemonenv.DrainChanDuration),
 		dns.NewManager(daemonenv.DrainChanDuration),
-		discover.New(daemonenv.DrainChanDuration),
+		discover.NewManager(daemonenv.DrainChanDuration),
 		hb.New(t.ctx),
 		collector.New(),
 		scheduler.New(),

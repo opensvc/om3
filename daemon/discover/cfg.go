@@ -28,7 +28,7 @@ var (
 	SubscriptionQueueSizeCfg = 30000
 )
 
-func (t *T) startSubscriptions() *pubsub.Subscription {
+func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("discover.cfg", pubsub.WithQueueSize(SubscriptionQueueSizeCfg))
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
@@ -41,7 +41,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	return sub
 }
 
-func (t *T) cfg(started chan<- bool) {
+func (t *Manager) cfg(started chan<- bool) {
 	t.log.Infof("cfg: started")
 	defer t.log.Infof("cfg: stopped")
 	defer func() {
@@ -110,21 +110,21 @@ func (t *T) cfg(started chan<- bool) {
 	}
 }
 
-func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
+func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.clusterConfig = c.Value
 	t.nodeList.Add(c.NodesAdded...)
 	t.nodeList.Del(c.NodesRemoved...)
 }
 
-func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+func (t *Manager) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	t.objectList.Add(c.Path.String())
 }
 
-func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+func (t *Manager) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.objectList.Del(c.Path.String())
 }
 
-func (t *T) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
+func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	if c.Path.Kind == naming.KindInvalid {
 		// may be node.conf
 		return
@@ -144,7 +144,7 @@ func (t *T) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 }
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
-func (t *T) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
+func (t *Manager) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
 	s := p.String()
@@ -160,14 +160,14 @@ func (t *T) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
 	t.cfgMTime[s] = mtime
 }
 
-func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	if c.Node == t.localhost {
 		return
 	}
 	t.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
 }
 
-func (t *T) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
+func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
 	s := p.String()
 	log := t.objectLogger(p)
 	localUpdated := file.ModTime(p.ConfigFile())
@@ -207,7 +207,7 @@ func (t *T) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConf
 	t.fetchConfigFromRemote(p, node, remoteInstanceConfig)
 }
 
-func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
+func (t *Manager) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 	if c.Node == "" || c.Node == t.localhost {
 		return
 	}
@@ -220,7 +220,7 @@ func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 	}
 }
 
-func (t *T) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
+func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	log := t.objectLogger(c.Path)
 
 	freezeIfOrchestrateHA := func(confFile string) error {
@@ -255,7 +255,7 @@ func (t *T) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	}
 }
 
-func (t *T) inScope(cfg *instance.Config) bool {
+func (t *Manager) inScope(cfg *instance.Config) bool {
 	localhost := t.localhost
 	for _, s := range cfg.Scope {
 		if s == localhost {
@@ -265,7 +265,7 @@ func (t *T) inScope(cfg *instance.Config) bool {
 	return false
 }
 
-func (t *T) cancelFetcher(s string) {
+func (t *Manager) cancelFetcher(s string) {
 	if cancel, ok := t.fetcherCancel[s]; ok {
 		t.log.Debugf("cfg: cancelFetcher %s", s)
 		cancel()
@@ -277,7 +277,7 @@ func (t *T) cancelFetcher(s string) {
 	}
 }
 
-func (t *T) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
+func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
 	s := p.String()
 	if n, ok := t.fetcherFrom[s]; ok {
 		t.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
