@@ -295,11 +295,11 @@ func (t T) pool() *zfs.Pool {
 }
 
 func (t T) poolName() string {
-	return zfs.ZfsName(t.Device).PoolName()
+	return zfs.DatasetName(t.Device).PoolName()
 }
 
 func (t T) baseName() string {
-	return zfs.ZfsName(t.Device).BaseName()
+	return zfs.DatasetName(t.Device).BaseName()
 }
 
 func (t *T) validateDevice() error {

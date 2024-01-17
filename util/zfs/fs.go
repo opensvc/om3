@@ -11,11 +11,11 @@ type (
 )
 
 func (t Filesystem) PoolName() string {
-	return ZfsName(t.Name).PoolName()
+	return DatasetName(t.Name).PoolName()
 }
 
 func (t Filesystem) BaseName() string {
-	return ZfsName(t.Name).BaseName()
+	return DatasetName(t.Name).BaseName()
 }
 
 func (t Filesystem) GetName() string {

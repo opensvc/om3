@@ -17,11 +17,11 @@ type (
 )
 
 func (t Vol) PoolName() string {
-	return ZfsName(t.Name).PoolName()
+	return DatasetName(t.Name).PoolName()
 }
 
 func (t Vol) BaseName() string {
-	return ZfsName(t.Name).BaseName()
+	return DatasetName(t.Name).BaseName()
 }
 
 func (t Vol) GetName() string {
