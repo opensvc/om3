@@ -177,14 +177,20 @@ func (a *DaemonApi) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return false
 	}
 
-	// isSelected returns true when msg label match the selector.
+	// isSelected returns true when msg has path label that is selected or
+	// doesn't have a path label.
 	isSelected := func(msg pubsub.Messager) bool {
-		// discard events with path label not matching the selector.
 		labels := msg.GetLabels()
-		if s, ok := labels["path"]; ok && pathSelected.Has(s) {
-			return true
+		if s, ok := labels["path"]; ok {
+			if pathSelected.Has(s) {
+				// path label is selected
+				return true
+			}
+			// path label is not selected
+			return false
 		}
-		return false
+		// no path label
+		return true
 	}
 
 	if params.Selector != nil && *params.Selector != "" {
