@@ -33,15 +33,15 @@ func pgNameResource(s string) string {
 // /opensvc/vol.v1/disk.1			# !ns !ss
 func (t *core) pgConfig(section string) *pg.Config {
 	data := pg.Config{}
-	data.CpuShares, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_shares"))
-	data.Cpus, _ = t.config.EvalNoConv(key.New(section, "pg_cpus"))
+	data.CPUShares, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_shares"))
+	data.CPUs, _ = t.config.EvalNoConv(key.New(section, "pg_cpus"))
 	data.Mems, _ = t.config.EvalNoConv(key.New(section, "pg_mems"))
-	data.CpuQuota, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_quota"))
+	data.CPUQuota, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_quota"))
 	data.MemLimit, _ = t.config.EvalNoConv(key.New(section, "pg_mem_limit"))
 	data.VMemLimit, _ = t.config.EvalNoConv(key.New(section, "pg_vmem_limit"))
 	data.MemOOMControl, _ = t.config.EvalNoConv(key.New(section, "pg_mem_oom_control"))
 	data.MemSwappiness, _ = t.config.EvalNoConv(key.New(section, "pg_mem_swappiness"))
-	data.BlkioWeight, _ = t.config.EvalNoConv(key.New(section, "pg_blkio_weight"))
+	data.BlockIOWeight, _ = t.config.EvalNoConv(key.New(section, "pg_blkio_weight"))
 	subsetName := func(s string) string {
 		l := strings.SplitN(s, ":", 2)
 		n := len(l)

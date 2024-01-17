@@ -16,17 +16,17 @@ import (
 type (
 	Config struct {
 		ID            string
-		Cpus          string
+		CPUs          string
 		Mems          string
-		CpuShares     string
-		CpuQuota      string
+		CPUShares     string
+		CPUQuota      string
 		MemOOMControl string
 		MemLimit      string
 		VMemLimit     string
 		MemSwappiness string
-		BlkioWeight   string
+		BlockIOWeight string
 	}
-	CpuQuota string
+	CPUQuota string
 	key      int
 	State    int
 	entry    struct {
@@ -164,16 +164,16 @@ func (t Mgr) Apply(id string) []Run {
 }
 
 func (c Config) needApply() bool {
-	if c.Cpus != "" {
+	if c.CPUs != "" {
 		return true
 	}
 	if c.Mems != "" {
 		return true
 	}
-	if c.CpuShares != "" {
+	if c.CPUShares != "" {
 		return true
 	}
-	if c.CpuQuota != "" {
+	if c.CPUQuota != "" {
 		return true
 	}
 	if c.MemOOMControl != "" {
@@ -188,7 +188,7 @@ func (c Config) needApply() bool {
 	if c.MemSwappiness != "" {
 		return true
 	}
-	if c.BlkioWeight != "" {
+	if c.BlockIOWeight != "" {
 		return true
 	}
 	return false
@@ -197,17 +197,17 @@ func (c Config) needApply() bool {
 func (c Config) String() string {
 	buff := "pg " + c.ID
 	l := make([]string, 0)
-	if c.Cpus != "" {
-		l = append(l, "cpus="+c.Cpus)
+	if c.CPUs != "" {
+		l = append(l, "cpus="+c.CPUs)
 	}
 	if c.Mems != "" {
 		l = append(l, "mems="+c.Mems)
 	}
-	if c.CpuShares != "" {
-		l = append(l, "cpu_shares="+c.CpuShares)
+	if c.CPUShares != "" {
+		l = append(l, "cpu_shares="+c.CPUShares)
 	}
-	if c.CpuQuota != "" {
-		l = append(l, "cpu_quota="+c.CpuQuota)
+	if c.CPUQuota != "" {
+		l = append(l, "cpu_quota="+c.CPUQuota)
 	}
 	if c.MemOOMControl != "" {
 		l = append(l, "mem_oom_control="+c.MemOOMControl)
@@ -221,8 +221,8 @@ func (c Config) String() string {
 	if c.MemSwappiness != "" {
 		l = append(l, "mem_swappiness="+c.MemSwappiness)
 	}
-	if c.BlkioWeight != "" {
-		l = append(l, "blkioweight="+c.BlkioWeight)
+	if c.BlockIOWeight != "" {
+		l = append(l, "blkioweight="+c.BlockIOWeight)
 	}
 	if len(l) == 0 {
 		return buff
@@ -234,7 +234,7 @@ func (c Config) String() string {
 // * 100%@all => 400000 100000
 // * 50% => 50000 100000
 // * 50%@3 => 150000 100000
-func (t CpuQuota) Convert(period uint64) (int64, error) {
+func (t CPUQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
 	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
 	parsePct := func(s string) (int, error) {
