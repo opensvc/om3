@@ -3,8 +3,10 @@
 package resdiskdrbd
 
 import (
-	"context"
+	// Necessary to use go:embed
 	_ "embed"
+
+	"context"
 	"fmt"
 	"io"
 	"net"

@@ -1,7 +1,9 @@
 package om
 
 import (
+	// Necessary to use go:embed
 	_ "embed"
+
 	"time"
 
 	"github.com/spf13/cobra"

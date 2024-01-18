@@ -1,7 +1,9 @@
 package ox
 
 import (
+	// Necessary to use go:embed
 	_ "embed"
+
 	"fmt"
 	"strings"
 	"time"
