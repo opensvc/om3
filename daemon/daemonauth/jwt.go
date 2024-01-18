@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/shaj13/libcache/fifo"
-
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/shaj13/go-guardian/v2/auth"

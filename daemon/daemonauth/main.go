@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	// Build the fifo cache driver
+	_ "github.com/shaj13/libcache/fifo"
+
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
 	"github.com/shaj13/libcache"
