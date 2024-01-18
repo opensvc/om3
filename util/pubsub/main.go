@@ -269,7 +269,7 @@ func (t Labels) Key() string {
 	return s
 }
 
-// keys returns all the permutations of all lengths of the labels
+// Keys returns all the permutations of all lengths of the labels
 // ex:
 //
 //	keys of l1=foo l2=foo l3=foo:

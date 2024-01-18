@@ -97,7 +97,7 @@ func Main(m *testing.M, execute func([]string)) {
 	}
 }
 
-func TcpPortAvailable(port string) error {
+func TCPPortAvailable(port string) error {
 	ln, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err

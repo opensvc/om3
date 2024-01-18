@@ -2,34 +2,34 @@ package nmon
 
 import "github.com/opensvc/om3/core/node"
 
-func (o *nmon) orchestrate() {
-	switch o.state.State {
+func (t *Manager) orchestrate() {
+	switch t.state.State {
 	case node.MonitorStateZero:
 		return
 	case node.MonitorStateRejoin:
 		return
 	}
 
-	if !o.isConvergedGlobalExpect() {
+	if !t.isConvergedGlobalExpect() {
 		return
 	}
 
-	switch o.state.LocalExpect {
+	switch t.state.LocalExpect {
 	case node.MonitorLocalExpectZero:
 	case node.MonitorLocalExpectNone:
 	case node.MonitorLocalExpectDrained:
-		o.orchestrateDrained()
+		t.orchestrateDrained()
 	}
 
-	switch o.state.GlobalExpect {
+	switch t.state.GlobalExpect {
 	case node.MonitorGlobalExpectZero:
 	case node.MonitorGlobalExpectNone:
 	case node.MonitorGlobalExpectAborted:
-		o.orchestrateAborted()
+		t.orchestrateAborted()
 	case node.MonitorGlobalExpectFrozen:
-		o.orchestrateFrozen()
+		t.orchestrateFrozen()
 	case node.MonitorGlobalExpectThawed:
-		o.orchestrateThawed()
+		t.orchestrateThawed()
 	}
-	o.updateIfChange()
+	t.updateIfChange()
 }

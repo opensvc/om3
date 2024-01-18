@@ -27,18 +27,18 @@ func (c Config) ApplyProc(pid int) error {
 		Memory:  &specs.LinuxMemory{},
 		BlockIO: &specs.LinuxBlockIO{},
 	}
-	if n, err := sizeconv.FromSize(c.CpuShares); err == nil {
+	if n, err := sizeconv.FromSize(c.CPUShares); err == nil {
 		shares := uint64(n)
 		r.CPU.Shares = &shares
 	}
-	if c.Cpus != "" {
-		r.CPU.Cpus = c.Cpus
+	if c.CPUs != "" {
+		r.CPU.Cpus = c.CPUs
 	}
 	if c.Mems != "" {
 		r.CPU.Mems = c.Mems
 	}
 	period := uint64(100000)
-	if quota, err := CpuQuota(c.CpuQuota).Convert(period); err == nil {
+	if quota, err := CPUQuota(c.CPUQuota).Convert(period); err == nil {
 		r.CPU.Period = &period
 		r.CPU.Quota = &quota
 	}
@@ -60,7 +60,7 @@ func (c Config) ApplyProc(pid int) error {
 		disable := n.(bool)
 		r.Memory.DisableOOMKiller = &disable
 	}
-	if n, err := strconv.ParseUint(c.BlkioWeight, 10, 16); err == nil {
+	if n, err := strconv.ParseUint(c.BlockIOWeight, 10, 16); err == nil {
 		weight := uint16(n)
 		r.BlockIO.Weight = &weight
 	}

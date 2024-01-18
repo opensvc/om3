@@ -75,14 +75,14 @@ func (t *T) Start(ctx context.Context) error {
 	if strategies, err := daemonauth.InitStategies(ctx, &authOption{}); err != nil {
 		return err
 	} else {
-		ctx = context.WithValue(ctx, "authStrategies", strategies)
-		ctx = context.WithValue(ctx, "JWTCreator", &daemonauth.JWTCreator{})
+		ctx = daemonauth.ContextWithStrategies(ctx, strategies)
+		ctx = daemonauth.ContextWithJWTCreator(ctx)
 	}
 	clusterConfig := cluster.ConfigData.Get()
 	for _, lsnr := range []startStopper{
 		lsnrhttpux.New(
 			ctx,
-			lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
+			lsnrhttpux.WithAddr(daemonenv.HTTPUnixFile()),
 		),
 		lsnrhttpinet.New(
 			ctx,

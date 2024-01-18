@@ -1,7 +1,9 @@
 package om
 
 import (
+	// Necessary to use go:embed
 	_ "embed"
+
 	"fmt"
 	"os"
 	"path/filepath"

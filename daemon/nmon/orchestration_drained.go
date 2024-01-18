@@ -6,57 +6,57 @@ import (
 	"github.com/opensvc/om3/core/node"
 )
 
-func (o *nmon) orchestrateDrained() {
-	switch o.state.State {
+func (t *Manager) orchestrateDrained() {
+	switch t.state.State {
 	case node.MonitorStateIdle:
-		o.drainFromIdle()
+		t.drainFromIdle()
 	case node.MonitorStateFrozen:
-		o.drainFromFrozen()
+		t.drainFromFrozen()
 	case node.MonitorStateDrained:
-		o.change = true
-		o.state.State = node.MonitorStateIdle
-		o.state.LocalExpect = node.MonitorLocalExpectNone
+		t.change = true
+		t.state.State = node.MonitorStateIdle
+		t.state.LocalExpect = node.MonitorLocalExpectNone
 	default:
-		o.log.Warnf("orchestrate drained no solution from state %s", o.state.State)
+		t.log.Warnf("orchestrate drained no solution from state %s", t.state.State)
 		time.Sleep(unexpectedDelay)
 	}
 }
 
-func (o *nmon) drainFromIdle() {
-	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
+func (t *Manager) drainFromIdle() {
+	if nodeStatus := node.StatusData.Get(t.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
 		// already frozen, ... advance to "frozen" state
-		o.state.State = node.MonitorStateFrozen
+		t.state.State = node.MonitorStateFrozen
 		go func() {
-			o.cmdC <- cmdOrchestrate{state: node.MonitorStateFrozen, newState: node.MonitorStateFrozen}
+			t.cmdC <- cmdOrchestrate{state: node.MonitorStateFrozen, newState: node.MonitorStateFrozen}
 		}()
 		return
 	}
 
 	// freeze
-	o.change = true
-	o.state.State = node.MonitorStateFreezing
-	o.updateIfChange()
+	t.change = true
+	t.state.State = node.MonitorStateFreezing
+	t.updateIfChange()
 	go func() {
-		o.log.Infof("run action freeze")
-		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- cmdOrchestrate{state: node.MonitorStateFreezing, newState: node.MonitorStateFreezeFailed}
+		t.log.Infof("run action freeze")
+		if err := t.crmFreeze(); err != nil {
+			t.cmdC <- cmdOrchestrate{state: node.MonitorStateFreezing, newState: node.MonitorStateFreezeFailed}
 		} else {
-			o.cmdC <- cmdOrchestrate{state: node.MonitorStateFreezing, newState: node.MonitorStateFrozen}
+			t.cmdC <- cmdOrchestrate{state: node.MonitorStateFreezing, newState: node.MonitorStateFrozen}
 		}
 	}()
 	return
 }
 
-func (o *nmon) drainFromFrozen() {
-	o.change = true
-	o.state.State = node.MonitorStateDraining
-	o.updateIfChange()
+func (t *Manager) drainFromFrozen() {
+	t.change = true
+	t.state.State = node.MonitorStateDraining
+	t.updateIfChange()
 	go func() {
-		o.log.Infof("run shutdown action on all local instances")
-		if err := o.crmDrain(); err != nil {
-			o.cmdC <- cmdOrchestrate{state: node.MonitorStateDraining, newState: node.MonitorStateDrainFailed}
+		t.log.Infof("run shutdown action on all local instances")
+		if err := t.crmDrain(); err != nil {
+			t.cmdC <- cmdOrchestrate{state: node.MonitorStateDraining, newState: node.MonitorStateDrainFailed}
 		} else {
-			o.cmdC <- cmdOrchestrate{state: node.MonitorStateDraining, newState: node.MonitorStateDrained}
+			t.cmdC <- cmdOrchestrate{state: node.MonitorStateDraining, newState: node.MonitorStateDrained}
 		}
 	}()
 	return

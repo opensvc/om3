@@ -30,12 +30,12 @@ var (
 	nodeViper *viper.Viper
 	fromViper = conf{}
 
-	clusterSectionCmd = make(chan chan<- clusterSection)
-	nodeSectionCmd    = make(chan chan<- nodeSection)
+	clusterSectionCmd = make(chan chan<- ClusterSection)
+	nodeSectionCmd    = make(chan chan<- NodeSection)
 	loadConfigCmd     = make(chan loadCmd)
 
-	sectionCluster clusterSection
-	sectionNode    nodeSection
+	sectionCluster ClusterSection
+	sectionNode    NodeSection
 
 	defaultEnvs = []string{
 		"CERT",
@@ -59,15 +59,15 @@ var (
 type (
 	// conf is the merged config (defaults, cluster.conf then node.conf)
 	conf struct {
-		Cluster  clusterSection        `mapstructure:"cluster"`
+		Cluster  ClusterSection        `mapstructure:"cluster"`
 		Hostname string                `mapstructure:"hostname"`
-		Node     nodeSection           `mapstructure:"node"`
+		Node     NodeSection           `mapstructure:"node"`
 		Palette  palette.StringPalette `mapstructure:"palette"`
 		Paths    AgentPaths            `mapstructure:"paths"`
 		Envs     []string              `mapstructure:"envs"`
 	}
 
-	clusterSection struct {
+	ClusterSection struct {
 		ID         string `mapstructure:"id"`
 		Name       string `mapstructure:"name"`
 		Secret     string `mapstructure:"secret"`
@@ -76,7 +76,7 @@ type (
 		DNS        string `mapstructure:"dns"`
 	}
 
-	nodeSection struct {
+	NodeSection struct {
 		Env       string `mapstructure:"env"`
 		Collector string `mapstructure:"dbopensvc"`
 		UUID      string `mapstructure:"uuid"`
@@ -114,14 +114,14 @@ func init() {
 	omcrypto.SetClusterSecret(sectionCluster.Secret)
 }
 
-func ClusterSection() clusterSection {
-	c := make(chan clusterSection)
+func GetClusterSection() ClusterSection {
+	c := make(chan ClusterSection)
 	clusterSectionCmd <- c
 	return <-c
 }
 
-func NodeSection() nodeSection {
-	c := make(chan nodeSection)
+func GetNodeSection() NodeSection {
+	c := make(chan NodeSection)
 	nodeSectionCmd <- c
 	return <-c
 }

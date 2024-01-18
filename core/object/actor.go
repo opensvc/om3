@@ -90,6 +90,12 @@ func (t *actor) init(referrer xconfig.Referrer, p any, opts ...funcopt.O) error 
 	}
 	t.pg = t.pgConfig("")
 	t.actionResourceDeps = actionresdeps.NewStore()
+	t.actionResourceDeps.SetActionMap(map[string]string{
+		"provision":   "start",
+		"shutdown":    "stop",
+		"unprovision": "stop",
+		"toc":         "stop",
+	})
 	return nil
 }
 

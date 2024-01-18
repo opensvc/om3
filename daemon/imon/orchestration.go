@@ -11,9 +11,9 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (o *imon) isDone() bool {
+func (t *Manager) isDone() bool {
 	select {
-	case <-o.ctx.Done():
+	case <-t.ctx.Done():
 		return true
 	default:
 		return false
@@ -21,186 +21,186 @@ func (o *imon) isDone() bool {
 }
 
 // orchestrate from omon vs global expect
-func (o *imon) orchestrate() {
-	if o.isDone() {
-		o.log.Debugf("orchestrate return on isDone()")
+func (t *Manager) orchestrate() {
+	if t.isDone() {
+		t.log.Debugf("orchestrate return on isDone()")
 		return
 	}
-	if _, ok := o.instStatus[o.localhost]; !ok {
-		o.log.Debugf("orchestrate return on no instStatus[o.localhost]")
+	if _, ok := t.instStatus[t.localhost]; !ok {
+		t.log.Debugf("orchestrate return on no instStatus[o.localhost]")
 		return
 	}
-	if _, ok := o.nodeStatus[o.localhost]; !ok {
-		o.log.Debugf("orchestrate return on no nodeStatus[o.localhost]")
+	if _, ok := t.nodeStatus[t.localhost]; !ok {
+		t.log.Debugf("orchestrate return on no nodeStatus[o.localhost]")
 		return
 	}
-	if !o.isConvergedGlobalExpect() {
-		o.log.Debugf("orchestrate return on not isConvergedGlobalExpect")
+	if !t.isConvergedGlobalExpect() {
+		t.log.Debugf("orchestrate return on not isConvergedGlobalExpect")
 		return
 	}
 
-	switch o.state.GlobalExpect {
+	switch t.state.GlobalExpect {
 	case instance.MonitorGlobalExpectAborted:
-		o.orchestrateAborted()
+		t.orchestrateAborted()
 	}
 
-	if o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone {
-		if o.orchestrationIsAllDone() {
-			o.endOrchestration()
+	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone {
+		if t.orchestrationIsAllDone() {
+			t.endOrchestration()
 		}
-		o.log.Debugf("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
+		t.log.Debugf("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
 		return
 	}
-	if o.isDone() {
-		o.log.Debugf("orchestrate return on isDone()")
+	if t.isDone() {
+		t.log.Debugf("orchestrate return on isDone()")
 		return
 	}
-	switch o.nodeMonitor[o.localhost].State {
+	switch t.nodeMonitor[t.localhost].State {
 	case node.MonitorStateIdle:
 		// default orchestrate
 	case node.MonitorStateShutting:
 		// accept only local expect shutdown orchestration
-		switch o.state.LocalExpect {
+		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectShutdown:
-			o.orchestrateLocalExpectShutdown()
+			t.orchestrateLocalExpectShutdown()
 		}
 		return
 	default:
-		o.log.Debugf("orchestrate return on nodeMonitor.State: %s", o.nodeMonitor[o.localhost].State)
+		t.log.Debugf("orchestrate return on nodeMonitor.State: %s", t.nodeMonitor[t.localhost].State)
 		return
 	}
 
-	o.orchestrateResourceRestart()
-	if o.isDone() {
-		o.log.Debugf("orchestrate return on isDone()")
+	t.orchestrateResourceRestart()
+	if t.isDone() {
+		t.log.Debugf("orchestrate return on isDone()")
 		return
 	}
 
-	switch o.state.GlobalExpect {
+	switch t.state.GlobalExpect {
 	case instance.MonitorGlobalExpectDeleted:
-		o.orchestrateDeleted()
+		t.orchestrateDeleted()
 	case instance.MonitorGlobalExpectNone:
-		o.orchestrateNone()
+		t.orchestrateNone()
 	case instance.MonitorGlobalExpectFrozen:
-		o.orchestrateFrozen()
+		t.orchestrateFrozen()
 	case instance.MonitorGlobalExpectProvisioned:
-		o.orchestrateProvisioned()
+		t.orchestrateProvisioned()
 	case instance.MonitorGlobalExpectPlaced:
-		o.orchestratePlaced()
+		t.orchestratePlaced()
 	case instance.MonitorGlobalExpectPlacedAt:
-		o.orchestratePlacedAt()
+		t.orchestratePlacedAt()
 	case instance.MonitorGlobalExpectPurged:
-		o.orchestratePurged()
+		t.orchestratePurged()
 	case instance.MonitorGlobalExpectStarted:
-		o.orchestrateStarted()
+		t.orchestrateStarted()
 	case instance.MonitorGlobalExpectStopped:
-		o.orchestrateStopped()
+		t.orchestrateStopped()
 	case instance.MonitorGlobalExpectThawed:
-		o.orchestrateThawed()
+		t.orchestrateThawed()
 	case instance.MonitorGlobalExpectUnprovisioned:
-		o.orchestrateUnprovisioned()
+		t.orchestrateUnprovisioned()
 	}
-	o.updateIfChange()
+	t.updateIfChange()
 }
 
-func (o *imon) setWaitParents() bool {
-	for relation, availStatus := range o.state.Parents {
+func (t *Manager) setWaitParents() bool {
+	for relation, availStatus := range t.state.Parents {
 		if !availStatus.Is(status.Up, status.Undef) {
-			if o.state.State != instance.MonitorStateWaitParents {
-				o.log.Infof("wait parents because %s avail status is %s", relation, availStatus)
-				o.state.State = instance.MonitorStateWaitParents
-				o.change = true
+			if t.state.State != instance.MonitorStateWaitParents {
+				t.log.Infof("wait parents because %s avail status is %s", relation, availStatus)
+				t.state.State = instance.MonitorStateWaitParents
+				t.change = true
 			}
 			return true
 		}
 	}
-	if o.state.State == instance.MonitorStateWaitParents {
-		o.log.Infof("stop waiting parents")
-		o.state.State = instance.MonitorStateIdle
-		o.change = true
+	if t.state.State == instance.MonitorStateWaitParents {
+		t.log.Infof("stop waiting parents")
+		t.state.State = instance.MonitorStateIdle
+		t.change = true
 	}
 	return false
 }
 
 // setWaitChildren set or reset wait children, return true is state is wait children
-func (o *imon) setWaitChildren() bool {
-	for relation, availStatus := range o.state.Children {
+func (t *Manager) setWaitChildren() bool {
+	for relation, availStatus := range t.state.Children {
 		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef, status.NotApplicable) {
-			if o.state.State != instance.MonitorStateWaitChildren {
-				o.log.Infof("wait children because %s avail status is %s", relation, availStatus)
-				o.state.State = instance.MonitorStateWaitChildren
-				o.change = true
+			if t.state.State != instance.MonitorStateWaitChildren {
+				t.log.Infof("wait children because %s avail status is %s", relation, availStatus)
+				t.state.State = instance.MonitorStateWaitChildren
+				t.change = true
 			}
 			return true
 		}
 	}
-	if o.state.State == instance.MonitorStateWaitChildren {
-		o.log.Infof("no more children to wait")
-		o.state.State = instance.MonitorStateIdle
-		o.change = true
+	if t.state.State == instance.MonitorStateWaitChildren {
+		t.log.Infof("no more children to wait")
+		t.state.State = instance.MonitorStateIdle
+		t.change = true
 	}
 	return false
 }
 
 // endOrchestration is called when orchestration has been reached on all nodes
-func (o *imon) endOrchestration() {
-	o.change = true
-	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
-	o.state.GlobalExpectOptions = nil
-	o.state.OrchestrationIsDone = false
-	o.state.OrchestrationID = uuid.UUID{}
-	o.clearPending()
-	o.updateIfChange()
-	if o.acceptedOrchestrationID != uuid.Nil {
-		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
-			Node: o.localhost,
-			Path: o.path,
-			ID:   o.acceptedOrchestrationID.String(),
+func (t *Manager) endOrchestration() {
+	t.change = true
+	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	t.state.GlobalExpectOptions = nil
+	t.state.OrchestrationIsDone = false
+	t.state.OrchestrationID = uuid.UUID{}
+	t.clearPending()
+	t.updateIfChange()
+	if t.acceptedOrchestrationID != uuid.Nil {
+		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
+			Node: t.localhost,
+			Path: t.path,
+			ID:   t.acceptedOrchestrationID.String(),
 		},
-			o.labelPath,
-			o.labelLocalhost,
+			t.labelPath,
+			t.labelLocalhost,
 		)
-		o.acceptedOrchestrationID = uuid.UUID{}
+		t.acceptedOrchestrationID = uuid.UUID{}
 	}
-	o.log = o.newLogger(uuid.Nil)
+	t.log = t.newLogger(uuid.Nil)
 }
 
 // doneAndIdle marks the orchestration as done on the local instance and
 // sets the state to idle.
-func (o *imon) doneAndIdle() {
-	o.done()
-	o.state.State = instance.MonitorStateIdle
+func (t *Manager) doneAndIdle() {
+	t.done()
+	t.state.State = instance.MonitorStateIdle
 }
 
 // done() sets marks the orchestration as done on the local instance.
 // It can be used instead of doneAndIdle() when we want a state to linger
 // after the orchestration is ended.
-func (o *imon) done() {
-	o.change = true
-	o.state.OrchestrationIsDone = true
+func (t *Manager) done() {
+	t.change = true
+	t.state.OrchestrationIsDone = true
 }
 
-func (o *imon) orchestrationIsAllDone() bool {
-	for nodename, oImon := range o.AllInstanceMonitors() {
+func (t *Manager) orchestrationIsAllDone() bool {
+	for nodename, oImon := range t.AllInstanceMonitors() {
 		if !oImon.OrchestrationIsDone && oImon.OrchestrationID != uuid.Nil {
 			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
-			if o.waitConvergedOrchestrationMsg[nodename] != msg {
-				o.log.Infof("orchestration progress on node %s: %s", nodename, msg)
-				o.waitConvergedOrchestrationMsg[nodename] = msg
+			if t.waitConvergedOrchestrationMsg[nodename] != msg {
+				t.log.Infof("orchestration progress on node %s: %s", nodename, msg)
+				t.waitConvergedOrchestrationMsg[nodename] = msg
 			}
 			return false
 		} else {
 			// OrchestrationIsDone or no OrchestrationID
 			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
-			if o.waitConvergedOrchestrationMsg[nodename] != msg {
-				o.log.Infof("orchestration done on node %s: %s", nodename, msg)
-				o.waitConvergedOrchestrationMsg[nodename] = msg
+			if t.waitConvergedOrchestrationMsg[nodename] != msg {
+				t.log.Infof("orchestration done on node %s: %s", nodename, msg)
+				t.waitConvergedOrchestrationMsg[nodename] = msg
 			}
 		}
 	}
-	if len(o.waitConvergedOrchestrationMsg) > 0 {
-		o.log.Infof("orchestration is done on all nodes")
-		o.waitConvergedOrchestrationMsg = make(map[string]string)
+	if len(t.waitConvergedOrchestrationMsg) > 0 {
+		t.log.Infof("orchestration is done on all nodes")
+		t.waitConvergedOrchestrationMsg = make(map[string]string)
 	}
 	return true
 }

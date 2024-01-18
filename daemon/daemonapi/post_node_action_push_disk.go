@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeActionPushDisk(ctx echo.Context, nodename string, params api.PostNodeActionPushDiskParams) error {
+func (a *DaemonAPI) PostNodeActionPushDisk(ctx echo.Context, nodename string, params api.PostNodeActionPushDiskParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionPushDisk(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -21,7 +21,7 @@ func (a *DaemonApi) PostNodeActionPushDisk(ctx echo.Context, nodename string, pa
 	return a.remoteNodeActionPushDisk(ctx, nodename, params)
 }
 
-func (a *DaemonApi) remoteNodeActionPushDisk(ctx echo.Context, nodename string, params api.PostNodeActionPushDiskParams) error {
+func (a *DaemonAPI) remoteNodeActionPushDisk(ctx echo.Context, nodename string, params api.PostNodeActionPushDiskParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) remoteNodeActionPushDisk(ctx echo.Context, nodename string, 
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionPushDisk(ctx echo.Context, params api.PostNodeActionPushDiskParams) error {
+func (a *DaemonAPI) localNodeActionPushDisk(ctx echo.Context, params api.PostNodeActionPushDiskParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}

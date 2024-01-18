@@ -30,35 +30,35 @@ var (
 // it loads and publish config (some common settings such as node split_action keyword...)
 // it updates arbitrators config
 // then refresh arbitrator status
-func (o *nmon) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	o.clusterConfig = c.Value
+func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
+	t.clusterConfig = c.Value
 
-	if err := o.loadAndPublishConfig(); err != nil {
-		o.log.Errorf("load and publish config from cluster config updated event: %s", err)
+	if err := t.loadAndPublishConfig(); err != nil {
+		t.log.Errorf("load and publish config from cluster config updated event: %s", err)
 	}
-	o.setArbitratorConfig()
+	t.setArbitratorConfig()
 
-	o.getAndUpdateStatusArbitrator()
+	t.getAndUpdateStatusArbitrator()
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
-func (o *nmon) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
-	if err := o.loadAndPublishConfig(); err != nil {
-		o.log.Errorf("load and publish config from node config file updated event: %s", err)
+func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
+	if err := t.loadAndPublishConfig(); err != nil {
+		t.log.Errorf("load and publish config from node config file updated event: %s", err)
 		return
 	}
 
 	// env might have changed. nmon is responsible for updating nodes_info.json
-	o.saveNodesInfo()
+	t.saveNodesInfo()
 
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
-	o.checkRejoinTicker()
+	t.checkRejoinTicker()
 }
 
-func (o *nmon) getNodeConfig() node.Config {
+func (t *Manager) getNodeConfig() node.Config {
 	var (
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
 		keyReadyPeriod            = key.New("node", "ready_period")
@@ -67,33 +67,33 @@ func (o *nmon) getNodeConfig() node.Config {
 		keySplitAction            = key.New("node", "split_action")
 	)
 	cfg := node.Config{}
-	if d := o.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
+	if d := t.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
 		cfg.MaintenanceGracePeriod = *d
 	}
-	if d := o.config.GetDuration(keyReadyPeriod); d != nil {
+	if d := t.config.GetDuration(keyReadyPeriod); d != nil {
 		cfg.ReadyPeriod = *d
 	}
-	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
+	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
 	}
-	cfg.Env = o.config.GetString(keyEnv)
-	cfg.SplitAction = o.config.GetString(keySplitAction)
+	cfg.Env = t.config.GetString(keyEnv)
+	cfg.SplitAction = t.config.GetString(keySplitAction)
 	return cfg
 }
 
-func (o *nmon) checkRejoinTicker() {
-	if o.state.State != node.MonitorStateRejoin {
+func (t *Manager) checkRejoinTicker() {
+	if t.state.State != node.MonitorStateRejoin {
 		return
 	}
-	if left := o.startedAt.Add(o.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+	if left := t.startedAt.Add(t.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
 		return
 	} else {
-		o.rejoinTicker.Reset(left)
-		o.log.Infof("rejoin grace period timer reset to %s", left)
+		t.rejoinTicker.Reset(left)
+		t.log.Infof("rejoin grace period timer reset to %s", left)
 	}
 }
 
-func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
+func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 	sendError := func(err error) {
 		if c.Err != nil {
 			c.Err <- err
@@ -107,20 +107,20 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidState, *c.Value.State)
 			sendError(err)
-			o.log.Warnf("%s", err)
+			t.log.Warnf("%s", err)
 			return
 		}
 
-		if o.state.State == *c.Value.State {
+		if t.state.State == *c.Value.State {
 			err := fmt.Errorf("%w: state is already %s", node.ErrSameState, *c.Value.State)
 			sendError(err)
-			o.log.Infof("%s", err)
+			t.log.Infof("%s", err)
 			return
 		}
 
-		o.log.Infof("set state %s -> %s", o.state.State, *c.Value.State)
-		o.change = true
-		o.state.State = *c.Value.State
+		t.log.Infof("set state %s -> %s", t.state.State, *c.Value.State)
+		t.change = true
+		t.state.State = *c.Value.State
 	}
 
 	doLocalExpect := func() {
@@ -131,20 +131,20 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			sendError(err)
-			o.log.Warnf("%s", err)
+			t.log.Warnf("%s", err)
 			return
 		}
 
-		if o.state.LocalExpect == *c.Value.LocalExpect {
+		if t.state.LocalExpect == *c.Value.LocalExpect {
 			err := fmt.Errorf("%w: %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
 			sendError(err)
-			o.log.Infof("%s", err)
+			t.log.Infof("%s", err)
 			return
 		}
 
-		o.log.Infof("set local expect %s -> %s", o.state.LocalExpect, *c.Value.LocalExpect)
-		o.change = true
-		o.state.LocalExpect = *c.Value.LocalExpect
+		t.log.Infof("set local expect %s -> %s", t.state.LocalExpect, *c.Value.LocalExpect)
+		t.change = true
+		t.state.LocalExpect = *c.Value.LocalExpect
 	}
 
 	doGlobalExpect := func() {
@@ -152,37 +152,37 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			return
 		}
 		if _, ok := node.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warnf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
+			t.log.Warnf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
 			return
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
-			for nodename, data := range o.nodeMonitor {
+			for nodename, data := range t.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					sendError(err)
-					o.log.Infof("%s", err)
+					t.log.Infof("%s", err)
 					return
 				}
 				if !data.State.IsRankable() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					sendError(err)
-					o.log.Errorf("%s", err)
+					t.log.Errorf("%s", err)
 					return
 				}
 				if data.State.IsDoing() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					sendError(err)
-					o.log.Errorf("%s", err)
+					t.log.Errorf("%s", err)
 					return
 				}
 			}
 		}
 
-		if *c.Value.GlobalExpect != o.state.GlobalExpect {
-			o.log.Infof("set global expect %s -> %s", o.state.GlobalExpect, *c.Value.GlobalExpect)
-			o.change = true
-			o.state.GlobalExpect = *c.Value.GlobalExpect
-			o.state.GlobalExpectUpdatedAt = time.Now()
+		if *c.Value.GlobalExpect != t.state.GlobalExpect {
+			t.log.Infof("set global expect %s -> %s", t.state.GlobalExpect, *c.Value.GlobalExpect)
+			t.change = true
+			t.state.GlobalExpect = *c.Value.GlobalExpect
+			t.state.GlobalExpectUpdatedAt = time.Now()
 		}
 	}
 
@@ -193,113 +193,113 @@ func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 	// inform the publisher we're done sending errors
 	sendError(nil)
 
-	if o.change {
-		o.updateIfChange()
-		o.orchestrate()
+	if t.change {
+		t.updateIfChange()
+		t.orchestrate()
 	}
 }
 
-func (o *nmon) onArbitratorTicker() {
-	o.getAndUpdateStatusArbitrator()
+func (t *Manager) onArbitratorTicker() {
+	t.getAndUpdateStatusArbitrator()
 }
 
-func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
-	delete(o.livePeers, c.Node)
+func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
+	delete(t.livePeers, c.Node)
 
-	delete(o.cacheNodesInfo, c.Node)
-	o.saveNodesInfo()
+	delete(t.cacheNodesInfo, c.Node)
+	t.saveNodesInfo()
 
 	var forgetType string
 	if !stringslice.Has(c.Node, clusternode.Get()) {
 		forgetType = "removed"
-		o.log.Infof("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+		t.log.Infof("forget %s peer %s => new live peers: %v", forgetType, c.Node, t.livePeers)
 	} else {
 		forgetType = "lost"
-		o.log.Warnf("forget %s peer %s => new live peers: %v", forgetType, c.Node, o.livePeers)
+		t.log.Warnf("forget %s peer %s => new live peers: %v", forgetType, c.Node, t.livePeers)
 	}
 
-	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Infof("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
+	if len(t.livePeers) > len(t.clusterConfig.Nodes)/2 {
+		t.log.Infof("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(t.livePeers), len(t.clusterConfig.Nodes)/2)
 		return
 	}
-	if !o.clusterConfig.Quorum {
-		o.log.Warnf("cluster is split, ignore as cluster.quorum is false")
+	if !t.clusterConfig.Quorum {
+		t.log.Warnf("cluster is split, ignore as cluster.quorum is false")
 		return
 	}
-	if o.frozen {
-		o.log.Warnf("cluster is split, ignore as the node is frozen")
+	if t.frozen {
+		t.log.Warnf("cluster is split, ignore as the node is frozen")
 		return
 	}
-	o.log.Warnf("cluster is split, check for arbitrator votes")
-	total := len(o.clusterConfig.Nodes) + len(o.arbitrators)
-	arbitratorVotes := o.arbitratorVotes()
-	votes := len(o.livePeers) + len(arbitratorVotes)
+	t.log.Warnf("cluster is split, check for arbitrator votes")
+	total := len(t.clusterConfig.Nodes) + len(t.arbitrators)
+	arbitratorVotes := t.arbitratorVotes()
+	votes := len(t.livePeers) + len(arbitratorVotes)
 	livePeers := make([]string, 0)
-	for k := range o.livePeers {
+	for k := range t.livePeers {
 		livePeers = append(livePeers, k)
 	}
 	if votes > total/2 {
-		o.log.Warnf("cluster is split, we have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+		t.log.Warnf("cluster is split, we have quorum: %d+%d out of %d votes (%s + %s)", len(t.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
 		return
 	}
-	action := o.nodeConfig.SplitAction
-	o.log.Warnf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
-	o.bus.Pub(&msgbus.NodeSplitAction{
-		Node:            o.localhost,
+	action := t.nodeConfig.SplitAction
+	t.log.Warnf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(t.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+	t.bus.Pub(&msgbus.NodeSplitAction{
+		Node:            t.localhost,
 		Action:          action,
-		NodeVotes:       len(o.livePeers),
+		NodeVotes:       len(t.livePeers),
 		ArbitratorVotes: len(arbitratorVotes),
 		Voting:          total,
-		ProVoters:       len(o.livePeers) + len(arbitratorVotes),
-	}, o.labelLocalhost)
+		ProVoters:       len(t.livePeers) + len(arbitratorVotes),
+	}, t.labelLocalhost)
 
 	splitAction, ok := slitActions[action]
 	if !ok {
-		o.log.Errorf("invalid split action %s", action)
+		t.log.Errorf("invalid split action %s", action)
 		return
 	}
-	o.log.Warnf("cluster is split, will call split action %s in %s", action, splitActionDelay)
+	t.log.Warnf("cluster is split, will call split action %s in %s", action, splitActionDelay)
 	time.Sleep(splitActionDelay)
-	o.log.Warnf("cluster is split, now calling split action %s", action)
+	t.log.Warnf("cluster is split, now calling split action %s", action)
 	if err := splitAction(); err != nil {
-		o.log.Errorf("split action %s failed: %s", action, err)
+		t.log.Errorf("split action %s failed: %s", action, err)
 	}
 }
 
-func (o *nmon) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
-	o.frozen = false
-	o.nodeStatus.FrozenAt = time.Time{}
-	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}}, o.labelLocalhost)
-	o.publishNodeStatus()
+func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
+	t.frozen = false
+	t.nodeStatus.FrozenAt = time.Time{}
+	t.bus.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: time.Time{}}, t.labelLocalhost)
+	t.publishNodeStatus()
 }
 
-func (o *nmon) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
-	o.frozen = true
-	o.nodeStatus.FrozenAt = m.At
-	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.At}, o.labelLocalhost)
-	o.publishNodeStatus()
+func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
+	t.frozen = true
+	t.nodeStatus.FrozenAt = m.At
+	t.bus.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: m.At}, t.labelLocalhost)
+	t.publishNodeStatus()
 }
 
-func (o *nmon) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
-	o.log.Debugf("deleted nmon for node %s", c.Node)
-	delete(o.nodeMonitor, c.Node)
-	o.convergeGlobalExpectFromRemote()
-	o.updateIfChange()
-	o.orchestrate()
-	o.updateIfChange()
+func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
+	t.log.Debugf("deleted nmon for node %s", c.Node)
+	delete(t.nodeMonitor, c.Node)
+	t.convergeGlobalExpectFromRemote()
+	t.updateIfChange()
+	t.orchestrate()
+	t.updateIfChange()
 }
 
-func (o *nmon) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	o.log.Debugf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
-	o.nodeMonitor[c.Node] = c.Value
-	if _, ok := o.livePeers[c.Node]; !ok {
-		o.livePeers[c.Node] = true
-		o.log.Infof("new peer %s => new live peers: %v", c.Node, o.livePeers)
+func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
+	t.log.Debugf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
+	t.nodeMonitor[c.Node] = c.Value
+	if _, ok := t.livePeers[c.Node]; !ok {
+		t.livePeers[c.Node] = true
+		t.log.Infof("new peer %s => new live peers: %v", c.Node, t.livePeers)
 	}
-	o.convergeGlobalExpectFromRemote()
-	o.updateIfChange()
-	o.orchestrate()
-	o.updateIfChange()
+	t.convergeGlobalExpectFromRemote()
+	t.updateIfChange()
+	t.orchestrate()
+	t.updateIfChange()
 }
 
 func missingNodes(nodes, joinedNodes []string) []string {
@@ -316,28 +316,28 @@ func missingNodes(nodes, joinedNodes []string) []string {
 	return l
 }
 
-func (o *nmon) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
-	if o.state.State != node.MonitorStateRejoin {
+func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
+	if t.state.State != node.MonitorStateRejoin {
 		return
 	}
 	if c.To != "patch" {
 		return
 	}
 	if l := missingNodes(c.Nodes, c.JoinedNodes); len(l) > 0 {
-		o.log.Infof("preserve rejoin state, missing nodes %s", l)
+		t.log.Infof("preserve rejoin state, missing nodes %s", l)
 		return
 	}
-	o.rejoinTicker.Stop()
-	o.bus.Pub(&msgbus.NodeRejoin{
+	t.rejoinTicker.Stop()
+	t.bus.Pub(&msgbus.NodeRejoin{
 		Nodes:          c.Nodes,
 		LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
 		IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
-	}, o.labelLocalhost)
+	}, t.labelLocalhost)
 	_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
-	o.transitionTo(node.MonitorStateIdle)
+	t.transitionTo(node.MonitorStateIdle)
 }
 
-func (o *nmon) onNodeRejoin(c *msgbus.NodeRejoin) {
+func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	if c.IsUpgrading {
 		return
 	}
@@ -345,15 +345,15 @@ func (o *nmon) onNodeRejoin(c *msgbus.NodeRejoin) {
 		// no need to merge frozen on a single node cluster
 		return
 	}
-	if !o.nodeStatus.FrozenAt.IsZero() {
+	if !t.nodeStatus.FrozenAt.IsZero() {
 		// already frozen
 		return
 	}
-	if o.state.GlobalExpect == node.MonitorGlobalExpectThawed {
+	if t.state.GlobalExpect == node.MonitorGlobalExpectThawed {
 		return
 	}
-	for _, peer := range o.clusterConfig.Nodes {
-		if peer == o.localhost {
+	for _, peer := range t.clusterConfig.Nodes {
+		if peer == t.localhost {
 			continue
 		}
 		peerStatus := node.StatusData.Get(peer)
@@ -361,31 +361,31 @@ func (o *nmon) onNodeRejoin(c *msgbus.NodeRejoin) {
 			continue
 		}
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
-			if err := o.crmFreeze(); err != nil {
-				o.log.Infof("node freeze error: %s", err)
+			if err := t.crmFreeze(); err != nil {
+				t.log.Infof("node freeze error: %s", err)
 			} else {
-				o.log.Infof("node freeze because peer %s was frozen while this daemon was down", peer)
+				t.log.Infof("node freeze because peer %s was frozen while this daemon was down", peer)
 			}
 			return
 		}
 	}
 }
 
-func (o *nmon) onOrchestrate(c cmdOrchestrate) {
-	if o.state.State == c.state {
-		o.transitionTo(c.newState)
+func (t *Manager) onOrchestrate(c cmdOrchestrate) {
+	if t.state.State == c.state {
+		t.transitionTo(c.newState)
 	}
-	o.orchestrate()
+	t.orchestrate()
 	// avoid fast loop on bug
 	time.Sleep(50 * time.Millisecond)
 }
 
-func (o *nmon) orchestrateAfterAction(state, nextState node.MonitorState) {
-	o.cmdC <- cmdOrchestrate{state: state, newState: nextState}
+func (t *Manager) orchestrateAfterAction(state, nextState node.MonitorState) {
+	t.cmdC <- cmdOrchestrate{state: state, newState: nextState}
 }
 
-func (o *nmon) transitionTo(newState node.MonitorState) {
-	o.change = true
-	o.state.State = newState
-	o.updateIfChange()
+func (t *Manager) transitionTo(newState node.MonitorState) {
+	t.change = true
+	t.state.State = newState
+	t.updateIfChange()
 }

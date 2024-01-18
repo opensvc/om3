@@ -86,7 +86,7 @@ func (t *core) Orchestrate() string {
 }
 
 func (t *core) FQDN() string {
-	clusterName := rawconfig.ClusterSection().Name
+	clusterName := rawconfig.GetClusterSection().Name
 	return naming.NewFQDN(t.path, clusterName).String()
 }
 
@@ -95,7 +95,7 @@ func (t *core) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return rawconfig.NodeSection().Env
+	return rawconfig.GetNodeSection().Env
 }
 
 func (t *core) App() string {
@@ -318,7 +318,7 @@ func (t *core) Dereference(ref string) (string, error) {
 		if t.path.IsZero() {
 			return "", nil
 		}
-		return naming.NewFQDN(t.path, rawconfig.ClusterSection().Name).Domain(), nil
+		return naming.NewFQDN(t.path, rawconfig.GetClusterSection().Name).Domain(), nil
 	case "private_var":
 		return t.paths.varDir, nil
 	case "initd":
@@ -332,17 +332,17 @@ func (t *core) Dereference(ref string) (string, error) {
 			return url.String(), nil
 		}
 	case "clusterid":
-		return rawconfig.ClusterSection().ID, nil
+		return rawconfig.GetClusterSection().ID, nil
 	case "clustername":
-		return rawconfig.ClusterSection().Name, nil
+		return rawconfig.GetClusterSection().Name, nil
 	case "clusternodes":
 		return strings.Join(clusternode.Get(), " "), nil
 	case "clusterdrpnodes":
 		return ref, fmt.Errorf("deprecated")
 	case "dns":
-		return rawconfig.ClusterSection().DNS, nil
+		return rawconfig.GetClusterSection().DNS, nil
 	case "dnsnodes":
-		ips := rawconfig.ClusterSection().DNS
+		ips := rawconfig.GetClusterSection().DNS
 		l := make([]string, 0)
 		nodes := clusternode.Get()
 		for _, ip := range strings.Fields(ips) {

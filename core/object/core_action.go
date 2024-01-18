@@ -44,7 +44,7 @@ var (
 )
 
 func (t *actor) validateAction() error {
-	node := rawconfig.NodeSection()
+	node := rawconfig.GetNodeSection()
 	if t.Env() != "PRD" && node.Env == "PRD" {
 		return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, t.Env(), node.Env)
 	}

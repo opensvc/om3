@@ -19,7 +19,7 @@ import (
 )
 
 type (
-	cstat struct {
+	T struct {
 		state cluster.Status
 
 		ctx       context.Context
@@ -42,12 +42,12 @@ type (
 	}
 )
 
-func New() *cstat {
-	return &cstat{nodeStatus: make(map[string]node.Status)}
+func New() *T {
+	return &T{nodeStatus: make(map[string]node.Status)}
 }
 
 // Start launches the cstat worker goroutine
-func (o *cstat) Start(parent context.Context) error {
+func (o *T) Start(parent context.Context) error {
 	o.log = plog.NewDefaultLogger().WithPrefix("daemon: cstat: ").Attr("pkg", "daemon/cstat")
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.bus = pubsub.BusFromContext(o.ctx)
@@ -71,13 +71,13 @@ func (o *cstat) Start(parent context.Context) error {
 	return nil
 }
 
-func (o *cstat) Stop() error {
+func (o *T) Stop() error {
 	o.cancel()
 	o.wg.Wait()
 	return nil
 }
 
-func (o *cstat) startSubscriptions() {
+func (o *T) startSubscriptions() {
 	sub := o.bus.Sub("cstat")
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
@@ -85,7 +85,7 @@ func (o *cstat) startSubscriptions() {
 }
 
 // worker watch for local cstat updates
-func (o *cstat) worker() {
+func (o *T) worker() {
 	o.startedAt = time.Now()
 
 	for {

@@ -47,7 +47,7 @@ type (
 		full         map[string]interface{}
 		deleted      []string
 		statsChanged bool
-		stats        StatsMap
+		stats        statsMap
 		statsStat    Stat
 
 		// expanded is a map keyed by file path and value is the inc
@@ -159,7 +159,7 @@ func (t *T) initDir(s string) error {
 func (t *T) loadStat() error {
 	path := t.collectStatFile()
 	if !file.Exists(path) {
-		t.stats = make(StatsMap)
+		t.stats = make(statsMap)
 		return nil
 	}
 	f, err := os.Open(path)

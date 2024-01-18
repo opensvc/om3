@@ -46,7 +46,7 @@ type (
 )
 
 var (
-	evReadError = fmt.Errorf("event read error")
+	errEventRead = fmt.Errorf("event read error")
 )
 
 func (c *templateHelper) passSet(s string, b bool) (changed bool) {
@@ -288,7 +288,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 			}
 			retries++
 			if retries > maxRetries {
-				t.errC <- evReadError
+				t.errC <- errEventRead
 				return
 			} else if retries == 1 {
 				_, _ = fmt.Fprintf(os.Stderr, "event read failed for node %s: '%s'\n", nodename, err)

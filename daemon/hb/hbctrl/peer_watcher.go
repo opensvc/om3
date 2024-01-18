@@ -21,10 +21,10 @@ var (
 	pubDelay = 200 * time.Millisecond
 )
 
-// peerWatch starts a new peer watcher of nodename for hbId
+// peerWatch starts a new peer watcher of nodename for hbID
 // when beating state change a hb_beating or hb_stale event is fired
 // Once beating, a hb_stale event is fired if no beating are received after timeout
-func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename string, timeout time.Duration) {
+func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename string, timeout time.Duration) {
 	peer := cluster.HeartbeatPeerStatus{}
 	started := make(chan bool)
 	go func() {
@@ -45,7 +45,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 		staleTicker := time.NewTicker(timeout)
 		staleTicker.Stop()
 		defer staleTicker.Stop()
-		log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerWatch").Attr("hb_peer_watch", hbId+"-"+nodename).WithPrefix("daemon: hbctrl: peer watcher: " + hbId + "-" + nodename + ": ")
+		log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerWatch").Attr("hb_peer_watch", HbID+"-"+nodename).WithPrefix("daemon: hbctrl: peer watcher: " + HbID + "-" + nodename + ": ")
 		log.Infof("started")
 		started <- true
 		setBeating := func(v bool) {
@@ -89,11 +89,11 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 						c.cmd <- CmdEvent{
 							Name:     evName,
 							Nodename: nodename,
-							HbID:     hbId,
+							HbID:     HbID,
 						}
 						c.cmd <- CmdSetPeerStatus{
 							Nodename:   nodename,
-							HbID:       hbId,
+							HbID:       HbID,
 							PeerStatus: peer,
 						}
 						beatingOnLastPub = peer.IsBeating

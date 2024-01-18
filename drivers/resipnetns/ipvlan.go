@@ -28,9 +28,9 @@ func (t T) IPVLANMode() (netlink.IPVlanMode, error) {
 
 func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev string, mtu int) error {
 	tmpDev := fmt.Sprintf("ph%d%s", pid, dev)
-	parentLink, err := netlink.LinkByName(t.IpDev)
+	parentLink, err := netlink.LinkByName(t.IPDev)
 	if err != nil {
-		return fmt.Errorf("%s: %w", t.IpDev, err)
+		return fmt.Errorf("%s: %w", t.IPDev, err)
 	}
 	if _, err := netlink.LinkByName(tmpDev); err == nil {
 		return fmt.Errorf("%s exists, should not", tmpDev)
@@ -39,7 +39,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	if err != nil {
 		return err
 	}
-	t.Log().Infof("ip link add link %s dev %s mode %s mtu %d", t.IpDev, tmpDev, t.Mode, mtu)
+	t.Log().Infof("ip link add link %s dev %s mode %s mtu %d", t.IPDev, tmpDev, t.Mode, mtu)
 	link := &netlink.IPVlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        tmpDev,

@@ -49,7 +49,7 @@ func (m *Meta) Grants() rbac.Grants {
 func (m *Meta) Nodes() []string {
 	i := 0
 	l := make([]string, len(m.pathMap))
-	for s, _ := range m.nodeMap {
+	for s := range m.nodeMap {
 		l[i] = s
 		i++
 	}
@@ -59,7 +59,7 @@ func (m *Meta) Nodes() []string {
 func (m *Meta) Paths() naming.Paths {
 	i := 0
 	l := make(naming.Paths, len(m.pathMap))
-	for s, _ := range m.pathMap {
+	for s := range m.pathMap {
 		p, _ := naming.ParsePath(s)
 		l[i] = p
 		i++

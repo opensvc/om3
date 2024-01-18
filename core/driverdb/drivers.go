@@ -1,6 +1,7 @@
 package driverdb
 
 import (
+	// Uncomment to load
 	_ "github.com/opensvc/om3/drivers/arrayfreenas"
 	_ "github.com/opensvc/om3/drivers/pooldirectory"
 	_ "github.com/opensvc/om3/drivers/poolfreenas"

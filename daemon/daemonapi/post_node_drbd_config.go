@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams) error {
+func (a *DaemonAPI) PostNodeDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}
@@ -31,7 +31,7 @@ func (a *DaemonApi) PostNodeDRBDConfig(ctx echo.Context, nodename string, params
 	}
 }
 
-func (a *DaemonApi) postPeerDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
+func (a *DaemonAPI) postPeerDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -44,7 +44,7 @@ func (a *DaemonApi) postPeerDRBDConfig(ctx echo.Context, nodename string, params
 	return nil
 }
 
-func (a *DaemonApi) postLocalDRBDConfig(ctx echo.Context, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
+func (a *DaemonAPI) postLocalDRBDConfig(ctx echo.Context, params api.PostNodeDRBDConfigParams, payload api.PostNodeDRBDConfigRequest) error {
 	if a, ok := pendingDRBDAllocations.get(payload.AllocationID); !ok || time.Now().After(a.ExpiredAt) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "drbd allocation expired: %#v", a)
 	}

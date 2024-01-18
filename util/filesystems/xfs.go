@@ -10,21 +10,21 @@ import (
 )
 
 type (
-	T_XFS struct{ T }
+	XFS struct{ T }
 )
 
 func init() {
 	registerFS(NewXFS())
 }
 
-func NewXFS() *T_XFS {
-	t := T_XFS{
+func NewXFS() *XFS {
+	t := XFS{
 		T{fsType: "xfs"},
 	}
 	return &t
 }
 
-func (t T_XFS) IsFormated(s string) (bool, error) {
+func (t XFS) IsFormated(s string) (bool, error) {
 	if _, err := exec.LookPath("xfs_admin"); err != nil {
 		return false, errors.New("xfs_admin not found")
 	}
@@ -40,7 +40,7 @@ func (t T_XFS) IsFormated(s string) (bool, error) {
 	}
 }
 
-func (t T_XFS) MKFS(devpath string, args []string) error {
+func (t XFS) MKFS(devpath string, args []string) error {
 	if _, err := exec.LookPath("mkfs.xfs"); err != nil {
 		return fmt.Errorf("mkfs.xfs not found")
 	}
@@ -55,7 +55,7 @@ func (t T_XFS) MKFS(devpath string, args []string) error {
 	return cmd.Run()
 }
 
-func (t T_XFS) IsCapable() bool {
+func (t XFS) IsCapable() bool {
 	if _, err := exec.LookPath("mkfs.xfs"); err != nil {
 		return false
 	}

@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localNodeActionDrain(ctx)
 	} else if !clusternode.Has(nodename) {
@@ -33,7 +33,7 @@ func (a *DaemonApi) PostPeerActionDrain(ctx echo.Context, nodename string) error
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionDrain(ctx echo.Context) error {
+func (a *DaemonAPI) localNodeActionDrain(ctx echo.Context) error {
 	var (
 		value = node.MonitorUpdate{}
 	)

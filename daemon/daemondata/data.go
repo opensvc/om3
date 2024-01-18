@@ -18,11 +18,11 @@ import (
 )
 
 type (
-	// caller defines interface to implement for daemondata loop cmd processing
+	// Caller defines interface to implement for daemondata loop cmd processing
 	// the function will hold the daemondata loop while running
-	//    err := caller.call(ctx, d)
-	//    caller.SetError(err)
-	caller interface {
+	//    err := Caller.call(ctx, d)
+	//    Caller.SetError(err)
+	Caller interface {
 		call(context.Context, *data) error
 		SetError(error)
 	}
@@ -205,7 +205,7 @@ func PropagationInterval() time.Duration {
 //	        x <- resC
 //	        return
 //	     }
-func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
+func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
 	d.log = plog.NewDefaultLogger().WithPrefix("daemon: data: ").Attr("pkg", "daemon/daemondata")
 	d.log.Infof("starting")
 	defer d.log.Infof("stopped")
@@ -331,7 +331,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 				d.log.Warnf("drop rx message message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
 			}
 		case cmd := <-cmdC:
-			if c, ok := cmd.(caller); ok {
+			if c, ok := cmd.(Caller); ok {
 				select {
 				case <-ctx.Done():
 					c.SetError(ctx.Err())

@@ -15,7 +15,7 @@ import (
 func (t *T) startOVSPort(ctx context.Context, dev string) error {
 	args := []string{
 		"--may-exist",
-		"add-port", t.IpDev, dev,
+		"add-port", t.IPDev, dev,
 		fmt.Sprintf("vlan_mode=%s", t.VLANMode),
 	}
 	cmd := command.New(
@@ -43,7 +43,7 @@ func (t *T) stopOVSPort(dev string) error {
 	}
 	args := []string{
 		"--if-exist",
-		"del-port", t.IpDev, dev,
+		"del-port", t.IPDev, dev,
 	}
 	cmd := command.New(
 		command.WithName("ovs-vsctl"),

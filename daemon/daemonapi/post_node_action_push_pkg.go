@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostNodeActionPushPkg(ctx echo.Context, nodename string, params api.PostNodeActionPushPkgParams) error {
+func (a *DaemonAPI) PostNodeActionPushPkg(ctx echo.Context, nodename string, params api.PostNodeActionPushPkgParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionPushPkg(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -21,7 +21,7 @@ func (a *DaemonApi) PostNodeActionPushPkg(ctx echo.Context, nodename string, par
 	return a.remoteNodeActionPushPkg(ctx, nodename, params)
 }
 
-func (a *DaemonApi) remoteNodeActionPushPkg(ctx echo.Context, nodename string, params api.PostNodeActionPushPkgParams) error {
+func (a *DaemonAPI) remoteNodeActionPushPkg(ctx echo.Context, nodename string, params api.PostNodeActionPushPkgParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) remoteNodeActionPushPkg(ctx echo.Context, nodename string, p
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionPushPkg(ctx echo.Context, params api.PostNodeActionPushPkgParams) error {
+func (a *DaemonAPI) localNodeActionPushPkg(ctx echo.Context, params api.PostNodeActionPushPkgParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}

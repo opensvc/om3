@@ -34,7 +34,7 @@ type (
 	// ArbitratorStatus describes the internet name of an arbitrator and
 	// if it is join-able.
 	ArbitratorStatus struct {
-		Url    string   `json:"url"`
+		URL    string   `json:"url"`
 		Status status.T `json:"status"`
 	}
 

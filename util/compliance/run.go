@@ -517,7 +517,7 @@ func (t Run) Render() string {
 	return buff
 }
 
-func (t ModuleAction) Status() string {
+func (t *ModuleAction) Status() string {
 	switch t.ExitCode {
 	case 0:
 		return rawconfig.Colorize.Optimal("ok")
@@ -528,7 +528,7 @@ func (t ModuleAction) Status() string {
 	}
 }
 
-func (t ModuleAction) StatusAndExitCode() string {
+func (t *ModuleAction) StatusAndExitCode() string {
 	switch t.ExitCode {
 	case 0:
 		return rawconfig.Colorize.Optimal("ok")
@@ -541,8 +541,18 @@ func (t ModuleAction) StatusAndExitCode() string {
 	}
 }
 
-func (t ModuleAction) Duration() time.Duration {
+func (t *ModuleAction) Duration() time.Duration {
 	return t.EndAt.Sub(t.BeginAt)
+}
+
+func (t *ModuleAction) Render() string {
+	buff := fmt.Sprintf("  - Action:   %s\n", rawconfig.Colorize.Bold(t.Action))
+	buff += fmt.Sprintf("    Status:   %s\n", t.StatusAndExitCode())
+	buff += fmt.Sprintf("    Duration: %s\n", t.Duration())
+	buff += fmt.Sprintf("    Log:\n")
+	buff += t.Log.Render()
+	return buff
+
 }
 
 func (t ModuleActions) Render() string {
@@ -556,14 +566,4 @@ func (t ModuleActions) Render() string {
 		buff += ma.Render()
 	}
 	return buff
-}
-
-func (t ModuleAction) Render() string {
-	buff := fmt.Sprintf("  - Action:   %s\n", rawconfig.Colorize.Bold(t.Action))
-	buff += fmt.Sprintf("    Status:   %s\n", t.StatusAndExitCode())
-	buff += fmt.Sprintf("    Duration: %s\n", t.Duration())
-	buff += fmt.Sprintf("    Log:\n")
-	buff += t.Log.Render()
-	return buff
-
 }

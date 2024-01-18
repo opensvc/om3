@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
+func (a *DaemonAPI) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
 	log := LogHandler(ctx, "GetObjectConfigGet")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleGuest, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
@@ -85,7 +85,7 @@ func (a *DaemonApi) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 		return ctx.JSON(http.StatusOK, r)
 	}
 
-	for nodename, _ := range instanceConfigData {
+	for nodename := range instanceConfigData {
 		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)

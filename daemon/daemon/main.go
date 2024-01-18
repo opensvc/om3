@@ -137,9 +137,9 @@ func (t *T) Start(ctx context.Context) error {
 		cstat.New(),
 		istat.New(),
 		listener.New(t.ctx),
-		nmon.New(daemonenv.DrainChanDuration),
-		dns.New(daemonenv.DrainChanDuration),
-		discover.New(daemonenv.DrainChanDuration),
+		nmon.NewManager(daemonenv.DrainChanDuration),
+		dns.NewManager(daemonenv.DrainChanDuration),
+		discover.NewManager(daemonenv.DrainChanDuration),
 		hb.New(t.ctx),
 		collector.New(),
 		scheduler.New(),
@@ -342,5 +342,5 @@ func startProfiling() {
 	// Usage example from cluster node1:
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
-	cannula.Start(daemonenv.PathUxProfile())
+	cannula.Start(daemonenv.ProfileUnixFile())
 }

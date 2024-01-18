@@ -12,7 +12,7 @@ type (
 		OptsGlobal
 		Debug      bool
 		Foreground bool
-		CpuProfile string
+		CPUProfile string
 	}
 )
 
@@ -33,5 +33,5 @@ func (t *CmdDaemonStart) Run() error {
 		return err
 	}
 	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).StartFromCmd(ctx, t.Foreground, t.CpuProfile)
+	return daemoncmd.NewContext(ctx, cli).StartFromCmd(ctx, t.Foreground, t.CPUProfile)
 }

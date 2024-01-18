@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetNodeSchedule(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) GetNodeSchedule(ctx echo.Context, nodename string) error {
 	if a.localhost == nodename {
 		return a.getLocalSchedule(ctx)
 	} else if !clusternode.Has(nodename) {
@@ -20,7 +20,7 @@ func (a *DaemonApi) GetNodeSchedule(ctx echo.Context, nodename string) error {
 	}
 }
 
-func (a *DaemonApi) getPeerSchedule(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerSchedule(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) getPeerSchedule(ctx echo.Context, nodename string) error {
 	return nil
 }
 
-func (a *DaemonApi) getLocalSchedule(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalSchedule(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)

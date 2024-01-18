@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) GetNodes(ctx echo.Context, params api.GetNodesParams) error {
+func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error {
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,

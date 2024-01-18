@@ -252,7 +252,7 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for node, _ := range nodesInfo {
+	for node := range nodesInfo {
 		l = append(l, node)
 	}
 	return l, nil

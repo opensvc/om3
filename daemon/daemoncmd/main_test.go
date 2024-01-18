@@ -43,13 +43,13 @@ func getClientUrl(withConfig bool) (urlM map[string]string) {
 	switch withConfig {
 	case true:
 		urlM = map[string]string{
-			"UrlUxHttp":   daemonenv.UrlUxHttp(),
+			"UrlUxHttp":   daemonenv.HTTPUnixURL(),
 			"UrlInetHttp": "https://localhost:1315",
 		}
 	case false:
 		urlM = map[string]string{
-			"UrlUxHttp":   daemonenv.UrlUxHttp(),
-			"UrlInetHttp": daemonenv.UrlInetHttp(),
+			"UrlUxHttp":   daemonenv.HTTPUnixURL(),
+			"UrlInetHttp": daemonenv.HTTPLocalURL(),
 		}
 	}
 	return
@@ -71,7 +71,7 @@ func TestDaemonBootstrap(t *testing.T) {
 			hasConfig := hasConfig
 			env := setup(t, hasConfig)
 			t.Logf("using env root: %s", env.Root)
-			cli, err := client.New(client.WithURL(daemonenv.UrlUxHttp()))
+			cli, err := client.New(client.WithURL(daemonenv.HTTPUnixURL()))
 			daemonCli := daemoncmd.New(cli)
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())

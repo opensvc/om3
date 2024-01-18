@@ -11,18 +11,18 @@ var (
 	stopDuration = 10 * time.Second
 )
 
-func (o *imon) orchestrateStopped() {
-	o.freezeStop()
+func (t *Manager) orchestrateStopped() {
+	t.freezeStop()
 }
 
-func (o *imon) freezeStop() {
-	switch o.state.State {
+func (t *Manager) freezeStop() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.doFreezeStop()
+		t.doFreezeStop()
 	case instance.MonitorStateFrozen:
-		o.doStop()
+		t.doStop()
 	case instance.MonitorStateReady:
-		o.stoppedFromReady()
+		t.stoppedFromReady()
 	case instance.MonitorStateFreezing:
 		// wait for the freeze exec to end
 	case instance.MonitorStateStopping:
@@ -30,23 +30,23 @@ func (o *imon) freezeStop() {
 	case instance.MonitorStateStopFailed:
 		// avoid a retry-loop
 	case instance.MonitorStateStartFailed:
-		o.stoppedFromFailed()
+		t.stoppedFromFailed()
 	case instance.MonitorStateWaitChildren:
-		o.setWaitChildren()
+		t.setWaitChildren()
 	default:
-		o.log.Errorf("don't know how to freeze and stop from %s", o.state.State)
+		t.log.Errorf("don't know how to freeze and stop from %s", t.state.State)
 	}
 }
 
 // stop stops the object but does not freeze.
 // This func must be called by orchestrations that know the ha auto-start will
 // not starts it back (ex: auto-stop), or that want the restart (ex: restart).
-func (o *imon) stop() {
-	switch o.state.State {
+func (t *Manager) stop() {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.doStop()
+		t.doStop()
 	case instance.MonitorStateReady:
-		o.stoppedFromReady()
+		t.stoppedFromReady()
 	case instance.MonitorStateFrozen:
 		// honor the frozen state
 	case instance.MonitorStateFreezing:
@@ -56,84 +56,84 @@ func (o *imon) stop() {
 	case instance.MonitorStateStopFailed:
 		// avoid a retry-loop
 	case instance.MonitorStateStartFailed:
-		o.stoppedFromFailed()
+		t.stoppedFromFailed()
 	default:
-		o.log.Errorf("don't know how to stop from %s", o.state.State)
+		t.log.Errorf("don't know how to stop from %s", t.state.State)
 	}
 }
 
-func (o *imon) stoppedFromThawed() {
-	o.doTransitionAction(o.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
+func (t *Manager) stoppedFromThawed() {
+	t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
 }
 
 // doFreeze handle global expect stopped orchestration from idle
 //
 // local thawed => freezing to reach frozen
 // else         => stopping
-func (o *imon) doFreezeStop() {
-	if o.instStatus[o.localhost].IsThawed() {
-		o.doTransitionAction(o.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
+func (t *Manager) doFreezeStop() {
+	if t.instStatus[t.localhost].IsThawed() {
+		t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
 		return
 	} else {
-		o.doStop()
+		t.doStop()
 	}
 }
 
-func (o *imon) doFreeze() {
-	if o.instStatus[o.localhost].IsThawed() {
-		o.doTransitionAction(o.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
+func (t *Manager) doFreeze() {
+	if t.instStatus[t.localhost].IsThawed() {
+		t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
 		return
 	}
 }
 
-func (o *imon) doStop() {
-	if o.stoppedClearIfReached() {
+func (t *Manager) doStop() {
+	if t.stoppedClearIfReached() {
 		return
 	}
-	if o.setWaitChildren() {
+	if t.setWaitChildren() {
 		return
 	}
-	o.createPendingWithDuration(stopDuration)
-	o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
+	t.createPendingWithDuration(stopDuration)
+	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
 }
 
-func (o *imon) stoppedFromReady() {
-	o.log.Infof("reset ready state global expect is stopped")
-	o.clearPending()
-	o.change = true
-	o.state.State = instance.MonitorStateIdle
-	o.stoppedClearIfReached()
+func (t *Manager) stoppedFromReady() {
+	t.log.Infof("reset ready state global expect is stopped")
+	t.clearPending()
+	t.change = true
+	t.state.State = instance.MonitorStateIdle
+	t.stoppedClearIfReached()
 }
 
-func (o *imon) stoppedFromFailed() {
-	o.log.Infof("reset %s state global expect is stopped")
-	o.change = true
-	o.state.State = instance.MonitorStateIdle
-	o.stoppedClearIfReached()
+func (t *Manager) stoppedFromFailed() {
+	t.log.Infof("reset %s state global expect is stopped")
+	t.change = true
+	t.state.State = instance.MonitorStateIdle
+	t.stoppedClearIfReached()
 }
 
-func (o *imon) stoppedFromAny() {
-	if o.pendingCancel == nil {
-		o.stoppedClearIfReached()
+func (t *Manager) stoppedFromAny() {
+	if t.pendingCancel == nil {
+		t.stoppedClearIfReached()
 		return
 	}
 }
 
-func (o *imon) stoppedClearIfReached() bool {
-	if o.isLocalStopped() {
-		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Infof("instance state is stopped -> set done and idle, clear local expect")
-			o.doneAndIdle()
-			o.state.LocalExpect = instance.MonitorLocalExpectNone
-			o.clearPending()
+func (t *Manager) stoppedClearIfReached() bool {
+	if t.isLocalStopped() {
+		if !t.state.OrchestrationIsDone {
+			t.loggerWithState().Infof("instance state is stopped -> set done and idle, clear local expect")
+			t.doneAndIdle()
+			t.state.LocalExpect = instance.MonitorLocalExpectNone
+			t.clearPending()
 		}
 		return true
 	}
 	return false
 }
 
-func (o *imon) isLocalStopped() bool {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) isLocalStopped() bool {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.NotApplicable, status.Undef:
 		return true

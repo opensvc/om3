@@ -8,31 +8,31 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (o *imon) orchestrateStarted() {
-	if o.isStarted() {
-		o.startedClearIfReached()
+func (t *Manager) orchestrateStarted() {
+	if t.isStarted() {
+		t.startedClearIfReached()
 		return
 	}
-	switch o.state.State {
+	switch t.state.State {
 	case instance.MonitorStateIdle:
-		o.startedFromIdle()
+		t.startedFromIdle()
 	case instance.MonitorStateThawed:
-		o.startedFromThawed()
+		t.startedFromThawed()
 	case instance.MonitorStateReady:
-		o.startedFromReady()
+		t.startedFromReady()
 	case instance.MonitorStateStarted:
-		o.startedFromStarted()
+		t.startedFromStarted()
 	case instance.MonitorStateStartFailed:
-		o.startedFromStartFailed()
+		t.startedFromStartFailed()
 	case instance.MonitorStateStarting:
-		o.startedFromAny()
+		t.startedFromAny()
 	case instance.MonitorStateStopping:
-		o.startedFromAny()
+		t.startedFromAny()
 	case instance.MonitorStateThawing:
 	case instance.MonitorStateWaitParents:
-		o.setWaitParents()
+		t.setWaitParents()
 	default:
-		o.log.Errorf("don't know how to orchestrate started from %s", o.state.State)
+		t.log.Errorf("don't know how to orchestrate started from %s", t.state.State)
 	}
 }
 
@@ -40,15 +40,15 @@ func (o *imon) orchestrateStarted() {
 //
 // frozen => try startedFromFrozen
 // else   => try startedFromThawed
-func (o *imon) startedFromIdle() {
-	if o.instStatus[o.localhost].IsFrozen() {
-		if o.state.GlobalExpect == instance.MonitorGlobalExpectNone {
+func (t *Manager) startedFromIdle() {
+	if t.instStatus[t.localhost].IsFrozen() {
+		if t.state.GlobalExpect == instance.MonitorGlobalExpectNone {
 			return
 		}
-		o.doUnfreeze()
+		t.doUnfreeze()
 		return
 	} else {
-		o.startedFromThawed()
+		t.startedFromThawed()
 	}
 }
 
@@ -58,105 +58,105 @@ func (o *imon) startedFromIdle() {
 // objectStatus.Avail Up => unset global expect, unset local expect
 // better candidate => no actions
 // else => state -> ready, start ready routine
-func (o *imon) startedFromThawed() {
-	if o.startedClearIfReached() {
+func (t *Manager) startedFromThawed() {
+	if t.startedClearIfReached() {
 		return
 	}
-	if !o.state.IsHALeader {
+	if !t.state.IsHALeader {
 		return
 	}
-	if o.hasOtherNodeActing() {
-		o.log.Debugf("another node acting")
+	if t.hasOtherNodeActing() {
+		t.log.Debugf("another node acting")
 		return
 	}
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
-		o.log.Debugf("provisioned is false or undef")
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
+		t.log.Debugf("provisioned is false or undef")
 		return
 	}
-	o.transitionTo(instance.MonitorStateReady)
-	o.createPendingWithDuration(o.readyDuration)
+	t.transitionTo(instance.MonitorStateReady)
+	t.createPendingWithDuration(t.readyDuration)
 	go func(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			if ctx.Err() == context.Canceled {
 				return
 			}
-			o.orchestrateAfterAction(instance.MonitorStateReady, instance.MonitorStateReady)
+			t.orchestrateAfterAction(instance.MonitorStateReady, instance.MonitorStateReady)
 			return
 		}
-	}(o.pendingCtx)
+	}(t.pendingCtx)
 }
 
 // doUnfreeze idle -> thawing -> thawed or thawed failed
-func (o *imon) doUnfreeze() {
-	o.doTransitionAction(o.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
+func (t *Manager) doUnfreeze() {
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
-func (o *imon) cancelReadyState() bool {
-	if o.pendingCancel == nil {
-		o.loggerWithState().Errorf("startedFromReady without pending")
-		o.transitionTo(instance.MonitorStateIdle)
+func (t *Manager) cancelReadyState() bool {
+	if t.pendingCancel == nil {
+		t.loggerWithState().Errorf("startedFromReady without pending")
+		t.transitionTo(instance.MonitorStateIdle)
 		return true
 	}
-	if o.startedClearIfReached() {
+	if t.startedClearIfReached() {
 		return true
 	}
-	if !o.state.IsHALeader {
-		o.loggerWithState().Infof("leadership lost, clear the ready state")
-		o.transitionTo(instance.MonitorStateIdle)
-		o.clearPending()
+	if !t.state.IsHALeader {
+		t.loggerWithState().Infof("leadership lost, clear the ready state")
+		t.transitionTo(instance.MonitorStateIdle)
+		t.clearPending()
 		return true
 	}
 	return false
 }
 
-func (o *imon) startedFromReady() {
-	if isCanceled := o.cancelReadyState(); isCanceled {
+func (t *Manager) startedFromReady() {
+	if isCanceled := t.cancelReadyState(); isCanceled {
 		return
 	}
-	if o.setWaitParents() {
+	if t.setWaitParents() {
 		return
 	}
 	select {
-	case <-o.pendingCtx.Done():
-		defer o.clearPending()
-		if o.pendingCtx.Err() == context.Canceled {
-			o.transitionTo(instance.MonitorStateIdle)
+	case <-t.pendingCtx.Done():
+		defer t.clearPending()
+		if t.pendingCtx.Err() == context.Canceled {
+			t.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		o.doAction(o.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
+		t.doAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
 		return
 	default:
 		return
 	}
 }
 
-func (o *imon) startedFromAny() {
-	if o.pendingCancel == nil {
-		o.startedClearIfReached()
+func (t *Manager) startedFromAny() {
+	if t.pendingCancel == nil {
+		t.startedClearIfReached()
 		return
 	}
 }
 
-func (o *imon) startedFromStarted() {
-	o.startedClearIfReached()
+func (t *Manager) startedFromStarted() {
+	t.startedClearIfReached()
 }
 
-func (o *imon) startedFromStartFailed() {
-	if o.isStarted() {
-		o.loggerWithState().Infof("object is up -> set done and idle, clear start failed")
-		o.doneAndIdle()
+func (t *Manager) startedFromStartFailed() {
+	if t.isStarted() {
+		t.loggerWithState().Infof("object is up -> set done and idle, clear start failed")
+		t.doneAndIdle()
 		return
 	}
-	if o.isAllStartFailed() {
-		o.loggerWithState().Infof("all instances start failed -> set done")
-		o.done()
+	if t.isAllStartFailed() {
+		t.loggerWithState().Infof("all instances start failed -> set done")
+		t.done()
 		return
 	}
 }
 
-func (o *imon) isAllStartFailed() bool {
-	for _, instMon := range o.AllInstanceMonitors() {
+func (t *Manager) isAllStartFailed() bool {
+	for _, instMon := range t.AllInstanceMonitors() {
 		if instMon.State != instance.MonitorStateStartFailed {
 			return false
 		}
@@ -164,33 +164,33 @@ func (o *imon) isAllStartFailed() bool {
 	return true
 }
 
-func (o *imon) startedClearIfReached() bool {
-	if o.isLocalStarted() {
-		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Infof("instance is started -> set done and idle")
-			o.doneAndIdle()
+func (t *Manager) startedClearIfReached() bool {
+	if t.isLocalStarted() {
+		if !t.state.OrchestrationIsDone {
+			t.loggerWithState().Infof("instance is started -> set done and idle")
+			t.doneAndIdle()
 		}
-		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
-			o.loggerWithState().Infof("instance is started, set local expect started")
-			o.change = true
-			o.state.LocalExpect = instance.MonitorLocalExpectStarted
+		if t.state.LocalExpect != instance.MonitorLocalExpectStarted {
+			t.loggerWithState().Infof("instance is started, set local expect started")
+			t.change = true
+			t.state.LocalExpect = instance.MonitorLocalExpectStarted
 		}
-		o.clearPending()
+		t.clearPending()
 		return true
 	}
-	if o.isStarted() {
-		if !o.state.OrchestrationIsDone {
-			o.loggerWithState().Infof("object is started -> set done and idle")
-			o.doneAndIdle()
+	if t.isStarted() {
+		if !t.state.OrchestrationIsDone {
+			t.loggerWithState().Infof("object is started -> set done and idle")
+			t.doneAndIdle()
 		}
-		o.clearPending()
+		t.clearPending()
 		return true
 	}
 	return false
 }
 
-func (o *imon) isLocalStarted() bool {
-	instStatus := o.instStatus[o.localhost]
+func (t *Manager) isLocalStarted() bool {
+	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.NotApplicable:
 		return true

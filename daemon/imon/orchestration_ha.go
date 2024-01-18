@@ -6,97 +6,97 @@ import (
 	"github.com/opensvc/om3/core/topology"
 )
 
-func (o *imon) orchestrateNone() {
-	o.clearStartFailed()
-	o.clearBootFailed()
-	if o.objStatus.Orchestrate == "ha" {
-		o.orchestrateHAStart()
-		o.orchestrateHAStop()
+func (t *Manager) orchestrateNone() {
+	t.clearStartFailed()
+	t.clearBootFailed()
+	if t.objStatus.Orchestrate == "ha" {
+		t.orchestrateHAStart()
+		t.orchestrateHAStop()
 	}
 }
 
-func (o *imon) orchestrateHAStop() {
-	if o.objStatus.Topology != topology.Flex {
+func (t *Manager) orchestrateHAStop() {
+	if t.objStatus.Topology != topology.Flex {
 		return
 	}
-	if v, _ := o.isExtraInstance(); !v {
+	if v, _ := t.isExtraInstance(); !v {
 		return
 	}
-	o.stop()
+	t.stop()
 }
 
-func (o *imon) orchestrateHAStart() {
+func (t *Manager) orchestrateHAStart() {
 	// we are here because we are ha object with global expect None
-	switch o.state.State {
+	switch t.state.State {
 	case instance.MonitorStateReady:
-		o.cancelReadyState()
+		t.cancelReadyState()
 	case instance.MonitorStateStarted:
 		// started means the action start has been done. This state is a
 		// waiter step to verify if received started like local instance status
 		// to transition state: started -> idle
 		// It prevents unexpected transition state -> ready
-		if o.isLocalStarted() {
-			o.log.Infof("instance is now started, enable resource restart")
-			o.state.LocalExpect = instance.MonitorLocalExpectStarted
-			o.transitionTo(instance.MonitorStateIdle)
+		if t.isLocalStarted() {
+			t.log.Infof("instance is now started, enable resource restart")
+			t.state.LocalExpect = instance.MonitorLocalExpectStarted
+			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return
 	}
-	if v, reason := o.isStartable(); !v {
-		if o.pendingCancel != nil && o.state.State == instance.MonitorStateReady {
-			o.log.Infof("instance is not startable, clear the ready state: %s", reason)
-			o.clearPending()
-			o.transitionTo(instance.MonitorStateIdle)
+	if v, reason := t.isStartable(); !v {
+		if t.pendingCancel != nil && t.state.State == instance.MonitorStateReady {
+			t.log.Infof("instance is not startable, clear the ready state: %s", reason)
+			t.clearPending()
+			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return
 	}
-	if o.isLocalStarted() {
+	if t.isLocalStarted() {
 		return
 	}
-	o.orchestrateStarted()
+	t.orchestrateStarted()
 }
 
 // clearBootFailed clears the boot failed state when the following conditions are met:
 //
 // + local avail is Down, StandbyDown, NotApplicable
 // + global expect is none
-func (o *imon) clearBootFailed() {
-	if o.state.State != instance.MonitorStateBootFailed {
+func (t *Manager) clearBootFailed() {
+	if t.state.State != instance.MonitorStateBootFailed {
 		return
 	}
-	switch o.instStatus[o.localhost].Avail {
+	switch t.instStatus[t.localhost].Avail {
 	case status.Down:
 	case status.StandbyDown:
 	case status.NotApplicable:
 	default:
 		return
 	}
-	for _, instanceMonitor := range o.instMonitor {
+	for _, instanceMonitor := range t.instMonitor {
 		switch instanceMonitor.GlobalExpect {
 		case instance.MonitorGlobalExpectNone:
 		default:
 			return
 		}
 	}
-	o.log.Infof("clear instance %s: local instance avail is %s, object avail is %s",
-		o.state.State, o.instStatus[o.localhost].Avail, o.objStatus.Avail)
-	o.transitionTo(instance.MonitorStateIdle)
+	t.log.Infof("clear instance %s: local instance avail is %s, object avail is %s",
+		t.state.State, t.instStatus[t.localhost].Avail, t.objStatus.Avail)
+	t.transitionTo(instance.MonitorStateIdle)
 }
 
-func (o *imon) clearStartFailed() {
-	if o.state.State != instance.MonitorStateStartFailed {
+func (t *Manager) clearStartFailed() {
+	if t.state.State != instance.MonitorStateStartFailed {
 		return
 	}
-	if o.objStatus.Avail != status.Up {
+	if t.objStatus.Avail != status.Up {
 		return
 	}
-	for _, instanceMonitor := range o.instMonitor {
+	for _, instanceMonitor := range t.instMonitor {
 		switch instanceMonitor.GlobalExpect {
 		case instance.MonitorGlobalExpectNone:
 		default:
 			return
 		}
 	}
-	o.log.Infof("clear instance start failed: the object is up")
-	o.transitionTo(instance.MonitorStateIdle)
+	t.log.Infof("clear instance start failed: the object is up")
+	t.transitionTo(instance.MonitorStateIdle)
 }

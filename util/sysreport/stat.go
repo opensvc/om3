@@ -10,6 +10,7 @@ import (
 )
 
 type (
+	// Stat contains the metadata of a tracked file
 	Stat struct {
 		Path       string `json:"fpath"`    // /opt/opensvc/etc/vcluster.conf
 		RealPath   string `json:"realpath"` // /opt/opensvc/etc/vcluster.conf
@@ -23,13 +24,17 @@ type (
 		MTime      timestamp.T `json:"mtime"` // 1640331980
 		Nlink      Nlink       `json:"nlink"` // 1
 	}
-	Stats    []Stat
-	StatsMap map[string]Stat
+
+	// Stats is the list of the metadata of all tracked files.
+	// The serialized Stats is tracked as a special file, so tracked files metadata changes are also tracked.
+	Stats []Stat
+
+	statsMap map[string]Stat
 )
 
 // List returns the StatsMap data as a list of Stat sorted by Stat.Path,
 // which is also the StatsMap key
-func (t StatsMap) List() Stats {
+func (t statsMap) List() Stats {
 	l := make(Stats, len(t))
 	keys := xmap.Keys(t)
 	sort.Strings(keys)
@@ -39,7 +44,7 @@ func (t StatsMap) List() Stats {
 	return l
 }
 
-func (t *StatsMap) Load(r io.Reader) error {
+func (t *statsMap) Load(r io.Reader) error {
 	var stats Stats
 	if err := stats.Load(r); err != nil {
 		return err
@@ -48,12 +53,12 @@ func (t *StatsMap) Load(r io.Reader) error {
 	return nil
 }
 
-func (t StatsMap) Write(w io.Writer) error {
+func (t statsMap) Write(w io.Writer) error {
 	return t.List().Write(w)
 }
 
-func (t Stats) Map() StatsMap {
-	m := make(StatsMap)
+func (t Stats) Map() statsMap {
+	m := make(statsMap)
 	for _, stat := range t {
 		m[stat.Path] = stat
 	}

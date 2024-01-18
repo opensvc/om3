@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (o *cstat) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
+func (o *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	o.nodeStatus[c.Node] = c.Value
 	o.updateCompat()
 	o.updateFrozen()
@@ -18,7 +18,7 @@ func (o *cstat) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	}
 }
 
-func (o *cstat) updateCompat() {
+func (o *T) updateCompat() {
 	getCompat := func() bool {
 		var lastCompat uint64
 		for _, nodeStatus := range o.nodeStatus {
@@ -36,7 +36,7 @@ func (o *cstat) updateCompat() {
 	}
 }
 
-func (o *cstat) updateFrozen() {
+func (o *T) updateFrozen() {
 	getFrozen := func() bool {
 		for _, nodeStatus := range o.nodeStatus {
 			if nodeStatus.IsFrozen() {

@@ -1,7 +1,9 @@
 package om
 
 import (
+	// Necessary to use go:embed
 	_ "embed"
+
 	"time"
 
 	"github.com/spf13/cobra"
@@ -378,7 +380,7 @@ func newCmdDaemonStart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForeground(flags, &options.Foreground)
-	addFlagCpuProfile(flags, &options.CpuProfile)
+	addFlagCPUProfile(flags, &options.CPUProfile)
 	return cmd
 }
 

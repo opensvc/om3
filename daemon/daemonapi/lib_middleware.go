@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/plog"
@@ -61,7 +62,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
-	strategies := parent.Value("authStrategies").(Strategier)
+	strategies := daemonauth.StrategiesFromContext(parent)
 	newExtensions := func(strategy string) *auth.Extensions {
 		return &auth.Extensions{"strategy": []string{strategy}}
 	}

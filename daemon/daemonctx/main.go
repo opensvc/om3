@@ -63,13 +63,13 @@ func WithLsnrType(parent context.Context, s string) context.Context {
 	return context.WithValue(parent, contextLsnrType, s)
 }
 
-// WithUuid function returns copy of parent with uuid.
-func WithUuid(parent context.Context, uuid uuid.UUID) context.Context {
+// WithUUID function returns copy of parent with uuid.
+func WithUUID(parent context.Context, uuid uuid.UUID) context.Context {
 	return context.WithValue(parent, contextUUID, uuid)
 }
 
-// Uuid function returns uuid from context
-func Uuid(ctx context.Context) uuid.UUID {
+// UUID function returns uuid from context
+func UUID(ctx context.Context) uuid.UUID {
 	id, ok := ctx.Value(contextUUID).(uuid.UUID)
 	if ok {
 		return id

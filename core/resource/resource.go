@@ -1240,7 +1240,7 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 	if t.Key != "" {
 		return t.Key
 	}
-	if nodePRKey := rawconfig.NodeSection().PRKey; nodePRKey != "" {
+	if nodePRKey := rawconfig.GetNodeSection().PRKey; nodePRKey != "" {
 		return nodePRKey
 	}
 	return ""

@@ -29,7 +29,7 @@ var (
 // GetDaemonStatus returns daemon data status
 //
 // Serve 2s cached data.
-func (a *DaemonApi) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
+func (a *DaemonAPI) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
 	now := time.Now()
 	subRefreshed.Lock()
 	if now.After(subRefreshed.updated.Add(daemonRefreshInterval)) {

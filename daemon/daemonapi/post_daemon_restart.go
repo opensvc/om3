@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 )
 
-func (a *DaemonApi) PostDaemonRestart(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) PostDaemonRestart(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localPostDaemonRestart(ctx)
 	} else if !clusternode.Has(nodename) {
@@ -29,7 +29,7 @@ func (a *DaemonApi) PostDaemonRestart(ctx echo.Context, nodename string) error {
 	return nil
 }
 
-func (a *DaemonApi) localPostDaemonRestart(ctx echo.Context) error {
+func (a *DaemonAPI) localPostDaemonRestart(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonRestart")
 	log.Infof("starting")
 

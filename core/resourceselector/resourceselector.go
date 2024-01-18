@@ -128,7 +128,7 @@ func (t T) Resources() resource.Drivers {
 	add:
 		fl = fl.Add(r)
 		if dp != nil {
-			deps := dp.SelectDependencies(t.action, r.RID())
+			deps := dp.Dependencies(t.action, r.RID())
 			for _, rid := range deps {
 				if dep := l.GetRID(rid); dep != nil {
 					r.Log().Debugf("add %s to satisfy %s dependency", dep.RID(), t.action)

@@ -36,7 +36,7 @@ type (
 		node string
 	}
 
-	dns struct {
+	Manager struct {
 		drainDuration time.Duration
 
 		// state is a map indexed by object path where the key is a zone fragment regrouping all records created for this object.
@@ -88,8 +88,8 @@ func init() {
 	cmdC = make(chan any)
 }
 
-func New(d time.Duration) *dns {
-	return &dns{
+func NewManager(d time.Duration) *Manager {
+	return &Manager{
 		cmdC:          make(chan any),
 		drainDuration: d,
 		state:         make(map[stateKey]Zone),
@@ -98,7 +98,7 @@ func New(d time.Duration) *dns {
 }
 
 // Start launches the dns worker goroutine
-func (t *dns) Start(parent context.Context) error {
+func (t *Manager) Start(parent context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
@@ -131,7 +131,7 @@ func (t *dns) Start(parent context.Context) error {
 	return nil
 }
 
-func (t *dns) Stop() error {
+func (t *Manager) Stop() error {
 	t.log.Infof("stopping")
 	defer t.log.Infof("stopped")
 	t.cancel()
@@ -139,7 +139,7 @@ func (t *dns) Stop() error {
 	return nil
 }
 
-func (t *dns) startSubscriptions() {
+func (t *Manager) startSubscriptions() {
 	sub := t.bus.Sub("dns", pubsub.WithQueueSize(SubscriptionQueueSize))
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
@@ -150,7 +150,7 @@ func (t *dns) startSubscriptions() {
 }
 
 // worker watch for local dns updates
-func (t *dns) worker() {
+func (t *Manager) worker() {
 	defer t.log.Debugf("done")
 
 	for _, v := range instance.StatusData.GetAll() {

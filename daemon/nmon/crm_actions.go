@@ -28,19 +28,19 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
-func (o *nmon) crmDrain() error {
-	return o.crmAction("*/svc/*", "shutdown", "--local")
+func (t *Manager) crmDrain() error {
+	return t.crmAction("*/svc/*", "shutdown", "--local")
 }
 
-func (o *nmon) crmFreeze() error {
-	return o.crmAction("node", "freeze", "--local")
+func (t *Manager) crmFreeze() error {
+	return t.crmAction("node", "freeze", "--local")
 }
 
-func (o *nmon) crmUnfreeze() error {
-	return o.crmAction("node", "unfreeze", "--local")
+func (t *Manager) crmUnfreeze() error {
+	return t.crmAction("node", "unfreeze", "--local")
 }
 
-func (o *nmon) crmAction(cmdArgs ...string) error {
+func (t *Manager) crmAction(cmdArgs ...string) error {
 	var cmdEnv []string
 	cmdEnv = append(
 		cmdEnv,
@@ -50,20 +50,20 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithEnv(cmdEnv),
-		command.WithLogger(o.log),
+		command.WithLogger(t.log),
 	)
-	o.log.Debugf("-> exec %s %s", cmdPath, cmd)
-	labels := []pubsub.Label{o.labelLocalhost, {"origin", "nmon"}}
-	o.bus.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "nmon"}, labels...)
+	t.log.Debugf("-> exec %s %s", cmdPath, cmd)
+	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
+	t.bus.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		o.bus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "nmon"}, labels...)
-		o.log.Errorf("failed %s: %s", cmd, err)
+		t.bus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "nmon"}, labels...)
+		t.log.Errorf("failed %s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.bus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "nmon"}, labels...)
-	o.log.Debugf("<- exec %s %s", cmdPath, cmd)
+	t.bus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "nmon"}, labels...)
+	t.log.Debugf("<- exec %s %s", cmdPath, cmd)
 	return nil
 }

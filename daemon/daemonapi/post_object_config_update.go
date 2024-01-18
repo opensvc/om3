@@ -14,7 +14,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
+func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
 	log := LogHandler(ctx, "PostObjectConfigUpdate")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
@@ -74,7 +74,7 @@ func (a *DaemonApi) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		return nil
 	}
 
-	for nodename, _ := range instanceConfigData {
+	for nodename := range instanceConfigData {
 		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)

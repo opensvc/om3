@@ -45,7 +45,7 @@ import (
 )
 
 type (
-	imon struct {
+	Manager struct {
 		state         instance.Monitor
 		previousState instance.Monitor
 
@@ -140,7 +140,7 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 
 	localhost := hostname.Hostname()
 
-	o := &imon{
+	t := &Manager{
 		state:         state,
 		previousState: previousState,
 		path:          p,
@@ -170,261 +170,261 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		labelPath:      pubsub.Label{"path", id},
 	}
 
-	o.log = o.newLogger(uuid.Nil)
-	o.startSubscriptions()
+	t.log = t.newLogger(uuid.Nil)
+	t.startSubscriptions()
 
 	go func() {
-		o.worker(nodes)
+		t.worker(nodes)
 	}()
 
 	return nil
 }
 
-func (o *imon) newLogger(i uuid.UUID) *plog.Logger {
-	return naming.LogWithPath(plog.NewDefaultLogger(), o.path).
+func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
+	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		Attr("orchestration_id", i.String()).
-		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", o.path.String()))
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
 
-func (o *imon) startSubscriptions() {
-	sub := o.pubsubBus.Sub(o.id + " imon")
-	sub.AddFilter(&msgbus.NodeConfigUpdated{}, o.labelLocalhost)
+func (t *Manager) startSubscriptions() {
+	sub := t.pubsubBus.Sub(t.id + " imon")
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
-	sub.AddFilter(&msgbus.NodeRejoin{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeStatsUpdated{})
-	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, o.labelPath)
-	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, o.labelPath)
-	sub.AddFilter(&msgbus.SetInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, t.labelPath)
+	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, t.labelPath)
+	sub.AddFilter(&msgbus.SetInstanceMonitor{}, t.labelPath)
 	sub.Start()
-	o.sub = sub
+	t.sub = sub
 }
 
 // worker watch for local imon updates
-func (o *imon) worker(initialNodes []string) {
-	defer o.log.Debugf("worker stopped")
+func (t *Manager) worker(initialNodes []string) {
+	defer t.log.Debugf("worker stopped")
 
 	// Initiate crmStatus first, this will update our instance status cache
 	// as soon as possible.
 	// crmStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
-	if err := o.crmStatus(); err != nil {
-		o.log.Errorf("error during initial crm status: %s", err)
+	if err := t.crmStatus(); err != nil {
+		t.log.Errorf("error during initial crm status: %s", err)
 	}
 
-	if o.bootAble() {
-		o.ensureBooted()
+	if t.bootAble() {
+		t.ensureBooted()
 	}
 
 	// Populate caches (published messages before subscription startup are lost)
 	for _, v := range node.StatusData.GetAll() {
-		o.nodeStatus[v.Node] = *v.Value
+		t.nodeStatus[v.Node] = *v.Value
 	}
 	for _, v := range node.StatsData.GetAll() {
-		o.nodeStats[v.Node] = *v.Value
+		t.nodeStats[v.Node] = *v.Value
 	}
 	for _, v := range node.MonitorData.GetAll() {
-		o.nodeMonitor[v.Node] = *v.Value
+		t.nodeMonitor[v.Node] = *v.Value
 	}
-	if iConfig := instance.ConfigData.Get(o.path, o.localhost); iConfig != nil {
-		o.instConfig = *iConfig
-		o.scopeNodes = append([]string{}, o.instConfig.Scope...)
+	if iConfig := instance.ConfigData.Get(t.path, t.localhost); iConfig != nil {
+		t.instConfig = *iConfig
+		t.scopeNodes = append([]string{}, t.instConfig.Scope...)
 	}
-	for n, v := range instance.MonitorData.GetByPath(o.path) {
-		if n == o.localhost {
-			o.log.Warnf("bug: on init, instance.MonitorData[localhost] should be empty")
+	for n, v := range instance.MonitorData.GetByPath(t.path) {
+		if n == t.localhost {
+			t.log.Warnf("bug: on init, instance.MonitorData[localhost] should be empty")
 			continue
 		}
-		o.instMonitor[n] = *v
+		t.instMonitor[n] = *v
 	}
-	for n, v := range instance.StatusData.GetByPath(o.path) {
-		o.instStatus[n] = *v
+	for n, v := range instance.StatusData.GetByPath(t.path) {
+		t.instStatus[n] = *v
 	}
 
-	o.initRelationAvailStatus()
-	o.initResourceMonitor()
-	o.updateIsLeader()
-	o.updateIfChange()
+	t.initRelationAvailStatus()
+	t.initResourceMonitor()
+	t.updateIsLeader()
+	t.updateIfChange()
 
 	defer func() {
 		go func() {
-			err := o.sub.Stop()
+			err := t.sub.Stop()
 			if err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Errorf("subscription stop: %s", err)
+				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
 		go func() {
-			instance.MonitorData.Unset(o.path, o.localhost)
-			o.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
-				o.labelPath,
-				o.labelLocalhost,
+			instance.MonitorData.Unset(t.path, t.localhost)
+			t.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost},
+				t.labelPath,
+				t.labelLocalhost,
 			)
 		}()
 		go func() {
-			instance.StatusData.Unset(o.path, o.localhost)
-			o.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost},
-				o.labelPath,
-				o.labelLocalhost,
+			instance.StatusData.Unset(t.path, t.localhost)
+			t.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost},
+				t.labelPath,
+				t.labelLocalhost,
 			)
 		}()
 		go func() {
-			tC := time.After(o.drainDuration)
+			tC := time.After(t.drainDuration)
 			for {
 				select {
 				case <-tC:
 					return
-				case <-o.cmdC:
+				case <-t.cmdC:
 				}
 			}
 		}()
 	}()
-	o.log.Debugf("started")
+	t.log.Debugf("started")
 	for {
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case i := <-o.sub.C:
+		case i := <-t.sub.C:
 			select {
-			case <-o.ctx.Done():
+			case <-t.ctx.Done():
 				return
 			default:
 			}
 			switch c := i.(type) {
 			case *msgbus.InstanceStatusDeleted:
-				o.onInstanceStatusDeleted(c)
+				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
-				o.onRelationInstanceStatusUpdated(c)
+				t.onRelationInstanceStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
-				o.onObjectStatusDeleted(c)
+				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:
-				o.onObjectStatusUpdated(c)
+				t.onObjectStatusUpdated(c)
 			case *msgbus.ProgressInstanceMonitor:
-				o.onProgressInstanceMonitor(c)
+				t.onProgressInstanceMonitor(c)
 			case *msgbus.SetInstanceMonitor:
-				o.onSetInstanceMonitor(c)
+				t.onSetInstanceMonitor(c)
 			case *msgbus.NodeConfigUpdated:
-				o.onNodeConfigUpdated(c)
+				t.onNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorUpdated:
-				o.onNodeMonitorUpdated(c)
+				t.onNodeMonitorUpdated(c)
 			case *msgbus.NodeRejoin:
-				o.onNodeRejoin(c)
+				t.onNodeRejoin(c)
 			case *msgbus.NodeStatusUpdated:
-				o.onNodeStatusUpdated(c)
+				t.onNodeStatusUpdated(c)
 			case *msgbus.NodeStatsUpdated:
-				o.onNodeStatsUpdated(c)
+				t.onNodeStatsUpdated(c)
 			}
-		case i := <-o.cmdC:
+		case i := <-t.cmdC:
 			select {
-			case <-o.ctx.Done():
+			case <-t.ctx.Done():
 				return
 			default:
 			}
 			switch c := i.(type) {
 			case cmdOrchestrate:
-				o.needOrchestrate(c)
+				t.needOrchestrate(c)
 			}
 		}
 	}
 }
 
 // ensureBooted runs the bot action on not yet booted object
-func (o *imon) ensureBooted() {
-	instanceLastBootID := lastBootID(o.path)
+func (t *Manager) ensureBooted() {
+	instanceLastBootID := lastBootID(t.path)
 	nodeLastBootID := bootid.Get()
 	if instanceLastBootID == "" {
 		// no last instance boot file, create it
-		o.log.Infof("set last object boot id")
-		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-			o.log.Errorf("can't update instance last boot id file: %s", err)
+		t.log.Infof("set last object boot id")
+		if err := updateLastBootID(t.path, nodeLastBootID); err != nil {
+			t.log.Errorf("can't update instance last boot id file: %s", err)
 		}
 	} else if instanceLastBootID != bootid.Get() {
 		// last instance boot id differ from current node boot id
 		// try boot and refresh last instance boot id if succeed
-		o.log.Infof("need boot (node boot id differ from last object boot id)")
-		o.transitionTo(instance.MonitorStateBooting)
-		if err := o.crmBoot(); err == nil {
-			o.log.Infof("set last object boot id")
-			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-				o.log.Errorf("can't update instance last boot id file: %s", err)
+		t.log.Infof("need boot (node boot id differ from last object boot id)")
+		t.transitionTo(instance.MonitorStateBooting)
+		if err := t.crmBoot(); err == nil {
+			t.log.Infof("set last object boot id")
+			if err := updateLastBootID(t.path, nodeLastBootID); err != nil {
+				t.log.Errorf("can't update instance last boot id file: %s", err)
 			}
-			o.transitionTo(instance.MonitorStateBooted)
-			o.transitionTo(instance.MonitorStateIdle)
+			t.transitionTo(instance.MonitorStateBooted)
+			t.transitionTo(instance.MonitorStateIdle)
 		} else {
 			// boot failed, next daemon restart will retry boot
-			o.transitionTo(instance.MonitorStateBootFailed)
+			t.transitionTo(instance.MonitorStateBootFailed)
 		}
 	}
 }
 
-func (o *imon) update() {
+func (t *Manager) update() {
 	select {
-	case <-o.ctx.Done():
+	case <-t.ctx.Done():
 		return
 	default:
 	}
-	if err := o.updateLimiter.Wait(o.ctx); err != nil {
+	if err := t.updateLimiter.Wait(t.ctx); err != nil {
 		return
 	}
 
-	o.state.UpdatedAt = time.Now()
-	newValue := o.state
+	t.state.UpdatedAt = time.Now()
+	newValue := t.state
 
-	instance.MonitorData.Set(o.path, o.localhost, newValue.DeepCopy())
-	o.pubsubBus.Pub(&msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
-		o.labelPath,
-		o.labelLocalhost,
+	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
+	t.pubsubBus.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue},
+		t.labelPath,
+		t.labelLocalhost,
 	)
 }
 
-func (o *imon) transitionTo(newState instance.MonitorState) {
-	o.change = true
-	o.state.State = newState
-	o.updateIfChange()
+func (t *Manager) transitionTo(newState instance.MonitorState) {
+	t.change = true
+	t.state.State = newState
+	t.updateIfChange()
 }
 
 // updateIfChange log updates and publish new state value when changed
-func (o *imon) updateIfChange() {
+func (t *Manager) updateIfChange() {
 	select {
-	case <-o.ctx.Done():
+	case <-t.ctx.Done():
 		return
 	default:
 	}
-	if !o.change {
+	if !t.change {
 		return
 	}
-	o.change = false
+	t.change = false
 	now := time.Now()
-	previousVal := o.previousState
-	newVal := o.state
+	previousVal := t.previousState
+	newVal := t.state
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		// Don't update GlobalExpectUpdated here
 		// GlobalExpectUpdated is updated only during cmdSetInstanceMonitorClient and
 		// its value is used for convergeGlobalExpectFromRemote
-		o.loggerWithState().Infof("change global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
+		t.loggerWithState().Infof("change global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		o.state.LocalExpectUpdatedAt = now
-		o.loggerWithState().Infof("change local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
+		t.state.LocalExpectUpdatedAt = now
+		t.loggerWithState().Infof("change local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	if newVal.State != previousVal.State {
-		o.state.StateUpdatedAt = now
-		o.loggerWithState().Infof("change state %s -> %s", previousVal.State, newVal.State)
+		t.state.StateUpdatedAt = now
+		t.loggerWithState().Infof("change state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
-		o.loggerWithState().Infof("change leader %t -> %t", previousVal.IsLeader, newVal.IsLeader)
+		t.loggerWithState().Infof("change leader %t -> %t", previousVal.IsLeader, newVal.IsLeader)
 	}
 	if newVal.IsHALeader != previousVal.IsHALeader {
-		o.loggerWithState().Infof("change ha leader %t -> %t", previousVal.IsHALeader, newVal.IsHALeader)
+		t.loggerWithState().Infof("change ha leader %t -> %t", previousVal.IsHALeader, newVal.IsHALeader)
 	}
-	o.previousState = o.state
-	o.update()
+	t.previousState = t.state
+	t.update()
 }
 
-func (o *imon) hasOtherNodeActing() bool {
-	for remoteNode, remoteInstMonitor := range o.instMonitor {
-		if remoteNode == o.localhost {
+func (t *Manager) hasOtherNodeActing() bool {
+	for remoteNode, remoteInstMonitor := range t.instMonitor {
+		if remoteNode == t.localhost {
 			continue
 		}
 		if remoteInstMonitor.State.IsDoing() {
@@ -434,25 +434,25 @@ func (o *imon) hasOtherNodeActing() bool {
 	return false
 }
 
-func (o *imon) createPendingWithDuration(duration time.Duration) {
-	o.log.Debugf("create new pending context with duration %s", duration)
-	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
+func (t *Manager) createPendingWithDuration(duration time.Duration) {
+	t.log.Debugf("create new pending context with duration %s", duration)
+	t.pendingCtx, t.pendingCancel = context.WithTimeout(t.ctx, duration)
 }
 
-func (o *imon) clearPending() {
-	if o.pendingCancel != nil {
-		o.log.Debugf("clear pending context")
-		o.pendingCancel()
-		o.pendingCancel = nil
-		o.pendingCtx = nil
+func (t *Manager) clearPending() {
+	if t.pendingCancel != nil {
+		t.log.Debugf("clear pending context")
+		t.pendingCancel()
+		t.pendingCancel = nil
+		t.pendingCtx = nil
 	}
 }
 
-func (o *imon) loggerWithState() *plog.Logger {
-	return o.log.
-		Attr("imon_global_expect", o.state.GlobalExpect.String()).
-		Attr("imon_local_expect", o.state.LocalExpect.String()).
-		Attr("imon_state", o.state.State.String())
+func (t *Manager) loggerWithState() *plog.Logger {
+	return t.log.
+		Attr("imon_global_expect", t.state.GlobalExpect.String()).
+		Attr("imon_local_expect", t.state.LocalExpect.String()).
+		Attr("imon_state", t.state.State.String())
 }
 
 func lastBootIDFile(p naming.Path) string {
@@ -475,8 +475,8 @@ func updateLastBootID(p naming.Path, s string) error {
 	return os.WriteFile(lastBootIDFile(p), []byte(s), 0644)
 }
 
-func (o *imon) bootAble() bool {
-	switch o.path.Kind {
+func (t *Manager) bootAble() bool {
+	switch t.path.Kind {
 	case naming.KindSvc:
 		return true
 	case naming.KindVol:

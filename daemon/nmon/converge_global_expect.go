@@ -7,10 +7,10 @@ import (
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
-func (o *nmon) convergeGlobalExpectFromRemote() {
+func (t *Manager) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
-	for nodename, data := range o.nodeMonitor {
+	for nodename, data := range t.nodeMonitor {
 		if data.GlobalExpect == node.MonitorGlobalExpectZero {
 			continue
 		}
@@ -26,26 +26,26 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 	if mostRecentUpdated.IsZero() {
 		return
 	}
-	if mostRecentUpdated.After(o.state.GlobalExpectUpdatedAt) {
-		o.change = true
-		o.state.GlobalExpect = o.nodeMonitor[mostRecentNode].GlobalExpect
-		o.state.GlobalExpectUpdatedAt = o.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
-		strVal := o.nodeMonitor[mostRecentNode].GlobalExpect.String()
+	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
+		t.change = true
+		t.state.GlobalExpect = t.nodeMonitor[mostRecentNode].GlobalExpect
+		t.state.GlobalExpectUpdatedAt = t.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
+		strVal := t.nodeMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
+		t.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
 	}
 }
 
-func (o *nmon) isConvergedGlobalExpect() bool {
-	localUpdated := o.state.GlobalExpectUpdatedAt
-	for s, data := range o.nodeMonitor {
-		if s == o.localhost {
+func (t *Manager) isConvergedGlobalExpect() bool {
+	localUpdated := t.state.GlobalExpectUpdatedAt
+	for s, data := range t.nodeMonitor {
+		if s == t.localhost {
 			continue
 		}
 		if localUpdated.After(data.GlobalExpectUpdatedAt) {
-			o.log.Debugf("wait global expect propagation on %s", s)
+			t.log.Debugf("wait global expect propagation on %s", s)
 			return false
 		}
 	}

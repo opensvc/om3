@@ -4,28 +4,28 @@ import (
 	"github.com/opensvc/om3/core/topology"
 )
 
-func (o *imon) orchestratePlaced() {
-	if o.state.IsHALeader {
-		o.orchestratePlacedStart()
+func (t *Manager) orchestratePlaced() {
+	if t.state.IsHALeader {
+		t.orchestratePlacedStart()
 	} else {
-		o.orchestratePlacedStop()
+		t.orchestratePlacedStop()
 	}
 }
 
-func (o *imon) orchestratePlacedStart() {
-	switch o.objStatus.Topology {
+func (t *Manager) orchestratePlacedStart() {
+	switch t.objStatus.Topology {
 	case topology.Failover:
-		o.orchestrateFailoverPlacedStart()
+		t.orchestrateFailoverPlacedStart()
 	case topology.Flex:
-		o.orchestrateFlexPlacedStart()
+		t.orchestrateFlexPlacedStart()
 	}
 }
 
-func (o *imon) orchestratePlacedStop() {
-	switch o.objStatus.Topology {
+func (t *Manager) orchestratePlacedStop() {
+	switch t.objStatus.Topology {
 	case topology.Failover:
-		o.orchestrateFailoverPlacedStop()
+		t.orchestrateFailoverPlacedStop()
 	case topology.Flex:
-		o.orchestrateFlexPlacedStop()
+		t.orchestrateFlexPlacedStop()
 	}
 }

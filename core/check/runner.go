@@ -12,16 +12,16 @@ import (
 var ExecCommand = exec.Command
 
 type (
-	// aggregate results and format the output.
-	runner struct {
+	// Runner collects results and format the output.
+	Runner struct {
 		customCheckPaths []string
 		objects          []interface{}
 		q                chan *ResultSet
 	}
 )
 
-func NewRunner(opts ...funcopt.O) *runner {
-	r := &runner{
+func NewRunner(opts ...funcopt.O) *Runner {
+	r := &Runner{
 		q: make(chan *ResultSet),
 	}
 	_ = funcopt.Apply(r, opts...)
@@ -32,7 +32,7 @@ func NewRunner(opts ...funcopt.O) *runner {
 // driver are installed.
 func RunnerWithCustomCheckPaths(paths ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
-		t := i.(*runner)
+		t := i.(*Runner)
 		t.customCheckPaths = append(t.customCheckPaths, paths...)
 		return nil
 	})
@@ -42,7 +42,7 @@ func RunnerWithCustomCheckPaths(paths ...string) funcopt.O {
 // use to correlate a check instance to an object.
 func RunnerWithObjects(objs ...interface{}) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
-		t := i.(*runner)
+		t := i.(*Runner)
 		t.objects = append(t.objects, objs...)
 		return nil
 	})
@@ -50,7 +50,7 @@ func RunnerWithObjects(objs ...interface{}) funcopt.O {
 
 // Do runs the check drivers, aggregates results and format
 // the output.
-func (r runner) Do(opts ...funcopt.O) *ResultSet {
+func (r Runner) Do(opts ...funcopt.O) *ResultSet {
 	rs := NewResultSet()
 	for _, path := range r.customCheckPaths {
 		go r.doCustomCheck(path)
@@ -74,7 +74,7 @@ func (r runner) Do(opts ...funcopt.O) *ResultSet {
 	return rs
 }
 
-func (r *runner) doRegisteredCheck(c Checker) {
+func (r *Runner) doRegisteredCheck(c Checker) {
 	rs, err := c.Check(r.objects)
 	if err != nil {
 		log.Error().Err(err).Msg("execution")
@@ -88,7 +88,7 @@ func (r *runner) doRegisteredCheck(c Checker) {
 	r.q <- rs
 }
 
-func (r *runner) doCustomCheck(path string) {
+func (r *Runner) doCustomCheck(path string) {
 	rs := NewResultSet()
 	cmd := ExecCommand(path)
 	cmd.Stderr = os.Stderr

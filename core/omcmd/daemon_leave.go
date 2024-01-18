@@ -22,8 +22,8 @@ type (
 		// Timeout is the maximum duration for leave
 		Timeout time.Duration
 
-		// ApiNode is a cluster node where the leave request will be posted
-		ApiNode string
+		// APINode is a cluster node where the leave request will be posted
+		APINode string
 
 		cli       *client.T
 		localhost string
@@ -36,7 +36,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		return err
 	}
 	t.cli, err = client.New(
-		client.WithURL(t.ApiNode),
+		client.WithURL(t.APINode),
 	)
 	if err != nil {
 		return
@@ -88,7 +88,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 
 func (t *CmdDaemonLeave) setEvReader() (err error) {
 	filters := []string{
-		"LeaveSuccess,removed=" + t.localhost + ",node=" + t.ApiNode,
+		"LeaveSuccess,removed=" + t.localhost + ",node=" + t.APINode,
 		"LeaveError,leave-node=" + t.localhost,
 		"LeaveIgnored,leave-node=" + t.localhost,
 	}
@@ -145,7 +145,7 @@ func (t *CmdDaemonLeave) leave() error {
 }
 
 func (t *CmdDaemonLeave) checkParams() error {
-	if t.ApiNode == "" {
+	if t.APINode == "" {
 		var clusterNodes []string
 		ccfg, err := object.NewCluster(object.WithVolatile(true))
 		if err != nil {
@@ -156,7 +156,7 @@ func (t *CmdDaemonLeave) checkParams() error {
 		}
 		for _, node := range clusterNodes {
 			if node != hostname.Hostname() {
-				t.ApiNode = node
+				t.APINode = node
 				return nil
 			}
 		}

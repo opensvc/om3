@@ -1,4 +1,4 @@
-// Package durationlog
+// Package durationlog provides a helper to log a warning when the delay between 2 events is longer than expected.
 package durationlog
 
 import (

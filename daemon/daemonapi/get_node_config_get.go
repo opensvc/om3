@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonApi) GetNodeConfigGet(ctx echo.Context, nodename string, params api.GetNodeConfigGetParams) error {
+func (a *DaemonAPI) GetNodeConfigGet(ctx echo.Context, nodename string, params api.GetNodeConfigGetParams) error {
 	//log := LogHandler(ctx, "GetNodeConfigGet")
 
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {

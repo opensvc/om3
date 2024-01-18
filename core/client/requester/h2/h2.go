@@ -52,7 +52,7 @@ func (t Config) String() string {
 
 func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 	if config.URL == "" {
-		config.URL = daemonenv.PathUxHttp()
+		config.URL = daemonenv.HTTPUnixFile()
 	}
 	tp := &http2.Transport{
 		AllowHTTP: true,

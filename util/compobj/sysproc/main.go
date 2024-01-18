@@ -48,7 +48,7 @@ func getInodeListeningOnPort(port int) (int, error) {
 				continue
 			}
 
-			inode, err := getInodeFromTcpFileContent(port, tcpFileContent)
+			inode, err := getInodeFromTCPFileContent(port, tcpFileContent)
 			if err != nil {
 				return -1, err
 			}
@@ -56,7 +56,7 @@ func getInodeListeningOnPort(port int) (int, error) {
 				return inode, nil
 			}
 
-			inode, err = getInodeFromTcpFileContent(port, tcp6FileContent)
+			inode, err = getInodeFromTCPFileContent(port, tcp6FileContent)
 			if err != nil {
 				return -1, err
 			}
@@ -142,7 +142,7 @@ func getSocketsMap() (map[int]int, error) {
 	return socketsMap, nil
 }
 
-func getInodeFromTcpFileContent(port int, content []byte) (int, error) {
+func getInodeFromTCPFileContent(port int, content []byte) (int, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	for scanner.Scan() {
 		splitLine := strings.Fields(scanner.Text())

@@ -6,87 +6,87 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (o *imon) orchestratePurged() {
-	o.log.Debugf("orchestratePurged starting from %s", o.state.State)
-	switch o.state.State {
+func (t *Manager) orchestratePurged() {
+	t.log.Debugf("orchestratePurged starting from %s", t.state.State)
+	switch t.state.State {
 	case instance.MonitorStateDeleted:
-		o.purgedFromDeleted()
+		t.purgedFromDeleted()
 	case instance.MonitorStateIdle:
-		o.purgedFromIdle()
+		t.purgedFromIdle()
 	case instance.MonitorStateStopped:
-		o.purgedFromStopped()
+		t.purgedFromStopped()
 	case instance.MonitorStateStopFailed:
-		o.done()
+		t.done()
 	case instance.MonitorStateUnprovisioned:
-		o.purgedFromUnprovisioned()
+		t.purgedFromUnprovisioned()
 	case instance.MonitorStateWaitNonLeader:
-		o.purgedFromWaitNonLeader()
+		t.purgedFromWaitNonLeader()
 	case instance.MonitorStateUnprovisioning,
 		instance.MonitorStateDeleting,
 		instance.MonitorStateStopping:
 	default:
-		o.log.Warnf("orchestratePurged has no solution from state %s", o.state.State)
+		t.log.Warnf("orchestratePurged has no solution from state %s", t.state.State)
 	}
 }
 
-func (o *imon) purgedFromIdle() {
-	if o.instStatus[o.localhost].Avail == status.Up {
-		o.purgedFromIdleUp()
+func (t *Manager) purgedFromIdle() {
+	if t.instStatus[t.localhost].Avail == status.Up {
+		t.purgedFromIdleUp()
 		return
 	}
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		o.purgedFromIdleProvisioned()
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		t.purgedFromIdleProvisioned()
 		return
 	}
-	go o.orchestrateAfterAction(instance.MonitorStateIdle, instance.MonitorStateUnprovisioned)
+	go t.orchestrateAfterAction(instance.MonitorStateIdle, instance.MonitorStateUnprovisioned)
 	return
 }
 
-func (o *imon) purgedFromStopped() {
-	if o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn) {
-		o.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn)")
+func (t *Manager) purgedFromStopped() {
+	if t.instStatus[t.localhost].Avail.Is(status.Up, status.Warn) {
+		t.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Avail.Is(status.Up, status.Warn)")
 		return
 	}
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		o.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)")
-		o.purgedFromIdleProvisioned()
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		t.log.Debugf("purgedFromStopped return on o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)")
+		t.purgedFromIdleProvisioned()
 		return
 	}
-	go o.orchestrateAfterAction(instance.MonitorStateStopped, instance.MonitorStateUnprovisioned)
+	go t.orchestrateAfterAction(instance.MonitorStateStopped, instance.MonitorStateUnprovisioned)
 	return
 }
 
-func (o *imon) purgedFromDeleted() {
-	o.change = true
-	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
-	o.state.State = instance.MonitorStateIdle
-	o.updateIfChange()
+func (t *Manager) purgedFromDeleted() {
+	t.change = true
+	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	t.state.State = instance.MonitorStateIdle
+	t.updateIfChange()
 }
 
-func (o *imon) purgedFromUnprovisioned() {
-	o.doAction(o.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStatePurgeFailed)
+func (t *Manager) purgedFromUnprovisioned() {
+	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStatePurgeFailed)
 }
 
-func (o *imon) purgedFromIdleUp() {
-	o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+func (t *Manager) purgedFromIdleUp() {
+	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
-func (o *imon) purgedFromIdleProvisioned() {
-	if o.isUnprovisionLeader() {
-		o.transitionTo(instance.MonitorStateWaitNonLeader)
-		o.purgedFromWaitNonLeader()
+func (t *Manager) purgedFromIdleProvisioned() {
+	if t.isUnprovisionLeader() {
+		t.transitionTo(instance.MonitorStateWaitNonLeader)
+		t.purgedFromWaitNonLeader()
 		return
 	}
-	o.doAction(o.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
+	t.doAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
 }
 
-func (o *imon) purgedFromWaitNonLeader() {
-	if !o.isUnprovisionLeader() {
-		o.transitionTo(instance.MonitorStateIdle)
+func (t *Manager) purgedFromWaitNonLeader() {
+	if !t.isUnprovisionLeader() {
+		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if o.hasNonLeaderProvisioned() {
+	if t.hasNonLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
+	t.doAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
 }

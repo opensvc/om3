@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/relay"
 )
 
-func (a *DaemonApi) PostRelayMessage(ctx echo.Context) error {
+func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 	var (
 		payload api.PostRelayMessage
 		value   api.RelayMessage

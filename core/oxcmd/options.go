@@ -13,7 +13,7 @@ type (
 		Server         string
 	}
 
-	// OptsLog contains options used by all log commands:
+	// OptsLogs contains options used by all log commands:
 	// node logs, cluster logs, object logs
 	OptsLogs struct {
 		Follow bool

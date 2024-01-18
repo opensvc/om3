@@ -4,11 +4,11 @@ import (
 	"github.com/opensvc/om3/core/instance"
 )
 
-func (o *imon) orchestrateDeleted() {
-	o.log.Debugf("orchestrateDeleted starting from %s", o.state.State)
-	switch o.state.State {
+func (t *Manager) orchestrateDeleted() {
+	t.log.Debugf("orchestrateDeleted starting from %s", t.state.State)
+	switch t.state.State {
 	case instance.MonitorStateDeleted:
-		o.deletedFromDeleted()
+		t.deletedFromDeleted()
 	case instance.MonitorStateIdle,
 		instance.MonitorStateBootFailed,
 		instance.MonitorStateFreezeFailed,
@@ -17,31 +17,31 @@ func (o *imon) orchestrateDeleted() {
 		instance.MonitorStateStopFailed,
 		instance.MonitorStateThawedFailed,
 		instance.MonitorStateUnprovisionFailed:
-		o.deletedFromIdle()
+		t.deletedFromIdle()
 	case instance.MonitorStateWaitChildren:
-		o.deletedFromWaitChildren()
+		t.deletedFromWaitChildren()
 	case instance.MonitorStateDeleting:
 	default:
-		o.log.Warnf("orchestrateDeleted has no solution from state %s", o.state.State)
+		t.log.Warnf("orchestrateDeleted has no solution from state %s", t.state.State)
 	}
 }
 
-func (o *imon) deletedFromIdle() {
-	if o.setWaitChildren() {
+func (t *Manager) deletedFromIdle() {
+	if t.setWaitChildren() {
 		return
 	}
-	o.doAction(o.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
+	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
 	return
 }
 
-func (o *imon) deletedFromDeleted() {
-	o.log.Warnf("have been deleted, we should die soon")
+func (t *Manager) deletedFromDeleted() {
+	t.log.Warnf("have been deleted, we should die soon")
 }
 
-func (o *imon) deletedFromWaitChildren() {
-	if o.setWaitChildren() {
+func (t *Manager) deletedFromWaitChildren() {
+	if t.setWaitChildren() {
 		return
 	}
-	o.doAction(o.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
+	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
 	return
 }

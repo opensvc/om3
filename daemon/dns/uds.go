@@ -53,19 +53,19 @@ type (
 	}
 )
 
-func (t *dns) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
+func (t *Manager) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
 	return getAllDomainMetadataResponse{
 		"ALLOW-AXFR-FROM": []string{"0.0.0.0/0", "AUTO-NS"},
 	}
 }
 
-func (t *dns) getAllDomains(b []byte) getAllDomainsResponse {
+func (t *Manager) getAllDomains(b []byte) getAllDomainsResponse {
 	return getAllDomainsResponse{
 		domain{Zone: t.cluster.Name},
 	}
 }
 
-func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
+func (t *Manager) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	var req getDomainMetadata
 	if err := json.Unmarshal(b, &req); err != nil {
 		t.log.Errorf("request parse: %s", err)
@@ -79,7 +79,7 @@ func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	}
 }
 
-func (t *dns) lookup(b []byte) lookupResponse {
+func (t *Manager) lookup(b []byte) lookupResponse {
 	var req lookup
 	if err := json.Unmarshal(b, &req); err != nil {
 		t.log.Errorf("request parse: %s", err)
@@ -88,7 +88,7 @@ func (t *dns) lookup(b []byte) lookupResponse {
 	return t.getRecords(req.Parameters.Type, req.Parameters.Name)
 }
 
-func (t *dns) getRecords(recordType, recordName string) Zone {
+func (t *Manager) getRecords(recordType, recordName string) Zone {
 	err := make(chan error, 1)
 	c := cmdGet{
 		errC: err,
@@ -103,7 +103,7 @@ func (t *dns) getRecords(recordType, recordName string) Zone {
 	return <-c.resp
 }
 
-func (t *dns) sockGID() (int, error) {
+func (t *Manager) sockGID() (int, error) {
 	s := t.cluster.Listener.DNSSockGID
 	if s == "" {
 		return -1, nil
@@ -120,7 +120,7 @@ func (t *dns) sockGID() (int, error) {
 	}
 }
 
-func (t *dns) sockUID() (int, error) {
+func (t *Manager) sockUID() (int, error) {
 	s := t.cluster.Listener.DNSSockUID
 	if s == "" {
 		return -1, nil
@@ -137,7 +137,7 @@ func (t *dns) sockUID() (int, error) {
 	}
 }
 
-func (t *dns) sockChown() error {
+func (t *Manager) sockChown() error {
 	var uid, gid int
 	sockPath := rawconfig.DNSUDSFile()
 	if info, err := os.Stat(sockPath); os.IsNotExist(err) {
@@ -163,7 +163,7 @@ func (t *dns) sockChown() error {
 	}
 }
 
-func (t *dns) startUDSListener() error {
+func (t *Manager) startUDSListener() error {
 	sockDir := rawconfig.DNSUDSDir()
 	sockPath := rawconfig.DNSUDSFile()
 

@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a DaemonApi) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {
+func (a DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {
 	var body api.PutObjectConfigFileJSONRequestBody
 	dec := json.NewDecoder(ctx.Request().Body)
 	if err := dec.Decode(&body); err != nil {

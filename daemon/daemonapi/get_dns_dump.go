@@ -9,6 +9,6 @@ import (
 )
 
 // GetDNSDump returns the DNS zone content.
-func (a *DaemonApi) GetDNSDump(ctx echo.Context) error {
+func (a *DaemonAPI) GetDNSDump(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, dns.GetZone())
 }

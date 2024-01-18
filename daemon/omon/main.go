@@ -29,7 +29,7 @@ import (
 )
 
 type (
-	T struct {
+	Manager struct {
 		status object.Status
 		path   naming.Path
 		id     string
@@ -84,7 +84,7 @@ type (
 func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
 	id := p.String()
 	localhost := hostname.Hostname()
-	o := &T{
+	t := &Manager{
 		status: object.Status{
 			Scope:           cfg.Scope,
 			FlexTarget:      cfg.FlexTarget,
@@ -122,150 +122,150 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 			Attr("pkg", "daemon/omon").
 			WithPrefix("daemon: omon: " + p.String() + ": "),
 	}
-	o.startSubscriptions()
+	t.startSubscriptions()
 
 	go func() {
 		defer func() {
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Warnf("subscription stop: %s", err)
+			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				t.log.Warnf("subscription stop: %s", err)
 			}
 		}()
-		o.worker()
+		t.worker()
 	}()
 	return nil
 }
 
 // startSubscriptions starts the subscriptions for omon.
 // For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
-func (o *T) startSubscriptions() {
-	sub := o.bus.Sub(o.id + " omon")
+func (t *Manager) startSubscriptions() {
+	sub := t.bus.Sub(t.id + " omon")
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, o.labelPath)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, t.labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, o.labelPath)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, t.labelPath)
 
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, o.labelPath)
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelPath)
 
 	sub.Start()
-	o.sub = sub
+	t.sub = sub
 }
 
-func (o *T) worker() {
-	o.log.Infof("started")
-	defer o.log.Infof("done")
+func (t *Manager) worker() {
+	t.log.Infof("started")
+	defer t.log.Infof("done")
 
 	// Initiate cache
-	for n, v := range instance.MonitorData.GetByPath(o.path) {
-		o.instMonitor[n] = *v
+	for n, v := range instance.MonitorData.GetByPath(t.path) {
+		t.instMonitor[n] = *v
 	}
-	for n, v := range instance.StatusData.GetByPath(o.path) {
-		o.instStatus[n] = *v
+	for n, v := range instance.StatusData.GetByPath(t.path) {
+		t.instStatus[n] = *v
 	}
-	for n, v := range instance.ConfigData.GetByPath(o.path) {
-		o.instConfig[n] = *v
+	for n, v := range instance.ConfigData.GetByPath(t.path) {
+		t.instConfig[n] = *v
 	}
-	if !o.instStatus[o.localhost].UpdatedAt.IsZero() {
-		o.srcEvent = &msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
+	if !t.instStatus[t.localhost].UpdatedAt.IsZero() {
+		t.srcEvent = &msgbus.InstanceStatusUpdated{Path: t.path, Node: t.localhost, Value: t.instStatus[t.localhost]}
 	}
 
-	o.updateStatus()
+	t.updateStatus()
 
-	if localCfg, ok := o.instConfig[o.localhost]; ok && len(localCfg.Scope) > 0 {
+	if localCfg, ok := t.instConfig[t.localhost]; ok && len(localCfg.Scope) > 0 {
 		var err error
-		cancel, err := o.startInstanceMonitor(localCfg.Scope)
+		cancel, err := t.startInstanceMonitor(localCfg.Scope)
 		if err != nil {
-			o.log.Errorf("initial startInstanceMonitor: %s", err)
+			t.log.Errorf("initial startInstanceMonitor: %s", err)
 			cancel()
 		} else {
-			o.imonCancel = cancel
+			t.imonCancel = cancel
 		}
 	}
 	defer func() {
-		if o.imonCancel != nil {
-			o.imonCancel()
-			o.imonCancel = nil
+		if t.imonCancel != nil {
+			t.imonCancel()
+			t.imonCancel = nil
 		}
-		o.delete()
+		t.delete()
 	}()
 	for {
-		if len(o.instConfig)+len(o.instStatus)+len(o.instMonitor) == 0 {
-			o.log.Infof("no more instance config, status and monitor")
+		if len(t.instConfig)+len(t.instStatus)+len(t.instMonitor) == 0 {
+			t.log.Infof("no more instance config, status and monitor")
 			return
 		}
-		o.srcEvent = nil
+		t.srcEvent = nil
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case i := <-o.sub.C:
+		case i := <-t.sub.C:
 			switch c := i.(type) {
 			case *msgbus.InstanceMonitorUpdated:
-				o.srcEvent = c
-				o.instMonitor[c.Node] = c.Value
-				o.updateStatus()
+				t.srcEvent = c
+				t.instMonitor[c.Node] = c.Value
+				t.updateStatus()
 
 			case *msgbus.InstanceMonitorDeleted:
-				o.srcEvent = c
-				delete(o.instMonitor, c.Node)
-				o.updateStatus()
+				t.srcEvent = c
+				delete(t.instMonitor, c.Node)
+				t.updateStatus()
 
 			case *msgbus.InstanceStatusDeleted:
-				o.srcEvent = c
-				delete(o.instStatus, c.Node)
-				o.updateStatus()
+				t.srcEvent = c
+				delete(t.instStatus, c.Node)
+				t.updateStatus()
 
 			case *msgbus.InstanceStatusUpdated:
-				o.srcEvent = c
-				o.instStatus[c.Node] = c.Value
-				o.updateStatus()
+				t.srcEvent = c
+				t.instStatus[c.Node] = c.Value
+				t.updateStatus()
 
 			case *msgbus.InstanceConfigUpdated:
-				o.status.Scope = c.Value.Scope
-				o.status.FlexTarget = c.Value.FlexTarget
-				o.status.FlexMin = c.Value.FlexMin
-				o.status.FlexMax = c.Value.FlexMax
-				o.status.Orchestrate = c.Value.Orchestrate
-				o.status.Pool = c.Value.Pool
-				o.status.PlacementPolicy = c.Value.PlacementPolicy
-				o.status.Priority = c.Value.Priority
-				o.status.Size = c.Value.Size
-				o.status.Topology = c.Value.Topology
-				o.srcEvent = c
+				t.status.Scope = c.Value.Scope
+				t.status.FlexTarget = c.Value.FlexTarget
+				t.status.FlexMin = c.Value.FlexMin
+				t.status.FlexMax = c.Value.FlexMax
+				t.status.Orchestrate = c.Value.Orchestrate
+				t.status.Pool = c.Value.Pool
+				t.status.PlacementPolicy = c.Value.PlacementPolicy
+				t.status.Priority = c.Value.Priority
+				t.status.Size = c.Value.Size
+				t.status.Topology = c.Value.Topology
+				t.srcEvent = c
 
-				o.instConfig[c.Node] = c.Value
+				t.instConfig[c.Node] = c.Value
 
 				// update local cache for instance status & monitor from cfg node
 				// It will be updated on InstanceStatusUpdated, or InstanceMonitorUpdated
-				if c.Node == o.localhost && o.imonCancel == nil && len(c.Value.Scope) > 0 {
+				if c.Node == t.localhost && t.imonCancel == nil && len(c.Value.Scope) > 0 {
 					var err error
-					cancel, err := o.startInstanceMonitor(c.Value.Scope)
+					cancel, err := t.startInstanceMonitor(c.Value.Scope)
 					if err != nil {
-						o.log.Errorf("startInstanceMonitor from %+v: %s", c.Value, err)
+						t.log.Errorf("startInstanceMonitor from %+v: %s", c.Value, err)
 						cancel()
 					} else {
-						o.imonCancel = cancel
+						t.imonCancel = cancel
 					}
 				}
-				o.updateStatus()
+				t.updateStatus()
 
 			case *msgbus.InstanceConfigDeleted:
-				if c.Node == o.localhost && o.imonCancel != nil {
-					o.log.Infof("local instance config deleted => cancel associated imon")
-					o.imonCancel()
-					o.imonCancel = nil
+				if c.Node == t.localhost && t.imonCancel != nil {
+					t.log.Infof("local instance config deleted => cancel associated imon")
+					t.imonCancel()
+					t.imonCancel = nil
 				}
-				delete(o.instConfig, c.Node)
-				o.srcEvent = c
-				o.updateStatus()
+				delete(t.instConfig, c.Node)
+				t.srcEvent = c
+				t.updateStatus()
 			}
 		}
 	}
 }
 
-func (o *T) updateStatus() {
+func (t *Manager) updateStatus() {
 	updateAvailOverall := func() {
 		statusAvailCount := make([]int, 128, 128)
 		statusOverallCount := make([]int, 128, 128)
@@ -284,25 +284,25 @@ func (o *T) updateStatus() {
 			switch {
 			case states[status.Up] == 0:
 				return status.Down
-			case states[status.Up] < o.status.FlexMin:
+			case states[status.Up] < t.status.FlexMin:
 				return status.Warn
-			case states[status.Up] > o.status.FlexMax:
+			case states[status.Up] > t.status.FlexMax:
 				return status.Warn
 			default:
 				return status.Up
 			}
 		}
 		agregateStatus := func(states []int) status.T {
-			if len(o.instStatus) == 0 {
+			if len(t.instStatus) == 0 {
 				return status.NotApplicable
 			}
-			if len(o.instStatus) == statusAvailCount[status.NotApplicable] {
+			if len(t.instStatus) == statusAvailCount[status.NotApplicable] {
 				return status.NotApplicable
 			}
 			if states[status.Warn] > 0 {
 				return status.Warn
 			}
-			switch o.status.Topology {
+			switch t.status.Topology {
 			case topology.Failover:
 				return agregateStatusFailover(states)
 			case topology.Flex:
@@ -312,20 +312,20 @@ func (o *T) updateStatus() {
 			}
 		}
 
-		for _, instStatus := range o.instStatus {
+		for _, instStatus := range t.instStatus {
 			statusAvailCount[instStatus.Avail]++
 			statusOverallCount[instStatus.Overall]++
 		}
 
-		o.status.UpInstancesCount = statusAvailCount[status.Up]
-		o.status.Avail = agregateStatus(statusAvailCount)
-		o.status.Overall = agregateStatus(statusOverallCount)
+		t.status.UpInstancesCount = statusAvailCount[status.Up]
+		t.status.Avail = agregateStatus(statusAvailCount)
+		t.status.Overall = agregateStatus(statusOverallCount)
 	}
 
 	updateProvisioned := func() {
-		o.status.Provisioned = provisioned.Undef
-		for _, instStatus := range o.instStatus {
-			o.status.Provisioned = o.status.Provisioned.And(instStatus.Provisioned)
+		t.status.Provisioned = provisioned.Undef
+		for _, instStatus := range t.instStatus {
+			t.status.Provisioned = t.status.Provisioned.And(instStatus.Provisioned)
 		}
 	}
 
@@ -334,39 +334,39 @@ func (o *T) updateStatus() {
 			true:  0,
 			false: 0,
 		}
-		for _, instStatus := range o.instStatus {
+		for _, instStatus := range t.instStatus {
 			m[instStatus.FrozenAt.IsZero()]++
 		}
-		n := len(o.instStatus)
+		n := len(t.instStatus)
 		switch {
 		case n == 0:
-			o.status.Frozen = "n/a"
+			t.status.Frozen = "n/a"
 		case n == m[false]:
-			o.status.Frozen = "frozen"
+			t.status.Frozen = "frozen"
 		case n == m[true]:
-			o.status.Frozen = "thawed"
+			t.status.Frozen = "thawed"
 		default:
-			o.status.Frozen = "mixed"
+			t.status.Frozen = "mixed"
 		}
 	}
 
 	updatePlacementState := func() {
-		o.status.PlacementState = placement.NotApplicable
-		for node, instMonitor := range o.instMonitor {
-			instStatus, ok := o.instStatus[node]
+		t.status.PlacementState = placement.NotApplicable
+		for node, instMonitor := range t.instMonitor {
+			instStatus, ok := t.instStatus[node]
 			if !ok {
-				o.status.PlacementState = placement.NotApplicable
+				t.status.PlacementState = placement.NotApplicable
 				break
 			}
 			if instMonitor.IsHALeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
-				o.status.PlacementState = placement.NonOptimal
+				t.status.PlacementState = placement.NonOptimal
 				break
 			}
 			if !instMonitor.IsHALeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
-				o.status.PlacementState = placement.NonOptimal
+				t.status.PlacementState = placement.NonOptimal
 				break
 			}
-			o.status.PlacementState = placement.Optimal
+			t.status.PlacementState = placement.Optimal
 		}
 	}
 
@@ -374,41 +374,41 @@ func (o *T) updateStatus() {
 	updateProvisioned()
 	updateFrozen()
 	updatePlacementState()
-	o.update()
+	t.update()
 }
 
-func (o *T) delete() {
-	object.StatusData.Unset(o.path)
-	o.bus.Pub(&msgbus.ObjectStatusDeleted{Path: o.path, Node: o.localhost},
-		o.labelPath,
-		o.labelNode,
+func (t *Manager) delete() {
+	object.StatusData.Unset(t.path)
+	t.bus.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost},
+		t.labelPath,
+		t.labelNode,
 	)
-	o.bus.Pub(&msgbus.ObjectDeleted{Path: o.path, Node: o.localhost},
-		o.labelPath,
-		o.labelNode,
+	t.bus.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost},
+		t.labelPath,
+		t.labelNode,
 	)
-	o.discoverCmdC <- &msgbus.ObjectStatusDone{Path: o.path}
+	t.discoverCmdC <- &msgbus.ObjectStatusDone{Path: t.path}
 }
 
-func (o *T) update() {
-	o.status.UpdatedAt = time.Now()
-	value := o.status.DeepCopy()
-	o.log.Debugf("update avail %s", value.Avail)
-	object.StatusData.Set(o.path, o.status.DeepCopy())
-	o.bus.Pub(&msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
-		o.labelPath,
-		o.labelNode,
+func (t *Manager) update() {
+	t.status.UpdatedAt = time.Now()
+	value := t.status.DeepCopy()
+	t.log.Debugf("update avail %s", value.Avail)
+	object.StatusData.Set(t.path, t.status.DeepCopy())
+	t.bus.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent},
+		t.labelPath,
+		t.labelNode,
 	)
 }
 
-func (o *T) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {
-	if len(o.status.Scope) == 0 {
+func (t *Manager) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {
+	if len(t.status.Scope) == 0 {
 		return nil, errors.New("can't call startInstanceMonitor with empty scope")
 	}
-	o.log.Infof("starting imon worker...")
-	ctx, cancel := context.WithCancel(o.ctx)
-	if err := o.imonStarter.Start(ctx, o.path, scopes); err != nil {
-		o.log.Errorf("unable to start imon worker: %s", err)
+	t.log.Infof("starting imon worker...")
+	ctx, cancel := context.WithCancel(t.ctx)
+	if err := t.imonStarter.Start(ctx, t.path, scopes); err != nil {
+		t.log.Errorf("unable to start imon worker: %s", err)
 		return cancel, err
 	}
 	return cancel, nil

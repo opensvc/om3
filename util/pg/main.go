@@ -16,24 +16,24 @@ import (
 type (
 	Config struct {
 		ID            string
-		Cpus          string
+		CPUs          string
 		Mems          string
-		CpuShares     string
-		CpuQuota      string
+		CPUShares     string
+		CPUQuota      string
 		MemOOMControl string
 		MemLimit      string
 		VMemLimit     string
 		MemSwappiness string
-		BlkioWeight   string
+		BlockIOWeight string
 	}
-	CpuQuota string
+	CPUQuota string
 	key      int
 	State    int
 	entry    struct {
 		State  State
 		Config *Config
 	}
-	run struct {
+	Run struct {
 		Err     error
 		Config  *Config
 		Changed bool
@@ -52,8 +52,8 @@ var (
 	UnifiedPath string = "/sys/fs/cgroup/unified"
 )
 
-func (e entry) NewRun() *run {
-	r := run{Config: e.Config}
+func (e entry) NewRun() *Run {
+	r := Run{Config: e.Config}
 	return &r
 }
 
@@ -112,8 +112,8 @@ func (t Mgr) RevIDs() []string {
 	return l
 }
 
-func (t Mgr) Clean() []run {
-	runs := make([]run, 0)
+func (t Mgr) Clean() []Run {
+	runs := make([]Run, 0)
 	for _, p := range t.RevIDs() {
 		e, ok := t[p]
 		if !ok {
@@ -133,7 +133,7 @@ func (t Mgr) Clean() []run {
 	return runs
 }
 
-func (e *entry) Run() *run {
+func (e *entry) Run() *Run {
 	r := e.NewRun()
 	if e.Config == nil {
 		r.Err = fmt.Errorf("no pg config")
@@ -152,8 +152,8 @@ func (e *entry) Run() *run {
 	return r
 }
 
-func (t Mgr) Apply(id string) []run {
-	runs := make([]run, 0)
+func (t Mgr) Apply(id string) []Run {
+	runs := make([]Run, 0)
 	for _, p := range Chain(id) {
 		if e, ok := t[p]; ok {
 			r := e.Run()
@@ -164,16 +164,16 @@ func (t Mgr) Apply(id string) []run {
 }
 
 func (c Config) needApply() bool {
-	if c.Cpus != "" {
+	if c.CPUs != "" {
 		return true
 	}
 	if c.Mems != "" {
 		return true
 	}
-	if c.CpuShares != "" {
+	if c.CPUShares != "" {
 		return true
 	}
-	if c.CpuQuota != "" {
+	if c.CPUQuota != "" {
 		return true
 	}
 	if c.MemOOMControl != "" {
@@ -188,7 +188,7 @@ func (c Config) needApply() bool {
 	if c.MemSwappiness != "" {
 		return true
 	}
-	if c.BlkioWeight != "" {
+	if c.BlockIOWeight != "" {
 		return true
 	}
 	return false
@@ -197,17 +197,17 @@ func (c Config) needApply() bool {
 func (c Config) String() string {
 	buff := "pg " + c.ID
 	l := make([]string, 0)
-	if c.Cpus != "" {
-		l = append(l, "cpus="+c.Cpus)
+	if c.CPUs != "" {
+		l = append(l, "cpus="+c.CPUs)
 	}
 	if c.Mems != "" {
 		l = append(l, "mems="+c.Mems)
 	}
-	if c.CpuShares != "" {
-		l = append(l, "cpu_shares="+c.CpuShares)
+	if c.CPUShares != "" {
+		l = append(l, "cpu_shares="+c.CPUShares)
 	}
-	if c.CpuQuota != "" {
-		l = append(l, "cpu_quota="+c.CpuQuota)
+	if c.CPUQuota != "" {
+		l = append(l, "cpu_quota="+c.CPUQuota)
 	}
 	if c.MemOOMControl != "" {
 		l = append(l, "mem_oom_control="+c.MemOOMControl)
@@ -221,8 +221,8 @@ func (c Config) String() string {
 	if c.MemSwappiness != "" {
 		l = append(l, "mem_swappiness="+c.MemSwappiness)
 	}
-	if c.BlkioWeight != "" {
-		l = append(l, "blkioweight="+c.BlkioWeight)
+	if c.BlockIOWeight != "" {
+		l = append(l, "blkioweight="+c.BlockIOWeight)
 	}
 	if len(l) == 0 {
 		return buff
@@ -234,7 +234,7 @@ func (c Config) String() string {
 // * 100%@all => 400000 100000
 // * 50% => 50000 100000
 // * 50%@3 => 150000 100000
-func (t CpuQuota) Convert(period uint64) (int64, error) {
+func (t CPUQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
 	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
 	parsePct := func(s string) (int, error) {

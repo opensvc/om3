@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostInstanceActionStart(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
+func (a *DaemonAPI) PostInstanceActionStart(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionStart(ctx, namespace, kind, name, params)
 	} else if !clusternode.Has(nodename) {
@@ -22,7 +22,7 @@ func (a *DaemonApi) PostInstanceActionStart(ctx echo.Context, nodename, namespac
 	}
 }
 
-func (a *DaemonApi) postPeerInstanceActionStart(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
+func (a *DaemonAPI) postPeerInstanceActionStart(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) postPeerInstanceActionStart(ctx echo.Context, nodename, name
 	return nil
 }
 
-func (a *DaemonApi) postLocalInstanceActionStart(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
+func (a *DaemonAPI) postLocalInstanceActionStart(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStartParams) error {
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
 		return err
 	}

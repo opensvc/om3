@@ -15,7 +15,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
+func bootstrapDaemon(ctx context.Context, t *testing.T) context.Context {
 	t.Helper()
 	t.Logf("start pubsub")
 	drainDuration := 10 * time.Millisecond
@@ -45,7 +45,7 @@ func setupCtrl(ctx context.Context) *C {
 func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ctx = bootstrapDaemon(t, ctx)
+	ctx = bootstrapDaemon(ctx, t)
 	bus := pubsub.BusFromContext(ctx)
 
 	pubDelay = 10 * time.Millisecond

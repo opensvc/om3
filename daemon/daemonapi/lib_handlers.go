@@ -10,6 +10,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/hostname"
@@ -21,7 +22,7 @@ type (
 		CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error)
 	}
 
-	DaemonApi struct {
+	DaemonAPI struct {
 		Daemondata *daemondata.T
 		EventBus   *pubsub.Bus
 		JWTcreator JWTCreater
@@ -36,12 +37,12 @@ var (
 	labelAPI = pubsub.Label{"origin", "api"}
 )
 
-func New(ctx context.Context) *DaemonApi {
+func New(ctx context.Context) *DaemonAPI {
 	localhost := hostname.Hostname()
-	return &DaemonApi{
+	return &DaemonAPI{
 		Daemondata: daemondata.FromContext(ctx),
 		EventBus:   pubsub.BusFromContext(ctx),
-		JWTcreator: ctx.Value("JWTCreator").(JWTCreater),
+		JWTcreator: daemonauth.JWTCreatorFromContext(ctx),
 		LabelNode:  pubsub.Label{"node", localhost},
 		localhost:  localhost,
 	}

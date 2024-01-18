@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (a *DaemonApi) PostNodeClear(ctx echo.Context) error {
+func (a *DaemonAPI) PostNodeClear(ctx echo.Context) error {
 	state := node.MonitorStateIdle
 	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}},
 		labelAPI)

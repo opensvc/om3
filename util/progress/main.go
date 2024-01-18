@@ -36,11 +36,13 @@ type (
 	}
 
 	msgExit struct{}
+
+	contextKey int
 )
 
 const (
-	contextKey = 0
-	ansi       = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+	viewContextKey contextKey = 0
+	ansi                      = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
 )
 
 var (
@@ -60,15 +62,15 @@ func stripAnsi(s string) string {
 }
 
 func ContextWithNewView(ctx context.Context) context.Context {
-	return context.WithValue(ctx, contextKey, NewView())
+	return context.WithValue(ctx, viewContextKey, NewView())
 }
 
 func ContextWithView(ctx context.Context, p *View) context.Context {
-	return context.WithValue(ctx, contextKey, p)
+	return context.WithValue(ctx, viewContextKey, p)
 }
 
 func ViewFromContext(ctx context.Context) *View {
-	if i := ctx.Value(contextKey); i != nil {
+	if i := ctx.Value(viewContextKey); i != nil {
 		return i.(*View)
 	}
 	return nil

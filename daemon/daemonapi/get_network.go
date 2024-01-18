@@ -12,7 +12,7 @@ import (
 )
 
 // GetNetworks returns network status list.
-func (a *DaemonApi) GetNetworks(ctx echo.Context, params api.GetNetworksParams) error {
+func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) error {
 	var items api.NetworkItems
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {

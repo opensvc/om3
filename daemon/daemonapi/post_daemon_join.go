@@ -12,7 +12,7 @@ import (
 
 // PostDaemonJoin publishes msgbus.JoinRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
-func (a *DaemonApi) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinParams) error {
+func (a *DaemonAPI) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); !v {
 		return err
 	}

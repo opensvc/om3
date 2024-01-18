@@ -39,81 +39,81 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
-func (o *imon) orchestrateAfterAction(state, newState instance.MonitorState) {
+func (t *Manager) orchestrateAfterAction(state, newState instance.MonitorState) {
 	select {
-	case <-o.ctx.Done():
+	case <-t.ctx.Done():
 		return
 	default:
 	}
-	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
+	t.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 
-func (o *imon) crmBoot() error {
-	return o.crmAction("boot", o.path.String(), "boot", "--local")
+func (t *Manager) crmBoot() error {
+	return t.crmAction("boot", t.path.String(), "boot", "--local")
 }
 
-func (o *imon) crmDelete() error {
-	return o.crmAction("delete", o.path.String(), "delete", "--local")
+func (t *Manager) crmDelete() error {
+	return t.crmAction("delete", t.path.String(), "delete", "--local")
 }
 
-func (o *imon) crmFreeze() error {
-	return o.crmAction("freeze", o.path.String(), "freeze", "--local")
+func (t *Manager) crmFreeze() error {
+	return t.crmAction("freeze", t.path.String(), "freeze", "--local")
 }
 
-func (o *imon) crmProvisionNonLeader() error {
-	return o.crmAction("provision non leader", o.path.String(), "provision", "--local")
+func (t *Manager) crmProvisionNonLeader() error {
+	return t.crmAction("provision non leader", t.path.String(), "provision", "--local")
 }
 
-func (o *imon) crmProvisionLeader() error {
-	return o.crmAction("provision leader", o.path.String(), "provision", "--local", "--leader", "--disable-rollback")
+func (t *Manager) crmProvisionLeader() error {
+	return t.crmAction("provision leader", t.path.String(), "provision", "--local", "--leader", "--disable-rollback")
 }
 
-func (o *imon) crmResourceStartStandby(rids []string) error {
+func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
-	return o.crmAction("start", o.path.String(), "startstandby", "--local", "--rid", s)
+	return t.crmAction("start", t.path.String(), "startstandby", "--local", "--rid", s)
 }
 
-func (o *imon) crmResourceStart(rids []string) error {
+func (t *Manager) crmResourceStart(rids []string) error {
 	s := strings.Join(rids, ",")
-	return o.crmAction("start", o.path.String(), "start", "--local", "--rid", s)
+	return t.crmAction("start", t.path.String(), "start", "--local", "--rid", s)
 }
 
-func (o *imon) crmShutdown() error {
-	return o.crmAction("shutdown", o.path.String(), "shutdown")
+func (t *Manager) crmShutdown() error {
+	return t.crmAction("shutdown", t.path.String(), "shutdown")
 }
 
-func (o *imon) crmStart() error {
-	return o.crmAction("start", o.path.String(), "start", "--local")
+func (t *Manager) crmStart() error {
+	return t.crmAction("start", t.path.String(), "start", "--local")
 }
 
-func (o *imon) crmStatus() error {
-	return o.crmAction("status", o.path.String(), "status", "-r")
+func (t *Manager) crmStatus() error {
+	return t.crmAction("status", t.path.String(), "status", "-r")
 }
 
-func (o *imon) crmStop() error {
-	return o.crmAction("stop", o.path.String(), "stop", "--local")
+func (t *Manager) crmStop() error {
+	return t.crmAction("stop", t.path.String(), "stop", "--local")
 }
 
-func (o *imon) crmUnfreeze() error {
-	return o.crmAction("unfreeze", o.path.String(), "unfreeze", "--local")
+func (t *Manager) crmUnfreeze() error {
+	return t.crmAction("unfreeze", t.path.String(), "unfreeze", "--local")
 }
 
-func (o *imon) crmUnprovisionNonLeader() error {
-	return o.crmAction("unprovision non leader", o.path.String(), "unprovision", "--local")
+func (t *Manager) crmUnprovisionNonLeader() error {
+	return t.crmAction("unprovision non leader", t.path.String(), "unprovision", "--local")
 }
 
-func (o *imon) crmUnprovisionLeader() error {
-	return o.crmAction("unprovision leader", o.path.String(), "unprovision", "--local", "--leader")
+func (t *Manager) crmUnprovisionLeader() error {
+	return t.crmAction("unprovision leader", t.path.String(), "unprovision", "--local", "--leader")
 }
 
-func (o *imon) crmAction(title string, cmdArgs ...string) error {
+func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	if crmAction != nil {
 		return crmAction(title, cmdArgs...)
 	}
-	return o.crmDefaultAction(title, cmdArgs...)
+	return t.crmDefaultAction(title, cmdArgs...)
 }
 
-func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
+func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	runners <- struct{}{}
 	defer func() {
 		<-runners
@@ -122,33 +122,33 @@ func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
-		command.WithLogger(o.log),
+		command.WithLogger(t.log),
 		command.WithVarEnv(
 			env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
-			env.ActionOrchestrationIDVar+"="+o.state.OrchestrationID.String(),
+			env.ActionOrchestrationIDVar+"="+t.state.OrchestrationID.String(),
 			"OSVC_SESSION_ID="+sid.String(),
 		),
 	)
-	labels := []pubsub.Label{o.labelLocalhost, o.labelPath, {"origin", "imon"}, {"sid", sid.String()}}
+	labels := []pubsub.Label{t.labelLocalhost, t.labelPath, {"origin", "imon"}, {"sid", sid.String()}}
 	if title != "" {
-		o.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		o.loggerWithState().Debugf("-> exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Debugf("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
-	o.pubsubBus.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
+	t.pubsubBus.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "imon", Title: title}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		o.pubsubBus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "imon", Title: title}, labels...)
-		o.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
+		t.pubsubBus.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "imon", Title: title}, labels...)
+		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.pubsubBus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "imon", Title: title}, labels...)
+	t.pubsubBus.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "imon", Title: title}, labels...)
 	if title != "" {
-		o.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		o.loggerWithState().Debugf("<- exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Debugf("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	return nil
 }

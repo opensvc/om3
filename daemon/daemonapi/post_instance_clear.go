@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceClear(ctx, namespace, kind, name)
 	} else if !clusternode.Has(nodename) {
@@ -22,7 +22,7 @@ func (a *DaemonApi) PostInstanceClear(ctx echo.Context, nodename, namespace stri
 	}
 }
 
-func (a *DaemonApi) postPeerInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) postPeerInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
@@ -35,7 +35,7 @@ func (a *DaemonApi) postPeerInstanceClear(ctx echo.Context, nodename, namespace 
 	return nil
 }
 
-func (a *DaemonApi) postLocalInstanceClear(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) postLocalInstanceClear(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)

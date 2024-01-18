@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonApi) PostPeerActionUnfreeze(ctx echo.Context, nodename string, params api.PostPeerActionUnfreezeParams) error {
+func (a *DaemonAPI) PostPeerActionUnfreeze(ctx echo.Context, nodename string, params api.PostPeerActionUnfreezeParams) error {
 	if nodename == a.localhost {
 		return a.localNodeActionUnfreeze(ctx, params)
 	} else if !clusternode.Has(nodename) {
@@ -32,7 +32,7 @@ func (a *DaemonApi) PostPeerActionUnfreeze(ctx echo.Context, nodename string, pa
 	return nil
 }
 
-func (a *DaemonApi) localNodeActionUnfreeze(ctx echo.Context, params api.PostPeerActionUnfreezeParams) error {
+func (a *DaemonAPI) localNodeActionUnfreeze(ctx echo.Context, params api.PostPeerActionUnfreezeParams) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}

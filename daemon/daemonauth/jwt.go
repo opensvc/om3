@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/shaj13/libcache/fifo"
-
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/shaj13/go-guardian/v2/auth"
@@ -125,7 +123,7 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 
 // CreateUserToken implements CreateUserToken interface for JWTCreator.
 // empty token is returned if jwtAuth is not initialized
-func (_ *JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
+func (*JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
 	if jwtAuth == nil {
 		return
 	}

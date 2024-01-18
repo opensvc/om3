@@ -26,7 +26,7 @@ import (
 )
 
 type (
-	ccfg struct {
+	Manager struct {
 		state       cluster.Config
 		networkSigs map[string]string
 
@@ -56,78 +56,77 @@ type (
 	NodeDB struct{}
 )
 
-func New(drainDuration time.Duration) *ccfg {
-	o := &ccfg{
+func New(drainDuration time.Duration) *Manager {
+	return &Manager{
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
 		log:           plog.NewDefaultLogger().WithPrefix("daemon: ccfg: ").Attr("pkg", "daemon/ccfg"),
 		networkSigs:   make(map[string]string),
 	}
-	return o
 }
 
 // Start launches the ccfg worker goroutine
-func (o *ccfg) Start(parent context.Context) error {
-	o.ctx, o.cancel = context.WithCancel(parent)
-	o.bus = pubsub.BusFromContext(o.ctx)
+func (t *Manager) Start(parent context.Context) error {
+	t.ctx, t.cancel = context.WithCancel(parent)
+	t.bus = pubsub.BusFromContext(t.ctx)
 
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
 		return err
 	} else {
-		o.clusterConfig = n.Config()
+		t.clusterConfig = n.Config()
 	}
 
-	o.pubClusterConfig()
+	t.pubClusterConfig()
 
-	o.startSubscriptions()
-	o.wg.Add(1)
+	t.startSubscriptions()
+	t.wg.Add(1)
 	go func() {
 		defer func() {
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Warnf("subscription stop: %s", err)
+			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				t.log.Warnf("subscription stop: %s", err)
 			}
-			o.wg.Done()
+			t.wg.Done()
 		}()
-		o.worker()
+		t.worker()
 	}()
 
 	return nil
 }
 
-func (o *ccfg) Stop() error {
-	o.cancel()
-	o.wg.Wait()
+func (t *Manager) Stop() error {
+	t.cancel()
+	t.wg.Wait()
 	return nil
 }
 
-func (o *ccfg) startSubscriptions() {
-	sub := o.bus.Sub("ccfg")
+func (t *Manager) startSubscriptions() {
+	sub := t.bus.Sub("ccfg")
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.Start()
-	o.sub = sub
+	t.sub = sub
 }
 
 // worker watch for local ccfg updates
-func (o *ccfg) worker() {
-	defer o.log.Debugf("done")
+func (t *Manager) worker() {
+	defer t.log.Debugf("done")
 
-	o.startedAt = time.Now()
+	t.startedAt = time.Now()
 
 	for {
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case i := <-o.sub.C:
+		case i := <-t.sub.C:
 			switch c := i.(type) {
 			case *msgbus.ConfigFileUpdated:
-				o.onConfigFileUpdated(c)
+				t.onConfigFileUpdated(c)
 			}
 		}
 	}
 }
 
 // AuthenticateNode returns nil if nodename is a cluster node and password is cluster secret
-func (_ *NodeDB) AuthenticateNode(nodename, password string) error {
+func (*NodeDB) AuthenticateNode(nodename, password string) error {
 	if nodename == "" {
 		return fmt.Errorf("can't authenticate: nodename is empty")
 	}

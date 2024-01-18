@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostDaemonSubAction(ctx echo.Context) error {
+func (a *DaemonAPI) PostDaemonSubAction(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonSubAction")
 	log.Debugf("starting")
 

@@ -16,7 +16,7 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 		API:   12,
 		Arbitrators: map[string]ArbitratorStatus{
 			"node1": {
-				Url:    "foo",
+				URL:    "foo",
 				Status: status.Up,
 			},
 		},
@@ -41,19 +41,19 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 	copyValue.API = 13
 	require.Equal(t, value.API, uint64(12))
 	copyValue.Arbitrators["node1"] = ArbitratorStatus{
-		Url:    "foo",
+		URL:    "foo",
 		Status: status.Warn,
 	}
 	copyValue.Arbitrators["node2"] = ArbitratorStatus{
-		Url:    "bar",
+		URL:    "bar",
 		Status: status.Warn,
 	}
 
-	require.Equal(t, value.Arbitrators["node1"].Url, "foo")
+	require.Equal(t, value.Arbitrators["node1"].URL, "foo")
 	require.Equal(t, value.Arbitrators["node1"].Status, status.Up)
 	_, hasNode2 := value.Arbitrators["node2"]
 	require.False(t, hasNode2)
-	require.Equal(t, copyValue.Arbitrators["node2"].Url, "bar")
+	require.Equal(t, copyValue.Arbitrators["node2"].URL, "bar")
 
 	newFrozen := time.Now()
 	value.FrozenAt = newFrozen

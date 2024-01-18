@@ -804,7 +804,7 @@ func (t T) DoRemote() error {
 	}
 
 	for _, item := range resp.JSON200.Items {
-		for n, _ := range item.Data.Instances {
+		for n := range item.Data.Instances {
 			p, err := naming.ParsePath(item.Meta.Object)
 			if err != nil {
 				return err

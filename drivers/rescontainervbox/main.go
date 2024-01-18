@@ -115,7 +115,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	if isContainerUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
-		if err := t.registerVm(); err != nil {
+		if err := t.registerVM(); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -402,7 +402,7 @@ func (t *T) containerStop(ctx context.Context) error {
 	}
 }
 
-func (t *T) registerVm() error {
+func (t *T) registerVM() error {
 	configFilePath, err := t.readConfigFileFromVarDir()
 	if err != nil {
 		return err

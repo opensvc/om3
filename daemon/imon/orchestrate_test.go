@@ -582,16 +582,16 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 			err: fmt.Errorf("crm delete action failed"),
 		}
 	}
-	crm := crmBuilder(t, setup.Ctx, p, c.sideEffects)
+	crm := crmBuilder(t, setup, p, c.sideEffects)
 	crmAction = crm.action
 	defer func() {
 		defaultReadyDuration = initialReadyDuration
 		crmAction = nil
 	}()
 
-	evC, errC := waitExpectations(t, setup.Ctx, maxWaitTime, c)
+	evC, errC := waitExpectations(t, setup, maxWaitTime, c)
 
-	objectMonCreator(t, setup.Ctx, c, Factory{DrainDuration: setup.DrainDuration})
+	objectMonCreator(t, setup, c, Factory{DrainDuration: setup.DrainDuration})
 
 	cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.obj)
 	setup.Env.InstallFile(c.srcFile, cfgEtcFile)
@@ -706,7 +706,8 @@ func (c *crmSpy) getCalls() [][]string {
 	return calls
 }
 
-func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map[string]sideEffect) *crm {
+func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect map[string]sideEffect) *crm {
+	ctx := setup.Ctx
 	bus := pubsub.BusFromContext(ctx)
 	c := crm{
 		crmSpy: crmSpy{
@@ -771,13 +772,14 @@ func crmBuilder(t *testing.T, ctx context.Context, p naming.Path, sideEffect map
 }
 
 // objectMonCreator emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreator(t *testing.T, ctx context.Context, c tCase, factory Factory) {
+func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Factory) {
 	var (
 		p = naming.Path{Kind: naming.KindSvc, Name: c.obj}
 
 		monStarted bool
 	)
 
+	ctx := setup.Ctx
 	sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover")
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, pubsub.Label{"path", p.String()})
@@ -813,7 +815,8 @@ func objectMonCreator(t *testing.T, ctx context.Context, c tCase, factory Factor
 
 // waitExpectations watches for InstanceMonitorUpdated until matched expectation from c or reached timeout
 // when timeout is reached, error is non nil and event is the latest event published or zero value
-func waitExpectations(t *testing.T, parent context.Context, timeout time.Duration, c tCase) (<-chan *msgbus.InstanceMonitorUpdated, <-chan error) {
+func waitExpectations(t *testing.T, setup *daemonhelper.D, timeout time.Duration, c tCase) (<-chan *msgbus.InstanceMonitorUpdated, <-chan error) {
+	parent := setup.Ctx
 	evC := make(chan *msgbus.InstanceMonitorUpdated)
 	errC := make(chan error)
 	p := naming.Path{Kind: naming.KindSvc, Name: c.obj}

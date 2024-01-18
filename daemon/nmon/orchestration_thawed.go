@@ -2,36 +2,36 @@ package nmon
 
 import "github.com/opensvc/om3/core/node"
 
-func (o *nmon) orchestrateThawed() {
-	switch o.state.State {
+func (t *Manager) orchestrateThawed() {
+	switch t.state.State {
 	case node.MonitorStateIdle:
-		o.ThawedFromIdle()
+		t.ThawedFromIdle()
 	case node.MonitorStateThawing:
 	default:
-		o.log.Warnf("don't know how to orchestrate %s from %s", o.state.GlobalExpect, o.state.State)
+		t.log.Warnf("don't know how to orchestrate %s from %s", t.state.GlobalExpect, t.state.State)
 	}
 }
 
-func (o *nmon) ThawedFromIdle() {
-	if o.thawedClearIfReached() {
+func (t *Manager) ThawedFromIdle() {
+	if t.thawedClearIfReached() {
 		return
 	}
-	o.transitionTo(node.MonitorStateThawing)
-	o.log.Infof("run action unfreeze")
+	t.transitionTo(node.MonitorStateThawing)
+	t.log.Infof("run action unfreeze")
 	nextState := node.MonitorStateIdle
-	if err := o.crmUnfreeze(); err != nil {
+	if err := t.crmUnfreeze(); err != nil {
 		nextState = node.MonitorStateThawedFailed
 	}
-	go o.orchestrateAfterAction(node.MonitorStateThawing, nextState)
+	go t.orchestrateAfterAction(node.MonitorStateThawing, nextState)
 	return
 }
 
-func (o *nmon) thawedClearIfReached() bool {
-	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && nodeStatus.FrozenAt.IsZero() {
-		o.log.Infof("instance state is thawed, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = node.MonitorGlobalExpectNone
-		o.clearPending()
+func (t *Manager) thawedClearIfReached() bool {
+	if nodeStatus := node.StatusData.Get(t.localhost); nodeStatus != nil && nodeStatus.FrozenAt.IsZero() {
+		t.log.Infof("instance state is thawed, unset global expect")
+		t.change = true
+		t.state.GlobalExpect = node.MonitorGlobalExpectNone
+		t.clearPending()
 		return true
 	}
 	return false

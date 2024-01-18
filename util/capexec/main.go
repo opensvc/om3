@@ -18,13 +18,13 @@ type (
 		PGID            *string
 		PGCpus          *string
 		PGMems          *string
-		PGCpuShares     *string
-		PGCpuQuota      *string
+		PGCPUShares     *string
+		PGCPUQuota      *string
 		PGMemOOMControl *string
 		PGMemLimit      *string
 		PGVMemLimit     *string
 		PGMemSwappiness *string
-		PGBlkioWeight   *string
+		PGBlockIOWeight *string
 		LimitAS         *string
 		LimitCPU        *string
 		LimitCore       *string
@@ -50,11 +50,11 @@ func (t T) Argv() []string {
 	if t.PGMems != nil {
 		argv = append(argv, "--pg-mems", *t.PGMems)
 	}
-	if t.PGCpuShares != nil {
-		argv = append(argv, "--pg-cpu-shares", *t.PGCpuShares)
+	if t.PGCPUShares != nil {
+		argv = append(argv, "--pg-cpu-shares", *t.PGCPUShares)
 	}
-	if t.PGCpuQuota != nil {
-		argv = append(argv, "--pg-cpu-quota", *t.PGCpuQuota)
+	if t.PGCPUQuota != nil {
+		argv = append(argv, "--pg-cpu-quota", *t.PGCPUQuota)
 	}
 	if t.PGMemOOMControl != nil {
 		argv = append(argv, "--pg-mem-oom-control", *t.PGMemOOMControl)
@@ -68,8 +68,8 @@ func (t T) Argv() []string {
 	if t.PGMemSwappiness != nil {
 		argv = append(argv, "--pg-mem-swappiness", *t.PGMemSwappiness)
 	}
-	if t.PGBlkioWeight != nil {
-		argv = append(argv, "--pg-blkio-weight", *t.PGBlkioWeight)
+	if t.PGBlockIOWeight != nil {
+		argv = append(argv, "--pg-blkio-weight", *t.PGBlockIOWeight)
 	}
 	if t.LimitAS != nil {
 		argv = append(argv, "--limit-as", *t.LimitAS)
@@ -173,16 +173,16 @@ func (t T) toPG() pg.Config {
 		pg.ID = *t.PGID
 	}
 	if t.PGCpus != nil {
-		pg.Cpus = *t.PGCpus
+		pg.CPUs = *t.PGCpus
 	}
 	if t.PGMems != nil {
 		pg.Mems = *t.PGMems
 	}
-	if t.PGCpuShares != nil {
-		pg.CpuShares = *t.PGCpuShares
+	if t.PGCPUShares != nil {
+		pg.CPUShares = *t.PGCPUShares
 	}
-	if t.PGCpuQuota != nil {
-		pg.CpuQuota = *t.PGCpuQuota
+	if t.PGCPUQuota != nil {
+		pg.CPUQuota = *t.PGCPUQuota
 	}
 	if t.PGMemOOMControl != nil {
 		pg.MemOOMControl = *t.PGMemOOMControl
@@ -196,8 +196,8 @@ func (t T) toPG() pg.Config {
 	if t.PGMemSwappiness != nil {
 		pg.MemSwappiness = *t.PGMemSwappiness
 	}
-	if t.PGBlkioWeight != nil {
-		pg.BlkioWeight = *t.PGBlkioWeight
+	if t.PGBlockIOWeight != nil {
+		pg.BlockIOWeight = *t.PGBlockIOWeight
 	}
 	return pg
 }
@@ -252,17 +252,17 @@ func (t *T) LoadPG(g pg.Config) {
 	if g.ID != "" {
 		t.PGID = &g.ID
 	}
-	if g.Cpus != "" {
-		t.PGCpus = &g.Cpus
+	if g.CPUs != "" {
+		t.PGCpus = &g.CPUs
 	}
 	if g.Mems != "" {
 		t.PGMems = &g.Mems
 	}
-	if g.CpuShares != "" {
-		t.PGCpuShares = &g.CpuShares
+	if g.CPUShares != "" {
+		t.PGCPUShares = &g.CPUShares
 	}
-	if g.CpuQuota != "" {
-		t.PGCpuQuota = &g.CpuQuota
+	if g.CPUQuota != "" {
+		t.PGCPUQuota = &g.CPUQuota
 	}
 	if g.MemOOMControl != "" {
 		t.PGMemOOMControl = &g.MemOOMControl
@@ -276,8 +276,8 @@ func (t *T) LoadPG(g pg.Config) {
 	if g.MemSwappiness != "" {
 		t.PGMemSwappiness = &g.MemSwappiness
 	}
-	if g.BlkioWeight != "" {
-		t.PGBlkioWeight = &g.BlkioWeight
+	if g.BlockIOWeight != "" {
+		t.PGBlockIOWeight = &g.BlockIOWeight
 	}
 }
 
@@ -285,13 +285,13 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 	t.PGID = flags.String("pg", "", "the process group to attach to")
 	t.PGCpus = flags.String("pg-cpus", "", "the cpus to pin the process group to (ex: 1-3,5)")
 	t.PGMems = flags.String("pg-mems", "", "the memories to pin the process group to (ex: 1-3,5)")
-	t.PGCpuShares = flags.String("pg-cpu-shares", "", "the cpu shares granted to the process group to (ex: 100)")
-	t.PGCpuQuota = flags.String("pg-cpu-quota", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGCPUShares = flags.String("pg-cpu-shares", "", "the cpu shares granted to the process group to (ex: 100)")
+	t.PGCPUQuota = flags.String("pg-cpu-quota", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
 	t.PGMemOOMControl = flags.String("pg-mem-oom-control", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
 	t.PGMemLimit = flags.String("pg-mem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
 	t.PGVMemLimit = flags.String("pg-vmem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
 	t.PGMemSwappiness = flags.String("pg-mem-swappiness", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGBlkioWeight = flags.String("pg-blkio-weight", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGBlockIOWeight = flags.String("pg-blkio-weight", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
 	t.LimitAS = flags.String("limit-as", "", "the maximum area (in bytes) of address space which may be taken by the process")
 	t.LimitCPU = flags.String("limit-cpu", "", "the maximum amount of processor time (in seconds) that a process can use")
 	t.LimitCore = flags.String("limit-core", "", "the maximum size (in bytes) of a core file that the current process can create")

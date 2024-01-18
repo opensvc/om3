@@ -1,7 +1,9 @@
 package ox
 
 import (
+	// Necessary to use go:embed
 	_ "embed"
+
 	"fmt"
 	"strings"
 	"time"
@@ -62,7 +64,7 @@ func addFlagComplianceForce(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "force", false, "Don't check before fix.")
 }
 
-func addFlagCpuProfile(flagSet *pflag.FlagSet, p *string) {
+func addFlagCPUProfile(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "cpuprofile", "", "Dump a cpu pprof in this file on exit.")
 }
 

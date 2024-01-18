@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 )
 
-func (a *DaemonApi) GetNodesInfo(ctx echo.Context) error {
+func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodesInfo")
 	log.Debugf("starting")
 	// TODO returned value should be cached

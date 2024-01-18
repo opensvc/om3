@@ -33,7 +33,7 @@ import (
 )
 
 type (
-	discover struct {
+	Manager struct {
 		cfgCmdC           chan any
 		objectMonitorCmdC chan any
 		ctx               context.Context
@@ -87,9 +87,9 @@ type (
 	}
 )
 
-// New prepares Discover with drainDuration.
-func New(drainDuration time.Duration) *discover {
-	return &discover{
+// NewManager prepares Discover with drainDuration.
+func NewManager(drainDuration time.Duration) *Manager {
+	return &Manager{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
 		cfgMTime:          make(map[string]time.Time),
@@ -108,69 +108,69 @@ func New(drainDuration time.Duration) *discover {
 
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create.
-func (d *discover) Start(ctx context.Context) (err error) {
-	d.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
-	d.log.Infof("discover starting")
+func (t *Manager) Start(ctx context.Context) (err error) {
+	t.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
+	t.log.Infof("discover starting")
 
-	d.ctx, d.cancel = context.WithCancel(ctx)
-	d.databus = daemondata.FromContext(d.ctx)
-	d.nodeList = newObjectList(d.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
-	d.objectList = newObjectList(d.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
+	t.ctx, t.cancel = context.WithCancel(ctx)
+	t.databus = daemondata.FromContext(t.ctx)
+	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
+	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 
-	d.wg.Add(1)
+	t.wg.Add(1)
 	cfgStarted := make(chan bool)
 	go func(c chan<- bool) {
-		defer d.wg.Done()
-		defer d.log.Infof("cfg: stopped")
-		d.cfg(c)
+		defer t.wg.Done()
+		defer t.log.Infof("cfg: stopped")
+		t.cfg(c)
 	}(cfgStarted)
 	<-cfgStarted
 
 	omonStarted := make(chan bool)
-	d.wg.Add(1)
+	t.wg.Add(1)
 	go func(c chan<- bool) {
-		defer d.wg.Done()
-		d.omon(c)
+		defer t.wg.Done()
+		t.omon(c)
 	}(omonStarted)
 	<-omonStarted
 
-	d.wg.Add(1)
+	t.wg.Add(1)
 	go func() {
-		defer d.wg.Done()
-		defer d.log.Infof("cfg: node list stopped")
-		d.nodeList.Add(clusternode.Get()...)
-		d.nodeList.Loop()
+		defer t.wg.Done()
+		defer t.log.Infof("cfg: node list stopped")
+		t.nodeList.Add(clusternode.Get()...)
+		t.nodeList.Loop()
 	}()
 
-	d.wg.Add(1)
+	t.wg.Add(1)
 	go func() {
-		defer d.wg.Done()
-		defer d.log.Infof("cfg: object list stopped")
-		d.objectList.Add(object.StatusData.GetPaths().StrSlice()...)
-		d.objectList.Loop()
+		defer t.wg.Done()
+		defer t.log.Infof("cfg: object list stopped")
+		t.objectList.Add(object.StatusData.GetPaths().StrSlice()...)
+		t.objectList.Loop()
 	}()
 
-	if stopFSWatcher, err := d.fsWatcherStart(); err != nil {
-		d.log.Errorf("fs: start failed: %s", err)
+	if stopFSWatcher, err := t.fsWatcherStart(); err != nil {
+		t.log.Errorf("fs: start failed: %s", err)
 		return err
 	} else {
-		d.fsWatcherStop = stopFSWatcher
+		t.fsWatcherStop = stopFSWatcher
 	}
-	d.log.Infof("fs: started")
+	t.log.Infof("fs: started")
 	return nil
 }
 
-func (d *discover) Stop() error {
-	d.log.Infof("stopping")
-	defer d.log.Infof("stopped")
-	if d.fsWatcherStop != nil {
-		d.fsWatcherStop()
+func (t *Manager) Stop() error {
+	t.log.Infof("stopping")
+	defer t.log.Infof("stopped")
+	if t.fsWatcherStop != nil {
+		t.fsWatcherStop()
 	}
-	d.cancel() // stop cfg and omon via context cancel
-	d.wg.Wait()
+	t.cancel() // stop cfg and omon via context cancel
+	t.wg.Wait()
 	return nil
 }
 
-func (d *discover) objectLogger(p naming.Path) *plog.Logger {
-	return naming.LogWithPath(d.log, p)
+func (t *Manager) objectLogger(p naming.Path) *plog.Logger {
+	return naming.LogWithPath(t.log, p)
 }

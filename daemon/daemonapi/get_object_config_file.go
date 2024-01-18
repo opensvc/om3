@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	logName := "GetObjectConfigFile"
 	log := LogHandler(ctx, logName)
 	log.Debugf("%s: starting", logName)

@@ -38,7 +38,7 @@ import (
 )
 
 type (
-	T struct {
+	Manager struct {
 		path                     naming.Path
 		configure                object.Configurer
 		filename                 string
@@ -63,7 +63,7 @@ type (
 var (
 	clusterPath = naming.Path{Name: "cluster", Kind: naming.KindCcfg}
 
-	configFileCheckError = errors.New("config file check")
+	errConfigFileCheck = errors.New("config file check")
 
 	keyApp              = key.New("DEFAULT", "app")
 	keyChildren         = key.New("DEFAULT", "children")
@@ -87,7 +87,7 @@ var (
 func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	ctx, cancel := context.WithCancel(parent)
-	o := &T{
+	t := &Manager{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
 		localhost:      localhost,
@@ -103,39 +103,39 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 			WithPrefix("daemon: icfg: " + p.String() + ": "),
 	}
 
-	if err := o.setConfigure(); err != nil {
+	if err := t.setConfigure(); err != nil {
 		return err
 	}
 
-	o.startSubscriptions()
+	t.startSubscriptions()
 
 	go func() {
-		defer o.log.Debugf("stopped")
+		defer t.log.Debugf("stopped")
 		defer func() {
 			cancel()
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
-				o.log.Errorf("subscription stop: %s", err)
+			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				t.log.Errorf("subscription stop: %s", err)
 			}
-			o.done(parent, svcDiscoverCmd)
+			t.done(parent, svcDiscoverCmd)
 		}()
-		o.worker()
+		t.worker()
 	}()
 
 	return nil
 }
 
-func (o *T) startSubscriptions() {
+func (t *Manager) startSubscriptions() {
 	clusterID := clusterPath.String()
-	label := pubsub.Label{"path", o.path.String()}
-	o.sub = o.bus.Sub(o.path.String() + " icfg")
-	o.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
-	if o.path.String() != clusterID {
-		o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
+	label := pubsub.Label{"path", t.path.String()}
+	t.sub = t.bus.Sub(t.path.String() + " icfg")
+	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
+	if t.path.String() != clusterID {
+		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
 
 		// the scope value may depend on cluster nodes values: *, clusternodes ...
 		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
-		localClusterLabels := []pubsub.Label{{"path", clusterID}, {"node", o.localhost}}
-		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, localClusterLabels...)
+		localClusterLabels := []pubsub.Label{{"path", clusterID}, {"node", t.localhost}}
+		t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, localClusterLabels...)
 	} else {
 		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for
 		// ClusterConfigUpdated.
@@ -146,93 +146,93 @@ func (o *T) startSubscriptions() {
 		//     ccfg: ConfigFileUpdated =>  - update cached cluster nodes
 		//                                 - ClusterConfigUpdated
 		//     icfg:                         ClusterConfigUpdated         => cluster InstanceConfigUpdated
-		o.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", o.localhost})
+		t.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", t.localhost})
 	}
-	o.sub.Start()
+	t.sub.Start()
 }
 
 // worker watch for local instConfig config file updates until file is removed
-func (o *T) worker() {
-	defer o.log.Debugf("done")
-	o.log.Debugf("starting")
+func (t *Manager) worker() {
+	defer t.log.Debugf("done")
+	t.log.Debugf("starting")
 
 	// do once what we do later on msgbus.ConfigFileUpdated
-	if err := o.configFileCheck(); err != nil {
-		o.log.Warnf("initial configFileCheck: %s", err)
+	if err := t.configFileCheck(); err != nil {
+		t.log.Warnf("initial configFileCheck: %s", err)
 		return
 	}
-	defer o.delete()
+	defer t.delete()
 
-	o.log.Debugf("started")
+	t.log.Debugf("started")
 	for {
 		select {
-		case <-o.ctx.Done():
+		case <-t.ctx.Done():
 			return
-		case i := <-o.sub.C:
+		case i := <-t.sub.C:
 			switch i.(type) {
 			case *msgbus.ClusterConfigUpdated:
-				o.onClusterConfigUpdated()
+				t.onClusterConfigUpdated()
 			case *msgbus.ConfigFileRemoved:
-				o.onConfigFileRemoved()
+				t.onConfigFileRemoved()
 			case *msgbus.ConfigFileUpdated:
-				o.onConfigFileUpdated()
+				t.onConfigFileUpdated()
 			case *msgbus.InstanceConfigUpdated:
-				o.onLocalClusterInstanceConfigUpdated()
+				t.onLocalClusterInstanceConfigUpdated()
 			}
 		}
 	}
 }
 
-func (o *T) configFileCheckRefresh(force bool) error {
+func (t *Manager) configFileCheckRefresh(force bool) error {
 	if force {
-		o.forceRefresh = true
+		t.forceRefresh = true
 	}
-	err := o.configFileCheck()
+	err := t.configFileCheck()
 	if err != nil {
-		o.log.Errorf("configFileCheck: %s", err)
-		o.cancel()
+		t.log.Errorf("configFileCheck: %s", err)
+		t.cancel()
 	}
 	return err
 }
 
-func (o *T) onClusterConfigUpdated() {
-	o.log.Infof("cluster config updated => refresh")
-	_ = o.configFileCheckRefresh(true)
+func (t *Manager) onClusterConfigUpdated() {
+	t.log.Infof("cluster config updated => refresh")
+	_ = t.configFileCheckRefresh(true)
 }
 
-func (o *T) onConfigFileUpdated() {
-	o.log.Infof("config file changed => refresh")
-	_ = o.configFileCheckRefresh(false)
+func (t *Manager) onConfigFileUpdated() {
+	t.log.Infof("config file changed => refresh")
+	_ = t.configFileCheckRefresh(false)
 }
 
-func (o *T) onLocalClusterInstanceConfigUpdated() {
-	o.log.Infof("cluster instance config changed => refresh")
-	_ = o.configFileCheckRefresh(true)
+func (t *Manager) onLocalClusterInstanceConfigUpdated() {
+	t.log.Infof("cluster instance config changed => refresh")
+	_ = t.configFileCheckRefresh(true)
 }
 
-func (o *T) onConfigFileRemoved() {
-	o.cancel()
+func (t *Manager) onConfigFileRemoved() {
+	t.cancel()
 }
 
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
-func (o *T) updateConfig(newConfig *instance.Config) {
-	if instance.ConfigEqual(&o.instanceConfig, newConfig) {
-		o.log.Debugf("no update required")
+func (t *Manager) updateConfig(newConfig *instance.Config) {
+	if instance.ConfigEqual(&t.instanceConfig, newConfig) {
+		t.log.Debugf("no update required")
 		return
 	}
-	if !o.published {
-		o.bus.Pub(&msgbus.ObjectCreated{Path: o.path, Node: o.localhost},
-			pubsub.Label{"path", o.path.String()},
-			pubsub.Label{"node", o.localhost},
+	if !t.published {
+		t.bus.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost},
+			pubsub.Label{"path", t.path.String()},
+			pubsub.Label{"node", t.localhost},
 		)
 	}
-	o.instanceConfig = *newConfig
-	instance.ConfigData.Set(o.path, o.localhost, newConfig.DeepCopy())
-	o.bus.Pub(&msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
-		pubsub.Label{"path", o.path.String()},
-		pubsub.Label{"node", o.localhost},
+	t.instanceConfig = *newConfig
+	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()},
+		pubsub.Label{"path", t.path.String()},
+		pubsub.Label{"node", t.localhost},
 	)
-	o.published = true
+	t.published = true
 }
 
 // configFileCheck verify if config file has been changed
@@ -243,66 +243,66 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 //		   updateConfig
 //
 //		when localhost is not anymore in scope then ends worker
-func (o *T) configFileCheck() error {
-	mtime := file.ModTime(o.filename)
+func (t *Manager) configFileCheck() error {
+	mtime := file.ModTime(t.filename)
 	if mtime.IsZero() {
-		o.log.Infof("configFile no mtime %s", o.filename)
-		return configFileCheckError
+		t.log.Infof("configFile no mtime %s", t.filename)
+		return errConfigFileCheck
 	}
-	if mtime.Equal(o.lastMtime) && !o.forceRefresh {
-		o.log.Debugf("same mtime, skip")
+	if mtime.Equal(t.lastMtime) && !t.forceRefresh {
+		t.log.Debugf("same mtime, skip")
 		return nil
 	}
-	checksum, err := file.MD5(o.filename)
+	checksum, err := file.MD5(t.filename)
 	if err != nil {
-		o.log.Infof("configFile no present(md5sum)")
-		return configFileCheckError
+		t.log.Infof("configFile no present(md5sum)")
+		return errConfigFileCheck
 	}
-	if err := o.setConfigure(); err != nil {
-		return configFileCheckError
+	if err := t.setConfigure(); err != nil {
+		return errConfigFileCheck
 	}
-	o.forceRefresh = false
-	cf := o.configure.Config()
-	scope, err := o.getScope(cf)
+	t.forceRefresh = false
+	cf := t.configure.Config()
+	scope, err := t.getScope(cf)
 	if err != nil {
-		o.log.Errorf("can't get scope: %s", err)
-		return configFileCheckError
+		t.log.Errorf("can't get scope: %s", err)
+		return errConfigFileCheck
 	}
 	if len(scope) == 0 {
-		o.log.Infof("empty scope")
-		return configFileCheckError
+		t.log.Infof("empty scope")
+		return errConfigFileCheck
 	}
-	newMtime := file.ModTime(o.filename)
+	newMtime := file.ModTime(t.filename)
 	if newMtime.IsZero() {
-		o.log.Infof("configFile no more mtime %s", o.filename)
-		return configFileCheckError
+		t.log.Infof("configFile no more mtime %s", t.filename)
+		return errConfigFileCheck
 	}
 	if !newMtime.Equal(mtime) {
-		o.log.Infof("configFile changed(wait next evaluation)")
+		t.log.Infof("configFile changed(wait next evaluation)")
 		return nil
 	}
-	if !stringslice.Has(o.localhost, scope) {
-		o.log.Infof("localhost not anymore an instance node")
-		return configFileCheckError
+	if !stringslice.Has(t.localhost, scope) {
+		t.log.Infof("localhost not anymore an instance node")
+		return errConfigFileCheck
 	}
 
-	cfg := o.instanceConfig
+	cfg := t.instanceConfig
 	cfg.App = cf.GetString(keyApp)
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
-	cfg.Children = o.getChildren(cf)
+	cfg.Children = t.getChildren(cf)
 	cfg.Env = cf.GetString(keyEnv)
-	cfg.MonitorAction = o.getMonitorAction(cf)
-	cfg.Nodename = o.localhost
-	cfg.Orchestrate = o.getOrchestrate(cf)
-	cfg.Parents = o.getParents(cf)
-	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
+	cfg.MonitorAction = t.getMonitorAction(cf)
+	cfg.Nodename = t.localhost
+	cfg.Orchestrate = t.getOrchestrate(cf)
+	cfg.Parents = t.getParents(cf)
+	cfg.PlacementPolicy = t.getPlacementPolicy(cf)
 	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
-	cfg.Priority = o.getPriority(cf)
-	cfg.Resources = o.getResources(cf)
+	cfg.Priority = t.getPriority(cf)
+	cfg.Resources = t.getResources(cf)
 	cfg.Scope = scope
-	cfg.Topology = o.getTopology(cf)
+	cfg.Topology = t.getTopology(cf)
 	cfg.UpdatedAt = mtime
-	cfg.Subsets = o.getSubsets(cf)
+	cfg.Subsets = t.getSubsets(cf)
 
 	if pool := cf.GetString(keyPool); pool != "" {
 		cfg.Pool = &pool
@@ -311,13 +311,13 @@ func (o *T) configFileCheck() error {
 		cfg.Size = sz
 	}
 	if cfg.Topology == topology.Flex {
-		cfg.FlexMin = o.getFlexMin(cf)
-		cfg.FlexMax = o.getFlexMax(cf)
-		cfg.FlexTarget = o.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+		cfg.FlexMin = t.getFlexMin(cf)
+		cfg.FlexMax = t.getFlexMax(cf)
+		cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
 	}
 
-	o.lastMtime = mtime
-	o.updateConfig(&cfg)
+	t.lastMtime = mtime
+	t.updateConfig(&cfg)
 	return nil
 }
 
@@ -326,15 +326,15 @@ func (o *T) configFileCheck() error {
 // depending on object kind
 // Ccfg => cluster.nodes
 // else => eval DEFAULT.nodes
-func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
-	switch o.path.Kind {
+func (t *Manager) getScope(cf *xconfig.T) (scope []string, err error) {
+	switch t.path.Kind {
 	case naming.KindCcfg:
 		scope = clusternode.Get()
 	default:
 		var evalNodes interface{}
 		evalNodes, err = cf.Eval(keyNodes)
 		if err != nil {
-			o.log.Errorf("eval DEFAULT.nodes: %s", err)
+			t.log.Errorf("eval DEFAULT.nodes: %s", err)
 			return
 		}
 		scope = evalNodes.([]string)
@@ -342,37 +342,37 @@ func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	return
 }
 
-func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
+func (t *Manager) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 	s := cf.GetString(keyMonitorAction)
 	return instance.MonitorAction(s)
 }
 
-func (o *T) getChildren(cf *xconfig.T) naming.Relations {
+func (t *Manager) getChildren(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyChildren)
 	return naming.NewRelationsFromStrings(l)
 }
 
-func (o *T) getParents(cf *xconfig.T) naming.Relations {
+func (t *Manager) getParents(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyParents)
 	return naming.NewRelationsFromStrings(l)
 }
 
-func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
+func (t *Manager) getPlacementPolicy(cf *xconfig.T) placement.Policy {
 	s := cf.GetString(keyPlacement)
 	return placement.NewPolicy(s)
 }
 
-func (o *T) getTopology(cf *xconfig.T) topology.T {
+func (t *Manager) getTopology(cf *xconfig.T) topology.T {
 	s := cf.GetString(keyTopology)
 	return topology.New(s)
 }
 
-func (o *T) getOrchestrate(cf *xconfig.T) string {
+func (t *Manager) getOrchestrate(cf *xconfig.T) string {
 	s := cf.GetString(keyOrchestrate)
 	return s
 }
 
-func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
+func (t *Manager) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 	m := make(map[string]instance.SubsetConfig)
 	for _, s := range cf.SectionStrings() {
 		if name := resourceset.SubsetSectionToName(s); name == "" {
@@ -386,7 +386,7 @@ func (o *T) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 	return m
 }
 
-func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
+func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {
 	m := make(instance.ResourceConfigs, 0)
 	for _, section := range cf.SectionStrings() {
 		switch section {
@@ -407,13 +407,13 @@ func (o *T) getResources(cf *xconfig.T) instance.ResourceConfigs {
 	return m
 }
 
-func (o *T) getPriority(cf *xconfig.T) priority.T {
+func (t *Manager) getPriority(cf *xconfig.T) priority.T {
 	s := cf.GetInt(keyPriority)
 	return priority.T(s)
 }
 
-func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
-	switch o.path.Kind {
+func (t *Manager) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
+	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
 		target = cf.GetInt(keyFlexTarget)
 	}
@@ -426,20 +426,20 @@ func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 	return
 }
 
-func (o *T) getFlexMin(cf *xconfig.T) int {
-	switch o.path.Kind {
+func (t *Manager) getFlexMin(cf *xconfig.T) int {
+	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
 		return cf.GetInt(keyFlexMin)
 	}
 	return 0
 }
 
-func (o *T) getFlexMax(cf *xconfig.T) int {
-	switch o.path.Kind {
+func (t *Manager) getFlexMax(cf *xconfig.T) int {
+	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
 		if i, err := cf.GetIntStrict(keyFlexMax); err == nil {
 			return i
-		} else if scope, err := o.getScope(cf); err == nil {
+		} else if scope, err := t.getScope(cf); err == nil {
 			return len(scope)
 		} else {
 			return 0
@@ -449,31 +449,31 @@ func (o *T) getFlexMax(cf *xconfig.T) int {
 	}
 }
 
-func (o *T) setConfigure() error {
-	configure, err := object.NewConfigurer(o.path)
+func (t *Manager) setConfigure() error {
+	configure, err := object.NewConfigurer(t.path)
 	if err != nil {
-		o.log.Warnf("configure failed: %s", err)
+		t.log.Warnf("configure failed: %s", err)
 		return err
 	}
-	o.configure = configure
+	t.configure = configure
 	return nil
 }
 
-func (o *T) delete() {
+func (t *Manager) delete() {
 	labels := []pubsub.Label{
-		{"node", o.localhost},
-		{"path", o.path.String()},
+		{"node", t.localhost},
+		{"path", t.path.String()},
 	}
-	if o.published {
-		instance.ConfigData.Unset(o.path, o.localhost)
-		o.bus.Pub(&msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
+	if t.published {
+		instance.ConfigData.Unset(t.path, t.localhost)
+		t.bus.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, labels...)
 	}
 }
 
-func (o *T) done(parent context.Context, doneChan chan<- any) {
+func (t *Manager) done(parent context.Context, doneChan chan<- any) {
 	op := &msgbus.InstanceConfigManagerDone{
-		Path: o.path,
-		File: o.filename,
+		Path: t.path,
+		File: t.filename,
 	}
 	select {
 	case <-parent.Done():

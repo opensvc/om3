@@ -8,83 +8,83 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (o *imon) orchestrateProvisioned() {
-	switch o.state.State {
+func (t *Manager) orchestrateProvisioned() {
+	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStopFailed,
 		instance.MonitorStateUnprovisionFailed:
-		o.provisionedFromIdle()
+		t.provisionedFromIdle()
 	case instance.MonitorStateWaitLeader:
-		o.provisionedFromWaitLeader()
+		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailed:
-		o.provisionedFromProvisionFailed()
+		t.provisionedFromProvisionFailed()
 	}
 }
 
-func (o *imon) provisionedFromProvisionFailed() {
-	if o.provisionedClearIfReached() {
+func (t *Manager) provisionedFromProvisionFailed() {
+	if t.provisionedClearIfReached() {
 		return
 	}
 }
 
-func (o *imon) provisionedFromIdle() {
-	if o.provisionedClearIfReached() {
+func (t *Manager) provisionedFromIdle() {
+	if t.provisionedClearIfReached() {
 		return
 	}
-	if o.isProvisioningLeader() {
-		o.doAction(o.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+	if t.isProvisioningLeader() {
+		t.doAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 		return
 	} else {
-		o.transitionTo(instance.MonitorStateWaitLeader)
+		t.transitionTo(instance.MonitorStateWaitLeader)
 	}
 }
 
-func (o *imon) provisionedFromWaitLeader() {
-	if o.provisionedClearIfReached() {
-		o.transitionTo(instance.MonitorStateIdle)
+func (t *Manager) provisionedFromWaitLeader() {
+	if t.provisionedClearIfReached() {
+		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if !o.hasLeaderProvisioned() {
+	if !t.hasLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+	t.doAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 	return
 }
 
-func (o *imon) provisionedClearIfReached() bool {
+func (t *Manager) provisionedClearIfReached() bool {
 	reached := func(msg string) bool {
-		o.log.Infof(msg)
-		o.doneAndIdle()
-		o.state.LocalExpect = instance.MonitorLocalExpectNone
-		o.updateIfChange()
+		t.log.Infof(msg)
+		t.doneAndIdle()
+		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.updateIfChange()
 		return true
 	}
-	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		return reached("provisioned orchestration: instance is provisioned -> set reached, clear local expect")
 	}
-	if o.instStatus[o.localhost].Avail == status.NotApplicable {
+	if t.instStatus[t.localhost].Avail == status.NotApplicable {
 		return reached("provisioned orchestration: instance availability is n/a -> set reached, clear local expect")
 	}
 	return false
 }
 
-func (o *imon) leaders() []string {
+func (t *Manager) leaders() []string {
 	l := make([]string, 0)
-	for node, instMon := range o.instMonitor {
+	for node, instMon := range t.instMonitor {
 		if instMon.IsLeader {
 			l = append(l, node)
 		}
 	}
-	if o.state.IsLeader {
-		l = append(l, o.localhost)
+	if t.state.IsLeader {
+		l = append(l, t.localhost)
 	}
 	return l
 }
 
 // provisioningLeader returns one of all leaders.
 // Select the first in alphalexical order.
-func (o *imon) provisioningLeader() string {
-	leaders := o.leaders()
+func (t *Manager) provisioningLeader() string {
+	leaders := t.leaders()
 	switch len(leaders) {
 	case 0:
 		return ""
@@ -96,16 +96,16 @@ func (o *imon) provisioningLeader() string {
 	}
 }
 
-func (o *imon) isProvisioningLeader() bool {
-	if o.provisioningLeader() == o.localhost {
+func (t *Manager) isProvisioningLeader() bool {
+	if t.provisioningLeader() == t.localhost {
 		return true
 	}
 	return false
 }
 
-func (o *imon) hasLeaderProvisioned() bool {
-	leader := o.provisioningLeader()
-	if leaderInstanceStatus, ok := o.instStatus[leader]; !ok {
+func (t *Manager) hasLeaderProvisioned() bool {
+	leader := t.provisioningLeader()
+	if leaderInstanceStatus, ok := t.instStatus[leader]; !ok {
 		return false
 	} else if leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		return true

@@ -13,19 +13,19 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (a *DaemonApi) PostClusterActionAbort(ctx echo.Context) error {
+func (a *DaemonAPI) PostClusterActionAbort(ctx echo.Context) error {
 	return a.PostClusterAction(ctx, node.MonitorGlobalExpectAborted)
 }
 
-func (a *DaemonApi) PostClusterActionFreeze(ctx echo.Context) error {
+func (a *DaemonAPI) PostClusterActionFreeze(ctx echo.Context) error {
 	return a.PostClusterAction(ctx, node.MonitorGlobalExpectFrozen)
 }
 
-func (a *DaemonApi) PostClusterActionUnfreeze(ctx echo.Context) error {
+func (a *DaemonAPI) PostClusterActionUnfreeze(ctx echo.Context) error {
 	return a.PostClusterAction(ctx, node.MonitorGlobalExpectThawed)
 }
 
-func (a *DaemonApi) PostClusterAction(ctx echo.Context, globalExpect node.MonitorGlobalExpect) error {
+func (a *DaemonAPI) PostClusterAction(ctx echo.Context, globalExpect node.MonitorGlobalExpect) error {
 	var (
 		value = node.MonitorUpdate{}
 	)
