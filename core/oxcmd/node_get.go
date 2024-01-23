@@ -23,7 +23,7 @@ type (
 )
 
 func (t *CmdNodeGet) Run() error {
-	c, err := client.New()
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (t *CmdNodeGet) Run() error {
 		t.NodeSelector = "*"
 	}
 
-	sel := nodeselector.New(t.NodeSelector)
+	sel := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c))
 	nodenames, err := sel.Expand()
 	if err != nil {
 		return err
