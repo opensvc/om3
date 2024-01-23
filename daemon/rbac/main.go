@@ -148,6 +148,14 @@ func (t *Grant) String() string {
 	return string(*t)
 }
 
+func (t Grants) String() string {
+	strList := make([]string, len(t))
+	for i := range t {
+		strList[i] = t[i].String()
+	}
+	return strings.Join(strList, " ")
+}
+
 // Roles returns list of defined roles
 func Roles() []string {
 	l := make([]string, 0)
