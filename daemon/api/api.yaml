@@ -5,6 +5,17 @@ info:
   version: 3.12.2
 
 paths:
+  /auth/info:
+    get:
+      operationId: GetAuthInfo
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthInfo'
+
   /auth/token:
     post:
       description: |
@@ -2501,6 +2512,20 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /whoami:
+    get:
+      operationId: Getwhoami
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+
 components:
   schemas:
     ArbitratorStatus:
@@ -2513,7 +2538,29 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/Status'
-
+    AuthInfo:
+      type: object
+      required:
+        - methods
+      properties:
+        methods :
+          type: array
+          items:
+            type: string
+            enum:
+              - openid
+              - basic
+              - x509
+              - session
+        openid:
+          required:
+            - well_known_uri
+            - client_id
+          properties:
+            well_known_uri:
+              type: string
+            client_id:
+              type: string
     AuthToken:
       type: object
       required:
@@ -4312,6 +4359,29 @@ components:
         - failover
         - flex
       default: failover
+
+    UserIdentity :
+      type: object
+      required:
+        - name
+        - raw_grant
+        - grant
+        - namespace
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        auth:
+          type: string
+        raw_grant:
+          type: string
+        grant:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
 
   parameters:
 

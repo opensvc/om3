@@ -89,6 +89,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetAuthInfo request
+	GetAuthInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostAuthToken request
 	PostAuthToken(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -349,6 +352,21 @@ type ClientInterface interface {
 
 	// GetResources request
 	GetResources(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Getwhoami request
+	Getwhoami(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetAuthInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAuthInfoRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) PostAuthToken(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1429,6 +1447,45 @@ func (c *Client) GetResources(ctx context.Context, params *GetResourcesParams, r
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+func (c *Client) Getwhoami(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetwhoamiRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGetAuthInfoRequest generates requests for GetAuthInfo
+func NewGetAuthInfoRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/info")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewPostAuthTokenRequest generates requests for PostAuthToken
@@ -6635,6 +6692,33 @@ func NewGetResourcesRequest(server string, params *GetResourcesParams) (*http.Re
 	return req, nil
 }
 
+// NewGetwhoamiRequest generates requests for Getwhoami
+func NewGetwhoamiRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/whoami")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -6678,6 +6762,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetAuthInfoWithResponse request
+	GetAuthInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthInfoResponse, error)
+
 	// PostAuthTokenWithResponse request
 	PostAuthTokenWithResponse(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*PostAuthTokenResponse, error)
 
@@ -6938,6 +7025,31 @@ type ClientWithResponsesInterface interface {
 
 	// GetResourcesWithResponse request
 	GetResourcesWithResponse(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*GetResourcesResponse, error)
+
+	// GetwhoamiWithResponse request
+	GetwhoamiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetwhoamiResponse, error)
+}
+
+type GetAuthInfoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AuthInfo
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAuthInfoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAuthInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type PostAuthTokenResponse struct {
@@ -9049,6 +9161,37 @@ func (r GetResourcesResponse) StatusCode() int {
 	return 0
 }
 
+type GetwhoamiResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UserIdentity
+}
+
+// Status returns HTTPResponse.Status
+func (r GetwhoamiResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetwhoamiResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// GetAuthInfoWithResponse request returning *GetAuthInfoResponse
+func (c *ClientWithResponses) GetAuthInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthInfoResponse, error) {
+	rsp, err := c.GetAuthInfo(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAuthInfoResponse(rsp)
+}
+
 // PostAuthTokenWithResponse request returning *PostAuthTokenResponse
 func (c *ClientWithResponses) PostAuthTokenWithResponse(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*PostAuthTokenResponse, error) {
 	rsp, err := c.PostAuthToken(ctx, params, reqEditors...)
@@ -9848,6 +9991,41 @@ func (c *ClientWithResponses) GetResourcesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseGetResourcesResponse(rsp)
+}
+
+// GetwhoamiWithResponse request returning *GetwhoamiResponse
+func (c *ClientWithResponses) GetwhoamiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetwhoamiResponse, error) {
+	rsp, err := c.Getwhoami(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetwhoamiResponse(rsp)
+}
+
+// ParseGetAuthInfoResponse parses an HTTP response from a GetAuthInfoWithResponse call
+func ParseGetAuthInfoResponse(rsp *http.Response) (*GetAuthInfoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAuthInfoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParsePostAuthTokenResponse parses an HTTP response from a PostAuthTokenWithResponse call
@@ -14239,6 +14417,32 @@ func ParseGetResourcesResponse(rsp *http.Response) (*GetResourcesResponse, error
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetwhoamiResponse parses an HTTP response from a GetwhoamiWithResponse call
+func ParseGetwhoamiResponse(rsp *http.Response) (*GetwhoamiResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetwhoamiResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserIdentity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
