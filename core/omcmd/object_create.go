@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
@@ -21,7 +21,6 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/uri"
@@ -167,11 +166,8 @@ func (t *CmdObjectCreate) submit(pivot Pivot) error {
 		if err != nil {
 			return fmt.Errorf("%s: %s", path, err)
 		}
-		body := api.PostObjectConfigFileJSONRequestBody{
-			Data:  []byte(s),
-			Mtime: time.Now(),
-		}
-		resp, err := t.client.PostObjectConfigFileWithResponse(context.Background(), path.Namespace, path.Kind, path.Name, body)
+		body := bytes.NewBufferString(s)
+		resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), path.Namespace, path.Kind, path.Name, "application/octet-stream", body)
 		if err != nil {
 			return fmt.Errorf("%s: %s", path, err)
 		}

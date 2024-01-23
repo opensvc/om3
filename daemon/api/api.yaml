@@ -2223,9 +2223,10 @@ paths:
       requestBody:
         description: OK
         content:
-          application/json:
+          application/octet-stream:
             schema:
-              $ref: '#/components/schemas/ObjectConfigFile'
+              type: string
+              format: binary
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -2259,9 +2260,10 @@ paths:
       requestBody:
         description: OK
         content:
-          application/json:
+          application/octet-stream:
             schema:
-              $ref: '#/components/schemas/ObjectConfigFile'
+              type: string
+              format: binary
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -2335,8 +2337,8 @@ paths:
         - $ref: '#/components/parameters/inQueryUnsets'
         - $ref: '#/components/parameters/inQuerySets'
       responses:
-        200:
-          $ref: '#/components/responses/200'
+        204:
+          $ref: '#/components/responses/204'
         400:
           $ref: '#/components/responses/400'
         401:

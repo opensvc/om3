@@ -1420,11 +1420,5 @@ type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PostObjectConfigFileJSONRequestBody defines body for PostObjectConfigFile for application/json ContentType.
-type PostObjectConfigFileJSONRequestBody = ObjectConfigFile
-
-// PutObjectConfigFileJSONRequestBody defines body for PutObjectConfigFile for application/json ContentType.
-type PutObjectConfigFileJSONRequestBody = ObjectConfigFile
-
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
