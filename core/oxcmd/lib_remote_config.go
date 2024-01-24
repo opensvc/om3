@@ -62,7 +62,7 @@ func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 	} else if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("get object %s file from %s: %s", p, c.URL(), resp.Status())
 	}
-	return resp.JSON200.Data, nil
+	return resp.Body, nil
 }
 
 func putConfig(p naming.Path, fName string, c *client.T) (err error) {

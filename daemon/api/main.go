@@ -6,6 +6,10 @@ package api
 
 import "fmt"
 
+var (
+	HeaderLastModifiedNano = "x-last-modified-rfc3339nano"
+)
+
 func (t OrchestrationQueued) String() (out string) {
 	return fmt.Sprint(t.OrchestrationID)
 }

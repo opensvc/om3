@@ -8714,7 +8714,6 @@ func (r GetObjectConfigResponse) StatusCode() int {
 type GetObjectConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectConfigFile
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13608,13 +13607,6 @@ func ParseGetObjectConfigFileResponse(rsp *http.Response) (*GetObjectConfigFileR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectConfigFile
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

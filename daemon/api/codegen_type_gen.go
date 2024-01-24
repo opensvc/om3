@@ -581,12 +581,6 @@ type ObjectConfig struct {
 	Mtime time.Time              `json:"mtime"`
 }
 
-// ObjectConfigFile defines model for ObjectConfigFile.
-type ObjectConfigFile struct {
-	Data  []byte    `json:"data"`
-	Mtime time.Time `json:"mtime"`
-}
-
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
 	Avail       Status      `json:"avail"`
