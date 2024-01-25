@@ -334,7 +334,7 @@ func (t T) Validate() (Alerts, error) {
 }
 
 func ValidateFile(p string, ref Referrer) (Alerts, error) {
-	cfg, err := NewObject(p)
+	cfg, err := NewObject(p, p)
 	if err != nil {
 		return nil, err
 	}
