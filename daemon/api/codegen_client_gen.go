@@ -9165,6 +9165,7 @@ type GetwhoamiResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *UserIdentity
+	JSON401      *N401
 }
 
 // Status returns HTTPResponse.Status
@@ -14443,6 +14444,13 @@ func ParseGetwhoamiResponse(rsp *http.Response) (*GetwhoamiResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 

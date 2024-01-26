@@ -2525,6 +2525,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserIdentity'
+        401:
+          $ref: '#/components/responses/401'
 
 components:
   schemas:
