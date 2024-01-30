@@ -1,9 +1,13 @@
 package object
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/asset"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -20,6 +24,8 @@ type (
 		Get(string) (interface{}, error)
 	}
 )
+
+var nodeAssetCacheFile = filepath.Join(rawconfig.NodeVarDir(), "asset")
 
 func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Value) {
 	data.Title = title
@@ -80,10 +86,22 @@ func (t Node) PushAsset() (asset.Data, error) {
 	if err != nil {
 		return data, err
 	}
+	if err := t.dumpAsset(data); err != nil {
+		return data, err
+	}
 	if err := t.pushAsset(data); err != nil {
 		return data, err
 	}
 	return data, nil
+}
+
+func (t Node) dumpAsset(data asset.Data) error {
+	file, err := os.OpenFile(nodeAssetCacheFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	return json.NewEncoder(file).Encode(data)
 }
 
 func (t Node) getAsset() (asset.Data, error) {
