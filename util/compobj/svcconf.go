@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"

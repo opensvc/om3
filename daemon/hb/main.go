@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
@@ -61,7 +61,7 @@ type (
 	}
 )
 
-func New(ctx context.Context, opts ...funcopt.O) *T {
+func New(_ context.Context, opts ...funcopt.O) *T {
 	t := &T{
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb").WithPrefix("daemon: hb: "),
 	}

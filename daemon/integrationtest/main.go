@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
