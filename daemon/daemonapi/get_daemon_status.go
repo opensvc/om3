@@ -33,9 +33,7 @@ func (a *DaemonAPI) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatus
 	now := time.Now()
 	subRefreshed.Lock()
 	if now.After(subRefreshed.updated.Add(daemonRefreshInterval)) {
-		if err := a.Daemondata.DaemonRefresh(); err != nil {
-
-		}
+		a.Daemondata.DaemonRefresh()
 		subRefreshed.updated = now
 	}
 	subRefreshed.Unlock()
