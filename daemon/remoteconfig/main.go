@@ -55,7 +55,8 @@ func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updat
 
 func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
 	var (
-		resp *api.GetObjectConfigFileResponse
+		mtime time.Time
+		resp  *api.GetObjectConfigFileResponse
 	)
 	resp, err = cli.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
@@ -64,5 +65,8 @@ func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, er
 		err = fmt.Errorf("unexpected get object file %s status %s", p, resp.Status())
 		return
 	}
-	return resp.JSON200.Data, resp.JSON200.Mtime, nil
+	if mtime, err = time.Parse(time.RFC3339Nano, resp.HTTPResponse.Header.Get(api.HeaderLastModifiedNano)); err != nil {
+		return
+	}
+	return resp.Body, mtime, nil
 }

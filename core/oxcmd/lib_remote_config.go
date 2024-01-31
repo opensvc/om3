@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
 )
 
 func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
@@ -64,18 +62,16 @@ func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 	} else if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("get object %s file from %s: %s", p, c.URL(), resp.Status())
 	}
-	return resp.JSON200.Data, nil
+	return resp.Body, nil
 }
 
 func putConfig(p naming.Path, fName string, c *client.T) (err error) {
-	body := api.PutObjectConfigFileJSONRequestBody{}
-	body.Mtime = time.Now()
-	if buff, err := os.ReadFile(fName); err != nil {
+	file, err := os.Open(fName)
+	if err != nil {
 		return err
-	} else {
-		body.Data = buff
 	}
-	resp, err := c.PutObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, body)
+	defer file.Close()
+	resp, err := c.PutObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, "application/octet-stream", file)
 	if err != nil {
 		return err
 	}

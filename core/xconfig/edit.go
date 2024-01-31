@@ -75,7 +75,9 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 	}
 	if file.HaveSameMD5(refSum, dst) {
 		fmt.Println("unchanged")
-	} else if err := ValidateFile(dst, ref); err != nil {
+	} else if alerts, err := ValidateFile(dst, ref); err != nil {
+		return err
+	} else if alerts.HasError() {
 		return ErrEditValidate
 	} else if err := file.Copy(dst, src); err != nil {
 		return err

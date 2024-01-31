@@ -6,13 +6,17 @@ package api
 
 import "fmt"
 
+var (
+	HeaderLastModifiedNano = "x-last-modified-rfc3339nano"
+)
+
 func (t OrchestrationQueued) String() (out string) {
 	return fmt.Sprint(t.OrchestrationID)
 }
 
 func (t Problem) String() (out string) {
-	if t.Status != 200 {
-		out += fmt.Sprintf("%d ", t.Status)
+	if t.Status >= 300 {
+		out += fmt.Sprintf("[%d] ", t.Status)
 	}
 	out += fmt.Sprintf(t.Title)
 	if t.Detail != "" {

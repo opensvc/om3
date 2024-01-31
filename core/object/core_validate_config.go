@@ -8,11 +8,11 @@ import (
 )
 
 // ValidateConfig validates the configuration
-func (t *core) ValidateConfig(ctx context.Context) (xconfig.ValidateAlerts, error) {
+func (t *core) ValidateConfig(ctx context.Context) (xconfig.Alerts, error) {
 	ctx = actioncontext.WithProps(ctx, actioncontext.ValidateConfig)
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
-		return xconfig.ValidateAlerts{}, err
+		return xconfig.Alerts{}, err
 	}
 	defer unlock()
 	return t.config.Validate()

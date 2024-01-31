@@ -317,12 +317,8 @@ type ClientInterface interface {
 	// PostObjectConfigFileWithBody request with any body
 	PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// PutObjectConfigFileWithBody request with any body
 	PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PutObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectConfigGet request
 	GetObjectConfigGet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1287,32 +1283,8 @@ func (c *Client) PostObjectConfigFileWithBody(ctx context.Context, namespace InP
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectConfigFileRequest(c.Server, namespace, kind, name, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PutObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutObjectConfigFileRequest(c.Server, namespace, kind, name, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5998,17 +5970,6 @@ func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kin
 	return req, nil
 }
 
-// NewPostObjectConfigFileRequest calls the generic PostObjectConfigFile builder with application/json body
-func NewPostObjectConfigFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectConfigFileJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostObjectConfigFileRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
-}
-
 // NewPostObjectConfigFileRequestWithBody generates requests for PostObjectConfigFile with any type of body
 func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -6057,17 +6018,6 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
-}
-
-// NewPutObjectConfigFileRequest calls the generic PutObjectConfigFile builder with application/json body
-func NewPutObjectConfigFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PutObjectConfigFileJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPutObjectConfigFileRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
 }
 
 // NewPutObjectConfigFileRequestWithBody generates requests for PutObjectConfigFile with any type of body
@@ -6906,12 +6856,8 @@ type ClientWithResponsesInterface interface {
 	// PostObjectConfigFileWithBodyWithResponse request with any body
 	PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error)
 
-	PostObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error)
-
 	// PutObjectConfigFileWithBodyWithResponse request with any body
 	PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
-
-	PutObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PutObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
 
 	// GetObjectConfigGetWithResponse request
 	GetObjectConfigGetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*GetObjectConfigGetResponse, error)
@@ -8768,7 +8714,6 @@ func (r GetObjectConfigResponse) StatusCode() int {
 type GetObjectConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectConfigFile
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -8874,7 +8819,6 @@ func (r GetObjectConfigGetResponse) StatusCode() int {
 type PostObjectConfigUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *N200
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -9745,25 +9689,9 @@ func (c *ClientWithResponses) PostObjectConfigFileWithBodyWithResponse(ctx conte
 	return ParsePostObjectConfigFileResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PostObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error) {
-	rsp, err := c.PostObjectConfigFile(ctx, namespace, kind, name, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectConfigFileResponse(rsp)
-}
-
 // PutObjectConfigFileWithBodyWithResponse request with arbitrary body returning *PutObjectConfigFileResponse
 func (c *ClientWithResponses) PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error) {
 	rsp, err := c.PutObjectConfigFileWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutObjectConfigFileResponse(rsp)
-}
-
-func (c *ClientWithResponses) PutObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PutObjectConfigFileJSONRequestBody, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error) {
-	rsp, err := c.PutObjectConfigFile(ctx, namespace, kind, name, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -13679,13 +13607,6 @@ func ParseGetObjectConfigFileResponse(rsp *http.Response) (*GetObjectConfigFileR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectConfigFile
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -13909,13 +13830,6 @@ func ParsePostObjectConfigUpdateResponse(rsp *http.Response) (*PostObjectConfigU
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
