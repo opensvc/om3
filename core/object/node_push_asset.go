@@ -104,6 +104,17 @@ func (t Node) dumpAsset(data asset.Data) error {
 	return json.NewEncoder(file).Encode(data)
 }
 
+func (t Node) LoadAsset() (asset.Data, error) {
+	var data asset.Data
+	file, err := os.Open(nodeAssetCacheFile)
+	if err != nil {
+		return data, err
+	}
+	defer func() { _ = file.Close() }()
+	err = json.NewDecoder(file).Decode(&data)
+	return data, err
+}
+
 func (t Node) getAsset() (asset.Data, error) {
 	data := asset.NewData()
 

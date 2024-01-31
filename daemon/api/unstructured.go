@@ -70,6 +70,25 @@ func (t Node) Unstructured() map[string]any {
 	}
 }
 
+func (t GroupList) GetItems() any {
+	return t.Items
+}
+
+func (t GroupItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Group) Unstructured() map[string]any {
+	return map[string]any{
+		"id":   t.ID,
+		"name": t.Name,
+	}
+}
+
 func (t InstanceList) GetItems() any {
 	return t.Items
 }

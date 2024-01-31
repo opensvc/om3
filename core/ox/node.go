@@ -62,6 +62,7 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
+	cmdNodeAsset    = newCmdNodeAsset()
 	cmdNodeEdit     = newCmdNodeEdit()
 	cmdNodeValidate = newCmdNodeValidate()
 )
@@ -111,10 +112,14 @@ func init() {
 		newCmdNodeComplianceListModuleset(),
 		newCmdNodeComplianceListRuleset(),
 	)
+	cmdNodeAsset.AddCommand(
+		newCmdNodeAssetGroup(),
+	)
 	cmdNodeEdit.AddCommand(
 		newCmdNodeEditConfig(),
 	)
 	cmdNode.AddCommand(
+		cmdNodeAsset,
 		cmdNodeEdit,
 		cmdNodePrint,
 		cmdNodePush,
