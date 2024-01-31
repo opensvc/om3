@@ -1000,6 +1000,30 @@ func newCmdNodeDrivers() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAsset() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "asset",
+		Short: "node asset commands",
+	}
+	return cmd
+}
+
+func newCmdNodeAssetGroup() *cobra.Command {
+	var options commands.CmdNodeAssetGroup
+	cmd := &cobra.Command{
+		Use:     "group",
+		Short:   "show node system groups",
+		Aliases: []string{"grp", "gr"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeEdit() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{

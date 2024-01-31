@@ -967,6 +967,29 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/discover/group:
+    get:
+      description: View the group
+      operationId: GetNodeDiscoverGroup
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+
   /node/name/{nodename}/drbd/allocation:
     get:
       description: |
@@ -2782,6 +2805,52 @@ components:
         expired_at:
           type: string
           format: date-time
+
+    GroupList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - GroupList
+        items:
+          $ref: '#/components/schemas/GroupItems'
+
+    GroupItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/GroupItem'
+
+    GroupItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - GroupItem
+        data:
+          $ref: '#/components/schemas/Group'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Group:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
 
     InstanceMeta:
       type: object

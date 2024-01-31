@@ -28,6 +28,16 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
+// Defines values for GroupItemKind.
+const (
+	GroupItemKindGroupItem GroupItemKind = "GroupItem"
+)
+
+// Defines values for GroupListKind.
+const (
+	GroupListKindGroupList GroupListKind = "GroupList"
+)
+
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -366,6 +376,34 @@ type DaemonSubsystemStatus struct {
 
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
+
+// Group defines model for Group.
+type Group struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// GroupItem defines model for GroupItem.
+type GroupItem struct {
+	Data Group         `json:"data"`
+	Kind GroupItemKind `json:"kind"`
+	Meta NodeMeta      `json:"meta"`
+}
+
+// GroupItemKind defines model for GroupItem.Kind.
+type GroupItemKind string
+
+// GroupItems defines model for GroupItems.
+type GroupItems = []GroupItem
+
+// GroupList defines model for GroupList.
+type GroupList struct {
+	Items GroupItems    `json:"items"`
+	Kind  GroupListKind `json:"kind"`
+}
+
+// GroupListKind defines model for GroupList.Kind.
+type GroupListKind string
 
 // Instance defines model for Instance.
 type Instance struct {

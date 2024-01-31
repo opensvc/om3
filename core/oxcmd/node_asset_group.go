@@ -12,17 +12,13 @@ import (
 )
 
 type (
-	CmdNodeGet struct {
+	CmdNodeAssetGroup struct {
 		OptsGlobal
-		OptsLock
-		Eval         bool
-		Impersonate  string
-		Keywords     []string
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeGet) Run() error {
+func (t *CmdNodeAssetGroup) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -38,18 +34,9 @@ func (t *CmdNodeGet) Run() error {
 		return err
 	}
 
-	l := make(api.KeywordItems, 0)
+	l := make(api.GroupItems, 0)
 	for _, nodename := range nodenames {
-		params := api.GetNodeConfigGetParams{}
-		params.Kw = &t.Keywords
-		if t.Eval {
-			v := true
-			params.Evaluate = &v
-		}
-		if t.Impersonate != "" {
-			params.Impersonate = &t.Impersonate
-		}
-		response, err := c.GetNodeConfigGetWithResponse(context.Background(), nodename, &params)
+		response, err := c.GetNodeDiscoverGroupWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}
@@ -68,15 +55,12 @@ func (t *CmdNodeGet) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-	if t.Eval {
-		defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
-	}
+	defaultOutput := "tab=NODE:meta.node,ID:data.id,NAME:data.name"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.GroupList{Items: l, Kind: "GroupList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
