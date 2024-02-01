@@ -1024,6 +1024,22 @@ func newCmdNodeAssetGroup() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAssetUser() *cobra.Command {
+	var options commands.CmdNodeAssetUser
+	cmd := &cobra.Command{
+		Use:     "user",
+		Short:   "show node system users",
+		Aliases: []string{"usr", "us"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeEdit() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{
