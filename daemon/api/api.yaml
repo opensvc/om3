@@ -989,6 +989,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/discover/initiator:
+    get:
+      description: View the initiator
+      operationId: GetNodeDiscoverInitiator
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitiatorList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/discover/user:
     get:
       description: View the users
@@ -2871,6 +2893,51 @@ components:
           type: integer
           x-go-name: ID
         name:
+          type: string
+
+    InitiatorList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - InitiatorList
+        items:
+          $ref: '#/components/schemas/InitiatorItems'
+
+    InitiatorItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/InitiatorItem'
+
+    InitiatorItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - InitiatorItem
+        data:
+          $ref: '#/components/schemas/Initiator'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Initiator:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
           type: string
 
     InstanceMeta:

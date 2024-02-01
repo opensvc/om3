@@ -38,6 +38,16 @@ const (
 	GroupListKindGroupList GroupListKind = "GroupList"
 )
 
+// Defines values for InitiatorItemKind.
+const (
+	InitiatorItemKindInitiatorItem InitiatorItemKind = "InitiatorItem"
+)
+
+// Defines values for InitiatorListKind.
+const (
+	InitiatorListKindInitiatorList InitiatorListKind = "InitiatorList"
+)
+
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -414,6 +424,34 @@ type GroupList struct {
 
 // GroupListKind defines model for GroupList.Kind.
 type GroupListKind string
+
+// Initiator defines model for Initiator.
+type Initiator struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// InitiatorItem defines model for InitiatorItem.
+type InitiatorItem struct {
+	Data Initiator         `json:"data"`
+	Kind InitiatorItemKind `json:"kind"`
+	Meta NodeMeta          `json:"meta"`
+}
+
+// InitiatorItemKind defines model for InitiatorItem.Kind.
+type InitiatorItemKind string
+
+// InitiatorItems defines model for InitiatorItems.
+type InitiatorItems = []InitiatorItem
+
+// InitiatorList defines model for InitiatorList.
+type InitiatorList struct {
+	Items InitiatorItems    `json:"items"`
+	Kind  InitiatorListKind `json:"kind"`
+}
+
+// InitiatorListKind defines model for InitiatorList.Kind.
+type InitiatorListKind string
 
 // Instance defines model for Instance.
 type Instance struct {
