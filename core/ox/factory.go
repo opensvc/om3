@@ -1024,6 +1024,22 @@ func newCmdNodeAssetGroup() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAssetInitiator() *cobra.Command {
+	var options commands.CmdNodeAssetGroup
+	cmd := &cobra.Command{
+		Use:     "initiator",
+		Short:   "show node initiators",
+		Aliases: []string{"init", "ini"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeAssetUser() *cobra.Command {
 	var options commands.CmdNodeAssetUser
 	cmd := &cobra.Command{

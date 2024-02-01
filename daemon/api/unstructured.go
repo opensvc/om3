@@ -251,6 +251,25 @@ func (t User) Unstructured() map[string]any {
 	}
 }
 
+func (t InitiatorList) GetItems() any {
+	return t.Items
+}
+
+func (t InitiatorItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Initiator) Unstructured() map[string]any {
+	return map[string]any{
+		"type": t.Type,
+		"name": t.Name,
+	}
+}
+
 func (t NetworkIPList) GetItems() any {
 	return t.Items
 }
