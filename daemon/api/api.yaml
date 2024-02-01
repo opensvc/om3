@@ -1000,6 +1000,27 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/discover/user:
+    get:
+      description: View the users
+      operationId: GetNodeDiscoverUser
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 
   /node/name/{nodename}/drbd/allocation:
     get:
@@ -4461,6 +4482,52 @@ components:
             type: array
             items:
               type: string
+
+    UserList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - UserList
+        items:
+          $ref: '#/components/schemas/UserItems'
+
+    UserItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/UserItem'
+
+    UserItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - UserItem
+        data:
+          $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
 
   parameters:
 

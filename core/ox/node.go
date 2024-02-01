@@ -114,6 +114,7 @@ func init() {
 	)
 	cmdNodeAsset.AddCommand(
 		newCmdNodeAssetGroup(),
+		newCmdNodeAssetUser(),
 	)
 	cmdNodeEdit.AddCommand(
 		newCmdNodeEditConfig(),
