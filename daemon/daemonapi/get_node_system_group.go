@@ -10,24 +10,24 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetNodeDiscoverGroup(ctx echo.Context, nodename api.InPathNodeName) error {
+func (a *DaemonAPI) GetNodeSystemGroup(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
-		return a.getLocalNodeDiscoverGroup(ctx)
+		return a.getLocalNodeSystemGroup(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		return a.getPeerNodeDiscoverGroup(ctx, nodename)
+		return a.getPeerNodeSystemGroup(ctx, nodename)
 	}
 }
 
-func (a *DaemonAPI) getPeerNodeDiscoverGroup(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerNodeSystemGroup(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeDiscoverGroupWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemGroupWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -35,7 +35,7 @@ func (a *DaemonAPI) getPeerNodeDiscoverGroup(ctx echo.Context, nodename string) 
 	return nil
 }
 
-func (a *DaemonAPI) getLocalNodeDiscoverGroup(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeSystemGroup(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)

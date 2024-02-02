@@ -36,7 +36,7 @@ func (t *CmdNodeAssetGroup) Run() error {
 
 	l := make(api.GroupItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeDiscoverGroupWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemGroupWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}

@@ -1024,11 +1024,11 @@ func newCmdNodeAssetGroup() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAssetInitiator() *cobra.Command {
+func newCmdNodeAssetSANPathInitiator() *cobra.Command {
 	var options commands.CmdNodeAssetGroup
 	cmd := &cobra.Command{
 		Use:     "initiator",
-		Short:   "show node initiators",
+		Short:   "show node system san initiator",
 		Aliases: []string{"init", "ini"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1044,7 +1044,7 @@ func newCmdNodeAssetTarget() *cobra.Command {
 	var options commands.CmdNodeAssetTarget
 	cmd := &cobra.Command{
 		Use:     "target",
-		Short:   "show node targets",
+		Short:   "show node system san path",
 		Aliases: []string{"targ"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()

@@ -10,24 +10,24 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetNodeDiscoverUser(ctx echo.Context, nodename api.InPathNodeName) error {
+func (a *DaemonAPI) GetNodeSystemSANInitiator(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
-		return a.getLocalNodeDiscoverUser(ctx)
+		return a.getLocalNodeSystemSANInitiator(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		return a.getPeerNodeDiscoverUser(ctx, nodename)
+		return a.getPeerNodeSystemSANInitiator(ctx, nodename)
 	}
 }
 
-func (a *DaemonAPI) getPeerNodeDiscoverUser(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerNodeSystemSANInitiator(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeDiscoverUserWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemSANInitiatorWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -35,7 +35,7 @@ func (a *DaemonAPI) getPeerNodeDiscoverUser(ctx echo.Context, nodename string) e
 	return nil
 }
 
-func (a *DaemonAPI) getLocalNodeDiscoverUser(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeSystemSANInitiator(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
@@ -44,13 +44,13 @@ func (a *DaemonAPI) getLocalNodeDiscoverUser(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Load asset cache", "%s", err)
 	}
-	items := make(api.UserItems, len(data.UIDS))
-	for i := 0; i < len(data.UIDS); i++ {
-		items[i] = api.UserItem{
-			Kind: "UserItem",
-			Data: api.User{
-				ID:   data.UIDS[i].ID,
-				Name: data.UIDS[i].Name,
+	items := make(api.SANPathInitiatorItems, len(data.HBA))
+	for i := 0; i < len(data.HBA); i++ {
+		items[i] = api.SANPathInitiatorItem{
+			Kind: "SANPathInitiatorItem",
+			Data: api.SANPathInitiator{
+				Name: &data.HBA[i].Name,
+				Type: &data.HBA[i].Type,
 			},
 			Meta: api.NodeMeta{
 				Node: a.localhost,
@@ -58,5 +58,5 @@ func (a *DaemonAPI) getLocalNodeDiscoverUser(ctx echo.Context) error {
 		}
 	}
 
-	return ctx.JSON(http.StatusOK, api.UserList{Kind: "UserList", Items: items})
+	return ctx.JSON(http.StatusOK, api.SANPathInitiatorList{Kind: "SANPathInitiatorList", Items: items})
 }

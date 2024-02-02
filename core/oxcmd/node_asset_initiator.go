@@ -34,9 +34,9 @@ func (t *CmdNodeAssetInitiator) Run() error {
 		return err
 	}
 
-	l := make(api.InitiatorItems, 0)
+	l := make(api.SANPathInitiatorItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeDiscoverInitiatorWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemSANInitiatorWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ func (t *CmdNodeAssetInitiator) Run() error {
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.InitiatorList{Items: l, Kind: "InitiatorList"},
+		Data:          api.SANPathInitiatorList{Items: l, Kind: "SANPathInitiatorList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
