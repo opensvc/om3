@@ -36,7 +36,7 @@ func (t *CmdNodeAssetTarget) Run() error {
 
 	l := make(api.SANPathItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeDiscoverTargetWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemSANPathWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}

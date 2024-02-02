@@ -36,7 +36,7 @@ func (t *CmdNodeAssetUser) Run() error {
 
 	l := make(api.UserItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeDiscoverUserWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemUserWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}

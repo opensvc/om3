@@ -978,10 +978,10 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/discover/group:
+  /node/name/{nodename}/system/group:
     get:
       description: View the group
-      operationId: GetNodeDiscoverGroup
+      operationId: GetNodeSystemGroup
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
@@ -1000,10 +1000,10 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/discover/initiator:
+  /node/name/{nodename}/system/san/initiator:
     get:
       description: View the initiator
-      operationId: GetNodeDiscoverInitiator
+      operationId: GetNodeSystemSANInitiator
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
@@ -1022,10 +1022,10 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/discover/target:
+  /node/name/{nodename}/system/san/path:
     get:
       description: View the targets
-      operationId: GetNodeDiscoverTarget
+      operationId: GetNodeSystemSANPath
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
@@ -1044,10 +1044,10 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/discover/user:
+  /node/name/{nodename}/system/user:
     get:
       description: View the users
-      operationId: GetNodeDiscoverUser
+      operationId: GetNodeSystemUser
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
