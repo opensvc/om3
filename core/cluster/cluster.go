@@ -69,6 +69,17 @@ func (s *Data) DeepCopy() *Data {
 	return &newStatus
 }
 
+func (s *Data) ObjectPaths() naming.Paths {
+	allPaths := make(naming.Paths, len(s.Cluster.Object))
+	i := 0
+	for p := range s.Cluster.Object {
+		path, _ := naming.ParsePath(p)
+		allPaths[i] = path
+		i++
+	}
+	return allPaths
+}
+
 // WithSelector purges the dataset from objects not matching the selector expression
 func (s *Data) WithSelector(selector string) *Data {
 	if selector == "" {
@@ -76,7 +87,7 @@ func (s *Data) WithSelector(selector string) *Data {
 	}
 	paths, err := objectselector.New(
 		selector,
-		objectselector.WithLocal(true),
+		objectselector.WithInstalled(s.ObjectPaths()),
 	).Expand()
 	if err != nil {
 		return s
