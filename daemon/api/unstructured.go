@@ -251,11 +251,22 @@ func (t User) Unstructured() map[string]any {
 	}
 }
 
-func (t InitiatorList) GetItems() any {
+func (t SANPathList) GetItems() any {
 	return t.Items
 }
 
-func (t InitiatorItem) Unstructured() map[string]any {
+func (t SANPath) Unstructured() map[string]any {
+	return map[string]any{
+		"initiator": t.Initiator.Unstructured(),
+		"target":    t.Target.Unstructured(),
+	}
+}
+
+func (t SANPathInitiatorList) GetItems() any {
+	return t.Items
+}
+
+func (t SANPathInitiatorItem) Unstructured() map[string]any {
 	return map[string]any{
 		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
@@ -263,7 +274,14 @@ func (t InitiatorItem) Unstructured() map[string]any {
 	}
 }
 
-func (t Initiator) Unstructured() map[string]any {
+func (t SANPathInitiator) Unstructured() map[string]any {
+	return map[string]any{
+		"type": t.Type,
+		"name": t.Name,
+	}
+}
+
+func (t SANPathTarget) Unstructured() map[string]any {
 	return map[string]any{
 		"type": t.Type,
 		"name": t.Name,

@@ -46,16 +46,6 @@ const (
 	GroupListKindGroupList GroupListKind = "GroupList"
 )
 
-// Defines values for InitiatorItemKind.
-const (
-	InitiatorItemKindInitiatorItem InitiatorItemKind = "InitiatorItem"
-)
-
-// Defines values for InitiatorListKind.
-const (
-	InitiatorListKindInitiatorList InitiatorListKind = "InitiatorList"
-)
-
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -188,6 +178,21 @@ const (
 	Leave          Role = "leave"
 	Root           Role = "root"
 	Squatter       Role = "squatter"
+)
+
+// Defines values for SANPathInitiatorItemKind.
+const (
+	SANPathInitiatorItemKindSANPathInitiatorItem SANPathInitiatorItemKind = "SANPathInitiatorItem"
+)
+
+// Defines values for SANPathInitiatorListKind.
+const (
+	SANPathInitiatorListKindSANPathInitiatorList SANPathInitiatorListKind = "SANPathInitiatorList"
+)
+
+// Defines values for SANPathListKind.
+const (
+	SANPathListKindSANPathList SANPathListKind = "SANPathList"
 )
 
 // Defines values for ScheduleItemKind.
@@ -434,34 +439,6 @@ type GroupList struct {
 
 // GroupListKind defines model for GroupList.Kind.
 type GroupListKind string
-
-// Initiator defines model for Initiator.
-type Initiator struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
-// InitiatorItem defines model for InitiatorItem.
-type InitiatorItem struct {
-	Data Initiator         `json:"data"`
-	Kind InitiatorItemKind `json:"kind"`
-	Meta NodeMeta          `json:"meta"`
-}
-
-// InitiatorItemKind defines model for InitiatorItem.Kind.
-type InitiatorItemKind string
-
-// InitiatorItems defines model for InitiatorItems.
-type InitiatorItems = []InitiatorItem
-
-// InitiatorList defines model for InitiatorList.
-type InitiatorList struct {
-	Items InitiatorItems    `json:"items"`
-	Kind  InitiatorListKind `json:"kind"`
-}
-
-// InitiatorListKind defines model for InitiatorList.Kind.
-type InitiatorListKind string
 
 // Instance defines model for Instance.
 type Instance struct {
@@ -968,6 +945,41 @@ type SANPathInitiator struct {
 	// Type type is the endpoint type.
 	Type *string `json:"type,omitempty"`
 }
+
+// SANPathInitiatorItem defines model for SANPathInitiatorItem.
+type SANPathInitiatorItem struct {
+	// Data initiator is the host side san path endpoint.
+	Data SANPathInitiator         `json:"data"`
+	Kind SANPathInitiatorItemKind `json:"kind"`
+	Meta NodeMeta                 `json:"meta"`
+}
+
+// SANPathInitiatorItemKind defines model for SANPathInitiatorItem.Kind.
+type SANPathInitiatorItemKind string
+
+// SANPathInitiatorItems defines model for SANPathInitiatorItems.
+type SANPathInitiatorItems = []SANPathInitiatorItem
+
+// SANPathInitiatorList defines model for SANPathInitiatorList.
+type SANPathInitiatorList struct {
+	Items SANPathInitiatorItems    `json:"items"`
+	Kind  SANPathInitiatorListKind `json:"kind"`
+}
+
+// SANPathInitiatorListKind defines model for SANPathInitiatorList.Kind.
+type SANPathInitiatorListKind string
+
+// SANPathItems defines model for SANPathItems.
+type SANPathItems = []SANPath
+
+// SANPathList defines model for SANPathList.
+type SANPathList struct {
+	Items SANPathItems    `json:"items"`
+	Kind  SANPathListKind `json:"kind"`
+}
+
+// SANPathListKind defines model for SANPathList.Kind.
+type SANPathListKind string
 
 // SANPathTarget target is the storage array side san path endpoint.
 type SANPathTarget struct {

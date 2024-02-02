@@ -214,6 +214,9 @@ type ClientInterface interface {
 	// GetNodeDiscoverInitiator request
 	GetNodeDiscoverInitiator(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeDiscoverTarget request
+	GetNodeDiscoverTarget(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeDiscoverUser request
 	GetNodeDiscoverUser(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -868,6 +871,18 @@ func (c *Client) GetNodeDiscoverGroup(ctx context.Context, nodename InPathNodeNa
 
 func (c *Client) GetNodeDiscoverInitiator(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeDiscoverInitiatorRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeDiscoverTarget(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeDiscoverTargetRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -3349,6 +3364,40 @@ func NewGetNodeDiscoverInitiatorRequest(server string, nodename InPathNodeName) 
 	}
 
 	operationPath := fmt.Sprintf("/node/name/%s/discover/initiator", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeDiscoverTargetRequest generates requests for GetNodeDiscoverTarget
+func NewGetNodeDiscoverTargetRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/discover/target", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6984,6 +7033,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeDiscoverInitiatorWithResponse request
 	GetNodeDiscoverInitiatorWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDiscoverInitiatorResponse, error)
 
+	// GetNodeDiscoverTargetWithResponse request
+	GetNodeDiscoverTargetWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDiscoverTargetResponse, error)
+
 	// GetNodeDiscoverUserWithResponse request
 	GetNodeDiscoverUserWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDiscoverUserResponse, error)
 
@@ -8111,7 +8163,7 @@ func (r GetNodeDiscoverGroupResponse) StatusCode() int {
 type GetNodeDiscoverInitiatorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *InitiatorList
+	JSON200      *SANPathInitiatorList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -8128,6 +8180,32 @@ func (r GetNodeDiscoverInitiatorResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeDiscoverInitiatorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeDiscoverTargetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SANPathList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeDiscoverTargetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeDiscoverTargetResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -9743,6 +9821,15 @@ func (c *ClientWithResponses) GetNodeDiscoverInitiatorWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseGetNodeDiscoverInitiatorResponse(rsp)
+}
+
+// GetNodeDiscoverTargetWithResponse request returning *GetNodeDiscoverTargetResponse
+func (c *ClientWithResponses) GetNodeDiscoverTargetWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDiscoverTargetResponse, error) {
+	rsp, err := c.GetNodeDiscoverTarget(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeDiscoverTargetResponse(rsp)
 }
 
 // GetNodeDiscoverUserWithResponse request returning *GetNodeDiscoverUserResponse
@@ -12175,7 +12262,61 @@ func ParseGetNodeDiscoverInitiatorResponse(rsp *http.Response) (*GetNodeDiscover
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest InitiatorList
+		var dest SANPathInitiatorList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeDiscoverTargetResponse parses an HTTP response from a GetNodeDiscoverTargetWithResponse call
+func ParseGetNodeDiscoverTargetResponse(rsp *http.Response) (*GetNodeDiscoverTargetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeDiscoverTargetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SANPathList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

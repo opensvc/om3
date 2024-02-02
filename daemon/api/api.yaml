@@ -1012,7 +1012,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InitiatorList'
+                $ref: '#/components/schemas/SANPathInitiatorList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/discover/target:
+    get:
+      description: View the targets
+      operationId: GetNodeDiscoverTarget
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SANPathList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -2952,51 +2974,6 @@ components:
         name:
           type: string
 
-    InitiatorList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - InitiatorList
-        items:
-          $ref: '#/components/schemas/InitiatorItems'
-
-    InitiatorItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/InitiatorItem'
-
-    InitiatorItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - InitiatorItem
-        data:
-          $ref: '#/components/schemas/Initiator'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-
-    Initiator:
-      type: object
-      required:
-        - name
-        - type
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-
     InstanceMeta:
       type: object
       required:
@@ -4387,6 +4364,24 @@ components:
         - root
         - squatter
 
+    SANPathList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathList
+        items:
+          $ref: '#/components/schemas/SANPathItems'
+
+    SANPathItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPath'
+
     SANPath:
       type: object
       required:
@@ -4397,6 +4392,40 @@ components:
           $ref: '#/components/schemas/SANPathInitiator'
         target:
           $ref: '#/components/schemas/SANPathTarget'
+
+    SANPathInitiatorList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorList
+        items:
+          $ref: '#/components/schemas/SANPathInitiatorItems'
+
+    SANPathInitiatorItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPathInitiatorItem'
+
+    SANPathInitiatorItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorItem
+        data:
+          $ref: '#/components/schemas/SANPathInitiator'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
 
     SANPathInitiator:
       type: object
