@@ -18,6 +18,14 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for AuthInfoMethods.
+const (
+	Basic   AuthInfoMethods = "basic"
+	Openid  AuthInfoMethods = "openid"
+	Session AuthInfoMethods = "session"
+	X509    AuthInfoMethods = "x509"
+)
+
 // Defines values for CapabilityItemKind.
 const (
 	CapabilityItemKindCapabilityItem CapabilityItemKind = "CapabilityItem"
@@ -194,6 +202,18 @@ type ArbitratorStatus struct {
 	Status Status `json:"status"`
 	Url    string `json:"url"`
 }
+
+// AuthInfo defines model for AuthInfo.
+type AuthInfo struct {
+	Methods []AuthInfoMethods `json:"methods"`
+	Openid  *struct {
+		ClientId     string `json:"client_id"`
+		WellKnownUri string `json:"well_known_uri"`
+	} `json:"openid,omitempty"`
+}
+
+// AuthInfoMethods defines model for AuthInfo.Methods.
+type AuthInfoMethods string
 
 // AuthToken defines model for AuthToken.
 type AuthToken struct {
@@ -928,6 +948,15 @@ type SubsetsConfig = []SubsetConfig
 
 // Topology object topology
 type Topology string
+
+// UserIdentity defines model for UserIdentity.
+type UserIdentity struct {
+	Auth      *string             `json:"auth,omitempty"`
+	Grant     map[string][]string `json:"grant"`
+	Name      string              `json:"name"`
+	Namespace string              `json:"namespace"`
+	RawGrant  string              `json:"raw_grant"`
+}
 
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string

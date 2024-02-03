@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"context"
 	"fmt"
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"net/http"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/plog"
@@ -79,9 +79,11 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				return true
 			case strings.HasPrefix(usrPath, "/metrics"):
 				return true
+			case strings.HasPrefix(usrPath, "/auth/info"):
+				return true
 			case usrPath == "/index.js":
 				return true
-			case usrPath == "/favicon":
+			case usrPath == "/favicon.ico":
 				return true
 			case usrPath == "/":
 				return true
@@ -123,7 +125,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 func LogUserMiddleware(parent context.Context) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			authUser := c.Get("user").(auth.Info)
+			authUser := userFromContext(c)
 			extensions := authUser.GetExtensions()
 			log := GetLogger(c).
 				Attr("auth_user", authUser.GetUserName()).
