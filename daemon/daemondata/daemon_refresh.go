@@ -12,13 +12,13 @@ type (
 
 // DaemonRefresh updates the private dataset of a daemon subsystem
 // (scheduler, dns, ...)
-func (t T) DaemonRefresh() error {
-	err := make(chan error, 1)
+func (t T) DaemonRefresh() {
+	errC := make(chan error, 1)
 	op := opDaemonRefresh{
-		errC: err,
+		errC: errC,
 	}
 	t.cmdC <- op
-	return <-err
+	<-errC
 }
 
 func (o opDaemonRefresh) call(ctx context.Context, d *data) error {

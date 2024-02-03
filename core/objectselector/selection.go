@@ -365,12 +365,12 @@ func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) 
 
 func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	matching := orderedset.NewOrderedSet()
-	path, err := naming.ParsePath(s)
+	paths, err := t.getInstalled()
 	if err != nil {
 		return matching, err
 	}
-	if path.Exists() {
-		matching.Add(path.String())
+	if _, ok := paths.StrMap()[s]; ok {
+		matching.Add(s)
 	}
 	return matching, nil
 }

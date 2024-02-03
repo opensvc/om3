@@ -1,7 +1,6 @@
 package oxcmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -57,10 +55,6 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 		err = obj.RecoverAndEditConfig()
 	default:
 		err = obj.EditConfig()
-	}
-	if errors.Is(err, xconfig.ErrEditPending) {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
 	}
 	if err != nil {
 		return err

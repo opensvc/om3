@@ -113,7 +113,7 @@ func Test_daemon(t *testing.T) {
 			resp, err := cli.PostObjectConfigUpdateWithResponse(ctx,
 				"root", "ccfg", "cluster", &params)
 			require.NoError(t, err)
-			require.Equalf(t, http.StatusOK, resp.StatusCode(), "body: %s", resp.Body)
+			require.Equalf(t, http.StatusNoContent, resp.StatusCode(), "body: %s", resp.Body)
 		})
 		require.False(t, t.Failed(), "abort test")
 
@@ -255,7 +255,7 @@ func Test_daemon(t *testing.T) {
 			resp, err := cli.PostObjectConfigUpdateWithResponse(ctx,
 				"root", "ccfg", "cluster", &params)
 			require.NoError(t, err, "can't post config update")
-			require.Equalf(t, http.StatusOK, resp.StatusCode(), "body: %s", resp.Body)
+			require.Equalf(t, http.StatusNoContent, resp.StatusCode(), "body: %s", resp.Body)
 		})
 		require.False(t, t.Failed(), "abort test")
 

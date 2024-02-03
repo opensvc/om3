@@ -49,8 +49,8 @@ func (t *CmdObjectUpdate) Run(selector, kind string) error {
 			return err
 		}
 		switch response.StatusCode() {
-		case 200:
-			return nil
+		case 204:
+			fmt.Printf("%s: commited\n", p)
 		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)
 		case 401:

@@ -1148,7 +1148,9 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		return err
 	}
 	if validate {
-		if _, err := t.Validate(); err != nil {
+		if alerts, err := t.Validate(); err != nil {
+			return fmt.Errorf("abort config commit: %w", err)
+		} else if alerts.HasError() {
 			return fmt.Errorf("abort config commit: validation errors")
 		}
 	}
