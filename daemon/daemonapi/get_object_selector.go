@@ -16,7 +16,7 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 	paths := object.StatusData.GetPaths()
 	selection := objectselector.New(
 		params.Path,
-		objectselector.WithInstalled(paths),
+		objectselector.WithPaths(paths),
 		objectselector.WithLocal(true),
 	)
 	matchedPaths, err := selection.Expand()

@@ -87,7 +87,7 @@ func (s *Data) WithSelector(selector string) *Data {
 	}
 	paths, err := objectselector.New(
 		selector,
-		objectselector.WithInstalled(s.ObjectPaths()),
+		objectselector.WithPaths(s.ObjectPaths()),
 	).Expand()
 	if err != nil {
 		return s
