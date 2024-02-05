@@ -1024,8 +1024,24 @@ func newCmdNodeAssetGroup() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAssetIPAddress() *cobra.Command {
+	var options commands.CmdNodeAssetIPAddress
+	cmd := &cobra.Command{
+		Use:     "ipaddress",
+		Short:   "show node system IP address",
+		Aliases: []string{"addr", "ipaddr"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeAssetSANPathInitiator() *cobra.Command {
-	var options commands.CmdNodeAssetGroup
+	var options commands.CmdNodeAssetInitiator
 	cmd := &cobra.Command{
 		Use:     "initiator",
 		Short:   "show node system san initiator",

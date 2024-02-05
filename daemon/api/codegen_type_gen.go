@@ -38,6 +38,16 @@ const (
 	GroupListKindGroupList GroupListKind = "GroupList"
 )
 
+// Defines values for IPAddressItemKind.
+const (
+	IPAddressItemKindIPAddressItem IPAddressItemKind = "IPAddressItem"
+)
+
+// Defines values for IPAddressListKind.
+const (
+	IDAddressList IPAddressListKind = "IDAddressList"
+)
+
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -429,6 +439,38 @@ type GroupList struct {
 
 // GroupListKind defines model for GroupList.Kind.
 type GroupListKind string
+
+// IPAddress defines model for IPAddress.
+type IPAddress struct {
+	Address        string `json:"address"`
+	FlagDeprecated bool   `json:"flagDeprecated"`
+	Intf           string `json:"intf"`
+	Mac            string `json:"mac"`
+	Mask           string `json:"mask"`
+	Type           string `json:"type"`
+}
+
+// IPAddressItem defines model for IPAddressItem.
+type IPAddressItem struct {
+	Data IPAddress         `json:"data"`
+	Kind IPAddressItemKind `json:"kind"`
+	Meta NodeMeta          `json:"meta"`
+}
+
+// IPAddressItemKind defines model for IPAddressItem.Kind.
+type IPAddressItemKind string
+
+// IPAddressItems defines model for IPAddressItems.
+type IPAddressItems = []IPAddressItem
+
+// IPAddressList defines model for IPAddressList.
+type IPAddressList struct {
+	Items IPAddressItems    `json:"items"`
+	Kind  IPAddressListKind `json:"kind"`
+}
+
+// IPAddressListKind defines model for IPAddressList.Kind.
+type IPAddressListKind string
 
 // Instance defines model for Instance.
 type Instance struct {

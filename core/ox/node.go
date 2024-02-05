@@ -117,6 +117,7 @@ func init() {
 		newCmdNodeAssetUser(),
 		newCmdNodeAssetSANPathInitiator(),
 		newCmdNodeAssetTarget(),
+		newCmdNodeAssetIPAddress(),
 	)
 	cmdNodeEdit.AddCommand(
 		newCmdNodeEditConfig(),

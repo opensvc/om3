@@ -967,94 +967,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/system/group:
-    get:
-      description: View the group
-      operationId: GetNodeSystemGroup
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GroupList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/system/san/initiator:
-    get:
-      description: View the initiator
-      operationId: GetNodeSystemSANInitiator
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SANPathInitiatorList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/system/san/path:
-    get:
-      description: View the targets
-      operationId: GetNodeSystemSANPath
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SANPathList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/system/user:
-    get:
-      description: View the users
-      operationId: GetNodeSystemUser
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /node/name/{nodename}/drbd/allocation:
     get:
       description: |
@@ -1732,6 +1644,116 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/LogList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/system/group:
+    get:
+      description: View the group
+      operationId: GetNodeSystemGroup
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/system/ipaddress:
+    get:
+      description: View the group
+      operationId: GetNodeSystemIPAddress
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPAddressList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/system/san/initiator:
+    get:
+      description: View the initiator
+      operationId: GetNodeSystemSANInitiator
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SANPathInitiatorList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/system/san/path:
+    get:
+      description: View the targets
+      operationId: GetNodeSystemSANPath
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SANPathList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/system/user:
+    get:
+      description: View the users
+      operationId: GetNodeSystemUser
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3143,6 +3165,63 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    IPAddressList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - IDAddressList
+        items:
+          $ref: '#/components/schemas/IPAddressItems'
+
+    IPAddressItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/IPAddressItem'
+
+    IPAddressItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - IPAddressItem
+        data:
+          $ref: '#/components/schemas/IPAddress'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    IPAddress:
+      type: object
+      required:
+        - mac
+        - address
+        - flagDeprecated
+        - intf
+        - mask
+        - type
+      properties:
+        mac:
+          type: string
+        address:
+          type: string
+        flagDeprecated:
+          type: boolean
+        intf:
+          type: string
+        mask:
+          type: string
+        type:
+          type: string
 
     KeywordList:
       type: object
