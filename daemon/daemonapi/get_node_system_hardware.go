@@ -10,24 +10,24 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetNodeSystemUser(ctx echo.Context, nodename api.InPathNodeName) error {
+func (a *DaemonAPI) GetNodeSystemHardware(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
-		return a.getLocalNodeSystemUser(ctx)
+		return a.getLocalNodeSystemHardware(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		return a.getPeerNodeSystemUser(ctx, nodename)
+		return a.getPeerNodeSystemHardware(ctx, nodename)
 	}
 }
 
-func (a *DaemonAPI) getPeerNodeSystemUser(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerNodeSystemHardware(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeSystemUserWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemHardwareWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -35,7 +35,7 @@ func (a *DaemonAPI) getPeerNodeSystemUser(ctx echo.Context, nodename string) err
 	return nil
 }
 
-func (a *DaemonAPI) getLocalNodeSystemUser(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeSystemHardware(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
@@ -44,13 +44,16 @@ func (a *DaemonAPI) getLocalNodeSystemUser(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Load system cache", "%s", err)
 	}
-	items := make(api.UserItems, len(data.UIDS))
-	for i := 0; i < len(data.UIDS); i++ {
-		items[i] = api.UserItem{
-			Kind: "UserItem",
-			Data: api.User{
-				ID:   data.UIDS[i].ID,
-				Name: data.UIDS[i].Name,
+	items := make(api.HardwareItems, len(data.Hardware))
+	for i := 0; i < len(data.Hardware); i++ {
+		items[i] = api.HardwareItem{
+			Kind: "HardwareItem",
+			Data: api.Hardware{
+				Class:       data.Hardware[i].Class,
+				Type:        data.Hardware[i].Type,
+				Driver:      data.Hardware[i].Driver,
+				Path:        data.Hardware[i].Path,
+				Description: data.Hardware[i].Description,
 			},
 			Meta: api.NodeMeta{
 				Node: a.localhost,
@@ -58,5 +61,5 @@ func (a *DaemonAPI) getLocalNodeSystemUser(ctx echo.Context) error {
 		}
 	}
 
-	return ctx.JSON(http.StatusOK, api.UserList{Kind: "UserList", Items: items})
+	return ctx.JSON(http.StatusOK, api.HardwareList{Kind: "HardwareList", Items: items})
 }

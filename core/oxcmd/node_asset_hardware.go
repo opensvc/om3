@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeSystemInitiator struct {
+	CmdNodeSystemHardware struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeSystemInitiator) Run() error {
+func (t *CmdNodeSystemHardware) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -34,9 +34,9 @@ func (t *CmdNodeSystemInitiator) Run() error {
 		return err
 	}
 
-	l := make(api.SANPathInitiatorItems, 0)
+	l := make(api.HardwareItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeSystemSANInitiatorWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemHardwareWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}
@@ -55,12 +55,12 @@ func (t *CmdNodeSystemInitiator) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,NAME:data.name,TYPE:data.type"
+	defaultOutput := "tab=NODE:meta.node,PATH:data.path,DESCRIPTION:data.description,CLASS:data.class,DRIVER:data.driver,TYPE:data.type"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.SANPathInitiatorList{Items: l, Kind: "SANPathInitiatorList"},
+		Data:          api.HardwareList{Items: l, Kind: "HardwareList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeAssetTarget struct {
+	CmdNodeSystemTarget struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeAssetTarget) Run() error {
+func (t *CmdNodeSystemTarget) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (t *CmdNodeAssetTarget) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=INITIATOR:data.initiator,TARGET:data.target"
+	defaultOutput := "tab=INITIATOR_NAME:data.initiator.name,INITIATOR_TYPE:data.initiator.type,TARGET_NAME:data.target.name,TARGET_TYPE:data.target.type"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

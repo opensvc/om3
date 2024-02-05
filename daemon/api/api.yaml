@@ -1686,6 +1686,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/hardware:
+    get:
+      description: View the hardwares
+      operationId: GetNodeSystemHardware
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/system/ipaddress:
     get:
       description: View the group
@@ -2994,6 +3016,60 @@ components:
           type: integer
           x-go-name: ID
         name:
+          type: string
+
+    HardwareList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareList
+        items:
+          $ref: '#/components/schemas/HardwareItems'
+
+    HardwareItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/HardwareItem'
+
+    HardwareItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareItem
+        data:
+          $ref: '#/components/schemas/Hardware'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Hardware:
+      type: object
+      required:
+        - path
+        - description
+        - class
+        - driver
+        - type
+      properties:
+        path:
+          type: string
+        description:
+          type: string
+        class:
+          type: string
+        driver:
+          type: string
+        type:
           type: string
 
     InstanceMeta:
