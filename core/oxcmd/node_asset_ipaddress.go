@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeAssetIPAddress struct {
+	CmdNodeSystemIPAddress struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeAssetIPAddress) Run() error {
+func (t *CmdNodeSystemIPAddress) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (t *CmdNodeAssetIPAddress) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,MAC:data.mac,ADDRESS:data.address,FLAGDEPRECATED:data.flagdeprecated,INTF:data.intf,MASK:data.mask,TYPE:data.type"
+	defaultOutput := "tab=NODE:meta.node,MAC:data.mac,ADDRESS:data.address,FLAGDEPECATED:data.flagDeprecated,INTF:data.intf,MASK:data.mask,TYPE:data.type"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

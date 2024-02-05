@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeAssetUser struct {
+	CmdNodeSystemUser struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeAssetUser) Run() error {
+func (t *CmdNodeSystemUser) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err

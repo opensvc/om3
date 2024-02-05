@@ -38,6 +38,16 @@ const (
 	GroupListKindGroupList GroupListKind = "GroupList"
 )
 
+// Defines values for HardwareItemKind.
+const (
+	HardwareItemKindHardwareItem HardwareItemKind = "HardwareItem"
+)
+
+// Defines values for HardwareListKind.
+const (
+	HardwareListKindHardwareList HardwareListKind = "HardwareList"
+)
+
 // Defines values for IPAddressItemKind.
 const (
 	IPAddressItemKindIPAddressItem IPAddressItemKind = "IPAddressItem"
@@ -439,6 +449,37 @@ type GroupList struct {
 
 // GroupListKind defines model for GroupList.Kind.
 type GroupListKind string
+
+// Hardware defines model for Hardware.
+type Hardware struct {
+	Class       string `json:"class"`
+	Description string `json:"description"`
+	Driver      string `json:"driver"`
+	Path        string `json:"path"`
+	Type        string `json:"type"`
+}
+
+// HardwareItem defines model for HardwareItem.
+type HardwareItem struct {
+	Data Hardware         `json:"data"`
+	Kind HardwareItemKind `json:"kind"`
+	Meta NodeMeta         `json:"meta"`
+}
+
+// HardwareItemKind defines model for HardwareItem.Kind.
+type HardwareItemKind string
+
+// HardwareItems defines model for HardwareItems.
+type HardwareItems = []HardwareItem
+
+// HardwareList defines model for HardwareList.
+type HardwareList struct {
+	Items HardwareItems    `json:"items"`
+	Kind  HardwareListKind `json:"kind"`
+}
+
+// HardwareListKind defines model for HardwareList.Kind.
+type HardwareListKind string
 
 // IPAddress defines model for IPAddress.
 type IPAddress struct {

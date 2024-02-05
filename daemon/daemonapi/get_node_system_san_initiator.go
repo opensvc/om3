@@ -40,9 +40,9 @@ func (a *DaemonAPI) getLocalNodeSystemSANInitiator(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
 	}
-	data, err := n.LoadAsset()
+	data, err := n.LoadSystem()
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Load asset cache", "%s", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Load system cache", "%s", err)
 	}
 	items := make(api.SANPathInitiatorItems, len(data.HBA))
 	for i := 0; i < len(data.HBA); i++ {

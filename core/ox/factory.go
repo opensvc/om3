@@ -1000,16 +1000,16 @@ func newCmdNodeDrivers() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAsset() *cobra.Command {
+func newCmdNodeSystem() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "asset",
-		Short: "node asset commands",
+		Use:   "system",
+		Short: "node system commands",
 	}
 	return cmd
 }
 
-func newCmdNodeAssetGroup() *cobra.Command {
-	var options commands.CmdNodeAssetGroup
+func newCmdNodeSystemGroup() *cobra.Command {
+	var options commands.CmdNodeSystemGroup
 	cmd := &cobra.Command{
 		Use:     "group",
 		Short:   "show node system groups",
@@ -1024,8 +1024,24 @@ func newCmdNodeAssetGroup() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAssetIPAddress() *cobra.Command {
-	var options commands.CmdNodeAssetIPAddress
+func newCmdNodeSystemHardware() *cobra.Command {
+	var options commands.CmdNodeSystemHardware
+	cmd := &cobra.Command{
+		Use:     "hardware",
+		Short:   "show node system hardware",
+		Aliases: []string{"device", "hard"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemIPAddress() *cobra.Command {
+	var options commands.CmdNodeSystemIPAddress
 	cmd := &cobra.Command{
 		Use:     "ipaddress",
 		Short:   "show node system IP address",
@@ -1040,8 +1056,16 @@ func newCmdNodeAssetIPAddress() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAssetSANPathInitiator() *cobra.Command {
-	var options commands.CmdNodeAssetInitiator
+func newCmdNodeSystemSAN() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "san",
+		Short: "node system san commands",
+	}
+	return cmd
+}
+
+func newCmdNodeSystemSANPathInitiator() *cobra.Command {
+	var options commands.CmdNodeSystemInitiator
 	cmd := &cobra.Command{
 		Use:     "initiator",
 		Short:   "show node system san initiator",
@@ -1056,8 +1080,8 @@ func newCmdNodeAssetSANPathInitiator() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAssetTarget() *cobra.Command {
-	var options commands.CmdNodeAssetTarget
+func newCmdNodeSystemTarget() *cobra.Command {
+	var options commands.CmdNodeSystemTarget
 	cmd := &cobra.Command{
 		Use:     "target",
 		Short:   "show node system san path",
@@ -1072,8 +1096,8 @@ func newCmdNodeAssetTarget() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeAssetUser() *cobra.Command {
-	var options commands.CmdNodeAssetUser
+func newCmdNodeSystemUser() *cobra.Command {
+	var options commands.CmdNodeSystemUser
 	cmd := &cobra.Command{
 		Use:     "user",
 		Short:   "show node system users",

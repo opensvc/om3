@@ -89,6 +89,28 @@ func (t Group) Unstructured() map[string]any {
 	}
 }
 
+func (t HardwareList) GetItems() any {
+	return t.Items
+}
+
+func (t HardwareItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Hardware) Unstructured() map[string]any {
+	return map[string]any{
+		"class":       t.Class,
+		"type":        t.Type,
+		"driver":      t.Driver,
+		"path":        t.Path,
+		"description": t.Description,
+	}
+}
+
 func (t IPAddressList) GetItems() any {
 	return t.Items
 }
