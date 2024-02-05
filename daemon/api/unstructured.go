@@ -89,6 +89,28 @@ func (t Group) Unstructured() map[string]any {
 	}
 }
 
+func (t IPAddressList) GetItems() any {
+	return t.Items
+}
+
+func (t IPAddressItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t IPAddress) Unstructured() map[string]any {
+	return map[string]any{
+		"mac":             t.Mac,
+		"flagdepreciated": t.FlagDeprecated,
+		"intf":            t.Intf,
+		"mask":            t.Mask,
+		"type":            t.Type,
+	}
+}
+
 func (t InstanceList) GetItems() any {
 	return t.Items
 }
