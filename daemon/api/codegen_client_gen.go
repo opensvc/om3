@@ -273,6 +273,9 @@ type ClientInterface interface {
 	// GetNodeSystemIPAddress request
 	GetNodeSystemIPAddress(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeSystemProperty request
+	GetNodeSystemProperty(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeSystemSANInitiator request
 	GetNodeSystemSANInitiator(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1115,6 +1118,18 @@ func (c *Client) GetNodeSystemHardware(ctx context.Context, nodename InPathNodeN
 
 func (c *Client) GetNodeSystemIPAddress(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeSystemIPAddressRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeSystemProperty(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeSystemPropertyRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -5373,6 +5388,40 @@ func NewGetNodeSystemIPAddressRequest(server string, nodename InPathNodeName) (*
 	return req, nil
 }
 
+// NewGetNodeSystemPropertyRequest generates requests for GetNodeSystemProperty
+func NewGetNodeSystemPropertyRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/system/property", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeSystemSANInitiatorRequest generates requests for GetNodeSystemSANInitiator
 func NewGetNodeSystemSANInitiatorRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -7156,6 +7205,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeSystemIPAddressWithResponse request
 	GetNodeSystemIPAddressWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemIPAddressResponse, error)
 
+	// GetNodeSystemPropertyWithResponse request
+	GetNodeSystemPropertyWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemPropertyResponse, error)
+
 	// GetNodeSystemSANInitiatorWithResponse request
 	GetNodeSystemSANInitiatorWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemSANInitiatorResponse, error)
 
@@ -8745,6 +8797,32 @@ func (r GetNodeSystemIPAddressResponse) StatusCode() int {
 	return 0
 }
 
+type GetNodeSystemPropertyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PropertyList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeSystemPropertyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeSystemPropertyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeSystemSANInitiatorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10077,6 +10155,15 @@ func (c *ClientWithResponses) GetNodeSystemIPAddressWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetNodeSystemIPAddressResponse(rsp)
+}
+
+// GetNodeSystemPropertyWithResponse request returning *GetNodeSystemPropertyResponse
+func (c *ClientWithResponses) GetNodeSystemPropertyWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemPropertyResponse, error) {
+	rsp, err := c.GetNodeSystemProperty(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeSystemPropertyResponse(rsp)
 }
 
 // GetNodeSystemSANInitiatorWithResponse request returning *GetNodeSystemSANInitiatorResponse
@@ -13361,6 +13448,60 @@ func ParseGetNodeSystemIPAddressResponse(rsp *http.Response) (*GetNodeSystemIPAd
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest IPAddressList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeSystemPropertyResponse parses an HTTP response from a GetNodeSystemPropertyWithResponse call
+func ParseGetNodeSystemPropertyResponse(rsp *http.Response) (*GetNodeSystemPropertyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeSystemPropertyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PropertyList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

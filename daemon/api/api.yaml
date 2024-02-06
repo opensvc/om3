@@ -1719,6 +1719,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/property:
+    get:
+      description: View the property
+      operationId: GetNodeSystemProperty
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/system/san/initiator:
     get:
       description: View the initiator
@@ -3388,6 +3410,61 @@ components:
           type: integer
         size:
           type: integer
+
+    PropertyList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PropertyList
+        items:
+          $ref: '#/components/schemas/PropertyItems'
+
+    PropertyItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PropertyItem'      
+
+    PropertyItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Property'
+
+    Property:
+      type: object
+      required:
+        - error
+        - name
+        - source
+        - title
+        - value
+      properties:
+        error:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        value: !!set
+          type1: string
+          type2: number
+          type3: boolean
+            
 
     NetworkIPNetwork:
       type: object
