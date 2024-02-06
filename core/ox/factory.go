@@ -1008,6 +1008,22 @@ func newCmdNodeSystem() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeSystemDisk() *cobra.Command {
+	var options commands.CmdNodeSystemDisk
+	cmd := &cobra.Command{
+		Use:     "disk",
+		Short:   "show node system disks",
+		Aliases: []string{"dsk", "dis"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeSystemGroup() *cobra.Command {
 	var options commands.CmdNodeSystemGroup
 	cmd := &cobra.Command{
@@ -1096,12 +1112,12 @@ func newCmdNodeSystemSANPathInitiator() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeSystemTarget() *cobra.Command {
-	var options commands.CmdNodeSystemTarget
+func newCmdNodeSystemSANPath() *cobra.Command {
+	var options commands.CmdNodeSystemSANPath
 	cmd := &cobra.Command{
-		Use:     "target",
+		Use:     "path",
 		Short:   "show node system san path",
-		Aliases: []string{"targ"},
+		Aliases: []string{"pa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

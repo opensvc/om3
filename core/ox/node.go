@@ -115,16 +115,17 @@ func init() {
 	)
 	cmdNodeSystem.AddCommand(
 		cmdNodeSystemSAN,
+		newCmdNodeSystemDisk(),
 		newCmdNodeSystemGroup(),
 		newCmdNodeSystemHardware(),
 		newCmdNodeSystemIPAddress(),
 		newCmdNodeSystemProperty(),
 		newCmdNodeSystemUser(),
-		newCmdNodeSystemTarget(),
 	)
 
 	cmdNodeSystemSAN.AddCommand(
 		newCmdNodeSystemSANPathInitiator(),
+		newCmdNodeSystemSANPath(),
 	)
 
 	cmdNodeEdit.AddCommand(

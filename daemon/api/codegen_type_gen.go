@@ -28,6 +28,16 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
+// Defines values for DiskItemKind.
+const (
+	DiskItemKindDiskItem DiskItemKind = "DiskItem"
+)
+
+// Defines values for DiskListKind.
+const (
+	DiskListKindDiskList DiskListKind = "DiskList"
+)
+
 // Defines values for GroupItemKind.
 const (
 	GroupItemKindGroupItem GroupItemKind = "GroupItem"
@@ -423,6 +433,39 @@ type DaemonSubsystemStatus struct {
 	ID         string                 `json:"id"`
 	State      string                 `json:"state"`
 }
+
+// Disk defines model for Disk.
+type Disk struct {
+	Devpath string   `json:"devpath"`
+	ID      string   `json:"id"`
+	Model   string   `json:"model"`
+	Regions []Region `json:"regions"`
+	Size    uint64   `json:"size"`
+	Type    string   `json:"type"`
+	Vendor  string   `json:"vendor"`
+}
+
+// DiskItem defines model for DiskItem.
+type DiskItem struct {
+	Data Disk         `json:"data"`
+	Kind DiskItemKind `json:"kind"`
+	Meta NodeMeta     `json:"meta"`
+}
+
+// DiskItemKind defines model for DiskItem.Kind.
+type DiskItemKind string
+
+// DiskItems defines model for DiskItems.
+type DiskItems = []DiskItem
+
+// DiskList defines model for DiskList.
+type DiskList struct {
+	Items DiskItems    `json:"items"`
+	Kind  DiskListKind `json:"kind"`
+}
+
+// DiskListKind defines model for DiskList.Kind.
+type DiskListKind string
 
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
@@ -950,6 +993,15 @@ type PropertyListKind string
 
 // Provisioned service, instance or resource provisioned state
 type Provisioned string
+
+// Region defines model for Region.
+type Region struct {
+	Devpath string `json:"devpath"`
+	Group   string `json:"group"`
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Size    uint64 `json:"size"`
+}
 
 // RelayMessage defines model for RelayMessage.
 type RelayMessage struct {

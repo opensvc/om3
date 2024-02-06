@@ -1653,6 +1653,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/disk:
+    get:
+      description: View the disk
+      operationId: GetNodeSystemDisk
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiskList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/system/group:
     get:
       description: View the group
@@ -2890,6 +2912,92 @@ components:
           type: string
           x-go-name: ID
         state:
+          type: string
+
+    DiskList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+          kind:
+            type: string
+            enum:
+              - DiskList
+          items:
+            $ref: '#/components/schemas/DiskItems'
+
+    DiskItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/DiskItem'
+
+    DiskItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - DiskItem
+        data:
+          $ref: '#/components/schemas/Disk'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Disk:
+      type: object
+      required:
+        - id
+        - devpath
+        - size
+        - vendor
+        - model
+        - type
+        - regions
+      properties:
+        id:
+          type: string
+          x-go-name: ID
+        devpath:
+          type: string
+        size: 
+          type: integer
+          format: uint64
+        vendor:
+          type: string
+        model:
+          type: string
+        type:
+          type: string
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+
+    Region:
+      type: object
+      required:
+        - id
+        - devpath
+        - object
+        - size
+        - group
+      properties:
+        id:
+          type: string
+          x-go-name: ID
+        devpath:
+          type: string
+        object:
+          type: string
+        size:
+          type: integer
+          format: uint64
+        group:
           type: string
 
     DNSRecord:

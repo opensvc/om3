@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeSystemSANPath struct {
+	CmdNodeSystemDisk struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeSystemSANPath) Run() error {
+func (t *CmdNodeSystemDisk) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -34,9 +34,9 @@ func (t *CmdNodeSystemSANPath) Run() error {
 		return err
 	}
 
-	l := make(api.SANPathItems, 0)
+	l := make(api.DiskItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeSystemSANPathWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemDiskWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}
@@ -55,12 +55,13 @@ func (t *CmdNodeSystemSANPath) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=INITIATOR_NAME:data.initiator.name,INITIATOR_TYPE:data.initiator.type,TARGET_NAME:data.target.name,TARGET_TYPE:data.target.type"
+
+	defaultOutput := "tab=NODE:meta.node,ID:data.ID,DEVPATH:data.devpath,SIZE:data.size,VENDOR:data.vendor,MODEL:data.model,TYPE:data.type,REGION_ID:data.regions[0].ID,OBJECT:data.regions[0].object,GROUP:data.regions[0].group,REGION_DEVPATH:data.regions[0].devpath,REGION_SIZE:data.regions[0].size"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.SANPathList{Items: l, Kind: "SANPathList"},
+		Data:          api.DiskList{Items: l, Kind: "DiskList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
