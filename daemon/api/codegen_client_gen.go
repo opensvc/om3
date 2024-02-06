@@ -267,6 +267,9 @@ type ClientInterface interface {
 	// GetNodeSchedule request
 	GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeSystemDisk request
+	GetNodeSystemDisk(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeSystemGroup request
 	GetNodeSystemGroup(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1096,6 +1099,18 @@ func (c *Client) GetObjectSchedule(ctx context.Context, nodename InPathNodeName,
 
 func (c *Client) GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeScheduleRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeSystemDisk(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeSystemDiskRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -5315,6 +5330,40 @@ func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Re
 	return req, nil
 }
 
+// NewGetNodeSystemDiskRequest generates requests for GetNodeSystemDisk
+func NewGetNodeSystemDiskRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/system/disk", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeSystemGroupRequest generates requests for GetNodeSystemGroup
 func NewGetNodeSystemGroupRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -7233,6 +7282,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeScheduleWithResponse request
 	GetNodeScheduleWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeScheduleResponse, error)
 
+	// GetNodeSystemDiskWithResponse request
+	GetNodeSystemDiskWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemDiskResponse, error)
+
 	// GetNodeSystemGroupWithResponse request
 	GetNodeSystemGroupWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemGroupResponse, error)
 
@@ -8777,6 +8829,32 @@ func (r GetNodeScheduleResponse) StatusCode() int {
 	return 0
 }
 
+type GetNodeSystemDiskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DiskList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeSystemDiskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeSystemDiskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeSystemGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10216,6 +10294,15 @@ func (c *ClientWithResponses) GetNodeScheduleWithResponse(ctx context.Context, n
 		return nil, err
 	}
 	return ParseGetNodeScheduleResponse(rsp)
+}
+
+// GetNodeSystemDiskWithResponse request returning *GetNodeSystemDiskResponse
+func (c *ClientWithResponses) GetNodeSystemDiskWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemDiskResponse, error) {
+	rsp, err := c.GetNodeSystemDisk(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeSystemDiskResponse(rsp)
 }
 
 // GetNodeSystemGroupWithResponse request returning *GetNodeSystemGroupResponse
@@ -13393,6 +13480,60 @@ func ParseGetNodeScheduleResponse(rsp *http.Response) (*GetNodeScheduleResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ScheduleList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeSystemDiskResponse parses an HTTP response from a GetNodeSystemDiskWithResponse call
+func ParseGetNodeSystemDiskResponse(rsp *http.Response) (*GetNodeSystemDiskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeSystemDiskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DiskList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

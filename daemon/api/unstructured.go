@@ -18,6 +18,30 @@ func (t Capability) Unstructured() map[string]any {
 	}
 }
 
+func (t DiskList) GetItems() any {
+	return t.Items
+}
+
+func (t DiskItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Disk) Unstructured() map[string]any {
+	return map[string]any{
+		"ID":      t.ID,
+		"devpath": t.Devpath,
+		"size":    t.Size,
+		"vendor":  t.Vendor,
+		"model":   t.Model,
+		"type":    t.Type,
+		"regions": t.Regions,
+	}
+}
+
 func (t ScheduleList) GetItems() any {
 	return t.Items
 }
