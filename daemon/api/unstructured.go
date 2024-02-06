@@ -202,6 +202,28 @@ func (t KeywordMeta) Unstructured() map[string]any {
 	}
 }
 
+func (t PropertyList) GetItems() any {
+	return t.Items
+}
+
+func (t PropertyItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Property) Unstructured() map[string]any {
+	return map[string]any{
+		"error":  t.Error,
+		"value":  t.Value,
+		"title":  t.Title,
+		"source": t.Source,
+		"name":   t.Name,
+	}
+}
+
 func (t ObjectList) GetItems() any {
 	return t.Items
 }

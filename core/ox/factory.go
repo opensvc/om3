@@ -1056,6 +1056,22 @@ func newCmdNodeSystemIPAddress() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeSystemProperty() *cobra.Command {
+	var options commands.CmdNodeSystemProperty
+	cmd := &cobra.Command{
+		Use:     "property",
+		Short:   "show node system property",
+		Aliases: []string{"proper", "prop"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeSystemSAN() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "san",

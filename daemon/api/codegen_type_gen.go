@@ -170,6 +170,11 @@ const (
 	PostDaemonSubActionActionStop    PostDaemonSubActionAction = "stop"
 )
 
+// Defines values for PropertyListKind.
+const (
+	PropertyListKindPropertyList PropertyListKind = "PropertyList"
+)
+
 // Defines values for Provisioned.
 const (
 	ProvisionedFalse Provisioned = "false"
@@ -918,6 +923,34 @@ type Problem struct {
 	// negotiation; see [RFC7231], Section 3.4).
 	Title string `json:"title"`
 }
+
+// Property defines model for Property.
+type Property struct {
+	Error  string      `json:"error"`
+	Name   string      `json:"name"`
+	Source string      `json:"source"`
+	Title  string      `json:"title"`
+	Value  interface{} `json:"value"`
+}
+
+// PropertyItem defines model for PropertyItem.
+type PropertyItem struct {
+	Data Property `json:"data"`
+	Kind string   `json:"kind"`
+	Meta NodeMeta `json:"meta"`
+}
+
+// PropertyItems defines model for PropertyItems.
+type PropertyItems = []PropertyItem
+
+// PropertyList defines model for PropertyList.
+type PropertyList struct {
+	Items PropertyItems    `json:"items"`
+	Kind  PropertyListKind `json:"kind"`
+}
+
+// PropertyListKind defines model for PropertyList.Kind.
+type PropertyListKind string
 
 // Provisioned service, instance or resource provisioned state
 type Provisioned string

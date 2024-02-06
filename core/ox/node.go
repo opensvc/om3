@@ -116,10 +116,11 @@ func init() {
 	cmdNodeSystem.AddCommand(
 		cmdNodeSystemSAN,
 		newCmdNodeSystemGroup(),
+		newCmdNodeSystemHardware(),
+		newCmdNodeSystemIPAddress(),
+		newCmdNodeSystemProperty(),
 		newCmdNodeSystemUser(),
 		newCmdNodeSystemTarget(),
-		newCmdNodeSystemIPAddress(),
-		newCmdNodeSystemHardware(),
 	)
 
 	cmdNodeSystemSAN.AddCommand(
