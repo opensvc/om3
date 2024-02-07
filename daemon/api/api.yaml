@@ -1708,6 +1708,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/patch:
+    get:
+      description: View the patch
+      operationId: GetNodeSystemPatch
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatchList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/system/hardware:
     get:
       description: View the hardwares
@@ -3576,6 +3598,56 @@ components:
         size:
           type: integer
 
+    PatchList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PatchList
+        items:
+          $ref: '#/components/schemas/PatchItems'
+
+    PatchItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PatchItem'
+
+    PatchItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PacthItem
+        data:
+          $ref: '#/components/schemas/Patch'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Patch:
+      type: object
+      required:
+        - number
+        - revision
+        - installedat
+      properties:
+        number:
+          type: string
+        revision:
+          type: string
+        installedat:
+          type: string
+          format: date-Time
+          x-go-name: InstalledAt
+
     PropertyList:
       type: object
       required:
@@ -4770,6 +4842,9 @@ components:
     SANPathInitiator:
       type: object
       description: initiator is the host side san path endpoint.
+      required:
+        - name
+        - type
       properties:
         name:
           type: string
@@ -4783,6 +4858,9 @@ components:
     SANPathTarget:
       type: object
       description: target is the storage array side san path endpoint.
+      required:
+        - name
+        - type
       properties:
         name:
           type: string

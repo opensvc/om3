@@ -119,6 +119,7 @@ func init() {
 		newCmdNodeSystemGroup(),
 		newCmdNodeSystemHardware(),
 		newCmdNodeSystemIPAddress(),
+		newCmdNodeSystemPatch(),
 		newCmdNodeSystemProperty(),
 		newCmdNodeSystemUser(),
 	)

@@ -27,7 +27,7 @@ func (a *DaemonAPI) getPeerNodeSystemProperty(ctx echo.Context, nodename string)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeSystemIPAddressWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemPropertyWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
