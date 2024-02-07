@@ -10,24 +10,24 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetNodeSystemSANInitiator(ctx echo.Context, nodename api.InPathNodeName) error {
+func (a *DaemonAPI) GetNodeSystemPatch(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
-		return a.getLocalNodeSystemSANInitiator(ctx)
+		return a.getLocalNodeSystemPatch(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		return a.getPeerNodeSystemSANInitiator(ctx, nodename)
+		return a.getPeerNodeSystemPatch(ctx, nodename)
 	}
 }
 
-func (a *DaemonAPI) getPeerNodeSystemSANInitiator(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerNodeSystemPatch(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeSystemSANInitiatorWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemPatchWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -35,28 +35,31 @@ func (a *DaemonAPI) getPeerNodeSystemSANInitiator(ctx echo.Context, nodename str
 	return nil
 }
 
-func (a *DaemonAPI) getLocalNodeSystemSANInitiator(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeSystemPatch(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
 	}
-	data, err := n.LoadSystem()
+	data, err := n.LoadPatch()
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Load system cache", "%s", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Load patch cache", "%s", err)
 	}
-	items := make(api.SANPathInitiatorItems, len(data.HBA))
-	for i := 0; i < len(data.HBA); i++ {
-		items[i] = api.SANPathInitiatorItem{
-			Kind: "SANPathInitiatorItem",
-			Data: api.SANPathInitiator{
-				Name: data.HBA[i].Name,
-				Type: data.HBA[i].Type,
+	items := make(api.PatchItems, 0)
+
+	for i := 0; i < len(data); i++ {
+
+		items = append(items, api.PatchItem{
+			Kind: "PatchItem",
+			Data: api.Patch{
+				Number:      data[i].Number,
+				Revision:    data[i].Revision,
+				InstalledAt: data[i].InstalledAt.String(),
 			},
 			Meta: api.NodeMeta{
 				Node: a.localhost,
 			},
-		}
+		})
 	}
 
-	return ctx.JSON(http.StatusOK, api.SANPathInitiatorList{Kind: "SANPathInitiatorList", Items: items})
+	return ctx.JSON(http.StatusOK, api.PatchList{Kind: "PatchList", Items: items})
 }

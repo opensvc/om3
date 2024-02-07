@@ -46,12 +46,12 @@ func (a *DaemonAPI) getLocalNodeSystemSANPath(ctx echo.Context) error {
 	for i := 0; i < len(data.Targets); i++ {
 		items[i] = api.SANPath{
 			Initiator: api.SANPathInitiator{
-				Name: &data.Targets[i].Initiator.Name,
-				Type: &data.Targets[i].Initiator.Type,
+				Name: data.Targets[i].Initiator.Name,
+				Type: data.Targets[i].Initiator.Type,
 			},
 			Target: api.SANPathTarget{
-				Name: &data.Targets[i].Target.Name,
-				Type: &data.Targets[i].Target.Type,
+				Name: data.Targets[i].Target.Name,
+				Type: data.Targets[i].Target.Type,
 			},
 		}
 	}

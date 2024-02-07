@@ -226,6 +226,26 @@ func (t KeywordMeta) Unstructured() map[string]any {
 	}
 }
 
+func (t PatchList) GetItems() any {
+	return t.Items
+}
+
+func (t PatchItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Patch) Unstructured() map[string]any {
+	return map[string]any{
+		"number":      t.Number,
+		"revision":    t.Revision,
+		"InstalledAt": t.InstalledAt,
+	}
+}
+
 func (t PropertyList) GetItems() any {
 	return t.Items
 }

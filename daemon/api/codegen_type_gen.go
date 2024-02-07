@@ -125,6 +125,16 @@ const (
 	OrchestrateStart Orchestrate = "start"
 )
 
+// Defines values for PatchItemKind.
+const (
+	PacthItem PatchItemKind = "PacthItem"
+)
+
+// Defines values for PatchListKind.
+const (
+	PatchListKindPatchList PatchListKind = "PatchList"
+)
+
 // Defines values for PlacementPolicy.
 const (
 	PlacementPolicyLastStart  PlacementPolicy = "last start"
@@ -849,6 +859,35 @@ type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
+// Patch defines model for Patch.
+type Patch struct {
+	InstalledAt string `json:"installedat"`
+	Number      string `json:"number"`
+	Revision    string `json:"revision"`
+}
+
+// PatchItem defines model for PatchItem.
+type PatchItem struct {
+	Data Patch         `json:"data"`
+	Kind PatchItemKind `json:"kind"`
+	Meta NodeMeta      `json:"meta"`
+}
+
+// PatchItemKind defines model for PatchItem.Kind.
+type PatchItemKind string
+
+// PatchItems defines model for PatchItems.
+type PatchItems = []PatchItem
+
+// PatchList defines model for PatchList.
+type PatchList struct {
+	Items PatchItems    `json:"items"`
+	Kind  PatchListKind `json:"kind"`
+}
+
+// PatchListKind defines model for PatchList.Kind.
+type PatchListKind string
+
 // PlacementPolicy object placement policy
 type PlacementPolicy string
 
@@ -1104,10 +1143,10 @@ type SANPath struct {
 // SANPathInitiator initiator is the host side san path endpoint.
 type SANPathInitiator struct {
 	// Name name is a worldwide unique path endpoint identifier.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Type type is the endpoint type.
-	Type *string `json:"type,omitempty"`
+	Type string `json:"type"`
 }
 
 // SANPathInitiatorItem defines model for SANPathInitiatorItem.
@@ -1148,10 +1187,10 @@ type SANPathListKind string
 // SANPathTarget target is the storage array side san path endpoint.
 type SANPathTarget struct {
 	// Name name is a worldwide unique path endpoint identifier.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Type type is a the endpoint type.
-	Type *string `json:"type,omitempty"`
+	Type string `json:"type"`
 }
 
 // Schedule defines model for Schedule.
