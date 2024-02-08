@@ -10,24 +10,24 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetNodeSystemPatch(ctx echo.Context, nodename api.InPathNodeName) error {
+func (a *DaemonAPI) GetNodeSystemPackage(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
-		return a.getLocalNodeSystemPatch(ctx)
+		return a.getLocalNodeSystemPackage(ctx)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		return a.getPeerNodeSystemPatch(ctx, nodename)
+		return a.getPeerNodeSystemPackage(ctx, nodename)
 	}
 }
 
-func (a *DaemonAPI) getPeerNodeSystemPatch(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) getPeerNodeSystemPackage(ctx echo.Context, nodename string) error {
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := c.GetNodeSystemPatchWithResponse(ctx.Request().Context(), nodename); err != nil {
+	if resp, err := c.GetNodeSystemPackageWithResponse(ctx.Request().Context(), nodename); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else if len(resp.Body) > 0 {
 		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
@@ -35,31 +35,32 @@ func (a *DaemonAPI) getPeerNodeSystemPatch(ctx echo.Context, nodename string) er
 	return nil
 }
 
-func (a *DaemonAPI) getLocalNodeSystemPatch(ctx echo.Context) error {
+func (a *DaemonAPI) getLocalNodeSystemPackage(ctx echo.Context) error {
 	n, err := object.NewNode()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
 	}
-	data, err := n.LoadPatch()
+	data, err := n.LoadPkg()
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Load patch cache", "%s", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Load package cache", "%s", err)
 	}
-	items := make(api.PatchItems, 0)
-
+	items := make(api.PackageItems, len(data))
 	for i := 0; i < len(data); i++ {
-
-		items = append(items, api.PatchItem{
-			Kind: "PatchItem",
-			Data: api.Patch{
-				Number:      data[i].Number,
-				Revision:    data[i].Revision,
+		items[i] = api.PackageItem{
+			Kind: "PackageItem",
+			Data: api.Package{
+				Version:     data[i].Version,
+				Name:        data[i].Name,
+				Arch:        data[i].Arch,
+				Type:        data[i].Type,
 				InstalledAt: data[i].InstalledAt,
+				Sig:         data[i].Sig,
 			},
 			Meta: api.NodeMeta{
 				Node: a.localhost,
 			},
-		})
+		}
 	}
 
-	return ctx.JSON(http.StatusOK, api.PatchList{Kind: "PatchList", Items: items})
+	return ctx.JSON(http.StatusOK, api.PackageList{Kind: "PackageList", Items: items})
 }

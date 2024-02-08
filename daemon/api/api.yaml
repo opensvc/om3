@@ -1697,6 +1697,28 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/package:
+    get:
+      description: View the package
+      operationId: GetNodeSystemPackage
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/system/patch:
     get:
       description: View the patch
@@ -2986,7 +3008,7 @@ components:
           x-go-name: ID
         devpath:
           type: string
-        size: 
+        size:
           type: integer
           format: uint64
         vendor:
@@ -3433,7 +3455,7 @@ components:
       required:
         - mac
         - address
-        - flagDeprecated
+        - flagdeprecated
         - intf
         - mask
         - type
@@ -3442,8 +3464,9 @@ components:
           type: string
         address:
           type: string
-        flagDeprecated:
+        flagdeprecated:
           type: boolean
+          x-go-name: FlagDeprecated
         intf:
           type: string
         mask:
@@ -3541,6 +3564,66 @@ components:
         size:
           type: integer
 
+    PackageList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageList
+        items:
+          $ref: '#/components/schemas/PackageItems'
+
+    PackageItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PackageItem'
+
+    PackageItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageItem
+        data:
+          $ref: '#/components/schemas/Package'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Package:
+      type: object
+      required:
+        - name
+        - version
+        - arch
+        - type
+        - installedat
+        - sig
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        arch:
+          type: string
+        type:
+          type: string
+        installedat:
+          type: string
+          format: data-time
+          x-go-type: "time.Time"
+          x-go-name: InstalledAt
+        sig:
+          type: string
+
     PatchList:
       type: object
       required:
@@ -3587,8 +3670,8 @@ components:
         revision:
           type: string
         installedat:
-          type: string
-          format: date-Time
+          format: date-time
+          x-go-type: "time.Time"
           x-go-name: InstalledAt
 
     PropertyList:
@@ -3607,7 +3690,7 @@ components:
     PropertyItems:
       type: array
       items:
-        $ref: '#/components/schemas/PropertyItem'      
+        $ref: '#/components/schemas/PropertyItem'
 
     PropertyItem:
       type: object
@@ -3644,7 +3727,7 @@ components:
           type1: string
           type2: number
           type3: boolean
-            
+
 
     NetworkIPNetwork:
       type: object

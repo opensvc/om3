@@ -55,7 +55,7 @@ func (t *CmdNodeSystemIPAddress) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,MAC:data.mac,ADDRESS:data.address,FLAGDEPRECATED:data.flagDeprecated,INTF:data.intf,MASK:data.mask,TYPE:data.type"
+	defaultOutput := "tab=NODE:meta.node,MAC:data.mac,ADDRESS:data.address,FLAG_DEPRECATED:data.FlagDeprecated,INTF:data.intf,MASK:data.mask,TYPE:data.type"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

@@ -149,11 +149,12 @@ func (t IPAddressItem) Unstructured() map[string]any {
 
 func (t IPAddress) Unstructured() map[string]any {
 	return map[string]any{
-		"mac":             t.Mac,
-		"flagdepreciated": t.FlagDeprecated,
-		"intf":            t.Intf,
-		"mask":            t.Mask,
-		"type":            t.Type,
+		"mac":            t.Mac,
+		"FlagDeprecated": t.FlagDeprecated,
+		"address":        t.Address,
+		"intf":           t.Intf,
+		"mask":           t.Mask,
+		"type":           t.Type,
 	}
 }
 
@@ -223,6 +224,29 @@ func (t KeywordMeta) Unstructured() map[string]any {
 		"keyword":      t.Keyword,
 		"is_evaluated": t.IsEvaluated,
 		"evaluated_as": t.EvaluatedAs,
+	}
+}
+
+func (t PackageList) GetItems() any {
+	return t.Items
+}
+
+func (t PackageItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Package) Unstructured() map[string]any {
+	return map[string]any{
+		"name":        t.Name,
+		"version":     t.Version,
+		"arch":        t.Arch,
+		"type":        t.Type,
+		"InstalledAt": t.InstalledAt,
+		"sig":         t.Sig,
 	}
 }
 
