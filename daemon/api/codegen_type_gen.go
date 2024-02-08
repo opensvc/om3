@@ -133,6 +133,16 @@ const (
 	OrchestrateStart Orchestrate = "start"
 )
 
+// Defines values for PackageItemKind.
+const (
+	PackageItemKindPackageItem PackageItemKind = "PackageItem"
+)
+
+// Defines values for PackageListKind.
+const (
+	PackageListKindPackageList PackageListKind = "PackageList"
+)
+
 // Defines values for PatchItemKind.
 const (
 	PacthItem PatchItemKind = "PacthItem"
@@ -552,7 +562,7 @@ type HardwareListKind string
 // IPAddress defines model for IPAddress.
 type IPAddress struct {
 	Address        string `json:"address"`
-	FlagDeprecated bool   `json:"flagDeprecated"`
+	FlagDeprecated bool   `json:"flagdeprecated"`
 	Intf           string `json:"intf"`
 	Mac            string `json:"mac"`
 	Mask           string `json:"mask"`
@@ -863,11 +873,43 @@ type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
+// Package defines model for Package.
+type Package struct {
+	Arch        string    `json:"arch"`
+	InstalledAt time.Time `json:"installedat"`
+	Name        string    `json:"name"`
+	Sig         string    `json:"sig"`
+	Type        string    `json:"type"`
+	Version     string    `json:"version"`
+}
+
+// PackageItem defines model for PackageItem.
+type PackageItem struct {
+	Data Package         `json:"data"`
+	Kind PackageItemKind `json:"kind"`
+	Meta NodeMeta        `json:"meta"`
+}
+
+// PackageItemKind defines model for PackageItem.Kind.
+type PackageItemKind string
+
+// PackageItems defines model for PackageItems.
+type PackageItems = []PackageItem
+
+// PackageList defines model for PackageList.
+type PackageList struct {
+	Items PackageItems    `json:"items"`
+	Kind  PackageListKind `json:"kind"`
+}
+
+// PackageListKind defines model for PackageList.Kind.
+type PackageListKind string
+
 // Patch defines model for Patch.
 type Patch struct {
-	InstalledAt string `json:"installedat"`
-	Number      string `json:"number"`
-	Revision    string `json:"revision"`
+	InstalledAt time.Time `json:"installedat"`
+	Number      string    `json:"number"`
+	Revision    string    `json:"revision"`
 }
 
 // PatchItem defines model for PatchItem.

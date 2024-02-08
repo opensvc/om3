@@ -1072,6 +1072,22 @@ func newCmdNodeSystemIPAddress() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeSystemPackage() *cobra.Command {
+	var options commands.CmdNodeSystemPackage
+	cmd := &cobra.Command{
+		Use:     "package",
+		Short:   "show node system package",
+		Aliases: []string{"pkg"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeSystemPatch() *cobra.Command {
 	var options commands.CmdNodeSystemPatch
 	cmd := &cobra.Command{

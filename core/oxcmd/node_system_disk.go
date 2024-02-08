@@ -56,7 +56,7 @@ func (t *CmdNodeSystemDisk) Run() error {
 		}
 	}
 
-	defaultOutput := "tab=NODE:meta.node,ID:data.ID,DEVPATH:data.devpath,SIZE:data.size,VENDOR:data.vendor,MODEL:data.model,TYPE:data.type,REGION_ID:data.regions[0].ID,OBJECT:data.regions[0].object,GROUP:data.regions[0].group,REGION_DEVPATH:data.regions[0].devpath,REGION_SIZE:data.regions[0].size"
+	defaultOutput := "tab=NODE:meta.node,ID:data.ID,DEVPATH:data.devpath,SIZE:data.size,VENDOR:data.vendor,MODEL:data.model,TYPE:data.type"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

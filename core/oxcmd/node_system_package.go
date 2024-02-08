@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdNodeSystemSANPath struct {
+	CmdNodeSystemPackage struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeSystemSANPath) Run() error {
+func (t *CmdNodeSystemPackage) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -34,9 +34,9 @@ func (t *CmdNodeSystemSANPath) Run() error {
 		return err
 	}
 
-	l := make(api.SANPathItems, 0)
+	l := make(api.PackageItems, 0)
 	for _, nodename := range nodenames {
-		response, err := c.GetNodeSystemSANPathWithResponse(context.Background(), nodename)
+		response, err := c.GetNodeSystemPackageWithResponse(context.Background(), nodename)
 		if err != nil {
 			return err
 		}
@@ -55,12 +55,12 @@ func (t *CmdNodeSystemSANPath) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,INITIATOR_NAME:data.initiator.name,INITIATOR_TYPE:data.initiator.type,TARGET_NAME:data.target.name,TARGET_TYPE:data.target.type"
+	defaultOutput := "tab=NODE:meta.node,NAME:data.name,VERSION:data.version,ARCH:data.arch,TYPE:data.type,INSTALLED_AT:data.InstalledAt,SIG:data.sig"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.SANPathList{Items: l, Kind: "SANPathList"},
+		Data:          api.PackageList{Items: l, Kind: "PackageList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

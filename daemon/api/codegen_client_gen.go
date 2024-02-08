@@ -279,6 +279,9 @@ type ClientInterface interface {
 	// GetNodeSystemIPAddress request
 	GetNodeSystemIPAddress(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeSystemPackage request
+	GetNodeSystemPackage(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeSystemPatch request
 	GetNodeSystemPatch(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1150,6 +1153,18 @@ func (c *Client) GetNodeSystemHardware(ctx context.Context, nodename InPathNodeN
 
 func (c *Client) GetNodeSystemIPAddress(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeSystemIPAddressRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeSystemPackage(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeSystemPackageRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -5481,6 +5496,40 @@ func NewGetNodeSystemIPAddressRequest(server string, nodename InPathNodeName) (*
 	return req, nil
 }
 
+// NewGetNodeSystemPackageRequest generates requests for GetNodeSystemPackage
+func NewGetNodeSystemPackageRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/system/package", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeSystemPatchRequest generates requests for GetNodeSystemPatch
 func NewGetNodeSystemPatchRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -7343,6 +7392,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeSystemIPAddressWithResponse request
 	GetNodeSystemIPAddressWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemIPAddressResponse, error)
 
+	// GetNodeSystemPackageWithResponse request
+	GetNodeSystemPackageWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemPackageResponse, error)
+
 	// GetNodeSystemPatchWithResponse request
 	GetNodeSystemPatchWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemPatchResponse, error)
 
@@ -8985,6 +9037,32 @@ func (r GetNodeSystemIPAddressResponse) StatusCode() int {
 	return 0
 }
 
+type GetNodeSystemPackageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PackageList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeSystemPackageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeSystemPackageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeSystemPatchResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10408,6 +10486,15 @@ func (c *ClientWithResponses) GetNodeSystemIPAddressWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetNodeSystemIPAddressResponse(rsp)
+}
+
+// GetNodeSystemPackageWithResponse request returning *GetNodeSystemPackageResponse
+func (c *ClientWithResponses) GetNodeSystemPackageWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemPackageResponse, error) {
+	rsp, err := c.GetNodeSystemPackage(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeSystemPackageResponse(rsp)
 }
 
 // GetNodeSystemPatchWithResponse request returning *GetNodeSystemPatchResponse
@@ -13783,6 +13870,60 @@ func ParseGetNodeSystemIPAddressResponse(rsp *http.Response) (*GetNodeSystemIPAd
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest IPAddressList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeSystemPackageResponse parses an HTTP response from a GetNodeSystemPackageWithResponse call
+func ParseGetNodeSystemPackageResponse(rsp *http.Response) (*GetNodeSystemPackageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeSystemPackageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PackageList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

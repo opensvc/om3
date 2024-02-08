@@ -55,7 +55,7 @@ func (t *CmdNodeSystemPatch) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,NUMBER:data.number,REVISION:data.revision,INSTALLEDAT:data.InstalledAt"
+	defaultOutput := "tab=NODE:meta.node,NUMBER:data.number,REVISION:data.revision,INSTALLED_AT:data.InstalledAt"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
