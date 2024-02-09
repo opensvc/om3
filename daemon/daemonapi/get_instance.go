@@ -34,7 +34,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		monitor := instance.MonitorData.Get(config.Path, config.Node)
 		status := instance.StatusData.Get(config.Path, config.Node)
 		d := api.InstanceItem{
-			Kind: "Instance",
+			Kind: "InstanceItem",
 			Meta: api.InstanceMeta{
 				Node:   config.Node,
 				Object: config.Path.String(),
@@ -64,7 +64,7 @@ func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace str
 	monitor := instance.MonitorData.Get(path, nodename)
 	status := instance.StatusData.Get(path, nodename)
 	item := api.InstanceItem{
-		Kind: "Instance",
+		Kind: "InstanceItem",
 		Meta: api.InstanceMeta{
 			Node:   nodename,
 			Object: path.String(),

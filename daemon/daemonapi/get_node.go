@@ -29,7 +29,7 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 		monitor := node.MonitorData.Get(config.Node)
 		status := node.StatusData.Get(config.Node)
 		d := api.NodeItem{
-			Kind: "Node",
+			Kind: "NodeItem",
 			Meta: api.NodeMeta{
 				Node: config.Node,
 			},

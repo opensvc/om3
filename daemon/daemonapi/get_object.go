@@ -55,7 +55,7 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 			continue
 		}
 		d := api.ObjectItem{
-			Kind: "Object",
+			Kind: "ObjectItem",
 			Meta: api.ObjectMeta{
 				Object: p.String(),
 			},
