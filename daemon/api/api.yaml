@@ -4743,7 +4743,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     '403':
-      description: Bad Request
+      description: Forbidden
       content:
         application/json:
           schema:

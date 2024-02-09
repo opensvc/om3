@@ -38,7 +38,7 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 				continue
 			}
 			item := api.ResourceItem{
-				Kind: "Resource",
+				Kind: "ResourceItem",
 				Meta: api.ResourceMeta{
 					Node:   config.Node,
 					Object: config.Path.String(),
