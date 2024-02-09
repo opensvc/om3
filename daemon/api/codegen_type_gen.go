@@ -277,6 +277,16 @@ const (
 	Flex     Topology = "flex"
 )
 
+// Defines values for UserItemKind.
+const (
+	UserItemKindUserItem UserItemKind = "UserItem"
+)
+
+// Defines values for UserListKind.
+const (
+	UserListKindUserList UserListKind = "UserList"
+)
+
 // ArbitratorStatus defines model for ArbitratorStatus.
 type ArbitratorStatus struct {
 	Status Status `json:"status"`
@@ -1286,6 +1296,12 @@ type SubsetsConfig = []SubsetConfig
 // Topology object topology
 type Topology string
 
+// User defines model for User.
+type User struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 // UserIdentity defines model for UserIdentity.
 type UserIdentity struct {
 	Auth      *string             `json:"auth,omitempty"`
@@ -1294,6 +1310,28 @@ type UserIdentity struct {
 	Namespace string              `json:"namespace"`
 	RawGrant  string              `json:"raw_grant"`
 }
+
+// UserItem defines model for UserItem.
+type UserItem struct {
+	Data User         `json:"data"`
+	Kind UserItemKind `json:"kind"`
+	Meta NodeMeta     `json:"meta"`
+}
+
+// UserItemKind defines model for UserItem.Kind.
+type UserItemKind string
+
+// UserItems defines model for UserItems.
+type UserItems = []UserItem
+
+// UserList defines model for UserList.
+type UserList struct {
+	Items UserItems    `json:"items"`
+	Kind  UserListKind `json:"kind"`
+}
+
+// UserListKind defines model for UserList.Kind.
+type UserListKind string
 
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string
