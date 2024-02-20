@@ -249,10 +249,21 @@ func Test_daemon(t *testing.T) {
 		})
 		require.False(t, t.Failed(), "abort test")
 
-		t.Run("get /node/name/{nodename}/system/package must return 404 if package cache not yet present", func(t *testing.T) {
-			resp, err := cli.GetNodeSystemPackageWithResponse(ctx, hostname.Hostname())
-			require.NoError(t, err, "unexpected error during cli.GetNodeSystemPackageWithResponse")
-			require.Equalf(t, http.StatusNotFound, resp.StatusCode(), "body: %s", resp.Body)
+		t.Run("get /node/name/{nodename}/system/... must return 404 if package cache not yet present", func(t *testing.T) {
+			testCases := map[string]func(context.Context, string, ...api.RequestEditorFn) (*http.Response, error){
+				"package": cli.GetNodeSystemPackage,
+				"patch":   cli.GetNodeSystemPatch,
+				"disk":    cli.GetNodeSystemDisk,
+				"group":   cli.GetNodeSystemGroup,
+			}
+			for s, f := range testCases {
+				t.Run("GET /node/name/{nodename}/system/"+s, func(t *testing.T) {
+
+					resp, err := f(ctx, hostname.Hostname())
+					require.NoError(t, err, "unexpected error during cli.GetNodeSystemPackageWithResponse")
+					require.Equalf(t, http.StatusNotFound, resp.StatusCode, "body: %s", resp.Body)
+				})
+			}
 		})
 		require.False(t, t.Failed(), "abort test")
 

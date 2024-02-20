@@ -1,6 +1,8 @@
 package daemonapi
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -42,7 +44,11 @@ func (a *DaemonAPI) getLocalNodeSystemPatch(ctx echo.Context) error {
 	}
 	data, err := n.LoadPatch()
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Load patch cache", "%s", err)
+		if errors.Is(err, fs.ErrNotExist) {
+			return JSONProblemf(ctx, http.StatusNotFound, "Load patch cache", "waiting for cached value: %s", err)
+		} else {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Load patch cache", "%s", err)
+		}
 	}
 	items := make(api.PatchItems, 0)
 
