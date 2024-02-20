@@ -53,12 +53,19 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
 	var nodenames []string
 	var errs error
-	if resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name); err != nil {
+	resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+	if err != nil {
 		return rawconfig.T{}, err
-	} else if len(resp.JSON200.Data.Scope) == 0 {
-		return rawconfig.T{}, nil
-	} else {
-		nodenames = resp.JSON200.Data.Scope
+	}
+	switch {
+	case resp.JSON200 != nil:
+		if len(resp.JSON200.Data.Scope) == 0 {
+			return rawconfig.T{}, nil
+		} else {
+			nodenames = resp.JSON200.Data.Scope
+		}
+	default:
+		return rawconfig.T{}, fmt.Errorf("unexpected GetObject response: %s", resp.Status())
 	}
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
