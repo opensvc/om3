@@ -209,7 +209,7 @@ func (t CompNodeconfs) fixRule(rule CompNodeconf) ExitCode {
 		}
 		return ExitOk
 	}
-	if err := n.Config().SetKeys(*keyop.Parse(rule.Key + "=" + rule.Value.(string))); err != nil {
+	if err := n.Config().Set(*keyop.Parse(rule.Key + "=" + rule.Value.(string))); err != nil {
 		t.Errorf("error when trying to set the rule: %s\n", err)
 		return ExitNok
 	}

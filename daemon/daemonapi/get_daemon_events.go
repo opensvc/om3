@@ -280,7 +280,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		pathM = pathL.StrMap()
 		selector = objectselector.New(
 			*params.Selector,
-			objectselector.WithInstalled(pathL),
+			objectselector.WithPaths(pathL),
 			objectselector.WithLocal(true),
 			objectselector.WithConfigFilterDisabled(),
 		)
@@ -315,7 +315,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 					if !pathM.Has(s) {
 						pathL = pathL.Merge([]naming.Path{ev.Path})
 						pathM[s] = nil
-						selector.SetInstalled(pathL)
+						selector.SetPaths(pathL)
 						if selected, err := getSelectedMap(); err != nil {
 							log.Errorf("can't filter on object created")
 							return err

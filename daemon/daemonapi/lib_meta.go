@@ -82,7 +82,7 @@ func (m *Meta) expandPath() error {
 	if m.Path != nil {
 		selection := objectselector.New(
 			*m.Path,
-			objectselector.WithInstalled(paths),
+			objectselector.WithPaths(paths),
 			objectselector.WithLocal(true),
 		)
 		matchedPaths, err := selection.Expand()

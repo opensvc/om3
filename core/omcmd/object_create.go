@@ -150,7 +150,7 @@ func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, e
 		ops = append(ops, *op)
 	}
 
-	if err := oc.Config().SetKeys(ops...); err != nil {
+	if err := oc.Config().Set(ops...); err != nil {
 		return "", err
 	}
 	return oc.Config().Raw().String(), nil
@@ -403,7 +403,7 @@ func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 		ops = append(ops, *op)
 	}
 
-	if err := oc.Config().SetKeys(ops...); err != nil {
+	if err := oc.Config().Set(ops...); err != nil {
 		return err
 	}
 
@@ -434,7 +434,7 @@ func (t CmdObjectCreate) localEmpty(p naming.Path) error {
 	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
-	if err := oc.Config().SetKeys(keyop.ParseOps(t.Keywords)...); err != nil {
+	if err := oc.Config().Set(keyop.ParseOps(t.Keywords)...); err != nil {
 		return err
 	}
 	return oc.Config().Commit()

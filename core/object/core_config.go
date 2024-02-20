@@ -73,8 +73,7 @@ func (t *core) ID() uuid.UUID {
 		Op:    keyop.Set,
 		Value: t.id.String(),
 	}
-	_ = t.config.Set(op)
-	if err := t.config.Commit(); err != nil {
+	if err := t.config.Set(op); err != nil {
 		t.log.Errorf("%s", err)
 	}
 	return t.id

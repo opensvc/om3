@@ -136,7 +136,7 @@ func (t *keystore) addKey(name string, b []byte) error {
 		Op:    keyop.Set,
 		Value: s,
 	}
-	if err := t.config.Set(op); err != nil {
+	if err := t.config.PrepareSet(op); err != nil {
 		return err
 	}
 	if t.config.Changed() {

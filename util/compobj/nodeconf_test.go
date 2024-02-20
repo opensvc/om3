@@ -231,7 +231,7 @@ func TestNodeConfCheckRuleFixRule(t *testing.T) {
 			}
 			o, err := object.NewNode()
 			require.NoError(t, err)
-			require.NoError(t, o.Config().SetKeys(keyop.ParseList(c.keys...)...))
+			require.NoError(t, o.Config().Set(keyop.ParseList(c.keys...)...))
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
 			require.Equal(t, ExitOk, obj.fixRule(c.rule))
 			require.Equal(t, ExitOk, obj.checkRule(c.rule))

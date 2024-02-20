@@ -7,9 +7,14 @@ GOTEST = $(GOCMD) test
 GOGEN = $(GOCMD) generate
 GOVET = $(GOCMD) vet
 
-OM = ./bin/om
-OX = ./bin/ox
-COMPOBJ = ./bin/compobj
+MKDIR = /usr/bin/mkdir
+INSTALL = /usr/bin/install
+PREFIX = /usr
+
+OM = bin/om
+OX = bin/ox
+COMPOBJ = bin/compobj
+COMPOBJ_D = $(PREFIX)/share/opensvc/compliance
 
 all: vet test build
 
@@ -36,3 +41,11 @@ test:
 
 vet:
 	$(GOVET) ./...
+
+install:
+	$(MKDIR) -p $(PREFIX)/bin
+	$(MKDIR) -p $(COMPOBJ_D)
+	$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM)
+	$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX)
+	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
+	$(PREFIX)/$(COMPOBJ) -i $(COMPOBJ_D)

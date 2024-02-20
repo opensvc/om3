@@ -177,7 +177,7 @@ func (t T) allocateSubnets() error {
 		})
 		t.Log().Infof("assign subnet %s to node %s", subnet, nodename)
 	}
-	return t.Config().SetKeys(kops...)
+	return t.Config().Set(kops...)
 }
 
 func (t *T) Setup() error {

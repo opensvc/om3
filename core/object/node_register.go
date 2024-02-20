@@ -182,8 +182,5 @@ func (t Node) writeUUID(s string) error {
 		return nil
 	}
 	op := keyop.Parse("node.uuid=" + s)
-	if err := t.Config().Set(*op); err != nil {
-		return err
-	}
-	return t.Config().Commit()
+	return t.Config().Set(*op)
 }
