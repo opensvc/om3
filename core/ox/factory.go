@@ -1000,6 +1000,182 @@ func newCmdNodeDrivers() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeSystem() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "system",
+		Short: "node system commands",
+	}
+	return cmd
+}
+
+func newCmdNodeSystemDisk() *cobra.Command {
+	var options commands.CmdNodeSystemDisk
+	cmd := &cobra.Command{
+		Use:     "disk",
+		Short:   "show node system disks",
+		Aliases: []string{"dsk", "dis"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemGroup() *cobra.Command {
+	var options commands.CmdNodeSystemGroup
+	cmd := &cobra.Command{
+		Use:     "group",
+		Short:   "show node system groups",
+		Aliases: []string{"grp", "gr"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemHardware() *cobra.Command {
+	var options commands.CmdNodeSystemHardware
+	cmd := &cobra.Command{
+		Use:     "hardware",
+		Short:   "show node system hardware",
+		Aliases: []string{"device", "hard"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemIPAddress() *cobra.Command {
+	var options commands.CmdNodeSystemIPAddress
+	cmd := &cobra.Command{
+		Use:     "ipaddress",
+		Short:   "show node system IP address",
+		Aliases: []string{"addr", "ipaddr"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemPackage() *cobra.Command {
+	var options commands.CmdNodeSystemPackage
+	cmd := &cobra.Command{
+		Use:     "package",
+		Short:   "show node system package",
+		Aliases: []string{"pkg"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemPatch() *cobra.Command {
+	var options commands.CmdNodeSystemPatch
+	cmd := &cobra.Command{
+		Use:     "patch",
+		Short:   "show node system patch",
+		Aliases: []string{"pacth"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemProperty() *cobra.Command {
+	var options commands.CmdNodeSystemProperty
+	cmd := &cobra.Command{
+		Use:     "property",
+		Short:   "show node system property",
+		Aliases: []string{"proper", "prop"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemSAN() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "san",
+		Short: "node system san commands",
+	}
+	return cmd
+}
+
+func newCmdNodeSystemSANPathInitiator() *cobra.Command {
+	var options commands.CmdNodeSystemInitiator
+	cmd := &cobra.Command{
+		Use:     "initiator",
+		Short:   "show node system san initiator",
+		Aliases: []string{"init", "ini"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemSANPath() *cobra.Command {
+	var options commands.CmdNodeSystemSANPath
+	cmd := &cobra.Command{
+		Use:     "path",
+		Short:   "show node system san path",
+		Aliases: []string{"pa"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSystemUser() *cobra.Command {
+	var options commands.CmdNodeSystemUser
+	cmd := &cobra.Command{
+		Use:     "user",
+		Short:   "show node system users",
+		Aliases: []string{"usr", "us"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeEdit() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{

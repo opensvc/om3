@@ -1,13 +1,22 @@
 package object
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/opensvc/om3/core/rawconfig"
 
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/disks"
 	"github.com/opensvc/om3/util/hostname"
 )
+
+func (t Node) nodeDisksCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "disks.json")
+}
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
@@ -33,10 +42,33 @@ func (t Node) PushDisks() (disks.Disks, error) {
 	if err != nil {
 		return l, err
 	}
+	if err := t.dumpDisks(l); err != nil {
+		return l, err
+	}
 	if err := t.pushDisks(l); err != nil {
 		return l, err
 	}
 	return l, nil
+}
+
+func (t Node) dumpDisks(data disks.Disks) error {
+	file, err := os.OpenFile(t.nodeDisksCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	return json.NewEncoder(file).Encode(data)
+}
+
+func (t Node) LoadDisks() (disks.Disks, error) {
+	var data disks.Disks
+	file, err := os.Open(t.nodeDisksCacheFile())
+	if err != nil {
+		return data, err
+	}
+	defer func() { _ = file.Close() }()
+	err = json.NewDecoder(file).Decode(&data)
+	return data, err
 }
 
 func pushSvcDisks(client *collector.Client, data disks.Disks) error {

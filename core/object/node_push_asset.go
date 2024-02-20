@@ -1,9 +1,13 @@
 package object
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/asset"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -20,6 +24,10 @@ type (
 		Get(string) (interface{}, error)
 	}
 )
+
+func (t Node) nodeSystemCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "system.json")
+}
 
 func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Value) {
 	data.Title = title
@@ -80,10 +88,33 @@ func (t Node) PushAsset() (asset.Data, error) {
 	if err != nil {
 		return data, err
 	}
+	if err := t.dumpSystem(data); err != nil {
+		return data, err
+	}
 	if err := t.pushAsset(data); err != nil {
 		return data, err
 	}
 	return data, nil
+}
+
+func (t Node) dumpSystem(data asset.Data) error {
+	file, err := os.OpenFile(t.nodeSystemCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	return json.NewEncoder(file).Encode(data)
+}
+
+func (t Node) LoadSystem() (asset.Data, error) {
+	var data asset.Data
+	file, err := os.Open(t.nodeSystemCacheFile())
+	if err != nil {
+		return data, err
+	}
+	defer func() { _ = file.Close() }()
+	err = json.NewDecoder(file).Decode(&data)
+	return data, err
 }
 
 func (t Node) getAsset() (asset.Data, error) {

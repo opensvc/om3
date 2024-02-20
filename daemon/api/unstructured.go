@@ -18,6 +18,30 @@ func (t Capability) Unstructured() map[string]any {
 	}
 }
 
+func (t DiskList) GetItems() any {
+	return t.Items
+}
+
+func (t DiskItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Disk) Unstructured() map[string]any {
+	return map[string]any{
+		"ID":      t.ID,
+		"devpath": t.Devpath,
+		"size":    t.Size,
+		"vendor":  t.Vendor,
+		"model":   t.Model,
+		"type":    t.Type,
+		"regions": t.Regions,
+	}
+}
+
 func (t ScheduleList) GetItems() any {
 	return t.Items
 }
@@ -67,6 +91,70 @@ func (t Node) Unstructured() map[string]any {
 		"config":  t.Config.Unstructured(),
 		"monitor": t.Monitor.Unstructured(),
 		"status":  t.Status.Unstructured(),
+	}
+}
+
+func (t GroupList) GetItems() any {
+	return t.Items
+}
+
+func (t GroupItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Group) Unstructured() map[string]any {
+	return map[string]any{
+		"id":   t.ID,
+		"name": t.Name,
+	}
+}
+
+func (t HardwareList) GetItems() any {
+	return t.Items
+}
+
+func (t HardwareItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Hardware) Unstructured() map[string]any {
+	return map[string]any{
+		"class":       t.Class,
+		"type":        t.Type,
+		"driver":      t.Driver,
+		"path":        t.Path,
+		"description": t.Description,
+	}
+}
+
+func (t IPAddressList) GetItems() any {
+	return t.Items
+}
+
+func (t IPAddressItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t IPAddress) Unstructured() map[string]any {
+	return map[string]any{
+		"mac":            t.Mac,
+		"FlagDeprecated": t.FlagDeprecated,
+		"address":        t.Address,
+		"intf":           t.Intf,
+		"mask":           t.Mask,
+		"type":           t.Type,
 	}
 }
 
@@ -136,6 +224,71 @@ func (t KeywordMeta) Unstructured() map[string]any {
 		"keyword":      t.Keyword,
 		"is_evaluated": t.IsEvaluated,
 		"evaluated_as": t.EvaluatedAs,
+	}
+}
+
+func (t PackageList) GetItems() any {
+	return t.Items
+}
+
+func (t PackageItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Package) Unstructured() map[string]any {
+	return map[string]any{
+		"name":        t.Name,
+		"version":     t.Version,
+		"arch":        t.Arch,
+		"type":        t.Type,
+		"InstalledAt": t.InstalledAt,
+		"sig":         t.Sig,
+	}
+}
+
+func (t PatchList) GetItems() any {
+	return t.Items
+}
+
+func (t PatchItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Patch) Unstructured() map[string]any {
+	return map[string]any{
+		"number":      t.Number,
+		"revision":    t.Revision,
+		"InstalledAt": t.InstalledAt,
+	}
+}
+
+func (t PropertyList) GetItems() any {
+	return t.Items
+}
+
+func (t PropertyItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t Property) Unstructured() map[string]any {
+	return map[string]any{
+		"error":  t.Error,
+		"value":  t.Value,
+		"title":  t.Title,
+		"source": t.Source,
+		"name":   t.Name,
 	}
 }
 
@@ -210,6 +363,62 @@ func (t ResourceItem) Unstructured() map[string]any {
 		"kind": t.Kind,
 		"meta": t.Meta.Unstructured(),
 		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t UserList) GetItems() any {
+	return t.Items
+}
+
+func (t UserItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t User) Unstructured() map[string]any {
+	return map[string]any{
+		"id":   t.ID,
+		"name": t.Name,
+	}
+}
+
+func (t SANPathList) GetItems() any {
+	return t.Items
+}
+
+func (t SANPath) Unstructured() map[string]any {
+	return map[string]any{
+		"initiator": t.Initiator.Unstructured(),
+		"target":    t.Target.Unstructured(),
+	}
+}
+
+func (t SANPathInitiatorList) GetItems() any {
+	return t.Items
+}
+
+func (t SANPathInitiatorItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t SANPathInitiator) Unstructured() map[string]any {
+	return map[string]any{
+		"type": t.Type,
+		"name": t.Name,
+	}
+}
+
+func (t SANPathTarget) Unstructured() map[string]any {
+	return map[string]any{
+		"type": t.Type,
+		"name": t.Name,
 	}
 }
 

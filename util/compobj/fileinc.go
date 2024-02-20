@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 )
 
 type (

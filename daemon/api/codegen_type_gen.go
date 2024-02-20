@@ -36,6 +36,46 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
+// Defines values for DiskItemKind.
+const (
+	DiskItemKindDiskItem DiskItemKind = "DiskItem"
+)
+
+// Defines values for DiskListKind.
+const (
+	DiskListKindDiskList DiskListKind = "DiskList"
+)
+
+// Defines values for GroupItemKind.
+const (
+	GroupItemKindGroupItem GroupItemKind = "GroupItem"
+)
+
+// Defines values for GroupListKind.
+const (
+	GroupListKindGroupList GroupListKind = "GroupList"
+)
+
+// Defines values for HardwareItemKind.
+const (
+	HardwareItemKindHardwareItem HardwareItemKind = "HardwareItem"
+)
+
+// Defines values for HardwareListKind.
+const (
+	HardwareListKindHardwareList HardwareListKind = "HardwareList"
+)
+
+// Defines values for IPAddressItemKind.
+const (
+	IPAddressItemKindIPAddressItem IPAddressItemKind = "IPAddressItem"
+)
+
+// Defines values for IPAddressListKind.
+const (
+	IDAddressList IPAddressListKind = "IDAddressList"
+)
+
 // Defines values for InstanceItemKind.
 const (
 	InstanceItemKindInstanceItem InstanceItemKind = "InstanceItem"
@@ -93,6 +133,26 @@ const (
 	OrchestrateStart Orchestrate = "start"
 )
 
+// Defines values for PackageItemKind.
+const (
+	PackageItemKindPackageItem PackageItemKind = "PackageItem"
+)
+
+// Defines values for PackageListKind.
+const (
+	PackageListKindPackageList PackageListKind = "PackageList"
+)
+
+// Defines values for PatchItemKind.
+const (
+	PacthItem PatchItemKind = "PacthItem"
+)
+
+// Defines values for PatchListKind.
+const (
+	PatchListKindPatchList PatchListKind = "PatchList"
+)
+
 // Defines values for PlacementPolicy.
 const (
 	PlacementPolicyLastStart  PlacementPolicy = "last start"
@@ -140,6 +200,11 @@ const (
 	PostDaemonSubActionActionStop    PostDaemonSubActionAction = "stop"
 )
 
+// Defines values for PropertyListKind.
+const (
+	PropertyListKindPropertyList PropertyListKind = "PropertyList"
+)
+
 // Defines values for Provisioned.
 const (
 	ProvisionedFalse Provisioned = "false"
@@ -170,6 +235,21 @@ const (
 	Squatter       Role = "squatter"
 )
 
+// Defines values for SANPathInitiatorItemKind.
+const (
+	SANPathInitiatorItemKindSANPathInitiatorItem SANPathInitiatorItemKind = "SANPathInitiatorItem"
+)
+
+// Defines values for SANPathInitiatorListKind.
+const (
+	SANPathInitiatorListKindSANPathInitiatorList SANPathInitiatorListKind = "SANPathInitiatorList"
+)
+
+// Defines values for SANPathListKind.
+const (
+	SANPathListKindSANPathList SANPathListKind = "SANPathList"
+)
+
 // Defines values for ScheduleItemKind.
 const (
 	ScheduleItemKindResourceItem ScheduleItemKind = "ResourceItem"
@@ -195,6 +275,16 @@ const (
 const (
 	Failover Topology = "failover"
 	Flex     Topology = "flex"
+)
+
+// Defines values for UserItemKind.
+const (
+	UserItemKindUserItem UserItemKind = "UserItem"
+)
+
+// Defines values for UserListKind.
+const (
+	UserListKindUserList UserListKind = "UserList"
 )
 
 // ArbitratorStatus defines model for ArbitratorStatus.
@@ -384,8 +474,132 @@ type DaemonSubsystemStatus struct {
 	State      string                 `json:"state"`
 }
 
+// Disk defines model for Disk.
+type Disk struct {
+	Devpath string   `json:"devpath"`
+	ID      string   `json:"id"`
+	Model   string   `json:"model"`
+	Regions []Region `json:"regions"`
+	Size    uint64   `json:"size"`
+	Type    string   `json:"type"`
+	Vendor  string   `json:"vendor"`
+}
+
+// DiskItem defines model for DiskItem.
+type DiskItem struct {
+	Data Disk         `json:"data"`
+	Kind DiskItemKind `json:"kind"`
+	Meta NodeMeta     `json:"meta"`
+}
+
+// DiskItemKind defines model for DiskItem.Kind.
+type DiskItemKind string
+
+// DiskItems defines model for DiskItems.
+type DiskItems = []DiskItem
+
+// DiskList defines model for DiskList.
+type DiskList struct {
+	Items DiskItems    `json:"items"`
+	Kind  DiskListKind `json:"kind"`
+}
+
+// DiskListKind defines model for DiskList.Kind.
+type DiskListKind string
+
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
+
+// Group defines model for Group.
+type Group struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// GroupItem defines model for GroupItem.
+type GroupItem struct {
+	Data Group         `json:"data"`
+	Kind GroupItemKind `json:"kind"`
+	Meta NodeMeta      `json:"meta"`
+}
+
+// GroupItemKind defines model for GroupItem.Kind.
+type GroupItemKind string
+
+// GroupItems defines model for GroupItems.
+type GroupItems = []GroupItem
+
+// GroupList defines model for GroupList.
+type GroupList struct {
+	Items GroupItems    `json:"items"`
+	Kind  GroupListKind `json:"kind"`
+}
+
+// GroupListKind defines model for GroupList.Kind.
+type GroupListKind string
+
+// Hardware defines model for Hardware.
+type Hardware struct {
+	Class       string `json:"class"`
+	Description string `json:"description"`
+	Driver      string `json:"driver"`
+	Path        string `json:"path"`
+	Type        string `json:"type"`
+}
+
+// HardwareItem defines model for HardwareItem.
+type HardwareItem struct {
+	Data Hardware         `json:"data"`
+	Kind HardwareItemKind `json:"kind"`
+	Meta NodeMeta         `json:"meta"`
+}
+
+// HardwareItemKind defines model for HardwareItem.Kind.
+type HardwareItemKind string
+
+// HardwareItems defines model for HardwareItems.
+type HardwareItems = []HardwareItem
+
+// HardwareList defines model for HardwareList.
+type HardwareList struct {
+	Items HardwareItems    `json:"items"`
+	Kind  HardwareListKind `json:"kind"`
+}
+
+// HardwareListKind defines model for HardwareList.Kind.
+type HardwareListKind string
+
+// IPAddress defines model for IPAddress.
+type IPAddress struct {
+	Address        string `json:"address"`
+	FlagDeprecated bool   `json:"flagdeprecated"`
+	Intf           string `json:"intf"`
+	Mac            string `json:"mac"`
+	Mask           string `json:"mask"`
+	Type           string `json:"type"`
+}
+
+// IPAddressItem defines model for IPAddressItem.
+type IPAddressItem struct {
+	Data IPAddress         `json:"data"`
+	Kind IPAddressItemKind `json:"kind"`
+	Meta NodeMeta          `json:"meta"`
+}
+
+// IPAddressItemKind defines model for IPAddressItem.Kind.
+type IPAddressItemKind string
+
+// IPAddressItems defines model for IPAddressItems.
+type IPAddressItems = []IPAddressItem
+
+// IPAddressList defines model for IPAddressList.
+type IPAddressList struct {
+	Items IPAddressItems    `json:"items"`
+	Kind  IPAddressListKind `json:"kind"`
+}
+
+// IPAddressListKind defines model for IPAddressList.Kind.
+type IPAddressListKind string
 
 // Instance defines model for Instance.
 type Instance struct {
@@ -669,6 +883,67 @@ type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
+// Package defines model for Package.
+type Package struct {
+	Arch        string    `json:"arch"`
+	InstalledAt time.Time `json:"installedat"`
+	Name        string    `json:"name"`
+	Sig         string    `json:"sig"`
+	Type        string    `json:"type"`
+	Version     string    `json:"version"`
+}
+
+// PackageItem defines model for PackageItem.
+type PackageItem struct {
+	Data Package         `json:"data"`
+	Kind PackageItemKind `json:"kind"`
+	Meta NodeMeta        `json:"meta"`
+}
+
+// PackageItemKind defines model for PackageItem.Kind.
+type PackageItemKind string
+
+// PackageItems defines model for PackageItems.
+type PackageItems = []PackageItem
+
+// PackageList defines model for PackageList.
+type PackageList struct {
+	Items PackageItems    `json:"items"`
+	Kind  PackageListKind `json:"kind"`
+}
+
+// PackageListKind defines model for PackageList.Kind.
+type PackageListKind string
+
+// Patch defines model for Patch.
+type Patch struct {
+	InstalledAt time.Time `json:"installedat"`
+	Number      string    `json:"number"`
+	Revision    string    `json:"revision"`
+}
+
+// PatchItem defines model for PatchItem.
+type PatchItem struct {
+	Data Patch         `json:"data"`
+	Kind PatchItemKind `json:"kind"`
+	Meta NodeMeta      `json:"meta"`
+}
+
+// PatchItemKind defines model for PatchItem.Kind.
+type PatchItemKind string
+
+// PatchItems defines model for PatchItems.
+type PatchItems = []PatchItem
+
+// PatchList defines model for PatchList.
+type PatchList struct {
+	Items PatchItems    `json:"items"`
+	Kind  PatchListKind `json:"kind"`
+}
+
+// PatchListKind defines model for PatchList.Kind.
+type PatchListKind string
+
 // PlacementPolicy object placement policy
 type PlacementPolicy string
 
@@ -783,8 +1058,45 @@ type Problem struct {
 	Title string `json:"title"`
 }
 
+// Property defines model for Property.
+type Property struct {
+	Error  string      `json:"error"`
+	Name   string      `json:"name"`
+	Source string      `json:"source"`
+	Title  string      `json:"title"`
+	Value  interface{} `json:"value"`
+}
+
+// PropertyItem defines model for PropertyItem.
+type PropertyItem struct {
+	Data Property `json:"data"`
+	Kind string   `json:"kind"`
+	Meta NodeMeta `json:"meta"`
+}
+
+// PropertyItems defines model for PropertyItems.
+type PropertyItems = []PropertyItem
+
+// PropertyList defines model for PropertyList.
+type PropertyList struct {
+	Items PropertyItems    `json:"items"`
+	Kind  PropertyListKind `json:"kind"`
+}
+
+// PropertyListKind defines model for PropertyList.Kind.
+type PropertyListKind string
+
 // Provisioned service, instance or resource provisioned state
 type Provisioned string
+
+// Region defines model for Region.
+type Region struct {
+	Devpath string `json:"devpath"`
+	Group   string `json:"group"`
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Size    uint64 `json:"size"`
+}
 
 // RelayMessage defines model for RelayMessage.
 type RelayMessage struct {
@@ -887,19 +1199,54 @@ type SANPath struct {
 // SANPathInitiator initiator is the host side san path endpoint.
 type SANPathInitiator struct {
 	// Name name is a worldwide unique path endpoint identifier.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Type type is the endpoint type.
-	Type *string `json:"type,omitempty"`
+	Type string `json:"type"`
 }
+
+// SANPathInitiatorItem defines model for SANPathInitiatorItem.
+type SANPathInitiatorItem struct {
+	// Data initiator is the host side san path endpoint.
+	Data SANPathInitiator         `json:"data"`
+	Kind SANPathInitiatorItemKind `json:"kind"`
+	Meta NodeMeta                 `json:"meta"`
+}
+
+// SANPathInitiatorItemKind defines model for SANPathInitiatorItem.Kind.
+type SANPathInitiatorItemKind string
+
+// SANPathInitiatorItems defines model for SANPathInitiatorItems.
+type SANPathInitiatorItems = []SANPathInitiatorItem
+
+// SANPathInitiatorList defines model for SANPathInitiatorList.
+type SANPathInitiatorList struct {
+	Items SANPathInitiatorItems    `json:"items"`
+	Kind  SANPathInitiatorListKind `json:"kind"`
+}
+
+// SANPathInitiatorListKind defines model for SANPathInitiatorList.Kind.
+type SANPathInitiatorListKind string
+
+// SANPathItems defines model for SANPathItems.
+type SANPathItems = []SANPath
+
+// SANPathList defines model for SANPathList.
+type SANPathList struct {
+	Items SANPathItems    `json:"items"`
+	Kind  SANPathListKind `json:"kind"`
+}
+
+// SANPathListKind defines model for SANPathList.Kind.
+type SANPathListKind string
 
 // SANPathTarget target is the storage array side san path endpoint.
 type SANPathTarget struct {
 	// Name name is a worldwide unique path endpoint identifier.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Type type is a the endpoint type.
-	Type *string `json:"type,omitempty"`
+	Type string `json:"type"`
 }
 
 // Schedule defines model for Schedule.
@@ -949,6 +1296,12 @@ type SubsetsConfig = []SubsetConfig
 // Topology object topology
 type Topology string
 
+// User defines model for User.
+type User struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 // UserIdentity defines model for UserIdentity.
 type UserIdentity struct {
 	Auth      *string             `json:"auth,omitempty"`
@@ -957,6 +1310,28 @@ type UserIdentity struct {
 	Namespace string              `json:"namespace"`
 	RawGrant  string              `json:"raw_grant"`
 }
+
+// UserItem defines model for UserItem.
+type UserItem struct {
+	Data User         `json:"data"`
+	Kind UserItemKind `json:"kind"`
+	Meta NodeMeta     `json:"meta"`
+}
+
+// UserItemKind defines model for UserItem.Kind.
+type UserItemKind string
+
+// UserItems defines model for UserItems.
+type UserItems = []UserItem
+
+// UserList defines model for UserList.
+type UserList struct {
+	Items UserItems    `json:"items"`
+	Kind  UserListKind `json:"kind"`
+}
+
+// UserListKind defines model for UserList.Kind.
+type UserListKind string
 
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string

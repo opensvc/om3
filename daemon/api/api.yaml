@@ -1664,6 +1664,276 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/system/disk:
+    get:
+      description: View the disk
+      operationId: GetNodeSystemDisk
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiskList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/group:
+    get:
+      description: View the group
+      operationId: GetNodeSystemGroup
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/package:
+    get:
+      description: View the package
+      operationId: GetNodeSystemPackage
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/patch:
+    get:
+      description: View the patch
+      operationId: GetNodeSystemPatch
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatchList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/hardware:
+    get:
+      description: View the hardwares
+      operationId: GetNodeSystemHardware
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/ipaddress:
+    get:
+      description: View the group
+      operationId: GetNodeSystemIPAddress
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPAddressList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/property:
+    get:
+      description: View the property
+      operationId: GetNodeSystemProperty
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/san/initiator:
+    get:
+      description: View the initiator
+      operationId: GetNodeSystemSANInitiator
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SANPathInitiatorList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/san/path:
+    get:
+      description: View the targets
+      operationId: GetNodeSystemSANPath
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SANPathList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /node/name/{nodename}/system/user:
+    get:
+      description: View the users
+      operationId: GetNodeSystemUser
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
   /instance/path/{namespace}/{kind}/{name}/progress:
     post:
       operationId: PostInstanceProgress
@@ -2795,6 +3065,92 @@ components:
         state:
           type: string
 
+    DiskList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+          kind:
+            type: string
+            enum:
+              - DiskList
+          items:
+            $ref: '#/components/schemas/DiskItems'
+
+    DiskItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/DiskItem'
+
+    DiskItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - DiskItem
+        data:
+          $ref: '#/components/schemas/Disk'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Disk:
+      type: object
+      required:
+        - id
+        - devpath
+        - size
+        - vendor
+        - model
+        - type
+        - regions
+      properties:
+        id:
+          type: string
+          x-go-name: ID
+        devpath:
+          type: string
+        size:
+          type: integer
+          format: uint64
+        vendor:
+          type: string
+        model:
+          type: string
+        type:
+          type: string
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+
+    Region:
+      type: object
+      required:
+        - id
+        - devpath
+        - object
+        - size
+        - group
+      properties:
+        id:
+          type: string
+          x-go-name: ID
+        devpath:
+          type: string
+        object:
+          type: string
+        size:
+          type: integer
+          format: uint64
+        group:
+          type: string
+
     DNSRecord:
       type: object
       required:
@@ -2839,6 +3195,106 @@ components:
         expired_at:
           type: string
           format: date-time
+
+    GroupList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - GroupList
+        items:
+          $ref: '#/components/schemas/GroupItems'
+
+    GroupItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/GroupItem'
+
+    GroupItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - GroupItem
+        data:
+          $ref: '#/components/schemas/Group'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Group:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
+
+    HardwareList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareList
+        items:
+          $ref: '#/components/schemas/HardwareItems'
+
+    HardwareItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/HardwareItem'
+
+    HardwareItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareItem
+        data:
+          $ref: '#/components/schemas/Hardware'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Hardware:
+      type: object
+      required:
+        - path
+        - description
+        - class
+        - driver
+        - type
+      properties:
+        path:
+          type: string
+        description:
+          type: string
+        class:
+          type: string
+        driver:
+          type: string
+        type:
+          type: string
 
     InstanceMeta:
       type: object
@@ -3067,6 +3523,64 @@ components:
           type: string
           format: date-time
 
+    IPAddressList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - IDAddressList
+        items:
+          $ref: '#/components/schemas/IPAddressItems'
+
+    IPAddressItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/IPAddressItem'
+
+    IPAddressItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - IPAddressItem
+        data:
+          $ref: '#/components/schemas/IPAddress'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    IPAddress:
+      type: object
+      required:
+        - mac
+        - address
+        - flagdeprecated
+        - intf
+        - mask
+        - type
+      properties:
+        mac:
+          type: string
+        address:
+          type: string
+        flagdeprecated:
+          type: boolean
+          x-go-name: FlagDeprecated
+        intf:
+          type: string
+        mask:
+          type: string
+        type:
+          type: string
+
     KeywordList:
       type: object
       required:
@@ -3156,6 +3670,171 @@ components:
           type: integer
         size:
           type: integer
+
+    PackageList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageList
+        items:
+          $ref: '#/components/schemas/PackageItems'
+
+    PackageItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PackageItem'
+
+    PackageItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageItem
+        data:
+          $ref: '#/components/schemas/Package'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Package:
+      type: object
+      required:
+        - name
+        - version
+        - arch
+        - type
+        - installedat
+        - sig
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        arch:
+          type: string
+        type:
+          type: string
+        installedat:
+          type: string
+          format: data-time
+          x-go-type: "time.Time"
+          x-go-name: InstalledAt
+        sig:
+          type: string
+
+    PatchList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PatchList
+        items:
+          $ref: '#/components/schemas/PatchItems'
+
+    PatchItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PatchItem'
+
+    PatchItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PacthItem
+        data:
+          $ref: '#/components/schemas/Patch'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Patch:
+      type: object
+      required:
+        - number
+        - revision
+        - installedat
+      properties:
+        number:
+          type: string
+        revision:
+          type: string
+        installedat:
+          format: date-time
+          x-go-type: "time.Time"
+          x-go-name: InstalledAt
+
+    PropertyList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PropertyList
+        items:
+          $ref: '#/components/schemas/PropertyItems'
+
+    PropertyItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PropertyItem'
+
+    PropertyItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Property'
+
+    Property:
+      type: object
+      required:
+        - error
+        - name
+        - source
+        - title
+        - value
+      properties:
+        error:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        value: !!set
+          type1: string
+          type2: number
+          type3: boolean
+
 
     NetworkIPNetwork:
       type: object
@@ -4230,6 +4909,24 @@ components:
         - root
         - squatter
 
+    SANPathList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathList
+        items:
+          $ref: '#/components/schemas/SANPathItems'
+
+    SANPathItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPath'
+
     SANPath:
       type: object
       required:
@@ -4241,9 +4938,46 @@ components:
         target:
           $ref: '#/components/schemas/SANPathTarget'
 
+    SANPathInitiatorList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorList
+        items:
+          $ref: '#/components/schemas/SANPathInitiatorItems'
+
+    SANPathInitiatorItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPathInitiatorItem'
+
+    SANPathInitiatorItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorItem
+        data:
+          $ref: '#/components/schemas/SANPathInitiator'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
     SANPathInitiator:
       type: object
       description: initiator is the host side san path endpoint.
+      required:
+        - name
+        - type
       properties:
         name:
           type: string
@@ -4257,6 +4991,9 @@ components:
     SANPathTarget:
       type: object
       description: target is the storage array side san path endpoint.
+      required:
+        - name
+        - type
       properties:
         name:
           type: string
@@ -4392,6 +5129,52 @@ components:
             type: array
             items:
               type: string
+
+    UserList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - UserList
+        items:
+          $ref: '#/components/schemas/UserItems'
+
+    UserItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/UserItem'
+
+    UserItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - UserItem
+        data:
+          $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
 
   parameters:
 

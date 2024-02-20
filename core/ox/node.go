@@ -62,8 +62,10 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
-	cmdNodeEdit     = newCmdNodeEdit()
-	cmdNodeValidate = newCmdNodeValidate()
+	cmdNodeSystem    = newCmdNodeSystem()
+	cmdNodeSystemSAN = newCmdNodeSystemSAN()
+	cmdNodeEdit      = newCmdNodeEdit()
+	cmdNodeValidate  = newCmdNodeValidate()
 )
 
 func init() {
@@ -111,10 +113,28 @@ func init() {
 		newCmdNodeComplianceListModuleset(),
 		newCmdNodeComplianceListRuleset(),
 	)
+	cmdNodeSystem.AddCommand(
+		cmdNodeSystemSAN,
+		newCmdNodeSystemDisk(),
+		newCmdNodeSystemGroup(),
+		newCmdNodeSystemHardware(),
+		newCmdNodeSystemIPAddress(),
+		newCmdNodeSystemPackage(),
+		newCmdNodeSystemPatch(),
+		newCmdNodeSystemProperty(),
+		newCmdNodeSystemUser(),
+	)
+
+	cmdNodeSystemSAN.AddCommand(
+		newCmdNodeSystemSANPathInitiator(),
+		newCmdNodeSystemSANPath(),
+	)
+
 	cmdNodeEdit.AddCommand(
 		newCmdNodeEditConfig(),
 	)
 	cmdNode.AddCommand(
+		cmdNodeSystem,
 		cmdNodeEdit,
 		cmdNodePrint,
 		cmdNodePush,

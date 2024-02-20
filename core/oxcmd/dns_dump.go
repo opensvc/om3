@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
@@ -32,7 +32,7 @@ func (t *CmdDNSDump) Run() error {
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected get daemon dns dump status code %s", resp.Status)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var parsed dns.Zone
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return err

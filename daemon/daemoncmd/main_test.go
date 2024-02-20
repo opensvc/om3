@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/client"
