@@ -1,0 +1,18 @@
+[
+  {
+    "name": "foo",
+    "version": "2.61.1 rev 20671",
+    "arch": "",
+    "type": "snap",
+    "installed_at": "0001-01-01T00:00:00Z",
+    "sig": ""
+  },
+  {
+    "name": "bar",
+    "version": "0.9 rev 83",
+    "arch": "",
+    "type": "snap",
+    "installed_at": "0001-01-01T00:00:00Z",
+    "sig": ""
+  }
+]
