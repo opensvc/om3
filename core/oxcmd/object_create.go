@@ -146,7 +146,7 @@ func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, e
 		ops = append(ops, *op)
 	}
 
-	if err := oc.Config().SetKeys(ops...); err != nil {
+	if err := oc.Config().Set(ops...); err != nil {
 		return "", err
 	}
 	return oc.Config().Raw().String(), nil

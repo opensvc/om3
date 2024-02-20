@@ -95,7 +95,7 @@ func bootStrapCcfg() error {
 			continue
 		}
 		op := keyop.New(k.Key, keyop.Set, k.Default, 0)
-		if err := ccfg.Config().Set(*op); err != nil {
+		if err := ccfg.Config().PrepareSet(*op); err != nil {
 			return err
 		}
 		if k.Obfuscate {

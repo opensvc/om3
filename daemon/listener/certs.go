@@ -226,7 +226,7 @@ func (t *T) bootStrapCertPath(p naming.Path, caPath naming.Path) error {
 		keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, hostname.Hostname(), 0),
 	}
 	for _, op := range ops {
-		if err := certSec.Config().Set(*op); err != nil {
+		if err := certSec.Config().PrepareSet(*op); err != nil {
 			return err
 		}
 	}
@@ -266,9 +266,6 @@ func (t *T) migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
 	}
 	t.log.Infof("update migrated cert ca keyword to %s", caPath)
 	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
-	if err = certSec.Config().Set(*op); err != nil {
-		return
-	}
-	err = certSec.Config().Commit()
+	err = certSec.Config().Set(*op)
 	return
 }

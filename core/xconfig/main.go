@@ -433,6 +433,10 @@ func (t *T) GetSizeStrict(k key.T) (*int64, error) {
 
 // PrepareUnset unsets keywords from config without committing changes.
 func (t *T) PrepareUnset(ks ...key.T) error {
+	ks, err := t.expandKeywords(ks...)
+	if err != nil {
+		return err
+	}
 	for _, k := range ks {
 		if !t.file.Section(k.Section).HasKey(k.Option) {
 			continue
@@ -443,6 +447,27 @@ func (t *T) PrepareUnset(ks ...key.T) error {
 	return nil
 }
 
+func (t *T) expandKeywords(ks ...key.T) (key.L, error) {
+	var l key.L
+	for _, k := range ks {
+		if !DriverGroups.Has(k.Section) {
+			l = append(l, k)
+			continue
+		}
+		prefix := k.Section + "#"
+		for _, section := range t.file.SectionStrings() {
+			if !strings.HasPrefix(section, prefix) {
+				continue
+			}
+			l = append(l, key.T{
+				Section: section,
+				Option:  k.Option,
+			})
+		}
+	}
+	return l, nil
+}
+
 // Unset deletes keys and commits.
 func (t *T) Unset(ks ...key.T) error {
 	if err := t.PrepareUnset(ks...); err != nil {
@@ -451,7 +476,14 @@ func (t *T) Unset(ks ...key.T) error {
 	return t.Commit()
 }
 
-func (t *T) Set(op keyop.T) error {
+func (t *T) Set(ops ...keyop.T) error {
+	if err := t.PrepareSet(ops...); err != nil {
+		return err
+	}
+	return t.Commit()
+}
+
+func (t *T) prepareSetKey(op keyop.T) error {
 	if !DriverGroups.Has(op.Key.Section) {
 		return t.set(op)
 	}
@@ -1231,21 +1263,13 @@ func (t T) ModTime() time.Time {
 	return file.ModTime(t.ConfigFilePath)
 }
 
-// SetKeys applies key operations to config and commit changes.
-func (t *T) SetKeys(kops ...keyop.T) error {
-	if err := t.PrepareSetKeys(kops...); err != nil {
-		return err
-	}
-	return t.Commit()
-}
-
-// PrepareSetKeys applies key operations to config without committing changes.
-func (t *T) PrepareSetKeys(kops ...keyop.T) error {
+// PrepareSet applies key operations to config without committing changes.
+func (t *T) PrepareSet(kops ...keyop.T) error {
 	for _, op := range kops {
 		if op.IsZero() {
 			return fmt.Errorf("invalid set expression: %s", op)
 		}
-		if err := t.Set(op); err != nil {
+		if err := t.prepareSetKey(op); err != nil {
 			return err
 		}
 	}
@@ -1266,7 +1290,7 @@ func (t *T) PrepareUpdate(deleteSections []string, unsetKeys []key.T, keyOps []k
 	if err := t.PrepareUnset(unsetKeys...); err != nil {
 		return err
 	}
-	if err := t.PrepareSetKeys(keyOps...); err != nil {
+	if err := t.PrepareSet(keyOps...); err != nil {
 		return err
 	}
 	return nil

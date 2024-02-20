@@ -59,7 +59,7 @@ func (t Node) PRKey() (string, error) {
 			Op:    keyop.Set,
 			Value: prkey,
 		}
-		if err := t.config.SetKeys(op); err != nil {
+		if err := t.config.Set(op); err != nil {
 			return "", err
 		}
 		if err := t.config.Commit(); err != nil {

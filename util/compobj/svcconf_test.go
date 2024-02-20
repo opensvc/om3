@@ -27,7 +27,7 @@ func TestSvcconfAdd(t *testing.T) {
 	require.NoError(t, err)
 	s, err := object.NewSvc(p)
 	require.NoError(t, err)
-	require.NoError(t, s.Config().SetKeys(keyop.ParseList("app#0.start=test", "app#1.start=test1")...))
+	require.NoError(t, s.Config().Set(keyop.ParseList("app#0.start=test", "app#1.start=test1")...))
 	obj := CompSvcconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	require.Error(t, obj.Add(`[{}]`))
 	require.True(t, stringslice.Has("app#0", svcRessourcesNames))
@@ -282,7 +282,7 @@ func TestSvcconfCheckRuleFixRule(t *testing.T) {
 	obj := CompSvcconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	for name, c := range testCases {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, s.Config().SetKeys(keyop.ParseList("app#0.start=test", "app#1.start=test", "container#0.type=vbox", "container#0.name=v", "container#0.stop_timeout=8", "container#0.same=a", "container#1.type=docker", "container#1.name=d", "container#1.stop_timeout=8", "container#1.same=a")...))
+			require.NoError(t, s.Config().Set(keyop.ParseList("app#0.start=test", "app#1.start=test", "container#0.type=vbox", "container#0.name=v", "container#0.stop_timeout=8", "container#0.same=a", "container#1.type=docker", "container#1.name=d", "container#1.stop_timeout=8", "container#1.same=a")...))
 			svcRessourcesNames = s.Config().SectionStrings()
 			require.Equal(t, c.expectedCheckResult, obj.checkRule(c.rule))
 			require.Equal(t, ExitOk, obj.fixRule(c.rule))

@@ -8,5 +8,5 @@ import (
 
 // Set sets a keyword value
 func (t *Node) Set(ctx context.Context, kops ...keyop.T) error {
-	return t.config.SetKeys(kops...)
+	return t.config.Set(kops...)
 }

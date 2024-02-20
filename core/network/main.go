@@ -225,7 +225,7 @@ func (t *T) Set(option, value string) error {
 		Op:    keyop.Set,
 		Value: value,
 	}
-	if err := t.Config().Set(kop); err != nil {
+	if err := t.Config().PrepareSet(kop); err != nil {
 		return err
 	}
 	t.needCommit = true

@@ -15,5 +15,5 @@ func (t *core) Set(ctx context.Context, kops ...keyop.T) error {
 		return err
 	}
 	defer unlock()
-	return t.config.SetKeys(kops...)
+	return t.config.Set(kops...)
 }

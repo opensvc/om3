@@ -340,7 +340,7 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 			}
 		} else {
 			kop := keyop.Parse(resourceName + "." + variable + "=" + rule.Value.(string))
-			if err := o.Config().PrepareSetKeys(*kop); err != nil {
+			if err := o.Config().PrepareSet(*kop); err != nil {
 				t.Errorf("set %s: %s", *kop, err)
 				e = e.Merge(ExitNok)
 				continue

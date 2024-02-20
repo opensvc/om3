@@ -45,9 +45,6 @@ func (t *Manager) addClusterNode(node string) error {
 	if err := ccfg.Config().Set(*op); err != nil {
 		return err
 	}
-	if err := ccfg.Config().Commit(); err != nil {
-		return err
-	}
 	if err != nil {
 		return err
 	}
@@ -86,9 +83,6 @@ func (t *Manager) removeClusterNode(node string) error {
 	}
 	op := keyop.New(key.New("cluster", "nodes"), keyop.Remove, node, 0)
 	if err := ccfg.Config().Set(*op); err != nil {
-		return err
-	}
-	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
 	if err != nil {
