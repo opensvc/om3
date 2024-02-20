@@ -1,11 +1,13 @@
 package daemonapi
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"net/http"
 )
 
 func (a *DaemonAPI) GetNodeSystemSANPath(ctx echo.Context, nodename api.InPathNodeName) error {
