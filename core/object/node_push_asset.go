@@ -25,7 +25,9 @@ type (
 	}
 )
 
-var nodeSystemCacheFile = filepath.Join(rawconfig.NodeVarDir(), "system.json")
+func (t Node) nodeSystemCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "system.json")
+}
 
 func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Value) {
 	data.Title = title
@@ -96,7 +98,7 @@ func (t Node) PushAsset() (asset.Data, error) {
 }
 
 func (t Node) dumpSystem(data asset.Data) error {
-	file, err := os.OpenFile(nodeSystemCacheFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	file, err := os.OpenFile(t.nodeSystemCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func (t Node) dumpSystem(data asset.Data) error {
 
 func (t Node) LoadSystem() (asset.Data, error) {
 	var data asset.Data
-	file, err := os.Open(nodeSystemCacheFile)
+	file, err := os.Open(t.nodeSystemCacheFile())
 	if err != nil {
 		return data, err
 	}

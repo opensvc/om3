@@ -3,15 +3,18 @@ package object
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opensvc/om3/core/rawconfig"
 	"os"
 	"path/filepath"
+
+	"github.com/opensvc/om3/core/rawconfig"
 
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/packages"
 )
 
-var nodePkgCacheFile = filepath.Join(rawconfig.NodeVarDir(), "package.json")
+func (t Node) nodePackageCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "package.json")
+}
 
 func (t Node) PushPkg() ([]packages.Pkg, error) {
 	l, err := packages.List()
@@ -29,7 +32,7 @@ func (t Node) PushPkg() ([]packages.Pkg, error) {
 }
 
 func (t Node) dumpPkg(data []packages.Pkg) error {
-	file, err := os.OpenFile(nodePkgCacheFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	file, err := os.OpenFile(t.nodePackageCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
@@ -39,7 +42,7 @@ func (t Node) dumpPkg(data []packages.Pkg) error {
 
 func (t Node) LoadPkg() ([]packages.Pkg, error) {
 	var data []packages.Pkg
-	file, err := os.Open(nodePkgCacheFile)
+	file, err := os.Open(t.nodePackageCacheFile())
 	if err != nil {
 		return data, err
 	}

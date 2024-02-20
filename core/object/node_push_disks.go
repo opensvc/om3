@@ -3,9 +3,10 @@ package object
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opensvc/om3/core/rawconfig"
 	"os"
 	"path/filepath"
+
+	"github.com/opensvc/om3/core/rawconfig"
 
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
@@ -13,7 +14,9 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 )
 
-var nodeDisksCacheFile = filepath.Join(rawconfig.NodeVarDir(), "disks.json")
+func (t Node) nodeDisksCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "disks.json")
+}
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
@@ -49,7 +52,7 @@ func (t Node) PushDisks() (disks.Disks, error) {
 }
 
 func (t Node) dumpDisks(data disks.Disks) error {
-	file, err := os.OpenFile(nodeDisksCacheFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	file, err := os.OpenFile(t.nodeDisksCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
@@ -59,7 +62,7 @@ func (t Node) dumpDisks(data disks.Disks) error {
 
 func (t Node) LoadDisks() (disks.Disks, error) {
 	var data disks.Disks
-	file, err := os.Open(nodeDisksCacheFile)
+	file, err := os.Open(t.nodeDisksCacheFile())
 	if err != nil {
 		return data, err
 	}

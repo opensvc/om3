@@ -3,15 +3,18 @@ package object
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opensvc/om3/core/rawconfig"
 	"os"
 	"path/filepath"
+
+	"github.com/opensvc/om3/core/rawconfig"
 
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/patches"
 )
 
-var nodePatchCacheFile = filepath.Join(rawconfig.NodeVarDir(), "patch.json")
+func (t Node) nodePatchCacheFile() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "patch.json")
+}
 
 func (t Node) PushPatch() ([]patches.Patch, error) {
 	l, err := patches.List()
@@ -28,7 +31,7 @@ func (t Node) PushPatch() ([]patches.Patch, error) {
 }
 
 func (t Node) dumpPatch(data []patches.Patch) error {
-	file, err := os.OpenFile(nodePatchCacheFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	file, err := os.OpenFile(t.nodePatchCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
@@ -38,7 +41,7 @@ func (t Node) dumpPatch(data []patches.Patch) error {
 
 func (t Node) LoadPatch() ([]patches.Patch, error) {
 	var data []patches.Patch
-	file, err := os.Open(nodePatchCacheFile)
+	file, err := os.Open(t.nodePatchCacheFile())
 	if err != nil {
 		return data, err
 	}
