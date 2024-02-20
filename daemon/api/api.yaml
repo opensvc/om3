@@ -1685,6 +1685,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/group:
     get:
@@ -1707,6 +1712,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/package:
     get:
@@ -1729,6 +1739,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/patch:
     get:
@@ -1751,6 +1766,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/hardware:
     get:
@@ -1773,6 +1793,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/ipaddress:
     get:
@@ -1795,6 +1820,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/property:
     get:
@@ -1817,6 +1847,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/san/initiator:
     get:
@@ -1839,6 +1874,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/san/path:
     get:
@@ -1861,6 +1901,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /node/name/{nodename}/system/user:
     get:
@@ -1883,6 +1928,11 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
 
   /instance/path/{namespace}/{kind}/{name}/progress:
     post:
