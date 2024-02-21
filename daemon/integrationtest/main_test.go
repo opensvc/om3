@@ -248,13 +248,19 @@ func Test_daemon(t *testing.T) {
 			}
 		})
 		require.False(t, t.Failed(), "abort test")
-
+		t.Log("Test")
 		t.Run("get /node/name/{nodename}/system/... must return 404 if package cache not yet present", func(t *testing.T) {
 			testCases := map[string]func(context.Context, string, ...api.RequestEditorFn) (*http.Response, error){
-				"package": cli.GetNodeSystemPackage,
-				"patch":   cli.GetNodeSystemPatch,
-				"disk":    cli.GetNodeSystemDisk,
-				"group":   cli.GetNodeSystemGroup,
+				"package":       cli.GetNodeSystemPackage,
+				"patch":         cli.GetNodeSystemPatch,
+				"disk":          cli.GetNodeSystemDisk,
+				"group":         cli.GetNodeSystemGroup,
+				"hardware":      cli.GetNodeSystemHardware,
+				"ipaddress":     cli.GetNodeSystemIPAddress,
+				"property":      cli.GetNodeSystemProperty,
+				"san/initiator": cli.GetNodeSystemSANInitiator,
+				"san/path":      cli.GetNodeSystemSANPath,
+				"user":          cli.GetNodeSystemUser,
 			}
 			for s, f := range testCases {
 				t.Run("GET /node/name/{nodename}/system/"+s, func(t *testing.T) {
