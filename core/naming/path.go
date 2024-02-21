@@ -324,6 +324,7 @@ func (t Paths) StrMap() M {
 	m := make(M)
 	for _, p := range t {
 		m[p.String()] = nil
+		m[p.FQN()] = nil
 	}
 	return m
 }
