@@ -1,11 +1,14 @@
 package object
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/asset"
@@ -29,7 +32,7 @@ func (t Node) nodeSystemCacheFile() string {
 	return filepath.Join(rawconfig.NodeVarDir(), "system.json")
 }
 
-func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Value) {
+func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Property) {
 	data.Title = title
 	k := key.Parse(kw)
 	if t.MergedConfig().HasKey(k) {
@@ -56,21 +59,21 @@ func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt in
 	return
 }
 
-func (t Node) assetAgentVersion() (data asset.Value) {
+func (t Node) assetAgentVersion() (data asset.Property) {
 	data.Title = "agent version"
 	data.Source = asset.SrcProbe
 	data.Value = version.Version()
 	return
 }
 
-func (t Node) assetNodename() (data asset.Value) {
+func (t Node) assetNodename() (data asset.Property) {
 	data.Title = "nodename"
 	data.Source = asset.SrcProbe
 	data.Value = hostname.Hostname()
 	return
 }
 
-func (t Node) assetValueClusterID() (data asset.Value) {
+func (t Node) assetValueClusterID() (data asset.Property) {
 	k := key.T{Section: "cluster", Option: "id"}
 	data.Title = "cluster id"
 	data.Source = asset.SrcProbe
@@ -121,36 +124,36 @@ func (t Node) getAsset() (asset.Data, error) {
 	data := asset.NewData()
 
 	// from core
-	data.ClusterID = t.assetValueClusterID()
-	data.Nodename = t.assetNodename()
-	data.Version = t.assetAgentVersion()
+	data.Properties.ClusterID = t.assetValueClusterID()
+	data.Properties.Nodename = t.assetNodename()
+	data.Properties.Version = t.assetAgentVersion()
 
 	// from probe
 	probe := asset.New()
-	data.FQDN = t.assetValueFromProbe("node.fqdn", "fqdn", probe, nil)
-	data.OSName = t.assetValueFromProbe("node.os_name", "os name", probe, nil)
-	data.OSVendor = t.assetValueFromProbe("node.os_vendor", "os vendor", probe, nil)
-	data.OSRelease = t.assetValueFromProbe("node.os_release", "os release", probe, nil)
-	data.OSKernel = t.assetValueFromProbe("node.os_kernel", "os kernel", probe, nil)
-	data.OSArch = t.assetValueFromProbe("node.os_arch", "os arch", probe, nil)
-	data.MemBytes = t.assetValueFromProbe("node.mem_bytes", "mem bytes", probe, nil)
-	data.MemSlots = t.assetValueFromProbe("node.mem_slots", "mem slots", probe, nil)
-	data.MemBanks = t.assetValueFromProbe("node.mem_banks", "mem banks", probe, nil)
-	data.CPUFreq = t.assetValueFromProbe("node.cpu_freq", "cpu freq", probe, nil)
-	data.CPUThreads = t.assetValueFromProbe("node.cpu_threads", "cpu threads", probe, nil)
-	data.CPUCores = t.assetValueFromProbe("node.cpu_cores", "cpu cores", probe, nil)
-	data.CPUDies = t.assetValueFromProbe("node.cpu_dies", "cpu dies", probe, nil)
-	data.CPUModel = t.assetValueFromProbe("node.cpu_model", "cpu model", probe, nil)
-	data.BIOSVersion = t.assetValueFromProbe("node.bios_version", "bios version", probe, nil)
-	data.Serial = t.assetValueFromProbe("node.serial", "serial", probe, nil)
-	data.SPVersion = t.assetValueFromProbe("node.sp_version", "sp version", probe, nil)
-	data.Enclosure = t.assetValueFromProbe("node.enclosure", "enclosure", probe, nil)
-	data.TZ = t.assetValueFromProbe("node.tz", "timezone", probe, nil)
-	data.Manufacturer = t.assetValueFromProbe("node.manufacturer", "manufacturer", probe, nil)
-	data.Model = t.assetValueFromProbe("node.model", "model", probe, nil)
-	data.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, "")
-	data.LastBoot = t.assetValueFromProbe("node.last_boot", "last boot", probe, nil)
-	data.BootID = t.assetValueFromProbe("node.boot_id", "boot id", probe, nil)
+	data.Properties.FQDN = t.assetValueFromProbe("node.fqdn", "fqdn", probe, nil)
+	data.Properties.OSName = t.assetValueFromProbe("node.os_name", "os name", probe, nil)
+	data.Properties.OSVendor = t.assetValueFromProbe("node.os_vendor", "os vendor", probe, nil)
+	data.Properties.OSRelease = t.assetValueFromProbe("node.os_release", "os release", probe, nil)
+	data.Properties.OSKernel = t.assetValueFromProbe("node.os_kernel", "os kernel", probe, nil)
+	data.Properties.OSArch = t.assetValueFromProbe("node.os_arch", "os arch", probe, nil)
+	data.Properties.MemBytes = t.assetValueFromProbe("node.mem_bytes", "mem bytes", probe, nil)
+	data.Properties.MemSlots = t.assetValueFromProbe("node.mem_slots", "mem slots", probe, nil)
+	data.Properties.MemBanks = t.assetValueFromProbe("node.mem_banks", "mem banks", probe, nil)
+	data.Properties.CPUFreq = t.assetValueFromProbe("node.cpu_freq", "cpu freq", probe, nil)
+	data.Properties.CPUThreads = t.assetValueFromProbe("node.cpu_threads", "cpu threads", probe, nil)
+	data.Properties.CPUCores = t.assetValueFromProbe("node.cpu_cores", "cpu cores", probe, nil)
+	data.Properties.CPUDies = t.assetValueFromProbe("node.cpu_dies", "cpu dies", probe, nil)
+	data.Properties.CPUModel = t.assetValueFromProbe("node.cpu_model", "cpu model", probe, nil)
+	data.Properties.BIOSVersion = t.assetValueFromProbe("node.bios_version", "bios version", probe, nil)
+	data.Properties.Serial = t.assetValueFromProbe("node.serial", "serial", probe, nil)
+	data.Properties.SPVersion = t.assetValueFromProbe("node.sp_version", "sp version", probe, nil)
+	data.Properties.Enclosure = t.assetValueFromProbe("node.enclosure", "enclosure", probe, nil)
+	data.Properties.TZ = t.assetValueFromProbe("node.tz", "timezone", probe, nil)
+	data.Properties.Manufacturer = t.assetValueFromProbe("node.manufacturer", "manufacturer", probe, nil)
+	data.Properties.Model = t.assetValueFromProbe("node.model", "model", probe, nil)
+	data.Properties.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, "")
+	data.Properties.LastBoot = t.assetValueFromProbe("node.last_boot", "last boot", probe, nil)
+	data.Properties.BootID = t.assetValueFromProbe("node.boot_id", "boot id", probe, nil)
 	data.UIDS, _ = asset.Users()
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()
@@ -159,147 +162,79 @@ func (t Node) getAsset() (asset.Data, error) {
 	data.Targets, _ = san.GetPaths()
 
 	// from config only
-	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
-	data.NodeEnv = t.assetValueFromProbe("node.env", "environment", nil, nil)
-	data.AssetEnv = t.assetValueFromProbe("node.asset_env", "asset environment", nil, nil)
-	data.ListenerPort = t.assetValueFromProbe("listener.port", "listener port", nil, nil)
-	data.LocCountry = t.assetValueFromProbe("node.loc_country", "loc, country", nil, nil)
-	data.LocCity = t.assetValueFromProbe("node.loc_city", "loc, city", nil, nil)
-	data.LocBuilding = t.assetValueFromProbe("node.loc_building", "loc, building", nil, nil)
-	data.LocRoom = t.assetValueFromProbe("node.loc_room", "loc, room", nil, nil)
-	data.LocRack = t.assetValueFromProbe("node.loc_rack", "loc, rack", nil, nil)
-	data.LocAddr = t.assetValueFromProbe("node.loc_addr", "loc, address", nil, nil)
-	data.LocFloor = t.assetValueFromProbe("node.loc_floor", "loc, floor", nil, nil)
-	data.LocZIP = t.assetValueFromProbe("node.loc_zip", "loc, zip", nil, nil)
-	data.TeamInteg = t.assetValueFromProbe("node.team_integ", "team, integration", nil, nil)
-	data.TeamSupport = t.assetValueFromProbe("node.team_support", "team, support", nil, nil)
+	data.Properties.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
+	data.Properties.NodeEnv = t.assetValueFromProbe("node.env", "environment", nil, nil)
+	data.Properties.AssetEnv = t.assetValueFromProbe("node.asset_env", "asset environment", nil, nil)
+	data.Properties.ListenerPort = t.assetValueFromProbe("listener.port", "listener port", nil, nil)
+	data.Properties.LocCountry = t.assetValueFromProbe("node.loc_country", "loc, country", nil, nil)
+	data.Properties.LocCity = t.assetValueFromProbe("node.loc_city", "loc, city", nil, nil)
+	data.Properties.LocBuilding = t.assetValueFromProbe("node.loc_building", "loc, building", nil, nil)
+	data.Properties.LocRoom = t.assetValueFromProbe("node.loc_room", "loc, room", nil, nil)
+	data.Properties.LocRack = t.assetValueFromProbe("node.loc_rack", "loc, rack", nil, nil)
+	data.Properties.LocAddr = t.assetValueFromProbe("node.loc_addr", "loc, address", nil, nil)
+	data.Properties.LocFloor = t.assetValueFromProbe("node.loc_floor", "loc, floor", nil, nil)
+	data.Properties.LocZIP = t.assetValueFromProbe("node.loc_zip", "loc, zip", nil, nil)
+	data.Properties.TeamInteg = t.assetValueFromProbe("node.team_integ", "team, integration", nil, nil)
+	data.Properties.TeamSupport = t.assetValueFromProbe("node.team_support", "team, support", nil, nil)
 
 	return data, nil
 }
 
 func (t Node) pushAsset(data asset.Data) error {
-	hn := hostname.Hostname()
-	hba := func() []interface{} {
-		vars := []string{
-			"nodename",
-			"hba_id",
-			"hba_type",
-		}
-		vals := make([][]string, len(data.HBA))
+	hba := func() []any {
+		l := make([]any, len(data.HBA))
 		for i, e := range data.HBA {
-			vals[i] = []string{
-				hn,
-				e.Name,
-				e.Type,
+			l[i] = map[string]any{
+				"hba_id":   e.Name,
+				"hba_type": e.Type,
 			}
 		}
-		return []interface{}{vars, vals}
+		return l
 	}
-	targets := func() []interface{} {
-		vars := []string{
-			"hba_id",
-			"tgt_id",
-		}
-		vals := make([][]string, len(data.Targets))
+	targets := func() []any {
+		l := make([]any, len(data.Targets))
 		for i, e := range data.Targets {
-			vals[i] = []string{
-				e.Initiator.Name,
-				e.Target.Name,
+			l[i] = map[string]any{
+				"hba_id": e.Initiator.Name,
+				"tgt_id": e.Target.Name,
 			}
 		}
-		return []interface{}{vars, vals}
+		return l
 	}
-	lan := func() []interface{} {
-		vars := []string{
-			"mac",
-			"intf",
-			"type",
-			"addr",
-			"mask",
-			"flag_deprecated",
-		}
-		vals := make([][]string, 0)
-		for mac, ips := range data.LAN {
-			for _, ip := range ips {
-				val := []string{
-					mac,
-					ip.Intf,
-					ip.Type,
-					ip.Address,
-					ip.Mask,
-					fmt.Sprint(ip.FlagDeprecated),
-				}
-				vals = append(vals, val)
-			}
-		}
-		return []interface{}{vars, vals}
-	}
-	uids := func() []interface{} {
-		vars := []string{
-			"user_name",
-			"user_id",
-		}
-		vals := make([][]string, len(data.UIDS))
-		for i, e := range data.UIDS {
-			vals[i] = []string{
-				e.Name,
-				fmt.Sprint(e.ID),
-			}
-		}
-		return []interface{}{vars, vals}
-	}
-	gids := func() []interface{} {
-		vars := []string{
-			"group_name",
-			"group_id",
-		}
-		vals := make([][]string, len(data.GIDS))
-		for i, e := range data.GIDS {
-			vals[i] = []string{
-				e.Name,
-				fmt.Sprint(e.ID),
-			}
-		}
-		return []interface{}{vars, vals}
-	}
-	props := func() []interface{} {
-		vars := make([]string, 0)
-		vals := make([]string, 0)
-		for _, av := range data.Values() {
-			if av.Name == "boot_id" {
-				continue
-			}
-			vars = append(vars, av.Name)
-			val := ""
-			if av.Value != nil {
-				val = fmt.Sprint(av.Value)
-			}
-			vals = append(vals, val)
-		}
-		return []interface{}{vars, vals}
-	}
-	client, err := t.CollectorFeedClient()
+
+	gen := make(map[string]any)
+
+	gen["properties"] = data.Properties
+	gen["hardware"] = data.Hardware
+	gen["lan"] = data.LAN
+	gen["uids"] = data.UIDS
+	gen["gids"] = data.GIDS
+
+	// Transformations
+	gen["hba"] = hba()
+	gen["targets"] = targets()
+
+	url, err := t.CollectorRestAPIURL()
 	if err != nil {
 		return err
 	}
-	gen := make(map[string]interface{})
-	gen["hardware"] = data.Hardware
-	gen["hba"] = hba()
-	gen["targets"] = targets()
-	gen["lan"] = lan()
-	gen["uids"] = uids()
-	gen["gids"] = gids()
-	if response, err := client.Call("insert_generic", gen); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+	url.Path = strings.Replace(url.Path, "/init/rest/api", "/api", 1) + "/daemon/system"
+	b, err := json.MarshalIndent(gen, "  ", "  ")
+	if err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
+	req.SetBasicAuth(hostname.Hostname(), rawconfig.GetNodeSection().UUID)
+	req.Header.Add("Content-Type", "application/json")
+	c := t.CollectorRestAPIClient()
+	response, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("do request: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 204 {
+		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
 	}
 
-	args := props()
-	if response, err := client.Call("update_asset", args...); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
-	}
 	return nil
 }
