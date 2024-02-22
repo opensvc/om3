@@ -251,13 +251,13 @@ func (t Data) Render() string {
 
 func (t Data) Values() []Property {
 	l := make([]Property, 0)
-	m, _ := attr.Values(t)
+	m, _ := attr.Values(t.Properties)
 	for k, v := range m {
 		av, ok := v.(Property)
 		if !ok {
 			continue
 		}
-		av.Name, _ = attr.GetTag(t, k, "json")
+		av.Name, _ = attr.GetTag(t.Properties, k, "json")
 		l = append(l, av)
 	}
 	return l
