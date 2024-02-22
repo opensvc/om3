@@ -55,7 +55,7 @@ func (t *CmdNodeSystemProperty) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,NAME:data.name,SOURCE:data.source,TITLE:data.title,VALUE:data.value,ERROR:data.error"
+	defaultOutput := "tab=NODE:meta.node,NAME:data.name,VALUE:data.value,SOURCE:data.source,ERROR:data.error"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
