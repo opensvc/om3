@@ -313,6 +313,10 @@ func rsHumanRender(rs []actionrouter.Result) string {
 	return s
 }
 
+func (t T) HasLocal() bool {
+	return t.LocalFunc != nil
+}
+
 func (t T) DoLocal() error {
 	if t.LocalFunc == nil {
 		return fmt.Errorf("local mode is not available (use 'om' on a cluster node or 'ox --node ...')")
