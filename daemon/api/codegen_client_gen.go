@@ -219,6 +219,9 @@ type ClientInterface interface {
 
 	PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeDriver request
+	GetNodeDriver(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInstance request
 	GetInstance(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -913,6 +916,18 @@ func (c *Client) PostNodeDRBDConfigWithBody(ctx context.Context, nodename InPath
 
 func (c *Client) PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeDRBDConfigRequest(c.Server, nodename, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeDriver(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeDriverRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -3550,6 +3565,40 @@ func NewPostNodeDRBDConfigRequestWithBody(server string, nodename InPathNodeName
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetNodeDriverRequest generates requests for GetNodeDriver
+func NewGetNodeDriverRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/drivers", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -7332,6 +7381,9 @@ type ClientWithResponsesInterface interface {
 
 	PostNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
 
+	// GetNodeDriverWithResponse request
+	GetNodeDriverWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDriverResponse, error)
+
 	// GetInstanceWithResponse request
 	GetInstanceWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceResponse, error)
 
@@ -8515,6 +8567,32 @@ func (r PostNodeDRBDConfigResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostNodeDRBDConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeDriverResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DriverList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeDriverResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeDriverResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10306,6 +10384,15 @@ func (c *ClientWithResponses) PostNodeDRBDConfigWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParsePostNodeDRBDConfigResponse(rsp)
+}
+
+// GetNodeDriverWithResponse request returning *GetNodeDriverResponse
+func (c *ClientWithResponses) GetNodeDriverWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDriverResponse, error) {
+	rsp, err := c.GetNodeDriver(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeDriverResponse(rsp)
 }
 
 // GetInstanceWithResponse request returning *GetInstanceResponse
@@ -12823,6 +12910,60 @@ func ParsePostNodeDRBDConfigResponse(rsp *http.Response) (*PostNodeDRBDConfigRes
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeDriverResponse parses an HTTP response from a GetNodeDriverWithResponse call
+func ParseGetNodeDriverResponse(rsp *http.Response) (*GetNodeDriverResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeDriverResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DriverList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

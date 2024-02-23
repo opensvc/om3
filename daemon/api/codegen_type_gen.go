@@ -46,6 +46,16 @@ const (
 	DiskListKindDiskList DiskListKind = "DiskList"
 )
 
+// Defines values for DriverItemKind.
+const (
+	DriversItem DriverItemKind = "DriversItem"
+)
+
+// Defines values for DriverListKind.
+const (
+	DriversList DriverListKind = "DriversList"
+)
+
 // Defines values for GroupItemKind.
 const (
 	GroupItemKindGroupItem GroupItemKind = "GroupItem"
@@ -506,6 +516,33 @@ type DiskList struct {
 
 // DiskListKind defines model for DiskList.Kind.
 type DiskListKind string
+
+// Driver defines model for Driver.
+type Driver struct {
+	Name string `json:"name"`
+}
+
+// DriverItem defines model for DriverItem.
+type DriverItem struct {
+	Data Driver         `json:"data"`
+	Kind DriverItemKind `json:"kind"`
+	Meta NodeMeta       `json:"meta"`
+}
+
+// DriverItemKind defines model for DriverItem.Kind.
+type DriverItemKind string
+
+// DriverItems defines model for DriverItems.
+type DriverItems = []DriverItem
+
+// DriverList defines model for DriverList.
+type DriverList struct {
+	Items DriverItems    `json:"items"`
+	Kind  DriverListKind `json:"kind"`
+}
+
+// DriverListKind defines model for DriverList.Kind.
+type DriverListKind string
 
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
