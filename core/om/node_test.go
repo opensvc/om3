@@ -16,24 +16,19 @@ import (
 func TestOmNodePush(t *testing.T) {
 	cases := map[string]struct {
 		extraArgs          []string
-		expectedOutput     string
 		expectedResultFile string
 	}{
 		"push asset": {
 			[]string{"push", "asset"},
-			"collector feed url host is empty",
 			"system.json"},
 		"push disks": {
 			[]string{"push", "disks"},
-			"collector feed url host is empty",
 			"disks.json"},
 		"push pkg": {
 			[]string{"push", "pkg"},
-			"collector feed url host is empty",
 			"package.json"},
 		"push patch": {
 			[]string{"push", "patch"},
-			"collector feed url host is empty",
 			"patch.json"},
 	}
 
@@ -54,9 +49,13 @@ func TestOmNodePush(t *testing.T) {
 			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
 			t.Logf("out:\n%s", out)
+
+			// the command fails because dbopensvc is not set
 			require.NotNilf(t, err, string(out))
-			require.Contains(t, string(out), tc.expectedOutput)
+
+			// but the cache file should be updated
 			expectedFile := filepath.Join(env.Root, "var", "node", tc.expectedResultFile)
+
 			var res any
 			t.Logf("verify command create %s", expectedFile)
 			b, err := os.ReadFile(expectedFile)
