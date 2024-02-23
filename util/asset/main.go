@@ -25,7 +25,7 @@ var (
 type (
 	T struct{}
 
-	Value struct {
+	Property struct {
 		Name   string      `json:"-"`
 		Source string      `json:"source"`
 		Title  string      `json:"title"`
@@ -33,55 +33,58 @@ type (
 		Error  string      `json:"error,omitempty"`
 	}
 
-	Data struct {
-		Nodename     Value `json:"nodename"`
-		FQDN         Value `json:"fqdn"`
-		Version      Value `json:"version"`
-		OSName       Value `json:"os_name"`
-		OSVendor     Value `json:"os_vendor"`
-		OSRelease    Value `json:"os_release"`
-		OSKernel     Value `json:"os_kernel"`
-		OSArch       Value `json:"os_arch"`
-		MemBytes     Value `json:"mem_bytes"`
-		MemSlots     Value `json:"mem_slots"`
-		MemBanks     Value `json:"mem_banks"`
-		CPUFreq      Value `json:"cpu_freq"`
-		CPUThreads   Value `json:"cpu_threads"`
-		CPUCores     Value `json:"cpu_cores"`
-		CPUDies      Value `json:"cpu_dies"`
-		CPUModel     Value `json:"cpu_model"`
-		Serial       Value `json:"serial"`
-		Model        Value `json:"model"`
-		Manufacturer Value `json:"manufacturer"`
-		BIOSVersion  Value `json:"bios_version"`
-		SPVersion    Value `json:"sp_version"`
-		NodeEnv      Value `json:"node_env"`
-		AssetEnv     Value `json:"asset_env"`
-		ListenerPort Value `json:"listener_port"`
-		ClusterID    Value `json:"cluster_id"`
-		Enclosure    Value `json:"enclosure"`
-		TZ           Value `json:"tz"`
-		ConnectTo    Value `json:"connect_to"`
-		SecZone      Value `json:"sec_zone"`
-		LastBoot     Value `json:"last_boot"`
-		BootID       Value `json:"boot_id"`
-		LocCountry   Value `json:"loc_country"`
-		LocCity      Value `json:"loc_city"`
-		LocBuilding  Value `json:"loc_building"`
-		LocRoom      Value `json:"loc_room"`
-		LocRack      Value `json:"loc_rack"`
-		LocAddr      Value `json:"loc_addr"`
-		LocFloor     Value `json:"loc_floor"`
-		LocZIP       Value `json:"loc_zip"`
-		TeamInteg    Value `json:"team_integ"`
-		TeamSupport  Value `json:"team_support"`
+	Properties struct {
+		Nodename     Property `json:"nodename"`
+		FQDN         Property `json:"fqdn"`
+		Version      Property `json:"version"`
+		OSName       Property `json:"os_name"`
+		OSVendor     Property `json:"os_vendor"`
+		OSRelease    Property `json:"os_release"`
+		OSKernel     Property `json:"os_kernel"`
+		OSArch       Property `json:"os_arch"`
+		MemBytes     Property `json:"mem_bytes"`
+		MemSlots     Property `json:"mem_slots"`
+		MemBanks     Property `json:"mem_banks"`
+		CPUFreq      Property `json:"cpu_freq"`
+		CPUThreads   Property `json:"cpu_threads"`
+		CPUCores     Property `json:"cpu_cores"`
+		CPUDies      Property `json:"cpu_dies"`
+		CPUModel     Property `json:"cpu_model"`
+		Serial       Property `json:"serial"`
+		Model        Property `json:"model"`
+		Manufacturer Property `json:"manufacturer"`
+		BIOSVersion  Property `json:"bios_version"`
+		SPVersion    Property `json:"sp_version"`
+		NodeEnv      Property `json:"node_env"`
+		AssetEnv     Property `json:"asset_env"`
+		ListenerPort Property `json:"listener_port"`
+		ClusterID    Property `json:"cluster_id"`
+		Enclosure    Property `json:"enclosure"`
+		TZ           Property `json:"tz"`
+		ConnectTo    Property `json:"connect_to"`
+		SecZone      Property `json:"sec_zone"`
+		LastBoot     Property `json:"last_boot"`
+		BootID       Property `json:"boot_id"`
+		LocCountry   Property `json:"loc_country"`
+		LocCity      Property `json:"loc_city"`
+		LocBuilding  Property `json:"loc_building"`
+		LocRoom      Property `json:"loc_room"`
+		LocRack      Property `json:"loc_rack"`
+		LocAddr      Property `json:"loc_addr"`
+		LocFloor     Property `json:"loc_floor"`
+		LocZIP       Property `json:"loc_zip"`
+		TeamInteg    Property `json:"team_integ"`
+		TeamSupport  Property `json:"team_support"`
+	}
 
-		GIDS     []Group          `json:"gids"`
-		UIDS     []User           `json:"uids"`
-		Hardware []Device         `json:"hardware"`
-		LAN      map[string][]LAN `json:"lan"`
-		HBA      []san.Initiator  `json:"hba"`
-		Targets  san.Paths        `json:"targets"`
+	Data struct {
+		Properties Properties       `json:"properties"`
+		GIDS       []Group          `json:"gids"`
+		UIDS       []User           `json:"uids"`
+		Hardware   []Device         `json:"hardware"`
+		LAN        map[string][]LAN `json:"lan"`
+		HBA        []san.Initiator  `json:"hba"`
+		Targets    san.Paths        `json:"targets"`
 	}
 
 	Device struct {
@@ -127,60 +130,62 @@ func (t Data) Render() string {
 	tr.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Color.Bold)
 	tr.AddColumn().AddText("Value").SetColor(rawconfig.Color.Bold)
 	tr.AddColumn().AddText("Source").SetColor(rawconfig.Color.Bold)
+	pn := tr.AddNode()
+	pn.AddColumn().AddText("properties").SetColor(rawconfig.Color.Primary)
 
-	node := func(v Value) *tree.Node {
+	node := func(v Property) *tree.Node {
 		val := ""
 		if v.Value != nil {
 			val = fmt.Sprint(v.Value)
 		}
-		n := tr.AddNode()
+		n := pn.AddNode()
 		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(val)
 		n.AddColumn().AddText(v.Source)
 		return n
 	}
 
-	_ = node(t.Nodename)
-	_ = node(t.FQDN)
-	_ = node(t.Version)
-	_ = node(t.OSName)
-	_ = node(t.OSVendor)
-	_ = node(t.OSRelease)
-	_ = node(t.OSKernel)
-	_ = node(t.OSArch)
-	_ = node(t.MemBytes)
-	_ = node(t.MemSlots)
-	_ = node(t.MemBanks)
-	_ = node(t.CPUFreq)
-	_ = node(t.CPUThreads)
-	_ = node(t.CPUCores)
-	_ = node(t.CPUDies)
-	_ = node(t.CPUModel)
-	_ = node(t.Serial)
-	_ = node(t.Model)
-	_ = node(t.Manufacturer)
-	_ = node(t.BIOSVersion)
-	_ = node(t.SPVersion)
-	_ = node(t.NodeEnv)
-	_ = node(t.AssetEnv)
-	_ = node(t.Enclosure)
-	_ = node(t.ListenerPort)
-	_ = node(t.ClusterID)
-	_ = node(t.TZ)
-	_ = node(t.ConnectTo)
-	_ = node(t.SecZone)
-	_ = node(t.LastBoot)
-	_ = node(t.BootID)
-	_ = node(t.LocCountry)
-	_ = node(t.LocCity)
-	_ = node(t.LocBuilding)
-	_ = node(t.LocRoom)
-	_ = node(t.LocRack)
-	_ = node(t.LocAddr)
-	_ = node(t.LocFloor)
-	_ = node(t.LocZIP)
-	_ = node(t.TeamInteg)
-	_ = node(t.TeamSupport)
+	_ = node(t.Properties.Nodename)
+	_ = node(t.Properties.FQDN)
+	_ = node(t.Properties.Version)
+	_ = node(t.Properties.OSName)
+	_ = node(t.Properties.OSVendor)
+	_ = node(t.Properties.OSRelease)
+	_ = node(t.Properties.OSKernel)
+	_ = node(t.Properties.OSArch)
+	_ = node(t.Properties.MemBytes)
+	_ = node(t.Properties.MemSlots)
+	_ = node(t.Properties.MemBanks)
+	_ = node(t.Properties.CPUFreq)
+	_ = node(t.Properties.CPUThreads)
+	_ = node(t.Properties.CPUCores)
+	_ = node(t.Properties.CPUDies)
+	_ = node(t.Properties.CPUModel)
+	_ = node(t.Properties.Serial)
+	_ = node(t.Properties.Model)
+	_ = node(t.Properties.Manufacturer)
+	_ = node(t.Properties.BIOSVersion)
+	_ = node(t.Properties.SPVersion)
+	_ = node(t.Properties.NodeEnv)
+	_ = node(t.Properties.AssetEnv)
+	_ = node(t.Properties.Enclosure)
+	_ = node(t.Properties.ListenerPort)
+	_ = node(t.Properties.ClusterID)
+	_ = node(t.Properties.TZ)
+	_ = node(t.Properties.ConnectTo)
+	_ = node(t.Properties.SecZone)
+	_ = node(t.Properties.LastBoot)
+	_ = node(t.Properties.BootID)
+	_ = node(t.Properties.LocCountry)
+	_ = node(t.Properties.LocCity)
+	_ = node(t.Properties.LocBuilding)
+	_ = node(t.Properties.LocRoom)
+	_ = node(t.Properties.LocRack)
+	_ = node(t.Properties.LocAddr)
+	_ = node(t.Properties.LocFloor)
+	_ = node(t.Properties.LocZIP)
+	_ = node(t.Properties.TeamInteg)
+	_ = node(t.Properties.TeamSupport)
 
 	n := tr.AddNode()
 	n.AddColumn().AddText("hardware").SetColor(rawconfig.Color.Primary)
@@ -244,15 +249,15 @@ func (t Data) Render() string {
 	return tr.Render()
 }
 
-func (t Data) Values() []Value {
-	l := make([]Value, 0)
-	m, _ := attr.Values(t)
+func (t Data) Values() []Property {
+	l := make([]Property, 0)
+	m, _ := attr.Values(t.Properties)
 	for k, v := range m {
-		av, ok := v.(Value)
+		av, ok := v.(Property)
 		if !ok {
 			continue
 		}
-		av.Name, _ = attr.GetTag(t, k, "json")
+		av.Name, _ = attr.GetTag(t.Properties, k, "json")
 		l = append(l, av)
 	}
 	return l

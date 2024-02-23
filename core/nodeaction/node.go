@@ -216,10 +216,17 @@ func human(r actionrouter.Result) string {
 	return s
 }
 
+func (t T) HasLocal() bool {
+	return t.LocalFunc != nil
+}
+
 func (t T) DoLocal() error {
 	results := make([]actionrouter.Result, 0)
 	resultQ := make(chan actionrouter.Result)
 	ctx := context.Background()
+	if t.LocalFunc == nil {
+		return fmt.Errorf("local node action is not implemented")
+	}
 	t.nodeDo(ctx, resultQ, hostname.Hostname(), func(_ context.Context, nodename string) (any, error) { return t.LocalFunc() })
 	result := <-resultQ
 	results = append(results, result)
