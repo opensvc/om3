@@ -43,6 +43,7 @@ func (t *CmdNodeDrivers) Run() error {
 	q := make(chan api.DriverItems)
 	errC := make(chan error)
 	doneC := make(chan string)
+	todo := len(nodenames)
 
 	for _, nodename := range nodenames {
 		go func(nodename string) {
@@ -77,18 +78,16 @@ func (t *CmdNodeDrivers) Run() error {
 	for {
 		select {
 		case err := <-errC:
-			if err != nil {
-				errs = errors.Join(errs, err)
-			}
+			errs = errors.Join(errs, err)
 		case items := <-q:
 			l = append(l, items...)
 		case <-doneC:
 			done++
-			if done == len(nodenames) {
+			if done == todo {
 				goto out
 			}
 		case <-ctx.Done():
-			errs = errors.Join(errs, fmt.Errorf("client timeout"))
+			errs = errors.Join(errs, ctx.Err())
 			goto out
 		}
 	}
