@@ -141,6 +141,9 @@ type ServerInterface interface {
 	// (POST /node/name/{nodename}/drbd/config)
 	PostNodeDRBDConfig(ctx echo.Context, nodename InPathNodeName, params PostNodeDRBDConfigParams) error
 
+	// (GET /node/name/{nodename}/drivers)
+	GetNodeDriver(ctx echo.Context, nodename InPathNodeName) error
+
 	// (GET /node/name/{nodename}/instance/path/{namespace}/{kind}/{name})
 	GetInstance(ctx echo.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
@@ -1280,6 +1283,26 @@ func (w *ServerInterfaceWrapper) PostNodeDRBDConfig(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostNodeDRBDConfig(ctx, nodename, params)
+	return err
+}
+
+// GetNodeDriver converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodeDriver(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "nodename" -------------
+	var nodename InPathNodeName
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "nodename", runtime.ParamLocationPath, ctx.Param("nodename"), &nodename)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
+	}
+
+	ctx.Set(BasicAuthScopes, []string{})
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetNodeDriver(ctx, nodename)
 	return err
 }
 
@@ -3521,6 +3544,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/node/name/:nodename/drbd/allocation", wrapper.GetNodeDRBDAllocation)
 	router.GET(baseURL+"/node/name/:nodename/drbd/config", wrapper.GetNodeDRBDConfig)
 	router.POST(baseURL+"/node/name/:nodename/drbd/config", wrapper.PostNodeDRBDConfig)
+	router.GET(baseURL+"/node/name/:nodename/drivers", wrapper.GetNodeDriver)
 	router.GET(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name", wrapper.GetInstance)
 	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/boot", wrapper.PostInstanceActionBoot)
 	router.POST(baseURL+"/node/name/:nodename/instance/path/:namespace/:kind/:name/action/delete", wrapper.PostInstanceActionDelete)

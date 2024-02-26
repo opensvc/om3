@@ -42,6 +42,24 @@ func (t Disk) Unstructured() map[string]any {
 	}
 }
 
+func (t DriverList) GetItems() any {
+	return t.Items
+}
+
+func (t DriverItem) Unstructured() map[string]any {
+	return map[string]any{
+		"kind": t.Kind,
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data,
+	}
+}
+
+func (t Driver) Unstructured() map[string]any {
+	return map[string]any{
+		"name": t.Name,
+	}
+}
+
 func (t ScheduleList) GetItems() any {
 	return t.Items
 }

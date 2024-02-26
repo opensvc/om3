@@ -1061,6 +1061,33 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/drivers:
+    get:
+      description: Get the node drivers
+      operationId: GetNodeDriver
+      tags:
+        - node
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/info:
     get:
       operationId: GetNodesInfo
@@ -3195,6 +3222,48 @@ components:
         expired_at:
           type: string
           format: date-time
+    
+    DriverList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+          kind:
+            type: string
+            enum:
+              - DriversList
+          items:
+            $ref: '#/components/schemas/DriverItems'
+
+    DriverItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/DriverItem'
+
+    DriverItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - DriversItem
+        data:
+          $ref: '#/components/schemas/Driver'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    Driver:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
 
     GroupList:
       type: object
