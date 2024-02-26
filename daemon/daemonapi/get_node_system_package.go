@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -23,6 +24,9 @@ func (a *DaemonAPI) GetNodeSystemPackage(ctx echo.Context, nodename api.InPathNo
 }
 
 func (a *DaemonAPI) getPeerNodeSystemPackage(ctx echo.Context, nodename string) error {
+	if data := node.StatusData.Get(nodename); data == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "node status data not found", "%s", nodename)
+	}
 	c, err := newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)

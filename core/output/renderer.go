@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/fatih/color"
@@ -253,7 +254,12 @@ func (t Renderer) renderTab(options string) (string, error) {
 			}
 			for arrIx := range values {
 				for valIx := range values[arrIx] {
-					valueStrings = append(valueStrings, fmt.Sprintf("%v", values[arrIx][valIx].Interface()))
+					switch i := values[arrIx][valIx].Interface().(type) {
+					case time.Time:
+						valueStrings = append(valueStrings, i.Format(time.RFC3339))
+					default:
+						valueStrings = append(valueStrings, fmt.Sprintf("%v", i))
+					}
 				}
 			}
 			value := strings.Join(valueStrings, ",")
