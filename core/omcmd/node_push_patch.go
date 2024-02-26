@@ -30,7 +30,12 @@ func (t *CmdNodePushPatch) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			return n.PushPatch()
+			l, err := n.PushPatch()
+			if err != nil {
+				return nil, err
+			}
+			fmt.Printf("Pushed %d installed patches information.", len(l))
+			return nil, nil
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))
