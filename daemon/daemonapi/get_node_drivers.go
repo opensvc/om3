@@ -1,15 +1,13 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
+	"sort"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -39,29 +37,15 @@ func (a *DaemonAPI) getPeerNodeDriver(ctx echo.Context, nodename string) error {
 }
 
 func (a *DaemonAPI) getLocalNodeDriver(ctx echo.Context) error {
+	ids := driver.List()
+	sort.Sort(ids)
 
-	n, err := object.NewNode()
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
-	}
-	data, err := n.Drivers()
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Get driver", "%s", err)
-	}
-
-	drivers, ok := data.(driver.IDs)
-	if !ok {
-		return fmt.Errorf("unsupported driver format")
-	}
-
-	listDriver := strings.Split(drivers.Render(), "\n")
-
-	items := make(api.DriverItems, len(listDriver)-1)
-	for i := 0; i < len(listDriver)-1; i++ {
+	items := make(api.DriverItems, len(ids))
+	for i, id := range ids {
 		items[i] = api.DriverItem{
 			Kind: "DriverItem",
 			Data: api.Driver{
-				Name: listDriver[i],
+				Name: id.String(),
 			},
 			Meta: api.NodeMeta{
 				Node: a.localhost,
