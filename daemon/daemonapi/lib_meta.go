@@ -17,6 +17,7 @@ type (
 		Path    *string
 		Node    *string
 
+		paths   naming.Paths
 		pathMap naming.M
 		nodeMap nodeselector.ResultMap
 		grants  rbac.Grants
@@ -48,7 +49,7 @@ func (m *Meta) Grants() rbac.Grants {
 
 func (m *Meta) Nodes() []string {
 	i := 0
-	l := make([]string, len(m.pathMap))
+	l := make([]string, len(m.nodeMap))
 	for s := range m.nodeMap {
 		l[i] = s
 		i++
@@ -57,14 +58,7 @@ func (m *Meta) Nodes() []string {
 }
 
 func (m *Meta) Paths() naming.Paths {
-	i := 0
-	l := make(naming.Paths, len(m.pathMap))
-	for s := range m.pathMap {
-		p, _ := naming.ParsePath(s)
-		l[i] = p
-		i++
-	}
-	return l
+	return m.paths
 }
 
 func (m *Meta) Expand() error {
@@ -90,8 +84,10 @@ func (m *Meta) expandPath() error {
 			return fmt.Errorf("expand path selection %s: %w", *m.Path, err)
 		}
 		m.pathMap = matchedPaths.StrMap()
+		m.paths = matchedPaths
 	} else {
 		m.pathMap = paths.StrMap()
+		m.paths = paths
 	}
 	return nil
 }
