@@ -2,7 +2,9 @@ package oxcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -37,34 +39,71 @@ func (t *CmdNodeEval) Run() error {
 		return err
 	}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
 	l := make(api.KeywordItems, 0)
+	q := make(chan api.KeywordItems)
+	errC := make(chan error)
+	doneC := make(chan string)
+	todo := len(nodenames)
+
 	for _, nodename := range nodenames {
-		params := api.GetNodeConfigGetParams{}
-		params.Kw = &t.Keywords
-		v := true
-		params.Evaluate = &v
-		if t.Impersonate != "" {
-			params.Impersonate = &t.Impersonate
-		}
-		response, err := c.GetNodeConfigGetWithResponse(context.Background(), nodename, &params)
-		if err != nil {
-			return err
-		}
-		switch {
-		case response.JSON200 != nil:
-			l = append(l, response.JSON200.Items...)
-		case response.JSON400 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON400)
-		case response.JSON401 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON401)
-		case response.JSON403 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON403)
-		case response.JSON500 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON500)
-		default:
-			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+		go func(nodename string) {
+			defer func() { doneC <- nodename }()
+			params := api.GetNodeConfigGetParams{}
+			params.Kw = &t.Keywords
+			v := true
+			params.Evaluate = &v
+			if t.Impersonate != "" {
+				params.Impersonate = &t.Impersonate
+			}
+			response, err := c.GetNodeConfigGetWithResponse(ctx, nodename, &params)
+			if err != nil {
+				errC <- err
+				return
+			}
+			switch {
+			case response.JSON200 != nil:
+				q <- response.JSON200.Items
+			case response.JSON400 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
+			case response.JSON401 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON401)
+			case response.JSON403 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON403)
+			case response.JSON500 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON500)
+			default:
+				errC <- fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+			}
+		}(nodename)
+	}
+	var (
+		errs error
+		done int
+	)
+
+	for {
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case items := <-q:
+			l = append(l, items...)
+		case <-doneC:
+			done++
+			if done == todo {
+				goto out
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			goto out
 		}
 	}
+
+out:
+
 	defaultOutput := "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value,EVALUATED_AS:meta.evaluated_as"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
@@ -74,5 +113,5 @@ func (t *CmdNodeEval) Run() error {
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
-	return nil
+	return errs
 }

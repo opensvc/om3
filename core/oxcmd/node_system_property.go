@@ -37,7 +37,8 @@ func (t *CmdNodeSystemProperty) Run() error {
 	}
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
 
 	l := make(api.PropertyItems, 0)
 	q := make(chan api.PropertyItems)
@@ -103,5 +104,5 @@ out:
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
-	return nil
+	return errs
 }
