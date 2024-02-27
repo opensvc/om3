@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -15,11 +15,10 @@ import (
 func (a *DaemonAPI) PostInstanceActionStop(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionStop(ctx, namespace, kind, name, params)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		return a.postPeerInstanceActionStop(ctx, nodename, namespace, kind, name, params)
 	}
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.PostInstanceActionStop(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+	})
 }
 
 func (a *DaemonAPI) postPeerInstanceActionStop(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
