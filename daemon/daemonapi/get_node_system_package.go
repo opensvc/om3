@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -16,13 +15,10 @@ import (
 func (a *DaemonAPI) GetNodeSystemPackage(ctx echo.Context, nodename api.InPathNodeName) error {
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemPackage(ctx)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetNodeSystemPackage(ctx.Request().Context(), nodename)
-		})
 	}
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.GetNodeSystemPackage(ctx.Request().Context(), nodename)
+	})
 }
 
 func (a *DaemonAPI) getLocalNodeSystemPackage(ctx echo.Context) error {

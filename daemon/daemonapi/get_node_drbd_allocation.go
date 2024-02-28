@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/drbd"
@@ -80,24 +80,10 @@ func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 	}
 	if a.localhost == nodename {
 		return a.getLocalNodeDRBDAllocation(ctx)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		return a.getPeerDRBDAllocation(ctx, nodename)
 	}
-}
-
-func (a *DaemonAPI) getPeerDRBDAllocation(ctx echo.Context, nodename string) error {
-	c, err := newProxyClient(ctx, nodename)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-	}
-	if resp, err := c.GetNodeDRBDAllocationWithResponse(ctx.Request().Context(), nodename); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if len(resp.Body) > 0 {
-		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-	}
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.GetNodeDRBDAllocation(ctx.Request().Context(), nodename)
+	})
 }
 
 func (a *DaemonAPI) getLocalNodeDRBDAllocation(ctx echo.Context) error {

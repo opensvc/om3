@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
@@ -19,24 +19,12 @@ func (a *DaemonAPI) PostNodeConfigUpdate(ctx echo.Context, nodename string, para
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}
-
 	if nodename == a.localhost {
 		return a.postLocalNodeConfigUpdate(ctx, params)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		c, err := newProxyClient(ctx, nodename)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-		}
-		if resp, err := c.PostNodeConfigUpdateWithResponse(ctx.Request().Context(), nodename, &params); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-		} else if len(resp.Body) > 0 {
-			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-		}
 	}
-
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.PostNodeConfigUpdate(ctx.Request().Context(), nodename, &params)
+	})
 }
 
 func (a *DaemonAPI) postLocalNodeConfigUpdate(ctx echo.Context, params api.PostNodeConfigUpdateParams) error {

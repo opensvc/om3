@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -17,20 +17,10 @@ import (
 func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localNodeActionDrain(ctx)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		c, err := newProxyClient(ctx, nodename)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-		}
-		if resp, err := c.PostPeerActionDrainWithResponse(ctx.Request().Context(), nodename); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-		} else if len(resp.Body) > 0 {
-			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-		}
 	}
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.PostPeerActionDrain(ctx.Request().Context(), nodename)
+	})
 }
 
 func (a *DaemonAPI) localNodeActionDrain(ctx echo.Context) error {

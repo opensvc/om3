@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/schedule"
@@ -15,26 +15,10 @@ import (
 func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	if a.localhost == nodename {
 		return a.getLocalObjectSchedule(ctx, namespace, kind, name)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		return a.getPeerObjectSchedule(ctx, nodename, namespace, kind, name)
 	}
-}
-
-func (a *DaemonAPI) getPeerObjectSchedule(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
-	c, err := newProxyClient(ctx, nodename)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
-	}
-	if resp, err := c.GetObjectScheduleWithResponse(ctx.Request().Context(), nodename, namespace, kind, name); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if len(resp.Body) > 0 {
-		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-	}
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.GetObjectSchedule(ctx.Request().Context(), nodename, namespace, kind, name)
+	})
 }
 
 func (a *DaemonAPI) getLocalObjectSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {

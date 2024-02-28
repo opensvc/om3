@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -15,21 +15,10 @@ import (
 func (a *DaemonAPI) PostPeerActionAbort(ctx echo.Context, nodename string) error {
 	if nodename == a.localhost {
 		return a.localNodeActionAbort(ctx)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	c, err := newProxyClient(ctx, nodename)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-	}
-
-	resp, err := c.PostPeerActionAbortWithResponse(ctx.Request().Context(), nodename)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if len(resp.Body) > 0 {
-		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-	}
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.PostPeerActionAbort(ctx.Request().Context(), nodename)
+	})
 }
 
 func (a *DaemonAPI) localNodeActionAbort(ctx echo.Context) error {

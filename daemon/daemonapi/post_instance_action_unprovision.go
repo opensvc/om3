@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -15,24 +15,10 @@ import (
 func (a *DaemonAPI) PostInstanceActionUnprovision(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnprovisionParams) error {
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionUnprovision(ctx, namespace, kind, name, params)
-	} else if !clusternode.Has(nodename) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
-	} else {
-		return a.postPeerInstanceActionUnprovision(ctx, nodename, namespace, kind, name, params)
 	}
-}
-
-func (a *DaemonAPI) postPeerInstanceActionUnprovision(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnprovisionParams) error {
-	c, err := newProxyClient(ctx, nodename)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-	}
-	if resp, err := c.PostInstanceActionUnprovisionWithResponse(ctx.Request().Context(), nodename, namespace, kind, name, &params); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if len(resp.Body) > 0 {
-		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
-	}
-	return nil
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.PostInstanceActionUnprovision(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+	})
 }
 
 func (a *DaemonAPI) postLocalInstanceActionUnprovision(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnprovisionParams) error {
