@@ -76,6 +76,7 @@ func (t *CmdNodePrintSchedule) Run() error {
 		case items := <-q:
 			l = append(l, items...)
 		case <-doneC:
+			done++
 			if done == todo {
 				goto out
 			}
