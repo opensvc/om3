@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -38,10 +39,18 @@ func (t *CmdNodeUnfreeze) doRemote() error {
 	if err != nil {
 		return err
 	}
-	errC := make(chan error)
+
 	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	errC := make(chan error)
+	doneC := make(chan string)
+	todo := len(nodenames)
+
 	for _, nodename := range nodenames {
 		go func(nodename string) {
+			defer func() { doneC <- nodename }()
 			if resp, err := c.PostPeerActionUnfreezeWithResponse(ctx, nodename, &api.PostPeerActionUnfreezeParams{RequesterSid: &xsession.ID}); err != nil {
 				errC <- err
 			} else {
@@ -58,7 +67,6 @@ func (t *CmdNodeUnfreeze) doRemote() error {
 					errC <- fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
 				}
 			}
-			errC <- err
 		}(nodename)
 	}
 	var (
@@ -66,12 +74,17 @@ func (t *CmdNodeUnfreeze) doRemote() error {
 		errs  error
 	)
 	for {
-		err := <-errC
-		errs = errors.Join(errs, err)
-		count++
-		if count == len(nodenames) {
-			break
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case <-doneC:
+			count++
+			if count == todo {
+				return errs
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			return errs
 		}
 	}
-	return errs
 }
