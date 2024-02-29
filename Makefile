@@ -18,7 +18,7 @@ COMPOBJ_D = share/opensvc/compliance
 
 .PHONY: strip dist
 
-all: vet test build
+all: clean vet test race build
 
 build: api om ox compobj
 
@@ -27,6 +27,7 @@ api:
 
 clean:
 	$(GOCLEAN)
+	$(GOCLEAN) -testcache
 	rm -f $(OM) $(OX)
 
 om:
@@ -39,7 +40,10 @@ compobj:
 	$(GOBUILD) -o $(COMPOBJ) -v ./util/compobj/
 
 test:
-	$(GOTEST) ./...
+	$(GOTEST) -p 1 -timeout 60s ./...
+
+race:
+	$(GOTEST) -p 1 -timeout 240s ./... -race
 
 vet:
 	$(GOVET) ./...
