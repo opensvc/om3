@@ -37,7 +37,8 @@ func (t *CmdNodeDrivers) Run() error {
 	}
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
 
 	l := make(api.DriverItems, 0)
 	q := make(chan api.DriverItems)
