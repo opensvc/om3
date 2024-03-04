@@ -267,6 +267,34 @@ paths:
       tags:
         - daemon
 
+  /node/name/{nodename}/daemon/action/running:
+    get:
+      description: |
+        Verify if the daemon of node running.
+      operationId: GetDaemonRunning
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: boolean
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - daemon
+
   /node/name/{nodename}/daemon/action/shutdown:
     post:
       description: |
@@ -458,28 +486,6 @@ paths:
           $ref: '#/components/responses/200'
         400:
           $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /daemon/running:
-    get:
-      operationId: GetDaemonRunning
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: boolean
         401:
           $ref: '#/components/responses/401'
         403:
