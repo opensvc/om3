@@ -468,7 +468,7 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 
 func (t *T) running() bool {
 	log := logger("running daemon check: ")
-	resp, err := t.client.GetDaemonRunningWithResponse(context.Background())
+	resp, err := t.client.GetDaemonRunningWithResponse(context.Background(), hostname.Hostname())
 	if err != nil {
 		log.Debugf("not running: %s", err)
 		return false
