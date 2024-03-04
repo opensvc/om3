@@ -117,9 +117,9 @@ func provisionLeaded(ctx context.Context, t Driver) error {
 		// The driver cared to implement a ProvisionLeaded function,
 		// let it decide what to do with standby resources.
 		return i.ProvisionLeaded(ctx)
-	} else if t.IsStandby() && !t.IsShared() {
+	} else if !t.IsShared() {
 		// The driver did not declare a special behaviour on leaded.
-		// Assume standby mean up, so do a normal leader provision.
+		// Non-shared resources must be provisioned too, use the leader method.
 		return provisionLeader(ctx, t)
 	}
 	return nil
