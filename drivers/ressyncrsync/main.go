@@ -73,9 +73,8 @@ func New() resource.Driver {
 }
 
 func (t T) IsRunning() bool {
-	err := t.DoWithLock(false, time.Second*0, "run", func() error {
-		return nil
-	})
+	unlock, err := t.Lock(false, time.Second*0, "sync")
+	defer unlock()
 	return err != nil
 }
 
@@ -83,20 +82,24 @@ func (t T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
-	err := t.DoWithLock(disable, timeout, "sync", func() error {
-		return t.lockedSync(ctx, modeFull, target)
-	})
-	return err
+	unlock, err := t.Lock(disable, timeout, "sync")
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedSync(ctx, modeFull, target)
 }
 
 func (t T) Update(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
-	err := t.DoWithLock(disable, timeout, "sync", func() error {
-		return t.lockedSync(ctx, modeIncr, target)
-	})
-	return err
+	unlock, err := t.Lock(disable, timeout, "sync")
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedSync(ctx, modeIncr, target)
 }
 
 func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
