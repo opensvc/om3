@@ -1684,6 +1684,28 @@ type PostInstanceActionProvisionParams struct {
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionPRStartParams defines parameters for PostInstanceActionPRStart.
+type PostInstanceActionPRStartParams struct {
+	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
+	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// PostInstanceActionPRStopParams defines parameters for PostInstanceActionPRStop.
+type PostInstanceActionPRStopParams struct {
+	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
+	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // PostInstanceActionShutdownParams defines parameters for PostInstanceActionShutdown.
 type PostInstanceActionShutdownParams struct {
 	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`

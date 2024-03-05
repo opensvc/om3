@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 )
 
@@ -27,20 +29,61 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	var errs error
-	for _, p := range paths {
-		nodes, err := nodesFromPaths(c, p.String())
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	errC := make(chan error)
+	doneC := make(chan [2]string)
+	todoP := len(paths)
+	var todoN int
+
+	for _, path := range paths {
+		nodes, err := nodesFromPaths(c, path.String())
 		if err != nil {
-			errors.Join(errs, fmt.Errorf("%s: %w", p, err))
-			continue
+			errC <- fmt.Errorf("%s: %w", path, err)
 		}
+
+		todoN += len(nodes)
+
 		for _, node := range nodes {
-			if resp, err := c.PostInstanceClear(context.Background(), node, p.Namespace, p.Kind, p.Name); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("unexpected post object clear %s@%s error %s", p, node, err))
-			} else if resp.StatusCode != http.StatusOK {
-				errs = errors.Join(errs, fmt.Errorf("unexpected post object clear %s@%s status code %s", p, node, resp.Status))
-			}
+			go func(n string, p naming.Path) {
+				defer func() { doneC <- [2]string{n, p.String()} }()
+				if resp, err := c.PostInstanceClear(ctx, n, p.Namespace, p.Kind, p.Name); err != nil {
+					errC <- fmt.Errorf("unexpected post object clear %s@%s error %s", p, n, err)
+				} else if resp.StatusCode != http.StatusOK {
+					errC <- fmt.Errorf("unexpected post object clear %s@%s status code %s", p, n, resp.Status)
+				}
+			}(node, path)
 		}
 	}
-	return errs
+
+	var (
+		errs  error
+		doneN int
+		doneP int
+	)
+
+	for {
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case <-doneC:
+
+			doneN++
+
+			if !(doneP == todoP) {
+				doneP++
+			}
+
+			if doneN == todoN && doneP == todoP {
+				return errs
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			return errs
+		}
+	}
+
 }

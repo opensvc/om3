@@ -9,6 +9,7 @@ require (
 	github.com/antchfx/xmlquery v1.3.10
 	github.com/atomicgo/cursor v0.0.1
 	github.com/containerd/cgroups v1.0.1
+	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -27,7 +28,6 @@ require (
 	github.com/getkin/kin-openapi v0.122.0
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
-	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.9
@@ -95,7 +95,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cilium/ebpf v0.11.0 // indirect
-	github.com/containerd/cgroups/v3 v3.0.3 // indirect
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
@@ -103,6 +102,7 @@ require (
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.7 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect

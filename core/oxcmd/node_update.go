@@ -2,7 +2,9 @@ package oxcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -40,24 +42,56 @@ func (t *CmdNodeUpdate) doRemote() error {
 	if err != nil {
 		return err
 	}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	errC := make(chan error)
+	doneC := make(chan string)
+	todo := len(nodenames)
+
 	for _, nodename := range nodenames {
-		response, err := c.PostNodeConfigUpdateWithResponse(context.Background(), nodename, &params)
-		if err != nil {
-			return err
-		}
-		switch response.StatusCode() {
-		case 200:
-		case 400:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON400)
-		case 401:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON401)
-		case 403:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON403)
-		case 500:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON500)
-		default:
-			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+		go func(nodename string) {
+			defer func() { doneC <- nodename }()
+			response, err := c.PostNodeConfigUpdateWithResponse(ctx, nodename, &params)
+			if err != nil {
+				errC <- err
+				return
+			}
+			switch {
+			case response.JSON200 != nil:
+			case response.JSON400 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
+			case response.JSON401 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON401)
+			case response.JSON403 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON403)
+			case response.JSON500 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON500)
+			default:
+				errC <- fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+			}
+		}(nodename)
+	}
+
+	var (
+		errs error
+		done int
+	)
+
+	for {
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case <-doneC:
+			done++
+			if done == todo {
+				return errs
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			return errs
 		}
 	}
-	return nil
 }

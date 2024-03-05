@@ -37,7 +37,8 @@ func (t *CmdNodeSystemPackage) Run() error {
 	}
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
 
 	l := make(api.PackageItems, 0)
 	q := make(chan api.PackageItems)

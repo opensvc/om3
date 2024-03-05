@@ -148,6 +148,7 @@ func init() {
 		newCmdNodeLogs(),
 		newCmdNodeLs(),
 		newCmdNodePRKey(),
+		newCmdNodePing(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),
 		newCmdNodeEvents(),

@@ -465,28 +465,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /daemon/running:
-    get:
-      operationId: GetDaemonRunning
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: boolean
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /daemon/status:
     get:
       operationId: GetDaemonStatus
@@ -1691,6 +1669,30 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/ping:
+    get:
+      description: |
+        ask node to ping all cluster nodes.
+      operationId: GetNodePing
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - daemon
+
   /node/name/{nodename}/system/disk:
     get:
       description: View the disk
@@ -2246,6 +2248,84 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+ 
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
+    post:
+      description: Start the object instance with a reservation.
+      operationId: PostInstanceActionPRStart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstop:
+    post:
+      description: Stop the object instance with a reservation.
+      operationId: PostInstanceActionPRStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
 
   /object/path/{namespace}/{kind}/{name}/action/purge:
     post:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -19,25 +20,7 @@ type (
 	}
 )
 
-func (t *CmdNodePrintSchedule) extract(c *client.T, nodename string) (api.ScheduleList, error) {
-	resp, err := c.GetNodeScheduleWithResponse(context.Background(), nodename)
-	if err != nil {
-		return api.ScheduleList{}, err
-	}
-	switch resp.StatusCode() {
-	case 200:
-		return *resp.JSON200, nil
-	case 401:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
-	case 403:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
-	default:
-		return api.ScheduleList{}, fmt.Errorf("%s: unexpected statuscode: %s", nodename, resp.Status())
-	}
-}
-
 func (t *CmdNodePrintSchedule) Run() error {
-	var errs error
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
@@ -49,23 +32,69 @@ func (t *CmdNodePrintSchedule) Run() error {
 	if err != nil {
 		return err
 	}
-	var data api.ScheduleList
-	for i, nodename := range nodenames {
-		if d, err := t.extract(c, nodename); err != nil {
-			errs = errors.Join(err)
-		} else if i == 0 {
-			data = d
-		} else {
-			data.Items = append(data.Items, d.Items...)
-		}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	l := make(api.ScheduleItems, 0)
+	q := make(chan api.ScheduleItems)
+	errC := make(chan error)
+	doneC := make(chan string)
+	todo := len(nodenames)
+
+	for _, nodename := range nodenames {
+		go func(nodename string) {
+			defer func() { doneC <- nodename }()
+			response, err := c.GetNodeScheduleWithResponse(ctx, nodename)
+			if err != nil {
+				errC <- err
+				return
+			}
+			switch {
+			case response.JSON200 != nil:
+				q <- response.JSON200.Items
+			case response.JSON401 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON401)
+			case response.JSON403 != nil:
+				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON403)
+			default:
+				errC <- fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+			}
+		}(nodename)
 	}
+
+	var (
+		errs error
+		done int
+	)
+
+	for {
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case items := <-q:
+			l = append(l, items...)
+		case <-doneC:
+			done++
+			if done == todo {
+				goto out
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			goto out
+		}
+	}
+
+out:
+
 	output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,ACTION:data.action,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          data,
+		Data:          api.ScheduleList{Items: l, Kind: "ScheduleList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+
 	return errs
 }

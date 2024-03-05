@@ -4,23 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemoncmd"
 )
 
 type (
-	CmdNodeSystemUser struct {
+	CmdNodePing struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeSystemUser) Run() error {
+func (t *CmdNodePing) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -37,36 +38,42 @@ func (t *CmdNodeSystemUser) Run() error {
 	}
 
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*1)
 	defer cancel()
 
-	l := make(api.UserItems, 0)
-	q := make(chan api.UserItems)
+	q := make(chan daemoncmd.PingItem)
 	errC := make(chan error)
 	doneC := make(chan string)
 	todo := len(nodenames)
 
 	for _, nodename := range nodenames {
 		go func(nodename string) {
+			ctx, cancel := context.WithTimeout(ctx, time.Millisecond*500)
+			defer cancel()
 			defer func() { doneC <- nodename }()
-			response, err := c.GetNodeSystemUserWithResponse(ctx, nodename)
+			d := daemoncmd.PingItem{
+				Data: daemoncmd.Ping{Ping: false},
+				Meta: daemoncmd.NodeMeta{Node: nodename},
+			}
+			begin := time.Now()
+			response, err := c.GetNodePingWithResponse(ctx, nodename)
+			if errors.Is(err, context.DeadlineExceeded) {
+				d.Data.Detail = err.Error()
+				q <- d
+				return
+			}
 			if err != nil {
 				errC <- err
 				return
 			}
 			switch {
-			case response.JSON200 != nil:
-				q <- response.JSON200.Items
-			case response.JSON400 != nil:
-				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
-			case response.JSON401 != nil:
-				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON401)
-			case response.JSON403 != nil:
-				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON403)
-			case response.JSON500 != nil:
-				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON500)
+			case response.StatusCode() == http.StatusNoContent:
+				d.Data.Ping = true
+				d.Data.Detail = fmt.Sprintf("RTT : %s", time.Now().Sub(begin))
+				q <- d
 			default:
-				errC <- fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+				d.Data.Detail = fmt.Sprintf("%s: %s", nodename, response.Status())
+				q <- d
 			}
 		}(nodename)
 	}
@@ -74,14 +81,15 @@ func (t *CmdNodeSystemUser) Run() error {
 	var (
 		errs error
 		done int
+		data daemoncmd.PingItems
 	)
 
 	for {
 		select {
 		case err := <-errC:
 			errs = errors.Join(errs, err)
-		case items := <-q:
-			l = append(l, items...)
+		case d := <-q:
+			data = append(data, d)
 		case <-doneC:
 			done++
 			if done == todo {
@@ -95,12 +103,12 @@ func (t *CmdNodeSystemUser) Run() error {
 
 out:
 
-	defaultOutput := "tab=NODE:meta.node,ID:data.id,NAME:data.name"
+	defaultOutput := "tab=NODE:meta.node,PING:data.ping,DETAIL:data.detail"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.UserList{Items: l, Kind: "UserList"},
+		Data:          data,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 

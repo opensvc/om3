@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
@@ -468,16 +467,14 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 
 func (t *T) running() bool {
 	log := logger("running daemon check: ")
-	resp, err := t.client.GetDaemonRunningWithResponse(context.Background())
+	_, err := t.client.GetNodePing(context.Background(), hostname.Hostname())
 	if err != nil {
 		log.Debugf("not running: %s", err)
 		return false
-	} else if resp.StatusCode() != http.StatusOK {
-		log.Warnf("unexpected get daemon running status code %s", resp.Status())
-		return false
 	}
-	log.Debugf("running is %v", *resp.JSON200)
-	return *resp.JSON200
+
+	log.Debugf("running is true")
+	return true
 }
 
 func (t *T) notRunning() bool {
