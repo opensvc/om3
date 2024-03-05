@@ -3,7 +3,6 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
-
 	"time"
 
 	"github.com/spf13/cobra"
@@ -282,22 +281,6 @@ func newCmdDaemonRestart() *cobra.Command {
 		Short:   "restart the daemon",
 		Long:    "restart the daemon. Operation is asynchronous when node selector is used",
 		Aliases: []string{"restart"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdDaemonRunning() *cobra.Command {
-	var options commands.CmdDaemonRunning
-	cmd := &cobra.Command{
-		Use:   "running",
-		Short: "test if the daemon is running",
-		Long:  "Exit with code 0 if the daemon is running, else exit with code 1",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -990,6 +973,21 @@ func newCmdNodeDrivers() *cobra.Command {
 		Use:     "drivers",
 		Short:   "list builtin drivers",
 		Aliases: []string{"driver", "drive", "driv", "drv", "dr"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodePing() *cobra.Command {
+	var options commands.CmdNodePing
+	cmd := &cobra.Command{
+		Use:   "ping",
+		Short: "ask node to ping all cluster nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

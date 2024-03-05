@@ -196,9 +196,6 @@ type ClientInterface interface {
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetDaemonRunning request
-	GetDaemonRunning(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// PostDaemonShutdown request
 	PostDaemonShutdown(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -272,6 +269,9 @@ type ClientInterface interface {
 
 	// GetObjectSchedule request
 	GetObjectSchedule(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodePing request
+	GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeSchedule request
 	GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -836,18 +836,6 @@ func (c *Client) PostDaemonRestart(ctx context.Context, nodename InPathNodeName,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDaemonRunning(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonRunningRequest(c.Server, nodename)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) PostDaemonShutdown(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonShutdownRequest(c.Server, nodename, params)
 	if err != nil {
@@ -1138,6 +1126,18 @@ func (c *Client) GetInstanceLogs(ctx context.Context, nodename InPathNodeName, n
 
 func (c *Client) GetObjectSchedule(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectScheduleRequest(c.Server, nodename, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodePingRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -3220,40 +3220,6 @@ func NewPostDaemonRestartRequest(server string, nodename InPathNodeName) (*http.
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonRunningRequest generates requests for GetDaemonRunning
-func NewGetDaemonRunningRequest(server string, nodename InPathNodeName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/running", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -5758,6 +5724,40 @@ func NewGetObjectScheduleRequest(server string, nodename InPathNodeName, namespa
 	return req, nil
 }
 
+// NewGetNodePingRequest generates requests for GetNodePing
+func NewGetNodePingRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/ping", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeScheduleRequest generates requests for GetNodeSchedule
 func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -7741,9 +7741,6 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
 
-	// GetDaemonRunningWithResponse request
-	GetDaemonRunningWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonRunningResponse, error)
-
 	// PostDaemonShutdownWithResponse request
 	PostDaemonShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error)
 
@@ -7817,6 +7814,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectScheduleWithResponse request
 	GetObjectScheduleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectScheduleResponse, error)
+
+	// GetNodePingWithResponse request
+	GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error)
 
 	// GetNodeScheduleWithResponse request
 	GetNodeScheduleWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeScheduleResponse, error)
@@ -8785,32 +8785,6 @@ func (r PostDaemonRestartResponse) StatusCode() int {
 	return 0
 }
 
-type GetDaemonRunningResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *bool
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonRunningResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonRunningResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type PostDaemonShutdownResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -9421,6 +9395,31 @@ func (r GetObjectScheduleResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetObjectScheduleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodePingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodePingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodePingResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10757,15 +10756,6 @@ func (c *ClientWithResponses) PostDaemonRestartWithResponse(ctx context.Context,
 	return ParsePostDaemonRestartResponse(rsp)
 }
 
-// GetDaemonRunningWithResponse request returning *GetDaemonRunningResponse
-func (c *ClientWithResponses) GetDaemonRunningWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonRunningResponse, error) {
-	rsp, err := c.GetDaemonRunning(ctx, nodename, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonRunningResponse(rsp)
-}
-
 // PostDaemonShutdownWithResponse request returning *PostDaemonShutdownResponse
 func (c *ClientWithResponses) PostDaemonShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostDaemonShutdownParams, reqEditors ...RequestEditorFn) (*PostDaemonShutdownResponse, error) {
 	rsp, err := c.PostDaemonShutdown(ctx, nodename, params, reqEditors...)
@@ -10988,6 +10978,15 @@ func (c *ClientWithResponses) GetObjectScheduleWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetObjectScheduleResponse(rsp)
+}
+
+// GetNodePingWithResponse request returning *GetNodePingResponse
+func (c *ClientWithResponses) GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error) {
+	rsp, err := c.GetNodePing(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodePingResponse(rsp)
 }
 
 // GetNodeScheduleWithResponse request returning *GetNodeScheduleResponse
@@ -13060,60 +13059,6 @@ func ParsePostDaemonRestartResponse(rsp *http.Response) (*PostDaemonRestartRespo
 	return response, nil
 }
 
-// ParseGetDaemonRunningResponse parses an HTTP response from a GetDaemonRunningWithResponse call
-func ParseGetDaemonRunningResponse(rsp *http.Response) (*GetDaemonRunningResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonRunningResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest bool
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParsePostDaemonShutdownResponse parses an HTTP response from a PostDaemonShutdownWithResponse call
 func ParsePostDaemonShutdownResponse(rsp *http.Response) (*PostDaemonShutdownResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -14321,6 +14266,53 @@ func ParseGetObjectScheduleResponse(rsp *http.Response) (*GetObjectScheduleRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodePingResponse parses an HTTP response from a GetNodePingWithResponse call
+func ParseGetNodePingResponse(rsp *http.Response) (*GetNodePingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodePingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
