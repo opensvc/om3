@@ -41,24 +41,32 @@ type T struct {
 	Snooze       *time.Duration
 }
 
+const (
+	lockName = "run"
+)
+
 func New() resource.Driver {
 	return &T{}
 }
 
 func (t T) IsRunning() bool {
-	err := t.DoWithLock(false, time.Second*0, "run", func() error {
-		return nil
-	})
-	return err != nil
+	unlock, err := t.Lock(false, time.Second*0, lockName)
+	if err != nil {
+		return true
+	}
+	defer unlock()
+	return false
 }
 
 func (t T) Run(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
-	err := t.DoWithLock(disable, timeout, "run", func() error {
-		return t.lockedRun(ctx)
-	})
-	return err
+	unlock, err := t.Lock(disable, timeout, lockName)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedRun(ctx)
 }
 
 func (t T) loggerWithProc(p proc.T) *plog.Logger {

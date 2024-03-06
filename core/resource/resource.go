@@ -1191,15 +1191,6 @@ func (t *T) SetLoggerForTest(l *plog.Logger) {
 	t.log = *l
 }
 
-func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f func() error) error {
-	cancel, err := t.Lock(disable, timeout, intent)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-	return f()
-}
-
 func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), error) {
 	if disable {
 		// --nolock
