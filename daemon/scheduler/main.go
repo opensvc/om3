@@ -155,7 +155,7 @@ func (t *T) createJob(e schedule.Entry) {
 		if e.RequireCollector && !collector.Alive.Load() {
 			logger.Debugf("The collector is not alive")
 		} else if err := t.action(e); err != nil {
-			logger.Errorf("scheduler: on exec %s %s: %s", obj, e.Key, err)
+			logger.Errorf("on exec %s %s: %s", obj, e.Key, err)
 		}
 
 		// remember last run, to not run the job too soon after a daemon restart

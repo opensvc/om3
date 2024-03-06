@@ -306,10 +306,10 @@ func (t *T) validateDevice() error {
 	if t.baseName() == "" {
 		return fmt.Errorf("device keyword value must be formatted like <pool>/<ds>")
 	}
-	if v, err := t.pool().Exists(); err != nil {
-		return fmt.Errorf("pool existance validation error: %w", err)
+	if v, err := t.fs().Exists(); err != nil {
+		return fmt.Errorf("dataset %s existance validation error: %w", t.Device, err)
 	} else if !v {
-		return fmt.Errorf("pool %s does not exist", t.poolName())
+		return fmt.Errorf("dataset %s does not exist", t.Device)
 	}
 	return nil
 }

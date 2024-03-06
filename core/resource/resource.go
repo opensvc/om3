@@ -486,8 +486,9 @@ func (t *T) GetObjectDriver() ObjectDriver {
 }
 
 func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
-	prefix := fmt.Sprintf("%s: %s: ", o, t.ResourceID)
-	l := plog.NewDefaultLogger().WithPrefix(prefix).Attr("rid", t.ResourceID)
+	oLog := o.Log()
+	prefix := fmt.Sprintf("%s: %s: ", oLog.Prefix(), t.ResourceID)
+	l := plog.NewLogger(oLog.Logger()).WithPrefix(prefix).Attr("rid", t.ResourceID)
 	if t.Subset != "" {
 		l = l.Attr("subset", t.Subset)
 	}
@@ -1191,18 +1192,26 @@ func (t *T) SetLoggerForTest(l *plog.Logger) {
 }
 
 func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f func() error) error {
+	cancel, err := t.Lock(disable, timeout, intent)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	return f()
+}
+
+func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), error) {
 	if disable {
 		// --nolock
-		return nil
+		return func() {}, nil
 	}
 	p := filepath.Join(t.VarDir(), intent)
 	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer func() { _ = lock.UnLock() }()
-	return f()
+	return func() { _ = lock.UnLock() }, nil
 }
 
 func getStatusInfo(t Driver) (data map[string]any) {
