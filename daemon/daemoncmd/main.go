@@ -367,7 +367,46 @@ func (t *T) stop() error {
 	log := logger("stop: ")
 	log.Debugf("check running")
 	if !t.running() {
-		log.Debugf("already stopped")
+		log.Debugf("not running but verifying if pidfile exist")
+		pidFile := daemonPidFile()
+		if file.Exists(pidFile) {
+
+			pid, err := extractPidFromPidFile(pidFile)
+			if err != nil {
+				return fmt.Errorf("unable to extract pid in pidFile : %s", err)
+			}
+
+			if process, err := os.FindProcess(pid); err != nil {
+				return fmt.Errorf("unable to find process from pid %d : %s", pid, err)
+			} else if process != nil {
+				log.Debugf("process exist with pid %d", process.Pid)
+
+				outputCmd, err := executeCmdPsPipeGrep()
+				if err != nil {
+					return fmt.Errorf("unable to execute command 'ps afx | grep [o]m daemon start' : %s", err)
+				}
+
+				log.Debugf("verifying if pid is a daemon")
+				if strings.Contains(outputCmd, "om daemon start") {
+
+					log.Infof("straying daemon pid is found : %d\n", process.Pid)
+
+					if err = killDaemonPid(process.Pid); err != nil {
+						return fmt.Errorf("unable to execute command 'sudo kill -9 %d' : %s", process.Pid, err)
+					}
+					log.Debugf("pid %d is killed\n", process.Pid)
+				}
+				log.Debugf("remove pidfile")
+				if err = pidfile.Remove(pidFile); err != nil {
+					return fmt.Errorf("unable to remove pidfile %s : %s", pidFile, err)
+				}
+			} else {
+				log.Debugf("remove pidfile but no pid in pidfile exist")
+				if err = pidfile.Remove(pidFile); err != nil {
+					return fmt.Errorf("unable to remove pidfile %s : %s", pidFile, err)
+				}
+			}
+		}
 		return nil
 	}
 	resp, err := t.client.PostDaemonStop(context.Background(), hostname.Hostname())
