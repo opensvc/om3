@@ -1,13 +1,13 @@
 package daemoncmd_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
 
-	"encoding/json"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/client"
@@ -74,7 +74,9 @@ func TestDaemonBootstrap(t *testing.T) {
 			cli, err := client.New(client.WithURL(daemonenv.HTTPUnixURL()))
 			daemonCli := daemoncmd.New(cli)
 			t.Logf("daemonCli.Running")
-			require.False(t, daemonCli.Running())
+			isRunning, err := daemonCli.IsRunning()
+			require.NoError(t, err)
+			require.False(t, isRunning)
 			startError := make(chan error)
 
 			t.Logf("check daemonCli.Start")
@@ -102,7 +104,9 @@ func TestDaemonBootstrap(t *testing.T) {
 			t.Logf("check running")
 			t.Run("check running", func(t *testing.T) {
 				t.Logf("daemonCli.Running")
-				require.True(t, daemonCli.Running())
+				isRunning, err = daemonCli.IsRunning()
+				require.NoError(t, err)
+				require.True(t, isRunning)
 			})
 
 			t.Logf("check events")
@@ -167,7 +171,9 @@ func TestDaemonBootstrap(t *testing.T) {
 				t.Run("check running with client "+name, func(t *testing.T) {
 					cli, err := newClient(url)
 					require.NoError(t, err)
-					require.Truef(t, daemoncmd.New(cli).Running(), "can't detect running from client with url %s", url)
+					isRunning, err = daemoncmd.New(cli).IsRunning()
+					require.NoError(t, err)
+					require.Truef(t, isRunning, "can't detect running from client with url %s", url)
 				})
 			}
 
@@ -202,7 +208,9 @@ func TestDaemonBootstrap(t *testing.T) {
 						cli, err := newClient(url)
 						require.Nil(t, err)
 						require.NoError(t, daemoncmd.New(cli).Stop())
-						require.False(t, daemonCli.Running())
+						isRunning, err = daemonCli.IsRunning()
+						require.NoError(t, err)
+						require.False(t, isRunning)
 					})
 				}
 			})
