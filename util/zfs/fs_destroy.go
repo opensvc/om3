@@ -1,21 +1,33 @@
 package zfs
 
 import (
-	"github.com/rs/zerolog"
+	"os/exec"
+	"strings"
+
+	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/sshnode"
 )
 
 type (
 	fsDestroyOpts struct {
 		Name            string
+		Node            string
 		RemoveSnapshots bool
 		Recurse         bool
 		TryImmediate    bool
 	}
 )
+
+func FilesystemDestroyWithNode(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*fsDestroyOpts)
+		t.Node = s
+		return nil
+	})
+}
 
 // FilesystemDestroyWithRemoveSnapshots forces an unmount of any file systems using the
 // unmount -f command.  This option has no effect on non-file systems or
@@ -70,13 +82,75 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	opts := &fsDestroyOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsDestroyOptsToArgs(*opts)
-	cmd := command.New(
-		command.WithName("zfs"),
-		command.WithArgs(args),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	return cmd.Run()
+	cmd := exec.Command("zfs", args...)
+	cmdStr := cmd.String()
+	if opts.Node == "" {
+		if t.Log != nil {
+			t.Log.Debugf("exec '%s'", cmdStr)
+		}
+		b, err := cmd.CombinedOutput()
+		if strings.Contains(string(b), "could not find") {
+			return nil
+		}
+		if strings.Contains(string(b), "does not exist") {
+			return nil
+		}
+		if err != nil {
+			t.Log.
+				Attr("exitcode", cmd.ProcessState.ExitCode()).
+				Attr("cmd", cmdStr).
+				Attr("outputs", string(b)).
+				Errorf("%s destroy exited with code %d", t.Name, cmd.ProcessState.ExitCode())
+		} else {
+			if t.Log != nil {
+				t.Log.
+					Attr("exitcode", cmd.ProcessState.ExitCode()).
+					Attr("cmd", cmdStr).
+					Infof("%s destroyed", t.Name)
+			}
+		}
+		return err
+	}
+	client, err := sshnode.NewClient(opts.Node)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	if t.Log != nil {
+		t.Log.Debugf("rexec '%s' on node %s", cmdStr, opts.Node)
+	}
+	if b, err := session.CombinedOutput(cmdStr); err != nil {
+		ee := err.(*ssh.ExitError)
+		ec := ee.Waitmsg.ExitStatus()
+		if ec == 0 {
+			return nil
+		}
+		if strings.Contains(string(b), "could not find") {
+			return nil
+		}
+		if strings.Contains(string(b), "does not exist") {
+			return nil
+		}
+		t.Log.
+			Attr("exitcode", ec).
+			Attr("cmd", cmdStr).
+			Attr("peer", opts.Node).
+			Attr("outputs", string(b)).
+			Errorf("destroy %s on node %s exited with code %d", t.Name, opts.Node, ec)
+		return err
+	} else {
+		if t.Log != nil {
+			t.Log.
+				Attr("cmd", cmdStr).
+				Attr("peer", opts.Node).
+				Infof("%s destroyed on node %s", t.Name, opts.Node)
+		}
+	}
+	return nil
 }
