@@ -1,0 +1,1 @@
+The zfs sync resource supports the :c-tag:`delay_snap` tag. This tag is used to delay the snapshot creation just before the sync, thus after :kw:`postsnap_trigger` execution. The default behaviour (no tags) is to group all snapshots creation before copying data to remote nodes, thus between :kw:`presnap_trigger` and :kw:`postsnap_trigger`.
