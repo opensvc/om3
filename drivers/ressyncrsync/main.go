@@ -2,10 +2,7 @@ package ressyncrsync
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,7 +23,6 @@ import (
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/progress"
@@ -118,7 +114,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		t.Log().Errorf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
-	for _, nodename := range t.getTargetPeernames(target) {
+	for _, nodename := range t.GetTargetPeernames(target, t.Nodes, t.DRPNodes) {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Debugf("%s", err)
@@ -131,7 +127,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
-		if err := t.writeLastSync(nodename); err != nil {
+		if err := t.WriteLastSync(nodename); err != nil {
 			return err
 		}
 	}
@@ -178,102 +174,18 @@ func (t *T) Status(ctx context.Context) status.T {
 	} else {
 		isSourceNode = true
 	}
-	return t.statusLastSync(isSourceNode)
+	nodenames := t.getTargetNodenames(isSourceNode)
+	return t.StatusLastSync(nodenames)
 }
 
-func (t T) writeLastSync(nodename string) error {
-	p := t.lastSyncFile(nodename)
-	f, err := os.Create(p)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return nil
-}
-
-func (t T) readLastSync(nodename string) (time.Time, error) {
-	var tm time.Time
-	p := t.lastSyncFile(nodename)
-	info, err := os.Stat(p)
-	switch {
-	case errors.Is(err, os.ErrNotExist):
-		return tm, nil
-	case err != nil:
-		return tm, err
-	default:
-		return info.ModTime(), nil
-	}
-}
-
-func (t T) lastSyncFile(nodename string) string {
-	return filepath.Join(t.VarDir(), "last_sync_"+nodename)
-}
-
-func (t *T) statusLastSync(isSourceNode bool) status.T {
-	state := status.NotApplicable
-
-	var nodenames []string
+func (t *T) getTargetNodenames(isSourceNode bool) []string {
 	if isSourceNode {
 		// if the instance is active, check last sync timestamp for each peer
-		nodenames = t.getTargetPeernames(t.Target)
+		return t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	} else {
 		// if the instance is passive, check last sync timestamp for the local node (received from the source node)
-		nodenames = []string{hostname.Hostname()}
+		return []string{hostname.Hostname()}
 	}
-
-	if len(nodenames) == 0 {
-		t.StatusLog().Info("no target nodes")
-		return status.NotApplicable
-	}
-
-	for _, nodename := range nodenames {
-		if tm, err := t.readLastSync(nodename); err != nil {
-			t.StatusLog().Error("%s last sync: %s", nodename, err)
-		} else if tm.IsZero() {
-			t.StatusLog().Warn("%s never synced", nodename)
-		} else {
-			maxDelay := t.maxDelay(tm)
-			if maxDelay == nil {
-				t.StatusLog().Info("no schedule and no max delay")
-				continue
-			}
-			elapsed := time.Now().Sub(tm)
-			if elapsed > *maxDelay {
-				t.StatusLog().Warn("%s last sync at %s (>%s after last)", nodename, tm, maxDelay)
-				state.Add(status.Warn)
-			} else {
-				//t.StatusLog().Info("%s last sync at %s (%s after last)", nodename, tm, maxDelay)
-				state.Add(status.Up)
-			}
-		}
-	}
-	return state
-}
-
-func (t *T) getTargetPeernames(target []string) []string {
-	nodenames := make([]string, 0)
-	localhost := hostname.Hostname()
-	for _, nodename := range t.getTargetNodenames(target) {
-		if nodename != localhost {
-			nodenames = append(nodenames, nodename)
-		}
-	}
-	return nodenames
-}
-
-func (t *T) getTargetNodenames(target []string) []string {
-	nodenames := make([]string, 0)
-	targetMap := make(map[string]any)
-	for _, target := range target {
-		targetMap[target] = nil
-	}
-	if _, ok := targetMap["nodes"]; ok {
-		nodenames = append(nodenames, t.Nodes...)
-	}
-	if _, ok := targetMap["drpnodes"]; ok {
-		nodenames = append(nodenames, t.DRPNodes...)
-	}
-	return nodenames
 }
 
 func (t *T) running(ctx context.Context) bool {
@@ -431,42 +343,10 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		Attr("received_b", stats.ReceivedBytes).
 		Infof("sync stat")
 
-	if t.peerSyncLastSyncFile(nodename); err != nil {
+	if t.WritePeerLastSync(nodename, t.user()); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (t T) peerSyncLastSyncFile(nodename string) error {
-	lastSyncFile := t.lastSyncFile(nodename)
-	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
-	schedTimestampFile := filepath.Join(t.GetObjectDriver().VarDir(), "scheduler", "last_sync_update_"+t.RID())
-	now := time.Now()
-	if err := file.Touch(lastSyncFile, now); err != nil {
-		return err
-	}
-	if err := file.Touch(lastSyncFileSrc, now); err != nil {
-		return err
-	}
-	if err := file.Touch(schedTimestampFile, now); err != nil {
-		return err
-	}
-	dst := t.user() + "@" + nodename + ":/"
-	args := make([]string, 0)
-	args = append(args, "-R", lastSyncFile, lastSyncFileSrc, schedTimestampFile, dst)
-	cmd := command.New(
-		command.WithName(rsync),
-		command.WithArgs(args),
-		command.WithTimeout(10*time.Second),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-	)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
 	return nil
 }
 
