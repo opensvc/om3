@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -176,8 +175,9 @@ func (t *T) Start() error {
 	}
 	pidFile := daemonPidFile()
 	log.Debugf("create pid file %s", pidFile)
-	if err := pidfile.WriteControl(pidFile, os.Getpid(), true); err != nil {
-		return nil
+
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644); err != nil {
+		return err
 	}
 	defer func() {
 		log.Debugf("remove pid file %s", pidFile)
