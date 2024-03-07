@@ -9,9 +9,17 @@ import (
 )
 
 func (t *Filesystem) Exists() (bool, error) {
+	return t.existsWithType("all")
+}
+
+func (t *Filesystem) SnapshotExists() (bool, error) {
+	return t.existsWithType("snapshot")
+}
+
+func (t *Filesystem) existsWithType(s string) (bool, error) {
 	cmd := command.New(
 		command.WithName("zfs"),
-		command.WithVarArgs("list", "-t", "filesystem", t.Name),
+		command.WithVarArgs("list", "-t", s, t.Name),
 		command.WithLogger(t.Log),
 		command.WithBufferedStderr(),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
