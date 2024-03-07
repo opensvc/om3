@@ -21,7 +21,9 @@ func (t *CmdDaemonRunning) Run() error {
 	}
 	dCli := daemoncmd.New(cli)
 	dCli.SetNode(t.NodeSelector)
-	if !dCli.Running() {
+	if isRunning, err := dCli.IsRunning(); err != nil {
+		return err
+	} else if !isRunning {
 		os.Exit(1)
 	}
 	return nil
