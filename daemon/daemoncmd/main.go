@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
@@ -486,6 +487,14 @@ func (t *T) kill() error {
 }
 
 func (t *T) isRunning() (bool, error) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	resp, err := t.client.GetNodePing(ctx, hostname.Hostname())
+	if err == nil && resp.StatusCode == http.StatusNoContent {
+		return true, nil
+	}
 	pid, err := t.getPid()
 	return pid > 0, err
 }
@@ -499,19 +508,28 @@ func (t *T) getPid() (int, error) {
 	if err != nil {
 		return -1, err
 	}
+	v, err := daemonProcessRunning()
+	if !v {
+		return -1, err
+	}
+	return pid, nil
+}
+
+func daemonProcessRunning() (bool, error) {
+	pid := os.Getpid()
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	if errors.Is(err, os.ErrNotExist) {
-		return -1, nil
+		return false, nil
 	}
 	if err != nil {
-		return -1, err
+		return false, err
 	}
 	sep := make([]byte, 1)
 	l := bytes.Split(b, sep)
 	if string(l[1]) != "daemon" || string(l[2]) != "start" {
-		return -1, fmt.Errorf("process %d pointed by %s is not an om daemon", pid, pidFile)
+		return false, fmt.Errorf("process %d pointed by %s is not an om daemon", pid, daemonPidFile())
 	}
-	return pid, nil
+	return true, nil
 }
 
 func extractPidFromPidFile(pidFile string) (int, error) {
