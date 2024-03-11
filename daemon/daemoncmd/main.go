@@ -389,7 +389,7 @@ func (t *T) stop() error {
 		return nil
 	}
 
-	resp, err := t.client.PostDaemonStop(context.Background(), hostname.Hostname())
+	resp, err := t.client.PostDaemonStopWithResponse(context.Background(), hostname.Hostname())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
@@ -398,11 +398,14 @@ func (t *T) stop() error {
 			return t.kill()
 		}
 	}
-	switch resp.StatusCode {
-	case 200:
-
+	switch {
+	case resp.JSON200 != nil:
+		pid := resp.JSON200.Pid
 		log.Debugf("wait for stop...")
-		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, false, t.isRunning); err != nil {
+		fn := func() (bool, error) {
+			return t.isNotRunning(pid)
+		}
+		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, fn); err != nil {
 			log.Debugf("cli-stop still running after stop... kill")
 			return t.kill()
 		}
@@ -410,7 +413,7 @@ func (t *T) stop() error {
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		log.Debugf("unexpected status code: %s... kill", resp.Status)
+		log.Debugf("unexpected status code: %s... kill", resp.Status())
 		return t.kill()
 	}
 
@@ -486,6 +489,17 @@ func (t *T) kill() error {
 	return syscall.Kill(pid, syscall.SIGKILL)
 }
 
+func (t *T) isNotRunning(pid int) (bool, error) {
+	_, err := os.ReadFile(fmt.Sprintf("/proc/%d", pid))
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (t *T) isRunning() (bool, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -495,6 +509,7 @@ func (t *T) isRunning() (bool, error) {
 	if err == nil && resp.StatusCode == http.StatusNoContent {
 		return true, nil
 	}
+
 	pid, err := t.getPid()
 	return pid > 0, err
 }
@@ -508,14 +523,14 @@ func (t *T) getPid() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	v, err := daemonProcessRunning()
+	v, err := readProcCmdLine()
 	if !v {
 		return -1, err
 	}
 	return pid, nil
 }
 
-func daemonProcessRunning() (bool, error) {
+func readProcCmdLine() (bool, error) {
 	pid := os.Getpid()
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	if errors.Is(err, os.ErrNotExist) {
