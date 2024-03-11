@@ -281,7 +281,11 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
-          $ref: '#/components/responses/200'
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonPid'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -309,7 +313,11 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:
         200:
-          $ref: '#/components/responses/200'
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonPid'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3171,6 +3179,14 @@ components:
     DaemonMonitor:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+
+    DaemonPid:
+      type: object
+      required:
+        - pid
+      properties:
+        pid:
+          type: integer
 
     DaemonScheduler:
       allOf:
