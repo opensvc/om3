@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
-	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/schedule"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rs/zerolog"
@@ -120,7 +119,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 			}
 			continue
 		}
-		t.progress(ctx, nodename)
+		t.ProgressNode(ctx, nodename)
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
@@ -133,13 +132,6 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 
 func (t *T) Kill(ctx context.Context) error {
 	return nil
-}
-
-func (t *T) progress(ctx context.Context, nodename string, more ...any) {
-	if view := progress.ViewFromContext(ctx); view != nil {
-		key := append(t.ProgressKey(), nodename)
-		view.Info(key, more)
-	}
 }
 
 // maxDelay return the configured max_delay if set.
@@ -310,7 +302,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		}
 	}
 
-	stats := ressync.NewStats()
+	stats := ressync.NewStats(nodename)
 
 	cmd := command.New(
 		command.WithName(rsync),
@@ -325,13 +317,13 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 			addBytesReceived(line, stats)
 			rx := fmt.Sprintf("rx:%s", sizeconv.BSizeCompact(float64(stats.ReceivedBytes)))
 			tx := fmt.Sprintf("tx:%s", sizeconv.BSizeCompact(float64(stats.SentBytes)))
-			t.progress(ctx, nodename, "▶", rx, tx)
+			t.ProgressNode(ctx, nodename, "▶", rx, tx)
 		}),
 	)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	t.progress(ctx, nodename, rawconfig.Colorize.Optimal("✓"), nil, nil)
+	t.ProgressNode(ctx, nodename, rawconfig.Colorize.Optimal("✓"), nil, nil)
 	stats.Close()
 	t.Log().
 		Attr("speed_bps", stats.SpeedBPS()).

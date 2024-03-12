@@ -21,7 +21,6 @@ import (
 	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
-	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/sshnode"
 	"github.com/opensvc/om3/util/zfs"
 	"golang.org/x/crypto/ssh"
@@ -155,7 +154,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 			}
 			continue
 		}
-		t.progress(ctx, nodename)
+		t.ProgressNode(ctx, nodename, nil, nil)
 		if mode == modeFull {
 			if err := t.zfs(t.dstSnapSent).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
 				return err
@@ -180,7 +179,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	return nil
 }
 
-func (t *T) sendIncremental(nodename string) error {
+func (t *T) sendIncremental(ctx context.Context, nodename string) error {
 	var b bytes.Buffer
 
 	args := t.sendIncrementalCmd()
@@ -196,12 +195,18 @@ func (t *T) sendIncremental(nodename string) error {
 		return err
 	}
 	defer session.Close()
-	if stdinPipe, err := session.StdinPipe(); err != nil {
+
+	stdinPipe, err := session.StdinPipe()
+	if err != nil {
 		return err
-	} else {
-		cmd.Stdout = stdinPipe
-		defer stdinPipe.Close()
 	}
+	defer stdinPipe.Close()
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	defer stdoutPipe.Close()
 
 	session.Stdout = &b
 	session.Stderr = &b
@@ -222,7 +227,15 @@ func (t *T) sendIncremental(nodename string) error {
 		return err
 	}
 	cmd.Stderr = &b
-	err = cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	stats := ressync.NewStats(nodename)
+	if _, err := t.CopyWithStats(ctx, stdinPipe, stdoutPipe, stats); err != nil {
+		return err
+	}
+
+	err = cmd.Wait()
 	if ee, ok := err.(*exec.ExitError); ok {
 		ec := ee.ExitCode()
 		t.Log().
@@ -233,7 +246,7 @@ func (t *T) sendIncremental(nodename string) error {
 	return err
 }
 
-func (t *T) sendInitial(nodename string) error {
+func (t *T) sendInitial(ctx context.Context, nodename string) error {
 	var b bytes.Buffer
 
 	args := t.sendInitialCmd()
@@ -250,12 +263,17 @@ func (t *T) sendInitial(nodename string) error {
 	}
 	defer session.Close()
 
-	if stdinPipe, err := session.StdinPipe(); err != nil {
+	stdinPipe, err := session.StdinPipe()
+	if err != nil {
 		return err
-	} else {
-		cmd.Stdout = stdinPipe
-		defer stdinPipe.Close()
 	}
+	defer stdinPipe.Close()
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	defer stdoutPipe.Close()
 
 	session.Stdout = &b
 	session.Stderr = &b
@@ -276,7 +294,15 @@ func (t *T) sendInitial(nodename string) error {
 		return err
 	}
 	cmd.Stderr = &b
-	err = cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	stats := ressync.NewStats(nodename)
+	if _, err := t.CopyWithStats(ctx, stdinPipe, stdoutPipe, stats); err != nil {
+		return err
+	}
+
+	err = cmd.Wait()
 	if ee, ok := err.(*exec.ExitError); ok {
 		ec := ee.ExitCode()
 		t.Log().
@@ -334,13 +360,6 @@ func (t *T) receiveCmd() []string {
 
 func (t *T) Kill(ctx context.Context) error {
 	return nil
-}
-
-func (t *T) progress(ctx context.Context, nodename string, more ...any) {
-	if view := progress.ViewFromContext(ctx); view != nil {
-		key := append(t.ProgressKey(), nodename)
-		view.Info(key, more)
-	}
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -469,13 +488,13 @@ func (t *T) remoteSnapshotExists(name, nodename string) (bool, error) {
 func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 	err := func() error {
 		if mode == modeFull {
-			return t.sendInitial(nodename)
+			return t.sendInitial(ctx, nodename)
 		} else if v, err := t.remoteSnapshotExists(t.dstSnapSent, nodename); err != nil {
 			return err
 		} else if v {
-			return t.sendIncremental(nodename)
+			return t.sendIncremental(ctx, nodename)
 		} else {
-			return t.sendInitial(nodename)
+			return t.sendInitial(ctx, nodename)
 		}
 	}()
 
@@ -485,12 +504,8 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 	} else {
 		icon = rawconfig.Colorize.Optimal("✓")
 	}
-	t.progress(ctx, nodename, icon, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	t.ProgressNode(ctx, nodename, icon, nil, nil)
+	return err
 }
 
 func (t T) user() string {
