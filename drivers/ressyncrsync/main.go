@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -35,7 +34,6 @@ import (
 type (
 	T struct {
 		ressync.T
-		Path           naming.Path
 		BandwidthLimit string
 		Src            string
 		Dst            string
@@ -114,7 +112,8 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		t.Log().Errorf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
-	for _, nodename := range t.GetTargetPeernames(target, t.Nodes, t.DRPNodes) {
+	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
+	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Debugf("%s", err)
@@ -127,7 +126,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
-		if err := t.WriteLastSync(nodename); err != nil {
+		if t.WritePeerLastSync(nodename, nodenames); err != nil {
 			return err
 		}
 	}
@@ -342,10 +341,6 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 		Attr("sent_b", stats.SentBytes).
 		Attr("received_b", stats.ReceivedBytes).
 		Infof("sync stat")
-
-	if t.WritePeerLastSync(nodename, t.user()); err != nil {
-		return err
-	}
 
 	return nil
 }

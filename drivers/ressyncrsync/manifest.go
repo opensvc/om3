@@ -22,6 +22,7 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextDRPNodes,
 		manifest.ContextTopology,
 		manifest.ContextObjectID,
+		manifest.ContextObjectPath,
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(Keywords...)

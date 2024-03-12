@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -34,7 +33,6 @@ import (
 type (
 	T struct {
 		ressync.T
-		Path      naming.Path
 		Src       string
 		Dst       string
 		Target    []string
@@ -149,7 +147,8 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		}
 	}
 
-	for _, nodename := range t.GetTargetPeernames(target, t.Nodes, t.DRPNodes) {
+	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
+	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Debugf("%s", err)
@@ -170,10 +169,10 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
-		if err := t.WriteLastSync(nodename); err != nil {
+		if err := t.rotatePeerSnaps(nodename, t.dstSnapTosend, t.srcSnapSent); err != nil {
 			return err
 		}
-		if err := t.rotatePeerSnaps(nodename, t.dstSnapTosend, t.srcSnapSent); err != nil {
+		if t.WritePeerLastSync(nodename, nodenames); err != nil {
 			return err
 		}
 	}
@@ -490,9 +489,6 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 	}
 	t.progress(ctx, nodename, icon, nil, nil)
 	if err != nil {
-		return err
-	}
-	if t.WritePeerLastSync(nodename, t.user()); err != nil {
 		return err
 	}
 

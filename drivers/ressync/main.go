@@ -4,12 +4,15 @@ import (
 	"context"
 	"embed"
 	"errors"
+	"fmt"
+	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/converters"
@@ -21,8 +24,9 @@ import (
 type (
 	T struct {
 		resource.T
-		MaxDelay *time.Duration
-		Schedule string
+		MaxDelay *time.Duration `json:"max_delay"`
+		Schedule string         `json:"schedule"`
+		Path     naming.Path    `json:"path"`
 	}
 )
 
@@ -106,10 +110,11 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 	return state
 }
 
-func (t T) WritePeerLastSync(nodename, user string) error {
-	lastSyncFile := t.lastSyncFile(nodename)
+func (t T) WritePeerLastSync(peer string, peers []string) error {
+	head := t.GetObjectDriver().VarDir()
+	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
-	schedTimestampFile := filepath.Join(t.GetObjectDriver().VarDir(), "scheduler", "last_sync_update_"+t.RID())
+	schedTimestampFile := filepath.Join(head, "scheduler", "last_sync_update_"+t.RID())
 	now := time.Now()
 	if err := file.Touch(lastSyncFile, now); err != nil {
 		return err
@@ -120,21 +125,44 @@ func (t T) WritePeerLastSync(nodename, user string) error {
 	if err := file.Touch(schedTimestampFile, now); err != nil {
 		return err
 	}
-	dst := user + "@" + nodename + ":/"
-	args := make([]string, 0)
-	args = append(args, "-R", lastSyncFile, lastSyncFileSrc, schedTimestampFile, dst)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	cmd := exec.CommandContext(ctx, "rsync", args...)
-	cmdStr := cmd.String()
-	t.Log().Attr("cmd", cmdStr).Infof("copy state file to node %s", nodename)
-	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Log().
-			Attr("cmd", cmdStr).
-			Attr("outputs", string(b)).
-			Errorf("copy state file to node %s: %s", nodename, err)
+
+	c, err := client.New(client.WithURL(peer))
+	if err != nil {
 		return err
 	}
-	return nil
+
+	send := func(filename, nodename string) error {
+		file, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		ctx := context.Background()
+		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
+			req.Header.Add("x-relative-path", filename[len(head):])
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if response.StatusCode != http.StatusNoContent {
+			return fmt.Errorf("unexpected response: %s", response)
+		}
+		return nil
+	}
+
+	var errs error
+
+	for _, nodename := range peers {
+		for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+			if err := send(filename, nodename); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("failed to send state file %s to node %s: %w", filename, nodename, err))
+			}
+			t.Log().Infof("state file %s sent to node %s", filename, nodename)
+		}
+	}
+
+	return errs
 }
 
 func (t T) WriteLastSync(nodename string) error {

@@ -18,6 +18,7 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
+		manifest.ContextObjectPath,
 		manifest.ContextNodes,
 		manifest.ContextDRPNodes,
 		manifest.ContextTopology,
