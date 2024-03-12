@@ -261,6 +261,9 @@ type ClientInterface interface {
 	// PostInstanceClear request
 	PostInstanceClear(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInstanceStateFileWithBody request with any body
+	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeLogs request
 	GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1090,6 +1093,18 @@ func (c *Client) PostInstanceActionUnprovision(ctx context.Context, nodename InP
 
 func (c *Client) PostInstanceClear(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceClearRequest(c.Server, nodename, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceStateFileRequestWithBody(c.Server, nodename, namespace, kind, name, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5456,6 +5471,63 @@ func NewPostInstanceClearRequest(server string, nodename InPathNodeName, namespa
 	return req, nil
 }
 
+// NewPostInstanceStateFileRequestWithBody generates requests for PostInstanceStateFile with any type of body
+func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/state/file", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetNodeLogsRequest generates requests for GetNodeLogs
 func NewGetNodeLogsRequest(server string, nodename InPathNodeName, params *GetNodeLogsParams) (*http.Request, error) {
 	var err error
@@ -7806,6 +7878,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceClearWithResponse request
 	PostInstanceClearWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
 
+	// PostInstanceStateFileWithBodyWithResponse request with any body
+	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
+
 	// GetNodeLogsWithResponse request
 	GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error)
 
@@ -9320,6 +9395,33 @@ func (r PostInstanceClearResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostInstanceClearResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInstanceStateFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceStateFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceStateFileResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10951,6 +11053,15 @@ func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParsePostInstanceClearResponse(rsp)
+}
+
+// PostInstanceStateFileWithBodyWithResponse request with arbitrary body returning *PostInstanceStateFileResponse
+func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
+	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceStateFileResponse(rsp)
 }
 
 // GetNodeLogsWithResponse request returning *GetNodeLogsResponse
@@ -14145,6 +14256,67 @@ func ParsePostInstanceClearResponse(rsp *http.Response) (*PostInstanceClearRespo
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceStateFileResponse parses an HTTP response from a PostInstanceStateFileWithResponse call
+func ParsePostInstanceStateFileResponse(rsp *http.Response) (*PostInstanceStateFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceStateFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

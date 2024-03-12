@@ -2742,6 +2742,46 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/state/file:
+    post:
+      operationId: PostInstanceStateFile
+      tags:
+        - object / svc
+        - object / vol
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      headers:
+        x-relative-path:
+          type: string
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: OK
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /pool:
     get:
       operationId: GetPools
