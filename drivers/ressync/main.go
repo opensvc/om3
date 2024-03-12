@@ -11,10 +11,12 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -217,4 +219,45 @@ func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {
 		nodenames = append(nodenames, drpNodes...)
 	}
 	return nodenames
+}
+
+func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []string) {
+	sb := statusbus.FromContext(ctx)
+	o := t.GetObjectDriver()
+	l := o.ResourcesByDrivergroups([]driver.Group{
+		driver.GroupIP,
+		driver.GroupFS,
+		driver.GroupShare,
+		driver.GroupDisk,
+		driver.GroupContainer,
+	})
+	v = true
+	for _, r := range l {
+		switch r.ID().DriverGroup() {
+		case driver.GroupIP:
+		case driver.GroupFS:
+		case driver.GroupShare:
+		case driver.GroupDisk:
+			switch r.Manifest().DriverID.Name {
+			case "drbd":
+				continue
+			case "scsireserv":
+				continue
+			}
+		case driver.GroupContainer:
+		default:
+			continue
+		}
+		st := sb.Get(r.RID())
+		switch st {
+		case status.Up:
+		case status.StandbyUp:
+		case status.NotApplicable:
+		default:
+			// required resource is not up
+			rids = append(rids, r.RID())
+			v = false
+		}
+	}
+	return
 }

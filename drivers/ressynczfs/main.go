@@ -12,13 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/hostname"
@@ -109,7 +107,7 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
-	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
+	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
 
@@ -347,7 +345,7 @@ func (t *T) progress(ctx context.Context, nodename string, more ...any) {
 
 func (t *T) Status(ctx context.Context) status.T {
 	var isSourceNode bool
-	if v, _ := t.isInstanceSufficientlyStarted(ctx); !v {
+	if v, _ := t.IsInstanceSufficientlyStarted(ctx); !v {
 		isSourceNode = false
 	} else if t.isFlexAndNotPrimary() {
 		isSourceNode = false
@@ -516,47 +514,6 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		m = append(m, resource.InfoKey{Key: "timeout", Value: fmt.Sprintf("%s", t.Timeout)})
 	}
 	return m, nil
-}
-
-func (t *T) isInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []string) {
-	sb := statusbus.FromContext(ctx)
-	o := t.GetObjectDriver()
-	l := o.ResourcesByDrivergroups([]driver.Group{
-		driver.GroupIP,
-		driver.GroupFS,
-		driver.GroupShare,
-		driver.GroupDisk,
-		driver.GroupContainer,
-	})
-	v = true
-	for _, r := range l {
-		switch r.ID().DriverGroup() {
-		case driver.GroupIP:
-		case driver.GroupFS:
-		case driver.GroupShare:
-		case driver.GroupDisk:
-			switch r.Manifest().DriverID.Name {
-			case "drbd":
-				continue
-			case "scsireserv":
-				continue
-			}
-		case driver.GroupContainer:
-		default:
-			continue
-		}
-		st := sb.Get(r.RID())
-		switch st {
-		case status.Up:
-		case status.StandbyUp:
-		case status.NotApplicable:
-		default:
-			// required resource is not up
-			rids = append(rids, r.RID())
-			v = false
-		}
-	}
-	return
 }
 
 func (t *T) isFlexAndNotPrimary() bool {
