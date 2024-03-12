@@ -379,16 +379,6 @@ func (t *T) restartFromCmd() error {
 
 func (t *T) stop() error {
 	log := logger("stop: ")
-	log.Debugf("check running")
-	isRunning, err := t.isRunning()
-	if err != nil {
-		return err
-	}
-	if !isRunning {
-		log.Debugf("already stopped")
-		return nil
-	}
-
 	resp, err := t.client.PostDaemonStopWithResponse(context.Background(), hostname.Hostname())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
@@ -397,16 +387,17 @@ func (t *T) stop() error {
 			log.Debugf("post daemon stp: %s... kill", err)
 			return t.kill()
 		}
+		return err
 	}
 	switch {
 	case resp.JSON200 != nil:
-		pid := resp.JSON200.Pid
 		log.Debugf("wait for stop...")
+		pid := resp.JSON200.Pid
 		fn := func() (bool, error) {
 			return t.isNotRunning(pid)
 		}
 		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, fn); err != nil {
-			log.Debugf("cli-stop still running after stop... kill")
+			log.Debugf("daemon %d still running after stop: %s ... kill", pid, err)
 			return t.kill()
 		}
 		log.Debugf("stopped")
@@ -490,14 +481,14 @@ func (t *T) kill() error {
 }
 
 func (t *T) isNotRunning(pid int) (bool, error) {
-	_, err := os.ReadFile(fmt.Sprintf("/proc/%d", pid))
+	_, err := os.ReadDir(fmt.Sprintf("/proc/%d", pid))
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return true, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return false, nil
 }
 
 func (t *T) isRunning() (bool, error) {
