@@ -1,4 +1,4 @@
-package ressyncrsync
+package ressynczfs
 
 import (
 	"github.com/opensvc/om3/core/driver"
@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	drvID = driver.NewID(driver.GroupSync, "rsync")
+	drvID = driver.NewID(driver.GroupSync, "zfs")
 )
 
 func init() {
@@ -18,11 +18,11 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
+		manifest.ContextObjectPath,
 		manifest.ContextNodes,
 		manifest.ContextDRPNodes,
 		manifest.ContextTopology,
 		manifest.ContextObjectID,
-		manifest.ContextObjectPath,
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(Keywords...)

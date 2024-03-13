@@ -20,6 +20,9 @@ var (
 )
 
 func NewClient(n string) (*ssh.Client, error) {
+	if n == "" {
+		panic("empty hostname is not allowed")
+	}
 	ip := net.ParseIP(n)
 	if ip == nil {
 		if ips, err := net.LookupIP(n); err != nil {
