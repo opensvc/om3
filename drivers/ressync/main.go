@@ -148,7 +148,7 @@ func (t T) WritePeerLastSync(peer string, peers []string) error {
 			return err
 		}
 		if response.StatusCode != http.StatusNoContent {
-			return fmt.Errorf("unexpected response: %s", response)
+			return fmt.Errorf("unexpected response: %s", response.Status)
 		}
 		return nil
 	}
