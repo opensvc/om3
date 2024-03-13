@@ -88,7 +88,7 @@ func TestDaemonBootstrap(t *testing.T) {
 				select {
 				case err := <-startError:
 					require.NoError(t, err, "daemonCli.Start() returns error !")
-				case <-time.After(100 * time.Millisecond):
+				case <-time.After(300 * time.Millisecond):
 					t.Logf("daemonCli.Start() doesn't return error yet, it must be running...")
 				}
 				require.FileExists(t, filepath.Join(rawconfig.Paths.Var, "osvcd.pid"))

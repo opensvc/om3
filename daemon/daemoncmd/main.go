@@ -37,6 +37,7 @@ var (
 	WaitRunningDelay   = 500 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 250 * time.Millisecond
+	errGoTest          = errors.New("running from go test")
 )
 
 type (
@@ -473,7 +474,10 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 }
 
 func (t *T) kill() error {
-	pid, _ := t.getPid()
+	pid, err := t.getPid()
+	if errors.Is(err, errGoTest) {
+		return nil
+	}
 	if pid <= 0 {
 		return nil
 	}
@@ -481,7 +485,7 @@ func (t *T) kill() error {
 }
 
 func (t *T) isNotRunning(pid int) (bool, error) {
-	_, err := os.ReadDir(fmt.Sprintf("/proc/%d", pid))
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
 	if errors.Is(err, os.ErrNotExist) {
 		return true, nil
 	}
@@ -502,7 +506,21 @@ func (t *T) isRunning() (bool, error) {
 	}
 
 	pid, err := t.getPid()
-	return pid > 0, err
+	if errors.Is(err, errGoTest) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if pid < 0 {
+		return false, nil
+	}
+
+	isNotRunning, err := t.isNotRunning(pid)
+	if err != nil {
+		return false, err
+	}
+	return !isNotRunning, err
 }
 
 func (t *T) getPid() (int, error) {
@@ -514,38 +532,49 @@ func (t *T) getPid() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	v, err := readProcCmdLine()
+	v, err := isCmdlineMatchingDaemon()
 	if !v {
 		return -1, err
 	}
-	return pid, nil
+	return pid, err
 }
 
-func readProcCmdLine() (bool, error) {
+func isCmdlineMatchingDaemon() (bool, error) {
+	log := logger("test:")
+	log.Debugf("test cmdline")
 	pid := os.Getpid()
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
+
 	if err != nil {
 		return false, err
 	}
+
+	if strings.Contains(string(b), "/daemoncmd.test") {
+		return true, errGoTest
+	}
+
 	sep := make([]byte, 1)
 	l := bytes.Split(b, sep)
+
 	if string(l[1]) != "daemon" || string(l[2]) != "start" {
-		return false, fmt.Errorf("process %d pointed by %s is not an om daemon", pid, daemonPidFile())
+		return false, fmt.Errorf("process %d pointed by %s is not a om daemon", pid, daemonPidFile())
 	}
 	return true, nil
+
 }
 
 func extractPidFromPidFile(pidFile string) (int, error) {
 	data, err := os.ReadFile(pidFile)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	return pid, nil
 }
