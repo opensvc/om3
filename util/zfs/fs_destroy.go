@@ -86,7 +86,7 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	cmdStr := cmd.String()
 	if opts.Node == "" {
 		if t.Log != nil {
-			t.Log.Debugf("exec '%s'", cmdStr)
+			t.Log.Attr("cmd", cmdStr).Debugf("destroy zfs '%s'", t.Name)
 		}
 		b, err := cmd.CombinedOutput()
 		if strings.Contains(string(b), "could not find") {

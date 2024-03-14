@@ -5,7 +5,7 @@ import (
 )
 
 func (t *Pool) ListVolumes(fopts ...funcopt.O) (Vols, error) {
-	fopts = append(fopts, ListDatasetsWithLogger(t.Log))
+	fopts = append(fopts, ListWithLogger(t.Log))
 	vols, err := ListVolumes(fopts...)
 	if err != nil {
 		return nil, err
