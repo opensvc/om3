@@ -26,7 +26,6 @@ func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) 
 	} else {
 		return ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 	}
-	return nil
 }
 
 func newProxyClient(ctx echo.Context, nodename string, opts ...funcopt.O) (*client.T, error) {
