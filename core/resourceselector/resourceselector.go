@@ -95,48 +95,51 @@ func (t T) ReconfigureResource(r resource.Driver) error {
 }
 
 func (t T) Resources() resource.Drivers {
-	l := t.lister.Resources()
-	if t.rid == "" && t.tag == "" && t.subset == "" {
-		return l
-	}
-	var dp *actionresdeps.Store
-	if i, ok := t.lister.(depser); ok {
-		dp = i.GetActionResDeps()
-	}
-	fl := make(resource.Drivers, 0)
-	f := func(c rune) bool { return c == ',' }
-	rids := strings.FieldsFunc(t.rid, f)
-	tags := strings.FieldsFunc(t.tag, f)
-	subsets := strings.FieldsFunc(t.subset, f)
-	for _, r := range l {
-		for _, e := range rids {
-			if r.MatchRID(e) {
-				goto add
-			}
+	fl := func() resource.Drivers {
+		l := t.lister.Resources()
+		if t.rid == "" && t.tag == "" && t.subset == "" {
+			return l
 		}
-		for _, e := range subsets {
-			if r.MatchSubset(e) {
-				goto add
-			}
+		var dp *actionresdeps.Store
+		if i, ok := t.lister.(depser); ok {
+			dp = i.GetActionResDeps()
 		}
-		for _, e := range tags {
-			if r.MatchTag(e) {
-				goto add
+		fl := make(resource.Drivers, 0)
+		f := func(c rune) bool { return c == ',' }
+		rids := strings.FieldsFunc(t.rid, f)
+		tags := strings.FieldsFunc(t.tag, f)
+		subsets := strings.FieldsFunc(t.subset, f)
+		for _, r := range l {
+			for _, e := range rids {
+				if r.MatchRID(e) {
+					goto add
+				}
 			}
-		}
-		continue
-	add:
-		fl = fl.Add(r)
-		if dp != nil {
-			deps := dp.Dependencies(t.action, r.RID())
-			for _, rid := range deps {
-				if dep := l.GetRID(rid); dep != nil {
-					r.Log().Debugf("add %s to satisfy %s dependency", dep.RID(), t.action)
-					fl = fl.Add(dep)
+			for _, e := range subsets {
+				if r.MatchSubset(e) {
+					goto add
+				}
+			}
+			for _, e := range tags {
+				if r.MatchTag(e) {
+					goto add
+				}
+			}
+			continue
+		add:
+			fl = fl.Add(r)
+			if dp != nil {
+				deps := dp.Dependencies(t.action, r.RID())
+				for _, rid := range deps {
+					if dep := l.GetRID(rid); dep != nil {
+						r.Log().Debugf("add %s to satisfy %s dependency", dep.RID(), t.action)
+						fl = fl.Add(dep)
+					}
 				}
 			}
 		}
-	}
+		return fl
+	}()
 	if t.order == ordering.Desc {
 		fl.Reverse()
 	} else {

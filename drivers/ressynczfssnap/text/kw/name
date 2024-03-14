@@ -1,0 +1,5 @@
+A name included in the snapshot name to avoid retention conflicts between multiple zfs snapshot resources.
+
+A full snapshot name is formatted as ``<subvol>.<name>.snap.<datetime>``.
+
+Example: ``data.weekly.snap.2016-03-09.10:09:52``

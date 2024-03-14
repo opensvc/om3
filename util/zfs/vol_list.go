@@ -14,9 +14,13 @@ import (
 
 type (
 	DatasetType      int32
+	DatasetTypes     []DatasetType
 	ListDatasetsOpts struct {
-		Types []DatasetType
-		Log   *plog.Logger
+		Names        []string
+		Types        DatasetTypes
+		Log          *plog.Logger
+		OrderBy      []string
+		OrderReverse bool
 	}
 )
 
@@ -43,16 +47,76 @@ var (
 	}
 )
 
+func (t DatasetTypes) String() string {
+	l := make([]string, 0)
+	for _, e := range t {
+		if s := e.String(); s != "" {
+			l = append(l, e.String())
+		}
+	}
+	return strings.Join(l, ",")
+}
+
 func (t DatasetType) String() string {
 	return datasetTypeStrMap[t]
 }
 
-func ListDatasetsWithLogger(l *plog.Logger) funcopt.O {
+func ListWithOrderReverse() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*ListDatasetsOpts)
+		t.OrderReverse = true
+		return nil
+	})
+}
+
+func ListWithTypes(l ...DatasetType) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*ListDatasetsOpts)
+		t.Types = l
+		return nil
+	})
+}
+
+func ListWithNames(l ...string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*ListDatasetsOpts)
+		t.Names = l
+		return nil
+	})
+}
+
+func ListWithOrderBy(l ...string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*ListDatasetsOpts)
+		t.OrderBy = l
+		return nil
+	})
+}
+
+func ListWithLogger(l *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*ListDatasetsOpts)
 		t.Log = l
 		return nil
 	})
+}
+
+func parseFilesystem(b []byte, opts *ListDatasetsOpts) Filesystems {
+	data := make(Filesystems, 0)
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		words := strings.Split(line, "\t")
+		fs := Filesystem{}
+		n := len(words)
+		if n != 1 {
+			continue
+		}
+		fs.Name = words[0]
+		fs.Log = opts.Log
+		data = append(data, fs)
+	}
+	return data
 }
 
 func parseVolume(b []byte) Vols {
@@ -76,6 +140,41 @@ func parseVolume(b []byte) Vols {
 		data = append(data, zvol)
 	}
 	return data
+}
+
+func ListFilesystems(fopts ...funcopt.O) (Filesystems, error) {
+	opts := &ListDatasetsOpts{}
+	funcopt.Apply(opts, fopts...)
+	args := []string{"list", "-Hp", "-o", "name"}
+	if opts.Types != nil {
+		args = append(args, "-t", opts.Types.String())
+	}
+	if opts.OrderBy != nil {
+		s := strings.Join(opts.OrderBy, ",")
+		if opts.OrderReverse {
+			args = append(args, "-S", s)
+		} else {
+			args = append(args, "-s", s)
+		}
+	}
+	if opts.Names != nil {
+		args = append(args, opts.Names...)
+	}
+	cmd := command.New(
+		command.WithName("zfs"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+		command.WithLogger(opts.Log),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	return parseFilesystem(b, opts), nil
 }
 
 func ListVolumes(fopts ...funcopt.O) (Vols, error) {

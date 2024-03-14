@@ -99,12 +99,11 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 				t.StatusLog().Info("no schedule and no max delay")
 				continue
 			}
-			elapsed := time.Now().Sub(tm)
-			if elapsed > *maxDelay {
-				t.StatusLog().Warn("%s last sync at %s (>%s after last)", nodename, tm, maxDelay)
+			age := time.Since(tm)
+			if age > *maxDelay {
+				t.StatusLog().Warn("%s last sync is too old, at %s (>%s ago)", nodename, tm, maxDelay)
 				state.Add(status.Warn)
 			} else {
-				//t.StatusLog().Info("%s last sync at %s (%s after last)", nodename, tm, maxDelay)
 				state.Add(status.Up)
 			}
 		}
