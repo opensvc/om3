@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -26,9 +24,6 @@ type (
 )
 
 func (t *CmdDaemonShutdown) Run() error {
-	if !clientcontext.IsSet() && t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if t.NodeSelector == "" {
 		return fmt.Errorf("--node must be specified")
 	}
@@ -51,13 +46,8 @@ func (t *CmdDaemonShutdown) doNodes() error {
 	}
 	errC := make(chan error)
 	ctx := context.Background()
-	needDoLocal := false
 	running := 0
 	for _, nodename := range nodenames {
-		if nodename == hostname.Hostname() {
-			needDoLocal = true
-			continue
-		}
 		running++
 		go func(nodename string) {
 			_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on remote %s\n", nodename)
@@ -75,13 +65,6 @@ func (t *CmdDaemonShutdown) doNodes() error {
 		err := <-errC
 		errs = errors.Join(errs, err)
 		running--
-	}
-
-	// make sure the local host is shutdown last, as it relays the api calls
-	if needDoLocal {
-		_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on localhost\n")
-		err := t.doRemote(ctx, c, hostname.Hostname(), params)
-		errs = errors.Join(errs, err)
 	}
 	return errs
 }

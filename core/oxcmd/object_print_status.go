@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -79,7 +78,7 @@ func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
 			return nodes, nil
 		}
 	}
-	return []string{hostname.Hostname()}, nil
+	return []string{}, nil
 }
 
 func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
