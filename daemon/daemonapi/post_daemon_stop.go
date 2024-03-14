@@ -2,11 +2,13 @@ package daemonapi
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -39,5 +41,5 @@ func (a *DaemonAPI) localPostDaemonStop(ctx echo.Context) error {
 
 	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 		pubsub.Label{"id", "daemon"}, labelAPI, a.LabelNode)
-	return JSONProblem(ctx, http.StatusOK, "announce maintenance state and ask daemon to stop", "")
+	return ctx.JSON(http.StatusOK, api.DaemonPid{Pid: os.Getpid()})
 }

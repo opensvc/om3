@@ -460,6 +460,11 @@ type DaemonListener = DaemonSubsystemStatus
 // DaemonMonitor defines model for DaemonMonitor.
 type DaemonMonitor = DaemonSubsystemStatus
 
+// DaemonPid defines model for DaemonPid.
+type DaemonPid struct {
+	Pid int `json:"pid"`
+}
+
 // DaemonScheduler defines model for DaemonScheduler.
 type DaemonScheduler = DaemonSubsystemStatus
 

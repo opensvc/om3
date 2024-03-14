@@ -1,18 +1,20 @@
 package daemoncmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -22,7 +24,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/lock"
@@ -36,6 +37,7 @@ var (
 	WaitRunningDelay   = 500 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 250 * time.Millisecond
+	errGoTest          = errors.New("running from go test")
 )
 
 type (
@@ -165,10 +167,19 @@ func (t *T) Start() error {
 	if err != nil {
 		return err
 	}
+	isRunning, err := t.isRunning()
+	if err != nil {
+		return err
+	}
+	if isRunning {
+		log.Infof("already started")
+		return nil
+	}
 	pidFile := daemonPidFile()
 	log.Debugf("create pid file %s", pidFile)
-	if err := pidfile.WriteControl(pidFile, os.Getpid(), true); err != nil {
-		return nil
+
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644); err != nil {
+		return err
 	}
 	defer func() {
 		log.Debugf("remove pid file %s", pidFile)
@@ -210,7 +221,9 @@ func (t *T) StartFromCmd(ctx context.Context, foreground bool, profile string) e
 			log.Infof("foreground (origin manager)")
 			return t.startFromCmd(foreground, profile)
 		}
-		if t.Running() {
+		if isRunning, err := t.isRunning(); err != nil {
+			return err
+		} else if isRunning {
 			log.Infof("already running (origin manager)")
 			return nil
 		}
@@ -270,18 +283,18 @@ func (t *T) Stop() error {
 	return t.stop()
 }
 
-// Running function detect daemon status using api
+// IsRunning function detect daemon status using api
 //
 // it returns true is daemon is running, else false
-func (t *T) Running() bool {
-	return t.running()
+func (t *T) IsRunning() (bool, error) {
+	return t.isRunning()
 }
 
 // WaitRunning function waits for daemon running
 //
 // It needs to be called from a cli lock protection
 func (t *T) WaitRunning() error {
-	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, t.running)
+	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, t.isRunning)
 }
 
 // getLock() manage internal lock for functions that will stop/start/restart daemon
@@ -344,15 +357,17 @@ func (t *T) managerStop(ctx context.Context) error {
 	if ok, err := t.daemonsys.Activated(ctx); err != nil {
 		err := fmt.Errorf("%s: can't detect activated state: %w", name, err)
 		return err
-	} else if !ok && t.Running() {
+	} else if !ok {
 		// recover inconsistent manager view not activated, but reality is running
 		if err := t.Stop(); err != nil {
 			return fmt.Errorf("%s: failed during recover: %w", name, err)
 		}
+	} else {
+		if err := t.daemonsys.Stop(ctx); err != nil {
+			return fmt.Errorf("%s: daemonsys stop: %w", name, err)
+		}
 	}
-	if err := t.daemonsys.Stop(ctx); err != nil {
-		return fmt.Errorf("%s: daemonsys stop: %w", name, err)
-	}
+
 	return nil
 }
 
@@ -365,38 +380,36 @@ func (t *T) restartFromCmd() error {
 
 func (t *T) stop() error {
 	log := logger("stop: ")
-	log.Debugf("check running")
-	if !t.running() {
-		log.Debugf("already stopped")
-		return nil
-	}
-	resp, err := t.client.PostDaemonStop(context.Background(), hostname.Hostname())
+	resp, err := t.client.PostDaemonStopWithResponse(context.Background(), hostname.Hostname())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
 			!strings.Contains(err.Error(), "unexpected end of JSON input") {
-			log.Debugf("post daemon stp: %s", err)
-			return err
+			log.Debugf("post daemon stp: %s... kill", err)
+			return t.kill()
 		}
+		return err
 	}
-	switch resp.StatusCode {
-	case 200:
+	switch {
+	case resp.JSON200 != nil:
 		log.Debugf("wait for stop...")
-		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
-			log.Debugf("cli-stop still running after stop")
-			return fmt.Errorf("daemon still running after stop")
+		pid := resp.JSON200.Pid
+		fn := func() (bool, error) {
+			return t.isNotRunning(pid)
+		}
+		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, fn); err != nil {
+			log.Debugf("daemon %d still running after stop: %s ... kill", pid, err)
+			return t.kill()
 		}
 		log.Debugf("stopped")
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		return fmt.Errorf("unexpected status code: %s", resp.Status)
+		log.Debugf("unexpected status code: %s... kill", resp.Status())
+		return t.kill()
 	}
-	pidFile := daemonPidFile()
-	log.Debugf("waiting for daemon pidfile removed (%s)", pidFile)
-	b := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, false, func() bool { return file.Exists(pidFile) })
-	log.Debugf("daemon pidfile removed")
-	return b
+
+	return nil
 }
 
 func (t *T) start() (*daemon.T, error) {
@@ -408,11 +421,6 @@ func (t *T) start() (*daemon.T, error) {
 
 	if err := bootStrapCcfg(); err != nil {
 		return nil, err
-	}
-	log.Debugf("check if not already running")
-	if t.running() {
-		log.Debugf("already started")
-		return nil, nil
 	}
 	d := daemon.New()
 	log.Debugf("starting daemon...")
@@ -465,27 +473,117 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 	}
 }
 
-func (t *T) running() bool {
-	log := logger("running daemon check: ")
-	_, err := t.client.GetNodePing(context.Background(), hostname.Hostname())
-	if err != nil {
-		log.Debugf("not running: %s", err)
-		return false
+func (t *T) kill() error {
+	pid, err := t.getPid()
+	if errors.Is(err, errGoTest) {
+		return nil
 	}
-
-	log.Debugf("running is true")
-	return true
+	if pid <= 0 {
+		return nil
+	}
+	return syscall.Kill(pid, syscall.SIGKILL)
 }
 
-func (t *T) notRunning() bool {
-	return !t.running()
+func (t *T) isNotRunning(pid int) (bool, error) {
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	if errors.Is(err, os.ErrNotExist) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func (t *T) isRunning() (bool, error) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	resp, err := t.client.GetNodePing(ctx, hostname.Hostname())
+	if err == nil && resp.StatusCode == http.StatusNoContent {
+		return true, nil
+	}
+
+	pid, err := t.getPid()
+	if errors.Is(err, errGoTest) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if pid < 0 {
+		return false, nil
+	}
+
+	isNotRunning, err := t.isNotRunning(pid)
+	if err != nil {
+		return false, err
+	}
+	return !isNotRunning, err
+}
+
+func (t *T) getPid() (int, error) {
+	pidFile := daemonPidFile()
+	pid, err := extractPidFromPidFile(pidFile)
+	if errors.Is(err, os.ErrNotExist) {
+		return -1, nil
+	}
+	if err != nil {
+		return -1, err
+	}
+	v, err := isCmdlineMatchingDaemon()
+	if !v {
+		return -1, err
+	}
+	return pid, err
+}
+
+func isCmdlineMatchingDaemon() (bool, error) {
+	log := logger("test:")
+	log.Debugf("test cmdline")
+	pid := os.Getpid()
+	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if strings.Contains(string(b), "/daemoncmd.test") {
+		return true, errGoTest
+	}
+
+	sep := make([]byte, 1)
+	l := bytes.Split(b, sep)
+
+	if string(l[1]) != "daemon" || string(l[2]) != "start" {
+		return false, fmt.Errorf("process %d pointed by %s is not a om daemon", pid, daemonPidFile())
+	}
+	return true, nil
+
+}
+
+func extractPidFromPidFile(pidFile string) (int, error) {
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		return -1, err
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return -1, err
+	}
+	return pid, nil
 }
 
 func daemonPidFile() string {
 	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }
 
-func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {
+func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() (bool, error)) error {
 	retryTicker := time.NewTicker(retryDelay)
 	defer retryTicker.Stop()
 
@@ -497,7 +595,11 @@ func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool
 		case <-timeoutTicker.C:
 			return fmt.Errorf("timeout reached")
 		case <-retryTicker.C:
-			if f() == expected {
+			v, err := f()
+			if err != nil {
+				return err
+			}
+			if v == expected {
 				return nil
 			}
 		}

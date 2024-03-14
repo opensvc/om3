@@ -8863,7 +8863,7 @@ func (r PostDaemonRestartResponse) StatusCode() int {
 type PostDaemonShutdownResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *N200
+	JSON200      *DaemonPid
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -8889,7 +8889,7 @@ func (r PostDaemonShutdownResponse) StatusCode() int {
 type PostDaemonStopResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *N200
+	JSON200      *DaemonPid
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13185,7 +13185,7 @@ func ParsePostDaemonShutdownResponse(rsp *http.Response) (*PostDaemonShutdownRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
+		var dest DaemonPid
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -13239,7 +13239,7 @@ func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
+		var dest DaemonPid
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

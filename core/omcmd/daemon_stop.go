@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
@@ -88,15 +87,15 @@ func (t *CmdDaemonStop) doNode(ctx context.Context, cli *client.T, nodename stri
 	if nodename == hostname.Hostname() {
 		return t.doLocal()
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on remote %s\n", nodename)
-	r, err := cli.PostDaemonStop(ctx, nodename)
+	r, err := cli.PostDaemonStopWithResponse(ctx, nodename)
 	if err != nil {
 		return fmt.Errorf("unexpected post daemon stop failure for %s: %w", nodename, err)
 	}
-	switch r.StatusCode {
-	case http.StatusOK:
+	switch {
+	case r.JSON200 != nil:
+		_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on remote %s with pid %d\n", nodename, r.JSON200.Pid)
 		return nil
 	default:
-		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode)
+		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode())
 	}
 }

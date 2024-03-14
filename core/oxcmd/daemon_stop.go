@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/daemon/daemoncmd"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -31,16 +29,6 @@ func (t *CmdDaemonStop) Run() error {
 	return t.doNodes()
 }
 
-func (t *CmdDaemonStop) doLocal() error {
-	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on localhost\n")
-	cli, err := client.New()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).StopFromCmd(ctx)
-}
-
 func (t *CmdDaemonStop) doNodes() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
@@ -53,12 +41,7 @@ func (t *CmdDaemonStop) doNodes() error {
 	errC := make(chan error)
 	ctx := context.Background()
 	running := 0
-	needDoLocal := false
 	for _, nodename := range nodenames {
-		if nodename == hostname.Hostname() {
-			needDoLocal = true
-			continue
-		}
 		running++
 		go func(nodename string) {
 			err := t.doNode(ctx, c, nodename)
@@ -74,26 +57,19 @@ func (t *CmdDaemonStop) doNodes() error {
 		errs = errors.Join(errs, err)
 		running--
 	}
-	if needDoLocal {
-		err := t.doNode(ctx, c, hostname.Hostname())
-		errs = errors.Join(errs, err)
-	}
 	return errs
 }
 
 func (t *CmdDaemonStop) doNode(ctx context.Context, cli *client.T, nodename string) error {
-	if nodename == hostname.Hostname() {
-		return t.doLocal()
-	}
-	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on remote %s\n", nodename)
-	r, err := cli.PostDaemonStop(ctx, nodename)
+	r, err := cli.PostDaemonStopWithResponse(ctx, nodename)
 	if err != nil {
 		return fmt.Errorf("unexpected post daemon stop failure for %s: %w", nodename, err)
 	}
-	switch r.StatusCode {
-	case http.StatusOK:
+	switch {
+	case r.JSON200 != nil:
+		_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on remote %s with pid %d\n", nodename, r.JSON200.Pid)
 		return nil
 	default:
-		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode)
+		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode())
 	}
 }
