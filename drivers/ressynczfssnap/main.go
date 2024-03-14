@@ -39,6 +39,14 @@ func New() resource.Driver {
 	return &T{}
 }
 
+func (t T) SortKey() string {
+	// The "+" ascii char is ordered before any rfc952 char, so using it
+	// as a prefix in the sort key makes sure it is ordered before any
+	// driver using t.ResourceID.Name as its sort key (which is the
+	// default).
+	return "+" + t.ResourceID.Name
+}
+
 func (t T) IsRunning() bool {
 	unlock, err := t.Lock(false, time.Second*0, lockName)
 	if err != nil {
