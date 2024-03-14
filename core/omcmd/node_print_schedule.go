@@ -34,7 +34,7 @@ func (t *CmdNodePrintSchedule) extract(c *client.T) (api.ScheduleList, error) {
 	if t.Local {
 		items, err = t.extractLocal()
 	} else {
-		items, err = t.extractRemote(c)
+		items, err = t.extractFromDaemon(c)
 	}
 
 	data.Items = items
@@ -74,7 +74,7 @@ func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleItems, error) {
 	return items, nil
 }
 
-func (t *CmdNodePrintSchedule) extractRemote(c *client.T) (api.ScheduleItems, error) {
+func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T) (api.ScheduleItems, error) {
 	var l api.ScheduleItems
 
 	if t.NodeSelector == "" {
