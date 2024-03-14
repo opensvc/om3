@@ -187,7 +187,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "dataset", Value: strings.Join(t.Dataset, " ")},
 		{Key: "name", Value: t.Name},
-		{Key: "keep", Value: fmt.Sprintf("%s", t.Keep)},
+		{Key: "keep", Value: fmt.Sprintf("%d", t.Keep)},
 		{Key: "recursive", Value: fmt.Sprintf("%v", t.Recursive)},
 		{Key: "max_delay", Value: fmt.Sprintf("%s", t.MaxDelay)},
 		{Key: "schedule", Value: t.Schedule},
