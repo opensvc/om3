@@ -887,6 +887,34 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/config:
+    get:
+      operationId: GetNodeConfig
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/Evaluate'
+        - $ref: '#/components/parameters/Impersonate'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectConfig'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/config/get:
     get:
       operationId: GetNodeConfigGet
