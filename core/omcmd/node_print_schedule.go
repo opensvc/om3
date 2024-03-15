@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -21,22 +23,31 @@ type (
 )
 
 func (t *CmdNodePrintSchedule) extract(c *client.T) (api.ScheduleList, error) {
-	if t.Local {
-		return t.extractLocal()
-	}
-	if data, err := t.extractFromDaemons(c); err == nil {
-		return data, nil
-	}
-	return t.extractLocal()
-}
-
-func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleList, error) {
 	var data api.ScheduleList
 	data.Kind = "ScheduleList"
 
+	var (
+		items api.ScheduleItems
+		err   error
+	)
+
+	if t.Local {
+		items, err = t.extractLocal()
+	} else {
+		items, err = t.extractRemote(c)
+	}
+
+	data.Items = items
+
+	return data, err
+}
+
+func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleItems, error) {
+	var items api.ScheduleItems
+
 	n, err := object.NewNode()
 	if err != nil {
-		return data, err
+		return items, err
 	}
 
 	for _, e := range n.Schedules() {
@@ -58,52 +69,90 @@ func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleList, error) {
 				Schedule:           e.Schedule,
 			},
 		}
-		data.Items = append(data.Items, item)
+		items = append(items, item)
 	}
-
-	return data, nil
+	return items, nil
 }
 
-func (t *CmdNodePrintSchedule) extractFromDaemons(c *client.T) (api.ScheduleList, error) {
-	var (
-		errs error
-		data api.ScheduleList
-	)
+func (t *CmdNodePrintSchedule) extractRemote(c *client.T) (api.ScheduleItems, error) {
+	var l api.ScheduleItems
+
 	if t.NodeSelector == "" {
 		t.NodeSelector = "*"
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
-		return data, err
+		return l, err
 	}
-	for i, nodename := range nodenames {
-		if d, err := t.extractFromDaemon(c, nodename); err != nil {
-			errs = errors.Join(err)
-		} else if i == 0 {
-			data = d
-		} else {
-			data.Items = append(data.Items, d.Items...)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*1)
+	defer cancel()
+
+	q := make(chan api.ScheduleItems)
+	errC := make(chan error)
+	doneC := make(chan string)
+	todo := len(nodenames)
+	var needDoLocal bool
+
+	for _, nodename := range nodenames {
+		go func(nodename string) {
+			defer func() { doneC <- nodename }()
+			if nodename == hostname.Hostname() {
+				needDoLocal = true
+				return
+			}
+			resp, err := c.GetNodeScheduleWithResponse(context.Background(), nodename)
+			if err != nil {
+				errC <- err
+				return
+			}
+			switch resp.StatusCode() {
+			case 200:
+				q <- resp.JSON200.Items
+			case 401:
+				errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON401)
+			case 403:
+				errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON403)
+			default:
+				errC <- fmt.Errorf("%s: unexpected statuscode: %s", nodename, resp.Status())
+			}
+		}(nodename)
+	}
+
+	var (
+		errs error
+		done int
+	)
+
+	for {
+		select {
+		case err := <-errC:
+			errs = errors.Join(errs, err)
+		case items := <-q:
+			l = append(l, items...)
+		case <-doneC:
+			done++
+			if done == todo {
+				goto out
+			}
+		case <-ctx.Done():
+			errs = errors.Join(errs, ctx.Err())
+			goto out
 		}
+	}
 
-	}
-	return data, errs
-}
+out:
 
-func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T, nodename string) (api.ScheduleList, error) {
-	resp, err := c.GetNodeScheduleWithResponse(context.Background(), nodename)
-	if err != nil {
-		return api.ScheduleList{}, err
+	if needDoLocal {
+		items, err := t.extractLocal()
+		if err != nil {
+			errs = errors.Join(errs, err)
+		} else {
+			l = append(l, items...)
+		}
 	}
-	switch resp.StatusCode() {
-	case 200:
-		return *resp.JSON200, nil
-	case 401:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
-	case 403:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
-	default:
-		return api.ScheduleList{}, fmt.Errorf("%s: unexpected statuscode: %s", nodename, resp.Status())
-	}
+	return l, errs
 }
 
 func (t *CmdNodePrintSchedule) Run() error {
@@ -111,7 +160,9 @@ func (t *CmdNodePrintSchedule) Run() error {
 	if err != nil {
 		return err
 	}
+
 	data, err := t.extract(c)
+
 	output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,ACTION:data.action,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
