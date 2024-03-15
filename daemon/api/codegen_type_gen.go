@@ -1611,6 +1611,15 @@ type PostPeerActionUnfreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
+// GetNodeConfigParams defines parameters for GetNodeConfig.
+type GetNodeConfigParams struct {
+	// Evaluate evaluate
+	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+
+	// Impersonate impersonate the evaluation as node
+	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+}
+
 // GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
 type GetNodeConfigGetParams struct {
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
