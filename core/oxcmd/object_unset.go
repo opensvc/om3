@@ -45,6 +45,7 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 			defer func() { doneC <- p.String() }()
 			params := api.PostObjectConfigUpdateParams{}
 			params.Unset = &t.Keywords
+			params.Delete = &t.Sections
 			response, err := c.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				errC <- err
