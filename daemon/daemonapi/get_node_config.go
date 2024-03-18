@@ -6,6 +6,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
@@ -13,6 +14,15 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.GetNodeConfigParams) error {
+	if a.localhost == nodename {
+		return a.GetLocalNodeConfig(ctx, nodename, params)
+	}
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.GetNodeConfig(ctx.Request().Context(), nodename, &params)
+	})
+}
+
+func (a *DaemonAPI) GetLocalNodeConfig(ctx echo.Context, nodename string, params api.GetNodeConfigParams) error {
 	var (
 		evaluate    bool
 		impersonate string
