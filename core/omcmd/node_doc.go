@@ -1,4 +1,4 @@
-package commands
+package omcmd
 
 import (
 	"github.com/opensvc/om3/core/nodeaction"

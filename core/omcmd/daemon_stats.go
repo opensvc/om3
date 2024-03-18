@@ -1,4 +1,4 @@
-package commands
+package omcmd
 
 import (
 	"encoding/json"
