@@ -123,6 +123,16 @@ func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
 	return l
 }
 
+func (t NodesInfo) Keys() []string {
+	l := make([]string, len(t))
+	i := 0
+	for k := range t {
+		l[i] = k
+		i++
+	}
+	return l
+}
+
 func (t *Status) Unstructured() map[string]any {
 	return map[string]any{
 		"agent":          t.Agent,

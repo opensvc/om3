@@ -108,7 +108,7 @@ type (
 		// local values are computed by nmon.
 		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
 		// and ForgetPeer.
-		cacheNodesInfo map[string]node.NodeInfo
+		cacheNodesInfo node.NodesInfo
 
 		// nodeStatus is the node.Status for localhost that is the source of publication of msgbus.NodeStatusUpdated for
 		// localhost.
@@ -173,7 +173,7 @@ func NewManager(drainDuration time.Duration) *Manager {
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
 
-		cacheNodesInfo: map[string]node.NodeInfo{localhost: {}},
+		cacheNodesInfo: node.NodesInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 }
@@ -194,6 +194,15 @@ func (t *Manager) Start(parent context.Context) error {
 	if err := t.loadAndPublishConfig(); err != nil {
 		return err
 	}
+
+	// load the nodesinfo cache to avoid losing the cached information
+	// of peer nodes.
+	if data, err := nodesinfo.Load(); err != nil {
+		return err
+	} else {
+		t.cacheNodesInfo = data
+	}
+
 	// ensure saveNodesInfo is called once.
 	t.saveNodesInfo()
 
@@ -632,7 +641,7 @@ func (t *Manager) saveNodesInfo() {
 	if err := nodesinfo.Save(t.cacheNodesInfo); err != nil {
 		t.log.Errorf("save nodes info: %s", err)
 	} else {
-		t.log.Infof("nodes info cache refreshed")
+		t.log.Infof("nodes info cache refreshed %s", t.cacheNodesInfo.Keys())
 	}
 }
 
