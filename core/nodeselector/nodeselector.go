@@ -242,7 +242,7 @@ func (t T) KnownNodes() ([]string, error) {
 	if clientcontext.IsSet() {
 		return t.KnownRemoteNodes()
 	} else {
-		return t.KnownLocalNodes(), nil
+		return t.KnownLocalNodes()
 	}
 }
 
@@ -258,12 +258,15 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 	return l, nil
 }
 
-func (t T) KnownLocalNodes() []string {
+func (t T) KnownLocalNodes() ([]string, error) {
 	l := clusternode.Get()
+	if len(l) == 0 {
+		return l, fmt.Errorf("cluster nodes cache is empty (unreadable cluster config or not a cluster node)")
+	}
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])
 	}
-	return l
+	return l, nil
 }
 
 func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
