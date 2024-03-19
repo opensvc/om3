@@ -198,8 +198,11 @@ func (t *Manager) Start(parent context.Context) error {
 	// load the nodesinfo cache to avoid losing the cached information
 	// of peer nodes.
 	if data, err := nodesinfo.Load(); err != nil {
-		return err
+		t.log.Infof("nodes info cache bootstrap")
 	} else {
+		// don't use previous localhost NodeInfo (we just recompute values)
+		localhostNodeInfo := t.cacheNodesInfo[t.localhost]
+		data[t.localhost] = localhostNodeInfo
 		t.cacheNodesInfo = data
 	}
 
