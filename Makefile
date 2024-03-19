@@ -14,7 +14,9 @@ PREFIX = /usr
 OM = bin/om
 OX = bin/ox
 COMPOBJ = bin/compobj
-COMPOBJ_D = $(PREFIX)/share/opensvc/compliance
+COMPOBJ_D = share/opensvc/compliance
+
+.PHONY: strip dist
 
 all: vet test build
 
@@ -44,8 +46,17 @@ vet:
 
 install:
 	$(MKDIR) -p $(PREFIX)/bin
-	$(MKDIR) -p $(COMPOBJ_D)
+	$(MKDIR) -p $(PREFIX)/$(COMPOBJ_D)
 	$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM)
 	$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX)
 	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
-	$(PREFIX)/$(COMPOBJ) -i $(COMPOBJ_D)
+	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
+
+strip:
+	strip --strip-all $(PREFIX)/$(OM) $(PREFIX)/$(OX) $(PREFIX)/$(COMPOBJ)
+
+dist:
+	mkdir -p dist
+	tar czvf dist/om.tar.gz $(PREFIX)/$(OM) $(PREFIX)/$(OX) $(PREFIX)/$(COMPOBJ) $(PREFIX)/$(COMPOBJ_D)
+
+
