@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/om3/testhelper"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/testhelper"
 )
 
 func TestMain(m *testing.M) {
@@ -28,6 +29,7 @@ func TestAppStopTrigger(t *testing.T) {
 		"succeedTriggers":        0,
 	}
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_trigger.conf", "etc/svcapp.conf")
 	for name, expected := range cases {
 		t.Run(name, func(t *testing.T) {
