@@ -190,9 +190,15 @@ func (t *T) define() error {
 }
 
 func (t *T) undefine() error {
+	args := []string{"undefine", t.Name}
+	if hasEFI, err := t.HasEFI(); err != nil {
+		return err
+	} else if hasEFI {
+		args = append(args, "--nvram")
+	}
 	cmd := command.New(
 		command.WithName("virsh"),
-		command.WithVarArgs("undefine", t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -447,6 +453,23 @@ func (t T) hasConfigFile() bool {
 func (t T) hasAutostartFile() bool {
 	p := t.autostartFile()
 	return file.Exists(p)
+}
+
+func (t T) HasEFI() (bool, error) {
+	cf := t.configFile()
+	f, err := os.Open(cf)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	doc, err := xmlquery.Parse(f)
+	if err != nil {
+		return false, err
+	}
+	for _, e := range xmlquery.Find(doc, "//domain/os") {
+		return e.SelectAttr("firmware") == "efi", nil
+	}
+	return false, nil
 }
 
 func (t T) SubDevices() device.L {
