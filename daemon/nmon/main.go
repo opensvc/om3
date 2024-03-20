@@ -191,6 +191,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	// load the nodesinfo cache to avoid losing the cached information
 	// of peer nodes.
+	// TODO: need publish peer info from loaded cache ?
 	if data, err := nodesinfo.Load(); errors.Is(err, os.ErrNotExist) {
 		t.log.Infof("nodes info cache does not exist ... init with only the local node info")
 	} else if err != nil {
