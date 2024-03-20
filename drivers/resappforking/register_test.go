@@ -9,8 +9,12 @@ import (
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/testhelper"
+
+	// because used object has a fs flag resource
+	_ "github.com/opensvc/om3/drivers/resfsflag"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {
@@ -27,8 +31,9 @@ func getAppRid(rid string, resources []resource.Driver) *T {
 
 func TestKeywords(t *testing.T) {
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
-
+	defer rawconfig.ReloadForTest(env.Root)()
 	p, err := naming.ParsePath("svc1")
 	require.Nil(t, err)
 	o, err := object.NewSvc(p)
