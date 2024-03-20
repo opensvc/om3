@@ -961,7 +961,11 @@ paths:
         - $ref: '#/components/parameters/inQuerySets'
       responses:
         200:
-          $ref: '#/components/responses/200'
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3106,6 +3110,14 @@ components:
 
     ClusterStatus:
       type: object
+
+    Committed:
+      type: object
+      required:
+        - ischanged
+      properties:
+        ischanged:
+          type: boolean
 
     Daemon:
       type: object

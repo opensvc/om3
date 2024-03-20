@@ -368,6 +368,11 @@ type ClusterObject = map[string]interface{}
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
+// Committed defines model for Committed.
+type Committed struct {
+	Ischanged bool `json:"ischanged"`
+}
+
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`

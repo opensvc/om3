@@ -61,10 +61,12 @@ func (a *DaemonAPI) postLocalNodeConfigUpdate(ctx echo.Context, params api.PostN
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts)
 	}
 
+	changed := oc.Config().Changed()
+
 	err = oc.Config().CommitInvalid()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 
-	return ctx.NoContent(http.StatusNoContent)
+	return ctx.JSON(http.StatusOK, api.Committed{Ischanged: changed})
 }

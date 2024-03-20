@@ -8927,7 +8927,7 @@ func (r GetNodeConfigGetResponse) StatusCode() int {
 type PostNodeConfigUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *N200
+	JSON200      *Committed
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13256,7 +13256,7 @@ func ParsePostNodeConfigUpdateResponse(rsp *http.Response) (*PostNodeConfigUpdat
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
+		var dest Committed
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
