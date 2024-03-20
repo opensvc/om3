@@ -189,21 +189,21 @@ func (t *Manager) Start(parent context.Context) error {
 	// trigger an initial pool status eval
 	t.poolC <- nil
 
+	// load the nodesinfo cache to avoid losing the cached information
+	// of peer nodes.
+	if data, err := nodesinfo.Load(); errors.Is(err, os.ErrNotExist) {
+		t.log.Infof("nodes info cache does not exist ... init with only the local node info")
+	} else if err != nil {
+		t.log.Warnf("nodes info cache load error: %s ... reset with only the local node info", err)
+	} else {
+		data[t.localhost] = t.cacheNodesInfo[t.localhost]
+		t.cacheNodesInfo = data
+	}
+
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
 	if err := t.loadAndPublishConfig(); err != nil {
 		return err
-	}
-
-	// load the nodesinfo cache to avoid losing the cached information
-	// of peer nodes.
-	if data, err := nodesinfo.Load(); err != nil {
-		t.log.Infof("nodes info cache bootstrap")
-	} else {
-		// don't use previous localhost NodeInfo (we just recompute values)
-		localhostNodeInfo := t.cacheNodesInfo[t.localhost]
-		data[t.localhost] = localhostNodeInfo
-		t.cacheNodesInfo = data
 	}
 
 	// ensure saveNodesInfo is called once.
