@@ -36,6 +36,8 @@ type (
 )
 
 var (
+	ErrClusterNodeCacheEmpty = fmt.Errorf("cluster nodes cache is empty (unreadable cluster config or not a cluster node)")
+
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 )
 
@@ -261,7 +263,7 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 func (t T) KnownLocalNodes() ([]string, error) {
 	l := clusternode.Get()
 	if len(l) == 0 {
-		return l, fmt.Errorf("cluster nodes cache is empty (unreadable cluster config or not a cluster node)")
+		return l, ErrClusterNodeCacheEmpty
 	}
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])

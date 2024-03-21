@@ -54,7 +54,9 @@ func (t *CmdDaemonRestart) doNodes() error {
 		return err
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
-	if err != nil {
+	if errors.Is(err, nodeselector.ErrClusterNodeCacheEmpty) {
+		nodenames = []string{hostname.Hostname()}
+	} else if err != nil {
 		return err
 	}
 	errC := make(chan error)
