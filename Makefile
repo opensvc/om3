@@ -1,26 +1,30 @@
 OSVC_CONTEXT =
 
 GOCMD ?= go
-GOBUILD = $(GOCMD) build
-GOCLEAN = $(GOCMD) clean
-GOTEST = $(GOCMD) test
-GOGEN = $(GOCMD) generate
-GOVET = $(GOCMD) vet
+GOBUILD := $(GOCMD) build
+GOCLEAN := $(GOCMD) clean
+GOTEST := $(GOCMD) test
+GOGEN := $(GOCMD) generate
+GOVET := $(GOCMD) vet
 
-MKDIR = /usr/bin/mkdir
-INSTALL = /usr/bin/install
-PREFIX = /usr
+STRIP := /usr/bin/strip
+MKDIR := /usr/bin/mkdir
+INSTALL := /usr/bin/install
+PREFIX ?= /usr
 
-OM = bin/om
-OX = bin/ox
-COMPOBJ = bin/compobj
-COMPOBJ_D = share/opensvc/compliance
+DIST := dist
+OM := bin/om
+OX := bin/ox
+COMPOBJ := bin/compobj
+COMPOBJ_D := share/opensvc/compliance
 
-.PHONY: strip dist
+VERSION := $(shell git describe --tags --abbrev)
 
-all: clean vet test race build
+.PHONY: version dist
 
-build: api om ox compobj
+all: clean vet test race build dist
+
+build: version api om ox compobj
 
 api:
 	$(GOGEN) ./daemon/api
@@ -56,11 +60,17 @@ install:
 	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
 	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
 
-strip:
-	strip --strip-all $(PREFIX)/$(OM) $(PREFIX)/$(OX) $(PREFIX)/$(COMPOBJ)
+version:
+	echo $(VERSION) >util/version/text/VERSION
 
 dist:
-	mkdir -p dist
-	tar czvf dist/om.tar.gz $(PREFIX)/$(OM) $(PREFIX)/$(OX) $(PREFIX)/$(COMPOBJ) $(PREFIX)/$(COMPOBJ_D)
+	$(MKDIR) -p $(DIST)/bin
+	$(MKDIR) -p $(DIST)/$(COMPOBJ_D)
+	$(INSTALL) -m 755 $(OM) $(DIST)/$(OM)
+	$(INSTALL) -m 755 $(OX) $(DIST)/$(OX)
+	$(INSTALL) -m 755 $(COMPOBJ) $(DIST)/$(COMPOBJ)
+	$(DIST)/$(COMPOBJ) -r -i $(DIST)/$(COMPOBJ_D)
+	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
+	cd $(DIST) && tar czvf opensvc-$(VERSION).tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
 
 
