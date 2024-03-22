@@ -94,24 +94,6 @@ func (t *Status) DeepCopy() *Status {
 	return &result
 }
 
-// GetNodesInfo returns a NodesInfo struct, ie a map of
-// a subset of information from the data cache
-func GetNodesInfo() *NodesInfo {
-	result := make(NodesInfo)
-	for _, nodeConfig := range ConfigData.GetAll() {
-		name := nodeConfig.Node
-		nodeInfo := NodeInfo{Env: nodeConfig.Value.Env}
-		if nodeStatus := StatusData.Get(name); nodeStatus != nil {
-			nodeInfo.Labels = nodeStatus.Labels.DeepCopy()
-		}
-		if osPaths := OsPathsData.Get(name); osPaths != nil {
-			nodeInfo.Paths = osPaths.DeepCopy()
-		}
-		result[name] = nodeInfo
-	}
-	return &result
-}
-
 // GetNodesWithAnyPaths return the list of nodes having any of the given paths.
 func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
 	l := make([]string, 0)
@@ -119,6 +101,16 @@ func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
 		if paths.HasAnyOf(node.Paths) {
 			l = append(l, nodename)
 		}
+	}
+	return l
+}
+
+func (t NodesInfo) Keys() []string {
+	l := make([]string, len(t))
+	i := 0
+	for k := range t {
+		l[i] = k
+		i++
 	}
 	return l
 }

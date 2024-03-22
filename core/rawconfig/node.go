@@ -246,3 +246,20 @@ func loadSections() {
 	clusternode.Set(clusterNodes)
 	sectionNode = fromViper.Node
 }
+
+// ReloadForTest can be used during tests to force a reload of config after root path populated
+// cleanup function is returned to reset rawconfig from default.
+//
+// Usage example:
+//
+//	func TestSomething(t *testing.T) {
+//	  env := testhelper.Setup(t)
+//	  env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+//	  defer rawconfig.ReloadForTest(env.Root)()
+//	  ...
+func ReloadForTest(rootPath string) func() {
+	Load(map[string]string{"osvc_root_path": rootPath})
+	return func() {
+		Load(map[string]string{})
+	}
+}

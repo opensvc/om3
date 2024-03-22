@@ -1345,6 +1345,7 @@ func newCmdNodePrintConfig() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagEval(flags, &options.Eval)
 	addFlagImpersonate(flags, &options.Impersonate)

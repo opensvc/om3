@@ -4,14 +4,16 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/nodesinfo"
 )
 
 func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodesInfo")
 	log.Debugf("starting")
 	// TODO returned value should be cached
-	data := node.GetNodesInfo()
+	data, err := nodesinfo.Load()
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "nodes info cache load", "%s", err)
+	}
 	return ctx.JSON(http.StatusOK, data)
 }

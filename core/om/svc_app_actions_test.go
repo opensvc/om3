@@ -499,6 +499,7 @@ func TestAppStopStartSequence(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcapp1.conf", "etc/svcapp.conf")
 
 	for name := range cases {
@@ -544,6 +545,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappComplexCommand.conf", "etc/svcapp.conf")
 
 	for name, test := range cases {
@@ -587,6 +589,7 @@ func TestAppStopLimit(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_limit.conf", "etc/svcapp.conf")
 
 	for name, expecteds := range cases {
@@ -625,6 +628,7 @@ func TestAppStopTimeout(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_timeout.conf", "etc/svcapp.conf")
 
 	for name := range cases {
@@ -712,6 +716,7 @@ func TestAppStartRollback(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			env := testhelper.Setup(t)
+			env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 			env.InstallFile("../../testdata/svcapp-rollback.conf", "etc/svcapp.conf")
 			args := getCmd(name)
 			args = append(args, "--log", "debug")

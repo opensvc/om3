@@ -87,6 +87,8 @@ func CreateMandatoryDirectories() error {
 			if err := os.MkdirAll(d, 0700); err != nil {
 				return fmt.Errorf("can't create mandatory dir '%s'", d)
 			}
+		} else if err != nil {
+			return fmt.Errorf("mandatory dir '%s' stat unexpected error: %s", d, err)
 		} else if !info.IsDir() {
 			return fmt.Errorf("mandatory dir '%s' is not a directory", d)
 		}

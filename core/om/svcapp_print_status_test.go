@@ -32,6 +32,7 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 		},
 	}
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcapp_print_status_status_log.conf", "etc/svcapp.conf")
 	args := []string{"svcapp", "print", "status", "-r", "--format", "flat_json"}
 	t.Logf("run 'om %v'", strings.Join(args, " "))

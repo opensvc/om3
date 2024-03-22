@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -86,26 +83,11 @@ func (t *CmdNodeSet) doRemote() error {
 		case <-doneC:
 			done++
 			if done == todo {
-				goto out
+				return errs
 			}
 		case <-ctx.Done():
 			errs = errors.Join(errs, ctx.Err())
-			goto out
+			return errs
 		}
 	}
-
-out:
-
-	return errs
-}
-
-func (t *CmdNodeSet) doLocal() error {
-	n, err := object.NewNode()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-	return n.Set(ctx, keyop.ParseOps(t.KeywordOps)...)
 }

@@ -532,17 +532,16 @@ func (t *T) getPid() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	v, err := isCmdlineMatchingDaemon()
+	v, err := isCmdlineMatchingDaemon(pid)
 	if !v {
 		return -1, err
 	}
 	return pid, err
 }
 
-func isCmdlineMatchingDaemon() (bool, error) {
+func isCmdlineMatchingDaemon(pid int) (bool, error) {
 	log := logger("test:")
 	log.Debugf("test cmdline")
-	pid := os.Getpid()
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 
 	if errors.Is(err, os.ErrNotExist) {

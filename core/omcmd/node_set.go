@@ -53,6 +53,11 @@ func (t *CmdNodeSet) doRemote() error {
 		}
 		switch response.StatusCode() {
 		case 200:
+			if response.JSON200.Ischanged {
+				fmt.Printf("%s: committed\n", nodename)
+			} else {
+				fmt.Printf("%s: unchanged\n", nodename)
+			}
 		case 400:
 			return fmt.Errorf("%s: %s", nodename, *response.JSON400)
 		case 401:
