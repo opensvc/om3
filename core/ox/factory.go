@@ -18,9 +18,8 @@ var (
 
 func newCmdAll() *cobra.Command {
 	return &cobra.Command{
-		Hidden: false,
-		Use:    "all",
-		Short:  "manage a mix of objects, tentatively exposing all commands",
+		Use:   "all",
+		Short: "manage a mix of objects, tentatively exposing all commands",
 	}
 }
 
@@ -1561,8 +1560,9 @@ func newCmdNodeUnset() *cobra.Command {
 
 func newCmdNodeVersion() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "display agent version",
+		Use:    "version",
+		Short:  "display agent version",
+		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			commands.CmdNodeVersion()
 		},
