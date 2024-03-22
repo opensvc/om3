@@ -64,16 +64,6 @@ func Test_daemon(t *testing.T) {
 		})
 	}
 
-	t.Run("discover newly created object", func(t *testing.T) {
-		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
-		time.Sleep(250 * time.Millisecond)
-		cData, err := GetDaemonStatus(t)
-		p := naming.Path{Name: "foo", Kind: naming.KindSvc}
-		require.Nil(t, err)
-		_, ok := cData.Cluster.Node["node1"].Instance[p.String()]
-		assert.Truef(t, ok, "unable to find node1 instance %s", p)
-	})
-
 	t.Run("check freeze when rejoin duration exceeded", func(t *testing.T) {
 		t.Logf("ensure node frozen file absent before test")
 		require.NoFileExists(t, filepath.Join(env.Root, "var", "node", "frozen"), "node frozen file should not exist")
@@ -95,6 +85,30 @@ func Test_daemon(t *testing.T) {
 			"node frozen file should exist because of rejoin duration exceeded")
 	})
 	require.False(t, t.Failed(), "abort test")
+
+	t.Run("drain orchestration when no svc objects", func(t *testing.T) {
+		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
+		timeout := 1 * time.Second
+		apiCall := func() (*http.Response, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			cli, err := GetClient(t)
+			require.Nil(t, err)
+			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
+		}
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+	})
+	require.False(t, t.Failed(), "abort test")
+
+	t.Run("discover newly created object", func(t *testing.T) {
+		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
+		time.Sleep(250 * time.Millisecond)
+		cData, err := GetDaemonStatus(t)
+		p := naming.Path{Name: "foo", Kind: naming.KindSvc}
+		require.Nil(t, err)
+		_, ok := cData.Cluster.Node["node1"].Instance[p.String()]
+		assert.Truef(t, ok, "unable to find node1 instance %s", p)
+	})
 
 	// node should be frozen for this test, we don't want orchestration on created vip object
 	t.Run("cluster.vip with a frozen node", func(t *testing.T) {
@@ -334,7 +348,8 @@ func Test_daemon(t *testing.T) {
 		require.False(t, t.Failed(), "abort test")
 	})
 
-	t.Run("drain orchestration", func(t *testing.T) {
+	t.Run("drain orchestration when object svc exists", func(t *testing.T) {
+		// It should be run with at least on svc object
 		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
 		timeout := 1 * time.Second
 		apiCall := func() (*http.Response, error) {
