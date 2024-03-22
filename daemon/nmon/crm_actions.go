@@ -46,6 +46,15 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 		cmdEnv,
 		env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
 	)
+
+	// for tests
+	if os.Getenv("OSVC_ROOT_PATH") != "" {
+		cmdEnv = append(
+			cmdEnv,
+			"OSVC_ROOT_PATH="+os.Getenv("OSVC_ROOT_PATH"),
+		)
+	}
+
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),

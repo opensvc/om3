@@ -105,7 +105,8 @@ func Test_daemon(t *testing.T) {
 		defer cancel()
 		cli, err := GetClient(t)
 		require.Nil(t, err)
-		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"), "test should start with a frozen node")
+		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"),
+			"test should start with a frozen node")
 		cfgUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceConfigUpdated,path=system/svc/vip"}).
 			SetDuration(time.Second).
@@ -332,6 +333,36 @@ func Test_daemon(t *testing.T) {
 		})
 		require.False(t, t.Failed(), "abort test")
 	})
+
+	t.Run("drain orchestration", func(t *testing.T) {
+		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
+		timeout := 1 * time.Second
+		apiCall := func() (*http.Response, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			cli, err := GetClient(t)
+			require.Nil(t, err)
+			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
+		}
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+	})
+	require.False(t, t.Failed(), "abort test")
+}
+
+func checkRun(t *testing.T, timeout time.Duration, reqFunc func() (*http.Response, error), statusCode int, states ...node.MonitorState) {
+	cli, err := GetClient(t)
+	require.Nil(t, err)
+
+	filters := []string{"NodeMonitorUpdated,node=node1"}
+	readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
+	require.NoError(t, err)
+	defer func() { require.NoError(t, readCloser.Close()) }()
+	resp, err := reqFunc()
+	require.NoError(t, err)
+	require.Equalf(t, statusCode, resp.StatusCode, "body: %s", resp.Body)
+	t.Logf("wait for node status drained: %s", states)
+	waitNodeMonitorStates(t, readCloser, states...)
+	require.False(t, t.Failed(), "abort test")
 }
 
 func TestMain(m *testing.M) {
