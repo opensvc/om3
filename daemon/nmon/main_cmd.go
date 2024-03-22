@@ -89,6 +89,8 @@ func (t *Manager) checkRejoinTicker() {
 		return
 	}
 	if left := t.startedAt.Add(t.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+		t.log.Errorf("the new rejoin grace period is already expired")
+		t.rejoinTicker.Reset(100 * time.Millisecond)
 		return
 	} else {
 		t.rejoinTicker.Reset(left)
