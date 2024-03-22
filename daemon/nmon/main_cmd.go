@@ -39,6 +39,9 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.setArbitratorConfig()
 
 	t.getAndUpdateStatusArbitrator()
+
+	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
+	t.checkRejoinTicker()
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated
