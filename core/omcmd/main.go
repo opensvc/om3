@@ -1,4 +1,4 @@
-package commands
+package omcmd
 
 func mergeSelector(selector string, subsysSelector string, kind string, defaultSelector string) string {
 	var s string

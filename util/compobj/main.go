@@ -227,21 +227,50 @@ func symlink(oldname, newname string) error {
 	return nil
 }
 
-func bundleMain() error {
-	installPtr := flag.String("i", "", "install bundled comp objs as symlinks in a directory")
-	flag.Parse()
-	switch {
-	case *installPtr != "":
-		oldname, err := filepath.Abs(os.Args[0])
-		if err != nil {
-			return err
-		}
-		for k := range m {
-			newname := filepath.Join(*installPtr, k)
-			if err := symlink(oldname, newname); err != nil {
+func install(installDir string, isRelative bool) error {
+	target, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		return err
+	}
+	installDirAbs, err := filepath.Abs(installDir)
+	if err != nil {
+		return err
+	}
+	base := installDirAbs
+	if isRelative {
+		var relativeTarget string
+		for {
+			relativeTarget, err = filepath.Rel(base, target)
+			if err == nil {
+				break
+			}
+			if base == string(filepath.Separator) {
 				return err
 			}
+			if relativeTarget == "" {
+				return fmt.Errorf("couldn't find a common head between %s and %s", target, installDirAbs)
+			}
+			base = filepath.Dir(base)
 		}
+		target = relativeTarget
+	}
+	for k := range m {
+		newname := filepath.Join(base, k)
+		if err := symlink(target, newname); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func bundleMain() error {
+	installDirP := flag.String("i", "", "install bundled comp objs as symlinks in a directory")
+	isRelativeP := flag.Bool("r", false, "use relative path for the target of the symlink")
+	flag.Parse()
+
+	switch {
+	case *installDirP != "":
+		return install(*installDirP, *isRelativeP)
 	default:
 		fprintHelp(os.Stderr)
 		flag.Usage()
