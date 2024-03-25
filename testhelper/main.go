@@ -53,12 +53,7 @@ func SetupEnv(env Env) Env {
 		"osvc_root_path":    env.Root,
 		"osvc_cluster_name": env.ClusterName,
 	})
-	zerolog.TimeFieldFormat = time.StampMicro
-	out := zerolog.ConsoleWriter{
-		Out:        os.Stdout,
-		TimeFormat: time.StampMicro,
-	}
-	log.Logger = log.Logger.Output(out).With().Caller().Logger()
+	setupLog()
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
@@ -71,13 +66,37 @@ func SetupEnv(env Env) Env {
 	return env
 }
 
+func setupLog() {
+	zerolog.TimeFieldFormat = time.StampMicro
+	out := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.StampMicro,
+	}
+	switch os.Getenv("TEST_LOG_LEVEL") {
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	case "nolevel":
+		zerolog.SetGlobalLevel(zerolog.NoLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+	log.Logger = log.Logger.Output(out).With().Caller().Logger()
+}
+
 func SetupEnvWithoutCreateMandatoryDirectories(env Env) Env {
 	rawconfig.Load(map[string]string{
 		"osvc_root_path":    env.Root,
 		"osvc_cluster_name": env.ClusterName,
 	})
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+	setupLog()
 
 	return env
 }

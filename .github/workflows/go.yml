@@ -14,6 +14,9 @@ jobs:
       GOCACHE: /home/runner/work/omg/.cache/go-build
       GOMODCACHE: /home/runner/go/pkg/mod
 
+      # TEST_LOG_LEVEL defines the test log level (default is debug)
+      # TEST_LOG_LEVEL: info
+
     name: Go build and test
     steps:
       - uses: actions/checkout@v3
@@ -35,7 +38,7 @@ jobs:
         run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go build -v ./cmd/ox
 
       - name: Test root
-        run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go test -p 1 -timeout 60s ./...
+        run: sudo TEST_LOG_LEVEL=TEST_LOG_LEVEL GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go test -p 1 -timeout 60s ./...
 
       - name: Test root race
-        run: sudo GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go test -p 1 -timeout 600s --race ./...
+        run: sudo TEST_LOG_LEVEL=TEST_LOG_LEVEL GOCACHE=$GOCACHE GOMODCACHE=$GOMODCACHE go test -p 1 -timeout 600s --race ./...
