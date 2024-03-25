@@ -2,14 +2,12 @@ package integrationtest
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"encoding/json"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,8 +29,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 		"osvc_root_path":    env.Root,
 		"osvc_cluster_name": env.ClusterName,
 	})
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
@@ -72,7 +68,8 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 func GetClient(t *testing.T) (*client.T, error) {
 	t.Helper()
 	t.Logf("create client")
-	cli, err := client.New(client.WithURL(daemonenv.HTTPLocalURL()))
+	// need enough time when tes with race
+	cli, err := client.New(client.WithURL(daemonenv.HTTPLocalURL()), client.WithTimeout(3*time.Second))
 	require.Nil(t, err)
 	return cli, err
 }

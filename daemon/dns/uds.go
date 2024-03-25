@@ -288,8 +288,10 @@ func (t *Manager) startUDSListener() error {
 
 		for {
 			conn, err := l.Accept()
-			if err != nil && errors.Is(err, net.ErrClosed) {
-				t.log.Errorf("UDS accept: %s", err)
+			if err != nil {
+				if !errors.Is(err, net.ErrClosed) {
+					t.log.Warnf("UDS accept: %s", err)
+				}
 				return
 			}
 			t.wg.Add(1)

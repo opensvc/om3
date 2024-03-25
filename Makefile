@@ -46,6 +46,9 @@ compobj:
 test:
 	$(GOTEST) -p 1 -timeout 60s ./...
 
+testinfo:
+	TEST_LOG_LEVEL=info $(GOTEST) -p 1 -timeout 60s ./...
+
 race:
 	$(GOTEST) -p 1 -timeout 240s ./... -race
 

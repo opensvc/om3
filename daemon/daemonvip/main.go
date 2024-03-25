@@ -158,7 +158,7 @@ func (t *T) purgeVip() error {
 }
 
 func (t *T) createAndThaw(kv map[string]string) error {
-	timeout := time.Second
+	timeout := 2 * time.Second
 	sub := t.bus.Sub("daemonvip.createAndThaw", pubsub.Timeout(timeout))
 	waitCtx, cancel := context.WithTimeout(t.ctx, timeout)
 	defer cancel()

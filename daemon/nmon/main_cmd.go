@@ -39,6 +39,9 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.setArbitratorConfig()
 
 	t.getAndUpdateStatusArbitrator()
+
+	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
+	t.checkRejoinTicker()
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated
@@ -86,6 +89,8 @@ func (t *Manager) checkRejoinTicker() {
 		return
 	}
 	if left := t.startedAt.Add(t.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+		t.log.Infof("the new rejoin grace period is already expired")
+		t.rejoinTicker.Reset(100 * time.Millisecond)
 		return
 	} else {
 		t.rejoinTicker.Reset(left)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -62,6 +64,42 @@ func Test_daemon(t *testing.T) {
 		})
 	}
 
+	t.Run("check freeze when rejoin duration exceeded", func(t *testing.T) {
+		t.Logf("ensure node frozen file absent before test")
+		require.NoFileExists(t, filepath.Join(env.Root, "var", "node", "frozen"), "node frozen file should not exist")
+		cli, err := GetClient(t)
+		require.Nil(t, err)
+
+		timeout := 2 * time.Second
+		filters := []string{"NodeMonitorUpdated,node=node1"}
+		readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
+		require.NoError(t, err)
+		defer func() {
+			require.Nil(t, readCloser.Close())
+		}()
+		t.Logf("Install node.conf with reduced rejoin_grace_period")
+		env.InstallFile("./testdata/node_with_reduced_rejoin_grace_period.conf", "etc/node.conf")
+		waitNodeMonitorStates(t, readCloser, node.MonitorStateIdle)
+		t.Logf("ensure node frozen file is now created")
+		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"),
+			"node frozen file should exist because of rejoin duration exceeded")
+	})
+	require.False(t, t.Failed(), "abort test")
+
+	t.Run("drain orchestration when no svc objects", func(t *testing.T) {
+		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
+		timeout := 2 * time.Second
+		apiCall := func() (*http.Response, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			cli, err := GetClient(t)
+			require.Nil(t, err)
+			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
+		}
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+	})
+	require.False(t, t.Failed(), "abort test")
+
 	t.Run("discover newly created object", func(t *testing.T) {
 		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
 		time.Sleep(250 * time.Millisecond)
@@ -72,34 +110,37 @@ func Test_daemon(t *testing.T) {
 		assert.Truef(t, ok, "unable to find node1 instance %s", p)
 	})
 
-	// because of multiple nodes, daemon should stay in rejoin state
-	// => no orchestration on created vip object
-	t.Run("cluster.vip when daemon is in rejoin state", func(t *testing.T) {
+	// node should be frozen for this test, we don't want orchestration on created vip object
+	t.Run("cluster.vip with a frozen node", func(t *testing.T) {
 		var (
 			cfgUpdateReader, setInstanceReader, imonUpdateReader event.ReadCloser
 		)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+		// need enough time for test with race
+		maxTestDuration := 2 * time.Second
 		cli, err := GetClient(t)
 		require.Nil(t, err)
-
+		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"),
+			"test should start with a frozen node")
 		cfgUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceConfigUpdated,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		setInstanceReader, err = cli.NewGetEvents().
 			SetFilters([]string{"SetInstanceMonitor,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		imonUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceMonitorUpdated,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		defer func() {
 			require.NoError(t, cfgUpdateReader.Close())
+			require.NoError(t, setInstanceReader.Close())
 			require.NoError(t, imonUpdateReader.Close())
 		}()
 		kwName := "cluster.vip"
@@ -308,8 +349,60 @@ func Test_daemon(t *testing.T) {
 		})
 		require.False(t, t.Failed(), "abort test")
 	})
+
+	t.Run("drain orchestration when object svc exists", func(t *testing.T) {
+		// It should be run with at least on svc object
+		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
+		timeout := 2 * time.Second
+		apiCall := func() (*http.Response, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			cli, err := GetClient(t)
+			require.Nil(t, err)
+			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
+		}
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+	})
+	require.False(t, t.Failed(), "abort test")
+}
+
+func checkRun(t *testing.T, timeout time.Duration, reqFunc func() (*http.Response, error), statusCode int, states ...node.MonitorState) {
+	cli, err := GetClient(t)
+	require.Nil(t, err)
+
+	filters := []string{"NodeMonitorUpdated,node=node1"}
+	readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
+	require.NoError(t, err)
+	defer func() { require.NoError(t, readCloser.Close()) }()
+	resp, err := reqFunc()
+	require.NoError(t, err)
+	require.Equalf(t, statusCode, resp.StatusCode, "body: %s", resp.Body)
+	t.Logf("wait for node status drained: %s", states)
+	waitNodeMonitorStates(t, readCloser, states...)
+	require.False(t, t.Failed(), "abort test")
 }
 
 func TestMain(m *testing.M) {
 	testhelper.Main(m, om.ExecuteArgs)
+}
+
+func waitNodeMonitorStates(t *testing.T, evReader event.Reader, states ...node.MonitorState) {
+	t.Helper()
+	t.Logf("wait for node monitor states: %s", states)
+	for _, state := range states {
+		for {
+			ev, err := evReader.Read()
+			require.NoError(t, err, "unable to get node monitor update event")
+			data := msgbus.NodeMonitorUpdated{}
+			err = json.Unmarshal(ev.Data, &data)
+			require.NoError(t, err, "unable to unmarshal node monitor update event")
+			t.Logf("%s: got node monitor updated event: %s state: %s, local expect: %s",
+				t.Name(), data.Node, data.Value.State, data.Value.LocalExpect)
+			if data.Value.State == state {
+				t.Logf("%s: node reach expected state %s", t.Name(), state)
+				break
+			}
+		}
+	}
+	t.Logf("all node monitor states has been reached: %s", states)
 }
