@@ -68,7 +68,8 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 func GetClient(t *testing.T) (*client.T, error) {
 	t.Helper()
 	t.Logf("create client")
-	cli, err := client.New(client.WithURL(daemonenv.HTTPLocalURL()))
+	// need enough time when tes with race
+	cli, err := client.New(client.WithURL(daemonenv.HTTPLocalURL()), client.WithTimeout(3*time.Second))
 	require.Nil(t, err)
 	return cli, err
 }

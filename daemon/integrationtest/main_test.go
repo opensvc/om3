@@ -70,7 +70,7 @@ func Test_daemon(t *testing.T) {
 		cli, err := GetClient(t)
 		require.Nil(t, err)
 
-		timeout := 500 * time.Millisecond
+		timeout := 2 * time.Second
 		filters := []string{"NodeMonitorUpdated,node=node1"}
 		readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
 		require.NoError(t, err)
@@ -88,7 +88,7 @@ func Test_daemon(t *testing.T) {
 
 	t.Run("drain orchestration when no svc objects", func(t *testing.T) {
 		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
-		timeout := 1 * time.Second
+		timeout := 2 * time.Second
 		apiCall := func() (*http.Response, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
@@ -117,23 +117,25 @@ func Test_daemon(t *testing.T) {
 		)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+		// need enough time for test with race
+		maxTestDuration := 2 * time.Second
 		cli, err := GetClient(t)
 		require.Nil(t, err)
 		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"),
 			"test should start with a frozen node")
 		cfgUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceConfigUpdated,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		setInstanceReader, err = cli.NewGetEvents().
 			SetFilters([]string{"SetInstanceMonitor,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		imonUpdateReader, err = cli.NewGetEvents().
 			SetFilters([]string{"InstanceMonitorUpdated,path=system/svc/vip"}).
-			SetDuration(time.Second).
+			SetDuration(maxTestDuration).
 			GetReader()
 		require.NoError(t, err)
 		defer func() {
@@ -351,7 +353,7 @@ func Test_daemon(t *testing.T) {
 	t.Run("drain orchestration when object svc exists", func(t *testing.T) {
 		// It should be run with at least on svc object
 		require.Nil(t, os.Setenv("OSVC_ROOT_PATH", env.Root))
-		timeout := 1 * time.Second
+		timeout := 2 * time.Second
 		apiCall := func() (*http.Response, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
