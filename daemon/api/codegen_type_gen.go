@@ -368,11 +368,6 @@ type ClusterObject = map[string]interface{}
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
-// Committed defines model for Committed.
-type Committed struct {
-	Ischanged bool `json:"ischanged"`
-}
-
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`
@@ -699,6 +694,17 @@ type InstanceMonitor = instance.Monitor
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
+
+// IsChanged defines model for IsChanged.
+type IsChanged struct {
+	Ischanged bool `json:"ischanged"`
+}
+
+// IsChangedItem defines model for IsChangedItem.
+type IsChangedItem struct {
+	Data IsChanged `json:"data"`
+	Meta NodeMeta  `json:"meta"`
+}
 
 // KeywordData defines model for KeywordData.
 type KeywordData struct {

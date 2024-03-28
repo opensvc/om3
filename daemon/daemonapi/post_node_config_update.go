@@ -68,5 +68,14 @@ func (a *DaemonAPI) postLocalNodeConfigUpdate(ctx echo.Context, params api.PostN
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 
-	return ctx.JSON(http.StatusOK, api.Committed{Ischanged: changed})
+	item := api.IsChangedItem{
+		Data: api.IsChanged{
+			Ischanged: changed,
+		},
+		Meta: api.NodeMeta{
+			Node: a.localhost,
+		},
+	}
+
+	return ctx.JSON(http.StatusOK, item)
 }
