@@ -36,6 +36,7 @@ var (
 	nodeFlag       string
 	foregroundFlag bool
 	callerFlag     bool
+	versionFlag    bool
 
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
@@ -48,6 +49,7 @@ var (
 		SilenceErrors:          false,
 		ValidArgsFunction:      validArgs,
 		BashCompletionFunction: bashCompletionFunction,
+		Version:                version.Version(),
 	}
 )
 

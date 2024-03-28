@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/version"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -37,6 +38,7 @@ var (
 		SilenceErrors:          false,
 		ValidArgsFunction:      validArgs,
 		BashCompletionFunction: bashCompletionFunction,
+		Version:                version.Version(),
 	}
 )
 
