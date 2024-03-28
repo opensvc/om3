@@ -8,6 +8,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -35,6 +37,9 @@ func (t *CmdNodeSet) doRemote() error {
 	params := api.PostNodeConfigUpdateParams{}
 	params.Set = &t.KeywordOps
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
+	if len(nodenames) == 0 {
+		return fmt.Errorf("no match")
+	}
 	if err != nil {
 		return err
 	}
@@ -43,6 +48,8 @@ func (t *CmdNodeSet) doRemote() error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
+	l := make([]api.IsChangedItem, 0)
+	q := make(chan api.IsChangedItem)
 	errC := make(chan error)
 	doneC := make(chan string)
 	todo := len(nodenames)
@@ -55,15 +62,16 @@ func (t *CmdNodeSet) doRemote() error {
 				errC <- err
 				return
 			}
-			switch {
-			case response.JSON200 != nil:
-			case response.JSON400 != nil:
+			switch response.StatusCode() {
+			case 200:
+				q <- *response.JSON200
+			case 400:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
-			case response.JSON401 != nil:
+			case 401:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON401)
-			case response.JSON403 != nil:
+			case 403:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON403)
-			case response.JSON500 != nil:
+			case 500:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON500)
 			default:
 				errC <- fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
@@ -80,14 +88,29 @@ func (t *CmdNodeSet) doRemote() error {
 		select {
 		case err := <-errC:
 			errs = errors.Join(errs, err)
+		case isChanged := <-q:
+			l = append(l, isChanged)
 		case <-doneC:
 			done++
 			if done == todo {
-				return errs
+				goto out
 			}
 		case <-ctx.Done():
 			errs = errors.Join(errs, ctx.Err())
-			return errs
+			goto out
 		}
 	}
+
+out:
+
+	defaultOutput := "tab=NODE:meta.node,ISCHANGED:data.ischanged"
+	output.Renderer{
+		DefaultOutput: defaultOutput,
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          l,
+		Colorize:      rawconfig.Colorize,
+	}.Print()
+
+	return errs
 }

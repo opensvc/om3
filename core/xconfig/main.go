@@ -483,6 +483,26 @@ func (t *T) Set(ops ...keyop.T) error {
 	return t.Commit()
 }
 
+func (t *T) UpdateAndReportIsChanged(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T) (bool, error) {
+	err := t.Referrer.Config().PrepareUpdate(deleteSections, unsetKeys, keyOps)
+
+	alerts, err := t.Referrer.Config().Validate()
+	if err != nil {
+		return false, err
+	}
+	if alerts.HasError() {
+		return false, fmt.Errorf("%s", alerts)
+	}
+
+	isChanged := t.Referrer.Config().Changed()
+
+	err = t.Referrer.Config().CommitInvalid()
+	if err != nil {
+		return false, err
+	}
+	return isChanged, nil
+}
+
 func (t *T) prepareSetKey(op keyop.T) error {
 	if !DriverGroups.Has(op.Key.Section) {
 		return t.set(op)

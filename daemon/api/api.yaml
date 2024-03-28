@@ -965,7 +965,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Committed'
+                $ref: '#/components/schemas/IsChangedItem'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3111,7 +3111,18 @@ components:
     ClusterStatus:
       type: object
 
-    Committed:
+    IsChangedItem:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/IsChanged'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    IsChanged:
       type: object
       required:
         - ischanged

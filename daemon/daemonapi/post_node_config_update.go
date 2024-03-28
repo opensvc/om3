@@ -49,24 +49,19 @@ func (a *DaemonAPI) postLocalNodeConfigUpdate(ctx echo.Context, params api.PostN
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "NewNode", "%s", err)
 	}
-	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
-	}
-
-	alerts, err := oc.Config().Validate()
+	isChanged, err := oc.Config().UpdateAndReportIsChanged(deletes, unsets, sets)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Validate config", "%s", err)
-	}
-	if alerts.HasError() {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Config Update", "%s", err)
 	}
 
-	changed := oc.Config().Changed()
-
-	err = oc.Config().CommitInvalid()
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
+	item := api.IsChangedItem{
+		Data: api.IsChanged{
+			Ischanged: isChanged,
+		},
+		Meta: api.NodeMeta{
+			Node: a.localhost,
+		},
 	}
 
-	return ctx.JSON(http.StatusOK, api.Committed{Ischanged: changed})
+	return ctx.JSON(http.StatusOK, item)
 }
