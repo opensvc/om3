@@ -37,6 +37,14 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/dst"),
 		},
 		{
+			Option:    "intermediary",
+			Attr:      "Intermediary",
+			Converter: converters.Bool,
+			Scopable:  true,
+			Default:   "true",
+			Text:      keywords.NewText(fs, "text/kw/intermediary"),
+		},
+		{
 			Option:     "target",
 			Attr:       "Target",
 			Converter:  converters.List,
