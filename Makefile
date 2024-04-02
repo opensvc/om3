@@ -6,6 +6,7 @@ GOCLEAN := $(GOCMD) clean
 GOTEST := $(GOCMD) test
 GOGEN := $(GOCMD) generate
 GOVET := $(GOCMD) vet
+GOINSTALL := $(GOCMD) install
 
 STRIP := /usr/bin/strip
 MKDIR := /usr/bin/mkdir
@@ -25,6 +26,9 @@ VERSION := $(shell git describe --tags --abbrev)
 all: clean vet test race build dist
 
 build: version api om ox compobj
+
+deps:
+	$(GOINSTALL) github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
 
 api:
 	$(GOGEN) ./daemon/api
