@@ -27,6 +27,7 @@ var (
 	MaxPages        = 1000
 	DayMilliseconds = 24 * 60 * 60 * 1000
 	RequestTimeout  = 10
+	Head            = "/api/2.8"
 )
 
 type (
@@ -69,8 +70,10 @@ func New() *Array {
 func (t *Array) Run(args []string) error {
 	newParent := func() *cobra.Command {
 		cmd := &cobra.Command{
-			Use:   "array",
-			Short: "Manage a purestorage storage array",
+			Use:           "array",
+			Short:         "Manage a purestorage storage array",
+			SilenceUsage:  true,
+			SilenceErrors: true,
 		}
 		return cmd
 	}
@@ -277,8 +280,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "arrays",
 			Short: "get arrays",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getArrays(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				return t.dumpArrays(filter)
 			},
 		}
 		useFlagFilter(cmd)
@@ -413,6 +416,7 @@ func (t *Array) newToken() error {
 		"iat": now,
 		"exp": now + int64(DayMilliseconds),
 	})
+	token.Header["kid"] = t.keyID()
 
 	privateKey, err := t.privateKey()
 	if err != nil {
@@ -431,7 +435,7 @@ func (t *Array) newToken() error {
 	}
 
 	values := url.Values{}
-	//values.Add("content-type", "application/json")
+	values.Add("content-type", "application/json")
 	values.Add("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 	values.Add("subject_token", tokenStr)
 	values.Add("subject_token_type", "urn:ietf:params:oauth:token-type:jwt")
@@ -441,7 +445,6 @@ func (t *Array) newToken() error {
 	if err != nil {
 		return err
 	}
-
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
 
@@ -485,18 +488,24 @@ func (t *Array) client() (*pure1.Client, error) {
 	return pureCli, nil
 }
 
-func (t *Array) url() (*url.URL, error) {
-	k := t.Key("api")
-	s, err := t.Config().GetStringStrict(k)
+func (c *Array) Do(req *http.Request, v interface{}, reestablishSession bool) (*http.Response, error) {
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("do request failed: %w", err)
 	}
-	u, err := url.Parse(s)
+	defer resp.Body.Close()
+
+	if err := validateResponse(resp); err != nil {
+		return nil, fmt.Errorf("validate response: %w", err)
+		//return resp, err
+	}
+
+	err = decodeResponse(resp, v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	u.Path = "/api/v2.8"
-	return u, nil
+	return resp, nil
 }
 
 func dump(data any) error {
@@ -549,8 +558,57 @@ func (t *Array) getHostGroups(filter string) (any, error) {
 	return nil, nil
 }
 
+func (t *Array) dumpArrays(filter string) error {
+	data, err := t.getArrays(filter)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "    ")
+	return enc.Encode(data)
+}
+
 func (t *Array) getArrays(filter string) (any, error) {
-	return nil, nil
+	params := map[string]string{"filter": filter, "total_item_count": "true"}
+	req, err := t.newRequest("GET", "/arrays", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	var r pure1Response
+	var items []any
+	_, err = t.Do(req, &r, true)
+	if err != nil {
+		return nil, err
+	}
+	for len(items) < r.TotalItems {
+		for _, item := range r.Items {
+			//i := PureArray{}
+			//s, _ := json.Marshal(item)
+			//json.Unmarshal([]byte(s), &i)
+			items = append(items, item)
+		}
+
+		if len(items) < r.TotalItems {
+			if r.ContinuationToken != nil {
+				if params == nil {
+					params = map[string]string{"continuation_token": r.ContinuationToken.(string)}
+				} else {
+					params["continuation_token"] = r.ContinuationToken.(string)
+				}
+				req, err := t.newRequest("GET", "arrays", params, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				_, err = t.Do(req, r, false)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	return items, nil
 }
 
 func (t *Array) getTargets(filter string) (any, error) {
@@ -561,8 +619,8 @@ func (t *Array) getHardware(filter string) (any, error) {
 	return nil, nil
 }
 
-func (t *Array) NewRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
-	fpath := t.api() + path
+func (t *Array) newRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
+	fpath := t.api() + Head + path
 	baseURL, err := url.Parse(fpath)
 	if err != nil {
 		return nil, err
@@ -625,5 +683,5 @@ func validateResponse(r *http.Response) error {
 
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	bodyString := string(bodyBytes)
-	return fmt.Errorf("Response code: %d, ResponeBody: %s", r.StatusCode, bodyString)
+	return fmt.Errorf("Response code: %d, Response body: %s", r.StatusCode, bodyString)
 }
