@@ -111,8 +111,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a volume",
-			Run: func(_ *cobra.Command, _ []string) {
-				fmt.Println("TODO")
+			RunE: func(_ *cobra.Command, _ []string) error {
+				return fmt.Errorf("TODO")
 			},
 		}
 		useFlagID(cmd)
@@ -126,12 +126,11 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "map a volume",
-			Run: func(cmd *cobra.Command, _ []string) {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				if data, err := t.mapDisk(name, mappings, lun); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				} else {
-					dump(data)
+					return dump(data)
 				}
 			},
 		}
@@ -148,12 +147,11 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a volume and delete",
-			Run: func(_ *cobra.Command, _ []string) {
+			RunE: func(_ *cobra.Command, _ []string) error {
 				if data, err := t.delDisk(name); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				} else {
-					dump(data)
+					return dump(data)
 				}
 			},
 		}
@@ -167,12 +165,11 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "add a zvol-type dataset and map",
-			Run: func(cmd *cobra.Command, _ []string) {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				if data, err := t.addDisk(name, size, mappings); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				} else {
-					dump(data)
+					return dump(data)
 				}
 			},
 		}
@@ -192,8 +189,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hosts",
 			Short: "get hosts",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getHosts(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getHosts(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -203,8 +204,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "connections",
 			Short: "get connections",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getConnections(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getConnections(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -214,8 +219,42 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "volumes",
 			Short: "get volumes",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getVolumes(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getVolumes(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
+			},
+		}
+		useFlagFilter(cmd)
+		return cmd
+	}
+	newGetControllersCmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "controllers",
+			Short: "get controllers",
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getControllers(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
+			},
+		}
+		useFlagFilter(cmd)
+		return cmd
+	}
+	newGetDrivesCmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "drives",
+			Short: "get drives",
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getDrives(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -225,8 +264,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "pods",
 			Short: "get pods",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getPods(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getPods(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -236,8 +279,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "ports",
 			Short: "get ports",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getPorts(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getPorts(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -247,8 +294,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "interfaces",
 			Short: "get network interfaces",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getNetworkInterfaces(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getNetworkInterfaces(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -258,8 +309,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "volumegroups",
 			Short: "get volumegroups",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getVolumeGroups(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getVolumeGroups(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -269,8 +324,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hostgroups",
 			Short: "get hostgroups",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getHostGroups(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getHostGroups(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -281,18 +340,11 @@ func (t *Array) Run(args []string) error {
 			Use:   "arrays",
 			Short: "get arrays",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpArrays(filter)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetTargetsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "targets",
-			Short: "get targets",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getTargets(filter)
+				data, err := t.getArrays(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -302,8 +354,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hardware",
 			Short: "get hardware",
-			Run: func(_ *cobra.Command, _ []string) {
-				t.getHardware(filter)
+			RunE: func(_ *cobra.Command, _ []string) error {
+				data, err := t.getHardware(filter)
+				if err != nil {
+					return err
+				}
+				return dump(data)
 			},
 		}
 		useFlagFilter(cmd)
@@ -326,7 +382,8 @@ func (t *Array) Run(args []string) error {
 	getCmd := newGetCmd()
 	getCmd.AddCommand(newGetHostsCmd())
 	getCmd.AddCommand(newGetConnectionsCmd())
-	getCmd.AddCommand(newGetTargetsCmd())
+	getCmd.AddCommand(newGetControllersCmd())
+	getCmd.AddCommand(newGetDrivesCmd())
 	getCmd.AddCommand(newGetHardwareCmd())
 	getCmd.AddCommand(newGetArraysCmd())
 	getCmd.AddCommand(newGetHostGroupsCmd())
@@ -445,6 +502,7 @@ func (t *Array) newToken() error {
 	if err != nil {
 		return err
 	}
+	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
 
@@ -527,55 +585,80 @@ func (t *Array) delDisk(name string) (any, error) {
 }
 
 func (t *Array) getHosts(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/hosts", params, nil)
 }
 
 func (t *Array) getConnections(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/connections", params, nil)
 }
 
 func (t *Array) getVolumes(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/volumes", params, nil)
 }
 
 func (t *Array) getVolumeGroups(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/volume-groups", params, nil)
+}
+
+func (t *Array) getControllers(filter string) (any, error) {
+	params := getParams(filter)
+	return t.doGet("GET", "/controllers", params, nil)
+}
+
+func (t *Array) getDrives(filter string) (any, error) {
+	params := getParams(filter)
+	return t.doGet("GET", "/drives", params, nil)
 }
 
 func (t *Array) getPods(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/pods", params, nil)
 }
 
 func (t *Array) getPorts(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/ports", params, nil)
 }
 
 func (t *Array) getNetworkInterfaces(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/network-interfaces", params, nil)
 }
 
 func (t *Array) getHostGroups(filter string) (any, error) {
-	return nil, nil
+	params := getParams(filter)
+	return t.doGet("GET", "/host-groups", params, nil)
 }
 
-func (t *Array) dumpArrays(filter string) error {
-	data, err := t.getArrays(filter)
-	if err != nil {
-		return err
+func getParams(filter string) map[string]string {
+	params := map[string]string{"total_item_count": "true", "limit": fmt.Sprint(ItemsPerPage)}
+	if filter != "" {
+		params["filter"] = filter
 	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "    ")
-	return enc.Encode(data)
+	return params
 }
 
-func (t *Array) getArrays(filter string) (any, error) {
-	params := map[string]string{"filter": filter, "total_item_count": "true"}
-	req, err := t.newRequest("GET", "/arrays", params, nil)
+func (t *Array) getHardware(filter string) ([]any, error) {
+	params := getParams(filter)
+	return t.doGet("GET", "/hardware", params, nil)
+}
+
+func (t *Array) getArrays(filter string) ([]any, error) {
+	params := getParams(filter)
+	return t.doGet("GET", "/arrays", params, nil)
+}
+
+func (t *Array) doGet(method string, path string, params map[string]string, data interface{}) ([]any, error) {
+	req, err := t.newRequest(method, path, params, data)
 	if err != nil {
 		return nil, err
 	}
 	var r pure1Response
-	var items []any
+	items := make([]any, 0)
 	_, err = t.Do(req, &r, true)
 	if err != nil {
 		return nil, err
@@ -595,7 +678,7 @@ func (t *Array) getArrays(filter string) (any, error) {
 				} else {
 					params["continuation_token"] = r.ContinuationToken.(string)
 				}
-				req, err := t.newRequest("GET", "arrays", params, nil)
+				req, err := t.newRequest(method, path, params, data)
 				if err != nil {
 					return nil, err
 				}
@@ -609,14 +692,6 @@ func (t *Array) getArrays(filter string) (any, error) {
 	}
 
 	return items, nil
-}
-
-func (t *Array) getTargets(filter string) (any, error) {
-	return nil, nil
-}
-
-func (t *Array) getHardware(filter string) (any, error) {
-	return nil, nil
 }
 
 func (t *Array) newRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
