@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 var (
@@ -33,16 +34,69 @@ var (
 type (
 	Array struct {
 		*array.Array
-		token *pure1Token
+		token *pureToken
 	}
 
-	pure1Response struct {
+	pureSourceIdentifiers struct {
+		ID   string `json:"id,omitempty"`
+		Name string `json:"name,omitempty"`
+	}
+
+	purePodIdentifiers struct {
+		ID   string `json:"id,omitempty"`
+		Name string `json:"name,omitempty"`
+	}
+
+	pureVolumeGroupIdentifiers struct {
+		ID   string `json:"id,omitempty"`
+		Name string `json:"name,omitempty"`
+	}
+
+	pureVolumePriorityAdjustment struct {
+		PriorityAdjustmentOperator string `json:"priority_adjustment_operator,omitempty"`
+		PriorityAdjustmentValue    int32  `json:"priority_adjustment_value,omitempty"`
+	}
+
+	pureVolumeQOS struct {
+		BandwidthLimit int64 `json:"bandwidth_limit,omitempty"`
+		IOPSLimit      int64 `json:"iops_limit,omitempty"`
+	}
+
+	pureVolume struct {
+		ID                      string                       `json:"id,omitempty"`
+		Name                    string                       `json:"name,omitempty"`
+		ConnectionCount         int64                        `json:"connection_count,omitempty"`
+		Created                 int64                        `json:"created,omitempty"`
+		Destroyed               bool                         `json:"destroyed,omitempty"`
+		HostEncryptionKeyStatus string                       `json:"host_encryption_key_status,omitempty"`
+		Provisioned             int64                        `json:"provisioned,omitempty"`
+		QOS                     pureVolumeQOS                `json:"qos,omitempty"`
+		PriorityAdjustment      pureVolumePriorityAdjustment `json:"priority_adjustment,omitempty"`
+		Serial                  string                       `json:"serial,omitempty"`
+		Space                   map[string]any               `json:"space,omitempty"`
+		TimeRemaining           int64                        `json:"time_remaining,omitempty"`
+		Pod                     purePodIdentifiers           `json:"pod,omitempty"`
+		Source                  pureSourceIdentifiers        `json:"source,omitempty"`
+		SubType                 string                       `json:"subtype,omitempty"`
+		VolumeGroup             pureVolumeGroupIdentifiers   `json:"volume_group,omitempty"`
+		RequestedPromotionState string                       `json:"requested_promotion_state,omitempty"`
+		PromotionStatus         string                       `json:"promotion_status,omitempty"`
+		Priority                int32                        `json:"priority,omitempty"`
+	}
+
+	pureResponse struct {
 		TotalItems        int   `json:"total_item_count,omitempty"`
 		ContinuationToken any   `json:"continuation_token,omitempty"`
 		Items             []any `json:"items,omitempty"`
 	}
 
-	pure1Token struct {
+	pureResponseVolumes struct {
+		TotalItems        int          `json:"total_item_count,omitempty"`
+		ContinuationToken any          `json:"continuation_token,omitempty"`
+		Items             []pureVolume `json:"items,omitempty"`
+	}
+
+	pureToken struct {
 		AccessToken     string `json:"access_token,omitempty"`
 		IssuedTokenType string `json:"issued_token_type,omitempty"`
 		TokenType       string `json:"token_type,omitempty"`
@@ -148,7 +202,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "unmap a volume and delete",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.delDisk(name); err != nil {
+				if data, err := t.delDisk(id, name, now); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -158,7 +212,6 @@ func (t *Array) Run(args []string) error {
 		useFlagName(cmd)
 		useFlagNow(cmd)
 		useFlagID(cmd)
-		useFlagSerial(cmd)
 		return cmd
 	}
 	newAddDiskCmd := func() *cobra.Command {
@@ -449,7 +502,7 @@ func (t *Array) privateKey() ([]byte, error) {
 	return sec.DecodeKey("private_key")
 }
 
-func (t *Array) getToken() (*pure1Token, error) {
+func (t *Array) getToken() (*pureToken, error) {
 	if t.token != nil {
 		return t.token, nil
 	}
@@ -523,7 +576,7 @@ func (t *Array) newToken() error {
 		return err
 	}
 
-	pToken := &pure1Token{}
+	pToken := &pureToken{}
 	if err := json.Unmarshal(responseBody, pToken); err != nil {
 		return err
 	}
@@ -556,7 +609,6 @@ func (c *Array) Do(req *http.Request, v interface{}, reestablishSession bool) (*
 
 	if err := validateResponse(resp); err != nil {
 		return nil, fmt.Errorf("validate response: %w", err)
-		//return resp, err
 	}
 
 	err = decodeResponse(resp, v)
@@ -573,15 +625,119 @@ func dump(data any) error {
 }
 
 func (t *Array) addDisk(name, size string, mappings []string) (any, error) {
-	return nil, nil
+	if name == "" {
+		return nil, fmt.Errorf("--name is required")
+	}
+	if size == "" {
+		return nil, fmt.Errorf("--size is required")
+	}
+	sizeBytes, err := sizeconv.FromSize(size)
+	if err != nil {
+		return nil, err
+	}
+	params := map[string]string{
+		"names": name,
+	}
+	data := map[string]string{
+		"subtype":     "regular",
+		"provisioned": fmt.Sprint(sizeBytes),
+	}
+	req, err := t.newRequest(http.MethodPost, "/volumes", params, data)
+	if err != nil {
+		return nil, err
+	}
+	var responseData any
+	if _, err := t.Do(req, &responseData, true); err != nil {
+		return nil, err
+	}
+	return responseData, nil
 }
 
 func (t *Array) mapDisk(name string, mappings []string, lun int) (any, error) {
 	return nil, nil
 }
 
-func (t *Array) delDisk(name string) (any, error) {
-	return nil, nil
+func (t *Array) getVolume(id int, name string) (pureVolume, error) {
+	var (
+		volume pureVolume
+		items  []any
+		err    error
+	)
+	if id >= 0 {
+		items, err = t.getVolumes(fmt.Sprintf("id='%d'", id))
+	} else {
+		items, err = t.getVolumes(fmt.Sprintf("name='%s'", name))
+	}
+	if err != nil {
+		return volume, err
+	}
+	if len(items) > 1 {
+		return volume, fmt.Errorf("multiple volumes found with name %s", name)
+	}
+	for _, item := range items {
+		b, err := json.Marshal(item)
+		if err != nil {
+			return volume, err
+		}
+		err = json.Unmarshal(b, &volume)
+		if err != nil {
+			return volume, err
+		}
+		return volume, nil
+	}
+	return volume, fmt.Errorf("no volume found with name %s", name)
+}
+
+func (t *Array) delDisk(id int, name string, now bool) (any, error) {
+	if name == "" && id < 0 {
+		return nil, fmt.Errorf("--name or --id is required")
+	}
+	if name != "" && id >= 0 {
+		return nil, fmt.Errorf("--name or --id are mutually exclusive")
+	}
+	volume, err := t.getVolume(id, name)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []pureVolume
+
+	//diskID := strings.ToLower(volume.Serial)
+	// TODO: delMap
+
+	params := map[string]string{
+		"names": volume.Name,
+	}
+	if !volume.Destroyed {
+		data := map[string]any{
+			"destroyed": true,
+		}
+		req, err := t.newRequest(http.MethodPatch, "/volumes", params, data)
+		if err != nil {
+			return nil, err
+		}
+		var responseData pureResponseVolumes
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return nil, err
+		}
+		items = responseData.Items
+	} else {
+		items = append(items, volume)
+	}
+	if now {
+		req, err := t.newRequest(http.MethodDelete, "/volumes", params, nil)
+		if err != nil {
+			return items, err
+		}
+		var responseData pureResponseVolumes
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return items, err
+		}
+	}
+	// TODO: del diskinfo
+	return items, nil
 }
 
 func (t *Array) getHosts(filter string) (any, error) {
@@ -594,7 +750,7 @@ func (t *Array) getConnections(filter string) (any, error) {
 	return t.doGet("GET", "/connections", params, nil)
 }
 
-func (t *Array) getVolumes(filter string) (any, error) {
+func (t *Array) getVolumes(filter string) ([]any, error) {
 	params := getParams(filter)
 	return t.doGet("GET", "/volumes", params, nil)
 }
@@ -657,7 +813,7 @@ func (t *Array) doGet(method string, path string, params map[string]string, data
 	if err != nil {
 		return nil, err
 	}
-	var r pure1Response
+	var r pureResponse
 	items := make([]any, 0)
 	_, err = t.Do(req, &r, true)
 	if err != nil {
@@ -727,6 +883,7 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 		return nil, err
 	}
 
+	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", `Bearer `+token.AccessToken)
@@ -736,12 +893,20 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 
 // decodeResponse function reads the http response body into an interface.
 func decodeResponse(r *http.Response, v interface{}) error {
+	if r.StatusCode == 204 {
+		return nil
+	}
 	if v == nil {
 		return fmt.Errorf("nil interface provided to decodeResponse")
 	}
 
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	if len(bodyBytes) == 0 {
+		return nil
+	}
+
 	bodyString := string(bodyBytes)
+
 	err := json.Unmarshal([]byte(bodyString), &v)
 
 	return err
