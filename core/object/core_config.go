@@ -235,6 +235,35 @@ func (t *core) FlexTarget() (int, error) {
 	return i, nil
 }
 
+func (t *core) dereferenceVolumeHead(ref string) (string, error) {
+	l := strings.SplitN(ref, ".", 2)
+	var i any = t.config.Referrer
+	actor, ok := i.(Actor)
+	if !ok {
+		return ref, fmt.Errorf("can't dereference volume mnt on a non-actor object: %s", ref)
+	}
+	type header interface {
+		Head() string
+	}
+	if len(l) != 2 {
+		return ref, fmt.Errorf("misformatted volume mnt ref: %s", ref)
+	}
+	rid := l[0]
+	r := actor.ResourceByID(rid)
+	if r == nil {
+		if t.config.HasSectionString(rid) {
+			return ref, xconfig.NewErrPostponedRef(ref, rid)
+		} else {
+			return ref, fmt.Errorf("resource referenced by %s not found", ref)
+		}
+	}
+	o, ok := r.(header)
+	if !ok {
+		return ref, fmt.Errorf("resource referenced by %s has no head mountpoint", ref)
+	}
+	return o.Head(), nil
+}
+
 func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
 	var i any = t.config.Referrer
@@ -366,6 +395,8 @@ func (t *core) Dereference(ref string) (string, error) {
 		return ref, fmt.Errorf("todo")
 	case strings.Contains(ref, ".exposed_devs"):
 		return t.dereferenceExposedDevices(ref)
+	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
+		return t.dereferenceVolumeHead(ref)
 	}
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }

@@ -30,17 +30,18 @@ import (
 type (
 	T struct {
 		ressync.T
-		Src       string
-		Dst       string
-		Target    []string
-		Schedule  string
-		Recursive bool
-		Nodes     []string
-		DRPNodes  []string
-		ObjectID  uuid.UUID
-		Timeout   *time.Duration
-		Topology  topology.T
-		User      string
+		Src          string
+		Dst          string
+		Target       []string
+		Schedule     string
+		Intermediary bool
+		Recursive    bool
+		Nodes        []string
+		DRPNodes     []string
+		ObjectID     uuid.UUID
+		Timeout      *time.Duration
+		Topology     topology.T
+		User         string
 
 		srcSnapSent   string
 		srcSnapTosend string
@@ -331,7 +332,12 @@ func (t *T) sendIncrementalCmd() []string {
 	if t.Recursive {
 		cmd = append(cmd, "-R")
 	}
-	cmd = append(cmd, "-I", t.srcSnapSent, t.srcSnapTosend)
+	if t.Intermediary {
+		cmd = append(cmd, "-I")
+	} else {
+		cmd = append(cmd, "-i")
+	}
+	cmd = append(cmd, t.srcSnapSent, t.srcSnapTosend)
 	return cmd
 }
 
