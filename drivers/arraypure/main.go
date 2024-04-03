@@ -54,6 +54,11 @@ type (
 		Name string `json:"name,omitempty"`
 	}
 
+	pureVolumeIdentifiers struct {
+		ID   string `json:"id,omitempty"`
+		Name string `json:"name,omitempty"`
+	}
+
 	pureVolumePriorityAdjustment struct {
 		PriorityAdjustmentOperator string `json:"priority_adjustment_operator,omitempty"`
 		PriorityAdjustmentValue    int32  `json:"priority_adjustment_value,omitempty"`
@@ -84,6 +89,68 @@ type (
 		RequestedPromotionState string                       `json:"requested_promotion_state,omitempty"`
 		PromotionStatus         string                       `json:"promotion_status,omitempty"`
 		Priority                int32                        `json:"priority,omitempty"`
+	}
+
+	pureVolumeConnection struct {
+		Host             pureHostIdentifiers      `json:"host"`
+		HostGroup        pureHostGroupIdentifiers `json:"host_group"`
+		LUN              int64                    `json:"lun"`
+		ProtocolEndpoint map[string]string        `json:"protocol_endpoint"`
+		Volume           pureVolumeIdentifiers    `json:"volume"`
+	}
+
+	pureChap struct {
+		HostPassword   string `json:"host_password"`
+		HostUser       string `json:"host_user"`
+		TargetPassword string `json:"target_password"`
+		TargetUser     string `json:"target_user"`
+	}
+
+	pureHostIdentifiers struct {
+		Name string `json:"name"`
+	}
+
+	pureHostGroupIdentifiers struct {
+		Name string `json:"name"`
+	}
+
+	pureHostPortConnectivity struct {
+		Details string `json:"details"`
+		Status  string `json:"status"`
+	}
+
+	pureHostSpace struct {
+		DataReduction    float32 `json:"data_reduction"`
+		Shared           int64   `json:"shared"`
+		Snapshots        int64   `json:"snapshots"`
+		System           int64   `json:"system"`
+		ThinProvisioning float32 `json:"thin_provisioning"`
+		TotalPhysical    int64   `json:"total_physical"`
+		TotalProvisioned int64   `json:"total_provisioned"`
+		TotalReduction   float32 `json:"total_reduction"`
+		Unique           int64   `json:"unique"`
+		Virtual          int64   `json:"virtual"`
+	}
+
+	pureArrayIdentifiers struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+
+	pureHost struct {
+		Name             string                   `json:"name"`
+		Chap             pureChap                 `json:"chap"`
+		ConnectionCount  int64                    `json:"connection_count"`
+		HostGroup        pureHostGroupIdentifiers `json:"host_group"`
+		IQNs             []string                 `json:"iqns"`
+		NQNs             []string                 `json:"nqns"`
+		Personality      string                   `json:"personality"`
+		PortConnectivity pureHostPortConnectivity `json:"port_connectivity"`
+		Space            pureHostSpace            `json:"space"`
+		PreferredArrays  []pureArrayIdentifiers   `json:"preferred_arrays"`
+		WWNs             []string                 `json:"wwns"`
+		IsLocal          bool                     `json:"is_local"`
+		VLAN             string                   `json:"vlan"`
 	}
 
 	pureResponse struct {
@@ -200,13 +267,18 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a volume",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return fmt.Errorf("TODO")
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if data, err := t.unmapDisk(id, name, serial, mappings, host, hostGroup); err != nil {
+					return err
+				} else {
+					return dump(data)
+				}
 			},
 		}
 		useFlagID(cmd)
 		useFlagName(cmd)
 		useFlagMapping(cmd)
+		useFlagHost(cmd)
 		useFlagHostGroup(cmd)
 		useFlagSerial(cmd)
 		return cmd
@@ -216,7 +288,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "map a volume",
 			RunE: func(cmd *cobra.Command, _ []string) error {
-				if data, err := t.mapDisk(id, name, serial, mappings, lun); err != nil {
+				if data, err := t.mapDisk(id, name, serial, mappings, host, hostGroup, lun); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -664,7 +736,23 @@ func dump(data any) error {
 	return enc.Encode(data)
 }
 
-func validateIdentifiers(id, name, serial string) error {
+func validateHostIdentifiers(mappings []string, host, hostGroup string) error {
+	if len(mappings) == 0 && host == "" && hostGroup == "" {
+		return fmt.Errorf("--mapping, --host or --hostgroup is required")
+	}
+	if len(mappings) > 0 && host != "" {
+		return fmt.Errorf("--mapping and --host are mutually exclusive")
+	}
+	if len(mappings) > 0 && hostGroup != "" {
+		return fmt.Errorf("--mapping and --hostgroup are mutually exclusive")
+	}
+	if host != "" && hostGroup != "" {
+		return fmt.Errorf("--host and --hostgroup are mutually exclusive")
+	}
+	return nil
+}
+
+func validateVolumeIdentifiers(id, name, serial string) error {
 	if name == "" && id == "" && serial == "" {
 		return fmt.Errorf("--name, --id or --serial is required")
 	}
@@ -681,7 +769,7 @@ func validateIdentifiers(id, name, serial string) error {
 }
 
 func (t *Array) resizeDisk(id, name, serial, size string, truncate bool) (*pureVolume, error) {
-	if err := validateIdentifiers(id, name, serial); err != nil {
+	if err := validateVolumeIdentifiers(id, name, serial); err != nil {
 		return nil, err
 	}
 	if size == "" {
@@ -769,18 +857,263 @@ func (t *Array) addDisk(name, size string, mappings []string) (*pureVolume, erro
 	return &responseData.Items[0], nil
 }
 
-func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostGroup string) (any, error) {
-	return nil, nil
+func (t *Array) getHostGroupName(hbaID string) (string, error) {
+	filter := fmt.Sprintf("wwns='%s'", hbaID)
+	hosts, err := t.getHosts(filter)
+	if err != nil {
+		return "", err
+	}
+	if len(hosts) == 0 {
+		return "", fmt.Errorf("no host found for hba id %s", hbaID)
+	}
+	if len(hosts) > 1 {
+		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
+	}
+	for _, host := range hosts {
+		if !host.IsLocal {
+			continue
+		}
+		if host.HostGroup.Name == "" {
+			continue
+		}
+		return host.HostGroup.Name, nil
+	}
+	return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
 }
 
-func (t *Array) mapDisk(id, name, serial string, mappings []string, lun int) (any, error) {
+func (t *Array) getHostName(hbaID string) (string, error) {
+	filter := fmt.Sprintf("wwns='%s'", hbaID)
+	hosts, err := t.getHosts(filter)
+	if err != nil {
+		return "", err
+	}
+	if len(hosts) == 0 {
+		return "", fmt.Errorf("no host found for hba id %s", hbaID)
+	}
+	if len(hosts) > 1 {
+		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
+	}
+	return hosts[0].Name, nil
+}
+
+func formatWWN(s string) (string, error) {
+	if strings.HasPrefix(s, "0x") {
+		s = s[2:]
+	}
+	if len(s) != 16 {
+		return "", fmt.Errorf("input wwn must be formatted as 524a9373b4a75e11 or 0x524a9373b4a75e11")
+	}
+	s = strings.ToUpper(s)
+	return s[0:2] + ":" + s[2:4] + ":" + s[4:6] + ":" + s[6:8] + ":" + s[8:10] + ":" + s[10:12] + ":" + s[12:14] + ":" + s[14:], nil
+}
+
+func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, error) {
+	m := make(map[string][]string)
+	for _, mapping := range mappings {
+		elements := strings.Split(mapping, ":")
+		if len(elements) != 2 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		hbaID := elements[0]
+		wwn, err := formatWWN(hbaID)
+		if err != nil {
+			return nil, err
+		}
+		if len(elements[1]) == 0 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		targets := strings.Split(elements[1], ",")
+		if len(targets) == 0 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		hostName, err := t.getHostName(wwn)
+		if err != nil {
+			return nil, err
+		}
+		for _, target := range targets {
+			wwn, err := formatWWN(target)
+			if err != nil {
+				return nil, err
+			}
+			filter := fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn)
+			networkInterfaces, err := t.getNetworkInterfaces(filter)
+			if err != nil {
+				return nil, err
+			}
+			if len(networkInterfaces) == 0 {
+				continue
+			}
+			if v, ok := m[hostName]; ok {
+				m[hostName] = append(v, wwn)
+			} else {
+				m[hostName] = []string{wwn}
+			}
+		}
+	}
+	return m, nil
+}
+
+func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]string, error) {
+	m := make(map[string][]string)
+	for _, mapping := range mappings {
+		elements := strings.Split(mapping, ":")
+		if len(elements) != 2 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		hbaID := elements[0]
+		wwn, err := formatWWN(hbaID)
+		if err != nil {
+			return nil, err
+		}
+		if len(elements[1]) == 0 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		targets := strings.Split(elements[1], ",")
+		if len(targets) == 0 {
+			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+		}
+		hostGroupName, err := t.getHostGroupName(wwn)
+		if err != nil {
+			return nil, err
+		}
+		for _, target := range targets {
+			wwn, err := formatWWN(target)
+			if err != nil {
+				return nil, err
+			}
+			filter := fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn)
+			networkInterfaces, err := t.getNetworkInterfaces(filter)
+			if err != nil {
+				return nil, err
+			}
+			if len(networkInterfaces) == 0 {
+				continue
+			}
+			if v, ok := m[hostGroupName]; ok {
+				m[hostGroupName] = append(v, wwn)
+			} else {
+				m[hostGroupName] = []string{wwn}
+			}
+		}
+	}
+	return m, nil
+}
+
+func (t *Array) unmap(volumeName, hostName, hostGroupName string) error {
+	params := map[string]string{
+		"volume_names": volumeName,
+	}
+	if hostName != "" {
+		params["host_names"] = hostName
+	}
+	if hostGroupName != "" {
+		params["host_group_names"] = hostGroupName
+	}
+	req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+	if err != nil {
+		return err
+	}
+	var responseData any
+	_, err = t.Do(req, &responseData, true)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, hostGroupName string) ([]pureVolumeConnection, error) {
+	if err := validateVolumeIdentifiers(id, name, serial); err != nil {
+		return nil, err
+	}
+	if err := validateHostIdentifiers(mappings, hostName, hostGroupName); err != nil {
+		return nil, err
+	}
+	volume, err := t.getVolume(id, name, serial)
+	if err != nil {
+		return nil, err
+	}
+	ConnectionsDeleted := make([]pureVolumeConnection, 0)
+	hostGroupsDeleted := make(map[string]any)
+	switch {
+	case len(mappings) > 0:
+		hosts, err := t.getHostsFromMappings(mappings)
+		if err != nil {
+			return nil, err
+		}
+		for hostName, _ := range hosts {
+			filter := fmt.Sprintf("volume.name='%s' and host.name='%s'", volume.Name, hostName)
+			conns, err := t.getConnections(filter)
+			if err != nil {
+				return nil, err
+			}
+			if len(conns) < 1 {
+				return nil, fmt.Errorf("connection not found: volume.name='%s' and host.name='%s'", volume.Name, hostName)
+			} else if len(conns) > 1 {
+				return nil, fmt.Errorf("too many connections found: %d matches with filter volume.name='%s' and host.name='%s'", len(conns), volume.Name, hostName)
+			}
+			if err := t.unmap(volume.Name, hostName, ""); err != nil {
+				return nil, err
+			}
+			ConnectionsDeleted = append(ConnectionsDeleted, conns[0])
+		}
+	default:
+		filter := fmt.Sprintf("volume.name='%s'", volume.Name)
+		conns, err := t.getConnections(filter)
+		if err != nil {
+			return nil, err
+		}
+		for _, conn := range conns {
+			switch {
+			case hostName != "":
+				if conn.Host.Name != hostName {
+					continue
+				}
+				if err := t.unmap(volume.Name, hostName, ""); err != nil {
+					return ConnectionsDeleted, err
+				} else {
+					ConnectionsDeleted = append(ConnectionsDeleted, conn)
+				}
+			case hostGroupName != "":
+				if conn.HostGroup.Name != hostGroupName {
+					continue
+				}
+				if _, ok := hostGroupsDeleted[hostGroupName]; ok {
+					continue
+				} else if err := t.unmap(volume.Name, "", hostGroupName); err != nil {
+					return ConnectionsDeleted, err
+				} else {
+					ConnectionsDeleted = append(ConnectionsDeleted, conn)
+					hostGroupsDeleted[hostGroupName] = nil
+				}
+			case conn.HostGroup.Name != "":
+				if _, ok := hostGroupsDeleted[conn.HostGroup.Name]; ok {
+					continue
+				} else if err := t.unmap(volume.Name, "", conn.HostGroup.Name); err != nil {
+					return ConnectionsDeleted, err
+				} else {
+					ConnectionsDeleted = append(ConnectionsDeleted, conn)
+					hostGroupsDeleted[hostGroupName] = nil
+				}
+			case conn.Host.Name != "":
+				if err := t.unmap(volume.Name, conn.Host.Name, ""); err != nil {
+					return ConnectionsDeleted, err
+				} else {
+					ConnectionsDeleted = append(ConnectionsDeleted, conn)
+				}
+			}
+		}
+	}
+	return ConnectionsDeleted, nil
+}
+
+func (t *Array) mapDisk(id, name, serial string, mappings []string, host, hostGroup string, lun int) (any, error) {
 	return nil, nil
 }
 
 func (t *Array) getVolume(id, name, serial string) (pureVolume, error) {
 	var (
 		volume pureVolume
-		items  []any
+		items  []pureVolume
 		err    error
 		filter string
 	)
@@ -815,7 +1148,7 @@ func (t *Array) getVolume(id, name, serial string) (pureVolume, error) {
 }
 
 func (t *Array) delDisk(id, name, serial string, now bool) (*pureVolume, error) {
-	if err := validateIdentifiers(id, name, serial); err != nil {
+	if err := validateVolumeIdentifiers(id, name, serial); err != nil {
 		return nil, err
 	}
 	volume, err := t.getVolume(id, name, serial)
@@ -865,19 +1198,52 @@ func (t *Array) delDisk(id, name, serial string, now bool) (*pureVolume, error) 
 	return &item, nil
 }
 
-func (t *Array) getHosts(filter string) (any, error) {
+func (t *Array) getHosts(filter string) ([]pureHost, error) {
 	params := getParams(filter)
-	return t.doGet("GET", "/hosts", params, nil)
+	l, err := t.doGet("GET", "/hosts", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	hosts := make([]pureHost, len(l))
+	for i, item := range l {
+		var host pureHost
+		b, _ := json.Marshal(item)
+		json.Unmarshal(b, &host)
+		hosts[i] = host
+	}
+	return hosts, nil
 }
 
-func (t *Array) getConnections(filter string) (any, error) {
+func (t *Array) getConnections(filter string) ([]pureVolumeConnection, error) {
 	params := getParams(filter)
-	return t.doGet("GET", "/connections", params, nil)
+	l, err := t.doGet("GET", "/connections", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	conns := make([]pureVolumeConnection, len(l))
+	for i, item := range l {
+		var conn pureVolumeConnection
+		b, _ := json.Marshal(item)
+		json.Unmarshal(b, &conn)
+		conns[i] = conn
+	}
+	return conns, nil
 }
 
-func (t *Array) getVolumes(filter string) ([]any, error) {
+func (t *Array) getVolumes(filter string) ([]pureVolume, error) {
 	params := getParams(filter)
-	return t.doGet("GET", "/volumes", params, nil)
+	l, err := t.doGet("GET", "/volumes", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	volumes := make([]pureVolume, len(l))
+	for i, item := range l {
+		var volume pureVolume
+		b, _ := json.Marshal(item)
+		json.Unmarshal(b, &volume)
+		volumes[i] = volume
+	}
+	return volumes, nil
 }
 
 func (t *Array) getVolumeGroups(filter string) (any, error) {
@@ -905,7 +1271,7 @@ func (t *Array) getPorts(filter string) (any, error) {
 	return t.doGet("GET", "/ports", params, nil)
 }
 
-func (t *Array) getNetworkInterfaces(filter string) (any, error) {
+func (t *Array) getNetworkInterfaces(filter string) ([]any, error) {
 	params := getParams(filter)
 	return t.doGet("GET", "/network-interfaces", params, nil)
 }
