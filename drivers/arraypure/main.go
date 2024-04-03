@@ -159,6 +159,12 @@ type (
 		Items             []any `json:"items,omitempty"`
 	}
 
+	pureResponseVolumeConnections struct {
+		TotalItems        int                    `json:"total_item_count,omitempty"`
+		ContinuationToken any                    `json:"continuation_token,omitempty"`
+		Items             []pureVolumeConnection `json:"items,omitempty"`
+	}
+
 	pureResponseVolumes struct {
 		TotalItems        int          `json:"total_item_count,omitempty"`
 		ContinuationToken any          `json:"continuation_token,omitempty"`
@@ -852,7 +858,7 @@ func (t *Array) addDisk(name, size string, mappings []string) (*pureVolume, erro
 		return nil, err
 	}
 	if len(responseData.Items) == 0 {
-		return nil, fmt.Errorf("no item in response")
+		return nil, fmt.Errorf("no volume item in response")
 	}
 	return &responseData.Items[0], nil
 }
@@ -999,7 +1005,35 @@ func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]strin
 	return m, nil
 }
 
-func (t *Array) unmap(volumeName, hostName, hostGroupName string) error {
+func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (*pureVolumeConnection, error) {
+	params := map[string]string{
+		"volume_names": volumeName,
+	}
+	if hostName != "" {
+		params["host_names"] = hostName
+	}
+	if hostGroupName != "" {
+		params["host_group_names"] = hostGroupName
+	}
+	if lun >= 0 {
+		params["lun"] = fmt.Sprint(lun)
+	}
+	req, err := t.newRequest(http.MethodPost, "/connections", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	var responseData pureResponseVolumeConnections
+	_, err = t.Do(req, &responseData, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(responseData.Items) == 0 {
+		return nil, fmt.Errorf("no connection item in response")
+	}
+	return &responseData.Items[0], nil
+}
+
+func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
 	params := map[string]string{
 		"volume_names": volumeName,
 	}
@@ -1051,7 +1085,7 @@ func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, 
 			} else if len(conns) > 1 {
 				return nil, fmt.Errorf("too many connections found: %d matches with filter volume.name='%s' and host.name='%s'", len(conns), volume.Name, hostName)
 			}
-			if err := t.unmap(volume.Name, hostName, ""); err != nil {
+			if err := t.unmapVolume(volume.Name, hostName, ""); err != nil {
 				return nil, err
 			}
 			ConnectionsDeleted = append(ConnectionsDeleted, conns[0])
@@ -1068,7 +1102,7 @@ func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, 
 				if conn.Host.Name != hostName {
 					continue
 				}
-				if err := t.unmap(volume.Name, hostName, ""); err != nil {
+				if err := t.unmapVolume(volume.Name, hostName, ""); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1079,7 +1113,7 @@ func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, 
 				}
 				if _, ok := hostGroupsDeleted[hostGroupName]; ok {
 					continue
-				} else if err := t.unmap(volume.Name, "", hostGroupName); err != nil {
+				} else if err := t.unmapVolume(volume.Name, "", hostGroupName); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1088,14 +1122,14 @@ func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, 
 			case conn.HostGroup.Name != "":
 				if _, ok := hostGroupsDeleted[conn.HostGroup.Name]; ok {
 					continue
-				} else if err := t.unmap(volume.Name, "", conn.HostGroup.Name); err != nil {
+				} else if err := t.unmapVolume(volume.Name, "", conn.HostGroup.Name); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
 					hostGroupsDeleted[hostGroupName] = nil
 				}
 			case conn.Host.Name != "":
-				if err := t.unmap(volume.Name, conn.Host.Name, ""); err != nil {
+				if err := t.unmapVolume(volume.Name, conn.Host.Name, ""); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1106,8 +1140,45 @@ func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostName, 
 	return ConnectionsDeleted, nil
 }
 
-func (t *Array) mapDisk(id, name, serial string, mappings []string, host, hostGroup string, lun int) (any, error) {
-	return nil, nil
+func (t *Array) mapDisk(id, name, serial string, mappings []string, hostName, hostGroupName string, lun int) (any, error) {
+	if err := validateVolumeIdentifiers(id, name, serial); err != nil {
+		return nil, err
+	}
+	if err := validateHostIdentifiers(mappings, hostName, hostGroupName); err != nil {
+		return nil, err
+	}
+	volume, err := t.getVolume(id, name, serial)
+	if err != nil {
+		return nil, err
+	}
+	ConnectionsAdded := make([]pureVolumeConnection, 0)
+	switch {
+	case len(mappings) > 0:
+		hosts, err := t.getHostsFromMappings(mappings)
+		if err != nil {
+			return nil, err
+		}
+		for hostName, _ := range hosts {
+			if conn, err := t.mapVolume(volume.Name, hostName, "", lun); err != nil {
+				return nil, err
+			} else {
+				ConnectionsAdded = append(ConnectionsAdded, *conn)
+			}
+		}
+	case hostName != "":
+		if conn, err := t.mapVolume(volume.Name, hostName, "", lun); err != nil {
+			return ConnectionsAdded, err
+		} else {
+			ConnectionsAdded = append(ConnectionsAdded, *conn)
+		}
+	case hostGroupName != "":
+		if conn, err := t.mapVolume(volume.Name, "", hostGroupName, lun); err != nil {
+			return ConnectionsAdded, err
+		} else {
+			ConnectionsAdded = append(ConnectionsAdded, *conn)
+		}
+	}
+	return ConnectionsAdded, nil
 }
 
 func (t *Array) getVolume(id, name, serial string) (pureVolume, error) {
