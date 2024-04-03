@@ -32,6 +32,8 @@ var (
 )
 
 type (
+	resizeMethod int
+
 	Array struct {
 		*array.Array
 		token *pureToken
@@ -104,6 +106,13 @@ type (
 	}
 )
 
+const (
+	// Resize methods
+	ResizeExact resizeMethod = iota
+	ResizeUp
+	ResizeDown
+)
+
 func init() {
 	driver.Register(driver.NewID(driver.GroupArray, "pure"), NewDriver)
 }
@@ -160,7 +169,33 @@ func (t *Array) Run(args []string) error {
 		}
 		return cmd
 	}
+	newResizeCmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "resize",
+			Short: "resize commands",
+		}
+		return cmd
+	}
 
+	newResizeDiskCmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "disk",
+			Short: "resize a volume",
+			RunE: func(_ *cobra.Command, _ []string) error {
+				if data, err := t.resizeDisk(id, name, serial, size, truncate); err != nil {
+					return err
+				} else {
+					return dump(data)
+				}
+			},
+		}
+		useFlagID(cmd)
+		useFlagName(cmd)
+		useFlagSerial(cmd)
+		useFlagSize(cmd)
+		useFlagTruncate(cmd)
+		return cmd
+	}
 	newUnmapDiskCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "disk",
@@ -181,7 +216,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "map a volume",
 			RunE: func(cmd *cobra.Command, _ []string) error {
-				if data, err := t.mapDisk(name, mappings, lun); err != nil {
+				if data, err := t.mapDisk(id, name, serial, mappings, lun); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -202,7 +237,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "unmap a volume and delete",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.delDisk(id, name, now); err != nil {
+				if data, err := t.delDisk(id, name, serial, now); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -212,6 +247,7 @@ func (t *Array) Run(args []string) error {
 		useFlagName(cmd)
 		useFlagNow(cmd)
 		useFlagID(cmd)
+		useFlagSerial(cmd)
 		return cmd
 	}
 	newAddDiskCmd := func() *cobra.Command {
@@ -428,6 +464,10 @@ func (t *Array) Run(args []string) error {
 	addCmd.AddCommand(newAddDiskCmd())
 	parent.AddCommand(addCmd)
 
+	resizeCmd := newResizeCmd()
+	resizeCmd.AddCommand(newResizeDiskCmd())
+	parent.AddCommand(resizeCmd)
+
 	delCmd := newDelCmd()
 	delCmd.AddCommand(newDelDiskCmd())
 	parent.AddCommand(delCmd)
@@ -624,7 +664,80 @@ func dump(data any) error {
 	return enc.Encode(data)
 }
 
-func (t *Array) addDisk(name, size string, mappings []string) (any, error) {
+func validateIdentifiers(id, name, serial string) error {
+	if name == "" && id == "" && serial == "" {
+		return fmt.Errorf("--name, --id or --serial is required")
+	}
+	if name != "" && id != "" {
+		return fmt.Errorf("--name and --id are mutually exclusive")
+	}
+	if name != "" && serial != "" {
+		return fmt.Errorf("--name and --serial are mutually exclusive")
+	}
+	if id != "" && serial != "" {
+		return fmt.Errorf("--serial and --id are mutually exclusive")
+	}
+	return nil
+}
+
+func (t *Array) resizeDisk(id, name, serial, size string, truncate bool) (*pureVolume, error) {
+	if err := validateIdentifiers(id, name, serial); err != nil {
+		return nil, err
+	}
+	if size == "" {
+		return nil, fmt.Errorf("--size is required")
+	}
+	var method resizeMethod
+	if len(size) > 1 {
+		switch size[0] {
+		case '+':
+			size = size[1:]
+			method = ResizeUp
+		case '-':
+			size = size[1:]
+			method = ResizeDown
+		}
+	}
+	sizeBytes, err := sizeconv.FromSize(size)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := t.getVolume(id, name, serial)
+	if err != nil {
+		return nil, err
+	}
+	if method != ResizeExact {
+		switch method {
+		case ResizeUp:
+			sizeBytes = volume.Provisioned + sizeBytes
+		case ResizeDown:
+			sizeBytes = volume.Provisioned - sizeBytes
+		}
+	}
+	params := map[string]string{
+		"ids": volume.ID,
+	}
+	if truncate {
+		params["truncate"] = "true"
+	}
+	data := map[string]string{
+		"provisioned": fmt.Sprint(sizeBytes),
+	}
+	req, err := t.newRequest(http.MethodPatch, "/volumes", params, data)
+	if err != nil {
+		return nil, err
+	}
+	var responseData pureResponseVolumes
+	if _, err := t.Do(req, &responseData, true); err != nil {
+		return nil, err
+	}
+	if len(responseData.Items) == 0 {
+		return nil, fmt.Errorf("no item in response")
+	}
+	return &responseData.Items[0], nil
+}
+
+func (t *Array) addDisk(name, size string, mappings []string) (*pureVolume, error) {
 	if name == "" {
 		return nil, fmt.Errorf("--name is required")
 	}
@@ -646,28 +759,41 @@ func (t *Array) addDisk(name, size string, mappings []string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	var responseData any
+	var responseData pureResponseVolumes
 	if _, err := t.Do(req, &responseData, true); err != nil {
 		return nil, err
 	}
-	return responseData, nil
+	if len(responseData.Items) == 0 {
+		return nil, fmt.Errorf("no item in response")
+	}
+	return &responseData.Items[0], nil
 }
 
-func (t *Array) mapDisk(name string, mappings []string, lun int) (any, error) {
+func (t *Array) unmapDisk(id, name, serial string, mappings []string, hostGroup string) (any, error) {
 	return nil, nil
 }
 
-func (t *Array) getVolume(id int, name string) (pureVolume, error) {
+func (t *Array) mapDisk(id, name, serial string, mappings []string, lun int) (any, error) {
+	return nil, nil
+}
+
+func (t *Array) getVolume(id, name, serial string) (pureVolume, error) {
 	var (
 		volume pureVolume
 		items  []any
 		err    error
+		filter string
 	)
-	if id >= 0 {
-		items, err = t.getVolumes(fmt.Sprintf("id='%d'", id))
+	if id != "" {
+		filter = fmt.Sprintf("id='%s'", id)
+	} else if name != "" {
+		filter = fmt.Sprintf("name='%s'", name)
+	} else if serial != "" {
+		filter = fmt.Sprintf("serial='%s'", serial)
 	} else {
-		items, err = t.getVolumes(fmt.Sprintf("name='%s'", name))
+		return volume, fmt.Errorf("id, name and serial are empty. refuse to get all volumes")
 	}
+	items, err = t.getVolumes(filter)
 	if err != nil {
 		return volume, err
 	}
@@ -685,28 +811,24 @@ func (t *Array) getVolume(id int, name string) (pureVolume, error) {
 		}
 		return volume, nil
 	}
-	return volume, fmt.Errorf("no volume found with name %s", name)
+	return volume, fmt.Errorf("no volume found with %s", filter)
 }
 
-func (t *Array) delDisk(id int, name string, now bool) (any, error) {
-	if name == "" && id < 0 {
-		return nil, fmt.Errorf("--name or --id is required")
+func (t *Array) delDisk(id, name, serial string, now bool) (*pureVolume, error) {
+	if err := validateIdentifiers(id, name, serial); err != nil {
+		return nil, err
 	}
-	if name != "" && id >= 0 {
-		return nil, fmt.Errorf("--name or --id are mutually exclusive")
-	}
-	volume, err := t.getVolume(id, name)
+	volume, err := t.getVolume(id, name, serial)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []pureVolume
-
 	//diskID := strings.ToLower(volume.Serial)
 	// TODO: delMap
 
+	var item pureVolume
 	params := map[string]string{
-		"names": volume.Name,
+		"ids": volume.ID,
 	}
 	if !volume.Destroyed {
 		data := map[string]any{
@@ -721,23 +843,26 @@ func (t *Array) delDisk(id int, name string, now bool) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		items = responseData.Items
+		if len(responseData.Items) == 0 {
+			return nil, fmt.Errorf("no item in response")
+		}
+		item = responseData.Items[0]
 	} else {
-		items = append(items, volume)
+		item = volume
 	}
 	if now {
 		req, err := t.newRequest(http.MethodDelete, "/volumes", params, nil)
 		if err != nil {
-			return items, err
+			return nil, err
 		}
 		var responseData pureResponseVolumes
 		_, err = t.Do(req, &responseData, true)
 		if err != nil {
-			return items, err
+			return &item, err
 		}
 	}
 	// TODO: del diskinfo
-	return items, nil
+	return &item, nil
 }
 
 func (t *Array) getHosts(filter string) (any, error) {

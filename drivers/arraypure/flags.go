@@ -7,7 +7,7 @@ var (
 	filter      string
 	host        string
 	hostGroup   string
-	id          int
+	id          string
 	initiators  []string
 	lun         int
 	mappings    []string
@@ -40,7 +40,7 @@ func useFlagHostGroup(cmd *cobra.Command) {
 }
 
 func useFlagID(cmd *cobra.Command) {
-	cmd.Flags().IntVar(&id, "id", -1, "item id")
+	cmd.Flags().StringVar(&id, "id", "", "item id")
 }
 
 func useFlagInitiator(cmd *cobra.Command) {
