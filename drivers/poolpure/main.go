@@ -71,7 +71,7 @@ func (t T) Capabilities() []string {
 func (t T) Usage() (pool.Usage, error) {
 	usage := pool.Usage{}
 	a := t.array()
-	data, err := a.GetArrays("")
+	data, err := a.GetArrays(arraypure.OptGetItems{})
 	if err != nil {
 		return usage, err
 	}
@@ -115,7 +115,10 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 func (t *T) GetTargets() (san.Targets, error) {
 	ports := make(san.Targets, 0)
 	a := t.array()
-	data, err := a.GetNetworkInterfaces("services='scsi-fc' and enabled='true'")
+	opt := arraypure.OptGetItems{
+		Filter: "services='scsi-fc' and enabled='true'",
+	}
+	data, err := a.GetNetworkInterfaces(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +138,12 @@ func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
 	serial := name[8:]
 	poolDisk := pool.Disk{}
 	a := t.array()
-	arrayDisk, err := a.DelDisk("", "", serial, true)
+	arrayDisk, err := a.DelDisk(arraypure.OptDelDisk{
+		Volume: arraypure.OptVolume{
+			Serial: serial,
+		},
+		Now: true,
+	})
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -159,7 +167,12 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	} else if vg != "" {
 		name = vg + "/" + name
 	}
-	arrayDisk, err := a.AddDisk(name, drvSize, mappings, -1)
+	arrayDisk, err := a.AddDisk(arraypure.OptAddDisk{
+		Name:     name,
+		Size:     drvSize,
+		Mappings: mappings,
+		LUN:      -1,
+	})
 	if err != nil {
 		return []pool.Disk{}, err
 	}
