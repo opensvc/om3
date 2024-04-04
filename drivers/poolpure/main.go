@@ -5,6 +5,7 @@ package poolpure
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/pool"
@@ -69,24 +70,18 @@ func (t T) Capabilities() []string {
 
 func (t T) Usage() (pool.Usage, error) {
 	usage := pool.Usage{}
-	/*
-		a := t.array()
-		data, err := a.GetDataset(t.diskgroup())
-		if err != nil {
-			return usage, err
-		}
-		if i, err := sizeconv.FromSize(data.Used.Rawvalue); err != nil {
-			return usage, err
-		} else {
-			usage.Used = i
-		}
-		if i, err := sizeconv.FromSize(data.Available.Rawvalue); err != nil {
-			return usage, err
-		} else {
-			usage.Free = i
-		}
-		usage.Size = usage.Used + usage.Free
-	*/
+	a := t.array()
+	data, err := a.GetArrays("")
+	if err != nil {
+		return usage, err
+	}
+	if len(data) == 0 {
+		return usage, fmt.Errorf("empty get arrays response")
+	}
+	space := data[0].Space
+	usage.Size = data[0].Capacity / 1024
+	usage.Used = space.TotalPhysical / 1024
+	usage.Free = usage.Size - usage.Used
 	return usage, nil
 }
 
@@ -119,67 +114,57 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 
 func (t *T) GetTargets() (san.Targets, error) {
 	ports := make(san.Targets, 0)
-	/*
-		a := t.array()
-		data, err := a.GetISCSITargets()
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range data {
-			ports = append(ports, san.Target{
-				Name: d.Name,
-				Type: san.ISCSI,
-			})
-		}
-	*/
+	a := t.array()
+	data, err := a.GetNetworkInterfaces("services='scsi-fc' and enabled='true'")
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range data {
+		ports = append(ports, san.Target{
+			Name: strings.ToLower(strings.ReplaceAll(*d.FC.WWN, ":", "")),
+			Type: san.FC,
+		})
+	}
 	return ports, nil
 }
 
 func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
-	disk := pool.Disk{}
-	/*
-		a := t.array()
-		drvName := t.diskgroup() + "/" + name
-		drvDisk, err := a.DelDisk(drvName)
-		if err != nil {
-			return []pool.Disk{}, err
-		}
-		disk.Driver = drvDisk
-		disk.ID = a.DiskID(*drvDisk)
-		if paths, err := a.DiskPaths(*drvDisk); err != nil {
-			return []pool.Disk{disk}, err
-		} else {
-			disk.Paths = paths
-		}
-	*/
-	return []pool.Disk{disk}, nil
+	if len(name) != 16 {
+		return nil, fmt.Errorf("can not fetch serial from disk name to delete: %s", name)
+	}
+	serial := name[8:]
+	poolDisk := pool.Disk{}
+	a := t.array()
+	arrayDisk, err := a.DelDisk("", "", serial, true)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	poolDisk.Driver = arrayDisk.DriverData
+	poolDisk.ID = arrayDisk.DiskID
+	return []pool.Disk{poolDisk}, nil
 }
 
 func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, error) {
-	disk := pool.Disk{}
+	poolDisk := pool.Disk{}
 	if len(paths) == 0 {
 		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
-	/*
-		a := t.array()
-		blocksize := fmt.Sprint(*t.blocksize())
-		sparse := t.sparse()
-		insecureTPC := t.insecureTPC()
-		drvSize := sizeconv.ExactBSizeCompact(float64(size))
-		drvName := t.diskgroup() + "/" + name
-		mapping := paths.Mapping()
-
-		drvDisk, err := a.AddDisk(drvName, drvSize, blocksize, sparse, insecureTPC, mapping, nil)
-		if err != nil {
-			return []pool.Disk{}, err
-		}
-		disk.Driver = drvDisk
-		disk.ID = a.DiskID(*drvDisk)
-		if paths, err := a.DiskPaths(*drvDisk); err != nil {
-			return []pool.Disk{disk}, err
-		} else {
-			disk.Paths = paths
-		}
-	*/
-	return []pool.Disk{disk}, nil
+	a := t.array()
+	drvSize := sizeconv.ExactBSizeCompact(float64(size))
+	mappings := paths.MappingList()
+	pod := t.pod()
+	vg := t.volumeGroup()
+	if pod != "" {
+		name = pod + "::" + name
+	} else if vg != "" {
+		name = vg + "/" + name
+	}
+	arrayDisk, err := a.AddDisk(name, drvSize, mappings, -1)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	poolDisk.Driver = arrayDisk.DriverData
+	poolDisk.ID = arrayDisk.DiskID
+	poolDisk.Paths = paths
+	return []pool.Disk{poolDisk}, nil
 }
