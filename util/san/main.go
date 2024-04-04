@@ -35,12 +35,16 @@ type (
 )
 
 func (t Paths) Mapping() string {
+	return strings.Join(t.MappingList(), ",")
+}
+
+func (t Paths) MappingList() []string {
 	l := make([]string, 0)
 	for _, p := range t {
 		s := p.Initiator.Name + ":" + p.Target.Name
 		l = append(l, s)
 	}
-	return strings.Join(l, ",")
+	return l
 }
 
 func ParseMapping(s string) (Paths, error) {
