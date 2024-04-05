@@ -732,7 +732,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section:    "pool",
 		Option:     "type",
 		Default:    "directory",
-		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "virtual", "dorado", "hcs", "drbd"},
+		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "virtual", "dorado", "hcs", "drbd", "pure"},
 		Text:       keywords.NewText(fs, "text/kw/node/pool.type"),
 	},
 	{
@@ -748,7 +748,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section:  "pool",
-		Types:    []string{"freenas", "symmetrix", "dorado", "hcs"},
+		Types:    []string{"freenas", "symmetrix", "dorado", "hcs", "pure"},
 		Option:   "array",
 		Scopable: true,
 		Required: true,
@@ -756,9 +756,29 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section: "pool",
-		Types:   []string{"hcs"},
+		Types:   []string{"hcs", "pure"},
 		Option:  "label_prefix",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hcs.label_prefix"),
+	},
+	{
+		Section:   "pool",
+		Types:     []string{"pure"},
+		Option:    "delete_now",
+		Converter: converters.Bool,
+		Default:   "true",
+		Text:      keywords.NewText(fs, "text/kw/node/delete_now.pure.pod"),
+	},
+	{
+		Section: "pool",
+		Types:   []string{"pure"},
+		Option:  "pod",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.pure.pod"),
+	},
+	{
+		Section: "pool",
+		Types:   []string{"pure"},
+		Option:  "volumegroup",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.pure.volumegroup"),
 	},
 	{
 		Section: "pool",
@@ -808,7 +828,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section:  "pool",
-		Types:    []string{"freenas", "dorado", "hcs"},
+		Types:    []string{"freenas", "dorado", "hcs", "pure"},
 		Option:   "diskgroup",
 		Required: true,
 		Text:     keywords.NewText(fs, "text/kw/node/pool.diskgroup"),
@@ -932,7 +952,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section: "pool",
 		Option:  "fs_type",
-		Types:   []string{"freenas", "dorado", "hcs", "symmetrix", "drbd", "loop", "vg"},
+		Types:   []string{"freenas", "dorado", "hcs", "symmetrix", "drbd", "loop", "vg", "pure"},
 		Default: "xfs",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
 	},

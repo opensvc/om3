@@ -5,7 +5,7 @@
 !**/*.yaml
 !**/*.conf
 !**/
-!**/text/*/*
+!**/text/**
 !go.sum
 !go.mod
 !LICENSE
@@ -14,3 +14,4 @@
 .idea
 core/version/version.go
 .trash
+util/version/text/VERSION
