@@ -79,8 +79,8 @@ func (t T) Usage() (pool.Usage, error) {
 		return usage, fmt.Errorf("empty get arrays response")
 	}
 	space := data[0].Space
-	usage.Size = data[0].Capacity / 1024
-	usage.Used = space.TotalPhysical / 1024
+	usage.Size = data[0].Capacity
+	usage.Used = space.TotalPhysical
 	usage.Free = usage.Size - usage.Used
 	return usage, nil
 }
