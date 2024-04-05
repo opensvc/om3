@@ -65,8 +65,8 @@ func GetFCPaths() ([]Path, error) {
 			continue
 		}
 		hbtl := d
-		hbtl = strings.TrimPrefix(hbtl, "target")
-		hbtl = strings.TrimPrefix(hbtl, "rport-")
+		hbtl = strings.TrimPrefix(hbtl, "/sys/class/fc_transport/target")
+		hbtl = strings.TrimPrefix(hbtl, "/sys/class/fc_remote_ports/rport-")
 		host := "host" + hbtl[0:strings.Index(hbtl, ":")]
 		if err != nil {
 			continue
