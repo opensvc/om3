@@ -61,6 +61,9 @@ func GetFCPaths() ([]Path, error) {
 		if err != nil {
 			continue
 		}
+		if wwpn == "0" {
+			continue
+		}
 		if !isPortPresent(d) {
 			continue
 		}
