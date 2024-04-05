@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/drivers/arraypure"
+	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/san"
 	"github.com/opensvc/om3/util/sizeconv"
 )
@@ -46,6 +47,10 @@ func (t T) Head() string {
 		s = t.volumeGroup()
 	}
 	return fmt.Sprintf("array://%s/%s", t.arrayName(), s)
+}
+
+func (t T) labelPrefix() string {
+	return t.GetString("label_prefix")
 }
 
 func (t T) pod() string {
@@ -180,4 +185,18 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	poolDisk.ID = arrayDisk.DiskID
 	poolDisk.Paths = paths
 	return []pool.Disk{poolDisk}, nil
+}
+
+func (t *T) DiskName(vol pool.Volumer) string {
+	var s string
+	if labelPrefix := t.labelPrefix(); labelPrefix != "" {
+		s += labelPrefix
+	} else {
+		k := key.T{"cluster", "id"}
+		clusterID := t.Config().GetString(k)
+		s += strings.SplitN(clusterID, "-", 1)[0] + "-"
+
+	}
+	s += vol.Config().GetString(key.T{"DEFAULT", "id"})
+	return s
 }

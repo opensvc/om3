@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -14,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/volaccess"
+	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/san"
@@ -57,6 +57,10 @@ type (
 	}
 	VolumeStatusList []VolumeStatus
 
+	diskNamer interface {
+		DiskName(Volumer) string
+	}
+
 	Config interface {
 		Eval(key.T) (any, error)
 		GetString(key.T) string
@@ -91,9 +95,9 @@ type (
 	BlkTranslater interface {
 		BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	}
-	volumer interface {
+	Volumer interface {
 		FQDN() string
-		Set(context.Context, ...keyop.T) error
+		Config() *xconfig.T
 	}
 
 	Disk struct {
@@ -347,8 +351,15 @@ func syncKeywords() []string {
 	}
 }
 
-func ConfigureVolume(p Pooler, vol volumer, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
-	name := vol.FQDN()
+func DiskName(p Pooler, vol Volumer) string {
+	if i, ok := p.(diskNamer); ok {
+		return i.DiskName(vol)
+	}
+	return vol.FQDN()
+}
+
+func ConfigureVolume(p Pooler, vol Volumer, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
+	name := DiskName(p, vol)
 	kws, err := translate(p, name, size, format, shared)
 	if err != nil {
 		return err
@@ -359,7 +370,7 @@ func ConfigureVolume(p Pooler, vol volumer, size int64, format bool, acs volacce
 	kws = append(kws, nodeKeywords(nodes)...)
 	kws = append(kws, statusScheduleKeywords(p)...)
 	kws = append(kws, syncKeywords()...)
-	if err := vol.Set(context.Background(), keyop.ParseOps(kws)...); err != nil {
+	if err := vol.Config().Set(keyop.ParseOps(kws)...); err != nil {
 		return err
 	}
 	return nil

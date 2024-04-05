@@ -162,7 +162,7 @@ func (t Lookup) Env(p Pooler, c consumer, optional bool) ([]string, error) {
 	return env, nil
 }
 
-func (t Lookup) ConfigureVolume(volume volumer, obj interface{}) error {
+func (t Lookup) ConfigureVolume(volume Volumer, obj interface{}) error {
 	c, ok := obj.(consumer)
 	if !ok {
 		return fmt.Errorf("configure volume: the <obj> argument is not a consumer")
