@@ -42,22 +42,22 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		Path     naming.Path `json:"path"`
 		ObjectID uuid.UUID   `json:"object_id"`
 		Peers    []string    `json:"peers"`
 		DNS      []string    `json:"dns"`
 		Topology topology.T
 
-		SCSIReserv     bool           `json:"scsireserv"`
-		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"no_preempt_abort"`
-		OsvcRootPath   string         `json:"osvc_root_path"`
-		GuestOS        string         `json:"guest_os"`
-		Name           string         `json:"name"`
-		Hostname       string         `json:"hostname"`
-		RCmd           []string       `json:"rcmd"`
-		StartTimeout   *time.Duration `json:"start_timeout"`
-		StopTimeout    *time.Duration `json:"stop_timeout"`
+		SCSIReserv   bool           `json:"scsireserv"`
+		PromoteRW    bool           `json:"promote_rw"`
+		OsvcRootPath string         `json:"osvc_root_path"`
+		GuestOS      string         `json:"guest_os"`
+		Name         string         `json:"name"`
+		Hostname     string         `json:"hostname"`
+		RCmd         []string       `json:"rcmd"`
+		StartTimeout *time.Duration `json:"start_timeout"`
+		StopTimeout  *time.Duration `json:"stop_timeout"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 		VirtInst []string `json:"virtinst"`
