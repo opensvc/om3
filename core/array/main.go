@@ -20,6 +20,17 @@ type (
 		name   string
 		config *xconfig.T
 	}
+	Disk struct {
+		DiskID     string             `json:"disk_id"`
+		DevID      string             `json:"dev_id"`
+		Mappings   map[string]Mapping `json:"mappings"`
+		DriverData any                `json:"driver_data"`
+	}
+	Mapping struct {
+		HBAID string `json:"hba_id"`
+		TGTID string `json:"tgt_id"`
+		LUN   string `json:"lun"`
+	}
 )
 
 func New() *Array {

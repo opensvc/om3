@@ -61,12 +61,15 @@ func GetFCPaths() ([]Path, error) {
 		if err != nil {
 			continue
 		}
+		if wwpn == "0" {
+			continue
+		}
 		if !isPortPresent(d) {
 			continue
 		}
 		hbtl := d
-		hbtl = strings.TrimPrefix(hbtl, "target")
-		hbtl = strings.TrimPrefix(hbtl, "rport-")
+		hbtl = strings.TrimPrefix(hbtl, "/sys/class/fc_transport/target")
+		hbtl = strings.TrimPrefix(hbtl, "/sys/class/fc_remote_ports/rport-")
 		host := "host" + hbtl[0:strings.Index(hbtl, ":")]
 		if err != nil {
 			continue

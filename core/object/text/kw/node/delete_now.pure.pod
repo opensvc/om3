@@ -1,0 +1,1 @@
+If set to false the pure volumes are not immediately deleted on unprovision, so a following provision action could fail.

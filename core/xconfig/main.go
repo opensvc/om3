@@ -1186,7 +1186,7 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 			return fmt.Errorf("abort config commit: validation errors")
 		}
 	}
-	if !t.Referrer.IsVolatile() {
+	if t.Referrer != nil && !t.Referrer.IsVolatile() {
 		if err := t.write(); err != nil {
 			return err
 		}
