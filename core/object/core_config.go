@@ -5,6 +5,7 @@ import (
 	"net"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 var (
@@ -378,7 +378,7 @@ func (t *core) Dereference(ref string) (string, error) {
 				return "", err
 			} else {
 				for _, name := range names {
-					if stringslice.Has(name, nodes) {
+					if slices.Contains(nodes, name) {
 						l = append(l, name)
 					}
 				}

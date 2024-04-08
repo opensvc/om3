@@ -3,6 +3,7 @@ package nmon
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/core/clusternode"
@@ -11,7 +12,6 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/toc"
 )
 
@@ -215,7 +215,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 	t.saveNodesInfo()
 
 	var forgetType string
-	if !stringslice.Has(c.Node, clusternode.Get()) {
+	if !slices.Contains(clusternode.Get(), c.Node) {
 		forgetType = "removed"
 		t.log.Infof("forget %s peer %s => new live peers: %v", forgetType, c.Node, t.livePeers)
 	} else {

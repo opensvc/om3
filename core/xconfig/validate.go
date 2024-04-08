@@ -3,6 +3,7 @@ package xconfig
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
@@ -12,7 +13,6 @@ import (
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/render/tree"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -325,7 +325,7 @@ func (t T) Validate() (Alerts, error) {
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
 			}
-			if (len(kw.Candidates) > 0) && !stringslice.Has(v, kw.Candidates) {
+			if (len(kw.Candidates) > 0) && !slices.Contains(kw.Candidates, v) {
 				alerts = append(alerts, t.NewAlertCandidates(k, did))
 			}
 		}

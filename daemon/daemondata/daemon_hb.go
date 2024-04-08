@@ -1,20 +1,20 @@
 package daemondata
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (d *data) setDaemonHb() {
 	lastMessages := make([]cluster.HbLastMessage, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgPatchLength {
-		if !stringslice.Has(node, d.clusterData.Cluster.Config.Nodes) {
+		if !slices.Contains(d.clusterData.Cluster.Config.Nodes, node) {
 			// Drop not anymore in cluster config nodes
 			hbcache.DropPeer(node)
 			continue

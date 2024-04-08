@@ -4,12 +4,12 @@ import (
 	"embed"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/ssrathi/go-attr"
 )
 
@@ -139,13 +139,13 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 		if !kw.Kind.Has(kind) {
 			continue
 		}
-		if baseOption != kw.Option && !stringslice.Has(baseOption, kw.Aliases) {
+		if baseOption != kw.Option && !slices.Contains(kw.Aliases, baseOption) {
 			continue
 		}
 		if kw.Section == "" {
 			return kw
 		}
-		if sectionType != "" && len(kw.Types) > 0 && !stringslice.Has(sectionType, kw.Types) {
+		if sectionType != "" && len(kw.Types) > 0 && !slices.Contains(kw.Types, sectionType) {
 			continue
 		}
 		if k.Section == kw.Section || driverGroup == kw.Section {

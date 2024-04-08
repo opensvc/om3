@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -459,10 +459,10 @@ func (t T) IsAutoActivated() bool {
 			if len(words) < 2 {
 				continue
 			}
-			if words[0] == "AUTO" && stringslice.Has("-all", words) {
+			if words[0] == "AUTO" && slices.Contains(words, "-all") {
 				return false
 			}
-			if words[0] == "ARRAY" && words[1] == "<ignore>" && stringslice.Has("UUID="+t.uuid, words) {
+			if words[0] == "ARRAY" && words[1] == "<ignore>" && slices.Contains(words, "UUID="+t.uuid) {
 				return false
 			}
 		}

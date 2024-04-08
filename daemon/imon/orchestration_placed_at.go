@@ -1,9 +1,10 @@
 package imon
 
 import (
+	"slices"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (t *Manager) orchestrateFailoverPlacedStart() {
@@ -108,7 +109,7 @@ func (t *Manager) orchestratePlacedAt() {
 		t.log.Errorf("missing placed@ destination")
 		return
 	}
-	if stringslice.Has(t.localhost, dstNodes) {
+	if slices.Contains(dstNodes, t.localhost) {
 		t.orchestratePlacedStart()
 	} else {
 		t.orchestratePlacedStop()

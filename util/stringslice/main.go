@@ -2,18 +2,9 @@ package stringslice
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
-
-// Has returns true if any string in l is s
-func Has(s string, l []string) bool {
-	for _, e := range l {
-		if e == s {
-			return true
-		}
-	}
-	return false
-}
 
 // Index returns the index of the s element in l.
 // If s is not present in l, return -1.
@@ -114,12 +105,12 @@ func Permute(slice []string) [][]string {
 // Diff returns removed, added from diff between a and b
 func Diff(a, b []string) (removed, added []string) {
 	for _, v := range a {
-		if !Has(v, b) {
+		if !slices.Contains(b, v) {
 			removed = append(removed, v)
 		}
 	}
 	for _, v := range b {
-		if !Has(v, a) {
+		if !slices.Contains(a, v) {
 			added = append(added, v)
 		}
 	}

@@ -1,10 +1,11 @@
 package cluster
 
 import (
+	"slices"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (f Frame) sObjectInstance(path string, node string, scope []string) string {
@@ -33,7 +34,7 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 		s += sObjectInstanceUnprovisioned(instanceStatus)
 		s += sObjectInstanceMonitorState(instanceMonitor)
 		s += sObjectInstanceMonitorGlobalExpect(instanceMonitor)
-	} else if inst.Config != nil || stringslice.Has(node, scope) {
+	} else if inst.Config != nil || slices.Contains(scope, node) {
 		s += iconUndef
 	}
 	return s + "\t"

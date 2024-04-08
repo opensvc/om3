@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -695,7 +696,7 @@ func getImage(ctx context.Context, name string) (imageapi.Image, error) {
 		return imageapi.Image{}, err
 	}
 	for _, img := range imgs {
-		if stringslice.Has(name, img.RepoTags) {
+		if slices.Contains(img.RepoTags, name) {
 			imageCache.Put(name, img)
 			return img, nil
 		}
