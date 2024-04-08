@@ -47,8 +47,11 @@ func SetClusterSecret(s string) {
 
 // NewMessage allocates a new Message configured for the local node and cluster context
 func NewMessage(b []byte) *Message {
-	if clusterName == "" || clusterSecret == "" {
-		panic("NewMessage: unexpected empty cluster name or cluster secret")
+	if clusterName == "" {
+		panic("NewMessage: unexpected empty cluster name")
+	}
+	if clusterSecret == "" {
+		panic("NewMessage: unexpected empty cluster secret")
 	}
 	m := &Message{
 		NodeName:    hostname.Hostname(),
