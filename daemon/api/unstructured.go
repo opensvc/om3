@@ -18,6 +18,19 @@ func (t Capability) Unstructured() map[string]any {
 	}
 }
 
+func (t IsChangedItem) Unstructured() map[string]any {
+	return map[string]any{
+		"meta": t.Meta.Unstructured(),
+		"data": t.Data.Unstructured(),
+	}
+}
+
+func (t IsChanged) Unstructured() map[string]any {
+	return map[string]any{
+		"ischanged": t.Ischanged,
+	}
+}
+
 func (t DiskList) GetItems() any {
 	return t.Items
 }
