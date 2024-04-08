@@ -59,6 +59,7 @@ type (
 	}
 
 	ErrExitCode struct {
+		name         string
 		exitCode     int
 		successCodes []int
 	}
@@ -303,7 +304,7 @@ func (t T) checkExitCode(exitCode int) error {
 			return nil
 		}
 	}
-	err := &ErrExitCode{exitCode: exitCode, successCodes: t.okExitCodes}
+	err := &ErrExitCode{name: t.name, exitCode: exitCode, successCodes: t.okExitCodes}
 	t.logErrorExitCode(exitCode, err)
 	return fmt.Errorf("%w", err)
 }
@@ -313,7 +314,7 @@ func (e *ErrExitCode) ExitCode() int {
 }
 
 func (e *ErrExitCode) Error() string {
-	return fmt.Sprintf("command exit code %v not in success codes: %v", e.exitCode, e.successCodes)
+	return fmt.Sprintf("%s exit code %v not in success codes: %v", e.name, e.exitCode, e.successCodes)
 }
 
 func (t T) logExitCode(exitCode int) {
