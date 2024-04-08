@@ -58,9 +58,9 @@ type (
 		RCmd         []string       `json:"rcmd"`
 		StartTimeout *time.Duration `json:"start_timeout"`
 		StopTimeout  *time.Duration `json:"stop_timeout"`
+		VirtInst     []string       `json:"virtinst"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
-		VirtInst []string `json:"virtinst"`
 
 		cache map[string]interface{}
 	}
@@ -643,13 +643,13 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return fmt.Errorf("the 'virtinst' parameter must be set")
 	}
 	cmd := command.New(
-		command.WithName("virtinst"),
-		command.WithArgs(t.VirtInst),
+		command.WithName(t.VirtInst[0]),
+		command.WithArgs(t.VirtInst[1:]),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		//command.WithTimeout(*t.StartTimeout),
+		//command.WithTimeout(*t.ProvisionTimeout),
 	)
 	return cmd.Run()
 }
