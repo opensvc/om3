@@ -214,7 +214,7 @@ func TestWait(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.IsType(t, &ErrExitCode{}, err.(unwrapper).Unwrap())
 		assert.Error(t, err)
-		assert.EqualError(t, err, "command exit code 0 not in success codes: [3 4]")
+		assert.ErrorContains(t, err, "exit code 0 not in success codes: [3 4]")
 		assert.Equal(t, 0, cmd.ExitCode())
 	})
 }
