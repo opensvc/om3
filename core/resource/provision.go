@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/trigger"
 	"github.com/opensvc/om3/util/file"
 )
 
@@ -63,7 +65,57 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 	return data
 }
 
-func Provision(ctx context.Context, t Driver, leader bool) error {
+// Provision handles triggers around provision() and resource dependencies
+func Provision(ctx context.Context, r Driver, leader bool) error {
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("provision requires: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Provision); err != nil {
+		return fmt.Errorf("pre provision trigger: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Provision); err != nil {
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	r.Progress(ctx, "▶ provision")
+	if err := provision(ctx, r, leader); err != nil {
+		return fmt.Errorf("provision: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Provision); err != nil {
+		return fmt.Errorf("post provision trigger: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Provision); err != nil {
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	return nil
+}
+
+// Unprovision handles triggers around unprovision() and resource dependencies
+func Unprovision(ctx context.Context, r Driver, leader bool) error {
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("unprovision requires: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Unprovision); err != nil {
+		return fmt.Errorf("pre unprovision trigger: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Unprovision); err != nil {
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	r.Progress(ctx, "▶ unprovision")
+	if err := unprovision(ctx, r, leader); err != nil {
+		return fmt.Errorf("unprovision: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Unprovision); err != nil {
+		return fmt.Errorf("post unprovision trigger: %w", err)
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Unprovision); err != nil {
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	return nil
+}
+
+func provision(ctx context.Context, t Driver, leader bool) error {
 	if t.IsDisabled() {
 		return nil
 	}
@@ -125,7 +177,7 @@ func provisionLeaded(ctx context.Context, t Driver) error {
 	return nil
 }
 
-func Unprovision(ctx context.Context, t Driver, leader bool) error {
+func unprovision(ctx context.Context, t Driver, leader bool) error {
 	if t.IsDisabled() {
 		return nil
 	}
