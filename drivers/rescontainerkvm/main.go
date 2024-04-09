@@ -466,7 +466,18 @@ func (t T) HasEFI() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, e := range xmlquery.Find(doc, "//domain/os") {
+	es, err := xmlquery.QueryAll(doc, "//domain/os/nvram")
+	if err != nil {
+		return false, err
+	}
+	if len(es) > 0 {
+		return true, nil
+	}
+	es, err = xmlquery.QueryAll(doc, "//domain/os")
+	if err != nil {
+		return false, err
+	}
+	for _, e := range es {
 		return e.SelectAttr("firmware") == "efi", nil
 	}
 	return false, nil
@@ -484,7 +495,12 @@ func (t T) SubDevices() device.L {
 	if err != nil {
 		return l
 	}
-	for _, e := range xmlquery.Find(doc, "//domain/devices/disk") {
+	es, err := xmlquery.QueryAll(doc, "//domain/devices/disk")
+	if err != nil {
+		t.Log().Warnf("SubDevices: %s", err)
+		return l
+	}
+	for _, e := range es {
 		if dev := e.SelectAttr("dev"); dev != "" {
 			l = append(l, device.New(dev))
 		}
@@ -504,7 +520,10 @@ func (t T) setPartitions() error {
 	if err != nil {
 		return err
 	}
-	root := xmlquery.FindOne(doc, "//domain")
+	root, err := xmlquery.Query(doc, "//domain")
+	if err != nil {
+		return err
+	}
 	if root == nil {
 		return fmt.Errorf("no <domain> node in %s", cf)
 	}
@@ -565,9 +584,13 @@ func (t T) unsetPartitions() error {
 	if err != nil {
 		return err
 	}
-	if n := xmlquery.FindOne(doc, "//domain/resource/partition"); n != nil {
+	e, err := xmlquery.Query(doc, "//domain/resource/partition")
+	if err != nil {
+		return err
+	}
+	if e != nil {
 		t.Log().Infof("remove //domain/resource/partition")
-		xmlquery.RemoveFromTree(n)
+		xmlquery.RemoveFromTree(e)
 	}
 	return nil
 }
