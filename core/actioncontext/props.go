@@ -109,6 +109,16 @@ var (
 		MustLock:  true,
 		LockGroup: "status",
 	}
+	Enable = Properties{
+		Name:       "enable",
+		MustLock:   true,
+		RelayToAny: true,
+	}
+	Disable = Properties{
+		Name:       "disable",
+		MustLock:   true,
+		RelayToAny: true,
+	}
 	Unset = Properties{
 		Name:       "unset",
 		MustLock:   true,

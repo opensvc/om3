@@ -47,10 +47,9 @@ type (
 		DNS      []string    `json:"dns"`
 		Topology topology.T
 
-		Headless       bool `json:"headless"`
-		SCSIReserv     bool `json:"scsireserv"`
-		PromoteRW      bool `json:"promote_rw"`
-		NoPreemptAbort bool `json:"no_preempt_abort"`
+		Headless   bool `json:"headless"`
+		SCSIReserv bool `json:"scsireserv"`
+		PromoteRW  bool `json:"promote_rw"`
 
 		OsvcRootPath string         `json:"osvc_root_path"`
 		GuestOS      string         `json:"guest_os"`

@@ -5,12 +5,12 @@ package ressharenfs
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/rs/zerolog"
 )
 
@@ -59,7 +59,7 @@ func (t Mounts) ByPath(s string) Mounts {
 
 func (t Export) HasOpts(l []string) bool {
 	for _, e := range l {
-		if !stringslice.Has(e, t.Opts) {
+		if !slices.Contains(t.Opts, e) {
 			return false
 		}
 	}
@@ -96,7 +96,7 @@ func (t *T) stop() error {
 		return err
 	}
 	for _, e := range opts {
-		if !stringslice.Has(e.Client, t.issuesNone) {
+		if !slices.Contains(t.issuesNone, e.Client) {
 			continue
 		}
 		if err := t.delExport(e); err != nil {
@@ -112,10 +112,10 @@ func (t *T) start(ctx context.Context) error {
 		return err
 	}
 	for _, e := range opts {
-		if stringslice.Has(e.Client, t.issuesNone) {
+		if slices.Contains(t.issuesNone, e.Client) {
 			continue
 		}
-		if stringslice.Has(e.Client, t.issuesWrongOpts) {
+		if slices.Contains(t.issuesWrongOpts, e.Client) {
 			if err := t.delExport(e); err != nil {
 				return err
 			}

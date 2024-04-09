@@ -1,6 +1,8 @@
 package nmon
 
 import (
+	"slices"
+
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
@@ -8,7 +10,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 // onJoinRequest handle JoinRequest to update cluster config with new node.
@@ -25,7 +26,7 @@ func (t *Manager) onJoinRequest(c *msgbus.JoinRequest) {
 		{"join-node", node},
 	}
 	t.log.Infof("join request for node %s", node)
-	if stringslice.Has(node, nodes) {
+	if slices.Contains(nodes, node) {
 		t.log.Debugf("join request ignored already member")
 		t.bus.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
 	} else if err := t.addClusterNode(node); err != nil {
@@ -65,7 +66,7 @@ func (t *Manager) onLeaveRequest(c *msgbus.LeaveRequest) {
 		{"leave-node", node},
 	}
 	t.log.Infof("leave request for node %s", node)
-	if !stringslice.Has(node, nodes) {
+	if !slices.Contains(nodes, node) {
 		t.log.Debugf("leave request ignored for not cluster member")
 		t.bus.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
 	} else if err := t.removeClusterNode(node); err != nil {

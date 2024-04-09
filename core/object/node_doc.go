@@ -1,11 +1,11 @@
 package object
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 func nodeDrvDoc(group, name string) (string, error) {
@@ -15,7 +15,7 @@ func nodeDrvDoc(group, name string) (string, error) {
 		if kw.Section != group {
 			continue
 		}
-		if len(kw.Types) > 0 && !stringslice.Has(name, kw.Types) {
+		if len(kw.Types) > 0 && !slices.Contains(kw.Types, name) {
 			continue
 		}
 		buff += kw.Doc()

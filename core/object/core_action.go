@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -350,7 +350,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
 					// filter applies the action only on linkers
 					return func(ctx context.Context, r resource.Driver) error {
-						if !stringslice.Has(r.RID(), rids) {
+						if !slices.Contains(rids, r.RID()) {
 							return nil
 						}
 						return fn(ctx, r)

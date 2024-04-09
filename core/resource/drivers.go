@@ -1,9 +1,8 @@
 package resource
 
 import (
+	"slices"
 	"sort"
-
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -75,7 +74,7 @@ func (t Drivers) ResolveLink(to string) (Driver, bool) {
 			continue
 		}
 		names := i.LinkNames()
-		if stringslice.Has(to, names) {
+		if slices.Contains(names, to) {
 			return r, true
 		}
 	}
@@ -99,7 +98,7 @@ func (t Drivers) Linkers(names []string) Drivers {
 			continue
 		}
 		to := i.LinkTo()
-		if stringslice.Has(to, names) {
+		if slices.Contains(names, to) {
 			l = append(l, r)
 		}
 	}

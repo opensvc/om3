@@ -149,10 +149,15 @@ func Load(env map[string]string) {
 		root, _ = env["osvc_root_path"]
 	}
 	python, _ := env["osvc_python"]
-	clusterName, _ := env["osvc_cluster_name"]
+	getClusterName := func() string {
+		if s, ok := env["osvc_cluster_name"]; ok && s != "" {
+			return s
+		}
+		return "default"
+	}
 	setDefaults(root)
 	nodeViper.SetDefault("paths.python", python)
-	nodeViper.SetDefault("cluster.name", clusterName)
+	nodeViper.SetDefault("cluster.name", getClusterName())
 	nodeViper.SetDefault("envs", defaultEnvs)
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {

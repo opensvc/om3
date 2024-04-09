@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/core/clusternode"
@@ -34,7 +35,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -281,7 +281,7 @@ func (t *Manager) configFileCheck() error {
 		t.log.Infof("configFile changed(wait next evaluation)")
 		return nil
 	}
-	if !stringslice.Has(t.localhost, scope) {
+	if !slices.Contains(scope, t.localhost) {
 		t.log.Infof("localhost not anymore an instance node")
 		return errConfigFileCheck
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -876,7 +877,7 @@ func (t *Manager) sortWithShiftPolicy(candidates []string) []string {
 func (t *Manager) sortWithNodesOrderPolicy(candidates []string) []string {
 	var l []string
 	for _, node := range t.scopeNodes {
-		if stringslice.Has(node, candidates) {
+		if slices.Contains(candidates, node) {
 			l = append(l, node)
 		}
 	}

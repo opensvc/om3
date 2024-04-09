@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/util/file"
@@ -56,8 +57,11 @@ func (t *actor) newScheduleEntry(action, keyStr, rid, base string, reqCol, reqPr
 func (t *actor) Schedules() schedule.Table {
 	table := schedule.NewTable(
 		t.newScheduleEntry("status", "status_schedule", "", "status", false, false),
-		t.newScheduleEntry("compliance_auto", "comp_schedule", "", "comp_check", true, true),
 	)
+	if t.path.Kind == naming.KindSvc {
+		e := t.newScheduleEntry("compliance_auto", "comp_schedule", "", "comp_check", true, true)
+		table = table.Add(e)
+	}
 	needResMon := false
 	type scheduleOptioner interface {
 		ScheduleOptions() resource.ScheduleOptions

@@ -318,6 +318,12 @@ type ClientInterface interface {
 	// GetObjectPaths request
 	GetObjectPaths(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostSvcDisable request
+	PostSvcDisable(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostSvcEnable request
+	PostSvcEnable(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcEnableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObject request
 	GetObject(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1324,6 +1330,30 @@ func (c *Client) GetObjects(ctx context.Context, params *GetObjectsParams, reqEd
 
 func (c *Client) GetObjectPaths(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectPathsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSvcDisable(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSvcDisableRequest(c.Server, namespace, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSvcEnable(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcEnableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSvcEnableRequest(c.Server, namespace, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6385,6 +6415,196 @@ func NewGetObjectPathsRequest(server string, params *GetObjectPathsParams) (*htt
 	return req, nil
 }
 
+// NewPostSvcDisableRequest generates requests for PostSvcDisable
+func NewPostSvcDisableRequest(server string, namespace InPathNamespace, name InPathName, params *PostSvcDisableParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/svc/%s/disable", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Subset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "subset", runtime.ParamLocationQuery, *params.Subset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tag", runtime.ParamLocationQuery, *params.Tag); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostSvcEnableRequest generates requests for PostSvcEnable
+func NewPostSvcEnableRequest(server string, namespace InPathNamespace, name InPathName, params *PostSvcEnableParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/svc/%s/enable", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Subset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "subset", runtime.ParamLocationQuery, *params.Subset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tag", runtime.ParamLocationQuery, *params.Tag); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectRequest generates requests for GetObject
 func NewGetObjectRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -8021,6 +8241,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectPathsWithResponse request
 	GetObjectPathsWithResponse(ctx context.Context, params *GetObjectPathsParams, reqEditors ...RequestEditorFn) (*GetObjectPathsResponse, error)
+
+	// PostSvcDisableWithResponse request
+	PostSvcDisableWithResponse(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcDisableParams, reqEditors ...RequestEditorFn) (*PostSvcDisableResponse, error)
+
+	// PostSvcEnableWithResponse request
+	PostSvcEnableWithResponse(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcEnableParams, reqEditors ...RequestEditorFn) (*PostSvcEnableResponse, error)
 
 	// GetObjectWithResponse request
 	GetObjectWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectResponse, error)
@@ -9981,6 +10207,56 @@ func (r GetObjectPathsResponse) StatusCode() int {
 	return 0
 }
 
+type PostSvcDisableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostSvcDisableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostSvcDisableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostSvcEnableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostSvcEnableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostSvcEnableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11340,6 +11616,24 @@ func (c *ClientWithResponses) GetObjectPathsWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseGetObjectPathsResponse(rsp)
+}
+
+// PostSvcDisableWithResponse request returning *PostSvcDisableResponse
+func (c *ClientWithResponses) PostSvcDisableWithResponse(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcDisableParams, reqEditors ...RequestEditorFn) (*PostSvcDisableResponse, error) {
+	rsp, err := c.PostSvcDisable(ctx, namespace, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSvcDisableResponse(rsp)
+}
+
+// PostSvcEnableWithResponse request returning *PostSvcEnableResponse
+func (c *ClientWithResponses) PostSvcEnableWithResponse(ctx context.Context, namespace InPathNamespace, name InPathName, params *PostSvcEnableParams, reqEditors ...RequestEditorFn) (*PostSvcEnableResponse, error) {
+	rsp, err := c.PostSvcEnable(ctx, namespace, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSvcEnableResponse(rsp)
 }
 
 // GetObjectWithResponse request returning *GetObjectResponse
@@ -15365,6 +15659,100 @@ func ParseGetObjectPathsResponse(rsp *http.Response) (*GetObjectPathsResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostSvcDisableResponse parses an HTTP response from a PostSvcDisableWithResponse call
+func ParsePostSvcDisableResponse(rsp *http.Response) (*PostSvcDisableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostSvcDisableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostSvcEnableResponse parses an HTTP response from a PostSvcEnableWithResponse call
+func ParsePostSvcEnableResponse(rsp *http.Response) (*PostSvcEnableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostSvcEnableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

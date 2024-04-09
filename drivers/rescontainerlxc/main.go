@@ -51,13 +51,13 @@ var (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		Path                     naming.Path    `json:"path"`
 		ObjectID                 uuid.UUID      `json:"object_id"`
 		Nodes                    []string       `json:"nodes"`
 		DNS                      []string       `json:"dns"`
 		SCSIReserv               bool           `json:"scsireserv"`
 		PromoteRW                bool           `json:"promote_rw"`
-		NoPreemptAbort           bool           `json:"no_preempt_abort"`
 		OsvcRootPath             string         `json:"osvc_root_path"`
 		GuestOS                  string         `json:"guest_os"`
 		Name                     string         `json:"name"`

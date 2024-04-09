@@ -42,25 +42,25 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		Path     naming.Path `json:"path"`
 		ObjectID uuid.UUID   `json:"object_id"`
 		Peers    []string    `json:"peers"`
 		DNS      []string    `json:"dns"`
 		Topology topology.T
 
-		SCSIReserv     bool           `json:"scsireserv"`
-		PromoteRW      bool           `json:"promote_rw"`
-		NoPreemptAbort bool           `json:"no_preempt_abort"`
-		OsvcRootPath   string         `json:"osvc_root_path"`
-		GuestOS        string         `json:"guest_os"`
-		Name           string         `json:"name"`
-		Hostname       string         `json:"hostname"`
-		RCmd           []string       `json:"rcmd"`
-		StartTimeout   *time.Duration `json:"start_timeout"`
-		StopTimeout    *time.Duration `json:"stop_timeout"`
+		SCSIReserv   bool           `json:"scsireserv"`
+		PromoteRW    bool           `json:"promote_rw"`
+		OsvcRootPath string         `json:"osvc_root_path"`
+		GuestOS      string         `json:"guest_os"`
+		Name         string         `json:"name"`
+		Hostname     string         `json:"hostname"`
+		RCmd         []string       `json:"rcmd"`
+		StartTimeout *time.Duration `json:"start_timeout"`
+		StopTimeout  *time.Duration `json:"stop_timeout"`
+		VirtInst     []string       `json:"virtinst"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
-		VirtInst []string `json:"virtinst"`
 
 		cache map[string]interface{}
 	}
@@ -466,7 +466,18 @@ func (t T) HasEFI() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, e := range xmlquery.Find(doc, "//domain/os") {
+	es, err := xmlquery.QueryAll(doc, "//domain/os/nvram")
+	if err != nil {
+		return false, err
+	}
+	if len(es) > 0 {
+		return true, nil
+	}
+	es, err = xmlquery.QueryAll(doc, "//domain/os")
+	if err != nil {
+		return false, err
+	}
+	for _, e := range es {
 		return e.SelectAttr("firmware") == "efi", nil
 	}
 	return false, nil
@@ -484,7 +495,12 @@ func (t T) SubDevices() device.L {
 	if err != nil {
 		return l
 	}
-	for _, e := range xmlquery.Find(doc, "//domain/devices/disk") {
+	es, err := xmlquery.QueryAll(doc, "//domain/devices/disk")
+	if err != nil {
+		t.Log().Warnf("SubDevices: %s", err)
+		return l
+	}
+	for _, e := range es {
 		if dev := e.SelectAttr("dev"); dev != "" {
 			l = append(l, device.New(dev))
 		}
@@ -504,7 +520,10 @@ func (t T) setPartitions() error {
 	if err != nil {
 		return err
 	}
-	root := xmlquery.FindOne(doc, "//domain")
+	root, err := xmlquery.Query(doc, "//domain")
+	if err != nil {
+		return err
+	}
 	if root == nil {
 		return fmt.Errorf("no <domain> node in %s", cf)
 	}
@@ -565,9 +584,13 @@ func (t T) unsetPartitions() error {
 	if err != nil {
 		return err
 	}
-	if n := xmlquery.FindOne(doc, "//domain/resource/partition"); n != nil {
+	e, err := xmlquery.Query(doc, "//domain/resource/partition")
+	if err != nil {
+		return err
+	}
+	if e != nil {
 		t.Log().Infof("remove //domain/resource/partition")
-		xmlquery.RemoveFromTree(n)
+		xmlquery.RemoveFromTree(e)
 	}
 	return nil
 }
@@ -643,13 +666,13 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return fmt.Errorf("the 'virtinst' parameter must be set")
 	}
 	cmd := command.New(
-		command.WithName("virtinst"),
-		command.WithArgs(t.VirtInst),
+		command.WithName(t.VirtInst[0]),
+		command.WithArgs(t.VirtInst[1:]),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		//command.WithTimeout(*t.StartTimeout),
+		//command.WithTimeout(*t.ProvisionTimeout),
 	)
 	return cmd.Run()
 }

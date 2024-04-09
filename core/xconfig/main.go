@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -931,39 +932,27 @@ func (t T) SectionStrings() []string {
 }
 
 func (t *T) IsInNodes(impersonate string) (bool, error) {
-	s := set.New()
 	nodes, err := t.Referrer.Nodes()
 	if err != nil {
 		return false, err
 	}
-	for _, n := range nodes {
-		s.Insert(n)
-	}
-	return s.Has(impersonate), nil
+	return slices.Contains(nodes, impersonate), nil
 }
 
 func (t *T) IsInDRPNodes(impersonate string) (bool, error) {
-	s := set.New()
 	nodes, err := t.Referrer.DRPNodes()
 	if err != nil {
 		return false, err
 	}
-	for _, n := range nodes {
-		s.Insert(n)
-	}
-	return s.Has(impersonate), nil
+	return slices.Contains(nodes, impersonate), nil
 }
 
 func (t *T) IsInEncapNodes(impersonate string) (bool, error) {
-	s := set.New()
 	nodes, err := t.Referrer.EncapNodes()
 	if err != nil {
 		return false, err
 	}
-	for _, n := range nodes {
-		s.Insert(n)
-	}
-	return s.Has(impersonate), nil
+	return slices.Contains(nodes, impersonate), nil
 }
 
 func (t T) dereference(ref string, section string, impersonate string) (string, error) {

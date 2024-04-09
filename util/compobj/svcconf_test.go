@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"slices"
 	"testing"
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,8 +30,8 @@ func TestSvcconfAdd(t *testing.T) {
 	require.NoError(t, s.Config().Set(keyop.ParseList("app#0.start=test", "app#1.start=test1")...))
 	obj := CompSvcconfs{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
 	require.Error(t, obj.Add(`[{}]`))
-	require.True(t, stringslice.Has("app#0", svcRessourcesNames))
-	require.True(t, stringslice.Has("app#1", svcRessourcesNames))
+	require.True(t, slices.Contains(svcRessourcesNames, "app#0"))
+	require.True(t, slices.Contains(svcRessourcesNames, "app#1"))
 
 	testCases := map[string]struct {
 		jsonRule      string
