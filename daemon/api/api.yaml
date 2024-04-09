@@ -2191,6 +2191,60 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /object/path/{namespace}/svc/{name}/disable:
+    post:
+      operationId: PostSvcDisable
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Disable the whole svc or some of its resources.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /object/path/{namespace}/svc/{name}/enable:
+    post:
+      operationId: PostSvcEnable
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Enable the whole svc or some of its resources.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /object/path/{namespace}/{kind}/{name}/action/freeze:
     post:
       operationId: PostObjectActionFreeze

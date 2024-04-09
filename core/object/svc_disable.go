@@ -23,17 +23,20 @@ func (t *svc) Disable(ctx context.Context) error {
 	defer unlock()
 	var kops keyop.L
 	rs := resourceselector.FromContext(ctx, t)
-	for _, r := range rs.Resources() {
+	if rs.IsZero() {
 		kops = append(kops, keyop.T{
-			Key:   key.T{r.RID(), "disable"},
+			Key:   key.T{"DEFAULT", "disable"},
 			Op:    keyop.Set,
 			Value: "true",
 		})
+	} else {
+		for _, r := range rs.Resources() {
+			kops = append(kops, keyop.T{
+				Key:   key.T{r.RID(), "disable"},
+				Op:    keyop.Set,
+				Value: "true",
+			})
+		}
 	}
-	kops = append(kops, keyop.T{
-		Key:   key.T{"DEFAULT", "disable"},
-		Op:    keyop.Set,
-		Value: "true",
-	})
 	return t.config.Set(kops...)
 }

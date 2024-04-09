@@ -22,9 +22,12 @@ func (t *svc) Enable(ctx context.Context) error {
 	defer unlock()
 	var kws key.L
 	rs := resourceselector.FromContext(ctx, t)
-	for _, r := range rs.Resources() {
-		kws = append(kws, key.T{r.RID(), "disable"})
+	if rs.IsZero() {
+		kws = append(kws, key.T{"DEFAULT", "disable"})
+	} else {
+		for _, r := range rs.Resources() {
+			kws = append(kws, key.T{r.RID(), "disable"})
+		}
 	}
-	kws = append(kws, key.T{"DEFAULT", "disable"})
 	return t.config.Unset(kws...)
 }

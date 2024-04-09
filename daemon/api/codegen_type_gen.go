@@ -1822,6 +1822,20 @@ type GetObjectPathsParams struct {
 	Path Path `form:"path" json:"path"`
 }
 
+// PostSvcDisableParams defines parameters for PostSvcDisable.
+type PostSvcDisableParams struct {
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
+// PostSvcEnableParams defines parameters for PostSvcEnable.
+type PostSvcEnableParams struct {
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	// Evaluate evaluate
