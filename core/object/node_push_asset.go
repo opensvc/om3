@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/asset"
@@ -214,11 +213,11 @@ func (t Node) pushAsset(data asset.Data) error {
 	gen["hba"] = hba()
 	gen["targets"] = targets()
 
-	url, err := t.CollectorRestAPIURL()
+	url, err := t.Collector3RestAPIURL()
 	if err != nil {
 		return err
 	}
-	url.Path = strings.Replace(url.Path, "/init/rest/api", "/api", 1) + "/daemon/system"
+	url.Path += "/daemon/system"
 	b, err := json.MarshalIndent(gen, "  ", "  ")
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
