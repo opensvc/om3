@@ -2141,6 +2141,40 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectDisable(kind string) *cobra.Command {
+	var options commands.CmdObjectDisable
+	cmd := &cobra.Command{
+		Use:   "disable",
+		Short: "disable a svc or resources",
+		Long:  "Disabled svc or resources are skipped on actions.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	return cmd
+}
+
+func newCmdObjectEnable(kind string) *cobra.Command {
+	var options commands.CmdObjectEnable
+	cmd := &cobra.Command{
+		Use:   "enable",
+		Short: "enable a svc or resources",
+		Long:  "Disabled svc or resources are skipped on actions.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	return cmd
+}
+
 func newCmdObjectEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectEnter
 	cmd := &cobra.Command{
