@@ -95,7 +95,7 @@ func (t *actor) collectorPushResInfo(infos resource.Infos) error {
 		return err
 	}
 	vals := asList(infos)
-	if response, err := client.Call("push_resinfo", vars, vals); err != nil {
+	if response, err := client.Call("update_resinfo", vars, vals); err != nil {
 		return err
 	} else if response.Error != nil {
 		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
