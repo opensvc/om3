@@ -26,16 +26,7 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
-	var errs error
-	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		return data, errs
-	} else {
-		return []object.Digest{}, errs
-	}
-}
-
-func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
@@ -106,7 +97,10 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	data, _ = t.extract(mergedSelector, c)
+	data, err = t.extract(mergedSelector, c)
+	if err != nil {
+		return err
+	}
 	renderer := output.Renderer{
 		Output: t.Output,
 		Color:  t.Color,

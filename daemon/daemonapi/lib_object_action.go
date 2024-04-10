@@ -41,7 +41,7 @@ func (a *DaemonAPI) postObjectAction(ctx echo.Context, namespace string, kind na
 	defer ticker.Stop()
 	select {
 	case <-ticker.C:
-		return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout waiting for monitor commit")
+		return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the %s %s expectation", kind, globalExpect)
 	case err := <-msg.Err:
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", err)

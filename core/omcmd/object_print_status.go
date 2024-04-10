@@ -31,29 +31,31 @@ type (
 )
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
-	var errs error
+	var localData []object.Digest
 	if t.Refresh || t.Local {
-		// explicitely local
-		if data, err = t.extractLocal(selector); err != nil {
-			errs = errors.Join(errs, err)
+		localData, err = t.extractLocal(selector)
+		if err != nil {
+			return
 		}
+	}
 
+	// try daemon
+	data, err = t.extractFromDaemon(selector, c)
+	if err == nil {
+		return
 	}
-	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		// try daemon
-		return data, errs
-	} else {
-		errs = errors.Join(errs, err)
-		if clientcontext.IsSet() {
-			// no fallback for remote cluster
-			return []object.Digest{}, errs
-		}
+
+	if clientcontext.IsSet() {
+		// no fallback for remote cluster
+		return
 	}
-	// fallback to local
-	if data != nil {
-		return data, errs
+
+	if localData != nil {
+		return localData, nil
 	}
-	return t.extractLocal(selector)
+
+	data, err = t.extractLocal(selector)
+	return
 }
 
 func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, error) {
@@ -180,7 +182,10 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	data, _ = t.extract(mergedSelector, c)
+	data, err = t.extract(mergedSelector, c)
+	if err != nil {
+		return err
+	}
 	renderer := output.Renderer{
 		Output: t.Output,
 		Color:  t.Color,
