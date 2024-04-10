@@ -48,7 +48,7 @@ func (a *DaemonAPI) PostClusterAction(ctx echo.Context, globalExpect node.Monito
 	for {
 		select {
 		case <-ticker.C:
-			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout waiting for monitor commit")
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the node %s expectation", globalExpect)
 		case err := <-msg.Err:
 			if err != nil {
 				errs = errors.Join(errs, err)

@@ -47,7 +47,7 @@ func (a *DaemonAPI) localNodeActionDrain(ctx echo.Context) error {
 	for {
 		select {
 		case <-ticker.C:
-			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout waiting for monitor commit")
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the node drain expectation")
 		case err := <-msg.Err:
 			if err != nil {
 				errs = errors.Join(errs, err)
