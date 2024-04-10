@@ -641,16 +641,22 @@ func (t T) Label() string {
 	return t.Name
 }
 
-func (t T) provisioned() bool {
-	if _, err := t.domState(); err != nil {
-		return false
+func (t T) provisioned() (bool, error) {
+	if state, err := t.domState(); err != nil {
+		return false, err
+	} else if state == DomStateNone {
+		return false, nil
 	} else {
-		return true
+		return true, nil
 	}
 }
 
 func (t *T) UnprovisionLeaded(ctx context.Context) error {
-	if !t.provisioned() {
+	isProvisioned, err := t.provisioned()
+	if err != nil {
+		return err
+	}
+	if !isProvisioned {
 		t.Log().Infof("skip kvm unprovision: container is not provisioned")
 		return nil
 	}
@@ -670,7 +676,11 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 }
 
 func (t T) ProvisionLeader(ctx context.Context) error {
-	if t.provisioned() {
+	isProvisioned, err := t.provisioned()
+	if err != nil {
+		return err
+	}
+	if isProvisioned {
 		t.Log().Infof("skip kvm provision: container is provisioned")
 		return nil
 	}
