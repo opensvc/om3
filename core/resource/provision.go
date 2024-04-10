@@ -67,6 +67,10 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 
 // Provision handles triggers around provision() and resource dependencies
 func Provision(ctx context.Context, r Driver, leader bool) error {
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("provision requires: %w", err)
@@ -92,6 +96,10 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 
 // Unprovision handles triggers around unprovision() and resource dependencies
 func Unprovision(ctx context.Context, r Driver, leader bool) error {
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("unprovision requires: %w", err)
@@ -116,9 +124,6 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 }
 
 func provision(ctx context.Context, t Driver, leader bool) error {
-	if t.IsDisabled() {
-		return nil
-	}
 	if err := provisionLeaderOrLeaded(ctx, t, leader); err != nil {
 		return err
 	}
@@ -178,9 +183,6 @@ func provisionLeaded(ctx context.Context, t Driver) error {
 }
 
 func unprovision(ctx context.Context, t Driver, leader bool) error {
-	if t.IsDisabled() {
-		return nil
-	}
 	if err := unprovisionStop(ctx, t); err != nil {
 		return err
 	}
