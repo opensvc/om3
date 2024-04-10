@@ -31,10 +31,12 @@ type (
 )
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
+	var localData []object.Digest
 	if t.Refresh || t.Local {
-		// explicitely local
-		data, err = t.extractLocal(selector)
-		return
+		localData, err = t.extractLocal(selector)
+		if err != nil {
+			return
+		}
 	}
 
 	// try daemon
@@ -46,6 +48,10 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 	if clientcontext.IsSet() {
 		// no fallback for remote cluster
 		return
+	}
+
+	if localData != nil {
+		return localData, nil
 	}
 
 	data, err = t.extractLocal(selector)
