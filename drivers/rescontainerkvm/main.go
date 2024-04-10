@@ -37,6 +37,13 @@ import (
 
 const (
 	cpusetDir = "/sys/fs/cgroup/cpuset"
+
+	DomStateBlocked = "blocked"
+	DomStateCrashed = "crashed"
+	DomStateNone    = "no state"
+	DomStatePaused  = "paused"
+	DomStateRunning = "running"
+	DomStateShutOff = "shut off"
 )
 
 type (
@@ -369,7 +376,7 @@ func (t T) containerStop(ctx context.Context) error {
 		return err
 	}
 	switch state {
-	case "running":
+	case DomStateRunning:
 		if err := t.stop(); err != nil {
 			return err
 		}
@@ -379,7 +386,7 @@ func (t T) containerStop(ctx context.Context) error {
 				return err
 			}
 		}
-	case "blocked", "paused", "crashed":
+	case DomStateBlocked, DomStatePaused, DomStateCrashed:
 		if err := t.destroy(); err != nil {
 			return err
 		}
@@ -399,7 +406,7 @@ func (t T) isUp() (bool, error) {
 }
 
 func isUpFromState(state string) bool {
-	if state == "running" {
+	if state == DomStateRunning {
 		return true
 	}
 	return false
@@ -415,7 +422,7 @@ func (t T) isDown() (bool, error) {
 
 func isDownFromState(state string) bool {
 	switch state {
-	case "shut off", "no state":
+	case DomStateShutOff, DomStateNone:
 		return true
 	}
 	return false
@@ -426,12 +433,17 @@ func (t *T) domState() (string, error) {
 		command.WithName("virsh"),
 		command.WithVarArgs("dominfo", t.Name),
 		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+		command.WithIgnoredExitCodes(0, 1),
 	)
-	b, err := cmd.Output()
+	err := cmd.Run()
 	if err != nil {
 		return "", err
 	}
-	return domStateFromReader(bytes.NewReader(b))
+	if strings.Contains(string(cmd.Stderr()), "failed to get domain") {
+		return DomStateNone, nil
+	}
+	return domStateFromReader(bytes.NewReader(cmd.Stdout()))
 }
 
 func domStateFromReader(r io.Reader) (string, error) {
