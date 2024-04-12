@@ -361,11 +361,17 @@ func (t ResourceList) GetItems() any {
 }
 
 func (t Resource) Unstructured() map[string]any {
-	return map[string]any{
-		"config":  t.Config.Unstructured(),
-		"monitor": t.Monitor.Unstructured(),
-		"status":  t.Status.Unstructured(),
+	m := map[string]any{}
+	if t.Config != nil {
+		m["config"] = t.Config.Unstructured()
 	}
+	if t.Monitor != nil {
+		m["monitor"] = t.Monitor.Unstructured()
+	}
+	if t.Status != nil {
+		m["status"] = t.Status.Unstructured()
+	}
+	return m
 }
 
 func (t ResourceMeta) Unstructured() map[string]any {
