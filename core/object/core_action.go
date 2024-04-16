@@ -376,7 +376,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 		}
 	}
-	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctx, t, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		sb := statusbus.FromContext(ctx)
 		sb.Post(r.RID(), resource.EvalStatus(ctx, r), false)
 		return nil
