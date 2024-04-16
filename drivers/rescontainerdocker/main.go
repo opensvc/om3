@@ -431,6 +431,11 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	return c, nil
 }
 
+func (t T) Inspect(ctx context.Context) (containerapi.ContainerInspect, error) {
+	name := t.ContainerName()
+	return cli().ContainerService().Inspect(ctx, name)
+}
+
 func (t T) Stop(ctx context.Context) error {
 	name := t.ContainerName()
 	inspect, err := cli().ContainerService().Inspect(ctx, name)
