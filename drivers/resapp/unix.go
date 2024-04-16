@@ -399,7 +399,7 @@ func (t T) GetTimeout(action string) time.Duration {
 func (t T) ExitCodeToStatus(exitCode int) (status.T, error) {
 	m, err := retcodes.Parse(t.RetCodes)
 	if err != nil {
-		return status.Warn, err
+		t.Log().Warnf("retcode parsing: %s", err)
 	}
 	return m.Status(exitCode), nil
 }
