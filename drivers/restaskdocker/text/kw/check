@@ -1,0 +1,4 @@
+If set to `last_run`, the last run retcode is used to report a task resource
+status.
+
+If not set (default), the status of a task is always n/a.

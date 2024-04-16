@@ -31,6 +31,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/ressyncrsync"
 	_ "github.com/opensvc/om3/drivers/ressynczfs"
 	_ "github.com/opensvc/om3/drivers/ressynczfssnap"
+	_ "github.com/opensvc/om3/drivers/restaskdocker"
 	_ "github.com/opensvc/om3/drivers/restaskhost"
 	_ "github.com/opensvc/om3/drivers/resvhostenvoy"
 	_ "github.com/opensvc/om3/drivers/resvol"

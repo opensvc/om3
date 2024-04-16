@@ -1,0 +1,12 @@
+* empty
+
+  The container has a private pidns other containers can share.
+  Usually a pidns sharer will run a `google/pause` image to reap zombies.
+
+* `container#<i>`
+
+  Share  `container#<i>` pidns.
+
+* `host`
+
+  Share the host's pidns.

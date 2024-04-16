@@ -1,0 +1,2 @@
+If set to `true`, add `--rm` to the docker run args and make sure the
+instance is removed on resource `stop`.
