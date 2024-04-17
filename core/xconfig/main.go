@@ -1077,6 +1077,12 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 			return section, nil
 		}
 		return l[1], nil
+	case "rgroup":
+		l := strings.SplitN(section, "#", 2)
+		if len(l) != 2 {
+			return section, nil
+		}
+		return l[0], nil
 	case "svcmgr":
 		return os.Args[0] + " svc", nil
 	case "nodemgr":
