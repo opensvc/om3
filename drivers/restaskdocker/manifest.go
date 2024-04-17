@@ -12,6 +12,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.Register(altDrvID, New)
 }
 
 // Manifest ...
