@@ -1,0 +1,3 @@
+Set the task `run` schedule.
+
+See `usr/share/doc/opensvc/schedule` for the schedule syntax reference.

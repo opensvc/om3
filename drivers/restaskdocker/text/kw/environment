@@ -1,0 +1,4 @@
+A whitespace-separated list of `<var>=<value>`.
+
+A shell expression spliter is applied, so double quotes can be around
+`<value>` only or whole `<var>=<value>`.

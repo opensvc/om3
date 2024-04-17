@@ -1,0 +1,4 @@
+If not set, the container will have a private userns other containers can
+share.
+
+A container with `userns=host` will share the host's userns.
