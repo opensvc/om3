@@ -98,12 +98,11 @@ func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T) (api.ScheduleItems
 	for _, nodename := range nodenames {
 		go func(nodename string) {
 			defer func() { doneC <- nodename }()
-			if nodename == hostname.Hostname() {
-				needDoLocal = true
-				return
-			}
 			resp, err := c.GetNodeScheduleWithResponse(context.Background(), nodename)
 			if err != nil {
+				if nodename == hostname.Hostname() {
+					needDoLocal = true
+				}
 				errC <- err
 				return
 			}
