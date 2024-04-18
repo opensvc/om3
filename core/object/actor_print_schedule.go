@@ -17,8 +17,11 @@ func (t *actor) PrintSchedule() schedule.Table {
 	return t.Schedules()
 }
 
-func (t *actor) lastRunFile(action, rid, base string) string {
-	base = "last_" + base
+func (t *actor) lastRunFile(action, rid, desc string) string {
+	base := "last"
+	if desc != "" {
+		base = base + "_" + desc
+	}
 	if rid != "" {
 		base = base + "_" + rid
 	}
