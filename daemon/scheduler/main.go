@@ -82,6 +82,16 @@ func entryKey(e schedule.Entry) string {
 	return fmt.Sprintf("%s:%s", e.Path, e.Key)
 }
 
+func (t Jobs) Table(path naming.Path) schedule.Table {
+	table := make(schedule.Table, 0)
+	for _, job := range t {
+		if job.schedule.Path == path {
+			table = append(table, job.schedule)
+		}
+	}
+	return table
+}
+
 func (t Jobs) Add(e schedule.Entry, cancel func()) {
 	k := entryKey(e)
 	t[k] = Job{
@@ -129,7 +139,7 @@ func (t *T) createJob(e schedule.Entry) {
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
-		logger.Attr("definition", e.Schedule).Errorf("get next %s %s %s schedule: %s", e.Path, e.Key, e.Action, err)
+		logger.Attr("definition", e.Schedule).Errorf("%s: get next %s %s schedule: %s", e.Path, e.Key, e.Action, err)
 		t.jobs.Del(e)
 		return
 	}
@@ -143,9 +153,9 @@ func (t *T) createJob(e schedule.Entry) {
 	if e.Path.IsZero() {
 		obj = "node"
 	} else {
-		obj = "object " + e.Path.String()
+		obj = e.Path.String()
 	}
-	logger.Infof("next %s %s at %s (in %s)", obj, e.Key, next, delay)
+	logger.Infof("%s: next %s at %s (in %s)", obj, e.Key, next, delay)
 	tmr := time.AfterFunc(delay, func() {
 		begin := time.Now()
 		if begin.Sub(next) < 500*time.Millisecond {
@@ -153,20 +163,20 @@ func (t *T) createJob(e schedule.Entry) {
 			begin = next
 		}
 		if e.RequireCollector && !collector.Alive.Load() {
-			logger.Debugf("The collector is not alive")
+			logger.Debugf("the collector is not alive")
 		} else if err := t.action(e); err != nil {
-			logger.Errorf("on exec %s %s: %s", obj, e.Key, err)
+			logger.Errorf("%s: on exec %s: %s", obj, e.Key, err)
 		}
 
 		// remember last run, to not run the job too soon after a daemon restart
 		if err := e.SetLastRun(begin); err != nil {
-			logger.Errorf("on update last run %s %s: %s", obj, e.Key, err)
+			logger.Errorf("%s: on update last run %s: %s", obj, e.Key, err)
 		}
 
 		// remember last success, for users benefit
 		if err == nil {
 			if err := e.SetLastSuccess(begin); err != nil {
-				logger.Errorf("on update last success %s %s: %s", obj, e.Key, err)
+				logger.Errorf("%s: on update last success %s: %s", obj, e.Key, err)
 			}
 		}
 
@@ -187,6 +197,8 @@ func (t *T) createJob(e schedule.Entry) {
 		tmr.Stop()
 	}
 	t.jobs.Add(e, cancel)
+	table := t.jobs.Table(e.Path)
+	schedule.TableData.Set(e.Path, &table)
 	return
 }
 
@@ -230,11 +242,19 @@ func (t *T) loop() {
 	t.log.Debugf("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
 	sub := t.startSubscriptions()
+
 	defer func() {
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
 		}
 	}()
+
+	// The NodeMonitorUpdated event can be fired before our subscription.
+	// As this event enables the scheduler, we can't afford missing it.
+	// Read the NodeMonitor state from cache.
+	if nodeMonitorData := node.MonitorData.Get(t.localhost); nodeMonitorData != nil {
+		t.toggleEnabled(nodeMonitorData.State)
+	}
 
 	for {
 		select {
@@ -269,7 +289,7 @@ func (t *T) loop() {
 }
 
 func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
-	t.loggerWithPath(c.Path).Infof("unschedule %s jobs (instance deleted)", c.Path)
+	t.loggerWithPath(c.Path).Infof("%s: unschedule jobs (instance deleted)", c.Path)
 	t.unschedule(c.Path)
 }
 
@@ -281,19 +301,19 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	case isProvisioned && !hasAnyJob:
 		t.schedule(c.Path)
 	case !isProvisioned && hasAnyJob:
-		t.loggerWithPath(c.Path).Infof("unschedule %s jobs (instance no longer provisionned)", c.Path)
+		t.loggerWithPath(c.Path).Infof("%s: unschedule jobs (instance no longer provisionned)", c.Path)
 		t.unschedule(c.Path)
 	}
 }
 
-func (t *T) loggerWithPath(p naming.Path) *plog.Logger {
-	return naming.LogWithPath(t.log, p)
+func (t *T) loggerWithPath(path naming.Path) *plog.Logger {
+	return naming.LogWithPath(t.log, path)
 }
 
 func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	switch {
 	case t.enabled:
-		t.loggerWithPath(c.Path).Infof("update %s schedules", c.Path)
+		t.loggerWithPath(c.Path).Infof("%s: update schedules", c.Path)
 		t.unschedule(c.Path)
 		t.scheduleObject(c.Path)
 	}
@@ -302,21 +322,25 @@ func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	switch {
 	case t.enabled:
-		t.log.Infof("update node schedules")
+		t.log.Infof("node: update schedules")
 		t.unschedule(naming.Path{})
 		t.scheduleNode()
 	}
 }
 
 func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	_, incompatible := incompatibleNodeMonitorStatus[c.Value.State]
+	t.toggleEnabled(c.Value.State)
+}
+
+func (t *T) toggleEnabled(state node.MonitorState) {
+	_, incompatible := incompatibleNodeMonitorStatus[state]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Infof("disable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("disable scheduling (node monitor status is now %s)", state)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Infof("enable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("enable scheduling (node monitor status is now %s)", state)
 		t.enabled = true
 		t.scheduleAll()
 	}
@@ -352,7 +376,7 @@ func (t *T) schedule(p naming.Path) {
 func (t *T) scheduleNode() {
 	o, err := object.NewNode()
 	if err != nil {
-		t.log.Errorf("schedule node: %s", err)
+		t.log.Errorf("node: %s", err)
 		return
 	}
 	for _, e := range o.PrintSchedule() {
@@ -362,15 +386,15 @@ func (t *T) scheduleNode() {
 
 func (t *T) scheduleObject(p naming.Path) {
 	if isProvisioned, ok := t.provisioned[p]; !ok {
-		t.log.Debugf("schedule object %s: provisioned state has not been discovered yet", p)
+		t.log.Debugf("%s: provisioned state has not been discovered yet", p)
 		return
 	} else if !isProvisioned {
-		t.log.Infof("schedule object %s: not provisioned", p)
+		t.log.Infof("%s: not provisioned", p)
 		return
 	}
 	i, err := object.New(p, object.WithVolatile(true))
 	if err != nil {
-		t.log.Errorf("schedule object %s: %s", p, err)
+		t.log.Errorf("%s: %s", p, err)
 		return
 	}
 	o, ok := i.(object.Actor)

@@ -108,7 +108,7 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 out:
 
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
+		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          api.ScheduleList{Items: l, Kind: "ScheduleList"},

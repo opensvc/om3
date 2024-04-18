@@ -7,7 +7,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -27,26 +26,17 @@ func (a *DaemonAPI) getLocalObjectSchedule(ctx echo.Context, namespace string, k
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
 	}
 	if !path.Exists() {
-		return JSONProblemf(ctx, http.StatusBadRequest, "No local instance", "")
+		return JSONProblemf(ctx, http.StatusNotFound, "No local instance", "")
 	}
-	o, err := object.New(path)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
+	table := schedule.TableData.Get(path)
+	if table == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}
 	resp := api.ScheduleList{
 		Kind: "ScheduleList",
 	}
 
-	type scheduler interface {
-		PrintSchedule() schedule.Table
-	}
-
-	i, ok := o.(scheduler)
-	if !ok {
-		return ctx.JSON(http.StatusOK, resp)
-	}
-
-	for _, e := range i.PrintSchedule() {
+	for _, e := range *table {
 		item := api.ScheduleItem{
 			Kind: "ScheduleItem",
 			Meta: api.InstanceMeta{
