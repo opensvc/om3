@@ -137,15 +137,22 @@ func (t *T) autostartFile() string {
 }
 
 func (t *T) configFiles() []string {
+	files := make([]string, 0)
 	if !t.IsShared() && t.Topology != topology.Failover {
 		// don't send the container cf to nodes that won't run it
-		return []string{}
+		return files
 	}
 	cf := t.configFile()
 	if !file.Exists(cf) {
-		return []string{}
+		return files
 	}
-	return []string{cf}
+	files = append(files, cf)
+	if firmwareFiles, err := t.firmwareFiles(); err != nil {
+		t.Log().Warnf("list firmware files: %s", err)
+	} else {
+		files = append(files, firmwareFiles...)
+	}
+	return files
 }
 
 func (t T) ToSync() []string {
@@ -465,6 +472,40 @@ func (t T) hasConfigFile() bool {
 func (t T) hasAutostartFile() bool {
 	p := t.autostartFile()
 	return file.Exists(p)
+}
+
+func (t T) firmwareFiles() ([]string, error) {
+	files := make([]string, 0)
+	cf := t.configFile()
+	f, err := os.Open(cf)
+	if err != nil {
+		return files, err
+	}
+	defer f.Close()
+	doc, err := xmlquery.Parse(f)
+	if err != nil {
+		return files, err
+	}
+
+	es, err := xmlquery.QueryAll(doc, "//domain/os/nvram")
+	if err != nil {
+		return files, err
+	}
+	if len(es) > 0 {
+		return files, nil
+	}
+	files = append(files, es[0].Data)
+
+	es, err = xmlquery.QueryAll(doc, "//domain/os/loader")
+	if err != nil {
+		return files, err
+	}
+	if len(es) > 0 {
+		return files, nil
+	}
+	files = append(files, es[0].Data)
+
+	return files, nil
 }
 
 func (t T) HasEFI() (bool, error) {
