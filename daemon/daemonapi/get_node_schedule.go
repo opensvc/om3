@@ -6,7 +6,8 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -20,14 +21,14 @@ func (a *DaemonAPI) GetNodeSchedule(ctx echo.Context, nodename string) error {
 }
 
 func (a *DaemonAPI) getLocalSchedule(ctx echo.Context) error {
-	n, err := object.NewNode()
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
+	table := schedule.TableData.Get(naming.Path{})
+	if table == nil {
+		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}
 	resp := api.ScheduleList{
 		Kind: "ScheduleList",
 	}
-	for _, e := range n.Schedules() {
+	for _, e := range *table {
 		item := api.ScheduleItem{
 			Kind: "ScheduleItem",
 			Meta: api.InstanceMeta{

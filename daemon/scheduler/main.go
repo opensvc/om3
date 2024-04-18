@@ -82,6 +82,16 @@ func entryKey(e schedule.Entry) string {
 	return fmt.Sprintf("%s:%s", e.Path, e.Key)
 }
 
+func (t Jobs) Table(path naming.Path) schedule.Table {
+	table := make(schedule.Table, 0)
+	for _, job := range t {
+		if job.schedule.Path == path {
+			table = append(table, job.schedule)
+		}
+	}
+	return table
+}
+
 func (t Jobs) Add(e schedule.Entry, cancel func()) {
 	k := entryKey(e)
 	t[k] = Job{
@@ -187,6 +197,8 @@ func (t *T) createJob(e schedule.Entry) {
 		tmr.Stop()
 	}
 	t.jobs.Add(e, cancel)
+	table := t.jobs.Table(e.Path)
+	schedule.TableData.Set(e.Path, &table)
 	return
 }
 
