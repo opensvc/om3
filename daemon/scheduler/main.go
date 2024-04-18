@@ -230,11 +230,19 @@ func (t *T) loop() {
 	t.log.Debugf("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
 	sub := t.startSubscriptions()
+
 	defer func() {
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
 		}
 	}()
+
+	// The NodeMonitorUpdated event can be fired before our subscription.
+	// As this event enables the scheduler, we can't afford missing it.
+	// Read the NodeMonitor state from cache.
+	if nodeMonitorData := node.MonitorData.Get(t.localhost); nodeMonitorData != nil {
+		t.toggleEnabled(nodeMonitorData.State)
+	}
 
 	for {
 		select {
@@ -286,8 +294,8 @@ func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
-func (t *T) loggerWithPath(p naming.Path) *plog.Logger {
-	return naming.LogWithPath(t.log, p)
+func (t *T) loggerWithPath(path naming.Path) *plog.Logger {
+	return naming.LogWithPath(t.log, path)
 }
 
 func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
@@ -309,14 +317,18 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 }
 
 func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	_, incompatible := incompatibleNodeMonitorStatus[c.Value.State]
+	t.toggleEnabled(c.Value.State)
+}
+
+func (t *T) toggleEnabled(state node.MonitorState) {
+	_, incompatible := incompatibleNodeMonitorStatus[state]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Infof("disable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("disable scheduling (node monitor status is now %s)", state)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Infof("enable scheduling (node monitor status is now %s)", c.Value.State)
+		t.log.Infof("enable scheduling (node monitor status is now %s)", state)
 		t.enabled = true
 		t.scheduleAll()
 	}
