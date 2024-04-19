@@ -74,6 +74,8 @@ type (
 		IsEncap() bool
 		IsMonitored() bool
 		IsOptional() bool
+		IsProvisionDisabled() bool
+		IsUnprovisionDisabled() bool
 		IsShared() bool
 		IsStandby() bool
 		IsStatusDisabled() bool
@@ -350,6 +352,16 @@ func (t T) IsEncap() bool {
 // IsDisabled returns true if the resource definition contains disable=true.
 func (t T) IsDisabled() bool {
 	return t.Disable
+}
+
+// IsProvisionDisabled returns true if the resource definition contains provision=false.
+func (t T) IsProvisionDisabled() bool {
+	return !t.EnableProvision
+}
+
+// IsUnprovisionDisabled returns true if the resource definition contains unprovision=false.
+func (t T) IsUnprovisionDisabled() bool {
+	return !t.EnableUnprovision
 }
 
 // IsStandby returns true if the resource definition contains standby=true.
