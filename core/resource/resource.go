@@ -487,7 +487,7 @@ func (t *T) GetObjectDriver() ObjectDriver {
 
 func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
 	oLog := o.Log()
-	prefix := fmt.Sprintf("%s: %s: ", oLog.Prefix(), t.ResourceID)
+	prefix := fmt.Sprintf("%s%s: ", oLog.Prefix(), t.ResourceID)
 	l := plog.NewLogger(oLog.Logger()).WithPrefix(prefix).Attr("rid", t.ResourceID)
 	if t.Subset != "" {
 		l = l.Attr("subset", t.Subset)
