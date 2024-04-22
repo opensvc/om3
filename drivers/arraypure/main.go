@@ -1008,7 +1008,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (pureVolume, error) {
 }
 
 func (t pureVolume) WWN() string {
-	return WWIDPrefix + t.Serial
+	return WWIDPrefix + strings.ToLower(t.Serial)
 }
 
 func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
