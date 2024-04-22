@@ -164,7 +164,6 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	}
 	a := t.array()
 	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-	mappings := paths.MappingList()
 	pod := t.pod()
 	vg := t.volumeGroup()
 	if pod != "" {
@@ -175,7 +174,7 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	arrayDisk, err := a.AddDisk(arraypure.OptAddDisk{
 		Name:     name,
 		Size:     drvSize,
-		Mappings: mappings,
+		Mappings: paths.MappingList(),
 		LUN:      -1,
 	})
 	if err != nil {
