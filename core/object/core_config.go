@@ -323,11 +323,11 @@ func (t *core) Dereference(ref string) (string, error) {
 	case "name", "svcname":
 		return t.path.Name, nil
 	case "short_name", "short_svcname":
-		return strings.SplitN(t.path.Name, ".", 1)[0], nil
+		return strings.SplitN(t.path.Name, ".", 2)[0], nil
 	case "scaler_name", "scaler_svcname":
 		return regexpScalerPrefix.ReplaceAllString(t.path.Name, ""), nil
 	case "scaler_short_name", "scaler_short_svcname":
-		return strings.SplitN(regexpScalerPrefix.ReplaceAllString(t.path.Name, ""), ".", 1)[0], nil
+		return strings.SplitN(regexpScalerPrefix.ReplaceAllString(t.path.Name, ""), ".", 2)[0], nil
 	case "namespace":
 		return t.path.Namespace, nil
 	case "kind":

@@ -194,9 +194,10 @@ func (t *T) DiskName(vol pool.Volumer) string {
 	} else {
 		k := key.T{"cluster", "id"}
 		clusterID := t.Config().GetString(k)
-		s += strings.SplitN(clusterID, "-", 1)[0] + "-"
+		s += strings.SplitN(clusterID, "-", 2)[0] + "-"
 
 	}
-	s += vol.Config().GetString(key.T{"DEFAULT", "id"})
+	suffix := vol.Config().GetString(key.T{"DEFAULT", "id"})
+	s += strings.SplitN(suffix, "-", 2)[0]
 	return s
 }

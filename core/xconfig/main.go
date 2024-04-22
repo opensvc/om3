@@ -1068,7 +1068,7 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	case "nodename":
 		return impersonate, nil
 	case "short_nodename":
-		return strings.SplitN(impersonate, ".", 1)[0], nil
+		return strings.SplitN(impersonate, ".", 2)[0], nil
 	case "rid":
 		return section, nil
 	case "rindex":

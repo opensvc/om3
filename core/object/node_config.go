@@ -99,7 +99,7 @@ func (t Node) Dereference(ref string) (string, error) {
 	case "name", "nodename":
 		return hostname.Hostname(), nil
 	case "short_name", "short_nodename":
-		return strings.SplitN(hostname.Hostname(), ".", 1)[0], nil
+		return strings.SplitN(hostname.Hostname(), ".", 2)[0], nil
 	case "dnsuxsock":
 		return rawconfig.DNSUDSFile(), nil
 	case "dnsuxsockd":
