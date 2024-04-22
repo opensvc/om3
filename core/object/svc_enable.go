@@ -23,10 +23,16 @@ func (t *svc) Enable(ctx context.Context) error {
 	var kws key.L
 	rs := resourceselector.FromContext(ctx, t)
 	if rs.IsZero() {
-		kws = append(kws, key.T{"DEFAULT", "disable"})
+		kws = append(kws, key.T{
+			Section: "DEFAULT",
+			Option:  "disable",
+		})
 	} else {
 		for _, r := range rs.Resources() {
-			kws = append(kws, key.T{r.RID(), "disable"})
+			kws = append(kws, key.T{
+				Section: r.RID(),
+				Option:  "disable",
+			})
 		}
 	}
 	return t.config.Unset(kws...)

@@ -25,14 +25,20 @@ func (t *svc) Disable(ctx context.Context) error {
 	rs := resourceselector.FromContext(ctx, t)
 	if rs.IsZero() {
 		kops = append(kops, keyop.T{
-			Key:   key.T{"DEFAULT", "disable"},
+			Key: key.T{
+				Section: "DEFAULT",
+				Option:  "disable",
+			},
 			Op:    keyop.Set,
 			Value: "true",
 		})
 	} else {
 		for _, r := range rs.Resources() {
 			kops = append(kops, keyop.T{
-				Key:   key.T{r.RID(), "disable"},
+				Key: key.T{
+					Section: r.RID(),
+					Option:  "disable",
+				},
 				Op:    keyop.Set,
 				Value: "true",
 			})
