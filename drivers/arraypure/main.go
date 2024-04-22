@@ -1020,6 +1020,8 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	}
 	driverData["volume"] = volume
 	disk.DriverData = driverData
+	disk.DiskID = volume.WWN()
+	disk.DevID = volume.ID
 	conns, err := t.MapDisk(OptMapDisk{
 		Volume: OptVolume{
 			ID: volume.ID,
