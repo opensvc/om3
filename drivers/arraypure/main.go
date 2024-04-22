@@ -1524,7 +1524,7 @@ func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
 	} else {
 		item = volume
 	}
-	if now {
+	if opt.Now {
 		req, err := t.newRequest(http.MethodDelete, "/volumes", params, nil)
 		if err != nil {
 			return pureVolume{}, err
