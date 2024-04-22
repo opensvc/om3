@@ -1396,7 +1396,7 @@ func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
 	}
 	ConnectionsAdded := make([]pureVolumeConnection, 0)
 	switch {
-	case len(mappings) > 0:
+	case len(opt.Mapping.Mappings) > 0:
 		hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
 		if err != nil {
 			return nil, err
