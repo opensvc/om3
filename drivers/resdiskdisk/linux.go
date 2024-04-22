@@ -61,17 +61,17 @@ func (t T) unconfigure() error {
 		if err != nil {
 			return fmt.Errorf("%s get slaves: %w", dev, err)
 		}
+		if err := dev.RemoveMultipath(); err != nil {
+			return fmt.Errorf("%s multipath remove: %w", dev, err)
+		} else {
+			t.Log().Infof("%s multipath removed", dev)
+		}
 		for _, slave := range slaves {
 			if err := slave.Delete(); err != nil {
 				return fmt.Errorf("%s slave %s delete: %w", dev, slave, err)
 			} else {
 				t.Log().Infof("%s slave %s deleted", dev, slave)
 			}
-		}
-		if err := dev.RemoveMultipath(); err != nil {
-			return fmt.Errorf("%s multipath remove: %w", dev, err)
-		} else {
-			t.Log().Infof("%s multipath removed", dev)
 		}
 	}
 	return nil
