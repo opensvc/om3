@@ -135,7 +135,7 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
+func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	disk := pool.Disk{}
 	a := t.array()
 	drvName := t.diskgroup() + "/" + name

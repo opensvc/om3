@@ -136,11 +136,11 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
-	if len(name) != 16 {
-		return nil, fmt.Errorf("can not fetch serial from disk name to delete: %s", name)
+func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+	if len(wwid) != 32 {
+		return nil, fmt.Errorf("delete disk: can not fetch serial from wwid: %s", wwid)
 	}
-	serial := name[8:]
+	serial := wwid[8:]
 	poolDisk := pool.Disk{}
 	a := t.array()
 	arrayDisk, err := a.DelDisk(arraypure.OptDelDisk{

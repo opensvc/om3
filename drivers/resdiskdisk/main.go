@@ -166,12 +166,12 @@ func (t T) deleteDisk() ([]pool.Disk, error) {
 	if err != nil {
 		return []pool.Disk{}, err
 	}
-	diskName := t.diskName(p)
-	disks, err := p.DeleteDisk(diskName)
+	name := t.diskName(p)
+	disks, err := p.DeleteDisk(name, t.DiskID)
 	if err != nil {
-		t.Log().Errorf("delete disk %s: %#v %s", disks, err)
+		t.Log().Errorf("delete disk %s [%s]: %#v %s", name, t.DiskID, disks, err)
 	} else {
-		t.Log().Infof("delete disk %s: %#v", disks)
+		t.Log().Infof("delete disk %s [%s]: %#v", name, t.DiskID, disks)
 	}
 	return disks, nil
 }

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
-
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/plog"
@@ -45,10 +43,6 @@ var (
 	DefaultPersistentReservationType = "5" // Write-Exclusive Registrants-Only
 	ErrNotSupported                  = errors.New("the SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
 )
-
-func MakePRKey() []byte {
-	return uuid.NodeID()
-}
 
 func (t PersistentReservationHandle) countHandledRegistrations(registrations []string) int {
 	n := 0

@@ -333,6 +333,26 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		}
 		return n.CNIPlugins()
 	}
+	getPRKey := func() (string, error) {
+		n, err := t.Node()
+		if err != nil {
+			return "", err
+		}
+		return n.PRKey()
+	}
+
+	if v, err := attr.Has(r, "Key"); err != nil {
+		return err
+	} else if v {
+		prKey, err := getPRKey()
+		if err != nil {
+			return err
+		}
+		err = attr.SetValue(r, "Key", prKey)
+		if err != nil {
+			return err
+		}
+	}
 
 	setAttr := func(c manifest.Context) error {
 		switch {
