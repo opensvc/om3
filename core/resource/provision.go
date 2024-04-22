@@ -89,6 +89,9 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	if err := provision(ctx, r, leader); err != nil {
 		return fmt.Errorf("provision: %w", err)
 	}
+	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
+		return err
+	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Provision); err != nil {
 		return fmt.Errorf("post provision trigger: %w", err)
 	}
@@ -120,6 +123,9 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Unprovision); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	if err := SCSIPersistentReservationStop(ctx, r); err != nil {
+		return err
 	}
 	r.Progress(ctx, "▶ unprovision")
 	if err := unprovision(ctx, r, leader); err != nil {
