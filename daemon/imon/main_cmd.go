@@ -2,6 +2,7 @@ package imon
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -427,8 +428,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	var (
 		// errs joins doState, doGlobalExpect and doLocalExpect errors
 		errs error
-	)
 
+		ctx context.Context
+	)
+	if c.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(t.ctx, c.Timeout)
+		defer cancel()
+	} else {
+		ctx = context.Background()
+	}
 	addError := func(err error) {
 		errs = errors.Join(errs, err)
 	}
@@ -595,7 +604,10 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 
 	// inform the publisher we're done sending errors
 	if c.Err != nil {
-		c.Err <- errs
+		select {
+		case <-ctx.Done():
+		case c.Err <- errs:
+		}
 	}
 
 	if t.change {

@@ -39,14 +39,16 @@ func (a *DaemonAPI) PostObjectActionSwitch(ctx echo.Context, namespace string, k
 		GlobalExpectOptions:      options,
 		CandidateOrchestrationID: uuid.New(),
 	}
+	timeout := 300 * time.Millisecond
 	msg := msgbus.SetInstanceMonitor{
-		Path:  p,
-		Node:  a.localhost,
-		Value: value,
-		Err:   make(chan error),
+		Path:    p,
+		Node:    a.localhost,
+		Value:   value,
+		Err:     make(chan error),
+		Timeout: timeout,
 	}
 	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
-	ticker := time.NewTicker(300 * time.Millisecond)
+	ticker := time.NewTicker(timeout)
 	defer ticker.Stop()
 	select {
 	case <-ticker.C:

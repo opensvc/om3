@@ -236,13 +236,15 @@ func (t *T) createOrUpdate(kv map[string]string) error {
 
 func (t *T) orchestrate(g instance.MonitorGlobalExpect) (err error) {
 	t.log.Infof("asking global expect: %s", g)
-	ticker := time.NewTicker(time.Second)
+	timeout := time.Second
+	ticker := time.NewTicker(timeout)
 	defer ticker.Stop()
 	msg := msgbus.SetInstanceMonitor{
-		Path:  vipPath,
-		Node:  t.localhost,
-		Value: instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()},
-		Err:   make(chan error),
+		Path:    vipPath,
+		Node:    t.localhost,
+		Value:   instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()},
+		Err:     make(chan error),
+		Timeout: timeout,
 	}
 	t.bus.Pub(&msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)
 	select {

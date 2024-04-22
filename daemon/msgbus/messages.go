@@ -689,6 +689,9 @@ type (
 		Node       string                 `json:"node" yaml:"node"`
 		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 		Err        chan error             `json:"-" yaml:"-"`
+
+		// Timeout is the maximum duration for client to read result on Err channel
+		Timeout time.Duration `json:"timeout"`
 	}
 
 	SetInstanceMonitorRefused struct {
