@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 var (
@@ -1250,6 +1251,18 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 }
 
 func (t *Array) deleteAllVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+	conns, err := t.deleteHostGroupVolumeConnections(volumeName)
+	if err != nil {
+		return conns, err
+	}
+	_, err = t.deleteHostVolumeConnections(volumeName)
+	if err != nil {
+		return conns, err
+	}
+	return conns, nil
+}
+
+func (t *Array) deleteHostGroupVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
 	}
@@ -1257,17 +1270,58 @@ func (t *Array) deleteAllVolumeConnections(volumeName string) ([]pureVolumeConne
 	if err != nil {
 		return []pureVolumeConnection{}, nil
 	}
-	params := map[string]string{
-		"volume_names": volumeName,
+	hostGroups := make(map[string]any, 0)
+	for _, conn := range conns {
+		if conn.HostGroup.Name != "" {
+			hostGroups[conn.HostGroup.Name] = nil
+		}
 	}
-	req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
-	if err != nil {
-		return nil, err
+	if len(hostGroups) > 0 {
+		params := map[string]string{
+			"volume_names":     volumeName,
+			"host_group_names": strings.Join(xmap.Keys(hostGroups), ","),
+		}
+		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		if err != nil {
+			return conns, err
+		}
+		var responseData any
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return conns, err
+		}
 	}
-	var responseData any
-	_, err = t.Do(req, &responseData, true)
+	return conns, nil
+}
+
+func (t *Array) deleteHostVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+	opt := OptGetItems{
+		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
+	}
+	conns, err := t.GetConnections(opt)
 	if err != nil {
-		return nil, err
+		return []pureVolumeConnection{}, nil
+	}
+	hosts := make(map[string]any, 0)
+	for _, conn := range conns {
+		if conn.Host.Name != "" {
+			hosts[conn.Host.Name] = nil
+		}
+	}
+	if len(hosts) > 0 {
+		params := map[string]string{
+			"volume_names": volumeName,
+			"host_names":   strings.Join(xmap.Keys(hosts), ","),
+		}
+		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		if err != nil {
+			return conns, err
+		}
+		var responseData any
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return conns, err
+		}
 	}
 	return conns, nil
 }
