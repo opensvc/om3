@@ -21,7 +21,7 @@ type (
 		sync.WaitGroup
 		ctx     context.Context
 		id      string
-		nodes   []string
+		nodes   map[string]string
 		addr    string
 		port    string
 		intf    string
@@ -58,7 +58,7 @@ func (t *rx) ID() string {
 func (t *rx) Stop() error {
 	t.log.Debugf("cancelling")
 	t.cancel()
-	for _, node := range t.nodes {
+	for node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
 			HbID:     t.id,
 			Nodename: node,
@@ -92,14 +92,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		otherNodeIPL := make([]string, 0)
 		resolver := net.Resolver{}
 
-		for _, node := range t.nodes {
+		for node, addr := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbID:     t.id,
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
 			}
-			addrs, err := resolver.LookupHost(ctx, node)
+			addrs, err := resolver.LookupHost(ctx, addr)
 			if err != nil {
 				continue
 			}
@@ -185,7 +185,7 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 	t.msgC <- &msg
 }
 
-func newRx(ctx context.Context, name string, nodes []string, addr, port, intf string, timeout time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes map[string]string, addr, port, intf string, timeout time.Duration) *rx {
 	id := name + ".rx"
 	return &rx{
 		ctx:     ctx,

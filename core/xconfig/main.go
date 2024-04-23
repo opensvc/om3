@@ -347,9 +347,22 @@ func (t *T) GetStrict(k key.T) (string, error) {
 	return "", fmt.Errorf("%w: key '%s' not found (unscopable kw)", ErrExist, k)
 }
 
+func (t *T) GetStringAs(k key.T, impersonate string) string {
+	val, _ := t.GetStringStrictAs(k, impersonate)
+	return val
+}
+
 func (t *T) GetString(k key.T) string {
 	val, _ := t.GetStringStrict(k)
 	return val
+}
+
+func (t *T) GetStringStrictAs(k key.T, impersonate string) (string, error) {
+	if v, err := t.EvalAs(k, impersonate); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
 }
 
 func (t *T) GetStringStrict(k key.T) (string, error) {

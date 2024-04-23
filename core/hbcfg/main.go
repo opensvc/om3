@@ -160,6 +160,11 @@ func (t *T) GetString(s string) string {
 	return t.Config().GetString(k)
 }
 
+func (t *T) GetStringAs(s, impersonate string) string {
+	k := key.New(t.name, s)
+	return t.Config().GetStringAs(k, impersonate)
+}
+
 func (t *T) GetInt(s string) int {
 	k := key.New(t.name, s)
 	return t.Config().GetInt(k)
