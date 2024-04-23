@@ -14,6 +14,7 @@ type (
 		OptsGlobal
 		OptsLock
 		Refresh      bool
+		Monitor      bool
 		NodeSelector string
 	}
 )
@@ -34,7 +35,9 @@ func (t *CmdObjectStatus) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			if t.Refresh {
+			if t.Monitor {
+				return o.MonitorStatus(ctx)
+			} else if t.Refresh {
 				return o.FreshStatus(ctx)
 			} else {
 				return o.Status(ctx)

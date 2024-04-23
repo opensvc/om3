@@ -28,7 +28,7 @@ func (o *T) action(e schedule.Entry) error {
 	case "status":
 		cmdArgs = append(cmdArgs, "status", "-r", "--local")
 	case "resource_monitor":
-		cmdArgs = append(cmdArgs, "resource", "monitor", "--local")
+		cmdArgs = append(cmdArgs, "status", "-m", "--local")
 	case "push_resinfo":
 		cmdArgs = append(cmdArgs, "push", "resinfo", "--local")
 	case "run":

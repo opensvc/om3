@@ -24,6 +24,23 @@ func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
 	return t.statusEval(ctx)
 }
 
+// MonitorStatus returns the service status dataset with monitored resources
+// refreshed and non-monitore resources loaded from cache
+func (t *actor) MonitorStatus(ctx context.Context) (instance.Status, error) {
+	var (
+		data instance.Status
+		err  error
+	)
+	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
+	ctx, stop := statusbus.WithContext(ctx, t.path)
+	defer stop()
+	data, err = t.statusLoad()
+	if err != nil {
+		return t.FreshStatus(ctx)
+	}
+	return t.monitorStatusEval(ctx, data)
+}
+
 // Status returns the service status dataset
 func (t *actor) Status(ctx context.Context) (instance.Status, error) {
 	var (
@@ -49,6 +66,15 @@ func (t *actor) postActionStatusEval(ctx context.Context) {
 	}
 }
 
+func (t *actor) monitorStatusEval(ctx context.Context, data instance.Status) (instance.Status, error) {
+	unlock, err := t.lockAction(ctx)
+	if err != nil {
+		return instance.Status{}, err
+	}
+	defer unlock()
+	return t.lockedMonitorStatusEval(ctx, data)
+}
+
 func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
@@ -71,12 +97,34 @@ func (t *actor) setLastStartedAt(data *instance.Status) error {
 	return nil
 }
 
+func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Status) (instance.Status, error) {
+	t.setLastStartedAt(&data)
+	data.UpdatedAt = time.Now()
+	data.FrozenAt = t.Frozen()
+	data.Running = runningRIDList(t)
+
+	// reset fields that t.resourceStatusEval() will re-evaluate
+	data.Avail = status.Undef
+	data.Overall = status.Undef
+	data.Provisioned = provisioned.Undef
+
+	if err := t.resourceStatusEval(ctx, &data, true); err != nil {
+		return data, err
+	}
+	if len(data.Resources) == 0 {
+		data.Avail = status.NotApplicable
+		data.Overall = status.NotApplicable
+		data.Optional = status.NotApplicable
+	}
+	return data, t.statusDump(data)
+}
+
 func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
 	data.Running = runningRIDList(t)
-	if err = t.resourceStatusEval(ctx, &data); err != nil {
+	if err = t.resourceStatusEval(ctx, &data, false); err != nil {
 		return
 	}
 	if len(data.Resources) == 0 {
@@ -101,11 +149,20 @@ func runningRIDList(t interface{}) []string {
 	return l
 }
 
-func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {
-	data.Resources = make(instance.ResourceStatuses)
+func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, monitoredOnly bool) error {
+	if !monitoredOnly {
+		data.Resources = make(instance.ResourceStatuses)
+	}
 	var mu sync.Mutex
+	sb := statusbus.FromContext(ctx)
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
-		xd := resource.GetStatus(ctx, r)
+		var xd resource.Status
+		if monitoredOnly && !r.IsMonitored() {
+			xd = data.Resources[r.RID()]
+			sb.Post(r.RID(), xd.Status, false)
+		} else {
+			xd = resource.GetStatus(ctx, r)
+		}
 
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.
