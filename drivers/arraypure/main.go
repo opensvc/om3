@@ -1072,6 +1072,7 @@ func (t *Array) addVolume(name, size string) (pureVolume, error) {
 	return responseData.Items[0], nil
 }
 
+/*
 func (t *Array) getHostGroupName(hbaID string) (string, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("wwns='%s'", hbaID),
@@ -1080,12 +1081,7 @@ func (t *Array) getHostGroupName(hbaID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(hosts) == 0 {
-		return "", fmt.Errorf("no host found for hba id %s", hbaID)
-	}
-	if len(hosts) > 1 {
-		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
-	}
+	l := make([]string, 0)
 	for _, host := range hosts {
 		if !host.IsLocal {
 			continue
@@ -1093,10 +1089,17 @@ func (t *Array) getHostGroupName(hbaID string) (string, error) {
 		if host.HostGroup.Name == "" {
 			continue
 		}
-		return host.HostGroup.Name, nil
+		l = append(l, host.HostGroup.Name)
 	}
-	return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
+	if n := len(l); n == 1 {
+		return l[0], nil
+	} else if n == 0 {
+		return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
+	} else {
+		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
+	}
 }
+*/
 
 func (t *Array) getHostName(hbaID string) (string, error) {
 	opt := OptGetItems{
@@ -1106,13 +1109,20 @@ func (t *Array) getHostName(hbaID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(hosts) == 0 {
+	l := make([]string, 0)
+	for _, host := range hosts {
+		if !host.IsLocal {
+			continue
+		}
+		l = append(l, hosts[0].Name)
+	}
+	if n := len(l); n == 1 {
+		return l[0], nil
+	} else if n == 0 {
 		return "", fmt.Errorf("no host found for hba id %s", hbaID)
+	} else {
+		return "", fmt.Errorf("too many hosts found for hba id %s: %s", hbaID, l)
 	}
-	if len(hosts) > 1 {
-		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
-	}
-	return hosts[0].Name, nil
 }
 
 func formatWWN(s string) (string, error) {
@@ -1174,6 +1184,7 @@ func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, er
 	return m, nil
 }
 
+/*
 func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]string, error) {
 	m := make(map[string][]string)
 	for _, mapping := range mappings {
@@ -1221,6 +1232,7 @@ func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]strin
 	}
 	return m, nil
 }
+*/
 
 func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (pureVolumeConnection, error) {
 	params := map[string]string{
