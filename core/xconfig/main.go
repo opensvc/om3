@@ -598,7 +598,7 @@ func (t *T) set(op keyop.T) error {
 	case keyop.Insert:
 		return setInsert(op)
 	}
-	return fmt.Errorf("unsupported operator: %d", op.Op)
+	return fmt.Errorf("unsupported operator: %d setting key %s", op.Op, op.Key)
 }
 
 func (t *T) write() (err error) {
