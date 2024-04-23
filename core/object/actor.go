@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/scsi"
 )
 
 type (
@@ -338,7 +339,11 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		if err != nil {
 			return "", err
 		}
-		return n.PRKey()
+		key, err := n.PRKey()
+		if err != nil {
+			return key, err
+		}
+		return scsi.StripPRKey(key), nil
 	}
 
 	if v, err := attr.Has(r, "Key"); err != nil {
