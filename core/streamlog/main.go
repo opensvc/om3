@@ -44,6 +44,8 @@ func (event Event) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
+	w.FormatFieldName = func(i any) string { return "" }
+	w.FormatFieldValue = func(i any) string { return "" }
 	w.FormatMessage = func(i any) string {
 		return rawconfig.Colorize.Bold(i)
 	}

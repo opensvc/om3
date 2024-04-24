@@ -347,9 +347,22 @@ func (t *T) GetStrict(k key.T) (string, error) {
 	return "", fmt.Errorf("%w: key '%s' not found (unscopable kw)", ErrExist, k)
 }
 
+func (t *T) GetStringAs(k key.T, impersonate string) string {
+	val, _ := t.GetStringStrictAs(k, impersonate)
+	return val
+}
+
 func (t *T) GetString(k key.T) string {
 	val, _ := t.GetStringStrict(k)
 	return val
+}
+
+func (t *T) GetStringStrictAs(k key.T, impersonate string) (string, error) {
+	if v, err := t.EvalAs(k, impersonate); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
 }
 
 func (t *T) GetStringStrict(k key.T) (string, error) {
@@ -598,7 +611,7 @@ func (t *T) set(op keyop.T) error {
 	case keyop.Insert:
 		return setInsert(op)
 	}
-	return fmt.Errorf("unsupported operator: %d", op.Op)
+	return fmt.Errorf("unsupported operator: %d setting key %s", op.Op, op.Key)
 }
 
 func (t *T) write() (err error) {
@@ -1068,7 +1081,7 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	case "nodename":
 		return impersonate, nil
 	case "short_nodename":
-		return strings.SplitN(impersonate, ".", 1)[0], nil
+		return strings.SplitN(impersonate, ".", 2)[0], nil
 	case "rid":
 		return section, nil
 	case "rindex":

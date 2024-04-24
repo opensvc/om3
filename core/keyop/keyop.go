@@ -91,7 +91,7 @@ var (
 	}
 
 	// ":" is a suffixer, not a spliter
-	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "=", ":"}
+	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "="}
 	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
 )
 
@@ -162,10 +162,15 @@ func Parse(s string) *T {
 	t := &T{}
 	i := len(s)
 	bestOp := ""
-	for _, op := range splitOps {
-		if pos := strings.Index(s, op); pos >= 0 && pos < i {
-			i = pos
-			bestOp = op
+	if strings.HasSuffix(s, ":") {
+		bestOp = ":"
+		i = len(s) - 1
+	} else {
+		for _, op := range splitOps {
+			if pos := strings.Index(s, op); pos >= 0 && pos < i {
+				i = pos
+				bestOp = op
+			}
 		}
 	}
 	if bestOp == "" {

@@ -56,7 +56,12 @@ var (
 	// WithCaller adds the file:line information of the logger caller
 	WithCaller bool
 
-	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: TimeFormat}
+	consoleWriter = zerolog.ConsoleWriter{
+		Out:              os.Stderr,
+		TimeFormat:       TimeFormat,
+		FormatFieldName:  func(i any) string { return "" },
+		FormatFieldValue: func(i any) string { return "" },
+	}
 )
 
 func init() {

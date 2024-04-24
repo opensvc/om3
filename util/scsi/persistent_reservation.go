@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
-	"github.com/google/uuid"
+	"strings"
 
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/device"
@@ -46,8 +45,8 @@ var (
 	ErrNotSupported                  = errors.New("the SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
 )
 
-func MakePRKey() []byte {
-	return uuid.NodeID()
+func StripPRKey(s string) string {
+	return "0x" + strings.ToLower(strings.TrimLeft(strings.TrimPrefix(s, "0x"), "0"))
 }
 
 func (t PersistentReservationHandle) countHandledRegistrations(registrations []string) int {
@@ -163,7 +162,12 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 		s = status.Undef
 	} else if handledRegistrationCount := t.countHandledRegistrations(registrations); handledRegistrationCount == expectedRegistrationCount {
 		if expectedRegistrationCount == 0 {
-			t.StatusLogger.Info("%s, no registrations", reservationMsg)
+			if handledRegistrationCount == 0 {
+				t.StatusLogger.Info("%s, no registrations", reservationMsg)
+			} else {
+				t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
+				s.Add(status.Warn)
+			}
 		} else {
 			t.StatusLogger.Info("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
 			s.Add(status.Up)

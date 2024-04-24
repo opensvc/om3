@@ -87,7 +87,7 @@ type (
 		Pooler
 		GetTargets() (san.Targets, error)
 		CreateDisk(name string, size int64, paths san.Paths) ([]Disk, error)
-		DeleteDisk(name string) ([]Disk, error)
+		DeleteDisk(name, wwid string) ([]Disk, error)
 	}
 	Translater interface {
 		Translate(name string, size int64, shared bool) ([]string, error)

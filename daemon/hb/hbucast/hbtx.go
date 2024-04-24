@@ -17,7 +17,7 @@ type (
 		sync.WaitGroup
 		ctx      context.Context
 		id       string
-		nodes    []string
+		nodes    map[string]string
 		port     string
 		intf     string
 		interval time.Duration
@@ -40,7 +40,7 @@ func (t *tx) ID() string {
 func (t *tx) Stop() error {
 	t.log.Debugf("cancelling")
 	t.cancel()
-	for _, node := range t.nodes {
+	for node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
 			HbID:     t.id,
 			Nodename: node,
@@ -61,7 +61,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	go func() {
 		defer t.Done()
 		t.log.Infof("starting")
-		for _, node := range t.nodes {
+		for node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbID:     t.id,
 				Nodename: node,
@@ -89,8 +89,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				continue
 			} else {
 				t.log.Debugf(reason)
-				for _, node := range t.nodes {
-					go t.send(node, b)
+				for node, addr := range t.nodes {
+					go t.send(node, addr, b)
 				}
 			}
 		}
@@ -100,24 +100,24 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-func (t *tx) send(node string, b []byte) {
-	conn, err := net.DialTimeout("tcp", node+":"+t.port, t.timeout)
+func (t *tx) send(node, addr string, b []byte) {
+	conn, err := net.DialTimeout("tcp", addr+":"+t.port, t.timeout)
 	if err != nil {
-		t.log.Debugf("dial timeout %s:%s: %s", node, t.port, err)
+		t.log.Debugf("dial timeout %s %s:%s: %s", node, addr, t.port, err)
 		return
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
 	if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-		t.log.Errorf("set deadline %s:%s: %s", node, t.port, err)
+		t.log.Errorf("set deadline %s %s:%s: %s", node, addr, t.port, err)
 		return
 	}
 	if n, err := conn.Write(b); err != nil {
-		t.log.Debugf("write %s: %s", node, err)
+		t.log.Debugf("write %s %s: %s", node, addr, err)
 		return
 	} else if n != len(b) {
-		t.log.Debugf("write %d instead of %d", n, len(b))
+		t.log.Debugf("write %s %s: %d instead of %d", node, addr, n, len(b))
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -127,7 +127,7 @@ func (t *tx) send(node string, b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout, interval time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes map[string]string, port, intf string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
 	return &tx{
 		ctx:      ctx,

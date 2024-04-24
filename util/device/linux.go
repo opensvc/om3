@@ -303,6 +303,22 @@ func (t T) Wipe() error {
 	return nil
 }
 
+func (t T) ConfigureMultipath(verbosity int) error {
+	cmd := command.New(
+		command.WithName("multipath"),
+		command.WithVarArgs("-v", fmt.Sprint(verbosity), t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
 func (t T) RemoveMultipath() error {
 	cmd := command.New(
 		command.WithName("multipath"),

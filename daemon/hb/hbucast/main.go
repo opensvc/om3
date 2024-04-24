@@ -58,6 +58,7 @@ func (t *T) Configure(ctx context.Context) {
 		timeout = interval*2 + 1*time.Second
 		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
+	addr := t.GetString("addr")
 	portI := t.GetInt("port")
 	port := strconv.Itoa(portI)
 	nodes := t.GetStrings("nodes")
@@ -65,10 +66,18 @@ func (t *T) Configure(ctx context.Context) {
 		k := key.T{Section: "cluster", Option: "nodes"}
 		nodes = t.Config().GetStrings(k)
 	}
-	oNodes := hostname.OtherNodes(nodes)
+	peerList := hostname.OtherNodes(nodes)
+	peerMap := make(map[string]string)
+	for _, peer := range peerList {
+		if s := t.GetStringAs("addr", peer); s != "" {
+			peerMap[peer] = s
+		} else {
+			peerMap[peer] = peer
+		}
+	}
 	log.Debugf("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
-		port, nodes, oNodes)
-	t.SetNodes(oNodes)
+		port, nodes, peerList)
+	t.SetNodes(peerList)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
 	intf := t.GetString("intf")
@@ -76,8 +85,8 @@ func (t *T) Configure(ctx context.Context) {
 		port, nodes, timeout, interval, intf)
 	t.SetSignature(signature)
 	name := t.Name()
-	tx := newTx(ctx, name, oNodes, port, intf, timeout, interval)
+	tx := newTx(ctx, name, peerMap, port, intf, timeout, interval)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, "", port, intf, timeout)
+	rx := newRx(ctx, name, peerMap, addr, port, intf, timeout)
 	t.SetRx(rx)
 }

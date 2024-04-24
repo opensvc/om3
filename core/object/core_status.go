@@ -21,6 +21,10 @@ func (t *core) statusFile() string {
 	return filepath.Join(t.varDir(), "status.json")
 }
 
+func (t *core) MonitorStatus(ctx context.Context) (instance.Status, error) {
+	return t.statusEval(ctx)
+}
+
 func (t *core) FreshStatus(ctx context.Context) (instance.Status, error) {
 	return t.statusEval(ctx)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/scsi"
 )
 
 type (
@@ -332,6 +333,30 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			return "", err
 		}
 		return n.CNIPlugins()
+	}
+	getPRKey := func() (string, error) {
+		n, err := t.Node()
+		if err != nil {
+			return "", err
+		}
+		key, err := n.PRKey()
+		if err != nil {
+			return key, err
+		}
+		return scsi.StripPRKey(key), nil
+	}
+
+	if v, err := attr.Has(r, "Key"); err != nil {
+		return err
+	} else if v {
+		prKey, err := getPRKey()
+		if err != nil {
+			return err
+		}
+		err = attr.SetValue(r, "Key", prKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	setAttr := func(c manifest.Context) error {

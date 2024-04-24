@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 var (
@@ -1008,7 +1009,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (pureVolume, error) {
 }
 
 func (t pureVolume) WWN() string {
-	return WWIDPrefix + t.Serial
+	return WWIDPrefix + strings.ToLower(t.Serial)
 }
 
 func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
@@ -1020,6 +1021,8 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	}
 	driverData["volume"] = volume
 	disk.DriverData = driverData
+	disk.DiskID = volume.WWN()
+	disk.DevID = volume.ID
 	conns, err := t.MapDisk(OptMapDisk{
 		Volume: OptVolume{
 			ID: volume.ID,
@@ -1069,6 +1072,7 @@ func (t *Array) addVolume(name, size string) (pureVolume, error) {
 	return responseData.Items[0], nil
 }
 
+/*
 func (t *Array) getHostGroupName(hbaID string) (string, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("wwns='%s'", hbaID),
@@ -1077,12 +1081,7 @@ func (t *Array) getHostGroupName(hbaID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(hosts) == 0 {
-		return "", fmt.Errorf("no host found for hba id %s", hbaID)
-	}
-	if len(hosts) > 1 {
-		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
-	}
+	l := make([]string, 0)
 	for _, host := range hosts {
 		if !host.IsLocal {
 			continue
@@ -1090,10 +1089,17 @@ func (t *Array) getHostGroupName(hbaID string) (string, error) {
 		if host.HostGroup.Name == "" {
 			continue
 		}
-		return host.HostGroup.Name, nil
+		l = append(l, host.HostGroup.Name)
 	}
-	return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
+	if n := len(l); n == 1 {
+		return l[0], nil
+	} else if n == 0 {
+		return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
+	} else {
+		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
+	}
 }
+*/
 
 func (t *Array) getHostName(hbaID string) (string, error) {
 	opt := OptGetItems{
@@ -1103,13 +1109,20 @@ func (t *Array) getHostName(hbaID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(hosts) == 0 {
+	l := make([]string, 0)
+	for _, host := range hosts {
+		if !host.IsLocal {
+			continue
+		}
+		l = append(l, hosts[0].Name)
+	}
+	if n := len(l); n == 1 {
+		return l[0], nil
+	} else if n == 0 {
 		return "", fmt.Errorf("no host found for hba id %s", hbaID)
+	} else {
+		return "", fmt.Errorf("too many hosts found for hba id %s: %s", hbaID, l)
 	}
-	if len(hosts) > 1 {
-		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
-	}
-	return hosts[0].Name, nil
 }
 
 func formatWWN(s string) (string, error) {
@@ -1171,6 +1184,7 @@ func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, er
 	return m, nil
 }
 
+/*
 func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]string, error) {
 	m := make(map[string][]string)
 	for _, mapping := range mappings {
@@ -1218,6 +1232,7 @@ func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]strin
 	}
 	return m, nil
 }
+*/
 
 func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (pureVolumeConnection, error) {
 	params := map[string]string{
@@ -1248,6 +1263,18 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 }
 
 func (t *Array) deleteAllVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+	conns, err := t.deleteHostGroupVolumeConnections(volumeName)
+	if err != nil {
+		return conns, err
+	}
+	_, err = t.deleteHostVolumeConnections(volumeName)
+	if err != nil {
+		return conns, err
+	}
+	return conns, nil
+}
+
+func (t *Array) deleteHostGroupVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
 	}
@@ -1255,17 +1282,58 @@ func (t *Array) deleteAllVolumeConnections(volumeName string) ([]pureVolumeConne
 	if err != nil {
 		return []pureVolumeConnection{}, nil
 	}
-	params := map[string]string{
-		"volume_names": volumeName,
+	hostGroups := make(map[string]any, 0)
+	for _, conn := range conns {
+		if conn.HostGroup.Name != "" {
+			hostGroups[conn.HostGroup.Name] = nil
+		}
 	}
-	req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
-	if err != nil {
-		return nil, err
+	if len(hostGroups) > 0 {
+		params := map[string]string{
+			"volume_names":     volumeName,
+			"host_group_names": strings.Join(xmap.Keys(hostGroups), ","),
+		}
+		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		if err != nil {
+			return conns, err
+		}
+		var responseData any
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return conns, err
+		}
 	}
-	var responseData any
-	_, err = t.Do(req, &responseData, true)
+	return conns, nil
+}
+
+func (t *Array) deleteHostVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+	opt := OptGetItems{
+		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
+	}
+	conns, err := t.GetConnections(opt)
 	if err != nil {
-		return nil, err
+		return []pureVolumeConnection{}, nil
+	}
+	hosts := make(map[string]any, 0)
+	for _, conn := range conns {
+		if conn.Host.Name != "" {
+			hosts[conn.Host.Name] = nil
+		}
+	}
+	if len(hosts) > 0 {
+		params := map[string]string{
+			"volume_names": volumeName,
+			"host_names":   strings.Join(xmap.Keys(hosts), ","),
+		}
+		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		if err != nil {
+			return conns, err
+		}
+		var responseData any
+		_, err = t.Do(req, &responseData, true)
+		if err != nil {
+			return conns, err
+		}
 	}
 	return conns, nil
 }
@@ -1394,7 +1462,7 @@ func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
 	}
 	ConnectionsAdded := make([]pureVolumeConnection, 0)
 	switch {
-	case len(mappings) > 0:
+	case len(opt.Mapping.Mappings) > 0:
 		hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
 		if err != nil {
 			return nil, err
@@ -1522,7 +1590,7 @@ func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
 	} else {
 		item = volume
 	}
-	if now {
+	if opt.Now {
 		req, err := t.newRequest(http.MethodDelete, "/volumes", params, nil)
 		if err != nil {
 			return pureVolume{}, err

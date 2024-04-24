@@ -74,6 +74,8 @@ type (
 		IsEncap() bool
 		IsMonitored() bool
 		IsOptional() bool
+		IsProvisionDisabled() bool
+		IsUnprovisionDisabled() bool
 		IsShared() bool
 		IsStandby() bool
 		IsStatusDisabled() bool
@@ -352,6 +354,16 @@ func (t T) IsDisabled() bool {
 	return t.Disable
 }
 
+// IsProvisionDisabled returns true if the resource definition contains provision=false.
+func (t T) IsProvisionDisabled() bool {
+	return !t.EnableProvision
+}
+
+// IsUnprovisionDisabled returns true if the resource definition contains unprovision=false.
+func (t T) IsUnprovisionDisabled() bool {
+	return !t.EnableUnprovision
+}
+
 // IsStandby returns true if the resource definition contains standby=true.
 func (t T) IsStandby() bool {
 	return t.Standby
@@ -487,7 +499,7 @@ func (t *T) GetObjectDriver() ObjectDriver {
 
 func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
 	oLog := o.Log()
-	prefix := fmt.Sprintf("%s: %s: ", oLog.Prefix(), t.ResourceID)
+	prefix := fmt.Sprintf("%s%s: ", oLog.Prefix(), t.ResourceID)
 	l := plog.NewLogger(oLog.Logger()).WithPrefix(prefix).Attr("rid", t.ResourceID)
 	if t.Subset != "" {
 		l = l.Attr("subset", t.Subset)
@@ -1241,7 +1253,7 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 		return t.Key
 	}
 	if nodePRKey := rawconfig.GetNodeSection().PRKey; nodePRKey != "" {
-		return nodePRKey
+		return scsi.StripPRKey(nodePRKey)
 	}
 	return ""
 }

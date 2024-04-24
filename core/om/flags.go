@@ -182,6 +182,10 @@ func addFlagMatch(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "match", "**", "A fnmatch key name filter.")
 }
 
+func addFlagMonitor(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVarP(p, "monitor", "m", false, "Refresh only the monitored resources in the cached instance status data.")
+}
+
 func addFlagNetworkStatusName(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "name", "", "Filter on a network name.")
 }

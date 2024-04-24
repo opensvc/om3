@@ -136,11 +136,11 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
-	if len(name) != 16 {
-		return nil, fmt.Errorf("can not fetch serial from disk name to delete: %s", name)
+func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+	if len(wwid) != 32 {
+		return nil, fmt.Errorf("delete disk: can not fetch serial from wwid: %s", wwid)
 	}
-	serial := name[8:]
+	serial := wwid[8:]
 	poolDisk := pool.Disk{}
 	a := t.array()
 	arrayDisk, err := a.DelDisk(arraypure.OptDelDisk{
@@ -164,7 +164,6 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	}
 	a := t.array()
 	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-	mappings := paths.MappingList()
 	pod := t.pod()
 	vg := t.volumeGroup()
 	if pod != "" {
@@ -175,7 +174,7 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 	arrayDisk, err := a.AddDisk(arraypure.OptAddDisk{
 		Name:     name,
 		Size:     drvSize,
-		Mappings: mappings,
+		Mappings: paths.MappingList(),
 		LUN:      -1,
 	})
 	if err != nil {
@@ -192,11 +191,18 @@ func (t *T) DiskName(vol pool.Volumer) string {
 	if labelPrefix := t.labelPrefix(); labelPrefix != "" {
 		s += labelPrefix
 	} else {
-		k := key.T{"cluster", "id"}
+		k := key.T{
+			Section: "cluster",
+			Option:  "id",
+		}
 		clusterID := t.Config().GetString(k)
-		s += strings.SplitN(clusterID, "-", 1)[0] + "-"
+		s += strings.SplitN(clusterID, "-", 2)[0] + "-"
 
 	}
-	s += vol.Config().GetString(key.T{"DEFAULT", "id"})
+	suffix := vol.Config().GetString(key.T{
+		Section: "DEFAULT",
+		Option:  "id",
+	})
+	s += strings.SplitN(suffix, "-", 2)[0]
 	return s
 }

@@ -60,11 +60,13 @@ type (
 		Configurer
 		compliancer
 		volatiler
+		Nodes() ([]string, error)
 		Path() naming.Path
 		FQDN() string
-		Status(context.Context) (instance.Status, error)
+
 		FreshStatus(context.Context) (instance.Status, error)
-		Nodes() ([]string, error)
+		MonitorStatus(context.Context) (instance.Status, error)
+		Status(context.Context) (instance.Status, error)
 	}
 )
 

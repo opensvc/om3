@@ -2728,7 +2728,9 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagRefresh(flags, &options.Refresh)
+	addFlagMonitor(flags, &options.Monitor)
 	addFlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("refresh", "monitor")
 	return cmd
 }
 
