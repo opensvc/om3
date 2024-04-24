@@ -689,6 +689,9 @@ type (
 		Node       string                 `json:"node" yaml:"node"`
 		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
 		Err        chan error             `json:"-" yaml:"-"`
+
+		// Ctx is the client context
+		Ctx context.Context `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitorRefused struct {

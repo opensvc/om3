@@ -1,6 +1,8 @@
 package daemonapi
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -30,18 +32,26 @@ func (a *DaemonAPI) postObjectAction(ctx echo.Context, namespace string, kind na
 		GlobalExpect:             &globalExpect,
 		CandidateOrchestrationID: uuid.New(),
 	}
+	reqCtx := ctx.Request().Context()
+	setCtx, cancel := context.WithTimeout(reqCtx, 500*time.Millisecond)
+	defer cancel()
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,
 		Node:  a.localhost,
 		Value: value,
 		Err:   make(chan error),
+		Ctx:   setCtx,
 	}
 	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
 	select {
-	case <-ticker.C:
-		return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the %s %s expectation", kind, globalExpect)
+	case <-setCtx.Done(): // setCtx or reqCtx is done
+		err := setCtx.Err()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the %s %s expectation", kind, globalExpect)
+		default:
+			return JSONProblemf(ctx, http.StatusGone, "set monitor", "%s", err)
+		}
 	case err := <-msg.Err:
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", err)
@@ -50,7 +60,5 @@ func (a *DaemonAPI) postObjectAction(ctx echo.Context, namespace string, kind na
 				OrchestrationID: value.CandidateOrchestrationID,
 			})
 		}
-	case <-ctx.Request().Context().Done():
-		return JSONProblemf(ctx, http.StatusGone, "set monitor", "")
 	}
 }

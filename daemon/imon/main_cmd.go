@@ -427,8 +427,13 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	var (
 		// errs joins doState, doGlobalExpect and doLocalExpect errors
 		errs error
+
+		setCtxDone <-chan struct{}
 	)
 
+	if c.Ctx != nil {
+		setCtxDone = c.Ctx.Done()
+	}
 	addError := func(err error) {
 		errs = errors.Join(errs, err)
 	}
@@ -593,9 +598,13 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	doGlobalExpect()
 	doLocalExpect()
 
-	// inform the publisher we're done sending errors
 	if c.Err != nil {
-		c.Err <- errs
+		select {
+		case <-setCtxDone:
+			// set instance monitor context is setCtxDone
+		case c.Err <- errs:
+			// inform the publisher with errors
+		}
 	}
 
 	if t.change {

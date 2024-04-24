@@ -234,24 +234,32 @@ func (t *T) createOrUpdate(kv map[string]string) error {
 	return o.Update(t.ctx, nil, toUnset, toSet)
 }
 
-func (t *T) orchestrate(g instance.MonitorGlobalExpect) (err error) {
+func (t *T) orchestrate(g instance.MonitorGlobalExpect) error {
 	t.log.Infof("asking global expect: %s", g)
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	timeout := time.Second
+	ctx, cancel := context.WithTimeout(t.ctx, timeout)
+	defer cancel()
 	msg := msgbus.SetInstanceMonitor{
 		Path:  vipPath,
 		Node:  t.localhost,
 		Value: instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()},
 		Err:   make(chan error),
+		Ctx:   ctx,
 	}
 	t.bus.Pub(&msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)
 	select {
-	case err = <-msg.Err:
-	case <-ticker.C:
-		err = fmt.Errorf("timeout waiting for global expect accepted")
+	case err := <-msg.Err:
+		if err == nil {
+			t.log.Infof("global expect accepted: %s", g)
+		}
+		return err
+	case <-ctx.Done():
+		err := ctx.Err()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			return fmt.Errorf("timeout waiting for global expect accepted")
+		default:
+			return fmt.Errorf("context cancelled while waiting for global expect accepted")
+		}
 	}
-	if err == nil {
-		t.log.Infof("global expect accepted: %s", g)
-	}
-	return err
 }
