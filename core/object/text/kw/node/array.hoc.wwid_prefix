@@ -1,0 +1,1 @@
+Hitachi APIs do not report the disks NAA wwids, but it can be forged from a array-specifix prefix concatenated with the LDev id. This keyword allow the cluster admin to define this prefix.

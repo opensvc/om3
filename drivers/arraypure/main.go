@@ -920,7 +920,7 @@ func dump(data any) error {
 }
 
 func validateOptMapping(opt OptMapping) error {
-	if len(opt.Mappings) == 0 && opt.HostName == "" && hostGroup == "" {
+	if len(opt.Mappings) == 0 && opt.HostName == "" && opt.HostGroupName == "" {
 		return fmt.Errorf("--mapping, --host or --hostgroup is required")
 	}
 	if len(opt.Mappings) > 0 && opt.HostName != "" {
