@@ -44,6 +44,7 @@ type (
 	resizeMethod int
 
 	OptGetItems struct {
+		Volume OptVolume
 		Filter string
 	}
 
@@ -221,9 +222,9 @@ type (
 	}
 
 	hocReportMessage struct {
-		MessageCode string            `json:"messageCode,omitempty"`
-		Parameters  map[string]string `json:"parameters,omitempty"`
-		Text        string            `json:"text,omitempty"`
+		MessageCode string         `json:"messageCode,omitempty"`
+		Parameters  map[string]any `json:"parameters,omitempty"`
+		Text        string         `json:"text,omitempty"`
 	}
 
 	hocTag struct {
@@ -507,7 +508,14 @@ func (t *Array) Run(args []string) error {
 			Use:   "volumes",
 			Short: "get volumes",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				opt := OptGetItems{Filter: filter}
+				opt := OptGetItems{
+					Volume: OptVolume{
+						ID:     volumeId,
+						Name:   name,
+						Serial: serial,
+					},
+					Filter: filter,
+				}
 				data, err := t.GetVolumes(opt)
 				if err != nil {
 					return err
@@ -515,6 +523,9 @@ func (t *Array) Run(args []string) error {
 				return dump(data)
 			},
 		}
+		useFlagVolumeID(cmd)
+		useFlagName(cmd)
+		useFlagSerial(cmd)
 		useFlagFilter(cmd)
 		return cmd
 	}
@@ -1032,14 +1043,18 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 
 func findVolumeIdInJob(job hocJob) int {
 	for _, report := range job.Reports {
-		if s, ok := report.ReportMessage.Parameters["volumeId"]; !ok {
+		if i, ok := report.ReportMessage.Parameters["volumeId"]; !ok {
 			continue
 		} else {
+			s, ok := i.(string)
+			if !ok {
+				return -1
+			}
 			s = strings.Fields(s)[0]
-			if i, err := strconv.Atoi(s); err != nil {
+			if d, err := strconv.Atoi(s); err != nil {
 				return -1
 			} else {
-				return i
+				return d
 			}
 		}
 	}
@@ -1403,6 +1418,18 @@ func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
 	return hocVolume{}, fmt.Errorf("TODO")
 }
 
+func (opt OptVolume) Filter() string {
+	if opt.ID > 0 {
+		return fmt.Sprintf("volumeId:%d", opt.ID)
+	} else if opt.Name != "" {
+		return fmt.Sprintf("label:%s", opt.Name)
+	} else if opt.Serial != "" {
+		return fmt.Sprintf("serial:%s", opt.Serial)
+	} else {
+		return ""
+	}
+}
+
 func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 	var (
 		volume   hocVolume
@@ -1410,14 +1437,10 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 		err      error
 		queryOpt OptGetItems
 	)
-	if opt.ID > 0 {
-		queryOpt.Filter = fmt.Sprintf("volumeId:%d", opt.ID)
-	} else if opt.Name != "" {
-		queryOpt.Filter = fmt.Sprintf("label:%s", opt.Name)
-	} else if opt.Serial != "" {
-		queryOpt.Filter = fmt.Sprintf("serial:%s", opt.Serial)
-	} else {
+	if s := opt.Filter(); s == "" {
 		return volume, fmt.Errorf("id, name and serial are empty. refuse to get all volumes")
+	} else {
+		queryOpt.Filter = s
 	}
 	items, err = t.GetVolumes(queryOpt)
 	if err != nil {
@@ -1443,27 +1466,22 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	var disk array.Disk
 
-	volume, err := t.getVolume(opt.Volume)
+	/*
+		conns, err := t.deleteAllVolumeConnections(volume.Label)
+		if err != nil {
+			return disk, err
+		}
+		driverData["mappings"] = conns
+		disk.DriverData = driverData
+
+	*/
+	volume, err := t.delVolume(opt)
 	if err != nil {
 		return disk, err
 	}
 	disk.DiskID = t.WWN(volume.VolumeId)
 	disk.DevID = fmt.Sprint(volume.VolumeId)
 	driverData := make(map[string]any)
-	driverData["volume"] = volume
-	disk.DriverData = driverData
-
-	conns, err := t.deleteAllVolumeConnections(volume.Label)
-	if err != nil {
-		return disk, err
-	}
-	driverData["mappings"] = conns
-	disk.DriverData = driverData
-
-	volume, err = t.delVolume(opt)
-	if err != nil {
-		return disk, err
-	}
 	driverData["volume"] = volume
 	disk.DriverData = driverData
 
@@ -1474,29 +1492,34 @@ func (t *Array) delVolume(opt OptDelDisk) (hocVolume, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return hocVolume{}, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	filter := opt.Volume.Filter()
+	if filter == "" {
+		return hocVolume{}, fmt.Errorf("no volume selector")
+	}
+	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
 	if err != nil {
 		return hocVolume{}, err
 	}
+	if n := len(volumes); n == 0 {
+		return hocVolume{}, fmt.Errorf("no volume found for selector %s", filter)
+	} else if n > 1 {
+		return hocVolume{}, fmt.Errorf("%d volumes found for selector %s", n, filter)
+	}
 
-	var item hocVolume
+	volume := volumes[0]
 	path := fmt.Sprintf("/storage-systems/%s/volumes/%d", t.storageSystemId(), volume.VolumeId)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
-		return hocVolume{}, err
+		return volume, err
 	}
-	var responseData hocResponseVolumes
-	_, err = t.Do(req, &responseData)
+	job, err := t.DoJob(req)
 	if err != nil {
-		return hocVolume{}, err
+		return volume, err
 	}
-	if len(responseData.Resources) == 0 {
-		return hocVolume{}, fmt.Errorf("no item in response")
+	if job.Status == JobStatusFailed {
+		return volume, fmt.Errorf("job failed: %#v", job)
 	}
-	item = responseData.Resources[0]
-
-	// TODO: del diskinfo
-	return item, nil
+	return volume, nil
 }
 
 func (t *Array) GetStorageSystem() (hocStorageSystem, error) {
@@ -1513,7 +1536,7 @@ func (t *Array) GetStorageSystem() (hocStorageSystem, error) {
 }
 
 func (t *Array) GetStorageSystems(opt OptGetItems) ([]hocStorageSystem, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	l, err := t.doGet("GET", "/storage-systems", params, nil)
 	if err != nil {
 		return nil, err
@@ -1529,7 +1552,7 @@ func (t *Array) GetStorageSystems(opt OptGetItems) ([]hocStorageSystem, error) {
 }
 
 func (t *Array) GetVolumes(opt OptGetItems) ([]hocVolume, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
 	l, err := t.doGet("GET", path, params, nil)
 	if err != nil {
@@ -1546,57 +1569,59 @@ func (t *Array) GetVolumes(opt OptGetItems) ([]hocVolume, error) {
 }
 
 func (t *Array) GetVolumeGroups(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/volume-groups", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetControllers(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/controllers", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetJobs(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/jobs")
 	var r hocResponseJobs
 	return t.doGetIn("GET", path, params, nil, &r)
 }
 
 func (t *Array) GetSystemTasks(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/system-tasks", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetDisks(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/disks", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetStoragePools(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/storage-pools", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetStoragePorts(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/storage-ports", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
 func (t *Array) GetHostGroups(opt OptGetItems) (any, error) {
-	params := getParams(opt.Filter)
+	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/host-groups", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
-func getParams(filter string) map[string]string {
+func getParams(opt OptGetItems) map[string]string {
 	params := make(map[string]string)
-	if filter != "" {
+	if opt.Filter != "" {
+		params["q"] = opt.Filter
+	} else if filter := opt.Volume.Filter(); filter != "" {
 		params["q"] = filter
 	}
 	return params
