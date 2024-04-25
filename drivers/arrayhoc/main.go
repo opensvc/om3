@@ -1181,21 +1181,6 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 	return hocVolume{}, fmt.Errorf("TODO")
 }
 
-func (t *Array) deleteAllVolumeConnections(volumeName string) (hocVolume, error) {
-	/*
-		conns, err := t.deleteHostGroupVolumeConnections(volumeName)
-		if err != nil {
-			return conns, err
-		}
-		_, err = t.deleteHostVolumeConnections(volumeName)
-		if err != nil {
-			return conns, err
-		}
-		return conns, nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
-}
-
 func (t *Array) deleteHostGroupVolumeConnections(volumeName string) (hocVolume, error) {
 	/*
 		opt := OptGetItems{
@@ -1466,19 +1451,33 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	var disk array.Disk
 
-	/*
-		conns, err := t.deleteAllVolumeConnections(volume.Label)
-		if err != nil {
-			return disk, err
-		}
-		driverData["mappings"] = conns
-		disk.DriverData = driverData
-
-	*/
-	volume, err := t.delVolume(opt)
+	if err := validateOptVolume(opt.Volume); err != nil {
+		return disk, err
+	}
+	filter := opt.Volume.Filter()
+	if filter == "" {
+		return disk, fmt.Errorf("no volume selector")
+	}
+	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
 	if err != nil {
 		return disk, err
 	}
+	if n := len(volumes); n == 0 {
+		return disk, fmt.Errorf("no volume found for selector %s", filter)
+	} else if n > 1 {
+		return disk, fmt.Errorf("%d volumes found for selector %s", n, filter)
+	}
+
+	volume := volumes[0]
+
+	if err := t.detachAll(volume); err != nil {
+		return disk, err
+	}
+
+	if err := t.delVolume(volume); err != nil {
+		return disk, err
+	}
+
 	disk.DiskID = t.WWN(volume.VolumeId)
 	disk.DevID = fmt.Sprint(volume.VolumeId)
 	driverData := make(map[string]any)
@@ -1488,38 +1487,49 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) delVolume(opt OptDelDisk) (hocVolume, error) {
-	if err := validateOptVolume(opt.Volume); err != nil {
-		return hocVolume{}, err
-	}
-	filter := opt.Volume.Filter()
-	if filter == "" {
-		return hocVolume{}, fmt.Errorf("no volume selector")
-	}
-	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
-	if err != nil {
-		return hocVolume{}, err
-	}
-	if n := len(volumes); n == 0 {
-		return hocVolume{}, fmt.Errorf("no volume found for selector %s", filter)
-	} else if n > 1 {
-		return hocVolume{}, fmt.Errorf("%d volumes found for selector %s", n, filter)
-	}
-
-	volume := volumes[0]
+func (t *Array) delVolume(volume hocVolume) error {
 	path := fmt.Sprintf("/storage-systems/%s/volumes/%d", t.storageSystemId(), volume.VolumeId)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
-		return volume, err
+		return err
 	}
 	job, err := t.DoJob(req)
 	if err != nil {
-		return volume, err
+		return err
 	}
 	if job.Status == JobStatusFailed {
-		return volume, fmt.Errorf("job failed: %#v", job)
+		return fmt.Errorf("job failed: %#v", job)
 	}
-	return volume, nil
+	return nil
+}
+
+func (t *Array) detachAll(volume hocVolume) error {
+	for _, attachment := range volume.AttachedVolumeServerSummary {
+		if err := t.detach(volume.StorageSystemId, volume.VolumeId, attachment.ServerId); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *Array) detach(storageSystemId string, volumeId, serverId int) error {
+	data := map[string]any{
+		"storageSystemId": storageSystemId,
+		"volumeId":        volumeId,
+		"serverId":        serverId,
+	}
+	req, err := t.newRequest(http.MethodPost, "/volume-manager/detach", nil, data)
+	if err != nil {
+		return err
+	}
+	job, err := t.DoJob(req)
+	if err != nil {
+		return err
+	}
+	if job.Status == JobStatusFailed {
+		return fmt.Errorf("job failed: %#v", job)
+	}
+	return nil
 }
 
 func (t *Array) GetStorageSystem() (hocStorageSystem, error) {
