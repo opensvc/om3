@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,7 +25,13 @@ import (
 var (
 	RenewStatus    = 401
 	RequestTimeout = 10 * time.Second
+	DefaultDelay   = 1 * time.Second
 	Head           = "/v1"
+
+	JobStatusInProgress        = "IN_PROGRESS"
+	JobStatusSuccess           = "SUCCESS"
+	JobStatusSuccessWithErrors = "SUCCESS_WITH_ERRORS"
+	JobStatusFailed            = "FAILED"
 )
 
 type (
@@ -76,11 +83,17 @@ type (
 		Volume OptVolume
 	}
 
+	OptAddVolume struct {
+		Name          string
+		Size          string
+		PoolId        string
+		Compression   bool
+		Deduplication bool
+	}
+
 	OptAddDisk struct {
-		Name     string
-		Size     string
-		Mappings []string
-		LUN      int
+		Volume  OptAddVolume
+		Mapping OptMapping
 	}
 
 	Array struct {
@@ -182,6 +195,44 @@ type (
 		StorageSystemId         string `json:"storageSystemId,omitempty"`
 		Model                   string `json:"model,omitempty"`
 		VirtualVolumeId         int    `json:"virtualVolumeId,omitempty"`
+	}
+
+	hocJob struct {
+		JobId         string      `json:"jobId,omitempty"`
+		Text          string      `json:"text,omitempty"`
+		MessageCode   string      `json:"messageCode,omitempty"`
+		Parameters    any         `json:"parameters,omitempty"`
+		User          string      `json:"user,omitempty"`
+		Status        string      `json:"status,omitempty"`
+		CreatedDate   int64       `json:"createdDate,omitempty"`
+		ScheduledDate int64       `json:"scheduledDate,omitempty"`
+		StartDate     int64       `json:"startDate,omitempty"`
+		ParentJobId   string      `json:"parentJobId,omitempty"`
+		Reports       []hocReport `json:"reports,omitempty"`
+		Links         []hocLink   `json:"links,omitempty"`
+		Tags          []hocTag    `json:"tags,omitempty"`
+		IsSystem      bool        `json:"isSystem,omitempty"`
+	}
+
+	hocReport struct {
+		CreationDate  int64            `json:"creationDate,omitempty"`
+		ReportMessage hocReportMessage `json:"reportMessage,omitempty"`
+		Severity      string           `json:"severity,omitempty"`
+	}
+
+	hocReportMessage struct {
+		MessageCode string            `json:"messageCode,omitempty"`
+		Parameters  map[string]string `json:"parameters,omitempty"`
+		Text        string            `json:"text,omitempty"`
+	}
+
+	hocTag struct {
+		Tag string `json:"tag,omitempty"`
+	}
+
+	hocLink struct {
+		Rel  string `json:"rel,omitempty"`
+		Href string `json:"href,omitempty"`
 	}
 
 	hocBaseResponse struct {
@@ -414,10 +465,18 @@ func (t *Array) Run(args []string) error {
 			Short: "add a volume and map",
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptAddDisk{
-					Name:     name,
-					Size:     size,
-					Mappings: mappings,
-					LUN:      lun,
+					Volume: OptAddVolume{
+						Name:          name,
+						Size:          size,
+						PoolId:        poolId,
+						Compression:   compression,
+						Deduplication: deduplication,
+					},
+					Mapping: OptMapping{
+						Mappings:       mappings,
+						LUN:            lun,
+						HostGroupNames: hostGroups,
+					},
 				}
 				if data, err := t.AddDisk(opt); err != nil {
 					return err
@@ -428,8 +487,12 @@ func (t *Array) Run(args []string) error {
 		}
 		useFlagName(cmd)
 		useFlagSize(cmd)
+		useFlagPoolID(cmd)
 		useFlagMapping(cmd)
 		useFlagLUN(cmd)
+		useFlagHostGroup(cmd)
+		useFlagCompression(cmd)
+		useFlagDeduplication(cmd)
 		return cmd
 	}
 	newGetCmd := func() *cobra.Command {
@@ -634,6 +697,14 @@ func (t Array) username() string {
 	return t.Config().GetString(t.Key("username"))
 }
 
+func (t Array) delay() time.Duration {
+	if d := t.Config().GetDuration(t.Key("delay")); d == nil {
+		return DefaultDelay
+	} else {
+		return *d
+	}
+}
+
 func (t Array) timeout() time.Duration {
 	if timeout := t.Config().GetDuration(t.Key("timeout")); timeout == nil {
 		return RequestTimeout
@@ -725,6 +796,60 @@ func (t *Array) newToken() error {
 
 	t.token = resp.Header.Get("X-Auth-Token")
 	return nil
+}
+
+func (t *Array) DoJob(req *http.Request) (hocJob, error) {
+	var job hocJob
+	var jobRequestPath string
+
+	getJob := func() error {
+		req, err := t.newRequest(http.MethodGet, jobRequestPath, nil, nil)
+		if err != nil {
+			return err
+		}
+		if _, err := t.Do(req, &job); err != nil {
+			return err
+		}
+		return nil
+	}
+	jobFinished := func() bool {
+		switch job.Status {
+		case JobStatusInProgress:
+			return false
+		default:
+			return true
+		}
+	}
+
+	_, err := t.Do(req, &job)
+	if err != nil {
+		return job, err
+	}
+	if jobFinished() {
+		return job, nil
+	}
+	jobRequestPath = fmt.Sprintf("/jobs/%s", job.JobId)
+
+	timeout := time.NewTicker(t.timeout())
+	defer timeout.Stop()
+	ticker := time.NewTicker(t.delay())
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := getJob(); err != nil {
+				return job, err
+			}
+			if jobFinished() {
+				return job, nil
+			}
+		case <-timeout.C:
+			return job, fmt.Errorf("timeout waiting for job to finish: %#v", job)
+		}
+	}
+
+	return job, fmt.Errorf("unexpected")
 }
 
 func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {
@@ -839,7 +964,7 @@ func (t *Array) WWN(id int) string {
 func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	var disk array.Disk
 	driverData := make(map[string]any)
-	volume, err := t.addVolume(opt.Name, opt.Size)
+	volume, err := t.addVolume(opt.Volume)
 	if err != nil {
 		return disk, err
 	}
@@ -851,10 +976,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 		Volume: OptVolume{
 			ID: volume.VolumeId,
 		},
-		Mapping: OptMapping{
-			Mappings: opt.Mappings,
-			LUN:      opt.LUN,
-		},
+		Mapping: opt.Mapping,
 	})
 	if err != nil {
 		return disk, err
@@ -864,36 +986,64 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) addVolume(name, size string) (hocVolume, error) {
-	if name == "" {
+func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
+	if opt.Name == "" {
 		return hocVolume{}, fmt.Errorf("--name is required")
 	}
-	if size == "" {
+	if opt.Size == "" {
 		return hocVolume{}, fmt.Errorf("--size is required")
 	}
-	sizeBytes, err := sizeconv.FromSize(size)
+	sizeBytes, err := sizeconv.FromSize(opt.Size)
 	if err != nil {
 		return hocVolume{}, err
+	}
+	var dkcDataSavingTypeOptions []string
+	if opt.Deduplication {
+		dkcDataSavingTypeOptions = append(dkcDataSavingTypeOptions, "DEDUPLICATION")
+	}
+	if opt.Compression {
+		dkcDataSavingTypeOptions = append(dkcDataSavingTypeOptions, "COMPRESSION")
 	}
 	params := map[string]string{
-		"names": name,
+		"names": opt.Name,
 	}
 	data := map[string]string{
-		"subtype":     "regular",
-		"provisioned": fmt.Sprint(sizeBytes),
+		"poolId":            opt.PoolId,
+		"capacityInBytes":   fmt.Sprint(sizeBytes),
+		"label":             opt.Name,
+		"dkcDataSavingType": strings.Join(dkcDataSavingTypeOptions, "_AND_"),
 	}
-	req, err := t.newRequest(http.MethodPost, "/volumes", params, data)
+	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
+	req, err := t.newRequest(http.MethodPost, path, params, data)
 	if err != nil {
 		return hocVolume{}, err
 	}
-	var responseData hocResponseVolumes
-	if _, err := t.Do(req, &responseData); err != nil {
-		return hocVolume{}, err
+	var volume hocVolume
+	job, err := t.DoJob(req)
+	if err != nil {
+		return volume, err
 	}
-	if len(responseData.Resources) == 0 {
-		return hocVolume{}, fmt.Errorf("no volume item in response")
+	volumeId := findVolumeIdInJob(job)
+	if volumeId < 0 {
+		return volume, fmt.Errorf("volumme id not found in job reports")
 	}
-	return responseData.Resources[0], nil
+	return t.getVolume(OptVolume{ID: volumeId})
+}
+
+func findVolumeIdInJob(job hocJob) int {
+	for _, report := range job.Reports {
+		if s, ok := report.ReportMessage.Parameters["volumeId"]; !ok {
+			continue
+		} else {
+			s = strings.Fields(s)[0]
+			if i, err := strconv.Atoi(s); err != nil {
+				return -1
+			} else {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func (t *Array) getHostName(hbaID string) (string, error) {
@@ -1261,11 +1411,11 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 		queryOpt OptGetItems
 	)
 	if opt.ID > 0 {
-		queryOpt.Filter = fmt.Sprintf("volumeId='%d'", opt.ID)
+		queryOpt.Filter = fmt.Sprintf("volumeId:%d", opt.ID)
 	} else if opt.Name != "" {
-		queryOpt.Filter = fmt.Sprintf("label='%s'", opt.Name)
+		queryOpt.Filter = fmt.Sprintf("label:%s", opt.Name)
 	} else if opt.Serial != "" {
-		queryOpt.Filter = fmt.Sprintf("serial='%s'", opt.Serial)
+		queryOpt.Filter = fmt.Sprintf("serial:%s", opt.Serial)
 	} else {
 		return volume, fmt.Errorf("id, name and serial are empty. refuse to get all volumes")
 	}

@@ -15,6 +15,8 @@ var (
 	mappings          []string
 	hostGroups        []string
 	lun               int
+	compression       bool
+	deduplication     bool
 )
 
 func useFlagVolumeID(cmd *cobra.Command) {
@@ -63,4 +65,12 @@ func useFlagMapping(cmd *cobra.Command) {
 
 func useFlagHostGroup(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&hostGroups, "hostGroup", []string{}, "can be specified multiple times")
+}
+
+func useFlagCompression(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&compression, "compression", false, "activate volume compression")
+}
+
+func useFlagDeduplication(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&deduplication, "deduplication", false, "activate volume data deduplication")
 }
