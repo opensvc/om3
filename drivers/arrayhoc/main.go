@@ -23,6 +23,10 @@ import (
 )
 
 var (
+	HostModeOptionVeritasDatabaseEditionAdvancedCluster      = 2
+	HostModeOptionVeritasClusterServer                       = 22
+	HostModeOptionSupportSPC3BehaviorOnPersistentReservation = 25
+
 	RenewStatus    = 401
 	RequestTimeout = 10 * time.Second
 	DefaultDelay   = 1 * time.Second
@@ -49,9 +53,11 @@ type (
 	}
 
 	OptMapping struct {
-		Mappings       []string
-		HostGroupNames []string
-		LUN            int
+		Mappings          []string
+		HostGroupNames    []string
+		LUN               int
+		VolumeIdRangeFrom int
+		VolumeIdRangeTo   int
 	}
 
 	OptVolume struct {
@@ -97,9 +103,70 @@ type (
 		Mapping OptMapping
 	}
 
+	OptAttach struct {
+		StorageSystemId      string            `json:"storageSystemId,omitempty"`
+		IntendedImageType    string            `json:"intendedImageType,omitempty"`
+		Volumes              []OptAttachVolume `json:"volumes,omitempty"`
+		Ports                []OptAttachPort   `json:"ports,omitempty"`
+		EnableLUNUnification bool              `json:"enableLunUnification,omitempty"`
+		EnableZoning         *bool             `json:"enableZoning,omitempty"`
+		HostModeOptions      []int             `json:"hostModeOptions,omitempty"`
+	}
+
+	OptAttachPort struct {
+		ServerId   int      `json:"serverId,omitempty"`
+		ServerWWNs []string `json:"serverWwns,omitempty"`
+		PortIds    []string `json:"portIds,omitempty"`
+	}
+
+	OptAttachVolume struct {
+		VolumeId int `json:"volumeId,omitempty"`
+		LUN      int `json:"lun,omitempty"`
+	}
+
 	Array struct {
 		*array.Array
 		token string
+	}
+
+	hocPort struct {
+		StoragePortId         string   `json:"storagePortId,omitempty"`
+		StorageSystemId       string   `json:"storageSystemId,omitempty"`
+		StorageSystemName     string   `json:"storageSystemName,omitempty"`
+		WWN                   string   `json:"wwn,omitempty"`
+		Attributes            []string `json:"attributes,omitempty"`
+		Speed                 string   `json:"speed,omitempty"`
+		Type                  string   `json:"type,omitempty"`
+		LoopId                string   `json:"loopId,omitempty"`
+		Topology              string   `json:"topology,omitempty"`
+		SecuritySwitchEnabled bool     `json:"securitySwitchEnabled,omitempty"`
+		VSMPort               bool     `json:"vsmPort,omitempty"`
+		ISCSIPortInformation  any      `json:"iscsiPortInformation,omitempty"`
+		T10PIStatus           any      `json:"t10PiStatus,omitempty"`
+	}
+
+	hocServer struct {
+		ServerId                      int                          `json:"serverId,omitempty"`
+		Protocol                      string                       `json:"protocol,omitempty"`
+		ServerName                    string                       `json:"serverName,omitempty"`
+		Description                   string                       `json:"description,omitempty"`
+		IpAddress                     *string                      `json:"ipAddress,omitempty"`
+		WWPNs                         []string                     `json:"wwpns,omitempty"`
+		wwpnsWithUserDefinedName      []hocWWPNWithUserDefinedName `json:"wwpnsWithUserDefinedName,omitempty"`
+		ISCSINames                    []any                        `json:"iscsiNames,omitempty"`
+		ISCSINamesWithUserDefinedName []any                        `json:"iscsiNamesWithUserDefinedName,omitempty"`
+		OSType                        string                       `json:"osType,omitempty"`
+		CHAPUser                      *string                      `json:"chapUser,omitempty"`
+		AttachedVolumeCount           int                          `json:"attachedVolumeCount,omitempty"`
+		DataProtectionSummary         any                          `json:"dataProtectionSummary,omitempty"`
+		DPStatus                      string                       `json:"dpStatus,omitempty"`
+		StorageSystemIds              []string                     `json:"storageSystemIds,omitempty"`
+		StorageSystems                []any                        `json:"storageSystems,omitempty"`
+	}
+
+	hocWWPNWithUserDefinedName struct {
+		WWPN                string `json:"wwpn,omitempty"`
+		WWPNUserDefinedName string `json:"wwpnUserDefinedName,omitempty"`
 	}
 
 	hocStorageSystem struct {
@@ -416,9 +483,11 @@ func (t *Array) Run(args []string) error {
 						Serial: serial,
 					},
 					Mapping: OptMapping{
-						Mappings:       mappings,
-						HostGroupNames: hostGroups,
-						LUN:            lun,
+						Mappings:          mappings,
+						HostGroupNames:    hostGroups,
+						LUN:               lun,
+						VolumeIdRangeFrom: volumeIdRangeFrom,
+						VolumeIdRangeTo:   volumeIdRangeTo,
 					},
 				}
 				if data, err := t.MapDisk(opt); err != nil {
@@ -434,6 +503,8 @@ func (t *Array) Run(args []string) error {
 		useFlagLUN(cmd)
 		useFlagHostGroup(cmd)
 		useFlagSerial(cmd)
+		useFlagVolumeIdRangeFrom(cmd)
+		useFlagVolumeIdRangeTo(cmd)
 		return cmd
 	}
 	newDelDiskCmd := func() *cobra.Command {
@@ -474,9 +545,11 @@ func (t *Array) Run(args []string) error {
 						Deduplication: deduplication,
 					},
 					Mapping: OptMapping{
-						Mappings:       mappings,
-						LUN:            lun,
-						HostGroupNames: hostGroups,
+						Mappings:          mappings,
+						LUN:               lun,
+						HostGroupNames:    hostGroups,
+						VolumeIdRangeFrom: volumeIdRangeFrom,
+						VolumeIdRangeTo:   volumeIdRangeTo,
 					},
 				}
 				if data, err := t.AddDisk(opt); err != nil {
@@ -494,6 +567,8 @@ func (t *Array) Run(args []string) error {
 		useFlagHostGroup(cmd)
 		useFlagCompression(cmd)
 		useFlagDeduplication(cmd)
+		useFlagVolumeIdRangeFrom(cmd)
+		useFlagVolumeIdRangeTo(cmd)
 		return cmd
 	}
 	newGetCmd := func() *cobra.Command {
@@ -501,6 +576,24 @@ func (t *Array) Run(args []string) error {
 			Use:   "get",
 			Short: "get commands",
 		}
+		return cmd
+	}
+	newGetServersCmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "servers",
+			Short: "get servers",
+			RunE: func(_ *cobra.Command, _ []string) error {
+				opt := OptGetItems{
+					Filter: filter,
+				}
+				data, err := t.GetServers(opt)
+				if err != nil {
+					return err
+				}
+				return dump(data)
+			},
+		}
+		useFlagFilter(cmd)
 		return cmd
 	}
 	newGetVolumesCmd := func() *cobra.Command {
@@ -682,6 +775,7 @@ func (t *Array) Run(args []string) error {
 	getCmd.AddCommand(newGetDisksCmd())
 	getCmd.AddCommand(newGetStorageSystemCmd())
 	getCmd.AddCommand(newGetStorageSystemsCmd())
+	getCmd.AddCommand(newGetServersCmd())
 	getCmd.AddCommand(newGetVolumesCmd())
 	parent.AddCommand(getCmd)
 
@@ -1061,33 +1155,6 @@ func findVolumeIdInJob(job hocJob) int {
 	return -1
 }
 
-func (t *Array) getHostName(hbaID string) (string, error) {
-	/*
-		opt := OptGetItems{
-			Filter: fmt.Sprintf("wwns='%s'", hbaID),
-		}
-		hosts, err := t.GetHosts(opt)
-		if err != nil {
-			return "", err
-		}
-		l := make([]string, 0)
-		for _, host := range hosts {
-			if !host.IsLocal {
-				continue
-			}
-			l = append(l, hosts[0].Name)
-		}
-		if n := len(l); n == 1 {
-			return l[0], nil
-		} else if n == 0 {
-			return "", fmt.Errorf("no host found for hba id %s", hbaID)
-		} else {
-			return "", fmt.Errorf("too many hosts found for hba id %s: %s", hbaID, l)
-		}
-	*/
-	return "", fmt.Errorf("TODO")
-}
-
 func formatWWN(s string) (string, error) {
 	if strings.HasPrefix(s, "0x") {
 		s = s[2:]
@@ -1095,312 +1162,195 @@ func formatWWN(s string) (string, error) {
 	if len(s) != 16 {
 		return "", fmt.Errorf("input wwn must be formatted as 524a9373b4a75e11 or 0x524a9373b4a75e11")
 	}
-	s = strings.ToUpper(s)
-	return s[0:2] + ":" + s[2:4] + ":" + s[4:6] + ":" + s[6:8] + ":" + s[8:10] + ":" + s[10:12] + ":" + s[12:14] + ":" + s[14:], nil
+	return strings.ToUpper(s), nil
 }
 
-func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, error) {
-	/*
-		m := make(map[string][]string)
-		for _, mapping := range mappings {
-			elements := strings.Split(mapping, ":")
-			if len(elements) != 2 {
-				return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
+func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
+	portsByHostWWPN := make(map[string]OptAttachPort)
+	addPortsByHostWWPN := func(hostWWPN string, serverId int, storagePortId string) {
+		if port, ok := portsByHostWWPN[hostWWPN]; !ok {
+			portsByHostWWPN[hostWWPN] = OptAttachPort{
+				ServerId:   serverId,
+				PortIds:    []string{storagePortId},
+				ServerWWNs: []string{hostWWPN},
 			}
-			hbaID := elements[0]
-			wwn, err := formatWWN(hbaID)
-			if err != nil {
-				return nil, err
-			}
-			if len(elements[1]) == 0 {
-				return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-			}
-			targets := strings.Split(elements[1], ",")
-			if len(targets) == 0 {
-				return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-			}
-			hostName, err := t.getHostName(wwn)
-			if err != nil {
-				return nil, err
-			}
-			for _, target := range targets {
-				wwn, err := formatWWN(target)
-				if err != nil {
-					return nil, err
-				}
-				opt := OptGetItems{
-					Filter: fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn),
-				}
-				networkInterfaces, err := t.GetNetworkInterfaces(opt)
-				if err != nil {
-					return nil, err
-				}
-				if len(networkInterfaces) == 0 {
-					continue
-				}
-				if v, ok := m[hostName]; ok {
-					m[hostName] = append(v, wwn)
-				} else {
-					m[hostName] = []string{wwn}
-				}
-			}
+		} else {
+			port.PortIds = append(port.PortIds, storagePortId)
+			portsByHostWWPN[hostWWPN] = port
 		}
-		return m, nil
-	*/
-	return nil, fmt.Errorf("TODO")
-}
+	}
 
-func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (hocVolume, error) {
-	params := map[string]string{
-		"volume_names": volumeName,
-	}
-	if hostName != "" {
-		params["host_names"] = hostName
-	}
-	if hostGroupName != "" {
-		params["host_group_names"] = hostGroupName
-	}
-	if lun >= 0 {
-		params["lun"] = fmt.Sprint(lun)
-	}
-	/*
-		req, err := t.newRequest(http.MethodPost, "/connections", params, nil)
+	// servers caching
+	servers := make(map[string]hocServer)
+	cachingGetServer := func(s string) (hocServer, error) {
+		server, ok := servers[s]
+		if ok {
+			return server, nil
+		}
+		server, err := t.GetServerWithWWPN(s)
 		if err != nil {
-			return hocVolume{}, err
+			return server, err
 		}
-			var responseData hocResponseVolumeConnections
-			_, err = t.Do(req, &responseData)
-			if err != nil {
-				return hocVolume{}, err
-			}
-			if len(responseData.Resources) == 0 {
-				return hocVolume{}, fmt.Errorf("no connection item in response")
-			}
-			return responseData.Resources[0], nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
-}
+		servers[s] = server
+		return server, nil
+	}
 
-func (t *Array) deleteHostGroupVolumeConnections(volumeName string) (hocVolume, error) {
-	/*
-		opt := OptGetItems{
-			Filter: fmt.Sprintf("volume.name='%s'", volumeName),
+	// ports caching
+	ports := make(map[string]hocPort)
+	cachingGetPort := func(s string) (hocPort, error) {
+		port, ok := ports[s]
+		if ok {
+			return port, nil
 		}
-		conns, err := t.GetConnections(opt)
+		port, err := t.GetPortWithWWPN(s)
 		if err != nil {
-			return []hocVolumeConnection{}, nil
+			return port, err
 		}
-		hostGroups := make(map[string]any, 0)
-		for _, conn := range conns {
-			if conn.HostGroup.Name != "" {
-				hostGroups[conn.HostGroup.Name] = nil
-			}
-		}
-		if len(hostGroups) > 0 {
-			params := map[string]string{
-				"volume_names":     volumeName,
-				"host_group_names": strings.Join(xmap.Keys(hostGroups), ","),
-			}
-			req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
-			if err != nil {
-				return conns, err
-			}
-			var responseData any
-			_, err = t.Do(req, &responseData)
-			if err != nil {
-				return conns, err
-			}
-		}
-		return conns, nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
-}
+		ports[s] = port
+		return port, nil
+	}
 
-func (t *Array) deleteHostVolumeConnections(volumeName string) (hocVolume, error) {
-	/*
-		opt := OptGetItems{
-			Filter: fmt.Sprintf("volume.name='%s'", volumeName),
+	for _, s := range mapping.Mappings {
+		elements := strings.Split(s, ":")
+		if len(elements) != 2 {
+			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
 		}
-		conns, err := t.GetConnections(opt)
+		hbaID := elements[0]
+		hostWWPN, err := formatWWN(hbaID)
 		if err != nil {
-			return []hocVolumeConnection{}, nil
+			return err
 		}
-		hosts := make(map[string]any, 0)
-		for _, conn := range conns {
-			if conn.Host.Name != "" {
-				hosts[conn.Host.Name] = nil
-			}
+		if len(elements[1]) == 0 {
+			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
 		}
-		if len(hosts) > 0 {
-			params := map[string]string{
-				"volume_names": volumeName,
-				"host_names":   strings.Join(xmap.Keys(hosts), ","),
-			}
-			req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		targets := strings.Split(elements[1], ",")
+		if len(targets) == 0 {
+			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
+		}
+		server, err := cachingGetServer(hostWWPN)
+		if err != nil {
+			return nil
+		}
+		for _, target := range targets {
+			targetWWPN, err := formatWWN(target)
 			if err != nil {
-				return conns, err
+				return err
 			}
-			var responseData any
-			_, err = t.Do(req, &responseData)
+			port, err := cachingGetPort(targetWWPN)
 			if err != nil {
-				return conns, err
+				return nil
 			}
+			addPortsByHostWWPN(hostWWPN, server.ServerId, port.StoragePortId)
 		}
-		return conns, nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
-}
+	}
+	for _, port := range portsByHostWWPN {
+		opt := OptAttach{
+			StorageSystemId:      t.storageSystemId(),
+			IntendedImageType:    "LINUX",
+			EnableLUNUnification: true,
+			Volumes: []OptAttachVolume{
+				OptAttachVolume{
+					VolumeId: volume.VolumeId,
+				},
+			},
+			Ports: []OptAttachPort{
+				port,
+			},
+			HostModeOptions: []int{
+				HostModeOptionVeritasDatabaseEditionAdvancedCluster,
+				HostModeOptionVeritasClusterServer,
+				HostModeOptionSupportSPC3BehaviorOnPersistentReservation,
+			},
+		}
+		if mapping.LUN >= 0 {
+			opt.Volumes[0].LUN = mapping.LUN
+		}
 
-func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
-	params := map[string]string{
-		"volume_names": volumeName,
-	}
-	if hostName != "" {
-		params["host_names"] = hostName
-	}
-	if hostGroupName != "" {
-		params["host_group_names"] = hostGroupName
-	}
-	req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
-	if err != nil {
-		return err
-	}
-	var responseData any
-	_, err = t.Do(req, &responseData)
-	if err != nil {
-		return err
+		req, err := t.newRequest(http.MethodPost, "/volume-manager/attach", nil, opt)
+		if err != nil {
+			return err
+		}
+		job, err := t.DoJob(req)
+		if err != nil {
+			return err
+		}
+		if job.Status == JobStatusFailed {
+			return fmt.Errorf("job failed: %#v", job)
+		}
 	}
 	return nil
 }
 
-func (t *Array) UnmapDisk(opt OptUnmapDisk) (hocVolume, error) {
-	/*
-		if err := validateOptVolume(opt.Volume); err != nil {
-			return nil, err
-		}
-		if err := validateOptMapping(opt.Mapping); err != nil {
-			return nil, err
-		}
-		volume, err := t.getVolume(opt.Volume)
-		if err != nil {
-			return nil, err
-		}
-		ConnectionsDeleted := make([]hocVolumeConnection, 0)
-		hostGroupsDeleted := make(map[string]any)
-		switch {
-		case len(mappings) > 0:
-			hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
-			if err != nil {
-				return nil, err
-			}
-			for hostName, _ := range hosts {
-				queryOpt := OptGetItems{
-					Filter: fmt.Sprintf("volume.name='%s' and host.name='%s'", volume.Label, hostName),
-				}
-				conns, err := t.GetConnections(queryOpt)
-				if err != nil {
-					return nil, err
-				}
-				if len(conns) < 1 {
-					return nil, fmt.Errorf("connection not found: volume.name='%s' and host.name='%s'", volume.Label, hostName)
-				} else if len(conns) > 1 {
-					return nil, fmt.Errorf("too many connections found: %d matches with filter volume.name='%s' and host.name='%s'", len(conns), volume.Label, hostName)
-				}
-				if err := t.unmapVolume(volume.Label, hostName, ""); err != nil {
-					return nil, err
-				}
-				ConnectionsDeleted = append(ConnectionsDeleted, conns[0])
-			}
-		default:
-			queryOpt := OptGetItems{
-				Filter: fmt.Sprintf("volume.name='%s'", volume.Label),
-			}
-			conns, err := t.GetConnections(queryOpt)
-			if err != nil {
-				return nil, err
-			}
-				for _, conn := range conns {
-					switch {
-					case opt.Mapping.HostName != "":
-						if conn.Host.Name != opt.Mapping.HostName {
-							continue
-						}
-						if err := t.unmapVolume(volume.Label, opt.Mapping.HostName, ""); err != nil {
-							return ConnectionsDeleted, err
-						} else {
-							ConnectionsDeleted = append(ConnectionsDeleted, conn)
-						}
-					case opt.Mapping.HostGroupName != "":
-						if conn.HostGroup.Name != opt.Mapping.HostGroupName {
-							continue
-						}
-						if _, ok := hostGroupsDeleted[opt.Mapping.HostGroupName]; ok {
-							continue
-						} else if err := t.unmapVolume(volume.Label, "", opt.Mapping.HostGroupName); err != nil {
-							return ConnectionsDeleted, err
-						} else {
-							ConnectionsDeleted = append(ConnectionsDeleted, conn)
-							hostGroupsDeleted[opt.Mapping.HostGroupName] = nil
-						}
-					case conn.HostGroup.Name != "":
-						if _, ok := hostGroupsDeleted[conn.HostGroup.Name]; ok {
-							continue
-						} else if err := t.unmapVolume(volume.Label, "", conn.HostGroup.Name); err != nil {
-							return ConnectionsDeleted, err
-						} else {
-							ConnectionsDeleted = append(ConnectionsDeleted, conn)
-							hostGroupsDeleted[conn.HostGroup.Name] = nil
-						}
-					case conn.Host.Name != "":
-						if err := t.unmapVolume(volume.Label, conn.Host.Name, ""); err != nil {
-							return ConnectionsDeleted, err
-						} else {
-							ConnectionsDeleted = append(ConnectionsDeleted, conn)
-						}
-					}
-				}
-		}
-		return ConnectionsDeleted, nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
+func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
+	var disk array.Disk
+
+	if err := validateOptVolume(opt.Volume); err != nil {
+		return disk, err
+	}
+	filter := opt.Volume.Filter()
+	if filter == "" {
+		return disk, fmt.Errorf("no volume selector")
+	}
+	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
+	if err != nil {
+		return disk, err
+	}
+	if n := len(volumes); n == 0 {
+		return disk, fmt.Errorf("no volume found for selector %s", filter)
+	} else if n > 1 {
+		return disk, fmt.Errorf("%d volumes found for selector %s", n, filter)
+	}
+
+	volume := volumes[0]
+
+	if err := t.detachAll(volume); err != nil {
+		return disk, err
+	}
+
+	disk.DiskID = t.WWN(volume.VolumeId)
+	disk.DevID = fmt.Sprint(volume.VolumeId)
+	driverData := make(map[string]any)
+	driverData["volume"] = volume
+	disk.DriverData = driverData
+
+	return disk, nil
 }
 
-func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
+func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
+	var disk array.Disk
+
 	if err := validateOptVolume(opt.Volume); err != nil {
-		return nil, err
+		return disk, err
 	}
 	if err := validateOptMapping(opt.Mapping); err != nil {
-		return nil, err
+		return disk, err
 	}
-	/*
-		volume, err := t.getVolume(opt.Volume)
-		if err != nil {
-			return nil, err
-		}
-				ConnectionsAdded := make([]hocVolumeConnection, 0)
-				switch {
-				case len(opt.Mapping.Mappings) > 0:
-					hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
-					if err != nil {
-						return nil, err
-					}
-					for hostName, _ := range hosts {
-						if conn, err := t.mapVolume(volume.Label, hostName, "", opt.Mapping.LUN); err != nil {
-							return nil, err
-						} else {
-							ConnectionsAdded = append(ConnectionsAdded, conn)
-						}
-					}
-						case opt.Mapping.HostGroupName != "":
-							if conn, err := t.mapVolume(volume.Label, "", opt.Mapping.HostGroupName, opt.Mapping.LUN); err != nil {
-								return ConnectionsAdded, err
-							} else {
-								ConnectionsAdded = append(ConnectionsAdded, conn)
-							}
-				}
-			return ConnectionsAdded, nil
-	*/
-	return hocVolume{}, fmt.Errorf("TODO")
+	volume, err := t.getVolume(opt.Volume)
+	if err != nil {
+		return disk, err
+	}
+	if err := t.mapDisk(volume, opt.Mapping); err != nil {
+		return disk, err
+	}
+	volume, err = t.getVolume(opt.Volume)
+	if err != nil {
+		return disk, err
+	}
+
+	disk.DiskID = t.WWN(volume.VolumeId)
+	disk.DevID = fmt.Sprint(volume.VolumeId)
+	driverData := make(map[string]any)
+	driverData["volume"] = volume
+	disk.DriverData = driverData
+
+	return disk, nil
+}
+
+func (t *Array) mapDisk(volume hocVolume, mapping OptMapping) error {
+	if len(mapping.Mappings) > 0 {
+		return t.attachWithMappings(volume, mapping)
+	}
+	return fmt.Errorf("no mappings... todo by hostgroup ?")
 }
 
 func (opt OptVolume) Filter() string {
@@ -1561,6 +1511,69 @@ func (t *Array) GetStorageSystems(opt OptGetItems) ([]hocStorageSystem, error) {
 	return storageSystems, nil
 }
 
+func (t *Array) GetPortWithWWPN(wwpn string) (hocPort, error) {
+	opt := OptGetItems{Filter: "wwn:" + wwpn}
+	ports, err := t.GetStoragePorts(opt)
+	if err != nil {
+		return hocPort{}, err
+	}
+	if n := len(ports); n == 0 {
+		return hocPort{}, fmt.Errorf("no port found with wwpn %s", wwpn)
+	} else if n > 1 {
+		return hocPort{}, fmt.Errorf("%d ports found with wwpn %s", n, wwpn)
+	} else {
+		return ports[0], nil
+	}
+}
+
+func (t *Array) GetServerWithWWPN(wwpn string) (hocServer, error) {
+	opt := OptGetItems{Filter: "wwpnsWithUserDefinedName.wwpn:" + wwpn}
+	servers, err := t.GetServers(opt)
+	if err != nil {
+		return hocServer{}, err
+	}
+	if n := len(servers); n == 0 {
+		return hocServer{}, fmt.Errorf("no server found with wwpn %s", wwpn)
+	} else if n > 1 {
+		return hocServer{}, fmt.Errorf("%d servers found with wwpn %s", n, wwpn)
+	} else {
+		return servers[0], nil
+	}
+}
+
+func (t *Array) GetServers(opt OptGetItems) ([]hocServer, error) {
+	params := getParams(opt)
+	l, err := t.doGet("GET", "/compute/servers", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	servers := make([]hocServer, len(l))
+	for i, item := range l {
+		var server hocServer
+		b, _ := json.Marshal(item)
+		json.Unmarshal(b, &server)
+		servers[i] = server
+	}
+	return servers, nil
+}
+
+func (t *Array) GetStoragePorts(opt OptGetItems) ([]hocPort, error) {
+	params := getParams(opt)
+	path := fmt.Sprintf("/storage-systems/%s/storage-ports", t.storageSystemId())
+	l, err := t.doGet("GET", path, params, nil)
+	if err != nil {
+		return nil, err
+	}
+	ports := make([]hocPort, len(l))
+	for i, item := range l {
+		var port hocPort
+		b, _ := json.Marshal(item)
+		json.Unmarshal(b, &port)
+		ports[i] = port
+	}
+	return ports, nil
+}
+
 func (t *Array) GetVolumes(opt OptGetItems) ([]hocVolume, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
@@ -1612,12 +1625,6 @@ func (t *Array) GetDisks(opt OptGetItems) (any, error) {
 func (t *Array) GetStoragePools(opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/storage-pools", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
-}
-
-func (t *Array) GetStoragePorts(opt OptGetItems) (any, error) {
-	params := getParams(opt)
-	path := fmt.Sprintf("/storage-systems/%s/storage-ports", t.storageSystemId())
 	return t.doGet("GET", path, params, nil)
 }
 
