@@ -28,6 +28,12 @@ var (
 )
 
 type (
+	itemser interface {
+		Items() []any
+		ItemsTotal() int
+		ItemsNextToken() string
+	}
+
 	resizeMethod int
 
 	OptGetItems struct {
@@ -178,18 +184,46 @@ type (
 		VirtualVolumeId         int    `json:"virtualVolumeId,omitempty"`
 	}
 
+	hocBaseResponse struct {
+		Total     int `json:"total,omitempty"`
+		NextToken any `json:"nextToken,omitempty"`
+	}
+
 	hocResponse struct {
-		Total     int   `json:"total,omitempty"`
-		NextToken any   `json:"next_token,omitempty"`
+		hocBaseResponse
 		Resources []any `json:"resources,omitempty"`
+	}
+
+	hocResponseJobs struct {
+		hocBaseResponse
+		Jobs []any `json:"jobs,omitempty"`
 	}
 
 	hocResponseVolumes struct {
 		Total     int         `json:"total,omitempty"`
-		NextToken any         `json:"next_token,omitempty"`
+		NextToken any         `json:"nextToken,omitempty"`
 		Resources []hocVolume `json:"resources,omitempty"`
 	}
 )
+
+func (t hocBaseResponse) ItemsTotal() int {
+	return t.Total
+}
+
+func (t hocBaseResponse) ItemsNextToken() string {
+	if t.NextToken == nil {
+		return ""
+	}
+	return t.NextToken.(string)
+}
+
+func (t hocResponseJobs) Items() []any {
+	return t.Jobs
+}
+
+func (t hocResponse) Items() []any {
+	return t.Resources
+}
 
 const (
 	// Resize methods
@@ -693,7 +727,7 @@ func (t *Array) newToken() error {
 	return nil
 }
 
-func (t *Array) Do(req *http.Request, v interface{}, reestablishSession bool) (*http.Response, error) {
+func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := t.client().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("do request failed: %w", err)
@@ -788,7 +822,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (hocVolume, error) {
 		return hocVolume{}, err
 	}
 	var responseData hocResponseVolumes
-	if _, err := t.Do(req, &responseData, true); err != nil {
+	if _, err := t.Do(req, &responseData); err != nil {
 		return hocVolume{}, err
 	}
 	if len(responseData.Resources) == 0 {
@@ -853,7 +887,7 @@ func (t *Array) addVolume(name, size string) (hocVolume, error) {
 		return hocVolume{}, err
 	}
 	var responseData hocResponseVolumes
-	if _, err := t.Do(req, &responseData, true); err != nil {
+	if _, err := t.Do(req, &responseData); err != nil {
 		return hocVolume{}, err
 	}
 	if len(responseData.Resources) == 0 {
@@ -970,7 +1004,7 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 			return hocVolume{}, err
 		}
 			var responseData hocResponseVolumeConnections
-			_, err = t.Do(req, &responseData, true)
+			_, err = t.Do(req, &responseData)
 			if err != nil {
 				return hocVolume{}, err
 			}
@@ -1022,7 +1056,7 @@ func (t *Array) deleteHostGroupVolumeConnections(volumeName string) (hocVolume, 
 				return conns, err
 			}
 			var responseData any
-			_, err = t.Do(req, &responseData, true)
+			_, err = t.Do(req, &responseData)
 			if err != nil {
 				return conns, err
 			}
@@ -1057,7 +1091,7 @@ func (t *Array) deleteHostVolumeConnections(volumeName string) (hocVolume, error
 				return conns, err
 			}
 			var responseData any
-			_, err = t.Do(req, &responseData, true)
+			_, err = t.Do(req, &responseData)
 			if err != nil {
 				return conns, err
 			}
@@ -1082,7 +1116,7 @@ func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
 		return err
 	}
 	var responseData any
-	_, err = t.Do(req, &responseData, true)
+	_, err = t.Do(req, &responseData)
 	if err != nil {
 		return err
 	}
@@ -1302,7 +1336,7 @@ func (t *Array) delVolume(opt OptDelDisk) (hocVolume, error) {
 		return hocVolume{}, err
 	}
 	var responseData hocResponseVolumes
-	_, err = t.Do(req, &responseData, true)
+	_, err = t.Do(req, &responseData)
 	if err != nil {
 		return hocVolume{}, err
 	}
@@ -1376,7 +1410,8 @@ func (t *Array) GetControllers(opt OptGetItems) (any, error) {
 func (t *Array) GetJobs(opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
 	path := fmt.Sprintf("/jobs")
-	return t.doGet("GET", path, params, nil)
+	var r hocResponseJobs
+	return t.doGetIn("GET", path, params, nil, &r)
 }
 
 func (t *Array) GetSystemTasks(opt OptGetItems) (any, error) {
@@ -1418,34 +1453,40 @@ func getParams(filter string) map[string]string {
 }
 
 func (t *Array) doGet(method string, path string, params map[string]string, data interface{}) ([]any, error) {
+	var r hocResponse
+	return t.doGetIn(method, path, params, data, &r)
+}
+
+func (t *Array) doGetIn(method string, path string, params map[string]string, data interface{}, r itemser) ([]any, error) {
 	req, err := t.newRequest(method, path, params, data)
 	if err != nil {
 		return nil, err
 	}
-	var r hocResponse
 	items := make([]any, 0)
-	_, err = t.Do(req, &r, true)
+	_, err = t.Do(req, r)
 	if err != nil {
 		return nil, err
 	}
-	for len(items) < r.Total {
-		for _, item := range r.Resources {
-			items = append(items, item)
+	for len(items) < r.ItemsTotal() {
+		itemsBatch := r.Items()
+		if len(itemsBatch) == 0 {
+			break
 		}
+		items = append(items, itemsBatch...)
 
-		if len(items) < r.Total {
-			if r.NextToken != nil {
+		if len(items) < r.ItemsTotal() {
+			if r.ItemsNextToken() != "" {
 				if params == nil {
-					params = map[string]string{"next_token": r.NextToken.(string)}
+					params = map[string]string{"nextToken": r.ItemsNextToken()}
 				} else {
-					params["next_token"] = r.NextToken.(string)
+					params["nextToken"] = r.ItemsNextToken()
 				}
 				req, err := t.newRequest(method, path, params, data)
 				if err != nil {
 					return nil, err
 				}
 
-				_, err = t.Do(req, r, false)
+				_, err = t.Do(req, r)
 				if err != nil {
 					return nil, err
 				}
