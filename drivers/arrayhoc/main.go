@@ -411,7 +411,7 @@ func (t *Array) Run(args []string) error {
 	newAddDiskCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "disk",
-			Short: "add a zvol-type dataset and map",
+			Short: "add a volume and map",
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptAddDisk{
 					Name:     name,
