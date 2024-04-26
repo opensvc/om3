@@ -1123,7 +1123,7 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 		"dkcDataSavingType": strings.Join(dkcDataSavingTypeOptions, "_AND_"),
 	}
 	if opt.VirtualStorageMachineId != "" {
-		data["VirtualStorageMachineId"] = opt.VirtualStorageMachineId
+		data["virtualStorageMachineId"] = opt.VirtualStorageMachineId
 	}
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
 	req, err := t.newRequest(http.MethodPost, path, params, data)
