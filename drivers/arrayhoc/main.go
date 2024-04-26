@@ -1077,17 +1077,18 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	disk.DriverData = driverData
 	disk.DiskID = t.WWN(volume.VolumeId)
 	disk.DevID = fmt.Sprint(volume.VolumeId)
-	conns, err := t.MapDisk(OptMapDisk{
-		Volume: OptVolume{
-			ID: volume.VolumeId,
-		},
-		Mapping: opt.Mapping,
-	})
+	disk.DriverData = driverData
+
+	if err := t.mapDisk(volume, opt.Mapping); err != nil {
+		return disk, err
+	}
+	volume, err = t.getVolume(OptVolume{ID: volume.VolumeId})
 	if err != nil {
 		return disk, err
 	}
-	driverData["mappings"] = conns
+	driverData["volume"] = volume
 	disk.DriverData = driverData
+
 	return disk, nil
 }
 
