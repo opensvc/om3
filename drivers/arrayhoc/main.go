@@ -1044,24 +1044,22 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (hocVolume, error) {
 			sizeBytes = volume.Size - sizeBytes
 		}
 	}
-	params := map[string]string{
-		"ids": fmt.Sprint(volume.VolumeId),
-	}
 	data := map[string]string{
-		"provisioned": fmt.Sprint(sizeBytes),
+		"capacityInBytes": fmt.Sprint(sizeBytes),
 	}
-	req, err := t.newRequest(http.MethodPatch, "/volumes", params, data)
+	path := fmt.Sprintf("/storage-systems/%s/volumes/%d", t.storageSystemId(), volume.VolumeId)
+	req, err := t.newRequest(http.MethodPost, path, nil, data)
 	if err != nil {
 		return hocVolume{}, err
 	}
-	var responseData hocResponseVolumes
-	if _, err := t.Do(req, &responseData); err != nil {
-		return hocVolume{}, err
+	job, err := t.DoJob(req)
+	if err != nil {
+		return volume, err
 	}
-	if len(responseData.Resources) == 0 {
-		return hocVolume{}, fmt.Errorf("no item in response")
+	if job.Status == JobStatusFailed {
+		return volume, fmt.Errorf("job failed: %#v", job)
 	}
-	return responseData.Resources[0], nil
+	return t.getVolume(OptVolume{ID: volume.VolumeId})
 }
 
 func (t *Array) WWN(id int) string {

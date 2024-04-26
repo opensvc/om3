@@ -789,14 +789,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section: "pool",
 		Types:   []string{"hoc"},
-		Option:  "start_ldev_id",
-		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.start_ldev_id"),
+		Option:  "volume_id_range_from",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.volume_id_range_from"),
 	},
 	{
 		Section: "pool",
 		Types:   []string{"hoc"},
-		Option:  "end_ldev_id",
-		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.end_ldev_id"),
+		Option:  "volume_id_range_to",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.volume_id_range_to"),
 	},
 	{
 		Section: "pool",
