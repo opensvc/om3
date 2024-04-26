@@ -799,12 +799,11 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.end_ldev_id"),
 	},
 	{
-		Section:   "pool",
-		Types:     []string{"hoc"},
-		Option:    "resource_group",
-		Default:   "0",
-		Converter: converters.Int,
-		Text:      keywords.NewText(fs, "text/kw/node/pool.hoc.resource_group"),
+		Section: "pool",
+		Types:   []string{"hoc"},
+		Option:  "vsm_id",
+		Default: "",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.vsm_id"),
 	},
 	{
 		Section:  "pool",

@@ -3,20 +3,21 @@ package arrayhoc
 import "github.com/spf13/cobra"
 
 var (
-	filter            string
-	volumeId          int
-	size              string
-	poolId            string
-	resourceGroup     string
-	name              string
-	serial            string
-	volumeIdRangeFrom int
-	volumeIdRangeTo   int
-	mappings          []string
-	hostGroups        []string
-	lun               int
-	compression       bool
-	deduplication     bool
+	filter                  string
+	volumeId                int
+	size                    string
+	poolId                  string
+	resourceGroup           string
+	name                    string
+	serial                  string
+	volumeIdRangeFrom       int
+	volumeIdRangeTo         int
+	mappings                []string
+	hostGroups              []string
+	lun                     int
+	compression             bool
+	deduplication           bool
+	virtualStorageMachineId string
 )
 
 func useFlagVolumeID(cmd *cobra.Command) {
@@ -65,6 +66,10 @@ func useFlagMapping(cmd *cobra.Command) {
 
 func useFlagHostGroup(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&hostGroups, "hostGroup", []string{}, "can be specified multiple times")
+}
+
+func useFlagVirtualStorageMachineId(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&virtualStorageMachineId, "vsm-id", "", "the optional virtual storage machine id")
 }
 
 func useFlagCompression(cmd *cobra.Command) {

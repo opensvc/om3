@@ -91,11 +91,12 @@ type (
 	}
 
 	OptAddVolume struct {
-		Name          string
-		Size          string
-		PoolId        string
-		Compression   bool
-		Deduplication bool
+		Name                    string
+		Size                    string
+		PoolId                  string
+		Compression             bool
+		Deduplication           bool
+		VirtualStorageMachineId string
 	}
 
 	OptAddDisk struct {
@@ -538,11 +539,12 @@ func (t *Array) Run(args []string) error {
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptAddDisk{
 					Volume: OptAddVolume{
-						Name:          name,
-						Size:          size,
-						PoolId:        poolId,
-						Compression:   compression,
-						Deduplication: deduplication,
+						Name:                    name,
+						Size:                    size,
+						PoolId:                  poolId,
+						Compression:             compression,
+						Deduplication:           deduplication,
+						VirtualStorageMachineId: virtualStorageMachineId,
 					},
 					Mapping: OptMapping{
 						Mappings:          mappings,
@@ -569,6 +571,7 @@ func (t *Array) Run(args []string) error {
 		useFlagDeduplication(cmd)
 		useFlagVolumeIdRangeFrom(cmd)
 		useFlagVolumeIdRangeTo(cmd)
+		useFlagVirtualStorageMachineId(cmd)
 		return cmd
 	}
 	newGetCmd := func() *cobra.Command {
@@ -1118,6 +1121,9 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 		"capacityInBytes":   fmt.Sprint(sizeBytes),
 		"label":             opt.Name,
 		"dkcDataSavingType": strings.Join(dkcDataSavingTypeOptions, "_AND_"),
+	}
+	if opt.VirtualStorageMachineId != "" {
+		data["VirtualStorageMachineId"] = opt.VirtualStorageMachineId
 	}
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
 	req, err := t.newRequest(http.MethodPost, path, params, data)
