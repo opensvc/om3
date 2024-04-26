@@ -956,6 +956,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section: "pool",
+		Option:  "pool_id",
+		Types:   []string{"hoc"},
+		Default: "",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.pool_id"),
+	},
+	{
+		Section: "pool",
 		Option:  "fs_type",
 		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure"},
 		Default: "xfs",
