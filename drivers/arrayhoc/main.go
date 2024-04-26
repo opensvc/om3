@@ -1106,25 +1106,26 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 	if err != nil {
 		return hocVolume{}, err
 	}
-	var dkcDataSavingTypeOptions []string
-	if opt.Deduplication {
-		dkcDataSavingTypeOptions = append(dkcDataSavingTypeOptions, "DEDUPLICATION")
-	}
-	if opt.Compression {
-		dkcDataSavingTypeOptions = append(dkcDataSavingTypeOptions, "COMPRESSION")
-	}
 	params := map[string]string{
 		"names": opt.Name,
 	}
 	data := map[string]string{
-		"poolId":            opt.PoolId,
-		"capacityInBytes":   fmt.Sprint(sizeBytes),
-		"label":             opt.Name,
-		"dkcDataSavingType": strings.Join(dkcDataSavingTypeOptions, "_AND_"),
+		"poolId":          opt.PoolId,
+		"capacityInBytes": fmt.Sprint(sizeBytes),
+		"label":           opt.Name,
 	}
+
 	if opt.VirtualStorageMachineId != "" {
 		data["virtualStorageMachineId"] = opt.VirtualStorageMachineId
 	}
+
+	switch {
+	case opt.Deduplication && opt.Compression:
+		data["dkcDataSavingType"] = "DEDUPLICATION_AND_COMPRESSION"
+	case opt.Compression:
+		data["dkcDataSavingType"] = "COMPRESSION"
+	}
+
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
 	req, err := t.newRequest(http.MethodPost, path, params, data)
 	if err != nil {
