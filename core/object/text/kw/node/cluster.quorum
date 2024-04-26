@@ -2,5 +2,5 @@ If `true`, when the cluster is split a vote happens on each cluster node.
 
 Each reachable node and each reachable arbitrator give their vote. If the
 votes is less than half the total number of nodes plus arbitrators, the
-node trigger a node fencing method defined by `split_action` (crash or
-reboot).
+node trigger a node fencing method defined by `node.split_action` (crash,
+reboot or disabled).
