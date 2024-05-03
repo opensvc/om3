@@ -489,7 +489,7 @@ func (t *Array) Run(args []string) error {
 	newAddDiskCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "disk",
-			Short: "add a zvol-type dataset and map",
+			Short: "add a volume and map",
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptAddDisk{
 					Name:     name,
@@ -920,7 +920,7 @@ func dump(data any) error {
 }
 
 func validateOptMapping(opt OptMapping) error {
-	if len(opt.Mappings) == 0 && opt.HostName == "" && hostGroup == "" {
+	if len(opt.Mappings) == 0 && opt.HostName == "" && opt.HostGroupName == "" {
 		return fmt.Errorf("--mapping, --host or --hostgroup is required")
 	}
 	if len(opt.Mappings) > 0 && opt.HostName != "" {

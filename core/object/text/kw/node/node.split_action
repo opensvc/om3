@@ -1,4 +1,4 @@
-The node suicide method to use when a cluster split occur and the node does
+The node suicide method to use when a cluster split occurs and the node does
 not have the quorum.
 
 This opting-out is meant to avoid double-start situations when the cluster
@@ -13,8 +13,7 @@ Possible values are:
 * `reboot`
 
   May be preferred when the node power-on is not easy. No remote access via
-  IPMI or equivallent for example.
-
+  IPMI or equivalent for example.
 
 * `disabled`
 

@@ -63,6 +63,7 @@ type (
 
 	Config interface {
 		Eval(key.T) (any, error)
+		GetInt(key.T) int
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string
@@ -234,6 +235,11 @@ func pk(poolName, s string) key.T {
 func (t *T) GetStrings(s string) []string {
 	k := pk(t.name, s)
 	return t.Config().GetStrings(k)
+}
+
+func (t *T) GetInt(s string) int {
+	k := pk(t.name, s)
+	return t.Config().GetInt(k)
 }
 
 func (t *T) GetString(s string) string {

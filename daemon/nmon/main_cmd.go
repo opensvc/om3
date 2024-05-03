@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	slitActions = map[string]func() error{
+	splitActions = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,
 		"disabled": func() error { return nil },
@@ -258,7 +258,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 		ProVoters:       len(t.livePeers) + len(arbitratorVotes),
 	}, t.labelLocalhost)
 
-	splitAction, ok := slitActions[action]
+	splitAction, ok := splitActions[action]
 	if !ok {
 		t.log.Errorf("invalid split action %s", action)
 		return

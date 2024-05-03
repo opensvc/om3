@@ -3,9 +3,11 @@ package driverdb
 import (
 	// Uncomment to load
 	_ "github.com/opensvc/om3/drivers/arrayfreenas"
+	_ "github.com/opensvc/om3/drivers/arrayhoc"
 	_ "github.com/opensvc/om3/drivers/arraypure"
 	_ "github.com/opensvc/om3/drivers/pooldirectory"
 	_ "github.com/opensvc/om3/drivers/poolfreenas"
+	_ "github.com/opensvc/om3/drivers/poolhoc"
 	_ "github.com/opensvc/om3/drivers/poolpure"
 	_ "github.com/opensvc/om3/drivers/poolshm"
 	_ "github.com/opensvc/om3/drivers/poolvirtual"
