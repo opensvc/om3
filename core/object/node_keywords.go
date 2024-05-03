@@ -1112,6 +1112,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/pool.compression"),
 	},
 	{
+		Section: "pool",
+		Types:   []string{"freenas"},
+		Option:  "dedup",
+		Default: "off",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.freenas.dedup"),
+	},
+	{
 		Section:   "pool",
 		Types:     []string{"dorado", "hoc"},
 		Option:    "dedup",

@@ -1485,6 +1485,8 @@ func (t *Array) detach(storageSystemId string, volumeId, serverId int) error {
 	if job.Status == JobStatusFailed {
 		return fmt.Errorf("job failed: %#v", job)
 	}
+	//{"size":200,"from":0,"track_total_hits":true,"sort":[{"startDate":{"order":"desc"}}],"query":{"match":{"parentJobId":"f360bfa2-6224-4f1d-9250-55644ecb1566"}}}
+
 	return nil
 }
 

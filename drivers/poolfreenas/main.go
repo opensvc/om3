@@ -51,8 +51,12 @@ func (t T) insecureTPC() bool {
 	return t.GetBool("insecureTPC")
 }
 
-func (t T) compression() bool {
-	return t.GetBool("compression")
+func (t T) compression() string {
+	return t.GetString("compression")
+}
+
+func (t T) dedup() string {
+	return t.GetString("compression")
 }
 
 func (t T) sparse() bool {
@@ -144,7 +148,7 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 		return []pool.Disk{}, err
 	}
 	disk.Driver = drvDisk
-	disk.ID = a.DiskID(*drvDisk)
+	disk.ID = a.DiskId(*drvDisk)
 	if paths, err := a.DiskPaths(*drvDisk); err != nil {
 		return []pool.Disk{disk}, err
 	} else {
@@ -159,19 +163,25 @@ func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, e
 		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
 	a := t.array()
-	blocksize := fmt.Sprint(*t.blocksize())
-	sparse := t.sparse()
-	insecureTPC := t.insecureTPC()
-	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-	drvName := t.diskgroup() + "/" + name
-	mapping := paths.Mapping()
-
-	drvDisk, err := a.AddDisk(drvName, drvSize, blocksize, sparse, insecureTPC, mapping, nil)
+	opt := arrayfreenas.AddDiskOptions{
+		AddZvolOptions: arrayfreenas.AddZvolOptions{
+			Name:          t.diskgroup() + "/" + name,
+			Size:          sizeconv.ExactBSizeCompact(float64(size)),
+			Blocksize:     fmt.Sprint(*t.blocksize()),
+			Sparse:        t.sparse(),
+			Compression:   t.compression(),
+			Deduplication: t.dedup(),
+		},
+		InsecureTPC: t.insecureTPC(),
+		Mapping:     paths.Mapping(),
+		LunId:       nil,
+	}
+	drvDisk, err := a.AddDisk(opt)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
 	disk.Driver = drvDisk
-	disk.ID = a.DiskID(*drvDisk)
+	disk.ID = a.DiskId(*drvDisk)
 	if paths, err := a.DiskPaths(*drvDisk); err != nil {
 		return []pool.Disk{disk}, err
 	} else {
