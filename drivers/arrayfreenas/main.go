@@ -1355,11 +1355,11 @@ func (t Array) GetDataset(id string) (*Dataset, error) {
 	}
 	var data Dataset
 	resp, err := t.Do(req, &data)
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
 	}
 	return &data, nil
 }
