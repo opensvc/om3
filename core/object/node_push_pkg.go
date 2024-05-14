@@ -1,8 +1,10 @@
 package object
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -52,46 +54,26 @@ func (t Node) LoadPkg() ([]packages.Pkg, error) {
 }
 
 func (t Node) pushPkg(data []packages.Pkg) error {
-	nodename := hostname.Hostname()
-	pkgAsList := func(t packages.Pkg) []string {
-		installedAt := ""
-		if !t.InstalledAt.IsZero() {
-			installedAt = t.InstalledAt.Format("2006-01-02 15:04:05")
-		}
-		return []string{
-			nodename,
-			t.Name,
-			t.Version,
-			t.Arch,
-			t.Type,
-			installedAt,
-			t.Sig,
-		}
-	}
-	pkgsAsList := func(t []packages.Pkg) [][]string {
-		l := make([][]string, len(t))
-		for i, p := range t {
-			l[i] = pkgAsList(p)
-		}
-		return l
-	}
-	vars := []string{
-		"pkg_nodename",
-		"pkg_name",
-		"pkg_version",
-		"pkg_arch",
-		"pkg_type",
-		"pkg_install_date",
-		"pkg_sig",
-	}
-	client, err := t.CollectorFeedClient()
+	url, err := t.Collector3RestAPIURL()
 	if err != nil {
 		return err
 	}
-	if response, err := client.Call("insert_pkg", vars, pkgsAsList(data)); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+	url.Path += "/oc3/daemon/system/package"
+	b, err := json.Marshal(map[string]any{"packages": data})
+	if err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
+	req.SetBasicAuth(hostname.Hostname(), rawconfig.GetNodeSection().UUID)
+	req.Header.Add("Content-Type", "application/json")
+	c := t.CollectorRestAPIClient()
+	response, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("do request: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
 	}
 	return nil
 }
