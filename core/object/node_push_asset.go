@@ -217,7 +217,7 @@ func (t Node) pushAsset(data asset.Data) error {
 	if err != nil {
 		return err
 	}
-	url.Path += "/daemon/system"
+	url.Path += "/oc3/daemon/system"
 	b, err := json.MarshalIndent(gen, "  ", "  ")
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
