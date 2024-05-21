@@ -261,7 +261,7 @@ func (t Node) pushAsset(data asset.Data) error {
 	if err != nil {
 		return err
 	}
-	url.Path += "/oc3/daemon/system"
+	url.Path += "/oc3/feed/system"
 	b, err := json.MarshalIndent(gen, "  ", "  ")
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
@@ -275,7 +275,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		return fmt.Errorf("do request: %w", err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 204 {
+	if response.StatusCode != 202 {
 		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
 	}
 

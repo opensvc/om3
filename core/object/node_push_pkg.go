@@ -58,8 +58,8 @@ func (t Node) pushPkg(data []packages.Pkg) error {
 	if err != nil {
 		return err
 	}
-	url.Path += "/oc3/daemon/system/package"
-	b, err := json.Marshal(map[string]any{"packages": data})
+	url.Path += "/oc3/feed/system"
+	b, err := json.Marshal(map[string]any{"package": data})
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
 	}
@@ -72,7 +72,7 @@ func (t Node) pushPkg(data []packages.Pkg) error {
 		return fmt.Errorf("do request: %w", err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 200 {
+	if response.StatusCode != 202 {
 		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
 	}
 	return nil
