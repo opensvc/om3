@@ -152,7 +152,7 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
 	a := t.array()
 	if len(wwid) != 32 {
-		return nil, fmt.Errorf("wwid %s is not 32 characters long")
+		return nil, fmt.Errorf("wwid %s is not 32 characters long", wwid)
 	}
 	devId, err := strconv.ParseInt(wwid[26:], 16, 64)
 	if err != nil {
