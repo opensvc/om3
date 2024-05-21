@@ -854,7 +854,7 @@ func (t Array) DelZvol(name string) (*Dataset, error) {
 }
 
 func (t Array) delISCSIExtent(extent ISCSIExtent) error {
-	path := fmt.Sprintf("/iscsi/extent/%s", extent.Id)
+	path := fmt.Sprintf("/iscsi/extent/%d", extent.Id)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
@@ -1355,11 +1355,11 @@ func (t Array) GetDataset(id string) (*Dataset, error) {
 	}
 	var data Dataset
 	resp, err := t.Do(req, &data)
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
 	}
 	return &data, nil
 }
@@ -1527,7 +1527,7 @@ func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets
 			return nil, err
 		}
 		if initiator == nil {
-			return nil, fmt.Errorf("initiator id %s not found", opt.InitiatorId)
+			return nil, fmt.Errorf("initiator id %d not found", opt.InitiatorId)
 		}
 		initiators = append(initiators, *initiator)
 	} else if opt.InitiatorName != "" {

@@ -71,9 +71,15 @@ func NewPath(namespace string, kind Kind, name string) (Path, error) {
 
 func NewPathFromStrings(namespace, kind, name string) (Path, error) {
 	var path Path
-	name = strings.ToLower(name)
-	namespace = strings.ToLower(namespace)
-	kind = strings.ToLower(kind)
+
+	// letter casing checks
+	if name != strings.ToLower(name) {
+		return path, fmt.Errorf("%w: uppercase letters are not allowed in path name", ErrInvalid)
+	}
+	if namespace != strings.ToLower(namespace) {
+		return path, fmt.Errorf("%w: uppercase letters are not allowed in path namespace", ErrInvalid)
+	}
+
 	// apply defaults
 	if kind == "" {
 		kind = "svc"
@@ -257,7 +263,7 @@ func (t Path) Match(pattern string) bool {
 		return true
 	}
 	l := strings.Split(pattern, "/")
-	f := fnmatch.FNM_IGNORECASE
+	f := 0
 	if strings.Contains(pattern, "**") {
 		s := t.FQN()
 		if fnmatch.Match(pattern, s, f) {
