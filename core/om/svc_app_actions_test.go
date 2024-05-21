@@ -29,7 +29,7 @@ func TestAppStop(t *testing.T) {
 	}{
 		"logInfo": {
 			[]string{"--rid", "app#1", "--log=debug"},
-			"line1\nline2",
+			"app#1: stdout: line2",
 		},
 		"logError": {
 			[]string{"--rid", "app#2", "--log=debug"},

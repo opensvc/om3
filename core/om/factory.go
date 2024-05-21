@@ -1266,12 +1266,46 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePushasset() *cobra.Command {
+	var options commands.CmdNodePushAsset
+	cmd := &cobra.Command{
+		Use:     "pushasset",
+		Hidden:  true,
+		Short:   "run the node discovery, push and print the result",
+		Aliases: []string{"pushasse", "pushass", "pushas"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodePushAsset() *cobra.Command {
 	var options commands.CmdNodePushAsset
 	cmd := &cobra.Command{
 		Use:     "asset",
 		Short:   "run the node discovery, push and print the result",
 		Aliases: []string{"asse", "ass", "as"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodePushdisk() *cobra.Command {
+	var options commands.CmdNodePushDisks
+	cmd := &cobra.Command{
+		Use:     "pushdisk",
+		Hidden:  true,
+		Short:   "run the disk discovery, push and print the result",
+		Aliases: []string{"pushdisks", "pushdis", "psuhdi"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1298,12 +1332,46 @@ func newCmdNodePushDisk() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePushpatch() *cobra.Command {
+	var options commands.CmdNodePushPatch
+	cmd := &cobra.Command{
+		Use:     "pushpatch",
+		Hidden:  true,
+		Short:   "run the node installed patches discovery, push and print the result",
+		Aliases: []string{"pushpatc", "pushpat", "pushpa"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodePushPatch() *cobra.Command {
 	var options commands.CmdNodePushPatch
 	cmd := &cobra.Command{
 		Use:     "patch",
 		Short:   "run the node installed patches discovery, push and print the result",
 		Aliases: []string{"patc", "pat", "pa"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodePushpkg() *cobra.Command {
+	var options commands.CmdNodePushPkg
+	cmd := &cobra.Command{
+		Use:     "pushpkg",
+		Hidden:  true,
+		Short:   "run the node installed packages discovery, push and print the result",
+		Aliases: []string{"pushpk"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
