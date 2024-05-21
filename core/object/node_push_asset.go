@@ -31,13 +31,55 @@ func (t Node) nodeSystemCacheFile() string {
 	return filepath.Join(rawconfig.NodeVarDir(), "system.json")
 }
 
-func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Property) {
+// assetValueFromDefinedConfig return asset.property from config keyword eval
+// when the keyword is present in current config or return asset.property from
+// default value
+func (t Node) assetValueFromDefinedConfig(kw string, title string, defaultValue interface{}) (data asset.Property) {
 	data.Title = title
 	k := key.Parse(kw)
 	if t.MergedConfig().HasKey(k) {
 		data.Source = asset.SrcConfig
 		s, err := t.MergedConfig().Eval(k)
-		if err == nil {
+		if err != nil {
+			data.Error = fmt.Sprint(err)
+		} else {
+			data.Value = s
+		}
+		return
+	}
+	data.Source = asset.SrcDefault
+	data.Value = defaultValue
+	return
+}
+
+// assetValueFromConfigEval return asset.property from config keyword eval
+func (t Node) assetValueFromConfigEval(kw string, title string) (data asset.Property) {
+	data.Title = title
+	data.Source = asset.SrcConfig
+	k := key.Parse(kw)
+	s, err := t.MergedConfig().Eval(k)
+	if err != nil {
+		data.Error = fmt.Sprint(err)
+	} else {
+		data.Value = s
+	}
+	return
+}
+
+// assetValueFromDefinedConfigOrProbe return asset.property with the following evaluation order:
+//
+//	1- config keyword eval if the keyword is present in current config, or present
+//	2- probe.Get
+//	3- defaultValue
+func (t Node) assetValueFromDefinedConfigOrProbe(kw string, title string, probe prober, defaultValue interface{}) (data asset.Property) {
+	data.Title = title
+	k := key.Parse(kw)
+	if t.MergedConfig().HasKey(k) {
+		data.Source = asset.SrcConfig
+		s, err := t.MergedConfig().Eval(k)
+		if err != nil {
+			data.Error = fmt.Sprint(err)
+		} else {
 			data.Value = s
 		}
 		return
@@ -54,7 +96,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt in
 		}
 	}
 	data.Source = asset.SrcDefault
-	data.Value = dflt
+	data.Value = defaultValue
 	return
 }
 
@@ -129,30 +171,30 @@ func (t Node) getAsset() (asset.Data, error) {
 
 	// from probe
 	probe := asset.New()
-	data.Properties.FQDN = t.assetValueFromProbe("node.fqdn", "fqdn", probe, nil)
-	data.Properties.OSName = t.assetValueFromProbe("node.os_name", "os name", probe, nil)
-	data.Properties.OSVendor = t.assetValueFromProbe("node.os_vendor", "os vendor", probe, nil)
-	data.Properties.OSRelease = t.assetValueFromProbe("node.os_release", "os release", probe, nil)
-	data.Properties.OSKernel = t.assetValueFromProbe("node.os_kernel", "os kernel", probe, nil)
-	data.Properties.OSArch = t.assetValueFromProbe("node.os_arch", "os arch", probe, nil)
-	data.Properties.MemBytes = t.assetValueFromProbe("node.mem_bytes", "mem bytes", probe, nil)
-	data.Properties.MemSlots = t.assetValueFromProbe("node.mem_slots", "mem slots", probe, nil)
-	data.Properties.MemBanks = t.assetValueFromProbe("node.mem_banks", "mem banks", probe, nil)
-	data.Properties.CPUFreq = t.assetValueFromProbe("node.cpu_freq", "cpu freq", probe, nil)
-	data.Properties.CPUThreads = t.assetValueFromProbe("node.cpu_threads", "cpu threads", probe, nil)
-	data.Properties.CPUCores = t.assetValueFromProbe("node.cpu_cores", "cpu cores", probe, nil)
-	data.Properties.CPUDies = t.assetValueFromProbe("node.cpu_dies", "cpu dies", probe, nil)
-	data.Properties.CPUModel = t.assetValueFromProbe("node.cpu_model", "cpu model", probe, nil)
-	data.Properties.BIOSVersion = t.assetValueFromProbe("node.bios_version", "bios version", probe, nil)
-	data.Properties.Serial = t.assetValueFromProbe("node.serial", "serial", probe, nil)
-	data.Properties.SPVersion = t.assetValueFromProbe("node.sp_version", "sp version", probe, nil)
-	data.Properties.Enclosure = t.assetValueFromProbe("node.enclosure", "enclosure", probe, nil)
-	data.Properties.TZ = t.assetValueFromProbe("node.tz", "timezone", probe, nil)
-	data.Properties.Manufacturer = t.assetValueFromProbe("node.manufacturer", "manufacturer", probe, nil)
-	data.Properties.Model = t.assetValueFromProbe("node.model", "model", probe, nil)
-	data.Properties.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, "")
-	data.Properties.LastBoot = t.assetValueFromProbe("node.last_boot", "last boot", probe, nil)
-	data.Properties.BootID = t.assetValueFromProbe("node.boot_id", "boot id", probe, nil)
+	data.Properties.FQDN = t.assetValueFromDefinedConfigOrProbe("node.fqdn", "fqdn", probe, nil)
+	data.Properties.OSName = t.assetValueFromDefinedConfigOrProbe("node.os_name", "os name", probe, nil)
+	data.Properties.OSVendor = t.assetValueFromDefinedConfigOrProbe("node.os_vendor", "os vendor", probe, nil)
+	data.Properties.OSRelease = t.assetValueFromDefinedConfigOrProbe("node.os_release", "os release", probe, nil)
+	data.Properties.OSKernel = t.assetValueFromDefinedConfigOrProbe("node.os_kernel", "os kernel", probe, nil)
+	data.Properties.OSArch = t.assetValueFromDefinedConfigOrProbe("node.os_arch", "os arch", probe, nil)
+	data.Properties.MemBytes = t.assetValueFromDefinedConfigOrProbe("node.mem_bytes", "mem bytes", probe, nil)
+	data.Properties.MemSlots = t.assetValueFromDefinedConfigOrProbe("node.mem_slots", "mem slots", probe, nil)
+	data.Properties.MemBanks = t.assetValueFromDefinedConfigOrProbe("node.mem_banks", "mem banks", probe, nil)
+	data.Properties.CPUFreq = t.assetValueFromDefinedConfigOrProbe("node.cpu_freq", "cpu freq", probe, nil)
+	data.Properties.CPUThreads = t.assetValueFromDefinedConfigOrProbe("node.cpu_threads", "cpu threads", probe, nil)
+	data.Properties.CPUCores = t.assetValueFromDefinedConfigOrProbe("node.cpu_cores", "cpu cores", probe, nil)
+	data.Properties.CPUDies = t.assetValueFromDefinedConfigOrProbe("node.cpu_dies", "cpu dies", probe, nil)
+	data.Properties.CPUModel = t.assetValueFromDefinedConfigOrProbe("node.cpu_model", "cpu model", probe, nil)
+	data.Properties.BIOSVersion = t.assetValueFromDefinedConfigOrProbe("node.bios_version", "bios version", probe, nil)
+	data.Properties.Serial = t.assetValueFromDefinedConfigOrProbe("node.serial", "serial", probe, nil)
+	data.Properties.SPVersion = t.assetValueFromDefinedConfigOrProbe("node.sp_version", "sp version", probe, nil)
+	data.Properties.Enclosure = t.assetValueFromDefinedConfigOrProbe("node.enclosure", "enclosure", probe, nil)
+	data.Properties.TZ = t.assetValueFromDefinedConfigOrProbe("node.tz", "timezone", probe, nil)
+	data.Properties.Manufacturer = t.assetValueFromDefinedConfigOrProbe("node.manufacturer", "manufacturer", probe, nil)
+	data.Properties.Model = t.assetValueFromDefinedConfigOrProbe("node.model", "model", probe, nil)
+	data.Properties.ConnectTo = t.assetValueFromDefinedConfigOrProbe("node.connect_to", "connect to", probe, "")
+	data.Properties.LastBoot = t.assetValueFromDefinedConfigOrProbe("node.last_boot", "last boot", probe, nil)
+	data.Properties.BootID = t.assetValueFromDefinedConfigOrProbe("node.boot_id", "boot id", probe, nil)
 	data.UIDS, _ = asset.Users()
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()
@@ -160,21 +202,23 @@ func (t Node) getAsset() (asset.Data, error) {
 	data.HBA, _ = san.GetInitiators()
 	data.Targets, _ = san.GetPaths()
 
-	// from config only
-	data.Properties.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
-	data.Properties.NodeEnv = t.assetValueFromProbe("node.env", "environment", nil, nil)
-	data.Properties.AssetEnv = t.assetValueFromProbe("node.asset_env", "asset environment", nil, nil)
-	data.Properties.ListenerPort = t.assetValueFromProbe("listener.port", "listener port", nil, nil)
-	data.Properties.LocCountry = t.assetValueFromProbe("node.loc_country", "loc, country", nil, nil)
-	data.Properties.LocCity = t.assetValueFromProbe("node.loc_city", "loc, city", nil, nil)
-	data.Properties.LocBuilding = t.assetValueFromProbe("node.loc_building", "loc, building", nil, nil)
-	data.Properties.LocRoom = t.assetValueFromProbe("node.loc_room", "loc, room", nil, nil)
-	data.Properties.LocRack = t.assetValueFromProbe("node.loc_rack", "loc, rack", nil, nil)
-	data.Properties.LocAddr = t.assetValueFromProbe("node.loc_addr", "loc, address", nil, nil)
-	data.Properties.LocFloor = t.assetValueFromProbe("node.loc_floor", "loc, floor", nil, nil)
-	data.Properties.LocZIP = t.assetValueFromProbe("node.loc_zip", "loc, zip", nil, nil)
-	data.Properties.TeamInteg = t.assetValueFromProbe("node.team_integ", "team, integration", nil, nil)
-	data.Properties.TeamSupport = t.assetValueFromProbe("node.team_support", "team, support", nil, nil)
+	// from config eval only
+	data.Properties.NodeEnv = t.assetValueFromConfigEval("node.env", "environment")
+
+	// from existing config key
+	data.Properties.SecZone = t.assetValueFromDefinedConfig("node.sec_zone", "security zone", nil)
+	data.Properties.AssetEnv = t.assetValueFromDefinedConfig("node.asset_env", "asset environment", nil)
+	data.Properties.ListenerPort = t.assetValueFromDefinedConfig("listener.port", "listener port", nil)
+	data.Properties.LocCountry = t.assetValueFromDefinedConfig("node.loc_country", "loc, country", nil)
+	data.Properties.LocCity = t.assetValueFromDefinedConfig("node.loc_city", "loc, city", nil)
+	data.Properties.LocBuilding = t.assetValueFromDefinedConfig("node.loc_building", "loc, building", nil)
+	data.Properties.LocRoom = t.assetValueFromDefinedConfig("node.loc_room", "loc, room", nil)
+	data.Properties.LocRack = t.assetValueFromDefinedConfig("node.loc_rack", "loc, rack", nil)
+	data.Properties.LocAddr = t.assetValueFromDefinedConfig("node.loc_addr", "loc, address", nil)
+	data.Properties.LocFloor = t.assetValueFromDefinedConfig("node.loc_floor", "loc, floor", nil)
+	data.Properties.LocZIP = t.assetValueFromDefinedConfig("node.loc_zip", "loc, zip", nil)
+	data.Properties.TeamInteg = t.assetValueFromDefinedConfig("node.team_integ", "team, integration", nil)
+	data.Properties.TeamSupport = t.assetValueFromDefinedConfig("node.team_support", "team, support", nil)
 
 	return data, nil
 }
@@ -217,7 +261,7 @@ func (t Node) pushAsset(data asset.Data) error {
 	if err != nil {
 		return err
 	}
-	url.Path += "/daemon/system"
+	url.Path += "/oc3/feed/system"
 	b, err := json.MarshalIndent(gen, "  ", "  ")
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
@@ -231,7 +275,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		return fmt.Errorf("do request: %w", err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 204 {
+	if response.StatusCode != 202 {
 		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
 	}
 
