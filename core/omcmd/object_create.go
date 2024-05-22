@@ -87,7 +87,7 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, err
 	paths, err := objectselector.New(
 		objectSelector,
 		objectselector.WithLocal(t.Local),
-		objectselector.WithServer(t.Server),
+		objectselector.WithClient(t.client),
 	).Expand()
 	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions")
@@ -109,7 +109,7 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 	paths, _ := objectselector.New(
 		t.Config,
 		objectselector.WithLocal(t.Local),
-		objectselector.WithServer(t.Server),
+		objectselector.WithClient(t.client),
 	).Expand()
 	return paths
 }

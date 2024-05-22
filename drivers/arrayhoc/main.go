@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -1747,7 +1747,7 @@ func decodeResponse(r *http.Response, v interface{}) error {
 		return fmt.Errorf("nil interface provided to decodeResponse")
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	bodyBytes, _ := io.ReadAll(r.Body)
 	if len(bodyBytes) == 0 {
 		return nil
 	}
@@ -1768,7 +1768,7 @@ func validateResponse(r *http.Response) error {
 		return nil
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	bodyBytes, _ := io.ReadAll(r.Body)
 	bodyString := string(bodyBytes)
 	return fmt.Errorf("Response code: %d, Response body: %s", r.StatusCode, bodyString)
 }
