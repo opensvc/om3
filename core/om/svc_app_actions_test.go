@@ -530,12 +530,12 @@ func TestAppStopComplexCommand(t *testing.T) {
 	}{
 		"echoOneAndEchoTwo": {
 			ExtraArgs: []string{"--rid", "app#echoOneAndEchoTwo"},
-			Expected:  []string{"One", "Two"},
+			Expected:  []string{"stdout: One", "stdout: Two"},
 		},
 		"echoOneOrEchoTwo": {
 			ExtraArgs:   []string{"--rid", "app#echoOneOrEchoTwo"},
-			Expected:    []string{"One"},
-			NotExpected: []string{"Two"},
+			Expected:    []string{"stdout: One"},
+			NotExpected: []string{"stdout: Two"},
 		},
 	}
 	getCmd := func(name string) []string {
