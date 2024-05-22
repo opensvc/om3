@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -866,7 +866,7 @@ func (t *Array) newToken() error {
 		return err
 	}
 
-	responseBody, err := ioutil.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -1820,16 +1820,17 @@ func decodeResponse(r *http.Response, v interface{}) error {
 		return fmt.Errorf("nil interface provided to decodeResponse")
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	bodyBytes, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		return err
+	}
+
 	if len(bodyBytes) == 0 {
 		return nil
 	}
 
-	bodyString := string(bodyBytes)
-
-	err := json.Unmarshal([]byte(bodyString), &v)
-
-	return err
+	return json.Unmarshal(bodyBytes, &v)
 }
 
 // validateResponse checks that the http response is within the 200 range.
@@ -1841,7 +1842,7 @@ func validateResponse(r *http.Response) error {
 		return nil
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	bodyBytes, _ := io.ReadAll(r.Body)
 	bodyString := string(bodyBytes)
 	return fmt.Errorf("Response code: %d, Response body: %s", r.StatusCode, bodyString)
 }
