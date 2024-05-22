@@ -5,7 +5,6 @@ package asset
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -274,7 +273,7 @@ func hardwarePCIDevices() ([]Device, error) {
 	if err != nil {
 		return devs, err
 	}
-	links, err := ioutil.ReadDir("/sys/bus/pci/devices")
+	links, err := os.ReadDir("/sys/bus/pci/devices")
 	if err != nil {
 		return devs, err
 	}
