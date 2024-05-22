@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -17,7 +18,7 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
 	if nodename == a.localhost || nodename == "localhost" {
 		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
 	}
@@ -32,7 +33,7 @@ func (a DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace s
 
 }
 
-func (a DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
 		return err
 	}
