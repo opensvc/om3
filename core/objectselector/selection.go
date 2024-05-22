@@ -17,17 +17,14 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
 	// Selection is the selection structure
 	Selection struct {
 		selectorExpression string
-		hasClient          bool
 		client             *client.T
 		local              bool
 
@@ -82,7 +79,6 @@ func WithClient(client *client.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.client = client
-		t.hasClient = true
 		return nil
 	})
 }
@@ -94,15 +90,6 @@ func WithLocal(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
 		t.local = v
-		return nil
-	})
-}
-
-// WithServer sets the server struct key
-func WithServer(server string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
-		t := i.(*Selection)
-		t.server = server
 		return nil
 	})
 }
@@ -393,17 +380,8 @@ func (t *Selection) daemonExpand() error {
 	if env.HasDaemonOrigin() {
 		return fmt.Errorf("action origin is daemon")
 	}
-	if !t.hasClient {
-		c, err := client.New(
-			client.WithURL(t.server),
-			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(rawconfig.GetClusterSection().Secret),
-		)
-		if err != nil {
-			return fmt.Errorf("create client: %w", err)
-		}
-		t.client = c
-		t.hasClient = true
+	if t.client == nil {
+		return fmt.Errorf("no client defined")
 	}
 	params := api.GetObjectPathsParams{
 		Path: t.selectorExpression,
