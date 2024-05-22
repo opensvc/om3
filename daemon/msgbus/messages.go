@@ -202,7 +202,64 @@ func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 	}
 	c = i.(pubsub.Messager)
 	err = json.Unmarshal(ev.Data, c)
+
 	return c, err
+}
+
+type (
+	// ErrSender interface can be embedded on messages where an error
+	// can be returned by message subscriber.
+	ErrSender interface {
+		Send(error)
+	}
+
+	ErrReceiver interface {
+		Receive() error
+	}
+
+	ErrMessage struct {
+		Err chan error `json:"-" yaml:"-"`
+
+		// Ctx is the client context
+		Ctx context.Context `json:"-" yaml:"-"`
+	}
+)
+
+// Send implements ErrSender interface for *ErrMessage
+func (e *ErrMessage) Send(err error) {
+	if e.Err == nil {
+		return
+	}
+	var done <-chan struct{}
+	if e.Ctx != nil {
+		done = e.Ctx.Done()
+	}
+
+	select {
+	case <-done:
+		// context to send error is done, drop error,
+		// the ErrMessage.Receive will return context error
+	case e.Err <- err:
+		// inform the publisher with errors
+	}
+}
+
+// Receive implements ErrReceiver interface for *ErrMessage
+func (e *ErrMessage) Receive() error {
+	if e.Err == nil {
+		return nil
+	}
+	var done <-chan struct{}
+	if e.Ctx != nil {
+		done = e.Ctx.Done()
+	}
+
+	select {
+	case err := <-e.Err:
+		return err
+	case <-done:
+		return e.Ctx.Err()
+	}
 }
 
 type (
@@ -705,7 +762,8 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string             `json:"node" yaml:"node"`
 		Value      node.MonitorUpdate `json:"node_monitor_update" yaml:"node_monitor_update"`
-		Err        chan error         `json:"-" yaml:"-"`
+
+		Err ErrSender `json:"-" yaml:"-"`
 	}
 
 	WatchDog struct {

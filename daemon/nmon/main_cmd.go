@@ -1,6 +1,7 @@
 package nmon
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -99,86 +100,76 @@ func (t *Manager) checkRejoinTicker() {
 }
 
 func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
-	sendError := func(err error) {
-		if c.Err != nil {
-			c.Err <- err
-		}
-	}
-	doState := func() {
+	doState := func() error {
 		if c.Value.State == nil {
-			return
+			return nil
 		}
 		// sanity check the state value
 		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidState, *c.Value.State)
-			sendError(err)
 			t.log.Warnf("%s", err)
-			return
+			return err
 		}
 
 		if t.state.State == *c.Value.State {
 			err := fmt.Errorf("%w: state is already %s", node.ErrSameState, *c.Value.State)
-			sendError(err)
 			t.log.Infof("%s", err)
-			return
+			return err
 		}
 
 		t.log.Infof("set state %s -> %s", t.state.State, *c.Value.State)
 		t.change = true
 		t.state.State = *c.Value.State
+		return nil
 	}
 
-	doLocalExpect := func() {
+	doLocalExpect := func() error {
 		if c.Value.LocalExpect == nil {
-			return
+			return nil
 		}
 		// sanity check the local expect value
 		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
 			err := fmt.Errorf("%w: %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
-			sendError(err)
 			t.log.Warnf("%s", err)
-			return
+			return err
 		}
 
 		if t.state.LocalExpect == *c.Value.LocalExpect {
 			err := fmt.Errorf("%w: %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
-			sendError(err)
 			t.log.Infof("%s", err)
-			return
+			return err
 		}
 
 		t.log.Infof("set local expect %s -> %s", t.state.LocalExpect, *c.Value.LocalExpect)
 		t.change = true
 		t.state.LocalExpect = *c.Value.LocalExpect
+		return nil
 	}
 
-	doGlobalExpect := func() {
+	doGlobalExpect := func() error {
 		if c.Value.GlobalExpect == nil {
-			return
+			return nil
 		}
 		if _, ok := node.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
 			t.log.Warnf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
-			return
+			return nil
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range t.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
-					sendError(err)
 					t.log.Infof("%s", err)
-					return
+					return err
 				}
 				if !data.State.IsRankable() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
-					sendError(err)
 					t.log.Errorf("%s", err)
-					return
+					return err
 				}
 				if data.State.IsDoing() {
 					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
-					sendError(err)
 					t.log.Errorf("%s", err)
-					return
+					return err
 				}
 			}
 		}
@@ -189,14 +180,13 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			t.state.GlobalExpect = *c.Value.GlobalExpect
 			t.state.GlobalExpectUpdatedAt = time.Now()
 		}
+		return nil
 	}
 
-	doState()
-	doLocalExpect()
-	doGlobalExpect()
-
-	// inform the publisher we're done sending errors
-	sendError(nil)
+	err := errors.Join(doState(), doLocalExpect(), doGlobalExpect())
+	if c.Err != nil {
+		c.Err.Send(err)
+	}
 
 	if t.change {
 		t.updateIfChange()
