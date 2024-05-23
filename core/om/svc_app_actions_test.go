@@ -73,39 +73,39 @@ func TestAppStop(t *testing.T) {
 		},
 		"stoptrue": {
 			[]string{"--rid", "app#stoptrue", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopTrue": {
 			[]string{"--rid", "app#stopTrue", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopT": {
 			[]string{"--rid", "app#stopT", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stop0": {
 			[]string{"--rid", "app#stop0", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopf": {
 			[]string{"--rid", "app#stopf", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopF": {
 			[]string{"--rid", "app#stopF", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopfalse": {
 			[]string{"--rid", "app#stopfalse", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopFALSE": {
 			[]string{"--rid", "app#stopFALSE", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopFalse": {
 			[]string{"--rid", "app#stopFalse", "--log=debug"},
-			[]string{"stop"},
+			[]string{"stdout: stop"},
 		},
 		"stopEmpty": {
 			extraArgs: []string{"--rid", "app#stopEmpty", "--log=debug"},

@@ -213,7 +213,7 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 		return nil, nil
 	}
 	baseCommandSlice, err := t.BaseCmdArgs(s, action)
-	if err != nil {
+	if err != nil || baseCommandSlice == nil {
 		return nil, err
 	}
 	wrapArgs := t.toCaps().Argv()
