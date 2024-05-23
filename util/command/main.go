@@ -169,7 +169,7 @@ func (t *T) Start() (err error) {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
 				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-					t.log.Attr("err", s.Text()).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stderr: "+s.Text())
+					t.log.Attr("err", s.Text()).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: "+s.Text())
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s.Text())

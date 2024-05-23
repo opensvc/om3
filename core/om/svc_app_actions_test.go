@@ -178,7 +178,7 @@ func TestAppStop(t *testing.T) {
 			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
 			for _, line := range strings.Split(string(out), "\n") {
 				if strings.Contains(line, expected) {
-					assert.Containsf(t, line, "ERR", "stderr output line not logged with error level")
+					assert.Containsf(t, line, "WRN", "stderr output line not logged with error level")
 				}
 			}
 		}
