@@ -74,10 +74,10 @@ func NewPathFromStrings(namespace, kind, name string) (Path, error) {
 
 	// letter casing checks
 	if name != strings.ToLower(name) {
-		return path, fmt.Errorf("%w: uppercase letters are not allowed in path name", ErrInvalid)
+		return path, fmt.Errorf("%w: uppercase letters are not allowed in path name: %s", ErrInvalid, name)
 	}
 	if namespace != strings.ToLower(namespace) {
-		return path, fmt.Errorf("%w: uppercase letters are not allowed in path namespace", ErrInvalid)
+		return path, fmt.Errorf("%w: uppercase letters are not allowed in path namespace: %s", ErrInvalid, namespace)
 	}
 
 	// apply defaults

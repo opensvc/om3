@@ -43,8 +43,8 @@ func TestNewPath(t *testing.T) {
 			name:      "SVC1",
 			namespace: "ROOT",
 			kind:      "SVC",
-			output:    "svc1",
-			ok:        true,
+			output:    "",
+			ok:        false,
 		},
 		"one char name is allowed": {
 			name:      "a",
