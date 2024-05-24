@@ -239,27 +239,22 @@ func (t *T) orchestrate(g instance.MonitorGlobalExpect) error {
 	timeout := time.Second
 	ctx, cancel := context.WithTimeout(t.ctx, timeout)
 	defer cancel()
-	msg := msgbus.SetInstanceMonitor{
-		Path:  vipPath,
-		Node:  t.localhost,
-		Value: instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()},
-		Err:   make(chan error),
-		Ctx:   ctx,
-	}
-	t.bus.Pub(&msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)
-	select {
-	case err := <-msg.Err:
-		if err == nil {
-			t.log.Infof("global expect accepted: %s", g)
-		}
-		return err
-	case <-ctx.Done():
-		err := ctx.Err()
-		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			return fmt.Errorf("timeout waiting for global expect accepted")
-		default:
-			return fmt.Errorf("context cancelled while waiting for global expect accepted")
-		}
+
+	value := instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()}
+	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, vipPath, t.localhost, value)
+
+	t.bus.Pub(msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)
+	err := setInstanceMonitorErr.Receive()
+
+	switch {
+	case err == nil:
+		t.log.Infof("global expect accepted: %s", g)
+		return nil
+	case errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf("timeout waiting for global expect accepted")
+	case errors.Is(err, context.Canceled):
+		return fmt.Errorf("context cancelled while waiting for global expect accepted")
+	default:
+		return fmt.Errorf("global expect refused: %s", err)
 	}
 }

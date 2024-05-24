@@ -16,49 +16,45 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonAPI) postObjectAction(ctx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
-	var (
-		value = instance.MonitorUpdate{}
-		p     naming.Path
-		err   error
-	)
-	if p, err = naming.NewPath(namespace, kind, name); err != nil {
-		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", err.Error())
+func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
+	p, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		return JSONProblem(eCtx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
+
 	if instMon := instance.MonitorData.Get(p, a.localhost); instMon == nil {
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object does not exist: %s", p)
+		return JSONProblemf(eCtx, http.StatusNotFound, "Not found", "Instance does not exist: %s@%s", p, a.localhost)
 	}
-	value = instance.MonitorUpdate{
+
+	ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
+	defer cancel()
+
+	value := instance.MonitorUpdate{
 		GlobalExpect:             &globalExpect,
 		CandidateOrchestrationID: uuid.New(),
 	}
-	reqCtx := ctx.Request().Context()
-	setCtx, cancel := context.WithTimeout(reqCtx, 500*time.Millisecond)
-	defer cancel()
-	msg := msgbus.SetInstanceMonitor{
-		Path:  p,
-		Node:  a.localhost,
-		Value: value,
-		Err:   make(chan error),
-		Ctx:   setCtx,
-	}
-	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
-	select {
-	case <-setCtx.Done(): // setCtx or reqCtx is done
-		err := setCtx.Err()
-		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			return JSONProblemf(ctx, http.StatusRequestTimeout, "set monitor", "timeout publishing the %s %s expectation", kind, globalExpect)
-		default:
-			return JSONProblemf(ctx, http.StatusGone, "set monitor", "%s", err)
-		}
-	case err := <-msg.Err:
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusConflict, "set monitor", "%s", err)
-		} else {
-			return ctx.JSON(http.StatusOK, api.OrchestrationQueued{
-				OrchestrationID: value.CandidateOrchestrationID,
-			})
-		}
+	msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
+
+	a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+
+	return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
+}
+
+// JSONFromSetInstanceMonitorError sends a JSON response where status code depends
+// on SetMonitorUpdate error value.
+//   - StatusOK: expectation value accepted
+//   - StatusRequestTimeout: request context DeadlineExceeded or timeout reached
+//   - StatusGone: request context Canceled
+//   - StatusConflict: expectation value refused
+func JSONFromSetInstanceMonitorError(eCtx echo.Context, value *instance.MonitorUpdate, err error) error {
+	switch {
+	case err == nil:
+		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+	case errors.Is(err, context.DeadlineExceeded):
+		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing the node %s expectation", *value)
+	case errors.Is(err, context.Canceled):
+		return JSONProblemf(eCtx, http.StatusGone, "set instance monitor", "client context canceled")
+	default:
+		return JSONProblemf(eCtx, http.StatusConflict, "set instance monitor", "expectation %s: %s", *value, err)
 	}
 }

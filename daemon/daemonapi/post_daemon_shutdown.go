@@ -48,9 +48,9 @@ func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params
 //   - publishes DaemonCtl stop
 //
 // On unexpected errors it reverts pending local expect, and announces node monitor state shutdown failed
-func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDaemonShutdownParams) error {
+func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDaemonShutdownParams) error {
 	var (
-		log                        = LogHandler(ctx, "PostDaemonShutdown")
+		log                        = LogHandler(eCtx, "PostDaemonShutdown")
 		monitorLocalExpectShutdown = instance.MonitorLocalExpectShutdown
 		orchestrationID            = uuid.New()
 		shutdownCancel             context.CancelFunc
@@ -60,7 +60,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			return JSONProblemf(eCtx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
 			defer shutdownCancel()
@@ -70,7 +70,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 
 	a.announceNodeState(log, node.MonitorStateShutting)
 
-	sub := a.EventBus.Sub(fmt.Sprintf("PostDaemonShutdown %s", ctx.Get("uuid")))
+	sub := a.EventBus.Sub(fmt.Sprintf("PostDaemonShutdown %s", eCtx.Get("uuid")))
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode)
 	sub.Start()
 	defer func() {
@@ -91,13 +91,6 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			}
 		}
 		return result
-	}
-
-	setInstanceMonitor := func(p naming.Path, value instance.MonitorUpdate) error {
-		errC := make(chan error)
-		a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: a.localhost, Value: value, Err: errC},
-			pubsub.Label{"path", p.String()}, labelAPI)
-		return <-errC
 	}
 
 	onInstanceMonitorUpdated := func(e *msgbus.InstanceMonitorUpdated) {
@@ -123,14 +116,27 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 
 	revertOnError := func() {
 		idleState := instance.MonitorStateIdle
+
+		revertState := func(p naming.Path, currentState instance.MonitorState) {
+			log.Infof("revert %s state %s to idle", p, currentState)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, State: &idleState}
+			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
+
+			a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+
+			if err := setImonErr.Receive(); err != nil {
+				log.Warnf("can't revert %s state %s to idle: %s", p, currentState, err)
+			}
+			cancel()
+		}
+
 		for p := range toWait {
-			waitingState := instance.MonitorData.Get(p, a.localhost).State
-			if !waitingState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
-				log.Infof("revert %s state %s to idle", p, waitingState)
-				value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, State: &idleState}
-				if err := setInstanceMonitor(p, value); err != nil {
-					log.Warnf("can't revert %s state %s to idle: %s", p, waitingState, err)
-				}
+			currentState := instance.MonitorData.Get(p, a.localhost).State
+			if !currentState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
+				revertState(p, currentState)
 			}
 		}
 	}
@@ -141,15 +147,25 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 			logP := naming.LogWithPath(log, p)
 			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
+
+			ctx, cancel := context.WithTimeout(shutdownCtx, time.Second)
+
 			value := instance.MonitorUpdate{
 				CandidateOrchestrationID: orchestrationID,
 				LocalExpect:              &monitorLocalExpectShutdown,
 			}
-			if err := setInstanceMonitor(p, value); err != nil {
+			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
+
+			a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+
+			err := setImonErr.Receive()
+			cancel()
+
+			if err != nil {
 				logP.Errorf("failed: %s refused local expect shutdown: %s", p, err)
 				a.announceNodeState(log, node.MonitorStateShutdownFailed)
 				revertOnError()
-				return JSONProblemf(ctx, http.StatusInternalServerError, "daemon shutdown failed",
+				return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
 					"%s refused local expect shutdown: %s", p, err)
 			}
 		}
@@ -169,14 +185,14 @@ func (a *DaemonAPI) localPostDaemonShutdown(ctx echo.Context, params api.PostDae
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 						pubsub.Label{"id", "daemon"}, labelAPI, a.LabelNode)
 					log.Infof("succeed")
-					return JSONProblem(ctx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
+					return JSONProblem(eCtx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
 				}
 			}
 		case <-shutdownCtx.Done():
 			log.Errorf("failed: %s", shutdownCtx.Err())
 			a.announceNodeState(log, node.MonitorStateShutdownFailed)
 			revertOnError()
-			return JSONProblemf(ctx, http.StatusInternalServerError, "daemon shutdown failed",
+			return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
 				"wait: %s", shutdownCtx.Err())
 		}
 	}

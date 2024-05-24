@@ -687,13 +687,10 @@ type (
 
 	SetInstanceMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       naming.Path            `json:"path" yaml:"path"`
-		Node       string                 `json:"node" yaml:"node"`
-		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
-		Err        chan error             `json:"-" yaml:"-"`
-
-		// Ctx is the client context
-		Ctx context.Context `json:"-" yaml:"-"`
+		Path       naming.Path               `json:"path" yaml:"path"`
+		Node       string                    `json:"node" yaml:"node"`
+		Value      instance.MonitorUpdate    `json:"instance_monitor_update" yaml:"instance_monitor_update"`
+		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitorRefused struct {
@@ -1070,6 +1067,11 @@ func (e *ZoneRecordDeleted) Kind() string {
 
 func (e *ZoneRecordUpdated) Kind() string {
 	return "ZoneRecordUpdated"
+}
+
+func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {
+	err := errcontext.New(ctx)
+	return &SetInstanceMonitor{Path: p, Node: nodename, Value: value, Err: err}, err
 }
 
 func NewSetNodeMonitorWithErr(ctx context.Context, nodename string, value node.MonitorUpdate) (*SetNodeMonitor, errcontext.ErrReceiver) {
