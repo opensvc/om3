@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
@@ -204,62 +205,6 @@ func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 	err = json.Unmarshal(ev.Data, c)
 
 	return c, err
-}
-
-type (
-	// ErrSender interface can be embedded on messages where an error
-	// can be returned by message subscriber.
-	ErrSender interface {
-		Send(error)
-	}
-
-	ErrReceiver interface {
-		Receive() error
-	}
-
-	ErrMessage struct {
-		Err chan error `json:"-" yaml:"-"`
-
-		// Ctx is the client context
-		Ctx context.Context `json:"-" yaml:"-"`
-	}
-)
-
-// Send implements ErrSender interface for *ErrMessage
-func (e *ErrMessage) Send(err error) {
-	if e.Err == nil {
-		return
-	}
-	var done <-chan struct{}
-	if e.Ctx != nil {
-		done = e.Ctx.Done()
-	}
-
-	select {
-	case <-done:
-		// context to send error is done, drop error,
-		// the ErrMessage.Receive will return context error
-	case e.Err <- err:
-		// inform the publisher with errors
-	}
-}
-
-// Receive implements ErrReceiver interface for *ErrMessage
-func (e *ErrMessage) Receive() error {
-	if e.Err == nil {
-		return nil
-	}
-	var done <-chan struct{}
-	if e.Ctx != nil {
-		done = e.Ctx.Done()
-	}
-
-	select {
-	case err := <-e.Err:
-		return err
-	case <-done:
-		return e.Ctx.Err()
-	}
 }
 
 type (
@@ -760,10 +705,9 @@ type (
 
 	SetNodeMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string             `json:"node" yaml:"node"`
-		Value      node.MonitorUpdate `json:"node_monitor_update" yaml:"node_monitor_update"`
-
-		Err ErrSender `json:"-" yaml:"-"`
+		Node       string                    `json:"node" yaml:"node"`
+		Value      node.MonitorUpdate        `json:"node_monitor_update" yaml:"node_monitor_update"`
+		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
 	}
 
 	WatchDog struct {
@@ -1126,4 +1070,9 @@ func (e *ZoneRecordDeleted) Kind() string {
 
 func (e *ZoneRecordUpdated) Kind() string {
 	return "ZoneRecordUpdated"
+}
+
+func NewSetNodeMonitorWithErr(ctx context.Context, nodename string, value node.MonitorUpdate) (*SetNodeMonitor, errcontext.ErrReceiver) {
+	err := errcontext.New(ctx)
+	return &SetNodeMonitor{Node: nodename, Value: value, Err: err}, err
 }

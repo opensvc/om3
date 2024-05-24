@@ -183,10 +183,8 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		return nil
 	}
 
-	err := errors.Join(doState(), doLocalExpect(), doGlobalExpect())
-	if c.Err != nil {
-		c.Err.Send(err)
-	}
+	c.Err.Send(errors.Join(doState(), doLocalExpect(), doGlobalExpect()))
+	c.Err.Close()
 
 	if t.change {
 		t.updateIfChange()

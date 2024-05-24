@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/msgbus"
 )
 
 func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error {
@@ -20,12 +22,22 @@ func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error
 	})
 }
 
-func (a *DaemonAPI) localNodeActionDrain(c echo.Context) error {
+func (a *DaemonAPI) localNodeActionDrain(eCtx echo.Context) error {
+	if mon := node.MonitorData.Get(a.localhost); mon == nil {
+		return JSONProblemf(eCtx, http.StatusNotFound, "Not found", "node monitor not found: %s", a.localhost)
+	}
+
+	ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 300*time.Millisecond)
+	defer cancel()
+
 	localExpect := node.MonitorLocalExpectDrained
 	value := node.MonitorUpdate{
 		LocalExpect:              &localExpect,
 		CandidateOrchestrationID: uuid.New(),
 	}
 
-	return a.setNodeMonitor(c, value, 300*time.Millisecond)
+	msg, errReceiver := msgbus.NewSetNodeMonitorWithErr(ctx, a.localhost, value)
+	a.EventBus.Pub(msg, labelAPI, a.LabelNode)
+
+	return JSONFromSetNodeMonitorError(eCtx, &value, errReceiver.Receive())
 }
