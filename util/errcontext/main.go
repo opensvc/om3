@@ -59,8 +59,17 @@ type (
 	}
 )
 
+var (
+	ErrAlreadyCalled = fmt.Errorf("already called")
+)
+
 // New creates ErrContexer with an error channel and context.
+// When used ctx is nil, background context is used => Receive() calls are
+// blocking until Send call or Close call.
 func New(ctx context.Context) ErrContexer {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return &errCtx{errC: make(chan error, 1), ctx: ctx}
 }
 
@@ -90,7 +99,7 @@ func (e *errCtx) Send(err error) {
 //
 //	the received error from the channel
 //	or the context error if the context is done
-//	or 'receive already called' error if already called
+//	or ErrAlreadyCalled if already called
 func (e *errCtx) Receive() error {
 	if e == nil {
 		return nil
@@ -99,7 +108,7 @@ func (e *errCtx) Receive() error {
 	e.mu.Lock()
 	if e.receiveCalled {
 		e.mu.Unlock()
-		return fmt.Errorf("receive already called")
+		return ErrAlreadyCalled
 	} else {
 		e.receiveCalled = true
 		e.mu.Unlock()
