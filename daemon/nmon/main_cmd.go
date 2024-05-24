@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/toc"
@@ -183,8 +184,12 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		return nil
 	}
 
-	c.Err.Send(errors.Join(doState(), doLocalExpect(), doGlobalExpect()))
-	c.Err.Close()
+	err := errors.Join(doState(), doLocalExpect(), doGlobalExpect())
+
+	if v, ok := c.Err.(errcontext.ErrCloseSender); ok {
+		v.Send(err)
+		v.Close()
+	}
 
 	if t.change {
 		t.updateIfChange()

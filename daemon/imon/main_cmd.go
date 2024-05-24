@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
@@ -571,8 +572,12 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		return nil
 	}
 
-	c.Err.Send(errors.Join(doState(), doGlobalExpect(), doLocalExpect()))
-	c.Err.Close()
+	err := errors.Join(doState(), doGlobalExpect(), doLocalExpect())
+
+	if v, ok := c.Err.(errcontext.ErrCloseSender); ok {
+		v.Send(err)
+		v.Close()
+	}
 
 	if t.change {
 		if t.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
