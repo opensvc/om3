@@ -645,18 +645,16 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 				instance.MonitorStateDeleted,
 				instance.MonitorStateDeleting)
 			g := instance.MonitorGlobalExpectDeleted
-			msg := msgbus.SetInstanceMonitor{
-				Path: p,
-				Node: hostname.Hostname(),
-				Value: instance.MonitorUpdate{
-					GlobalExpect:             &g,
-					CandidateOrchestrationID: uuid.New(),
-				},
-				Err: make(chan error),
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			value := instance.MonitorUpdate{
+				GlobalExpect:             &g,
+				CandidateOrchestrationID: uuid.New(),
 			}
+			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, hostname.Hostname(), value)
 			t.Logf("try delete orchestration with : %v", msg)
-			bus.Pub(&msg, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
-			require.NoError(t, <-msg.Err)
+			bus.Pub(msg, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
+			require.NoError(t, setImonErr.Receive())
 
 			t.Logf("waiting for delete, deleting")
 			state, err := <-stateC, <-errC

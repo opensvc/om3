@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
@@ -202,6 +203,7 @@ func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 	}
 	c = i.(pubsub.Messager)
 	err = json.Unmarshal(ev.Data, c)
+
 	return c, err
 }
 
@@ -685,13 +687,10 @@ type (
 
 	SetInstanceMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       naming.Path            `json:"path" yaml:"path"`
-		Node       string                 `json:"node" yaml:"node"`
-		Value      instance.MonitorUpdate `json:"instance_monitor_update" yaml:"instance_monitor_update"`
-		Err        chan error             `json:"-" yaml:"-"`
-
-		// Ctx is the client context
-		Ctx context.Context `json:"-" yaml:"-"`
+		Path       naming.Path               `json:"path" yaml:"path"`
+		Node       string                    `json:"node" yaml:"node"`
+		Value      instance.MonitorUpdate    `json:"instance_monitor_update" yaml:"instance_monitor_update"`
+		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
 	}
 
 	SetInstanceMonitorRefused struct {
@@ -703,9 +702,9 @@ type (
 
 	SetNodeMonitor struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string             `json:"node" yaml:"node"`
-		Value      node.MonitorUpdate `json:"node_monitor_update" yaml:"node_monitor_update"`
-		Err        chan error         `json:"-" yaml:"-"`
+		Node       string                    `json:"node" yaml:"node"`
+		Value      node.MonitorUpdate        `json:"node_monitor_update" yaml:"node_monitor_update"`
+		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
 	}
 
 	WatchDog struct {
@@ -1068,4 +1067,14 @@ func (e *ZoneRecordDeleted) Kind() string {
 
 func (e *ZoneRecordUpdated) Kind() string {
 	return "ZoneRecordUpdated"
+}
+
+func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {
+	err := errcontext.New(ctx)
+	return &SetInstanceMonitor{Path: p, Node: nodename, Value: value, Err: err}, err
+}
+
+func NewSetNodeMonitorWithErr(ctx context.Context, nodename string, value node.MonitorUpdate) (*SetNodeMonitor, errcontext.ErrReceiver) {
+	err := errcontext.New(ctx)
+	return &SetNodeMonitor{Node: nodename, Value: value, Err: err}, err
 }

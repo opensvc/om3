@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
@@ -424,44 +425,28 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 }
 
 func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
-	var (
-		// errs joins doState, doGlobalExpect and doLocalExpect errors
-		errs error
-
-		setCtxDone <-chan struct{}
-	)
-
-	if c.Ctx != nil {
-		setCtxDone = c.Ctx.Done()
-	}
-	addError := func(err error) {
-		errs = errors.Join(errs, err)
-	}
-
-	doState := func() {
+	doState := func() error {
 		if c.Value.State == nil {
-			return
+			return nil
 		}
 		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
-			addError(err)
 			t.log.Warnf("set instance monitor: %s", err)
-			return
+			return err
 		}
 		if *c.Value.State == instance.MonitorStateZero {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
-			addError(err)
-			return
+			return err
 		}
 		if t.state.State == *c.Value.State {
 			err := fmt.Errorf("%w: %s", instance.ErrSameState, *c.Value.State)
-			addError(err)
 			t.log.Infof("set instance monitor: %s", err)
-			return
+			return err
 		}
 		t.log.Infof("set instance monitor state %s -> %s", t.state.State, *c.Value.State)
 		t.change = true
 		t.state.State = *c.Value.State
+		return nil
 	}
 
 	globalExpectRefused := func() {
@@ -472,21 +457,19 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}, t.labelPath, t.labelLocalhost)
 	}
 
-	doGlobalExpect := func() {
+	doGlobalExpect := func() error {
 		if c.Value.GlobalExpect == nil {
-			return
+			return nil
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
-			addError(err)
 			t.log.Warnf("set instance monitor: %s", err)
 			globalExpectRefused()
-			return
+			return err
 		}
 		if t.state.OrchestrationID != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
 			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, t.state.GlobalExpect, t.state.OrchestrationID)
-			addError(err)
-			return
+			return err
 		}
 		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
@@ -497,10 +480,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				dst := t.nextPlacedAtCandidate()
 				if dst == "" {
 					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could be selected from candidates", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
-					addError(err)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
-					return
+					return err
 				}
 				options.Destination = []string{dst}
 				c.Value.GlobalExpectOptions = options
@@ -509,17 +491,15 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				can, err := t.nextPlacedAtCandidates(want)
 				if err != nil {
 					err2 := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want, err)
-					addError(err2)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
-					return
+					return err2
 				}
 				if can == "" {
 					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want)
-					addError(err)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
-					return
+					return err
 				} else if can != want[0] {
 					t.log.Infof("set instance monitor: change destination nodes from %s to %s", want, can)
 				}
@@ -529,10 +509,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isStartable(); !v {
 				err := fmt.Errorf("%w: daemon: imon: %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, reason)
-				addError(err)
 				t.log.Infof("set instance monitor %s", t.path, err)
 				globalExpectRefused()
-				return
+				return err
 			}
 		}
 		for node, instMon := range t.instMonitor {
@@ -547,10 +526,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 			if instMon.GlobalExpectUpdatedAt.After(t.state.GlobalExpectUpdatedAt) {
 				err := fmt.Errorf("%w: daemon: imon: %s: more recent value %s on node %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, instMon.GlobalExpect, node)
-				addError(err)
 				t.log.Infof("set instance monitor: %s", t.path, err)
 				globalExpectRefused()
-				return
+				return err
 			}
 		}
 
@@ -566,11 +544,12 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			t.state.State = instance.MonitorStateIdle
 			t.state.OrchestrationIsDone = false
 		}
+		return nil
 	}
 
-	doLocalExpect := func() {
+	doLocalExpect := func() error {
 		if c.Value.LocalExpect == nil {
-			return
+			return nil
 		}
 		switch *c.Value.LocalExpect {
 		case instance.MonitorLocalExpectNone:
@@ -578,33 +557,26 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorLocalExpectShutdown:
 		default:
 			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
-			addError(err)
 			t.log.Warnf("set instance monitor: %s", err)
-			return
+			return err
 		}
 		target := *c.Value.LocalExpect
 		if t.state.LocalExpect == target {
 			err := fmt.Errorf("%w: %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
-			addError(err)
 			t.log.Infof("set instance monitor: %s", err)
-			return
+			return err
 		}
 		t.log.Infof("set instance monitor: set local expect %s -> %s", t.state.LocalExpect, target)
 		t.change = true
 		t.state.LocalExpect = target
+		return nil
 	}
 
-	doState()
-	doGlobalExpect()
-	doLocalExpect()
+	err := errors.Join(doState(), doGlobalExpect(), doLocalExpect())
 
-	if c.Err != nil {
-		select {
-		case <-setCtxDone:
-			// set instance monitor context is setCtxDone
-		case c.Err <- errs:
-			// inform the publisher with errors
-		}
+	if v, ok := c.Err.(errcontext.ErrCloseSender); ok {
+		v.Send(err)
+		v.Close()
 	}
 
 	if t.change {

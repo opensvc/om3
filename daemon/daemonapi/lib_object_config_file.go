@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 )
 
-func (a DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
