@@ -44,16 +44,16 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 // on SetMonitorUpdate error value.
 //   - StatusOK: expectation value accepted
 //   - StatusRequestTimeout: request context DeadlineExceeded or timeout reached
-//   - StatusGone: request context Canceled
 //   - StatusConflict: expectation value refused
 func JSONFromSetInstanceMonitorError(eCtx echo.Context, value *instance.MonitorUpdate, err error) error {
+	// TODO: is 408 Request Timeout correct ? it may caused from slow imon
 	switch {
 	case err == nil:
 		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
 	case errors.Is(err, context.DeadlineExceeded):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing the node %s expectation", *value)
 	case errors.Is(err, context.Canceled):
-		return JSONProblemf(eCtx, http.StatusGone, "set instance monitor", "client context canceled")
+		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "client context canceled")
 	default:
 		return JSONProblemf(eCtx, http.StatusConflict, "set instance monitor", "expectation %s: %s", *value, err)
 	}
