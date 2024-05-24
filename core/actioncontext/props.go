@@ -201,6 +201,7 @@ var (
 	}
 	Run = Properties{
 		Name:            "run",
+		Progress:        "running",
 		Local:           true,
 		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		TimeoutKeywords: []string{"run_timeout", "timeout"},

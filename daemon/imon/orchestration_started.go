@@ -29,6 +29,7 @@ func (t *Manager) orchestrateStarted() {
 	case instance.MonitorStateStopping:
 		t.startedFromAny()
 	case instance.MonitorStateThawing:
+	case instance.MonitorStateRunning:
 	case instance.MonitorStateWaitParents:
 		t.setWaitParents()
 	default:

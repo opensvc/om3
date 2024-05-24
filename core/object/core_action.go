@@ -175,7 +175,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Errorf("announce %s state: %s", progress, err)
 		return err
 	case resp.StatusCode != http.StatusOK:
-		err := fmt.Errorf("unexpected post object progress status %s", resp.Status)
+		err := fmt.Errorf("unexpected post instance progress request status: %s", resp.Status)
 		t.log.Errorf("announce %s state: %s", progress, err)
 		return err
 	}
