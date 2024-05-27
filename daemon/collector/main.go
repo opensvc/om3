@@ -126,8 +126,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.bus = pubsub.BusFromContext(t.ctx)
 	sub := t.bus.Sub("collector", pubsub.WithQueueSize(SubscriptionQueueSize))
 	labelLocalhost := pubsub.Label{"node", t.localhost}
-	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.Start()
 	return sub
 }
@@ -145,19 +145,15 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
-			case *msgbus.NodeConfigUpdated:
-				t.onNodeConfigUpdated(c)
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
+			case *msgbus.NodeConfigUpdated:
+				t.onNodeConfigUpdated(c)
 			}
 		case <-t.ctx.Done():
 			return
 		}
 	}
-}
-
-func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
-	t.onConfigUpdated()
 }
 
 func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
@@ -182,6 +178,10 @@ func (t *T) onConfigUpdated() {
 		time.Sleep(time.Microsecond * 10)
 		t.feedPinger.Start(t.ctx, FeedPingerInterval)
 	}
+}
+
+func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
+	t.onConfigUpdated()
 }
 
 func (t *T) sendBeginAction(data []string) {
