@@ -2,11 +2,13 @@ package collector
 
 import (
 	"context"
+	"net/http"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -27,9 +29,28 @@ type (
 		wg         sync.WaitGroup
 		bus        *pubsub.Bus
 		created    map[string]time.Time
-		sendTicker *time.Ticker
-		lastSend   time.Time
-		toSend     [][]string
+
+		postTicker *time.Ticker
+
+		// sentAt is the timestamp of the last successfully data sent to
+		// collector. It is used by collector to detect out of sync data.
+		sentAt time.Time
+
+		// changes is used to POST /daemon/data
+		changes changesData
+
+		// instances is used to POST /daemon/ping
+		instances map[string]struct{}
+	}
+
+	changesData struct {
+		instanceStatusUpdates map[string]*msgbus.InstanceStatusUpdated
+		instanceStatusDeletes map[string]*msgbus.InstanceStatusDeleted
+	}
+
+	postData struct {
+		instanceStatusUpdates []msgbus.InstanceStatusUpdated
+		InstanceStatusDeletes []msgbus.InstanceStatusDeleted
 	}
 
 	// End action:
@@ -127,6 +148,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := t.bus.Sub("collector", pubsub.WithQueueSize(SubscriptionQueueSize))
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.Start()
 	return sub
@@ -134,6 +157,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 
 func (t *T) loop() {
 	t.log.Infof("loop started")
+	t.initChanges()
 	sub := t.startSubscriptions()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -141,15 +165,24 @@ func (t *T) loop() {
 		}
 	}()
 
+	refreshTicker := time.NewTicker(5 * time.Second)
+	defer refreshTicker.Stop()
+
 	for {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
+			case *msgbus.InstanceStatusDeleted:
+				t.onInstanceStatusDeleted(c)
+			case *msgbus.InstanceStatusUpdated:
+				t.onInstanceStatusUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onNodeConfigUpdated(c)
 			}
+		case <-refreshTicker.C:
+			t.sendCollectorData()
 		case <-t.ctx.Done():
 			return
 		}
@@ -180,6 +213,20 @@ func (t *T) onConfigUpdated() {
 	}
 }
 
+func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	i := instance.InstanceString(c.Path, c.Node)
+	delete(t.changes.instanceStatusUpdates, i)
+	delete(t.instances, i)
+	t.changes.instanceStatusDeletes[i] = c
+}
+
+func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	i := instance.InstanceString(c.Path, c.Node)
+	delete(t.changes.instanceStatusDeletes, i)
+	t.changes.instanceStatusUpdates[i] = c
+	t.instances[i] = struct{}{}
+}
+
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	t.onConfigUpdated()
 }
@@ -190,4 +237,92 @@ func (t *T) sendBeginAction(data []string) {
 
 func (t *T) sendLogs(data [][]string) {
 	t.feedClient.Call("res_action_batch", Headers, data)
+}
+
+func (t *T) sendCollectorData() {
+	if t.hasChanges() {
+		t.postChanges()
+		return
+	} else {
+		t.postPing()
+	}
+
+}
+
+func (t *T) hasChanges() bool {
+	change := t.changes
+	if len(change.instanceStatusUpdates) > 0 {
+		return true
+	}
+	if len(change.instanceStatusDeletes) > 0 {
+		return true
+	}
+	return false
+}
+
+func (t *T) postPing() {
+	instances := make([]string, 0, len(t.instances))
+	for k := range t.instances {
+		instances = append(instances, k)
+	}
+	now := time.Now()
+	t.log.Infof("POST /daemon/ping from %s -> %s: %#v", t.sentAt, now, instances)
+}
+
+func (t *T) postChanges() {
+	now := time.Now()
+	dPost := t.changes.asLists()
+	t.log.Infof("POST /daemon/change changes from %s -> %s: %#v", t.sentAt, now, dPost)
+	postCode := http.StatusAccepted
+	switch postCode {
+	case http.StatusConflict:
+		// collector detect out of sync (collector sentAt is not t.sentAt), recreate full
+		t.initChanges()
+		t.sentAt = time.Time{}
+	case http.StatusAccepted:
+		// collector accept changes, we can drop pending change
+		t.sentAt = now
+		t.dropChanges()
+	}
+}
+
+func (c *changesData) asLists() postData {
+	iStatusChanges := make([]msgbus.InstanceStatusUpdated, 0, len(c.instanceStatusUpdates))
+	for _, v := range c.instanceStatusUpdates {
+		iStatusChanges = append(iStatusChanges, *v)
+	}
+	iStatusDeletes := make([]msgbus.InstanceStatusDeleted, 0, len(c.instanceStatusDeletes))
+	for _, v := range c.instanceStatusDeletes {
+		iStatusDeletes = append(iStatusDeletes, *v)
+	}
+
+	dPost := postData{
+		instanceStatusUpdates: iStatusChanges,
+		InstanceStatusDeletes: iStatusDeletes,
+	}
+	return dPost
+}
+
+func (t *T) initChanges() {
+	t.sentAt = time.Time{}
+	t.instances = make(map[string]struct{})
+	t.changes = changesData{
+		instanceStatusUpdates: make(map[string]*msgbus.InstanceStatusUpdated),
+		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
+	}
+
+	for _, v := range instance.StatusData.GetAll() {
+		i := instance.InstanceString(v.Path, v.Node)
+		t.instances[i] = struct{}{}
+		t.changes.instanceStatusUpdates[i] = &msgbus.InstanceStatusUpdated{
+			Path:  v.Path,
+			Node:  v.Node,
+			Value: *v.Value,
+		}
+	}
+}
+
+func (t *T) dropChanges() {
+	t.changes.instanceStatusUpdates = make(map[string]*msgbus.InstanceStatusUpdated)
+	t.changes.instanceStatusDeletes = make(map[string]*msgbus.InstanceStatusDeleted)
 }
