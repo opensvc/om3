@@ -311,6 +311,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
+			if v, err := t.isEncapNodeMatchingResource(r); err != nil {
+				return err
+			} else if !v {
+				return nil
+			}
 			l := t.log.Attr("rid", r.RID())
 			ctx = l.WithContext(ctx)
 			err := fn(ctx, r)
@@ -382,6 +387,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	sb := statusbus.FromContext(ctx)
 	evaluated := make(map[string]bool)
 	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
+			return err
+		} else if !v {
+			return nil
+		}
+
 		for requiredRID := range r.Requires(action.Name).Requirements() {
 			if _, ok := evaluated[requiredRID]; ok {
 				continue

@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -149,6 +150,21 @@ func runningRIDList(t interface{}) []string {
 	return l
 }
 
+func (t *actor) isEncapNodeMatchingResource(r resource.Driver) (bool, error) {
+	isEncapResource := r.IsEncap()
+	isEncapNode, err := t.Config().IsInEncapNodes(hostname.Hostname())
+	if err != nil {
+		return false, err
+	}
+	if isEncapNode && isEncapResource {
+		return true, nil
+	}
+	if !isEncapNode && !isEncapResource {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, monitoredOnly bool) error {
 	if !monitoredOnly {
 		data.Resources = make(instance.ResourceStatuses)
@@ -157,6 +173,11 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	sb := statusbus.FromContext(ctx)
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
 		var xd resource.Status
+		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
+			return err
+		} else if !v {
+			return nil
+		}
 		if monitoredOnly && !r.IsMonitored() {
 			xd = data.Resources[r.RID()]
 			sb.Post(r.RID(), xd.Status, false)
