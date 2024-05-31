@@ -346,7 +346,7 @@ func (t T) IsOptional() bool {
 
 // IsEncap returns true if the resource definition contains encap=true.
 func (t T) IsEncap() bool {
-	return t.Encap
+	return t.Encap || t.Tags.Has("encap")
 }
 
 // IsDisabled returns true if the resource definition contains disable=true.

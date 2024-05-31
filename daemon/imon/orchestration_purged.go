@@ -23,6 +23,7 @@ func (t *Manager) orchestratePurged() {
 		t.purgedFromWaitNonLeader()
 	case instance.MonitorStateUnprovisioning,
 		instance.MonitorStateDeleting,
+		instance.MonitorStateRunning,
 		instance.MonitorStateStopping:
 	default:
 		t.log.Warnf("orchestratePurged has no solution from state %s", t.state.State)

@@ -25,6 +25,7 @@ func (t *Manager) freezeStop() {
 		t.stoppedFromReady()
 	case instance.MonitorStateFreezing:
 		// wait for the freeze exec to end
+	case instance.MonitorStateRunning:
 	case instance.MonitorStateStopping:
 		// avoid multiple concurrent stop execs
 	case instance.MonitorStateStopFailed:

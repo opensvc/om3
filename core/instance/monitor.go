@@ -107,6 +107,7 @@ const (
 	MonitorStateProvisionFailed
 	MonitorStatePurgeFailed
 	MonitorStateReady
+	MonitorStateRunning
 	MonitorStateShutdownFailed
 	MonitorStateShutdown
 	MonitorStateShutting
@@ -169,6 +170,7 @@ var (
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
 		MonitorStateReady:             "ready",
+		MonitorStateRunning:           "running",
 		MonitorStateShutdown:          "shutdown",
 		MonitorStateShutdownFailed:    "shutdown failed",
 		MonitorStateShutting:          "shutting",
@@ -207,6 +209,7 @@ var (
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
 		"ready":              MonitorStateReady,
+		"running":            MonitorStateRunning,
 		"shutdown":           MonitorStateShutdown,
 		"shutdown failed":    MonitorStateShutdownFailed,
 		"shutting":           MonitorStateShutting,
