@@ -41,9 +41,11 @@ type (
 
 		postTicker *time.Ticker
 
-		// sentAt is the timestamp of the last successfully data sent to
-		// collector. It is used by collector to detect out of sync data.
-		sentAt time.Time
+		// previousUpdatedAt is the timestamp of the last successfully data sent to
+		// collector. It is used by the  collector to detect changes chain breaks.
+		// When a break happens, the collector responds with a 409, and the agent
+		// will post a full dataset.
+		previousUpdatedAt time.Time
 
 		// changes is used to POST /daemon/data
 		changes changesData
@@ -78,16 +80,16 @@ type (
 	}
 
 	changesPost struct {
-		LastSentAt            time.Time                      `json:"last_sent_at"`
+		PreviousUpdatedAt     time.Time                      `json:"previous_updated_at"`
 		UpdatedAt             time.Time                      `json:"updated_at"`
 		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
 		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
 	}
 
 	statusPost struct {
-		LastSentAt time.Time     `json:"last_sent_at"`
-		UpdatedAt  time.Time     `json:"updated_at"`
-		data       *cluster.Data `json:"data"`
+		previousUpdatedAt time.Time     `json:"previous_updated_at"`
+		UpdatedAt         time.Time     `json:"updated_at"`
+		Data              *cluster.Data `json:"data"`
 	}
 
 	// End action:
@@ -111,8 +113,8 @@ type (
 )
 
 const (
-	headerDaemonChange = "XDaemonChange"
-	headerLastSentAt   = "XLastSentAt"
+	headerDaemonChange      = "XDaemonChange"
+	headerPreviousUpdatedAt = "XPreviousUpdatedAt"
 )
 
 var (
@@ -391,11 +393,11 @@ func (t *T) postPing() error {
 	case http.StatusNoContent:
 		// collector detect out of sync
 		t.initChanges()
-		t.sentAt = time.Time{}
+		t.previousUpdatedAt = time.Time{}
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
-		t.sentAt = now
+		t.previousUpdatedAt = now
 		t.dropChanges()
 		return nil
 	default:
@@ -411,13 +413,13 @@ func (t *T) postChanges() error {
 	)
 	now := time.Now()
 
-	if b, err := t.changes.asPostBody(t.sentAt, now); err != nil {
+	if b, err := t.changes.asPostBody(t.previousUpdatedAt, now); err != nil {
 		return fmt.Errorf("post daemon change body: %s", err)
 	} else {
 		ioReader = bytes.NewBuffer(b)
 	}
 
-	t.log.Debugf("%s %s from %s -> %s", method, path, t.sentAt, now)
+	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	resp, err := t.client.DoRequest(method, path, ioReader)
 	if err != nil {
 		return fmt.Errorf("post daemon change call: %w", err)
@@ -426,13 +428,13 @@ func (t *T) postChanges() error {
 	t.log.Debugf("post daemon change status code %d", resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusConflict:
-		// collector detect out of sync (collector sentAt is not t.sentAt), recreate full
+		// collector detect out of sync (collector previousUpdatedAt is not t.previousUpdatedAt), recreate full
 		t.initChanges()
-		t.sentAt = time.Time{}
+		t.previousUpdatedAt = time.Time{}
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
-		t.sentAt = now
+		t.previousUpdatedAt = now
 		t.dropChanges()
 		return nil
 	default:
@@ -452,26 +454,27 @@ func (t *T) postStatus() error {
 	)
 	now := time.Now()
 	body := statusPost{
-		LastSentAt: t.sentAt,
-		UpdatedAt:  now,
-		data:       t.clusterData.ClusterData(),
+		previousUpdatedAt: t.previousUpdatedAt,
+		UpdatedAt:         now,
+		Data:              t.clusterData.ClusterData(),
 	}
-	if body.data == nil {
-		return fmt.Errorf("%s %s abort on empty cluster data: %w", method, path)
+	if body.Data == nil {
+		return fmt.Errorf("%s %s abort on empty cluster data", method, path)
 	}
 	if b, err := json.Marshal(body); err != nil {
 		return fmt.Errorf("post daemon status body: %s", err)
 	} else {
 		ioReader = bytes.NewBuffer(b)
+		t.log.Infof("%s %s from %s -> %s change len: %d [%s]", method, path, t.previousUpdatedAt, now, len(t.daemonStatusChange), strings.Join(xmap.Keys(t.daemonStatusChange), " "))
 	}
 
-	t.log.Debugf("%s %s from %s -> %s", method, path, t.sentAt, now)
+	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	req, err = t.client.NewRequest(method, path, ioReader)
 	if err != nil {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
 
-	req.Header.Set(headerLastSentAt, t.sentAt.Format(time.RFC3339Nano))
+	req.Header.Set(headerPreviousUpdatedAt, t.previousUpdatedAt.Format(time.RFC3339Nano))
 	req.Header.Set(headerDaemonChange, strings.Join(xmap.Keys(t.daemonStatusChange), " "))
 
 	resp, err = t.client.Do(req)
@@ -479,16 +482,16 @@ func (t *T) postStatus() error {
 		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
 
-	t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+	t.log.Infof("%s %s status code %d", method, path, resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusConflict:
-		// collector detect out of sync (collector sentAt is not t.sentAt), recreate full
+		// collector detect out of sync (collector previousUpdatedAt is not t.previousUpdatedAt), recreate full
 		t.initChanges()
-		t.sentAt = time.Time{}
+		t.previousUpdatedAt = time.Time{}
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
-		t.sentAt = now
+		t.previousUpdatedAt = now
 		t.dropChanges()
 		return nil
 	default:
@@ -497,7 +500,7 @@ func (t *T) postStatus() error {
 	}
 }
 
-func (c *changesData) asPostBody(last, current time.Time) ([]byte, error) {
+func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 	iStatusChanges := make([]msgbus.InstanceStatusUpdated, 0, len(c.instanceStatusUpdates))
 	for _, v := range c.instanceStatusUpdates {
 		iStatusChanges = append(iStatusChanges, *v)
@@ -508,7 +511,7 @@ func (c *changesData) asPostBody(last, current time.Time) ([]byte, error) {
 	}
 
 	return json.Marshal(changesPost{
-		LastSentAt:            last,
+		PreviousUpdatedAt:     previous,
 		UpdatedAt:             current,
 		InstanceStatusUpdates: iStatusChanges,
 		InstanceStatusDeletes: iStatusDeletes,
@@ -516,7 +519,7 @@ func (c *changesData) asPostBody(last, current time.Time) ([]byte, error) {
 }
 
 func (t *T) initChanges() {
-	t.sentAt = time.Time{}
+	t.previousUpdatedAt = time.Time{}
 	t.instances = make(map[string]struct{})
 	t.changes = changesData{
 		instanceStatusUpdates: make(map[string]*msgbus.InstanceStatusUpdated),
