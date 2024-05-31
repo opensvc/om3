@@ -1,7 +1,11 @@
 package collector
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"sync"
@@ -53,9 +57,11 @@ type (
 		instanceStatusDeletes map[string]*msgbus.InstanceStatusDeleted
 	}
 
-	postData struct {
-		instanceStatusUpdates []msgbus.InstanceStatusUpdated
-		InstanceStatusDeletes []msgbus.InstanceStatusDeleted
+	changesPost struct {
+		LastSentAt            time.Time                      `json:"last_sent_at"`
+		UpdatedAt             time.Time                      `json:"updated_at"`
+		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
+		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
 	}
 
 	// End action:
@@ -200,7 +206,10 @@ func (t *T) loop() {
 				t.onNodeConfigUpdated(c)
 			}
 		case <-refreshTicker.C:
-			t.sendCollectorData()
+			err := t.sendCollectorData()
+			if err != nil {
+				t.log.Warnf("sendCollectorData: %s", err)
+			}
 		case <-t.ctx.Done():
 			return
 		}
@@ -222,7 +231,7 @@ func (t *T) onConfigUpdated() {
 		t.feedPinger.Stop()
 	}
 	if err := t.setupRequester(); err != nil {
-		t.log.Errorf("can't setup requester: %w", err)
+		t.log.Errorf("can't setup requester: %s", err)
 	}
 	if err != nil {
 		t.log.Infof("the collector routine is dormant: %s", err)
@@ -310,24 +319,44 @@ func (t *T) postPing() error {
 }
 
 func (t *T) postChanges() error {
+	var (
+		ioReader io.Reader
+		method   = http.MethodPost
+		path     = "/oc3/feed/daemon/changes"
+	)
 	now := time.Now()
-	dPost := t.changes.asLists()
-	t.log.Infof("POST /daemon/change changes from %s -> %s: %#v", t.sentAt, now, dPost)
-	postCode := http.StatusAccepted
-	switch postCode {
+
+	if b, err := t.changes.asPostBody(t.sentAt, now); err != nil {
+		return fmt.Errorf("post daemon change body: %s", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
+	}
+
+	t.log.Debugf("%s %s from %s -> %s", method, path, t.sentAt, now)
+	resp, err := t.client.DoRequest(method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("post daemon change call: %w", err)
+	}
+
+	t.log.Debugf("post daemon change status code %d", resp.StatusCode)
+	switch resp.StatusCode {
 	case http.StatusConflict:
 		// collector detect out of sync (collector sentAt is not t.sentAt), recreate full
 		t.initChanges()
 		t.sentAt = time.Time{}
+		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
 		t.sentAt = now
 		t.dropChanges()
+		return nil
+	default:
+		t.log.Warnf("post daemon change unexpected status code %d", resp.StatusCode)
+		return fmt.Errorf("post daemon change unexpected status code %d", resp.StatusCode)
 	}
-	return nil
 }
 
-func (c *changesData) asLists() postData {
+func (c *changesData) asPostBody(last, current time.Time) ([]byte, error) {
 	iStatusChanges := make([]msgbus.InstanceStatusUpdated, 0, len(c.instanceStatusUpdates))
 	for _, v := range c.instanceStatusUpdates {
 		iStatusChanges = append(iStatusChanges, *v)
@@ -337,11 +366,12 @@ func (c *changesData) asLists() postData {
 		iStatusDeletes = append(iStatusDeletes, *v)
 	}
 
-	dPost := postData{
-		instanceStatusUpdates: iStatusChanges,
+	return json.Marshal(changesPost{
+		LastSentAt:            last,
+		UpdatedAt:             current,
+		InstanceStatusUpdates: iStatusChanges,
 		InstanceStatusDeletes: iStatusDeletes,
-	}
-	return dPost
+	})
 }
 
 func (t *T) initChanges() {
