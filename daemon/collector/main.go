@@ -260,14 +260,12 @@ func (t *T) sendLogs(data [][]string) {
 	t.feedClient.Call("res_action_batch", Headers, data)
 }
 
-func (t *T) sendCollectorData() {
+func (t *T) sendCollectorData() error {
 	if t.hasChanges() {
-		t.postChanges()
-		return
+		return t.postChanges()
 	} else {
-		t.postPing()
+		return t.postPing()
 	}
-
 }
 
 func (t *T) hasChanges() bool {
@@ -281,16 +279,37 @@ func (t *T) hasChanges() bool {
 	return false
 }
 
-func (t *T) postPing() {
+func (t *T) postPing() error {
 	instances := make([]string, 0, len(t.instances))
 	for k := range t.instances {
 		instances = append(instances, k)
 	}
 	now := time.Now()
-	t.log.Infof("POST /daemon/ping from %s -> %s: %#v", t.sentAt, now, instances)
+	method := http.MethodPost
+	path := "/oc3/feed/daemon/ping"
+	t.log.Debugf("%s %s", method, path)
+	resp, err := t.client.DoRequest(method, path, nil)
+	if err != nil {
+		return err
+	}
+	t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		// collector detect out of sync
+		t.initChanges()
+		t.sentAt = time.Time{}
+		return nil
+	case http.StatusAccepted:
+		// collector accept changes, we can drop pending change
+		t.sentAt = now
+		t.dropChanges()
+		return nil
+	default:
+		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
+	}
 }
 
-func (t *T) postChanges() {
+func (t *T) postChanges() error {
 	now := time.Now()
 	dPost := t.changes.asLists()
 	t.log.Infof("POST /daemon/change changes from %s -> %s: %#v", t.sentAt, now, dPost)
@@ -305,6 +324,7 @@ func (t *T) postChanges() {
 		t.sentAt = now
 		t.dropChanges()
 	}
+	return nil
 }
 
 func (c *changesData) asLists() postData {
