@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/httphelper"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/requestfactory"
 )
 
 var (
@@ -68,7 +67,7 @@ func (t *Node) CollectorRestAPIClient() *http.Client {
 	return client
 }
 
-// CollectorClient returns configured *httphelper.T for collector
+// CollectorClient returns new client collector from config
 func (t *Node) CollectorClient() (*httphelper.T, error) {
 	dbopensvc := t.MergedConfig().GetString(key.Parse("node.dbopensvc"))
 	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
@@ -82,19 +81,6 @@ func (t *Node) CollectorClient() (*httphelper.T, error) {
 		return nil, ErrNodeCollectorUnregistered
 	}
 
-	server, err := url.Parse(dbopensvc)
-	if err != nil {
-		return nil, err
-	}
-	// prepare default default header
-	header := http.Header{}
-	header.Set("Content-Type", "application/json")
-	header.Set("Authorization",
-		"Basic "+base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass)))
-
-	factory := requestfactory.New(server, header)
-
-	cli := httphelper.NewHttpsClient(insecure)
-
-	return httphelper.New(cli, factory), nil
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass))
+	return collector.NewRequester(dbopensvc, auth, insecure)
 }

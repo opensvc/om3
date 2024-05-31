@@ -26,6 +26,7 @@ type (
 		localhost  string
 		feedClient *collector.Client
 		feedPinger *collector.Pinger
+		client     requester
 		wg         sync.WaitGroup
 		bus        *pubsub.Bus
 		created    map[string]time.Time
@@ -41,6 +42,10 @@ type (
 
 		// instances is used to POST /daemon/ping
 		instances map[string]struct{}
+	}
+
+	requester interface {
+		DoRequest(method string, relPath string, body io.Reader) (*http.Response, error)
 	}
 
 	changesData struct {
@@ -109,6 +114,19 @@ func (t *T) setNodeFeedClient() error {
 	} else {
 		t.feedClient = client
 		t.feedClient.SetLogger(t.log)
+		return nil
+	}
+}
+
+func (t *T) setupRequester() error {
+	// TODO: pickup dbopensvc, auth, insecure from config update message
+	//       to create requester from core/collector.NewRequester
+	if node, err := object.NewNode(); err != nil {
+		return err
+	} else if cli, err := node.CollectorClient(); err != nil {
+		return err
+	} else {
+		t.client = cli
 		return nil
 	}
 }
@@ -202,6 +220,9 @@ func (t *T) onConfigUpdated() {
 	err := t.setNodeFeedClient()
 	if t.feedPinger != nil {
 		t.feedPinger.Stop()
+	}
+	if err := t.setupRequester(); err != nil {
+		t.log.Errorf("can't setup requester: %w", err)
 	}
 	if err != nil {
 		t.log.Infof("the collector routine is dormant: %s", err)
