@@ -2,13 +2,23 @@ package object
 
 import (
 	"crypto/tls"
+	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/httphelper"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/requestfactory"
+)
+
+var (
+	ErrNodeCollectorConfig       = errors.New("collector is not configured: empty configuration keyword node.dbopensvc")
+	ErrNodeCollectorUnregistered = errors.New("this node is not registered. try 'om node register'")
 )
 
 func (t Node) CollectorFeedClient() (*collector.Client, error) {
@@ -56,4 +66,35 @@ func (t *Node) CollectorRestAPIClient() *http.Client {
 		},
 	}
 	return client
+}
+
+// CollectorClient returns configured *httphelper.T for collector
+func (t *Node) CollectorClient() (*httphelper.T, error) {
+	dbopensvc := t.MergedConfig().GetString(key.Parse("node.dbopensvc"))
+	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
+	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
+
+	if dbopensvc == "" || dbopensvc == "none" {
+		return nil, ErrNodeCollectorConfig
+	}
+
+	if dbopensvc != "" && pass == "" {
+		return nil, ErrNodeCollectorUnregistered
+	}
+
+	server, err := url.Parse(dbopensvc)
+	if err != nil {
+		return nil, err
+	}
+	// prepare default default header
+	header := http.Header{}
+	header.Set("Content-Type", "application/json")
+	header.Set("Authorization",
+		"Basic "+base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass)))
+
+	factory := requestfactory.New(server, header)
+
+	cli := httphelper.NewHttpsClient(insecure)
+
+	return httphelper.New(cli, factory), nil
 }

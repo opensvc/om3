@@ -10,7 +10,6 @@ import (
 
 	"github.com/opensvc/om3/core/rawconfig"
 
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/packages"
 )
 
@@ -28,7 +27,7 @@ func (t Node) PushPkg() ([]packages.Pkg, error) {
 		return l, err
 	}
 	if err := t.pushPkg(l); err != nil {
-		return l, err
+		return l, fmt.Errorf("push pkg: %w", err)
 	}
 	return l, nil
 }
@@ -54,26 +53,27 @@ func (t Node) LoadPkg() ([]packages.Pkg, error) {
 }
 
 func (t Node) pushPkg(data []packages.Pkg) error {
-	url, err := t.Collector3RestAPIURL()
+	oc3, err := t.CollectorClient()
 	if err != nil {
 		return err
 	}
-	url.Path += "/oc3/feed/system"
+
 	b, err := json.Marshal(map[string]any{"package": data})
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
-	req.SetBasicAuth(hostname.Hostname(), rawconfig.GetNodeSection().UUID)
-	req.Header.Add("Content-Type", "application/json")
-	c := t.CollectorRestAPIClient()
-	response, err := c.Do(req)
+
+	method := http.MethodPost
+	path := "/oc3/feed/system"
+
+	response, err := oc3.DoRequest(method, path, bytes.NewBuffer(b))
 	if err != nil {
-		return fmt.Errorf("do request: %w", err)
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 202 {
-		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
+	if response.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
+			method, path, http.StatusAccepted, response.StatusCode)
 	}
 	return nil
 }
