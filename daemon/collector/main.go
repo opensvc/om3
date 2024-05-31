@@ -8,18 +8,22 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (
@@ -46,10 +50,26 @@ type (
 
 		// instances is used to POST /daemon/ping
 		instances map[string]struct{}
+
+		// daemonStatusChange is used to create POST /oc3/feed/daemon/status
+		// header XDaemonChange
+		daemonStatusChange map[string]struct{}
+
+		clusterData clusterDataer
+
+		// featurePostChange when true, POST /oc3/feed/daemon/change instead of
+		// POST /oc3/feed/daemon/status
+		featurePostChange bool
 	}
 
 	requester interface {
+		Do(*http.Request) (*http.Response, error)
 		DoRequest(method string, relPath string, body io.Reader) (*http.Response, error)
+		NewRequest(method string, relPath string, body io.Reader) (*http.Request, error)
+	}
+
+	clusterDataer interface {
+		ClusterData() *cluster.Data
 	}
 
 	changesData struct {
@@ -62,6 +82,12 @@ type (
 		UpdatedAt             time.Time                      `json:"updated_at"`
 		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
 		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
+	}
+
+	statusPost struct {
+		LastSentAt time.Time     `json:"last_sent_at"`
+		UpdatedAt  time.Time     `json:"updated_at"`
+		data       *cluster.Data `json:"data"`
 	}
 
 	// End action:
@@ -84,6 +110,11 @@ type (
 	logEntry map[string]string
 )
 
+const (
+	headerDaemonChange = "XDaemonChange"
+	headerLastSentAt   = "XLastSentAt"
+)
+
 var (
 	Headers = []string{
 		"svcname",
@@ -100,10 +131,11 @@ var (
 	FeedPingerInterval    = time.Second * 5
 )
 
-func New(opts ...funcopt.O) *T {
+func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log:       plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
-		localhost: hostname.Hostname(),
+		log:         plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
+		localhost:   hostname.Hostname(),
+		clusterData: daemondata.FromContext(ctx),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -175,6 +207,10 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeStatusUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 	sub.Start()
 	return sub
 }
@@ -204,6 +240,14 @@ func (t *T) loop() {
 				t.onInstanceStatusUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onNodeConfigUpdated(c)
+			case *msgbus.NodeMonitorDeleted:
+				t.onNodeMonitorDeleted(c)
+			case *msgbus.NodeStatusUpdated:
+				t.onNodeStatusUpdated(c)
+			case *msgbus.ObjectStatusDeleted:
+				t.onObjectStatusDeleted(c)
+			case *msgbus.ObjectStatusUpdated:
+				t.onObjectStatusUpdated(c)
 			}
 		case <-refreshTicker.C:
 			err := t.sendCollectorData()
@@ -248,6 +292,8 @@ func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	delete(t.changes.instanceStatusUpdates, i)
 	delete(t.instances, i)
 	t.changes.instanceStatusDeletes[i] = c
+	// TODO: confirm we must update daemonStatusChange on event ?
+	t.daemonStatusChange[i] = struct{}{}
 }
 
 func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
@@ -255,10 +301,29 @@ func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	delete(t.changes.instanceStatusDeletes, i)
 	t.changes.instanceStatusUpdates[i] = c
 	t.instances[i] = struct{}{}
+	t.daemonStatusChange[i] = struct{}{}
 }
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	t.onConfigUpdated()
+}
+
+func (t *T) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
+	// TODO: confirm we must update daemonStatusChange on event ?
+	t.daemonStatusChange[c.Node] = struct{}{}
+}
+
+func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
+	t.daemonStatusChange[c.Node] = struct{}{}
+}
+
+func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	// TODO: confirm we must update daemonStatusChange on event ?
+	t.daemonStatusChange[c.Path.String()] = struct{}{}
+}
+
+func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	t.daemonStatusChange[c.Path.String()] = struct{}{}
 }
 
 func (t *T) sendBeginAction(data []string) {
@@ -270,8 +335,24 @@ func (t *T) sendLogs(data [][]string) {
 }
 
 func (t *T) sendCollectorData() error {
+	if t.featurePostChange {
+		return t.sendCollectorDataFeatureChange()
+	} else {
+		return t.sendCollectorDataLegacy()
+	}
+}
+
+func (t *T) sendCollectorDataFeatureChange() error {
 	if t.hasChanges() {
 		return t.postChanges()
+	} else {
+		return t.postPing()
+	}
+}
+
+func (t *T) sendCollectorDataLegacy() error {
+	if t.hasDaemonStatusChange() {
+		return t.postStatus()
 	} else {
 		return t.postPing()
 	}
@@ -286,6 +367,10 @@ func (t *T) hasChanges() bool {
 		return true
 	}
 	return false
+}
+
+func (t *T) hasDaemonStatusChange() bool {
+	return len(t.daemonStatusChange) > 0
 }
 
 func (t *T) postPing() error {
@@ -356,6 +441,62 @@ func (t *T) postChanges() error {
 	}
 }
 
+func (t *T) postStatus() error {
+	var (
+		req      *http.Request
+		resp     *http.Response
+		err      error
+		ioReader io.Reader
+		method   = http.MethodPost
+		path     = "/oc3/feed/daemon/status"
+	)
+	now := time.Now()
+	body := statusPost{
+		LastSentAt: t.sentAt,
+		UpdatedAt:  now,
+		data:       t.clusterData.ClusterData(),
+	}
+	if body.data == nil {
+		return fmt.Errorf("%s %s abort on empty cluster data: %w", method, path)
+	}
+	if b, err := json.Marshal(body); err != nil {
+		return fmt.Errorf("post daemon status body: %s", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
+	}
+
+	t.log.Debugf("%s %s from %s -> %s", method, path, t.sentAt, now)
+	req, err = t.client.NewRequest(method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("%s %s create request: %w", method, path, err)
+	}
+
+	req.Header.Set(headerLastSentAt, t.sentAt.Format(time.RFC3339Nano))
+	req.Header.Set(headerDaemonChange, strings.Join(xmap.Keys(t.daemonStatusChange), " "))
+
+	resp, err = t.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%s %s: %w", method, path, err)
+	}
+
+	t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+	switch resp.StatusCode {
+	case http.StatusConflict:
+		// collector detect out of sync (collector sentAt is not t.sentAt), recreate full
+		t.initChanges()
+		t.sentAt = time.Time{}
+		return nil
+	case http.StatusAccepted:
+		// collector accept changes, we can drop pending change
+		t.sentAt = now
+		t.dropChanges()
+		return nil
+	default:
+		t.log.Warnf("%s %s unexpected status code %d", method, path, resp.StatusCode)
+		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
+	}
+}
+
 func (c *changesData) asPostBody(last, current time.Time) ([]byte, error) {
 	iStatusChanges := make([]msgbus.InstanceStatusUpdated, 0, len(c.instanceStatusUpdates))
 	for _, v := range c.instanceStatusUpdates {
@@ -381,6 +522,7 @@ func (t *T) initChanges() {
 		instanceStatusUpdates: make(map[string]*msgbus.InstanceStatusUpdated),
 		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
 	}
+	t.daemonStatusChange = make(map[string]struct{})
 
 	for _, v := range instance.StatusData.GetAll() {
 		i := instance.InstanceString(v.Path, v.Node)
@@ -390,10 +532,17 @@ func (t *T) initChanges() {
 			Node:  v.Node,
 			Value: *v.Value,
 		}
+
+		t.daemonStatusChange[v.Path.String()] = struct{}{}
+		// TODO: use object cache ?
+		t.daemonStatusChange[i] = struct{}{}
+		// TODO: use node cache ?
+		t.daemonStatusChange[v.Node] = struct{}{}
 	}
 }
 
 func (t *T) dropChanges() {
 	t.changes.instanceStatusUpdates = make(map[string]*msgbus.InstanceStatusUpdated)
 	t.changes.instanceStatusDeletes = make(map[string]*msgbus.InstanceStatusDeleted)
+	t.daemonStatusChange = make(map[string]struct{})
 }
