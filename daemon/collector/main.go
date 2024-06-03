@@ -376,6 +376,11 @@ func (t *T) hasDaemonStatusChange() bool {
 }
 
 func (t *T) postPing() error {
+	if t.client == nil {
+		t.previousUpdatedAt = time.Time{}
+		t.dropChanges()
+		return nil
+	}
 	instances := make([]string, 0, len(t.instances))
 	for k := range t.instances {
 		instances = append(instances, k)
@@ -406,6 +411,11 @@ func (t *T) postPing() error {
 }
 
 func (t *T) postChanges() error {
+	if t.client == nil {
+		t.previousUpdatedAt = time.Time{}
+		t.dropChanges()
+		return nil
+	}
 	var (
 		ioReader io.Reader
 		method   = http.MethodPost
@@ -444,6 +454,11 @@ func (t *T) postChanges() error {
 }
 
 func (t *T) postStatus() error {
+	if t.client == nil {
+		t.previousUpdatedAt = time.Time{}
+		t.dropChanges()
+		return nil
+	}
 	var (
 		req      *http.Request
 		resp     *http.Response
