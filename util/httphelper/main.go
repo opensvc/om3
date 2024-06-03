@@ -4,6 +4,7 @@ package httphelper
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -18,10 +19,22 @@ type (
 )
 
 func (t *T) Do(req *http.Request) (*http.Response, error) {
+	if t == nil {
+		return nil, fmt.Errorf("do from undef httphelper")
+	}
+	if t.client == nil {
+		return nil, fmt.Errorf("do from undef httphelper client")
+	}
 	return t.client.Do(req)
 }
 
 func (t *T) DoRequest(method string, relPath string, body io.Reader) (*http.Response, error) {
+	if t == nil {
+		return nil, fmt.Errorf("do request from undef httphelper")
+	}
+	if t.client == nil {
+		return nil, fmt.Errorf("do request from undef httphelper client")
+	}
 	if req, err := t.NewRequest(method, relPath, body); err != nil {
 		return nil, err
 	} else {
@@ -47,5 +60,11 @@ func NewHttpsClient(insecure bool) *http.Client {
 }
 
 func (t *T) NewRequest(method string, relPath string, body io.Reader) (*http.Request, error) {
+	if t == nil {
+		return nil, fmt.Errorf("new request from undef httphelper")
+	}
+	if t.factory == nil {
+		return nil, fmt.Errorf("new request from undef request factory")
+	}
 	return t.factory.NewRequest(method, relPath, body)
 }
