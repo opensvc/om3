@@ -87,7 +87,7 @@ type (
 	}
 
 	statusPost struct {
-		previousUpdatedAt time.Time     `json:"previous_updated_at"`
+		PreviousUpdatedAt time.Time     `json:"previous_updated_at"`
 		UpdatedAt         time.Time     `json:"updated_at"`
 		Data              *cluster.Data `json:"data"`
 	}
@@ -469,7 +469,7 @@ func (t *T) postStatus() error {
 	)
 	now := time.Now()
 	body := statusPost{
-		previousUpdatedAt: t.previousUpdatedAt,
+		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
 		Data:              t.clusterData.ClusterData(),
 	}
