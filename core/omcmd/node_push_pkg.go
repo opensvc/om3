@@ -34,7 +34,7 @@ func (t *CmdNodePushPkg) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			fmt.Printf("Pushed %d installed packages information.", len(l))
+			fmt.Printf("Pushed %d installed packages information.\n", len(l))
 			return nil, nil
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {

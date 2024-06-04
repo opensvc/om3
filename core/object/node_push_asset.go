@@ -224,6 +224,11 @@ func (t Node) getAsset() (asset.Data, error) {
 }
 
 func (t Node) pushAsset(data asset.Data) error {
+	oc3, err := t.CollectorClient()
+	if err != nil {
+		return err
+	}
+
 	hba := func() []any {
 		l := make([]any, len(data.HBA))
 		for i, e := range data.HBA {
@@ -257,26 +262,22 @@ func (t Node) pushAsset(data asset.Data) error {
 	gen["hba"] = hba()
 	gen["targets"] = targets()
 
-	url, err := t.Collector3RestAPIURL()
-	if err != nil {
-		return err
-	}
-	url.Path += "/oc3/feed/system"
 	b, err := json.MarshalIndent(gen, "  ", "  ")
 	if err != nil {
 		return fmt.Errorf("encode request body: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
-	req.SetBasicAuth(hostname.Hostname(), rawconfig.GetNodeSection().UUID)
-	req.Header.Add("Content-Type", "application/json")
-	c := t.CollectorRestAPIClient()
-	response, err := c.Do(req)
+
+	method := http.MethodPost
+	path := "/oc3/feed/system"
+
+	response, err := oc3.DoRequest(method, path, bytes.NewBuffer(b))
 	if err != nil {
-		return fmt.Errorf("do request: %w", err)
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 202 {
-		return fmt.Errorf("unexpected %s %s response: %s", req.Method, req.URL, response.Status)
+	if response.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
+			method, path, http.StatusAccepted, response.StatusCode)
 	}
 
 	return nil

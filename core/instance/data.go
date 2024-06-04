@@ -39,7 +39,6 @@ var (
 
 // Set will add or update instance data
 func (c *Data[T]) Set(p naming.Path, nodename string, v *T) {
-	id := p.String() + "@" + nodename
 	c.Lock()
 	defer c.Unlock()
 	if _, ok := c.nodeToPath[nodename]; !ok {
@@ -50,12 +49,11 @@ func (c *Data[T]) Set(p naming.Path, nodename string, v *T) {
 	}
 	c.nodeToPath[nodename][p] = struct{}{}
 	c.pathToNode[p][nodename] = struct{}{}
-	c.data[id] = v
+	c.data[InstanceString(p, nodename)] = v
 }
 
 // Unset removes an instance data
 func (c *Data[T]) Unset(p naming.Path, nodename string) {
-	id := p.String() + "@" + nodename
 	c.Lock()
 	defer c.Unlock()
 	delete(c.nodeToPath[nodename], p)
@@ -66,7 +64,7 @@ func (c *Data[T]) Unset(p naming.Path, nodename string) {
 	if len(c.pathToNode[p]) == 0 {
 		delete(c.pathToNode, p)
 	}
-	delete(c.data, id)
+	delete(c.data, InstanceString(p, nodename))
 }
 
 // DropNode removes node instances
@@ -75,16 +73,15 @@ func (c *Data[T]) DropNode(nodename string) {
 	defer c.Unlock()
 	for p := range c.nodeToPath[nodename] {
 		delete(c.pathToNode[p], nodename)
-		delete(c.data, p.String()+"@"+nodename)
+		delete(c.data, InstanceString(p, nodename))
 	}
 	delete(c.nodeToPath, nodename)
 }
 
 // Get returns an instance data or nil if data is not found
 func (c *Data[T]) Get(p naming.Path, nodename string) *T {
-	id := p.String() + "@" + nodename
 	c.RLock()
-	v := c.data[id]
+	v := c.data[InstanceString(p, nodename)]
 	c.RUnlock()
 	return v
 }
@@ -94,7 +91,7 @@ func (c *Data[T]) GetByNode(nodename string) map[naming.Path]*T {
 	c.RLock()
 	result := make(map[naming.Path]*T)
 	for p := range c.nodeToPath[nodename] {
-		result[p] = c.data[p.String()+"@"+nodename]
+		result[p] = c.data[InstanceString(p, nodename)]
 	}
 	c.RUnlock()
 	return result
@@ -105,7 +102,7 @@ func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	c.RLock()
 	result := make(map[string]*T)
 	for nodename := range c.pathToNode[p] {
-		result[nodename] = c.data[p.String()+"@"+nodename]
+		result[nodename] = c.data[InstanceString(p, nodename)]
 	}
 	c.RUnlock()
 	return result
@@ -151,4 +148,8 @@ func InitData() {
 
 func init() {
 	InitData()
+}
+
+func InstanceString(p naming.Path, nodename string) string {
+	return p.String() + "@" + nodename
 }

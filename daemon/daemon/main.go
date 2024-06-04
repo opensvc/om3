@@ -141,7 +141,7 @@ func (t *T) Start(ctx context.Context) error {
 		dns.NewManager(daemonenv.DrainChanDuration),
 		discover.NewManager(daemonenv.DrainChanDuration),
 		hb.New(t.ctx),
-		collector.New(),
+		collector.New(t.ctx),
 		scheduler.New(),
 		daemonvip.New(),
 	} {

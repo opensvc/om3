@@ -9,10 +9,11 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/term"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"golang.org/x/term"
 )
 
 type (

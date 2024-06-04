@@ -2,13 +2,22 @@ package object
 
 import (
 	"crypto/tls"
+	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/httphelper"
 	"github.com/opensvc/om3/util/key"
+)
+
+var (
+	ErrNodeCollectorConfig       = errors.New("collector is not configured: empty configuration keyword node.dbopensvc")
+	ErrNodeCollectorUnregistered = errors.New("this node is not registered. try 'om node register'")
 )
 
 func (t Node) CollectorFeedClient() (*collector.Client, error) {
@@ -56,4 +65,22 @@ func (t *Node) CollectorRestAPIClient() *http.Client {
 		},
 	}
 	return client
+}
+
+// CollectorClient returns new client collector from config
+func (t *Node) CollectorClient() (*httphelper.T, error) {
+	dbopensvc := t.MergedConfig().GetString(key.Parse("node.dbopensvc"))
+	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
+	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
+
+	if dbopensvc == "" || dbopensvc == "none" {
+		return nil, ErrNodeCollectorConfig
+	}
+
+	if dbopensvc != "" && pass == "" {
+		return nil, ErrNodeCollectorUnregistered
+	}
+
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass))
+	return collector.NewRequester(dbopensvc, auth, insecure)
 }
