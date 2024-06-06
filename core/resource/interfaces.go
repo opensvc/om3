@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/schedule"
+	"github.com/opensvc/om3/util/device"
 )
 
 type (
@@ -110,5 +111,8 @@ type (
 	}
 	updater interface {
 		Update(context.Context) error
+	}
+	SubDeviceser interface {
+		SubDevices() device.L
 	}
 )
