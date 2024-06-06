@@ -40,7 +40,6 @@ func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	delete(t.changes.instanceStatusUpdates, i)
 	delete(t.instances, i)
 	t.changes.instanceStatusDeletes[i] = c
-	// TODO: confirm we must update daemonStatusChange on event ?
 	t.daemonStatusChange[i] = struct{}{}
 }
 
@@ -57,16 +56,18 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 }
 
 func (t *T) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
-	// TODO: confirm we must update daemonStatusChange on event ?
+	delete(t.nodeFrozenAt, c.Node)
 	t.daemonStatusChange[c.Node] = struct{}{}
 }
 
 func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
-	t.daemonStatusChange[c.Node] = struct{}{}
+	if c.Value.FrozenAt != t.nodeFrozenAt[c.Node] {
+		t.nodeFrozenAt[c.Node] = c.Value.FrozenAt
+		t.daemonStatusChange[c.Node] = struct{}{}
+	}
 }
 
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
-	// TODO: confirm we must update daemonStatusChange on event ?
 	t.daemonStatusChange[c.Path.String()] = struct{}{}
 }
 

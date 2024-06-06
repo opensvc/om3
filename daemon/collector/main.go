@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -48,9 +49,18 @@ type (
 		// instances is used to POST /daemon/ping
 		instances map[string]struct{}
 
-		// daemonStatusChange is used to create POST /oc3/feed/daemon/status
-		// header XDaemonChange
+		// daemonStatusChange is used when we have to post data to collector:
+		// if the map is empty, we POST /oc3/feed/daemon/ping
+		// else we POST /oc3/feed/daemon/status with header XDaemonChange
+		//
+		// The map keys are:
+		//   - @<nodename>: on node removed or node frozen state changed
+		//   - <path>@<nodename>: on instance status updated/deleted
+		//   - <path>: on object status updated/deleted
 		daemonStatusChange map[string]struct{}
+
+		// nodeFrozenAt is used to detect node frozen state changes
+		nodeFrozenAt map[string]time.Time
 
 		clusterData clusterDataer
 
@@ -273,6 +283,11 @@ func (t *T) initChanges() {
 		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
 	}
 	t.daemonStatusChange = make(map[string]struct{})
+	t.nodeFrozenAt = map[string]time.Time{}
+
+	for _, v := range object.StatusData.GetAll() {
+		t.daemonStatusChange[v.Path.String()] = struct{}{}
+	}
 
 	for _, v := range instance.StatusData.GetAll() {
 		i := instance.InstanceString(v.Path, v.Node)
@@ -283,11 +298,12 @@ func (t *T) initChanges() {
 			Value: *v.Value,
 		}
 
-		t.daemonStatusChange[v.Path.String()] = struct{}{}
-		// TODO: use object cache ?
 		t.daemonStatusChange[i] = struct{}{}
-		// TODO: use node cache ?
-		t.daemonStatusChange[v.Node] = struct{}{}
+	}
+
+	for _, v := range node.StatusData.GetAll() {
+		t.daemonStatusChange["@"+v.Node] = struct{}{}
+		t.nodeFrozenAt[v.Node] = v.Value.FrozenAt
 	}
 }
 
