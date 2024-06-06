@@ -70,6 +70,7 @@ type (
 		GetPGID() string
 		GetRestartDelay() time.Duration
 		ID() *resourceid.T
+		IsActionDisabled() bool
 		IsDisabled() bool
 		IsEncap() bool
 		IsMonitored() bool
@@ -729,7 +730,7 @@ func Run(ctx context.Context, r Driver) error {
 		return ErrActionNotSupported
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -758,7 +759,7 @@ func Run(ctx context.Context, r Driver) error {
 // PRStop deactivates a resource interfacer S3GPR
 func PRStop(ctx context.Context, r Driver) error {
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -774,7 +775,7 @@ func PRStop(ctx context.Context, r Driver) error {
 // PRStart activates a resource interfacer S3GPR
 func PRStart(ctx context.Context, r Driver) error {
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -804,7 +805,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return nil
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -841,7 +842,7 @@ func Start(ctx context.Context, r Driver) error {
 		return ErrActionNotSupported
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -878,7 +879,7 @@ func Resync(ctx context.Context, r Driver) error {
 		return ErrActionNotSupported
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -897,7 +898,7 @@ func Full(ctx context.Context, r Driver) error {
 		return ErrActionNotSupported
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -916,7 +917,7 @@ func Update(ctx context.Context, r Driver) error {
 		return ErrActionNotSupported
 	}
 	defer EvalStatus(ctx, r)
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	r.Progress(ctx, "▶ update")
@@ -952,7 +953,7 @@ func boot(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -979,7 +980,7 @@ func shutdown(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
@@ -1033,7 +1034,7 @@ func stop(ctx context.Context, r Driver) error {
 			return ErrActionNotSupported
 		}
 	}
-	if r.IsDisabled() {
+	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
 	Setenv(r)
