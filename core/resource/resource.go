@@ -1065,27 +1065,25 @@ func stop(ctx context.Context, r Driver) error {
 // EvalStatus evaluates the status of a resource interfacer
 func EvalStatus(ctx context.Context, r Driver) status.T {
 	r.StatusLog().Reset()
+	s := status.NotApplicable
 	if r.IsStatusDisabled() {
 		r.StatusLog().Info("nostatus")
-	}
-	s := status.NotApplicable
-	if !r.IsDisabled() {
+	} else if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
 		prStatus := SCSIPersistentReservationStatus(r)
 		if s == status.NotApplicable {
 			s.Add(prStatus)
 		}
-	}
-	if r.IsStandby() {
-		switch {
-		case s == status.Up:
-			s = status.StandbyUp
-		case s == status.Down:
-			s = status.StandbyDown
+		if r.IsStandby() {
+			switch {
+			case s == status.Up:
+				s = status.StandbyUp
+			case s == status.Down:
+				s = status.StandbyDown
+			}
 		}
 	}
-
 	sb := statusbus.FromContext(ctx)
 	sb.Post(r.RID(), s, false)
 	return s
