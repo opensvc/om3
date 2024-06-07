@@ -12,8 +12,8 @@ type (
 	// ID is the driver main struct.
 	// It identifies a driver by Group and name.
 	ID struct {
-		Group Group
-		Name  string
+		Group Group  `json:"group"`
+		Name  string `json:"name"`
 	}
 	IDs []ID
 )
@@ -49,6 +49,13 @@ func (t IDs) Render() string {
 		s = s + did.String() + "\n"
 	}
 	return s
+}
+
+func (t ID) Unstructured() map[string]any {
+	return map[string]any{
+		"group": t.Group.String(),
+		"name":  t.Name,
+	}
 }
 
 func (t ID) String() string {
