@@ -105,3 +105,13 @@ func (t *Role) UnmarshalJSON(b []byte) error {
 	*t = stringToRole[j]
 	return nil
 }
+
+func (t T) Unstructured() map[string]any {
+	return map[string]any{
+		"device": t.Device.Path(),
+		"role":   t.Role.String(),
+		"rid":    t.RID,
+		"driver": t.DriverID,
+		"path":   t.ObjectPath.String(),
+	}
+}
