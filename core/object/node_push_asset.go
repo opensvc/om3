@@ -274,7 +274,7 @@ func (t Node) pushAsset(data asset.Data) error {
 	if err != nil {
 		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
 			method, path, http.StatusAccepted, response.StatusCode)

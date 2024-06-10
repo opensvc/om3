@@ -70,6 +70,8 @@ func (t *T) postPing() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = resp.Body.Close() }()
+
 	t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusNoContent:
@@ -111,6 +113,7 @@ func (t *T) postChanges() error {
 	if err != nil {
 		return fmt.Errorf("post daemon change call: %w", err)
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	t.log.Debugf("post daemon change status code %d", resp.StatusCode)
 	switch resp.StatusCode {
@@ -157,7 +160,6 @@ func (t *T) postStatus() error {
 		return fmt.Errorf("post daemon status body: %s", err)
 	} else {
 		ioReader = bytes.NewBuffer(b)
-		t.log.Infof("%s %s from %s -> %s change len: %d [%s]", method, path, t.previousUpdatedAt, now, len(t.daemonStatusChange), strings.Join(xmap.Keys(t.daemonStatusChange), " "))
 	}
 
 	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
@@ -173,6 +175,7 @@ func (t *T) postStatus() error {
 	if err != nil {
 		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	t.log.Infof("%s %s status code %d", method, path, resp.StatusCode)
 	switch resp.StatusCode {
