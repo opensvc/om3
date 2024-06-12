@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -65,8 +66,12 @@ type (
 		clusterData clusterDataer
 
 		// featurePostChange when true, POST /oc3/feed/daemon/change instead of
-		// POST /oc3/feed/daemon/status
 		featurePostChange bool
+
+		// instanceConfigChange is a map of InstanceConfigUpdated populated
+		// from localhost events: InstanceConfigUpdated/InstanceConfigDeleted.
+		// On ticker event those updates are posted to the collector.
+		instanceConfigChange map[naming.Path]*msgbus.InstanceConfigUpdated
 	}
 
 	requester interface {
@@ -211,6 +216,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := t.bus.Sub("collector", pubsub.WithQueueSize(SubscriptionQueueSize))
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
@@ -241,6 +248,10 @@ func (t *T) loop() {
 			switch c := ev.(type) {
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
+			case *msgbus.InstanceConfigDeleted:
+				t.onInstanceConfigDeleted(c)
+			case *msgbus.InstanceConfigUpdated:
+				t.onInstanceConfigUpdated(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
@@ -260,6 +271,11 @@ func (t *T) loop() {
 			err := t.sendCollectorData()
 			if err != nil {
 				t.log.Warnf("sendCollectorData: %s", err)
+			}
+			if len(t.instanceConfigChange) > 0 {
+				if err := t.sendInstancesConfigChange(); err != nil {
+					t.log.Warnf("sendInstancesConfigChange", err)
+				}
 			}
 		case <-t.ctx.Done():
 			return
@@ -284,6 +300,7 @@ func (t *T) initChanges() {
 	}
 	t.daemonStatusChange = make(map[string]struct{})
 	t.nodeFrozenAt = map[string]time.Time{}
+	t.instanceConfigChange = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
 
 	for _, v := range object.StatusData.GetAll() {
 		t.daemonStatusChange[v.Path.String()] = struct{}{}

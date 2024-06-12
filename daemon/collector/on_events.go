@@ -5,7 +5,12 @@ import (
 
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
+)
+
+var (
+	kindsConfigToPost = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
@@ -33,6 +38,17 @@ func (t *T) onConfigUpdated() {
 		time.Sleep(time.Microsecond * 10)
 		t.feedPinger.Start(t.ctx, FeedPingerInterval)
 	}
+}
+
+func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
+	delete(t.instanceConfigChange, c.Path)
+}
+
+func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+	if !kindsConfigToPost.Has(c.Path.Kind) {
+		return
+	}
+	t.instanceConfigChange[c.Path] = c
 }
 
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
