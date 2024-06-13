@@ -15,19 +15,27 @@ import (
 
 type (
 	instanceConfigPost struct {
-		App         string   `json:"app"`
-		Path        string   `json:"path"`
-		Topology    string   `json:"topology"`
-		Orchestrate string   `json:"orchestrate"`
-		FlexMin     int      `json:"flex_min"`
-		FlexMax     int      `json:"flex_max"`
-		FlexTarget  int      `json:"flex_target"`
-		Env         string   `json:"env"`
-		Scope       []string `json:"scope"`
-		DrpNode     string   `json:"drp_node"`
-		DrpNodes    string   `json:"drp_nodes"`
-		Comment     string   `json:"comment"`
-		RawConfig   []byte   `json:"raw_config"`
+		Path string `json:"path"`
+
+		Orchestrate string `json:"orchestrate"`
+
+		Topology string `json:"topology"`
+
+		FlexMin    int `json:"flex_min"`
+		FlexMax    int `json:"flex_max"`
+		FlexTarget int `json:"flex_target"`
+
+		App string `json:"app"`
+
+		Env string `json:"env"`
+
+		Scope    []string `json:"scope"`
+		DrpNode  string   `json:"drp_node"`
+		DrpNodes []string `json:"drp_nodes"`
+
+		Comment string `json:"comment"`
+
+		RawConfig []byte `json:"raw_config"`
 	}
 )
 
@@ -65,18 +73,18 @@ func (t *T) asPostFeedInstanceConfigBody(p naming.Path, v *msgbus.InstanceConfig
 	}
 	value := v.Value
 	pa := instanceConfigPost{
-		App:         value.App,
 		Path:        v.Path.String(),
+		Orchestrate: value.Orchestrate,
 		Topology:    value.Topology.String(),
 		FlexMin:     value.FlexMin,
 		FlexMax:     value.FlexMax,
 		FlexTarget:  value.FlexTarget,
+		App:         value.App,
 		Env:         value.Env,
 		Scope:       value.Scope,
-		Orchestrate: value.Orchestrate,
 	}
 
-	// TODO: set DrpNode, DrpNodes, Comment
+	// TODO: set DrpNode, DrpNodes, Comment, encap
 
 	if rawConfig, err := os.ReadFile(p.ConfigFile()); err != nil {
 		return []byte{}, err
