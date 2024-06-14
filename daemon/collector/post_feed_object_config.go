@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	instanceConfigPost struct {
+	objectConfigPost struct {
 		Path string `json:"path"`
 
 		Orchestrate string `json:"orchestrate"`
@@ -41,10 +41,10 @@ type (
 	}
 )
 
-func (t *T) sendInstancesConfigChange() (err error) {
-	t.log.Debugf("sendInstancesConfigChange")
+func (t *T) sendObjectConfigChange() (err error) {
+	t.log.Debugf("sendObjectConfigChange")
 	for p, v := range t.instanceConfigChange {
-		b, err := t.asPostFeedInstanceConfigBody(p, v)
+		b, err := t.asPostFeedObjectConfigBody(p, v)
 		if err != nil {
 			// skip os.ErrNotExist, path may be deleted
 			if !errors.Is(err, os.ErrNotExist) {
@@ -56,7 +56,7 @@ func (t *T) sendInstancesConfigChange() (err error) {
 			continue
 		}
 
-		if err := t.doPostInstanceConfig(b, v.Path, v.Node); err != nil {
+		if err := t.doPostObjectConfig(b, v.Path, v.Node); err != nil {
 			t.log.Warnf("post instance config %s@%s: %s", v.Path, v.Node, err)
 			continue
 		}
@@ -65,13 +65,13 @@ func (t *T) sendInstancesConfigChange() (err error) {
 	return
 }
 
-func (t *T) asPostFeedInstanceConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) ([]byte, error) {
+func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) ([]byte, error) {
 	if v == nil {
-		return []byte{}, fmt.Errorf("asPostFeedInstanceConfigBody called with nil InstanceConfigUpdated")
+		return []byte{}, fmt.Errorf("asPostFeedObjectConfigBody called with nil InstanceConfigUpdated")
 	}
 	path := v.Path.String()
 	if len(path) == 0 {
-		return []byte{}, fmt.Errorf("asPostFeedInstanceConfigBody called with empty path")
+		return []byte{}, fmt.Errorf("asPostFeedObjectConfigBody called with empty path")
 	}
 	value := v.Value
 
@@ -82,7 +82,7 @@ func (t *T) asPostFeedInstanceConfigBody(p naming.Path, v *msgbus.InstanceConfig
 		}
 	}
 
-	pa := instanceConfigPost{
+	pa := objectConfigPost{
 		Path:                   v.Path.String(),
 		Orchestrate:            value.Orchestrate,
 		Topology:               value.Topology.String(),
@@ -106,7 +106,7 @@ func (t *T) asPostFeedInstanceConfigBody(p naming.Path, v *msgbus.InstanceConfig
 	return json.Marshal(pa)
 }
 
-func (t *T) doPostInstanceConfig(b []byte, p naming.Path, nodename string) error {
+func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
 	method := http.MethodPost
 	path := "/oc3/feed/object/config"
 	t.log.Infof("%s %s %s@%s", method, path, p, nodename)

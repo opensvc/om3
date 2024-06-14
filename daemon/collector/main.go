@@ -273,8 +273,8 @@ func (t *T) loop() {
 				t.log.Warnf("sendCollectorData: %s", err)
 			}
 			if len(t.instanceConfigChange) > 0 {
-				if err := t.sendInstancesConfigChange(); err != nil {
-					t.log.Warnf("sendInstancesConfigChange", err)
+				if err := t.sendObjectConfigChange(); err != nil {
+					t.log.Warnf("sendObjectConfigChange", err)
 				}
 			}
 		case <-t.ctx.Done():
