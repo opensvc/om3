@@ -21,17 +21,19 @@ type (
 
 		Topology string `json:"topology"`
 
+		Scope    []string `json:"scope"`
+		DrpNode  string   `json:"drp_node"`
+		DrpNodes []string `json:"drp_nodes"`
+
 		FlexMin    int `json:"flex_min"`
 		FlexMax    int `json:"flex_max"`
 		FlexTarget int `json:"flex_target"`
 
+		MonitoredResourceCount int `json:"monitored_resource_count"`
+
 		App string `json:"app"`
 
 		Env string `json:"env"`
-
-		Scope    []string `json:"scope"`
-		DrpNode  string   `json:"drp_node"`
-		DrpNodes []string `json:"drp_nodes"`
 
 		Comment string `json:"comment"`
 
@@ -72,16 +74,25 @@ func (t *T) asPostFeedInstanceConfigBody(p naming.Path, v *msgbus.InstanceConfig
 		return []byte{}, fmt.Errorf("asPostFeedInstanceConfigBody called with empty path")
 	}
 	value := v.Value
+
+	monResCount := 0
+	for _, r := range value.Resources {
+		if r.IsMonitored {
+			monResCount++
+		}
+	}
+
 	pa := instanceConfigPost{
-		Path:        v.Path.String(),
-		Orchestrate: value.Orchestrate,
-		Topology:    value.Topology.String(),
-		FlexMin:     value.FlexMin,
-		FlexMax:     value.FlexMax,
-		FlexTarget:  value.FlexTarget,
-		App:         value.App,
-		Env:         value.Env,
-		Scope:       value.Scope,
+		Path:                   v.Path.String(),
+		Orchestrate:            value.Orchestrate,
+		Topology:               value.Topology.String(),
+		FlexMin:                value.FlexMin,
+		FlexMax:                value.FlexMax,
+		FlexTarget:             value.FlexTarget,
+		MonitoredResourceCount: monResCount,
+		App:                    value.App,
+		Env:                    value.Env,
+		Scope:                  value.Scope,
 	}
 
 	// TODO: set DrpNode, DrpNodes, Comment, encap
