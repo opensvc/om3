@@ -122,6 +122,12 @@
 
 *  **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
 
+### objects
+
+* **breaking change:** drop support of some DEFAULT keywords:
+  * `svc_flex_cpu_low_threshold`
+  * `svc_flex_cpu_high_threshold`
+
 ### commands
 
 * **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
@@ -182,7 +188,6 @@
 * The kill keyword is removed. The default behaviour is now to kill all processes with the matching OPENSVC_ID and OPENSVC_RID variables in their environment.
   In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
   If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
-
 
 ### object sec
 
