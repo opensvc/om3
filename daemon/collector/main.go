@@ -1,3 +1,4 @@
+// Package collector is the daemon collector main goroutine
 package collector
 
 import (
@@ -72,6 +73,9 @@ type (
 		// from localhost events: InstanceConfigUpdated/InstanceConfigDeleted.
 		// On ticker event those updates are posted to the collector.
 		instanceConfigChange map[naming.Path]*msgbus.InstanceConfigUpdated
+
+		// isSpeaker is true when localhost NodeStatus.IsSpeaker is true
+		isSpeaker bool
 	}
 
 	requester interface {
@@ -230,6 +234,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 }
 
 func (t *T) loop() {
+	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
 	t.initChanges()
 	sub := t.startSubscriptions()
@@ -268,15 +273,7 @@ func (t *T) loop() {
 				t.onObjectStatusUpdated(c)
 			}
 		case <-refreshTicker.C:
-			err := t.sendCollectorData()
-			if err != nil {
-				t.log.Warnf("sendCollectorData: %s", err)
-			}
-			if len(t.instanceConfigChange) > 0 {
-				if err := t.sendObjectConfigChange(); err != nil {
-					t.log.Warnf("sendObjectConfigChange", err)
-				}
-			}
+			t.onRefreshTicker()
 		case <-t.ctx.Done():
 			return
 		}
