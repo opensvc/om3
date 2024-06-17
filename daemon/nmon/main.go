@@ -684,6 +684,7 @@ func (t *Manager) loadAndPublishConfig() error {
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	t.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
 
+	t.updateSpeaker()
 	t.nodeStatus.Labels = localNodeInfo.Labels
 	t.publishNodeStatus()
 
