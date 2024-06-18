@@ -13,6 +13,23 @@ var (
 	kindsConfigToPost = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
+func (t *T) onRefreshTicker() {
+	if t.isSpeaker {
+		err := t.sendCollectorData()
+		if err != nil {
+			t.log.Warnf("sendCollectorData: %s", err)
+		}
+		if len(t.instanceConfigChange) > 0 {
+			if err := t.sendObjectConfigChange(); err != nil {
+				t.log.Warnf("sendObjectConfigChange", err)
+			}
+		}
+	} else {
+		t.previousUpdatedAt = time.Time{}
+		t.dropChanges()
+	}
+}
+
 func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.onConfigUpdated()
 }
@@ -80,6 +97,12 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	if c.Value.FrozenAt != t.nodeFrozenAt[c.Node] {
 		t.nodeFrozenAt[c.Node] = c.Value.FrozenAt
 		t.daemonStatusChange[c.Node] = struct{}{}
+	}
+	if c.Node == t.localhost {
+		if t.isSpeaker != c.Value.IsSpeaker {
+			t.isSpeaker = c.Value.IsSpeaker
+			t.log.Infof("speaker is now %v", t.isSpeaker)
+		}
 	}
 }
 
