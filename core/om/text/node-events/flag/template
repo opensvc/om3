@@ -12,6 +12,12 @@ Go template with Opensvc functions:
        when b is true and 'om node --wait' exit with 0 exit code
    - toInst(p path, node string) string:
        return instance id from path and nodeaaa
+   - stringsContains(s string, substr string) bool:
+       alias to strings.Contains
+   - stringsHasPrefix(s string, prefix string) bool:
+       alias to strings.HasPrefix
+   - stringsHasSuffix(s string, suffix string) bool
+       alias to strings.HasSuffix
 
 Simple template examples:
     simple templating: --filter InstanceMonitorUpdated --template \

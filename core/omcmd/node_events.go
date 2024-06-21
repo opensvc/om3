@@ -2,13 +2,12 @@ package omcmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"text/template"
 	"time"
-
-	"encoding/json"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -170,6 +169,9 @@ func (t *CmdNodeEvents) doNodes() error {
 			"passDel":          t.helper.passDel,
 			"passCount":        t.helper.passCount,
 			"setSuccess":       t.helper.setSuccess,
+			"stringsContains":  strings.Contains,
+			"stringsHasPrefix": strings.HasPrefix,
+			"stringsHasSuffix": strings.HasSuffix,
 		}
 
 		evTemplate.Funcs(funcMap)
