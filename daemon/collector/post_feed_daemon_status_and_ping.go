@@ -190,7 +190,9 @@ func (t *T) postStatus() error {
 		t.dropChanges()
 		return nil
 	default:
-		t.log.Warnf("%s %s unexpected status code %d", method, path, resp.StatusCode)
+		b := make([]byte, 512)
+		l, _ := resp.Body.Read(b)
+		t.log.Debugf("%s %s unexpected status code %d, response body extract: '%s'", method, path, resp.StatusCode, b[0:l])
 		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
 	}
 }
