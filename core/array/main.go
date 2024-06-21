@@ -1,6 +1,7 @@
 package array
 
 import (
+	"os"
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
@@ -21,11 +22,15 @@ type (
 		config *xconfig.T
 	}
 	Disk struct {
-		DiskID     string             `json:"disk_id"`
-		DevID      string             `json:"dev_id"`
-		Mappings   map[string]Mapping `json:"mappings"`
-		DriverData any                `json:"driver_data"`
+		DiskID     string   `json:"disk_id"`
+		DevID      string   `json:"dev_id"`
+		Mappings   Mappings `json:"mappings"`
+		DriverData any      `json:"driver_data"`
 	}
+
+	// Mappings is a map of Mapping indexed by "<hbaId>:<tgtId>"
+	Mappings map[string]Mapping
+
 	Mapping struct {
 		HBAID string `json:"hba_id"`
 		TGTID string `json:"tgt_id"`
@@ -81,4 +86,20 @@ func (t Array) Key(s string) key.T {
 		panic("array has no name")
 	}
 	return key.T{Section: t.name, Option: s}
+}
+
+func SkipArgs() []string {
+	return skipArgs(os.Args)
+}
+
+func skipArgs(args []string) []string {
+	for i, s := range args {
+		switch {
+		case s == "--array":
+			return args[i+2:]
+		case strings.HasPrefix(s, "--array="):
+			return args[i+1:]
+		}
+	}
+	return []string{}
 }
