@@ -200,7 +200,7 @@ func (t *Array) Run(args []string) error {
 		return cmd
 	}
 
-	newUnmapIscsiZvolCmd := func() *cobra.Command {
+	newUnmapISCSIZvolCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "zvol",
 			Short: "unmap a zvol-type dataset",
@@ -848,7 +848,7 @@ func (t *Array) Run(args []string) error {
 	parent.AddCommand(unmapCmd)
 
 	unmapISCSICmd := newUnmapISCSICmd()
-	unmapISCSICmd.AddCommand(newUnmapIscsiZvolCmd())
+	unmapISCSICmd.AddCommand(newUnmapISCSIZvolCmd())
 	unmapCmd.AddCommand(unmapISCSICmd)
 
 	updateCmd := newUpdateCmd()
@@ -1529,7 +1529,8 @@ func (t Array) getISCSITarget(id int) (*ISCSITarget, error) {
 
 func (t Array) delISCSITargetExtent(id int) error {
 	path := fmt.Sprintf("/iscsi/targetextent/id/%d", id)
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	// true as a body payload forces the delete of a in-use target extent
+	req, err := t.newRequest(http.MethodDelete, path, nil, true)
 	if err != nil {
 		return err
 	}
