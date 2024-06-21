@@ -1287,6 +1287,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section: "array",
 		Types:   []string{"symmetrix"},
 		Option:  "symcli_path",
+		Default: "/usr/symcli",
 		Example: "/opt/symcli",
 		Text:    keywords.NewText(fs, "text/kw/node/array.symmetrix.symcli_path"),
 	},

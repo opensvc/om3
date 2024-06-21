@@ -37,6 +37,11 @@ type (
 		*array.Array
 	}
 
+	UnmapDiskOptions struct {
+		Name    string
+		Mapping string
+	}
+
 	MapDiskOptions struct {
 		Name    string
 		Mapping string
@@ -173,6 +178,13 @@ func (t *Array) Run(args []string) error {
 		}
 		return cmd
 	}
+	newUnmapISCSICmd := func() *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "iscsi",
+			Short: "unmap iscsi commands",
+		}
+		return cmd
+	}
 	newAddCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "add",
@@ -188,14 +200,26 @@ func (t *Array) Run(args []string) error {
 		return cmd
 	}
 
-	newUnmapDiskCmd := func() *cobra.Command {
+	newUnmapIscsiZvolCmd := func() *cobra.Command {
 		cmd := &cobra.Command{
-			Use:   "disk",
+			Use:   "zvol",
 			Short: "unmap a zvol-type dataset",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				return fmt.Errorf("TODO")
+				opt := UnmapDiskOptions{
+					Name:    name,
+					Mapping: mapping,
+				}
+				if data, err := t.UnmapDisk(opt); err != nil {
+					return err
+				} else {
+					return dump(data)
+				}
 			},
 		}
+		cmd.Flags().StringVar(&name, "name", "", "")
+		cmd.Flags().StringVar(&mapping, "mappings", "", "")
+		cmd.Flags().StringVar(&mapping, "mapping", "", "")
+		cmd.PersistentFlags().MarkHidden("mappings")
 		return cmd
 	}
 	newMapISCSIZvolCmd := func() *cobra.Command {
@@ -821,8 +845,11 @@ func (t *Array) Run(args []string) error {
 	mapCmd.AddCommand(mapISCSICmd)
 
 	unmapCmd := newUnmapCmd()
-	unmapCmd.AddCommand(newUnmapDiskCmd())
 	parent.AddCommand(unmapCmd)
+
+	unmapISCSICmd := newUnmapISCSICmd()
+	unmapISCSICmd.AddCommand(newUnmapIscsiZvolCmd())
+	unmapCmd.AddCommand(unmapISCSICmd)
 
 	updateCmd := newUpdateCmd()
 	updateCmd.AddCommand(newUpdateZvolCmd())
@@ -1364,6 +1391,51 @@ func (t Array) GetDataset(id string) (*Dataset, error) {
 	return &data, nil
 }
 
+func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
+	deletedTargetExtents := make(ISCSITargetExtents, 0)
+	paths, err := san.ParseMapping(opt.Mapping)
+	if err != nil {
+		return deletedTargetExtents, err
+	} else if len(paths) == 0 {
+		return deletedTargetExtents, nil
+	}
+	targets, err := t.GetISCSITargets()
+	if err != nil {
+		return deletedTargetExtents, err
+	}
+	extents, err := t.GetISCSIExtents()
+	if err != nil {
+		return deletedTargetExtents, err
+	}
+	targetextents, err := t.GetISCSITargetExtents()
+	if err != nil {
+		return deletedTargetExtents, err
+	}
+	for _, p := range paths {
+		target, ok := targets.GetByName(p.Target.Name)
+		if !ok {
+			continue
+		}
+		extentName := "zvol/" + opt.Name
+		extent := extents.GetByPath(extentName)
+		if extent == nil {
+			continue
+		}
+		filteredTargetextents := targetextents.WithExtent(*extent).WithTarget(target)
+		if len(filteredTargetextents) == 0 {
+			continue
+		} else if len(filteredTargetextents) > 1 {
+			return deletedTargetExtents, fmt.Errorf("too many (%d) target extents for path %s", len(filteredTargetextents), p)
+		}
+		filteredTargetextent := filteredTargetextents[0]
+		if err := t.delISCSITargetExtent(filteredTargetextent.Id); err != nil {
+			return deletedTargetExtents, err
+		}
+		deletedTargetExtents = append(deletedTargetExtents, filteredTargetextent)
+	}
+	return deletedTargetExtents, nil
+}
+
 func (t Array) MapDisk(opt MapDiskOptions) (ISCSITargetExtents, error) {
 	missingTargetExtents := make(ISCSITargetExtents, 0)
 	paths, err := san.ParseMapping(opt.Mapping)
@@ -1453,6 +1525,20 @@ func (t Array) getISCSITarget(id int) (*ISCSITarget, error) {
 		return nil, err
 	}
 	return &data, nil
+}
+
+func (t Array) delISCSITargetExtent(id int) error {
+	path := fmt.Sprintf("/iscsi/targetextent/id/%d", id)
+	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	if err != nil {
+		return err
+	}
+	var data any
+	_, err = t.Do(req, &data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t Array) delISCSITarget(id int) (*ISCSITarget, error) {

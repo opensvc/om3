@@ -1,0 +1,22 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Device>
+      <Dev_Info>
+        <dev_name>00024</dev_name>
+        <configuration>RDF1+TDEV</configuration>
+        <dev_ident_name>P_APP_00024</dev_ident_name>
+      </Dev_Info>
+    </Device>
+    <Device>
+      <Dev_Info>
+        <dev_name>00025</dev_name>
+        <configuration>RDF2+TDEV</configuration>
+        <dev_ident_name>P_APP_00025</dev_ident_name>
+      </Dev_Info>
+    </Device>
+  </Symmetrix>
+</SymCLI_ML>
