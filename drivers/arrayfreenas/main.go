@@ -768,7 +768,7 @@ func (t *Array) Run(args []string) error {
 	parent := newParent()
 
 	// skip past the --array <array> arguments
-	parent.SetArgs(os.Args[4:])
+	parent.SetArgs(array.SkipArgs())
 
 	addCmd := newAddCmd()
 	addCmd.AddCommand(newAddDiskCmd())
