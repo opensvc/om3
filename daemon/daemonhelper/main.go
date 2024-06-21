@@ -63,7 +63,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	hbc := hbcache.New(drainDuration)
 	require.NoError(t, hbc.Start(ctx))
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration, pubsub.WithQueueSize(100))
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 

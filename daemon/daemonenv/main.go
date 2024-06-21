@@ -29,6 +29,17 @@ var (
 	HTTPUnixFileBasename = "http.sock"
 )
 
+var (
+	// SubQSSmall is the daemon subscription small queue size
+	SubQSSmall uint64 = 200
+	// SubQSSmall is the daemon subscription medium queue size
+	SubQSMedium uint64 = 1000
+	// SubQSSmall is the daemon subscription large queue size
+	SubQSLarge uint64 = 20000
+	// SubQSHuge is the daemon subscription huge queue size
+	SubQSHuge uint64 = 40000
+)
+
 func CAKeyFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_private_key")
 }

@@ -99,7 +99,8 @@ type (
 		localhost string
 		change    bool
 
-		sub *pubsub.Subscription
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
 
 		labelLocalhost pubsub.Label
 
@@ -146,7 +147,7 @@ var (
 	unexpectedDelay = 500 * time.Millisecond
 )
 
-func NewManager(drainDuration time.Duration) *Manager {
+func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	localhost := hostname.Hostname()
 	return &Manager{
 		drainDuration: drainDuration,
@@ -175,6 +176,8 @@ func NewManager(drainDuration time.Duration) *Manager {
 
 		cacheNodesInfo: node.NodesInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
+
+		subQS: subQS,
 	}
 }
 
@@ -292,7 +295,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("nmon")
+	sub := t.bus.Sub("nmon", t.subQS)
 
 	// watching for ClusterConfigUpdated (so we get notified when cluster config file
 	// has been changed and reloaded

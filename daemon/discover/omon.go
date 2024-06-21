@@ -9,17 +9,12 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-var (
-	// SubscriptionQueueSizeOmon is size of "discover.omon" subscription
-	SubscriptionQueueSizeOmon = 16000
-)
-
 func (t *Manager) omon(started chan<- bool) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: omon: ")
 	log.Infof("started")
 	defer log.Infof("stopped")
 	bus := pubsub.BusFromContext(t.ctx)
-	sub := bus.Sub("discover.omon", pubsub.WithQueueSize(SubscriptionQueueSizeOmon))
+	sub := bus.Sub("discover.omon", t.subQS)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true
@@ -48,7 +43,7 @@ func (t *Manager) omon(started chan<- bool) {
 				s := c.Path.String()
 				if _, ok := t.objectMonitor[s]; !ok {
 					log.Infof("new object %s", s)
-					if err := omon.Start(t.ctx, c.Path, c.Value, t.objectMonitorCmdC, t.imonStarter); err != nil {
+					if err := omon.Start(t.ctx, t.omonSubQS, c.Path, c.Value, t.objectMonitorCmdC, t.imonStarter); err != nil {
 						log.Errorf("start %s failed: %s", s, err)
 						return
 					}

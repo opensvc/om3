@@ -76,6 +76,8 @@ type (
 
 		// isSpeaker is true when localhost NodeStatus.IsSpeaker is true
 		isSpeaker bool
+
+		subQS pubsub.QueueSizer
 	}
 
 	requester interface {
@@ -142,16 +144,17 @@ var (
 		"status_log",
 		"cron",
 	}
-	WatchDir              = filepath.Join(rawconfig.Paths.Log, "actions")
-	SubscriptionQueueSize = 1000
-	FeedPingerInterval    = time.Second * 5
+	WatchDir = filepath.Join(rawconfig.Paths.Log, "actions")
+
+	FeedPingerInterval = time.Second * 5
 )
 
-func New(ctx context.Context, opts ...funcopt.O) *T {
+func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
 		log:         plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
 		localhost:   hostname.Hostname(),
 		clusterData: daemondata.FromContext(ctx),
+		subQS:       subQS,
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -217,7 +220,7 @@ func (t *T) Stop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.bus = pubsub.BusFromContext(t.ctx)
-	sub := t.bus.Sub("collector", pubsub.WithQueueSize(SubscriptionQueueSize))
+	sub := t.bus.Sub("collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)

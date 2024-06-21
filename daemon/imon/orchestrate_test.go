@@ -259,18 +259,18 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 	for _, c := range cases {
 		if c.expectedDeleteSuccess {
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 
 			// always add extra run with failed delete when expectedDeleteSuccess is set
 			c.expectedDeleteFailed = true
 			c.expectedDeleteSuccess = false
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		} else {
 			t.Run(c.name, func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		}
 	}
@@ -462,18 +462,18 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 	for _, c := range cases {
 		if c.expectedDeleteSuccess {
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 
 			// always add extra run with failed delete when expectedDeleteSuccess is set
 			c.expectedDeleteFailed = true
 			c.expectedDeleteSuccess = false
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		} else {
 			t.Run(c.name, func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		}
 	}
@@ -506,24 +506,24 @@ func Test_Orchestrate_No(t *testing.T) {
 	for _, c := range cases {
 		if c.expectedDeleteSuccess {
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 
 			// always add extra run with failed delete when expectedDeleteSuccess is set
 			c.expectedDeleteFailed = true
 			c.expectedDeleteSuccess = false
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		} else {
 			t.Run(c.name, func(t *testing.T) {
-				orchestrateTestfunc(t, c)
+				orchestrateTestFunc(t, c)
 			})
 		}
 	}
 }
 
-func orchestrateTestfunc(t *testing.T, c tCase) {
+func orchestrateTestFunc(t *testing.T, c tCase) {
 	var err error
 	maxRoutine := 10
 	maxWaitTime := 2 * 1000 * time.Millisecond
@@ -539,7 +539,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 		bootid.Set(c.bootID)
 	}
 
-	istatD := istat.New()
+	istatD := istat.New(pubsub.WithQueueSize(100))
 	require.NoError(t, istatD.Start(setup.Ctx))
 
 	//c := c
@@ -591,7 +591,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 
 	evC, errC := waitExpectations(t, setup, maxWaitTime, c)
 
-	objectMonCreator(t, setup, c, Factory{DrainDuration: setup.DrainDuration})
+	objectMonCreator(t, setup, c, Factory{DrainDuration: setup.DrainDuration, SubQS: pubsub.WithQueueSize(100)})
 
 	cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.obj)
 	setup.Env.InstallFile(c.srcFile, cfgEtcFile)
@@ -636,7 +636,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 	switch {
 	case c.expectedDeleteFailed:
 		deleteTest = "try delete failed orchestration"
-	case c.expectedDeleteFailed:
+	case c.expectedDeleteSuccess:
 		deleteTest = "try delete success orchestration "
 	}
 	if deleteTest != "" {
@@ -800,7 +800,7 @@ func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Fact
 				case *msgbus.InstanceConfigUpdated:
 					if !monStarted {
 						t.Logf("--- starting omon for %s", p)
-						if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
+						if err := omon.Start(ctx, pubsub.WithQueueSize(50), p, o.Value, make(chan any, 100), factory); err != nil {
 							t.Errorf("omon.Start failed: %s", err)
 						}
 						monStarted = true

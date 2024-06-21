@@ -41,24 +41,22 @@ type (
 		cancel context.CancelFunc
 
 		bus *pubsub.Bus
-		sub *pubsub.Subscription
+
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
 
 		labelLocalhost pubsub.Label
 		wg             sync.WaitGroup
 	}
 )
 
-var (
-	// SubscriptionQueueSize is size of "istats" subscription
-	SubscriptionQueueSize = 1000
-)
-
-func New() *T {
+func New(subQS pubsub.QueueSizer) *T {
 	localhost := hostname.Hostname()
 	return &T{
 		iStatusM:       make(map[string]instance.Status),
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},
+		subQS:          subQS,
 	}
 }
 
@@ -73,7 +71,7 @@ func (t *T) Start(ctx context.Context) error {
 		t.ctx, t.cancel = context.WithCancel(ctx)
 		t.bus = pubsub.BusFromContext(t.ctx)
 
-		sub := t.bus.Sub("istats", pubsub.WithQueueSize(SubscriptionQueueSize))
+		sub := t.bus.Sub("istats", t.subQS)
 		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)

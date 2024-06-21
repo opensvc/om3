@@ -58,7 +58,8 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		sub *pubsub.Subscription
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
 
 		wg sync.WaitGroup
 	}
@@ -79,21 +80,19 @@ type (
 
 var (
 	cmdC chan any
-
-	// SubscriptionQueueSize is size of "dns" subscription
-	SubscriptionQueueSize = 1000
 )
 
 func init() {
 	cmdC = make(chan any)
 }
 
-func NewManager(d time.Duration) *Manager {
+func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cmdC:          make(chan any),
 		drainDuration: d,
 		state:         make(map[stateKey]Zone),
 		score:         make(map[string]uint64),
+		subQS:         subQS,
 	}
 }
 
@@ -140,7 +139,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("dns", pubsub.WithQueueSize(SubscriptionQueueSize))
+	sub := t.bus.Sub("dns", t.subQS)
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})

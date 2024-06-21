@@ -85,13 +85,13 @@ func TestDaemonData(t *testing.T) {
 	require.NoError(t, hbc.Start(ctx))
 
 	t.Logf("start daemondata")
-	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond)
+	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond, pubsub.WithQueueSize(100))
 	defer cancel()
 
 	ctx = daemondata.ContextWithBus(ctx, cmdC)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, hbRecvMsgQ)
 
-	ccfgD := ccfg.New(drainDuration)
+	ccfgD := ccfg.New(drainDuration, pubsub.WithQueueSize(100))
 	require.NoError(t, ccfgD.Start(ctx))
 
 	bus := daemondata.New(cmdC)

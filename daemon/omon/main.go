@@ -81,7 +81,7 @@ type (
 )
 
 // Start a goroutine responsible for the status of an object
-func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
+func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
 	id := p.String()
 	localhost := hostname.Hostname()
 	t := &Manager{
@@ -122,7 +122,7 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 			Attr("pkg", "daemon/omon").
 			WithPrefix("daemon: omon: " + p.String() + ": "),
 	}
-	t.startSubscriptions()
+	t.startSubscriptions(subQS)
 
 	go func() {
 		defer func() {
@@ -137,8 +137,8 @@ func Start(ctx context.Context, p naming.Path, cfg instance.Config, discoverCmdC
 
 // startSubscriptions starts the subscriptions for omon.
 // For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
-func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub(t.id + " omon")
+func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
+	sub := t.bus.Sub(t.id+" omon", subQS)
 
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, t.labelPath)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, t.labelPath)

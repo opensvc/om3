@@ -102,12 +102,13 @@ type (
 
 	Factory struct {
 		DrainDuration time.Duration
+		SubQS         pubsub.QueueSizer
 	}
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
 func (f Factory) Start(parent context.Context, p naming.Path, nodes []string) error {
-	return start(parent, p, nodes, f.DrainDuration)
+	return start(parent, f.SubQS, p, nodes, f.DrainDuration)
 }
 
 var (
@@ -122,7 +123,7 @@ var (
 )
 
 // start launch goroutine imon worker for a local instance state
-func start(parent context.Context, p naming.Path, nodes []string, drainDuration time.Duration) error {
+func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []string, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -171,7 +172,7 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 	}
 
 	t.log = t.newLogger(uuid.Nil)
-	t.startSubscriptions()
+	t.startSubscriptions(qs)
 
 	go func() {
 		t.worker(nodes)
@@ -187,8 +188,8 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
 
-func (t *Manager) startSubscriptions() {
-	sub := t.pubsubBus.Sub(t.id + " imon")
+func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
+	sub := t.pubsubBus.Sub(t.id+" imon", qs)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)

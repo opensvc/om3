@@ -37,13 +37,18 @@ type (
 		cancelReady context.CancelFunc
 		change      bool
 
-		sub *pubsub.Subscription
-		wg  sync.WaitGroup
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
+
+		wg sync.WaitGroup
 	}
 )
 
-func New() *T {
-	return &T{nodeStatus: make(map[string]node.Status)}
+func New(subQS pubsub.QueueSizer) *T {
+	return &T{
+		nodeStatus: make(map[string]node.Status),
+		subQS:      subQS,
+	}
 }
 
 // Start launches the cstat worker goroutine
@@ -78,7 +83,7 @@ func (o *T) Stop() error {
 }
 
 func (o *T) startSubscriptions() {
-	sub := o.bus.Sub("cstat")
+	sub := o.bus.Sub("cstat", o.subQS)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub
