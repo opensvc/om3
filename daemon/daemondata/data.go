@@ -309,7 +309,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					return
 				}
 				if err := d.queueNewHbMsg(ctx); err != nil {
-					d.log.Errorf("queue hb message: %s: %s", err)
+					d.log.Errorf("queue hb message: %s %s", err)
 				} else {
 					d.needMsg = false
 					if hbMsgType != d.hbMessageType {
