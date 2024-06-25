@@ -160,6 +160,12 @@ type (
 
 		// default queue size for subscriptions
 		subQueueSize uint64
+
+		// panicOnFullQueueGraceTime is the grace time duration we have to wait
+		// before panic when a subscription with no timeout has reached its
+		// maximum queue size.
+		// Default value (zero) disable panic on full queue feature.
+		panicOnFullQueueGraceTime time.Duration
 	}
 
 	stringer interface {
@@ -434,6 +440,18 @@ func (b *Bus) SetDefaultSubscriptionQueueSize(i uint64) {
 	b.subQueueSize = i
 }
 
+// SetPanicOnFullQueue enable panic after grace time on subscriptions with
+// no timeout has reached subscription maximum queue size.
+// Zero graceTime disable panic on full queue feature.
+//
+// It panics if called on started bus.
+func (b *Bus) SetPanicOnFullQueue(graceTime time.Duration) {
+	if b.started {
+		panic("can't set panic on full queue on started bus")
+	}
+	b.panicOnFullQueueGraceTime = graceTime
+}
+
 func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
@@ -488,6 +506,22 @@ func (b *Bus) onPubCmd(c cmdPub) {
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
 				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
+				if queueLen >= sub.queuedSize && sub.timeout == 0 && b.panicOnFullQueueGraceTime > 0 {
+					// TODO: increase queue size instead of panic ?
+					err := fmt.Errorf("subscription %s has reached maximum %d of %d queued pending message, "+
+						"allow %s for decrease before panic", sub.name, queueLen, sub.queuedSize, b.panicOnFullQueueGraceTime)
+					b.log.Warnf("%s", err)
+					go func() {
+						<-time.After(b.panicOnFullQueueGraceTime)
+						if sub.queued.Load() >= sub.queuedSize {
+							err := fmt.Errorf("maximum queued pending message for subscription %s %d of %d", sub.name, queueLen, sub.queuedSize)
+							b.log.Errorf("panic: %s", err)
+							panic(err)
+						} else {
+							b.log.Infof("abort panic: subscription %s has leave maximum %d of %d queued pending message", sub.name, sub.queued.Load(), sub.queuedSize)
+						}
+					}()
+				}
 				if queueLen > sub.queuedMax {
 					inc := sub.queuedSize / 4
 					previous := sub.queuedMax

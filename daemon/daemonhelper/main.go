@@ -57,6 +57,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")
 	bus.SetDrainChanDuration(drainDuration)
+	bus.SetPanicOnFullQueue(time.Second)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 

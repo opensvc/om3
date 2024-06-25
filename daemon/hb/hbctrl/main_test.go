@@ -20,6 +20,7 @@ func bootstrapDaemon(ctx context.Context, t *testing.T) context.Context {
 	t.Logf("start pubsub")
 	drainDuration := 10 * time.Millisecond
 	bus := pubsub.NewBus("daemon")
+	bus.SetPanicOnFullQueue(time.Second)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 

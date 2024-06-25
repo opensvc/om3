@@ -12,6 +12,7 @@ import (
 
 func TestSubscriptionFilter(t *testing.T) {
 	bus := pubsub.NewBus(t.Name())
+	bus.SetPanicOnFullQueue(time.Second)
 	bus.Start(context.Background())
 	defer bus.Stop()
 

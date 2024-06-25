@@ -77,6 +77,7 @@ func TestDaemonData(t *testing.T) {
 	defer cancel()
 	t.Logf("start daemon bus")
 	psbus := pubsub.NewBus("daemon")
+	psbus.SetPanicOnFullQueue(time.Second)
 	psbus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()

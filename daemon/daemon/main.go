@@ -92,6 +92,7 @@ func (t *T) Start(ctx context.Context) error {
 	bus := pubsub.NewBus("daemon")
 	bus.SetDefaultSubscriptionQueueSize(defaultSubscriptionQueueSize)
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
+	bus.SetPanicOnFullQueue(10 * time.Second)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 	t.wg.Add(1)
 	bus.Start(t.ctx)
