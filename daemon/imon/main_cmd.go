@@ -32,6 +32,12 @@ func (t *Manager) onChange() {
 	t.updateIfChange()
 }
 
+func (t *Manager) updateOrchestrateUpdate() {
+	t.updateIfChange()
+	t.orchestrate()
+	t.updateIfChange()
+}
+
 func (t *Manager) initRelationAvailStatus() {
 	config := instance.ConfigData.Get(t.path, t.localhost)
 	if config == nil {
@@ -629,9 +635,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	t.log.Debugf("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
 	t.convergeGlobalExpectFromRemote()
-	t.updateIfChange()
-	t.orchestrate()
-	t.updateIfChange()
+	t.updateOrchestrateUpdate()
 }
 
 func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
@@ -643,9 +647,7 @@ func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
 	t.log.Debugf("delete remote instance imon from node %s", node)
 	delete(t.instMonitor, node)
 	t.convergeGlobalExpectFromRemote()
-	t.updateIfChange()
-	t.orchestrate()
-	t.updateIfChange()
+	t.updateOrchestrateUpdate()
 }
 
 func (t *Manager) GetInstanceMonitor(node string) (instance.Monitor, bool) {
