@@ -151,7 +151,7 @@ func (t *T) Start(ctx context.Context) error {
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
-		discover.NewManager(daemonenv.DrainChanDuration, qsHuge, qsMedium, qsMedium),
+		discover.NewManager(daemonenv.DrainChanDuration, daemonenv.ImonDelayDuration, qsHuge, qsMedium, qsMedium),
 		hb.New(t.ctx),
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),

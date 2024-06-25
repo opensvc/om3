@@ -591,7 +591,12 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 
 	evC, errC := waitExpectations(t, setup, maxWaitTime, c)
 
-	objectMonCreator(t, setup, c, Factory{DrainDuration: setup.DrainDuration, SubQS: pubsub.WithQueueSize(100)})
+	factory := Factory{
+		DrainDuration: setup.DrainDuration,
+		DelayDuration: 50 * time.Millisecond,
+		SubQS:         pubsub.WithQueueSize(100),
+	}
+	objectMonCreator(t, setup, c, factory)
 
 	cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.obj)
 	setup.Env.InstallFile(c.srcFile, cfgEtcFile)

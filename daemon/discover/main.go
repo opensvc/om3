@@ -93,7 +93,7 @@ type (
 //   - subQS: the subscription queue size of discover.cfg and discover.omon components.
 //   - omonSubQS: the subscription queue size of omon components with omonSubQS.
 //   - imonSubQS: the subscription queue size imon components (created from imon.Factory).
-func NewManager(drainDuration time.Duration, subQS, omonSubQS, imonSubQS pubsub.QueueSizer) *Manager {
+func NewManager(drainDuration, imonDelayDuration time.Duration, subQS, omonSubQS, imonSubQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
@@ -107,7 +107,7 @@ func NewManager(drainDuration time.Duration, subQS, omonSubQS, imonSubQS pubsub.
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 		drainDuration:     drainDuration,
-		imonStarter:       imon.Factory{DrainDuration: drainDuration, SubQS: imonSubQS},
+		imonStarter:       imon.Factory{DrainDuration: drainDuration, DelayDuration: imonDelayDuration, SubQS: imonSubQS},
 		subQS:             subQS,
 		omonSubQS:         omonSubQS,
 	}

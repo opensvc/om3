@@ -27,15 +27,51 @@ import (
 )
 
 func (t *Manager) onChange() {
+	t.enableDelayTimer()
 	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.delayOrchestrateEnabled = true
+	t.delayUpdateEnabled = true
 }
 
 func (t *Manager) updateOrchestrateUpdate() {
-	t.updateIfChange()
-	t.orchestrate()
-	t.updateIfChange()
+	t.enableDelayTimer()
+	t.delayPreUpdateEnabled = true
+	t.delayOrchestrateEnabled = true
+	t.delayUpdateEnabled = true
+}
+
+// enableDelayTimer reset delayTimer with delayDuration is the timer is not yet
+// enabled.
+func (t *Manager) enableDelayTimer() {
+	if t.delayTimerEnabled {
+		return
+	}
+	t.delayTimer.Reset(t.delayDuration)
+	t.delayTimerEnabled = true
+}
+
+// onDelayTimer is run when the delay timer is fired.
+// It runs the enabled delayed actions:
+//
+//	updateIfChange() if delayPreUpdateEnabled
+//	orchestrate() if delayOrchestrateEnabled
+//	updateIfChange() if delayUpdateEnabled
+//
+// It also clears the delayTimerEnabled
+func (t *Manager) onDelayTimer() {
+	t.delayTimerEnabled = false
+	if t.delayPreUpdateEnabled {
+		t.delayPreUpdateEnabled = false
+		t.updateIfChange()
+	}
+	if t.delayOrchestrateEnabled {
+		t.delayOrchestrateEnabled = false
+		t.orchestrate()
+	}
+	if t.delayUpdateEnabled {
+		t.delayUpdateEnabled = false
+		t.updateIfChange()
+	}
 }
 
 func (t *Manager) initRelationAvailStatus() {
@@ -996,7 +1032,6 @@ func (t *Manager) updateIsLeader() {
 		t.change = true
 		t.state.IsHALeader = isHALeader
 	}
-	t.updateIfChange()
 	return
 }
 

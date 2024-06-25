@@ -14,6 +14,9 @@ var (
 
 	DrainChanDuration = 40 * time.Millisecond
 
+	// ImonDelayDuration is the minimum for new imon publication
+	ImonDelayDuration = 250 * time.Millisecond
+
 	// ReadyDuration define the minimum time to wait during the startup of an instance object by imon
 	// The ready duration impacts the durations involved during daemon cluster split analyse (see nmon spit
 	// detection details).
