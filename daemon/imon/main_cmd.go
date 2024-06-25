@@ -26,6 +26,12 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 )
 
+func (t *Manager) onChange() {
+	t.updateIsLeader()
+	t.orchestrate()
+	t.updateIfChange()
+}
+
 func (t *Manager) initRelationAvailStatus() {
 	config := instance.ConfigData.Get(t.path, t.localhost)
 	if config == nil {
@@ -85,9 +91,7 @@ func (t *Manager) onRelationObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	do(c.Path.String(), "Parent", t.state.Parents)
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -109,9 +113,7 @@ func (t *Manager) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDelete
 
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -139,9 +141,7 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -169,9 +169,7 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 	}
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -360,9 +358,7 @@ func (t *Manager) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		}
 	}
 	t.objStatus = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 // onProgressInstanceMonitor updates the fields of instance.Monitor applying policies:
@@ -418,9 +414,7 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	doLocalExpect()
 
 	if t.change {
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -585,9 +579,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 		t.state.OrchestrationID = c.Value.CandidateOrchestrationID
 		t.acceptedOrchestrationID = c.Value.CandidateOrchestrationID
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	} else {
 		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:   t.localhost,
@@ -609,24 +601,18 @@ func (t *Manager) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 
 func (t *Manager) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.nodeMonitor[c.Node] = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 func (t *Manager) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	t.nodeStatus[c.Node] = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.nodeStats[c.Node] = c.Value
 	if t.objStatus.PlacementPolicy == placement.Score {
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
