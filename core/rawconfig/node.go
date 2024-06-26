@@ -20,6 +20,10 @@ const (
 	Program = "opensvc"
 )
 
+const (
+	basenameCapabilities = "capabilities-v3.json"
+)
+
 var (
 	Colorize *palette.ColorPaletteFunc
 	Color    *palette.ColorPalette
@@ -199,7 +203,7 @@ func setDefaults(root string) {
 		nodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
 		nodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
 		nodeViper.SetDefault("paths.last_shutdown", filepath.Join(root, "var", "last_shutdown"))
-		nodeViper.SetDefault("paths.capabilities", filepath.Join(root, "var", "capabilities.json"))
+		nodeViper.SetDefault("paths.capabilities", filepath.Join(root, "var", basenameCapabilities))
 		nodeViper.SetDefault("paths.lock", filepath.Join(root, "var", "lock"))
 		nodeViper.SetDefault("paths.lsnr", filepath.Join(root, "var", "lsnr"))
 		nodeViper.SetDefault("paths.cache", filepath.Join(root, "var", "cache"))

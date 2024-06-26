@@ -57,13 +57,14 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")
 	bus.SetDrainChanDuration(drainDuration)
+	bus.SetPanicOnFullQueue(time.Second)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 
 	hbc := hbcache.New(drainDuration)
 	require.NoError(t, hbc.Start(ctx))
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration, pubsub.WithQueueSize(100))
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 

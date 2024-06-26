@@ -73,9 +73,10 @@ type (
 		nodeList   *objectList
 		objectList *objectList
 
-		subCfgUpdated     pubsub.Subscription
-		subCfgDeleted     pubsub.Subscription
-		subCfgFileUpdated pubsub.Subscription
+		subQS pubsub.QueueSizer
+
+		// omonSubQS is the sub queue size of each created omon
+		omonSubQS pubsub.QueueSizer
 
 		// drainDuration is the max duration to wait while dropping commands and
 		// is the drain duration created imon.
@@ -87,8 +88,12 @@ type (
 	}
 )
 
-// NewManager prepares Discover with drainDuration.
-func NewManager(drainDuration time.Duration) *Manager {
+// NewManager initialize discover.Manager with drainDuration, and sub queues sizes:
+//
+//   - subQS: the subscription queue size of discover.cfg and discover.omon components.
+//   - omonSubQS: the subscription queue size of omon components with omonSubQS.
+//   - imonSubQS: the subscription queue size imon components (created from imon.Factory).
+func NewManager(drainDuration, imonDelayDuration time.Duration, subQS, omonSubQS, imonSubQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
@@ -102,7 +107,9 @@ func NewManager(drainDuration time.Duration) *Manager {
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 		drainDuration:     drainDuration,
-		imonStarter:       imon.Factory{DrainDuration: drainDuration},
+		imonStarter:       imon.Factory{DrainDuration: drainDuration, DelayDuration: imonDelayDuration, SubQS: imonSubQS},
+		subQS:             subQS,
+		omonSubQS:         omonSubQS,
 	}
 }
 

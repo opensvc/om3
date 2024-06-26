@@ -47,7 +47,7 @@ func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-func New(ctx context.Context, opts ...funcopt.O) *T {
+func New(opts ...funcopt.O) *T {
 	t := &T{
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener").WithPrefix("daemon: listener: "),
 	}

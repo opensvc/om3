@@ -823,9 +823,9 @@ func (e *HbMessageTypeUpdated) Kind() string {
 
 func (e *HbNodePing) String() string {
 	if e.IsAlive {
-		return e.Node + " ok"
+		return "HbNodePing: " + e.Node + " ok"
 	} else {
-		return e.Node + " stale"
+		return "HbNodePing: " + e.Node + " stale"
 	}
 }
 
@@ -834,8 +834,7 @@ func (e *HbNodePing) Kind() string {
 }
 
 func (e *HbPing) String() string {
-	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
-	return s
+	return fmt.Sprintf("HbPing: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
 func (e *HbPing) Kind() string {
@@ -843,8 +842,7 @@ func (e *HbPing) Kind() string {
 }
 
 func (e *HbStale) String() string {
-	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
-	return s
+	return fmt.Sprintf("HbStale: node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
 func (e *HbStale) Kind() string {
@@ -1021,7 +1019,7 @@ func (e *ObjectStatusDone) Kind() string {
 
 func (e *ObjectStatusUpdated) String() string {
 	d := e.Value
-	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
+	s := fmt.Sprintf("ObjectStatusUpdated: %s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
 	return s
 }
 

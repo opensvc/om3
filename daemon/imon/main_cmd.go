@@ -26,6 +26,54 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 )
 
+func (t *Manager) onChange() {
+	t.enableDelayTimer()
+	t.updateIsLeader()
+	t.delayOrchestrateEnabled = true
+	t.delayUpdateEnabled = true
+}
+
+func (t *Manager) updateOrchestrateUpdate() {
+	t.enableDelayTimer()
+	t.delayPreUpdateEnabled = true
+	t.delayOrchestrateEnabled = true
+	t.delayUpdateEnabled = true
+}
+
+// enableDelayTimer reset delayTimer with delayDuration is the timer is not yet
+// enabled.
+func (t *Manager) enableDelayTimer() {
+	if t.delayTimerEnabled {
+		return
+	}
+	t.delayTimer.Reset(t.delayDuration)
+	t.delayTimerEnabled = true
+}
+
+// onDelayTimer is run when the delay timer is fired.
+// It runs the enabled delayed actions:
+//
+//	updateIfChange() if delayPreUpdateEnabled
+//	orchestrate() if delayOrchestrateEnabled
+//	updateIfChange() if delayUpdateEnabled
+//
+// It also clears the delayTimerEnabled
+func (t *Manager) onDelayTimer() {
+	t.delayTimerEnabled = false
+	if t.delayPreUpdateEnabled {
+		t.delayPreUpdateEnabled = false
+		t.updateIfChange()
+	}
+	if t.delayOrchestrateEnabled {
+		t.delayOrchestrateEnabled = false
+		t.orchestrate()
+	}
+	if t.delayUpdateEnabled {
+		t.delayUpdateEnabled = false
+		t.updateIfChange()
+	}
+}
+
 func (t *Manager) initRelationAvailStatus() {
 	config := instance.ConfigData.Get(t.path, t.localhost)
 	if config == nil {
@@ -85,9 +133,7 @@ func (t *Manager) onRelationObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	do(c.Path.String(), "Parent", t.state.Parents)
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -109,9 +155,7 @@ func (t *Manager) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDelete
 
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -139,9 +183,7 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -169,9 +211,7 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 	}
 	if changes {
 		t.change = true
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -360,9 +400,7 @@ func (t *Manager) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		}
 	}
 	t.objStatus = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 // onProgressInstanceMonitor updates the fields of instance.Monitor applying policies:
@@ -418,9 +456,7 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	doLocalExpect()
 
 	if t.change {
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -585,9 +621,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 		t.state.OrchestrationID = c.Value.CandidateOrchestrationID
 		t.acceptedOrchestrationID = c.Value.CandidateOrchestrationID
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	} else {
 		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:   t.localhost,
@@ -609,24 +643,18 @@ func (t *Manager) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 
 func (t *Manager) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.nodeMonitor[c.Node] = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 func (t *Manager) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	t.nodeStatus[c.Node] = c.Value
-	t.updateIsLeader()
-	t.orchestrate()
-	t.updateIfChange()
+	t.onChange()
 }
 
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.nodeStats[c.Node] = c.Value
 	if t.objStatus.PlacementPolicy == placement.Score {
-		t.updateIsLeader()
-		t.orchestrate()
-		t.updateIfChange()
+		t.onChange()
 	}
 }
 
@@ -643,9 +671,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	t.log.Debugf("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
 	t.convergeGlobalExpectFromRemote()
-	t.updateIfChange()
-	t.orchestrate()
-	t.updateIfChange()
+	t.updateOrchestrateUpdate()
 }
 
 func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
@@ -657,9 +683,7 @@ func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
 	t.log.Debugf("delete remote instance imon from node %s", node)
 	delete(t.instMonitor, node)
 	t.convergeGlobalExpectFromRemote()
-	t.updateIfChange()
-	t.orchestrate()
-	t.updateIfChange()
+	t.updateOrchestrateUpdate()
 }
 
 func (t *Manager) GetInstanceMonitor(node string) (instance.Monitor, bool) {
@@ -1008,7 +1032,6 @@ func (t *Manager) updateIsLeader() {
 		t.change = true
 		t.state.IsHALeader = isHALeader
 	}
-	t.updateIfChange()
 	return
 }
 

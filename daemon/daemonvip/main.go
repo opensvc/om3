@@ -27,11 +27,14 @@ import (
 
 type (
 	T struct {
-		ctx       context.Context
-		cancel    context.CancelFunc
-		bus       *pubsub.Bus
-		log       *plog.Logger
-		sub       *pubsub.Subscription
+		ctx    context.Context
+		cancel context.CancelFunc
+		bus    *pubsub.Bus
+		log    *plog.Logger
+
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
+
 		wg        sync.WaitGroup
 		previous  cluster.Vip
 		localhost string
@@ -42,7 +45,7 @@ var (
 	vipPath = naming.Path{Name: "vip", Namespace: "system", Kind: naming.KindSvc}
 )
 
-func New() *T {
+func New(subQS pubsub.QueueSizer) *T {
 	localhost := hostname.Hostname()
 	return &T{
 		localhost: localhost,
@@ -50,6 +53,7 @@ func New() *T {
 			LogWithPath(plog.NewDefaultLogger(), vipPath).
 			Attr("pkg", "daemon/daemonvip").
 			WithPrefix("daemon: vip: "),
+		subQS: subQS,
 	}
 }
 
@@ -84,7 +88,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) startSubscriptions() {
-	sub := t.bus.Sub("daemonvip")
+	sub := t.bus.Sub("daemon.vip", t.subQS)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", t.localhost})
 	sub.Start()
 	t.sub = sub
@@ -159,7 +163,7 @@ func (t *T) purgeVip() error {
 
 func (t *T) createAndThaw(kv map[string]string) error {
 	timeout := 2 * time.Second
-	sub := t.bus.Sub("daemonvip.createAndThaw", pubsub.Timeout(timeout))
+	sub := t.bus.Sub("daemon.vip.createAndThaw", pubsub.Timeout(timeout))
 	waitCtx, cancel := context.WithTimeout(t.ctx, timeout)
 	defer cancel()
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", vipPath.String()})

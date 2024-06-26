@@ -127,7 +127,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 func (t *Manager) startSubscriptions() {
 	clusterID := clusterPath.String()
 	label := pubsub.Label{"path", t.path.String()}
-	t.sub = t.bus.Sub(t.path.String() + " icfg")
+	t.sub = t.bus.Sub("daemon.icfg " + t.path.String())
 	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
 	if t.path.String() != clusterID {
 		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)

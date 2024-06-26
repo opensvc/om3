@@ -11,7 +11,7 @@ import (
 
 func setup(t *testing.T) {
 	td := t.TempDir()
-	SetCacheFile(filepath.Join(td, "capabilities.json"))
+	SetCacheFile(filepath.Join(td, "capabilities-test.json"))
 	scanners = nil
 	caps = nil
 }

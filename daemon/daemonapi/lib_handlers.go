@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -30,10 +31,15 @@ type (
 		LabelNode pubsub.Label
 
 		localhost string
+		SubQS     pubsub.QueueSizer
 	}
+
+	contextKey string
 )
 
 var (
+	contextApiSubQS = contextKey("api-sub-queue-size")
+
 	labelAPI = pubsub.Label{"origin", "api"}
 )
 
@@ -45,6 +51,7 @@ func New(ctx context.Context) *DaemonAPI {
 		JWTcreator: daemonauth.JWTCreatorFromContext(ctx),
 		LabelNode:  pubsub.Label{"node", localhost},
 		localhost:  localhost,
+		SubQS:      SubQS(ctx),
 	}
 }
 
@@ -77,4 +84,18 @@ func setStreamHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-control", "no-store")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Transfer-Encoding", "chunked")
+}
+
+// SubQS function returns api pubsub.QueueSizer from context
+func SubQS(ctx context.Context) pubsub.QueueSizer {
+	subQS, ok := ctx.Value(contextApiSubQS).(pubsub.QueueSizer)
+	if ok {
+		return subQS
+	}
+	return pubsub.WithQueueSize(daemonenv.SubQSLarge)
+}
+
+// WithSubQS function returns copy of parent with api pubsub.QueueSizer.
+func WithSubQS(parent context.Context, subQS pubsub.QueueSizer) context.Context {
+	return context.WithValue(parent, contextApiSubQS, subQS)
 }

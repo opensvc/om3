@@ -35,6 +35,8 @@ type (
 		provisioned map[naming.Path]bool
 
 		wg sync.WaitGroup
+
+		subQS pubsub.QueueSizer
 	}
 
 	Jobs map[string]Job
@@ -58,18 +60,16 @@ var (
 		node.MonitorStateShutting:    nil,
 		node.MonitorStateMaintenance: nil,
 	}
-
-	// SubscriptionQueueSize is size of "scheduler" subscription
-	SubscriptionQueueSize = 16000
 )
 
-func New(opts ...funcopt.O) *T {
+func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
 		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
 		localhost:   hostname.Hostname(),
 		events:      make(chan any),
 		jobs:        make(Jobs),
 		provisioned: make(map[naming.Path]bool),
+		subQS:       subQS,
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -226,7 +226,7 @@ func (t *T) Stop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.pubsub = pubsub.BusFromContext(t.ctx)
-	sub := t.pubsub.Sub("scheduler", pubsub.WithQueueSize(SubscriptionQueueSize))
+	sub := t.pubsub.Sub("daemon.scheduler", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)

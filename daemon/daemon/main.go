@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/collector"
 	"github.com/opensvc/om3/daemon/cstat"
+	"github.com/opensvc/om3/daemon/daemonapi"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -72,6 +73,15 @@ func New() *T {
 
 // Start is used to startup mandatory daemon components
 func (t *T) Start(ctx context.Context) error {
+	var (
+		qsSmall  = pubsub.WithQueueSize(daemonenv.SubQSSmall)
+		qsMedium = pubsub.WithQueueSize(daemonenv.SubQSMedium)
+		qsLarge  = pubsub.WithQueueSize(daemonenv.SubQSLarge)
+		qsHuge   = pubsub.WithQueueSize(daemonenv.SubQSHuge)
+
+		defaultSubscriptionQueueSize = daemonenv.SubQSSmall
+	)
+
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
@@ -80,8 +90,9 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
 	bus := pubsub.NewBus("daemon")
-	bus.SetDefaultSubscriptionQueueSize(200)
+	bus.SetDefaultSubscriptionQueueSize(defaultSubscriptionQueueSize)
 	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
+	bus.SetPanicOnFullQueue(10 * time.Second)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 	t.wg.Add(1)
 	bus.Start(t.ctx)
@@ -105,7 +116,7 @@ func (t *T) Start(ctx context.Context) error {
 		t.notifyWatchDogBus(ctx)
 	}(t.ctx)
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration, qsHuge)
 	t.stopFuncs = append(t.stopFuncs, func() error {
 		t.log.Debugf("stop data manager")
 		dataCmdCancel()
@@ -116,7 +127,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
 	// startup ccfg
-	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration)); err != nil {
+	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration, qsSmall)); err != nil {
 		return err
 	}
 	initialCcfg := cluster.ConfigData.Get()
@@ -132,18 +143,19 @@ func (t *T) Start(ctx context.Context) error {
 		daemonenv.HTTPPort = initialCcfg.Listener.Port
 	}
 
+	t.ctx = daemonapi.WithSubQS(t.ctx, qsMedium)
 	for _, s := range []startStopper{
 		hbcache.New(2 * daemonenv.DrainChanDuration),
-		cstat.New(),
-		istat.New(),
-		listener.New(t.ctx),
-		nmon.NewManager(daemonenv.DrainChanDuration),
-		dns.NewManager(daemonenv.DrainChanDuration),
-		discover.NewManager(daemonenv.DrainChanDuration),
+		cstat.New(qsMedium),
+		istat.New(qsLarge),
+		listener.New(),
+		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		discover.NewManager(daemonenv.DrainChanDuration, daemonenv.ImonDelayDuration, qsHuge, qsMedium, qsMedium),
 		hb.New(t.ctx),
-		collector.New(t.ctx),
-		scheduler.New(),
-		daemonvip.New(),
+		collector.New(t.ctx, qsHuge),
+		scheduler.New(qsHuge),
+		daemonvip.New(qsSmall),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {
 			return err

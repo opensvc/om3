@@ -11,7 +11,7 @@ var (
 	defPathBin          = filepath.FromSlash("/usr/bin")
 	defPathVar          = filepath.FromSlash(fmt.Sprintf("/var/lib/%s", Program))
 	defPathLastShutdown = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/last_shutdown", Program))
-	defPathCapabilities = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/capabilities.json", Program))
+	defPathCapabilities = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/%s", Program, basenameCapabilities))
 	defPathLock         = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lock", Program))
 	defPathCache        = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/cache", Program))
 	defPathCerts        = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs", Program))

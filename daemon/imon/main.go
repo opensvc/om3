@@ -92,6 +92,31 @@ type (
 
 		labelLocalhost pubsub.Label
 		labelPath      pubsub.Label
+
+		// delayDuration is the minimum duration between two imon orchestrate,
+		// update.
+		delayDuration time.Duration
+
+		// delayOrchestrateEnabled a delayed orchestration has been asked
+		// and will be run on next delayTimer hit.
+		delayOrchestrateEnabled bool
+
+		// delayPreUpdateEnabled a delayed pre update has been asked
+		// and will be run on next delayTimer hit.
+		delayPreUpdateEnabled bool
+
+		// delayUpdateEnabled a delayed update has been asked
+		// and will be run on next delayTimer hit.
+		delayUpdateEnabled bool
+
+		// delayTimer it the timer for the next delay task run:
+		// onDelayTimer()
+		delayTimer *time.Timer
+
+		// delayTimerEnabled is true when the delay timer is already armed.
+		// It is used during enableDelayTimer():
+		// When false the delay timer is reset with delayDuration
+		delayTimerEnabled bool
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -102,12 +127,14 @@ type (
 
 	Factory struct {
 		DrainDuration time.Duration
+		SubQS         pubsub.QueueSizer
+		DelayDuration time.Duration
 	}
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
 func (f Factory) Start(parent context.Context, p naming.Path, nodes []string) error {
-	return start(parent, p, nodes, f.DrainDuration)
+	return start(parent, f.SubQS, p, nodes, f.DelayDuration, f.DrainDuration)
 }
 
 var (
@@ -118,11 +145,12 @@ var (
 	// updateRate is the limit rate for imon publish updates per second
 	// when orchestration loop occur on an object, too many events/commands may block
 	// databus or event bus. We must prevent such situations
+	// TODO: not anymore usefull since delayTimer
 	updateRate rate.Limit = 25
 )
 
 // start launch goroutine imon worker for a local instance state
-func start(parent context.Context, p naming.Path, nodes []string, drainDuration time.Duration) error {
+func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []string, delayDuration, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -165,13 +193,14 @@ func start(parent context.Context, p naming.Path, nodes []string, drainDuration 
 		drainDuration: drainDuration,
 
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
+		delayDuration: delayDuration,
 
 		labelLocalhost: pubsub.Label{"node", localhost},
 		labelPath:      pubsub.Label{"path", id},
 	}
 
 	t.log = t.newLogger(uuid.Nil)
-	t.startSubscriptions()
+	t.startSubscriptions(qs)
 
 	go func() {
 		t.worker(nodes)
@@ -187,8 +216,8 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
 
-func (t *Manager) startSubscriptions() {
-	sub := t.pubsubBus.Sub(t.id + " imon")
+func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
+	sub := t.pubsubBus.Sub("daemon.imon "+t.id, qs)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)
@@ -241,6 +270,11 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v
+	}
+
+	t.delayTimer = time.NewTimer(time.Second)
+	if !t.delayTimer.Stop() {
+		<-t.delayTimer.C
 	}
 
 	t.initRelationAvailStatus()
@@ -325,6 +359,8 @@ func (t *Manager) worker(initialNodes []string) {
 			case cmdOrchestrate:
 				t.needOrchestrate(c)
 			}
+		case <-t.delayTimer.C:
+			t.onDelayTimer()
 		}
 	}
 }

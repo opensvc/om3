@@ -35,14 +35,14 @@ type (
 // Start runs the daemon journaled data manager
 //
 // It returns a cmdC chan to submit actions on cluster data
-func Start(parent context.Context, drainDuration time.Duration) (chan<- Caller, chan<- *hbtype.Msg, context.CancelFunc) {
+func Start(parent context.Context, drainDuration time.Duration, subQS pubsub.QueueSizer) (chan<- Caller, chan<- *hbtype.Msg, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 	cmdC := make(chan Caller)
 	hbRecvMsgQ := make(chan *hbtype.Msg)
 	var wg sync.WaitGroup
 	d := newData()
 	d.bus = pubsub.BusFromContext(ctx)
-	d.startSubscriptions()
+	d.startSubscriptions(subQS)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

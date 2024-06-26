@@ -14,6 +14,9 @@ var (
 
 	DrainChanDuration = 40 * time.Millisecond
 
+	// ImonDelayDuration is the minimum for new imon publication
+	ImonDelayDuration = 250 * time.Millisecond
+
 	// ReadyDuration define the minimum time to wait during the startup of an instance object by imon
 	// The ready duration impacts the durations involved during daemon cluster split analyse (see nmon spit
 	// detection details).
@@ -27,6 +30,17 @@ var (
 
 	// HTTPUnixFileBasename is the basename of http listener unix socket
 	HTTPUnixFileBasename = "http.sock"
+)
+
+var (
+	// SubQSSmall is the daemon subscription small queue size
+	SubQSSmall uint64 = 200
+	// SubQSSmall is the daemon subscription medium queue size
+	SubQSMedium uint64 = 1000
+	// SubQSSmall is the daemon subscription large queue size
+	SubQSLarge uint64 = 20000
+	// SubQSHuge is the daemon subscription huge queue size
+	SubQSHuge uint64 = 40000
 )
 
 func CAKeyFile() string {

@@ -48,20 +48,24 @@ type (
 		localhost   string
 		change      bool
 
-		sub *pubsub.Subscription
-		wg  sync.WaitGroup
+		sub   *pubsub.Subscription
+		subQS pubsub.QueueSizer
+
+		wg sync.WaitGroup
 	}
 
 	// NodeDB implements AuthenticateNode
 	NodeDB struct{}
 )
 
-func New(drainDuration time.Duration) *Manager {
+func New(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		drainDuration: drainDuration,
 		localhost:     hostname.Hostname(),
 		log:           plog.NewDefaultLogger().WithPrefix("daemon: ccfg: ").Attr("pkg", "daemon/ccfg"),
 		networkSigs:   make(map[string]string),
+
+		subQS: subQS,
 	}
 }
 
@@ -100,7 +104,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("ccfg")
+	sub := t.bus.Sub("daemon.ccfg", t.subQS)
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.Start()
 	t.sub = sub

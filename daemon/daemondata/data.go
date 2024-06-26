@@ -115,9 +115,6 @@ var (
 	// subHbRefreshInterval is the minimum interval for update of: sub.hb
 	subHbRefreshInterval = 100 * propagationInterval
 
-	// SubscriptionQueueSize is size of "daemondata" subscription
-	SubscriptionQueueSize = 40000
-
 	countRoutineInterval = 1 * time.Second
 
 	ErrDrained = errors.New("drained command")
@@ -309,7 +306,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					return
 				}
 				if err := d.queueNewHbMsg(ctx); err != nil {
-					d.log.Errorf("queue hb message: %s: %s", err)
+					d.log.Errorf("queue hb message: %s %s", err)
 				} else {
 					d.needMsg = false
 					if hbMsgType != d.hbMessageType {
@@ -373,8 +370,8 @@ func gensEqual(a, b gens) bool {
 }
 
 // startSubscriptions subscribes to label local node messages that change the cluster data view
-func (d *data) startSubscriptions() {
-	sub := d.bus.Sub("daemondata", pubsub.WithQueueSize(SubscriptionQueueSize))
+func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
+	sub := d.bus.Sub("daemon.data", qs)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 

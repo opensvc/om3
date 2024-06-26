@@ -149,6 +149,9 @@ func (t *Manager) startedFromStartFailed() {
 		t.doneAndIdle()
 		return
 	}
+	if t.state.OrchestrationIsDone {
+		return
+	}
 	if t.isAllStartFailed() {
 		t.loggerWithState().Infof("all instances start failed -> set done")
 		t.done()
