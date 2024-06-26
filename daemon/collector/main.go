@@ -179,8 +179,10 @@ func (t *T) setupRequester() error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
 	if node, err := object.NewNode(); err != nil {
+		t.client = nil
 		return err
 	} else if cli, err := node.CollectorClient(); err != nil {
+		t.client = nil
 		return err
 	} else {
 		t.client = cli
