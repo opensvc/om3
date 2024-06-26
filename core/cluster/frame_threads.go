@@ -22,7 +22,7 @@ func (f Frame) wThreadCollector() string {
 	if f.Current.Daemon.Collector.State == "running" {
 		s += green("running") + "\t"
 	} else {
-		s += "\t"
+		s += yellow(f.Current.Daemon.Collector.State) + "\t"
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
