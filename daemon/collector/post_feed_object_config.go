@@ -107,6 +107,9 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 }
 
 func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
+	if t.client == nil {
+		return nil
+	}
 	method := http.MethodPost
 	path := "/oc3/feed/object/config"
 	t.log.Infof("%s %s %s@%s", method, path, p, nodename)
