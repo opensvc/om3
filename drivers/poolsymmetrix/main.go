@@ -87,6 +87,7 @@ func (t T) arrayName() string {
 }
 
 func (t T) remoteArrayName() string {
+	localArrayName := t.arrayName()
 	nodenames, err := t.array().Config().NodeReferrer.Nodes()
 	if err != nil {
 		return ""
@@ -106,14 +107,14 @@ func (t T) remoteArrayName() string {
 func (t T) arrayNodes(nodenames []string) (map[string][]string, error) {
 	m := make(map[string][]string)
 	if len(nodenames) == 0 {
-		if l, err = t.array().Config().NodeReferrer.Nodes(); err != nil {
+		if l, err := t.array().Config().NodeReferrer.Nodes(); err != nil {
 			return m, err
 		} else {
 			nodenames = l
 		}
 	}
 	for _, nodename := range nodenames {
-		arrayName := t.array().Config().GetStringAs("array", nodename)
+		arrayName := t.GetStringAs("array", nodename)
 		if arrayName != "" {
 			if l, ok := m[nodename]; ok {
 				l = append(l, arrayName)
@@ -133,7 +134,6 @@ func (t T) Capabilities() []string {
 }
 
 func (t T) getSRP() (arraysymmetrix.SRP, error) {
-	a := t.array()
 	srps, err := t.array().SymCfgSRPList()
 	if err != nil {
 		return arraysymmetrix.SRP{}, err
@@ -155,9 +155,9 @@ func (t T) Usage() (pool.Usage, error) {
 		return usage, err
 	}
 
-	usage.Size = srp.UsableCapacityGigabytes
-	usage.Used = srp.FreeCapacityGigabytes
-	usage.Free = srp.UsedCapacityGigabytes
+	usage.Size = int64(srp.SRPInfo.UsableCapacityGigabytes)
+	usage.Used = int64(srp.SRPInfo.FreeCapacityGigabytes)
+	usage.Free = int64(srp.SRPInfo.UsedCapacityGigabytes)
 	return usage, nil
 }
 
@@ -202,8 +202,8 @@ func (t *T) GetTargets() (san.Targets, error) {
 		return nil, err
 	}
 	for _, d := range data {
-		for _, port := range d.DirInfo.Ports {
-			if port.PortInfo.NodeWWN != "" && port.PortInfo.PortWWN != "" {
+		for _, port := range d.Ports {
+			if port.PortInfo.PortWWN != "" {
 				ports = append(ports, san.Target{
 					Name: port.PortInfo.PortWWN,
 					Type: san.FC,
@@ -240,11 +240,6 @@ func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk
 }
 
 func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.Disk, error) {
-	if len(paths) == 0 {
-		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
-	}
-	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-
 	arrayNodes, err := t.arrayNodes(nodenames)
 	if err != nil {
 		return []pool.Disk{}, err
@@ -258,7 +253,7 @@ func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.
 		return []pool.Disk{}, err
 	}
 
-	r2PoolDisks, err := t.MapDisk(name, size, r2Nodes)
+	r2PoolDisks, err := t.MapDisk(name, r2Nodes)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -266,7 +261,7 @@ func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.
 	return append(r1PoolDisks, r2PoolDisks...), nil
 }
 
-func (t *T) AddMap(devId string, nodenames []string) ([]pool.Disk, error) {
+func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
 	paths, err := pool.GetMapping(t, nodenames)
 	if err != nil {
@@ -277,7 +272,7 @@ func (t *T) AddMap(devId string, nodenames []string) ([]pool.Disk, error) {
 		SLO:      t.slo(),
 		SRP:      t.srp(),
 		SID:      t.sid(),
-		Mappings: paths,
+		Mappings: paths.MappingList(),
 	})
 
 	if err != nil {
@@ -301,15 +296,13 @@ func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]poo
 	}
 	drvSize := sizeconv.ExactBSizeCompact(float64(size))
 	arrayDisk, err := t.array().AddDisk(arraysymmetrix.OptAddDisk{
-		Volume: arraysymmetrix.OptAddDisk{
-			Name:     name,
-			Size:     drvSize,
-			SID:      t.sid(),
-			SRP:      t.srp(),
-			SLO:      t.slo(),
-			SRDF:     t.srdf(),
-			Mappings: paths.MappingList(),
-		},
+		Name:     name,
+		Size:     drvSize,
+		SID:      t.sid(),
+		SRP:      t.srp(),
+		SLO:      t.slo(),
+		SRDF:     t.srdf(),
+		Mappings: paths.MappingList(),
 	})
 	if err != nil {
 		return []pool.Disk{}, err
