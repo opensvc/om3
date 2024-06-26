@@ -1,0 +1,342 @@
+package poolsymmetrix
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/drivers/arraysymmetrix"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/sizeconv"
+)
+
+type (
+	T struct {
+		pool.T
+	}
+)
+
+var (
+	drvID = driver.NewID(driver.GroupPool, "symmetrix")
+)
+
+func init() {
+	driver.Register(drvID, NewPooler)
+}
+
+func NewPooler() pool.Pooler {
+	t := New()
+	var i interface{} = t
+	return i.(pool.Pooler)
+}
+
+func New() *T {
+	t := T{}
+	return &t
+}
+
+func (t T) Head() string {
+	s := ""
+	if sid := t.sid(); sid != "" {
+		s += fmt.Sprintf("array://%s", sid)
+	} else {
+		s += fmt.Sprintf("array://%s", t.arrayName())
+	}
+	if srp := t.srp(); srp != "" {
+		s += fmt.Sprintf("/%s", srp)
+	}
+	return s
+}
+
+func (t T) labelPrefix() string {
+	return t.GetString("label_prefix")
+}
+
+func (t T) slo() string {
+	return t.GetString("slo")
+}
+
+func (t T) srp() string {
+	return t.GetString("srp")
+}
+
+func (t T) srdf() bool {
+	return t.GetBool("srdf")
+}
+
+func (t T) sid() string {
+	return t.GetString("sid")
+}
+
+func (t T) compression() bool {
+	return t.GetBool("compression")
+}
+
+func (t T) deduplication() bool {
+	return t.GetBool("dedup")
+}
+
+func (t T) arrayName() string {
+	return t.GetString("array")
+}
+
+func (t T) remoteArrayName() string {
+	nodenames, err := t.array().Config().NodeReferrer.Nodes()
+	if err != nil {
+		return ""
+	}
+	for _, nodename := range nodenames {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		remoteArrayName := t.array().Config().GetStringAs("array", nodename)
+		if remoteArrayName != localArrayName {
+			return remoteArrayName
+		}
+	}
+	return ""
+}
+
+func (t T) arrayNodes(nodenames []string) (map[string][]string, error) {
+	m := make(map[string][]string)
+	if len(nodenames) == 0 {
+		if l, err = t.array().Config().NodeReferrer.Nodes(); err != nil {
+			return m, err
+		} else {
+			nodenames = l
+		}
+	}
+	for _, nodename := range nodenames {
+		arrayName := t.array().Config().GetStringAs("array", nodename)
+		if arrayName != "" {
+			if l, ok := m[nodename]; ok {
+				l = append(l, arrayName)
+				m[nodename] = l
+			} else {
+				l = []string{arrayName}
+				m[nodename] = l
+			}
+		}
+
+	}
+	return m, nil
+}
+
+func (t T) Capabilities() []string {
+	return []string{"rox", "rwx", "roo", "rwo", "blk", "fc", "shared"}
+}
+
+func (t T) getSRP() (arraysymmetrix.SRP, error) {
+	a := t.array()
+	srps, err := t.array().SymCfgSRPList()
+	if err != nil {
+		return arraysymmetrix.SRP{}, err
+	}
+	srpName := t.srp()
+	for _, srp := range srps {
+		if srp.SRPInfo.Name == srpName {
+			return srp, nil
+		}
+	}
+	return arraysymmetrix.SRP{}, os.ErrNotExist
+}
+
+func (t T) Usage() (pool.Usage, error) {
+	usage := pool.Usage{}
+
+	srp, err := t.getSRP()
+	if err != nil {
+		return usage, err
+	}
+
+	usage.Size = srp.UsableCapacityGigabytes
+	usage.Used = srp.FreeCapacityGigabytes
+	usage.Free = srp.UsedCapacityGigabytes
+	return usage, nil
+}
+
+func (t T) array() *arraysymmetrix.Array {
+	a := arraysymmetrix.New()
+	a.SetName(t.arrayName())
+	a.SetConfig(t.Config().(*xconfig.T))
+	return a
+}
+
+func (t T) remoteArray() *arraysymmetrix.Array {
+	a := arraysymmetrix.New()
+	a.SetName(t.remoteArrayName())
+	a.SetConfig(t.Config().(*xconfig.T))
+	return a
+}
+
+func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
+	data, err := t.BlkTranslate(name, size, shared)
+	if err != nil {
+		return nil, err
+	}
+	data = append(data, t.AddFS(name, shared, 1, 0, "disk#0")...)
+	return data, nil
+}
+
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
+	data := []string{
+		"disk#0.type=disk",
+		"disk#0.name=" + name,
+		"disk#0.scsireserv=true",
+		"shared=" + fmt.Sprint(shared),
+		"size=" + sizeconv.ExactBSizeCompact(float64(size)),
+	}
+	return data, nil
+}
+
+func (t *T) GetTargets() (san.Targets, error) {
+	ports := make(san.Targets, 0)
+	data, err := t.array().SymCfgDirectorList("all")
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range data {
+		for _, port := range d.DirInfo.Ports {
+			if port.PortInfo.NodeWWN != "" && port.PortInfo.PortWWN != "" {
+				ports = append(ports, san.Target{
+					Name: port.PortInfo.PortWWN,
+					Type: san.FC,
+				})
+			}
+		}
+	}
+	return ports, nil
+}
+
+func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+	poolDisk := pool.Disk{}
+	a := t.array()
+	if len(wwid) != 32 {
+		return nil, fmt.Errorf("wwid %s is not 32 characters long", wwid)
+	}
+	arrayDisk, err := a.DelDisk(arraysymmetrix.OptDelDisk{
+		Dev: wwid,
+	})
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	poolDisk.Driver = arrayDisk.DriverData
+	poolDisk.ID = arrayDisk.DiskID
+	return []pool.Disk{poolDisk}, nil
+}
+
+func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+	if t.srdf() {
+		return t.CreateDiskSRDF(name, size, nodenames)
+	} else {
+		return t.CreateDiskSimple(name, size, nodenames)
+	}
+}
+
+func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+	if len(paths) == 0 {
+		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
+	}
+	drvSize := sizeconv.ExactBSizeCompact(float64(size))
+
+	arrayNodes, err := t.arrayNodes(nodenames)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+
+	r1Nodes := arrayNodes[t.arrayName()]
+	r2Nodes := arrayNodes[t.remoteArrayName()]
+
+	r1PoolDisks, err := t.CreateDiskSimple(name, size, r1Nodes)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+
+	r2PoolDisks, err := t.MapDisk(name, size, r2Nodes)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+
+	return append(r1PoolDisks, r2PoolDisks...), nil
+}
+
+func (t *T) AddMap(devId string, nodenames []string) ([]pool.Disk, error) {
+	poolDisk := pool.Disk{}
+	paths, err := pool.GetMapping(t, nodenames)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	arrayDisk, err := t.remoteArray().MapDisk(arraysymmetrix.OptMapDisk{
+		Dev:      devId,
+		SLO:      t.slo(),
+		SRP:      t.srp(),
+		SID:      t.sid(),
+		Mappings: paths,
+	})
+
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	poolDisk.Driver = arrayDisk.DriverData
+	poolDisk.ID = arrayDisk.DiskID
+	poolDisk.Paths = paths
+	return []pool.Disk{poolDisk}, nil
+}
+
+func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+	poolDisk := pool.Disk{}
+	paths, err := pool.GetMapping(t, nodenames)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+
+	if len(paths) == 0 {
+		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
+	}
+	drvSize := sizeconv.ExactBSizeCompact(float64(size))
+	arrayDisk, err := t.array().AddDisk(arraysymmetrix.OptAddDisk{
+		Volume: arraysymmetrix.OptAddDisk{
+			Name:     name,
+			Size:     drvSize,
+			SID:      t.sid(),
+			SRP:      t.srp(),
+			SLO:      t.slo(),
+			SRDF:     t.srdf(),
+			Mappings: paths.MappingList(),
+		},
+	})
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	poolDisk.Driver = arrayDisk.DriverData
+	poolDisk.ID = arrayDisk.DiskID
+	poolDisk.Paths = paths
+	return []pool.Disk{poolDisk}, nil
+}
+
+func (t *T) DiskName(vol pool.Volumer) string {
+	var s string
+	if labelPrefix := t.labelPrefix(); labelPrefix != "" {
+		s += labelPrefix
+	} else {
+		k := key.T{
+			Section: "cluster",
+			Option:  "id",
+		}
+		clusterID := t.Config().GetString(k)
+		s += strings.SplitN(clusterID, "-", 2)[0] + "-"
+
+	}
+	suffix := vol.Config().GetString(key.T{
+		Section: "DEFAULT",
+		Option:  "id",
+	})
+	s += strings.SplitN(suffix, "-", 2)[0]
+	return s
+}

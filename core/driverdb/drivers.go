@@ -11,6 +11,8 @@ import (
 	_ "github.com/opensvc/om3/drivers/poolhoc"
 	_ "github.com/opensvc/om3/drivers/poolpure"
 	_ "github.com/opensvc/om3/drivers/poolshm"
+
+	//_ "github.com/opensvc/om3/drivers/poolsymmetrix"
 	_ "github.com/opensvc/om3/drivers/poolvirtual"
 	_ "github.com/opensvc/om3/drivers/poolzpool"
 	_ "github.com/opensvc/om3/drivers/resappforking"
