@@ -226,7 +226,7 @@ func (t *T) Stop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.pubsub = pubsub.BusFromContext(t.ctx)
-	sub := t.pubsub.Sub("scheduler", t.subQS)
+	sub := t.pubsub.Sub("daemon.scheduler", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)

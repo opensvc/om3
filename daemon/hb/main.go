@@ -2,14 +2,13 @@ package hb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"encoding/json"
 
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
@@ -433,7 +432,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 
 func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
-	t.sub = bus.Sub("hb")
+	t.sub = bus.Sub("daemon.hb")
 	t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.Cluster.String()})
 	t.sub.AddFilter(&msgbus.DaemonCtl{})
 	t.sub.Start()

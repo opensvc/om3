@@ -138,7 +138,7 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 // startSubscriptions starts the subscriptions for omon.
 // For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
 func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
-	sub := t.bus.Sub(t.id+" omon", subQS)
+	sub := t.bus.Sub("daemon.omon "+t.id, subQS)
 
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, t.labelPath)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, t.labelPath)

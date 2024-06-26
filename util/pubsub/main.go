@@ -83,9 +83,16 @@ type (
 
 	Subscription struct {
 		filters filters
-		name    string
-		id      uuid.UUID
-		bus     *Bus
+
+		// name is the subscription name, from which the family is deducted.
+		name string
+
+		id  uuid.UUID
+		bus *Bus
+
+		// family value is deducted from the first field of name.
+		// example: with name = "daemon.imon foo@nodex" family is "daemon.imon"
+		family string
 
 		// q is a private channel pushing to C with timeout
 		q chan any
@@ -95,6 +102,10 @@ type (
 
 		// when non 0, the subscription is stopped if the push timeout exceeds timeout
 		timeout time.Duration
+
+		// block is 'yes' when subscription timeout is 0 (the subscription is not
+		// stopped when blocked on full internal queue).
+		block string
 
 		// cancel defines the subscription canceler
 		cancel context.CancelFunc
@@ -134,6 +145,7 @@ type (
 		resp      chan<- *Subscription
 		timeout   time.Duration
 		queueSize uint64
+		family    string
 	}
 
 	cmdUnsub struct {
@@ -258,6 +270,26 @@ var (
 			Help: "The total number of pubsub subscription filter operations",
 		},
 		[]string{"kind"})
+
+	subscriptionQueueThresholdTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_queue_threshold_total",
+			Help: "The total number of pubsub subscription queue threshold operations" +
+				" by family (imon, omon, daemondata, api, ...)," +
+				" by change (increase or decrease)," +
+				" by block (yes when subscription has no timeout, else no)" +
+				" by level (debug, info, warn).",
+		},
+		[]string{"family", "change", "block", "level"})
+
+	subscriptionQueueFullTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_queue_full_total",
+			Help: "The total number of pubsub subscription queue full operations" +
+				" by family (imon, omon, daemondata, api, ...)," +
+				" by block (yes when subscription has no timeout, else no).",
+		},
+		[]string{"family", "block"})
 )
 
 // Key returns labelMap key as a string
@@ -456,6 +488,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
 		name:    c.name,
+		family:  c.family,
 		C:       make(chan any, c.queueSize),
 		q:       make(chan any, c.queueSize),
 		id:      id,
@@ -466,6 +499,11 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		queuedMax:         c.queueSize / 32,
 		queuedMin:         c.queueSize / 32,
 		queuedSize:        c.queueSize,
+	}
+	if c.timeout > 0 {
+		sub.block = "no"
+	} else {
+		sub.block = "yes"
 	}
 	b.subs[id] = sub
 	c.resp <- sub
@@ -506,6 +544,9 @@ func (b *Bus) onPubCmd(c cmdPub) {
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
 				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
+				if queueLen >= sub.queuedSize {
+					subscriptionQueueFullTotal.With(prometheus.Labels{"family": sub.family, "block": sub.block}).Inc()
+				}
 				if queueLen >= sub.queuedSize && sub.timeout == 0 && b.panicOnFullQueueGraceTime > 0 {
 					// TODO: increase queue size instead of panic ?
 					err := fmt.Errorf("subscription %s has reached maximum %d of %d queued pending message, "+
@@ -532,12 +573,15 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						// 3/4 full
 						level = "warn"
 						b.log.Errorf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "warn"}).Inc()
 					} else if left < sub.queuedSize/2 {
 						// 1/2 full
 						level = "info"
 						b.log.Warnf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "info"}).Inc()
 					} else {
 						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
 					}
 					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
@@ -549,8 +593,10 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						// 1/2 full
 						level = "info"
 						b.log.Infof("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "info"}).Inc()
 					} else {
 						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
 					}
 					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
@@ -664,7 +710,8 @@ type (
 
 type (
 	WithQueueSize uint64
-	Timeout       time.Duration
+
+	Timeout time.Duration
 )
 
 // queueSize implements QueueSizer for WithQueueSize
@@ -677,7 +724,11 @@ func (t Timeout) timout() time.Duration {
 	return time.Duration(t)
 }
 
-// Sub function requires a new Subscription on the bus.
+// Sub function requires a new Subscription "name" on the bus.
+//
+// The not empty string <name> parameter is used to compute the subscription
+// family (the fist field of name), example: with name "daemon.imon foo@node1",
+// family is "daemon.imon". Function will panic if name is empty.
 //
 // Used options: Timeouter, QueueSizer
 //
@@ -694,6 +745,7 @@ func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 		name:      name,
 		resp:      respC,
 		queueSize: b.subQueueSize,
+		family:    strings.Fields(name)[0],
 	}
 
 	for _, opt := range options {

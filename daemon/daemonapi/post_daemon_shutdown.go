@@ -70,7 +70,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 
 	a.announceNodeState(log, node.MonitorStateShutting)
 
-	sub := a.EventBus.Sub(fmt.Sprintf("PostDaemonShutdown %s", eCtx.Get("uuid")))
+	sub := a.EventBus.Sub(fmt.Sprintf("api.post_daemon_shutdown %s", eCtx.Get("uuid")))
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode)
 	sub.Start()
 	defer func() {

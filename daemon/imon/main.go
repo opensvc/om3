@@ -217,7 +217,7 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
-	sub := t.pubsubBus.Sub(t.id+" imon", qs)
+	sub := t.pubsubBus.Sub("daemon.imon "+t.id, qs)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)

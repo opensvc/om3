@@ -145,7 +145,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	var started bool
-	sub := t.bus.Sub("lsnr-http-inet")
+	sub := t.bus.Sub("daemon.lsnr.http.inet")
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{},
 		pubsub.Label{"node", hostname.Hostname()})
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})

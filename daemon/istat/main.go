@@ -71,7 +71,7 @@ func (t *T) Start(ctx context.Context) error {
 		t.ctx, t.cancel = context.WithCancel(ctx)
 		t.bus = pubsub.BusFromContext(t.ctx)
 
-		sub := t.bus.Sub("istats", t.subQS)
+		sub := t.bus.Sub("daemon.istats", t.subQS)
 		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)

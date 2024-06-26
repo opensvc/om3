@@ -295,7 +295,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("nmon", t.subQS)
+	sub := t.bus.Sub("daemon.nmon", t.subQS)
 
 	// watching for ClusterConfigUpdated (so we get notified when cluster config file
 	// has been changed and reloaded

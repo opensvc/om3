@@ -14,7 +14,7 @@ func (t *Manager) omon(started chan<- bool) {
 	log.Infof("started")
 	defer log.Infof("stopped")
 	bus := pubsub.BusFromContext(t.ctx)
-	sub := bus.Sub("discover.omon", t.subQS)
+	sub := bus.Sub("daemon.discover.omon", t.subQS)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true

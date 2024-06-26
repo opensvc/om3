@@ -371,7 +371,7 @@ func gensEqual(a, b gens) bool {
 
 // startSubscriptions subscribes to label local node messages that change the cluster data view
 func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
-	sub := d.bus.Sub("daemondata", qs)
+	sub := d.bus.Sub("daemon.data", qs)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 

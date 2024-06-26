@@ -25,7 +25,7 @@ import (
 
 func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
-	sub := bus.Sub("discover.cfg", t.subQS)
+	sub := bus.Sub("daemon.discover.cfg", t.subQS)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})

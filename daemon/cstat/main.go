@@ -83,7 +83,7 @@ func (o *T) Stop() error {
 }
 
 func (o *T) startSubscriptions() {
-	sub := o.bus.Sub("cstat", o.subQS)
+	sub := o.bus.Sub("daemon.cstat", o.subQS)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub

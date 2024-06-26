@@ -139,7 +139,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("dns", t.subQS)
+	sub := t.bus.Sub("daemon.dns", t.subQS)
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})

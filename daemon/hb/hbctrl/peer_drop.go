@@ -21,7 +21,7 @@ func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
 	bus := pubsub.BusFromContext(ctx)
-	sub := bus.Sub("peer-drop-worker")
+	sub := bus.Sub("daemon.hb.peer_drop_worker")
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(&msgbus.HbNodePing{})

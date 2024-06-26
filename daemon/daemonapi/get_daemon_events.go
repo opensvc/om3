@@ -221,7 +221,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		setStreamHeaders(w)
 	}
 
-	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, ctx.Request().RemoteAddr, ctx.Get("uuid"))
+	name := fmt.Sprintf("api.get_daemon_event from %s %s", ctx.Request().RemoteAddr, ctx.Get("uuid"))
 	if params.Filter != nil && len(*params.Filter) > 0 {
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}

@@ -220,7 +220,7 @@ func (t *T) Stop() error {
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	t.bus = pubsub.BusFromContext(t.ctx)
-	sub := t.bus.Sub("collector", t.subQS)
+	sub := t.bus.Sub("daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
