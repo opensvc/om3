@@ -5,7 +5,7 @@ import (
 )
 
 // onNodeStatusUpdated updates .cluster.node.<node>.status from msgbus.NodeStatusUpdated and from gen cache.
-// The gen cache contains synchronously updated gen values, and this may avoid undue path->full->patch meassage type
+// The gen cache contains synchronously updated gen values, and this may avoid undue path->full->patch message type
 // transitions.
 // TODO refactor or move this logic to the message producer ?
 func (data *ClusterData) onNodeStatusUpdated(m *NodeStatusUpdated) {

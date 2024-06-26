@@ -7,9 +7,14 @@ import (
 )
 
 // onNodeMonitorDeleted reset .cluster.node.<node>.monitor with state shutting
+// and IsPreserved true
 func (data *ClusterData) onNodeMonitorDeleted(m *NodeMonitorDeleted) {
 	if v, ok := data.Cluster.Node[m.Node]; ok {
-		v.Monitor = node.Monitor{State: node.MonitorStateShutting, StateUpdatedAt: time.Now()}
+		v.Monitor = node.Monitor{
+			State:          node.MonitorStateShutting,
+			IsPreserved:    true,
+			StateUpdatedAt: time.Now(),
+		}
 		data.Cluster.Node[m.Node] = v
 	}
 }
