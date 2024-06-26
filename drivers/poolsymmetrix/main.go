@@ -95,7 +95,7 @@ func (t T) remoteArrayName() string {
 		if nodename == hostname.Hostname() {
 			continue
 		}
-		remoteArrayName := t.array().Config().GetStringAs("array", nodename)
+		remoteArrayName := t.GetStringAs("array", nodename)
 		if remoteArrayName != localArrayName {
 			return remoteArrayName
 		}

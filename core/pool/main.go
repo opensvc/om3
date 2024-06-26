@@ -65,6 +65,7 @@ type (
 		Eval(key.T) (any, error)
 		GetInt(key.T) int
 		GetString(key.T) string
+		GetStringAs(key.T, string) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string
 		GetBool(k key.T) bool
@@ -245,6 +246,11 @@ func (t *T) GetInt(s string) int {
 func (t *T) GetString(s string) string {
 	k := pk(t.name, s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) GetStringAs(s, nodename string) string {
+	k := pk(t.name, s)
+	return t.Config().GetStringAs(k, nodename)
 }
 
 func (t *T) GetBool(s string) bool {
