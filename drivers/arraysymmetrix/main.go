@@ -1332,6 +1332,15 @@ func (t *Array) getDev(sid, devId string) (Device, error) {
 }
 
 func (t *Array) addThinDevToSG(sid, devId, sg string) error {
+	if sid == "" {
+		return fmt.Errorf("a sym id is required to add tdev to sg")
+	}
+	if devId == "" {
+		return fmt.Errorf("a dev id is required to add tdev to sg")
+	}
+	if sg == "" {
+		return fmt.Errorf("a sg name is required to add tdev to sg")
+	}
 	args := []string{"-sid", sid, "-name", sg, "-type", "storage", "add", "dev", devId}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
@@ -1925,7 +1934,7 @@ func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
 	if opt.Name == "" {
 		return dev, fmt.Errorf("--name is required")
 	}
-	args := []string{"-sid", opt.SID, "set", "dev", opt.Dev, "-attribute", "device_name=" + opt.Name}
+	args := []string{"-sid", opt.SID, "set", "dev", dev.DevInfo.DevName, "-attribute", "device_name=" + opt.Name}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
@@ -1941,7 +1950,7 @@ func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
 	if err != nil {
 		return dev, err
 	}
-	return t.getDev(opt.SID, opt.Dev)
+	return t.getDev(opt.SID, dev.DevInfo.DevName)
 }
 
 func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
@@ -1982,7 +1991,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 		return dev, fmt.Errorf("the target size is smaller than the current size. refuse to process. use --force if you accept the data loss risk.")
 	}
 
-	args := []string{"-sid", opt.SID, "modify", opt.Dev, "-tdev", "-cap", fmt.Sprint(sizeBytes / 1024 / 1024), "-captype", "mb", "-noprompt"}
+	args := []string{"-sid", opt.SID, "modify", dev.DevInfo.DevName, "-tdev", "-cap", fmt.Sprint(sizeBytes / 1024 / 1024), "-captype", "mb", "-noprompt"}
 	if t.IsPowerMax() && dev.RDF != nil {
 		args = append(args, "-rdfg", fmt.Sprint(dev.RDF.Local.RAGroupNum))
 	}
@@ -2001,7 +2010,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 	if err != nil {
 		return dev, err
 	}
-	return t.getDev(opt.SID, opt.Dev)
+	return t.getDev(opt.SID, dev.DevInfo.DevName)
 }
 
 func (t *Array) IsPowerMax() bool {
@@ -2040,31 +2049,35 @@ func (t *Array) FreeThinDev(opt OptFreeThinDev) error {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
+	dev, err := t.getDev(opt.SID, opt.Dev)
+	if err != nil {
+		return err
+	}
 	for {
-		err := t.freeThinDev(opt.SID, opt.Dev)
+		err := t.freeThinDev(opt.SID, dev.DevInfo.DevName)
 		if err != nil {
 			return err
 		}
-		if v, err := t.IsThinDevFreed(opt.SID, opt.Dev); err != nil {
+		if v, err := t.IsThinDevFreed(opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if !v {
 			continue
 		}
-		if v, err := t.IsThinDevStatusDeallocating(opt.SID, opt.Dev); err != nil {
+		if v, err := t.IsThinDevStatusDeallocating(opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if v {
-			t.Log().Infof("device %s status is deallocating", opt.Dev)
+			t.Log().Infof("device %s status is deallocating", dev.DevInfo.DevName)
 			continue
 		} else {
-			t.Log().Infof("device %s status is not deallocating", opt.Dev)
+			t.Log().Infof("device %s status is not deallocating", dev.DevInfo.DevName)
 		}
-		if v, err := t.IsThinDevStatusFreeingAll(opt.SID, opt.Dev); err != nil {
+		if v, err := t.IsThinDevStatusFreeingAll(opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if v {
-			t.Log().Infof("device %s status is freeingall", opt.Dev)
+			t.Log().Infof("device %s status is freeingall", dev.DevInfo.DevName)
 			continue
 		} else {
-			t.Log().Infof("device %s status is not freeingall", opt.Dev)
+			t.Log().Infof("device %s status is not freeingall", dev.DevInfo.DevName)
 		}
 		time.Sleep(5 * time.Second)
 		break
@@ -2139,13 +2152,13 @@ func (t *Array) SetSRDFMode(opt OptSetSRDFMode) error {
 		return err
 	}
 	if dev.RDF == nil {
-		return fmt.Errorf("dev %s is not in a RDF relation", opt.Dev)
+		return fmt.Errorf("dev %s is not in a RDF relation", dev.DevInfo.DevName)
 	}
 
 	rdfg := fmt.Sprint(dev.RDF.Local.RAGroupNum)
 	dst := dev.RDF.Remote.DevName
 
-	pairFile, err := t.writePairFile(opt.Dev, dst)
+	pairFile, err := t.writePairFile(dev.DevInfo.DevName, dst)
 	if err != nil {
 		return err
 	}
@@ -2282,7 +2295,7 @@ func (t *Array) DelThinDev(opt OptDelThinDev) (Device, error) {
 	if err != nil {
 		return Device{}, err
 	}
-	err = t.delThinDev(opt.SID, opt.Dev)
+	err = t.delThinDev(opt.SID, dev.DevInfo.DevName)
 	if err != nil {
 		return Device{}, err
 	}
@@ -2416,30 +2429,26 @@ func (t *Array) runDeletePair(sid, pairFile, rdfg string) error {
 	return cmd.Run()
 }
 
-func (t *Array) deletePair(sid, devId string) (*RDF, error) {
-	dev, err := t.getDev(sid, devId)
-	if err != nil {
-		return nil, err
-	}
+func (t *Array) deletePair(dev Device) (*RDF, error) {
 	if dev.RDF == nil {
-		t.log.Debugf("dev %s is not in a RDF relation", devId)
+		t.log.Debugf("dev %s is not in a RDF relation", dev.DevInfo.DevName)
 		return nil, nil
 	}
 	rdfg := fmt.Sprint(dev.RDF.Local.RAGroupNum)
 	dst := dev.RDF.Remote.DevName
-	pairFile, err := t.writePairFile(devId, dst)
+	pairFile, err := t.writePairFile(dev.DevInfo.DevName, dst)
 	if err != nil {
 		return dev.RDF, err
 	}
 	defer func() { _ = os.Remove(pairFile) }()
 
 	if dev.RDF.Info.PairState != "Suspended" {
-		if err := t.runSuspendPair(sid, pairFile, rdfg); err != nil {
+		if err := t.runSuspendPair(dev.Product.SymId, pairFile, rdfg); err != nil {
 			return dev.RDF, err
 		}
 	}
 
-	err = t.runDeletePair(sid, pairFile, rdfg)
+	err = t.runDeletePair(dev.Product.SymId, pairFile, rdfg)
 	if err != nil {
 		return dev.RDF, err
 	}
@@ -2450,7 +2459,11 @@ func (t *Array) DeletePair(opt OptDeletePair) (*RDF, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	return t.deletePair(opt.SID, opt.Dev)
+	dev, err := t.getDev(opt.SID, opt.Dev)
+	if err != nil {
+		return nil, err
+	}
+	return t.deletePair(dev)
 }
 
 func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
@@ -2473,7 +2486,7 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 		return disk, err
 	}
 
-	if data, err := t.getMappings(opt.SID, opt.Dev, opt.Mappings); err != nil {
+	if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName, opt.Mappings); err != nil {
 		return disk, err
 	} else {
 		disk.Mappings = data
@@ -2569,26 +2582,28 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	disk.DevID = dev.DevInfo.DevName
 	disk.DriverData = driverData
 
-	if err := t.mapDisk(OptMapDisk{
-		Dev:      dev.DevInfo.DevName,
-		SID:      opt.SID,
-		SLO:      opt.SLO,
-		SRP:      opt.SRP,
-		SG:       opt.SG,
-		Mappings: opt.Mappings,
-	}); err != nil {
-		return disk, err
-	}
+	if opt.SG != "" || len(opt.Mappings) > 0 {
+		if err := t.mapDisk(OptMapDisk{
+			Dev:      dev.DevInfo.DevName,
+			SID:      opt.SID,
+			SLO:      opt.SLO,
+			SRP:      opt.SRP,
+			SG:       opt.SG,
+			Mappings: opt.Mappings,
+		}); err != nil {
+			return disk, err
+		}
 
-	dev, err = t.getDev(opt.SID, dev.DevInfo.DevName)
-	if err != nil {
-		return disk, err
-	}
+		dev, err = t.getDev(opt.SID, dev.DevInfo.DevName)
+		if err != nil {
+			return disk, err
+		}
 
-	if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName, opt.Mappings); err != nil {
-		return disk, err
-	} else {
-		disk.Mappings = data
+		if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName, opt.Mappings); err != nil {
+			return disk, err
+		} else {
+			disk.Mappings = data
+		}
 	}
 
 	driverData["dev"] = dev
@@ -2618,7 +2633,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
 	if err != nil {
 		return disk, err
 	}
-	if err := t.unmap(opt.SID, opt.Dev); err != nil {
+	if err := t.unmap(opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
 
@@ -2644,15 +2659,15 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	}
 
 	if dev.DevInfo.SnapvxSource {
-		return disk, fmt.Errorf("dev %s is a snapvx_source. can not delete", opt.Dev)
+		return disk, fmt.Errorf("dev %s is a snapvx_source. can not delete", dev.DevInfo.DevName)
 	}
-	if err := t.setDevRO(opt.SID, opt.Dev); err != nil {
+	if err := t.setDevRO(opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
-	if err := t.unmap(opt.SID, opt.Dev); err != nil {
+	if err := t.unmap(opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
-	if _, err := t.deletePair(opt.SID, opt.Dev); err != nil {
+	if _, err := t.deletePair(dev); err != nil {
 		return disk, err
 	}
 
@@ -2660,13 +2675,13 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	retryDelay := 5 * time.Second
 
 	for i := 1; i <= maxRetry; i++ {
-		if err := t.freeThinDev(opt.SID, opt.Dev); err != nil {
+		if err := t.freeThinDev(opt.SID, dev.DevInfo.DevName); err != nil {
 			return disk, err
 		}
-		if err := t.delThinDev(opt.SID, opt.Dev); err != nil {
+		if err := t.delThinDev(opt.SID, dev.DevInfo.DevName); err != nil {
 			if errors.Is(err, ErrNotFree) {
 				if i >= maxRetry {
-					return disk, fmt.Errorf("dev %s is still not free of all allocations after 5 tries", opt.Dev)
+					return disk, fmt.Errorf("dev %s is still not free of all allocations after 5 tries", dev.DevInfo.DevName)
 				} else {
 					time.Sleep(retryDelay)
 					continue
