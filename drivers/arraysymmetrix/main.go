@@ -407,6 +407,8 @@ type (
 		Name                              string             `xml:"name" json:"name"`
 		DefaultSRP                        string             `xml:"default_SRP" json:"default_SRP"`
 		EffectiveUsedCapacityPct          int                `xml:"effective_used_capacity_pct" json:"effective_used_capacity_pct"`
+		UsedCapacityGigabytes             float64            `xml:"used_capacity_gigabytes" json:"used_capacity_gigabytes"`
+		UsedCapacityTerabytes             float64            `xml:"used_capacity_terabytes" json:"used_capacity_terabytes"`
 		AllocatedCapacityGigabytes        float64            `xml:"allocated_capacity_gigabytes" json:"allocated_capacity_gigabytes"`
 		AllocatedCapacityTerabytes        float64            `xml:"allocated_capacity_terabytes" json:"allocated_capacity_terabytes"`
 		FreeCapacityGigabytes             float64            `xml:"free_capacity_gigabytes" json:"free_capacity_gigabytes"`
@@ -515,8 +517,21 @@ type (
 		Directors []Director `xml:"Director" json:"directors"`
 	}
 	Director struct {
-		XMLName xml.Name `xml:"Director" json:"-"`
-		DirInfo DirInfo  `xml:"Dir_Info" json:"Dir_Info"`
+		XMLName xml.Name  `xml:"Director" json:"-"`
+		DirInfo DirInfo   `xml:"Dir_Info" json:"Dir_Info"`
+		Ports   []DirPort `xml:"Port" json:"ports"`
+	}
+	DirPort struct {
+		XMLName  xml.Name    `xml:"Port" json:"-"`
+		PortInfo DirPortInfo `xml:"Port_Info" json:"Port_Info"`
+	}
+	DirPortInfo struct {
+		XMLName         xml.Name `xml:"Port_Info" json:"-"`
+		Port            int      `xml:"port" json:"port"`
+		PortWWN         string   `xml:"port_wwn" json:"port_wwn"`
+		PortStatus      string   `xml:"port_status" json:"port_status"`
+		NegociatedSpeed string   `xml:"negociated_speed" json:"negociated_speed"`
+		MaximumSpeed    string   `xml:"maximum_speed" json:"maximum_speed"`
 	}
 	DirInfo struct {
 		XMLName   xml.Name `xml:"Dir_Info" json:"-"`
