@@ -37,6 +37,8 @@ type (
 		bus        *pubsub.Bus
 		created    map[string]time.Time
 
+		status cluster.DaemonCollector
+
 		postTicker *time.Ticker
 
 		// previousUpdatedAt is the timestamp of the last successfully data sent to
@@ -155,6 +157,14 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		localhost:   hostname.Hostname(),
 		clusterData: daemondata.FromContext(ctx),
 		subQS:       subQS,
+		status: cluster.DaemonCollector{
+			DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{
+				ID:           "collector",
+				ConfiguredAt: time.Now(),
+				CreatedAt:    time.Now(),
+				State:        "created",
+			},
+		},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -179,8 +189,10 @@ func (t *T) setupRequester() error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
 	if node, err := object.NewNode(); err != nil {
+		t.client = nil
 		return err
 	} else if cli, err := node.CollectorClient(); err != nil {
+		t.client = nil
 		return err
 	} else {
 		t.client = cli
@@ -191,6 +203,8 @@ func (t *T) setupRequester() error {
 func (t *T) Start(ctx context.Context) error {
 	errC := make(chan error)
 	t.ctx, t.cancel = context.WithCancel(ctx)
+
+	t.bus = pubsub.BusFromContext(t.ctx)
 
 	t.wg.Add(1)
 	go func(errC chan<- error) {
@@ -219,7 +233,6 @@ func (t *T) Stop() error {
 }
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
-	t.bus = pubsub.BusFromContext(t.ctx)
 	sub := t.bus.Sub("daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
@@ -242,6 +255,9 @@ func (t *T) loop() {
 	t.initChanges()
 	sub := t.startSubscriptions()
 	defer func() {
+		t.status.DaemonSubsystemStatus.State = "stopped"
+		t.bus.Pub(&msgbus.DaemonCollector{Node: t.localhost, Value: t.status}, pubsub.Label{"node", t.localhost})
+
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
 		}

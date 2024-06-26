@@ -22,13 +22,17 @@ func (f Frame) wThreadCollector() string {
 	if f.Current.Daemon.Collector.State == "running" {
 		s += green("running") + "\t"
 	} else {
-		s += "\t"
+		s += yellow(f.Current.Daemon.Collector.State) + "\t"
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
-	for _, v := range f.Current.Cluster.Node {
-		if v.Status.IsSpeaker {
-			s += green("O") + "\t"
+	for _, node := range f.Current.Cluster.Config.Nodes {
+		if f.Current.Cluster.Node[node].Status.IsSpeaker {
+			if f.Current.Cluster.Node[node].Monitor.IsPreserved {
+				s += yellow("O") + "\t"
+			} else {
+				s += green("O") + "\t"
+			}
 		} else {
 			s += "\t"
 		}

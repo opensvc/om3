@@ -24,6 +24,8 @@ type (
 		OrchestrationID     uuid.UUID `json:"orchestration_id"`
 		OrchestrationIsDone bool      `json:"orchestration_is_done"`
 		SessionID           uuid.UUID `json:"session_id"`
+
+		IsPreserved bool `json:"preserved"`
 	}
 
 	// MonitorUpdate is embedded in the SetNodeMonitor message to

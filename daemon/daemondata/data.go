@@ -375,6 +375,8 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 
+	sub.AddFilter(&msgbus.DaemonCollector{}, d.labelLocalNode)
+
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
 
