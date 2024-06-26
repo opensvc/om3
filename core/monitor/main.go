@@ -129,7 +129,7 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	return nil
 }
 
-func (m *T) doOneShot(data cluster.Data, clear bool, evCount uint64, out io.Writer) {
+func (m *T) doOneShot(data cluster.Data, clear bool, eventsetCount uint64, out io.Writer) {
 	human := func() string {
 		f := cluster.Frame{
 			Selector: m.selector,
@@ -157,7 +157,7 @@ func (m *T) doOneShot(data cluster.Data, clear bool, evCount uint64, out io.Writ
 
 		// Clearing is used by the watch mode.
 		// In this case we want to see the date as a proof of activity.
-		_, _ = fmt.Fprintf(out, "Client %s received %d events, last on %s\n\n", hostname.Hostname(), evCount, time.Now().Format(time.RFC1123))
+		_, _ = fmt.Fprintf(out, "Client %s received %d eventsets, last on %s\n\n", hostname.Hostname(), eventsetCount, time.Now().Format(time.RFC1123))
 	}
 	_, _ = fmt.Fprint(out, s)
 }
@@ -216,10 +216,10 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		defer wg.Done()
 		m.doOneShot(*d, true, 0, out)
 		// show data when new data published on dataC
-		evCount := uint64(0)
+		eventsetCount := uint64(0)
 		for d := range dataC {
-			evCount++
-			m.doOneShot(*d, true, evCount, out)
+			eventsetCount++
+			m.doOneShot(*d, true, eventsetCount, out)
 		}
 	}(data.DeepCopy())
 
