@@ -87,7 +87,7 @@ type (
 	ArrayPooler interface {
 		Pooler
 		GetTargets() (san.Targets, error)
-		CreateDisk(name string, size int64, paths san.Paths) ([]Disk, error)
+		CreateDisk(name string, size int64, nodenames []string) ([]Disk, error)
 		DeleteDisk(name, wwid string) ([]Disk, error)
 	}
 	Translater interface {

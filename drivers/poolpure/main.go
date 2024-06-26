@@ -157,8 +157,12 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	return []pool.Disk{poolDisk}, nil
 }
 
-func (t *T) CreateDisk(name string, size int64, paths san.Paths) ([]pool.Disk, error) {
+func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
+	paths, err := pool.GetMapping(t, nodenames)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
 	if len(paths) == 0 {
 		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
