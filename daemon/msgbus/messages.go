@@ -53,6 +53,8 @@ var (
 
 		"ClientUnsubscribed": func() any { return &ClientUnsubscribed{} },
 
+		"DaemonCollector": func() any { return &DaemonCollector{} },
+
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
 		"DaemonHb": func() any { return &DaemonHb{} },
@@ -256,6 +258,12 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string         `json:"node" yaml:"node"`
 		Value      cluster.Status `json:"cluster_status" yaml:"cluster_status"`
+	}
+
+	DaemonCollector struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string                  `json:"node" yaml:"node"`
+		Value      cluster.DaemonCollector `json:"collector" yaml:"collector"`
 	}
 
 	DaemonCtl struct {
@@ -783,6 +791,10 @@ func (e *ClientUnsubscribed) Kind() string {
 
 func (e *ClientUnsubscribed) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
+}
+
+func (e *DaemonCollector) Kind() string {
+	return "DaemonCollector"
 }
 
 func (e *DaemonCtl) Kind() string {

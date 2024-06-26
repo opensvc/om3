@@ -20,6 +20,8 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 		data.onClusterStatusUpdated(c)
 	case *ClusterConfigUpdated:
 		data.onClusterConfigUpdated(c)
+	case *DaemonCollector:
+		data.onDaemonCollector(c)
 	case *DaemonHb:
 		data.onDaemonHb(c)
 	case *ObjectStatusDeleted:
