@@ -13,6 +13,7 @@ package discover
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
@@ -88,12 +89,15 @@ type (
 	}
 )
 
-// NewManager initialize discover.Manager with drainDuration, and sub queues sizes:
+// NewManager initialize discover.Manager with drainDuration, and sub queue
+// sizes for discover.cfg and discover.omon components.
 //
-//   - subQS: the subscription queue size of discover.cfg and discover.omon components.
-//   - omonSubQS: the subscription queue size of omon components with omonSubQS.
-//   - imonSubQS: the subscription queue size imon components (created from imon.Factory).
-func NewManager(drainDuration, imonDelayDuration time.Duration, subQS, omonSubQS, imonSubQS pubsub.QueueSizer) *Manager {
+// It returns *T.
+//
+// It doesn't define imon starter, and sub queue size for future created omon
+// components. So WithImonStarter and WithOmonSubQS must be called on the
+// returned *T
+func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
@@ -107,10 +111,20 @@ func NewManager(drainDuration, imonDelayDuration time.Duration, subQS, omonSubQS
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 		drainDuration:     drainDuration,
-		imonStarter:       imon.Factory{DrainDuration: drainDuration, DelayDuration: imonDelayDuration, SubQS: imonSubQS},
 		subQS:             subQS,
-		omonSubQS:         omonSubQS,
 	}
+}
+
+// WithImonStarter defines the imon factory
+func (t *Manager) WithImonStarter(f imon.Factory) *Manager {
+	t.imonStarter = f
+	return t
+}
+
+// WithOmonSubQS defines the subscription queue size of omon created components.
+func (t *Manager) WithOmonSubQS(qs pubsub.QueueSizer) *Manager {
+	t.omonSubQS = qs
+	return t
 }
 
 // Start function starts file system watcher on config directory
@@ -118,6 +132,13 @@ func NewManager(drainDuration, imonDelayDuration time.Duration, subQS, omonSubQS
 func (t *Manager) Start(ctx context.Context) (err error) {
 	t.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
 	t.log.Infof("discover starting")
+
+	if t.omonSubQS == nil {
+		return fmt.Errorf("discover: undefined omon sub queue size, WithOmonSubQS must be called fisrt")
+	}
+	if t.imonStarter == nil {
+		return fmt.Errorf("discover: undefined imon starter, WithImonStarter must be called first")
+	}
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	t.databus = daemondata.FromContext(t.ctx)
