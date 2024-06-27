@@ -76,7 +76,6 @@ func (o opGetClusterNodeData) call(ctx context.Context, d *data) error {
 // It calls setDaemonHb()
 // It publish ForgetPeer
 func (d *data) dropPeer(peer string) {
-	// TODO: document CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
 	d.log.Infof("drop peer node %s", peer)
 	peerLabels := []pubsub.Label{{"node", peer}, {"from", "peer"}}
 
