@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/daemon/dns"
 	"github.com/opensvc/om3/daemon/hb"
 	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/listener"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -143,6 +144,13 @@ func (t *T) Start(ctx context.Context) error {
 		daemonenv.HTTPPort = initialCcfg.Listener.Port
 	}
 
+	// prepare imonFactory for discover component
+	imonFactory := imon.Factory{
+		DrainDuration: daemonenv.DrainChanDuration,
+		DelayDuration: daemonenv.ImonDelayDuration,
+		SubQS:         qsMedium,
+	}
+
 	t.ctx = daemonapi.WithSubQS(t.ctx, qsMedium)
 	for _, s := range []startStopper{
 		hbcache.New(2 * daemonenv.DrainChanDuration),
@@ -151,7 +159,9 @@ func (t *T) Start(ctx context.Context) error {
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
-		discover.NewManager(daemonenv.DrainChanDuration, daemonenv.ImonDelayDuration, qsHuge, qsMedium, qsMedium),
+		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
+			WithOmonSubQS(qsMedium).
+			WithImonStarter(imonFactory),
 		hb.New(t.ctx),
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),
