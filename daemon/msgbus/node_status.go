@@ -17,3 +17,7 @@ func (data *ClusterData) onNodeStatusUpdated(m *NodeStatusUpdated) {
 	}
 	data.Cluster.Node[m.Node] = v
 }
+
+func (data *ClusterData) onForgetPeer(m *ForgetPeer) {
+	delete(data.Cluster.Node, m.Node)
+}

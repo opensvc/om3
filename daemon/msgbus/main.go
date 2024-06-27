@@ -24,6 +24,8 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 		data.onDaemonCollector(c)
 	case *DaemonHb:
 		data.onDaemonHb(c)
+	case *ForgetPeer:
+		data.onForgetPeer(c)
 	case *ObjectStatusDeleted:
 		data.onObjectStatusDeleted(c)
 	case *ObjectStatusUpdated:
