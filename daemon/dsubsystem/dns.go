@@ -1,4 +1,4 @@
-package daemonsubsystem
+package dsubsystem
 
 type (
 	// Dns describes the OpenSVC daemon dns thread, which is

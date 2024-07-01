@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -29,7 +29,7 @@ func newData() *data {
 	node.ConfigData.Set(localNode, &nodeData.Config)
 	node.GenData.Set(localNode, &nodeData.Status.Gen)
 
-	daemonsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
+	dsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
 
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
@@ -43,18 +43,13 @@ func newData() *data {
 				localNode: nodeData,
 			},
 		},
-		Daemon: cluster.Deamon{
-			Collector: cluster.DaemonCollector{},
-			DNS:       cluster.DaemonDNS{},
-			Scheduler: cluster.DaemonScheduler{},
-			Listener:  cluster.DaemonListener{},
-			Monitor: cluster.DaemonMonitor{
-				DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{},
-			},
-			Nodename: localNode,
-			Hb: cluster.DaemonHb{
-				Streams:      make([]cluster.HeartbeatStream, 0),
-				LastMessages: make([]cluster.HbLastMessage, 0),
+		Daemon: dsubsystem.Deamon{
+			Nodename:  localNode,
+			CreatedAt: time.Now(),
+
+			Hb: dsubsystem.Hb{
+				Streams:      make([]dsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]dsubsystem.HbLastMessage, 0),
 			},
 		},
 	}
@@ -103,22 +98,22 @@ func newNodeData(localNode string) node.Node {
 		Os: node.Os{
 			Paths: san.Paths{},
 		},
-		Daemon: daemonsubsystem.Deamon{
+		Daemon: dsubsystem.Deamon{
 			Nodename:  localNode,
 			CreatedAt: time.Now(),
 
-			Daemondata: daemonsubsystem.Daemondata{
-				DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
+			Daemondata: dsubsystem.Daemondata{
+				DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
 					ID:           "daemondata",
 					ConfiguredAt: time.Now(),
 					CreatedAt:    time.Now(),
 					State:        "running",
-					Alerts:       make([]daemonsubsystem.ThreadAlert, 0),
+					Alerts:       make([]dsubsystem.ThreadAlert, 0),
 				},
 			},
-			Hb: daemonsubsystem.Hb{
-				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
-				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
+			Hb: dsubsystem.Hb{
+				Streams:      make([]dsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]dsubsystem.HbLastMessage, 0),
 			},
 		},
 	}

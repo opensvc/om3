@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 )
 
 type (
@@ -16,7 +16,7 @@ type (
 	Data struct {
 		Cluster Cluster `json:"cluster"`
 
-		Daemon daemonsubsystem.Deamon `json:"daemon"`
+		Daemon dsubsystem.Deamon `json:"daemon"`
 	}
 
 	Cluster struct {

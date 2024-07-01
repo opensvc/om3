@@ -1,4 +1,4 @@
-package daemonsubsystem
+package dsubsystem
 
 import (
 	"net"

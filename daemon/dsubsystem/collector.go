@@ -1,4 +1,4 @@
-package daemonsubsystem
+package dsubsystem
 
 type (
 	// Collector describes the OpenSVC daemon collector subsystem,

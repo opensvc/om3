@@ -42,7 +42,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/plog"
@@ -104,7 +104,7 @@ type (
 	CmdSetPeerStatus struct {
 		Nodename   string
 		HbID       string
-		PeerStatus daemonsubsystem.HeartbeatPeerStatus
+		PeerStatus dsubsystem.HeartbeatPeerStatus
 	}
 
 	// CmdAddWatcher is a command to run new instance of a hb watcher for a remote
@@ -124,7 +124,7 @@ type (
 	// GetPeerStatus is command to retrieve remote peer status for a hb
 	GetPeerStatus struct {
 		HbID   string
-		result chan<- map[string]daemonsubsystem.HeartbeatPeerStatus
+		result chan<- map[string]dsubsystem.HeartbeatPeerStatus
 	}
 
 	// C struct holds the hb controller data
@@ -181,7 +181,7 @@ func (c *C) run() {
 	c.log.Infof("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
-	heartbeat := make(map[string]daemonsubsystem.HeartbeatStream)
+	heartbeat := make(map[string]dsubsystem.HeartbeatStream)
 	bus := pubsub.BusFromContext(c.ctx)
 	defer c.log.Infof("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
@@ -198,18 +198,18 @@ func (c *C) run() {
 		case <-c.ctx.Done():
 			return
 		case <-updateDaemonDataHeartbeatsTicker.C:
-			heartbeats := make([]daemonsubsystem.HeartbeatStream, 0)
+			heartbeats := make([]dsubsystem.HeartbeatStream, 0)
 			hbIDs := make([]string, 0)
 			for hbID := range heartbeat {
 				hbIDs = append(hbIDs, hbID)
 			}
 			sort.Strings(hbIDs)
 			for _, key := range hbIDs {
-				peers := make(map[string]daemonsubsystem.HeartbeatPeerStatus)
+				peers := make(map[string]dsubsystem.HeartbeatPeerStatus)
 				for k, v := range heartbeat[key].Peers {
 					peers[k] = v
 				}
-				heartbeats = append(heartbeats, daemonsubsystem.HeartbeatStream{
+				heartbeats = append(heartbeats, dsubsystem.HeartbeatStream{
 					DaemonSubsystemStatus: heartbeat[key].DaemonSubsystemStatus,
 					Type:                  heartbeat[key].Type,
 					Peers:                 peers,
@@ -220,15 +220,15 @@ func (c *C) run() {
 			switch o := i.(type) {
 			case CmdRegister:
 				now := time.Now()
-				heartbeat[o.ID] = daemonsubsystem.HeartbeatStream{
-					DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
+				heartbeat[o.ID] = dsubsystem.HeartbeatStream{
+					DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
 						ID:           o.ID,
 						CreatedAt:    now,
 						ConfiguredAt: now,
 						State:        "running",
 					},
 					Type:  o.Type,
-					Peers: make(map[string]daemonsubsystem.HeartbeatPeerStatus),
+					Peers: make(map[string]dsubsystem.HeartbeatPeerStatus),
 				}
 			case CmdUnregister:
 				if hbStatus, ok := heartbeat[o.ID]; ok {
@@ -303,7 +303,7 @@ func (c *C) run() {
 				if foundHeartbeat, ok := heartbeat[o.HbID]; ok {
 					o.result <- foundHeartbeat.Peers
 				} else {
-					o.result <- make(map[string]daemonsubsystem.HeartbeatPeerStatus)
+					o.result <- make(map[string]dsubsystem.HeartbeatPeerStatus)
 				}
 			case CmdSetPeerStatus:
 				hbID := o.HbID
@@ -325,7 +325,7 @@ func (c *C) run() {
 					continue
 				}
 				if _, ok := heartbeat[hbID]; ok {
-					heartbeat[hbID].Peers[peerNode] = daemonsubsystem.HeartbeatPeerStatus{}
+					heartbeat[hbID].Peers[peerNode] = dsubsystem.HeartbeatPeerStatus{}
 				} else {
 					c.log.Warnf("watcher skipped: called before register %s -> %s", hbID, peerNode)
 					continue

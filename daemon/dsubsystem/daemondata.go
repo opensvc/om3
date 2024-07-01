@@ -1,4 +1,4 @@
-package daemonsubsystem
+package dsubsystem
 
 type (
 	// Daemondata describes the OpenSVC daemon data component.
