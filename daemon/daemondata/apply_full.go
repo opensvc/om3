@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -52,6 +53,8 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 	}
 	result.nmonUpdated = nmonUpdated
 
+	result.collectorUpdated = c.Daemon.Collector.UpdatedAt
+
 	for p, inst := range c.Instance {
 		if inst.Status != nil {
 			instUpdated := inst.Status.UpdatedAt
@@ -86,6 +89,7 @@ func (d *data) pubPeerDataChanges(peer string) {
 	d.pubMsgFromNodeConfigDiffForNode(peer)
 	d.pubMsgFromNodeStatusDiffForNode(peer)
 	d.pubMsgFromNodeStatsDiffForNode(peer)
+	d.pubMsgFromNodeCollectorDiffForNode(peer, current)
 	d.pubMsgFromNodeMonitorDiffForNode(peer, current)
 	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
 	d.previousRemoteInfo[peer] = *current
@@ -208,6 +212,22 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(peer string) {
 		onUpdate()
 	case hasNext:
 		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeCollectorDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.collectorUpdated.After(prevTimes.collectorUpdated) {
+		dCollector := d.clusterData.Cluster.Node[peer].Daemon.Collector
+		dsubsystem.DataCollector.Set(peer, dCollector.DeepCopy())
+		d.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: peer, Value: *dCollector.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+		return
 	}
 }
 

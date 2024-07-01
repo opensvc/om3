@@ -8,13 +8,15 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 )
 
 type (
 	// Data describes the full Cluster state.
 	Data struct {
 		Cluster Cluster `json:"cluster"`
-		Daemon  Deamon  `json:"daemon"`
+
+		Daemon dsubsystem.Deamon `json:"daemon"`
 	}
 
 	Cluster struct {
@@ -28,32 +30,6 @@ type (
 	Status struct {
 		IsCompat bool `json:"is_compat"`
 		IsFrozen bool `json:"is_frozen"`
-	}
-
-	Deamon struct {
-		Collector DaemonCollector `json:"collector"`
-		DNS       DaemonDNS       `json:"dns"`
-		Hb        DaemonHb        `json:"hb"`
-		Listener  DaemonListener  `json:"listener"`
-		Monitor   DaemonMonitor   `json:"monitor"`
-		Nodename  string          `json:"nodename"`
-		Routines  int             `json:"routines"`
-		Scheduler DaemonScheduler `json:"scheduler"`
-	}
-
-	DaemonHb struct {
-		Streams      []HeartbeatStream `json:"streams"`
-		LastMessages []HbLastMessage   `json:"last_messages"`
-	}
-
-	HbLastMessage struct {
-		From string `json:"from"`
-
-		// PatchLength is the type of hb message except when Type is patch where it is the patch queue length
-		PatchLength int `json:"patch_length"`
-
-		// Type is the hb message type (unset/ping/full/patch)
-		Type string `json:"type"`
 	}
 )
 

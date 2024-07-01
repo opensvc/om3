@@ -1,7 +1,7 @@
 Threads                         dev1n3        
  daemon            running    |               
  dns                          |               
- collector                    |               
+ collector                    | o             
  hb                           |               
  listener                  :0 | 2222          
  monitor                      |               

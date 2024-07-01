@@ -18,7 +18,7 @@ type (
 		Gen             map[string]uint64           `json:"gen"`
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
-		IsSpeaker       bool                        `json:"is_speaker"`
+		IsLeader        bool                        `json:"is_leader"`
 		Labels          Labels                      `json:"labels"`
 		Lsnr            Lsnr                        `json:"lsnr"`
 		Pid             int                         `json:"pid"`
@@ -125,7 +125,7 @@ func (t *Status) Unstructured() map[string]any {
 		"gen":            t.Gen,
 		"min_avail_mem":  t.MinAvailMemPct,
 		"min_avail_swap": t.MinAvailSwapPct,
-		"is_speaker":     t.IsSpeaker,
+		"is_leader":      t.IsLeader,
 		"labels":         t.Labels,
 		"lsnr":           t.Lsnr,
 		"pid":            t.Pid,

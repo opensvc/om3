@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -18,13 +19,18 @@ import (
 
 func newData() *data {
 	localNode := hostname.Hostname()
+
 	nodeData := newNodeData(localNode)
+
 	node.LsnrData.Set(localNode, &nodeData.Status.Lsnr)
 	node.MonitorData.Set(localNode, &nodeData.Monitor)
 	node.StatusData.Set(localNode, &nodeData.Status)
 	node.StatsData.Set(localNode, &nodeData.Stats)
 	node.ConfigData.Set(localNode, &nodeData.Config)
 	node.GenData.Set(localNode, &nodeData.Status.Gen)
+
+	dsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
+
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
 			Status: cluster.Status{
@@ -37,18 +43,13 @@ func newData() *data {
 				localNode: nodeData,
 			},
 		},
-		Daemon: cluster.Deamon{
-			Collector: cluster.DaemonCollector{},
-			DNS:       cluster.DaemonDNS{},
-			Scheduler: cluster.DaemonScheduler{},
-			Listener:  cluster.DaemonListener{},
-			Monitor: cluster.DaemonMonitor{
-				DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{},
-			},
-			Nodename: localNode,
-			Hb: cluster.DaemonHb{
-				Streams:      make([]cluster.HeartbeatStream, 0),
-				LastMessages: make([]cluster.HbLastMessage, 0),
+		Daemon: dsubsystem.Deamon{
+			Nodename:  localNode,
+			CreatedAt: time.Now(),
+
+			Hb: dsubsystem.Hb{
+				Streams:      make([]dsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]dsubsystem.HbLastMessage, 0),
 			},
 		},
 	}
@@ -73,6 +74,7 @@ func newData() *data {
 func newNodeData(localNode string) node.Node {
 	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
 	frozen := file.ModTime(nodeFrozenFile)
+	now := time.Now()
 	nodeStatus := node.Node{
 		Instance: map[string]instance.Instance{},
 		Monitor: node.Monitor{
@@ -82,20 +84,39 @@ func newNodeData(localNode string) node.Node {
 		},
 		Stats: node.Stats{},
 		Status: node.Status{
-			Agent:           "3.0-0",
-			API:             8,
-			Arbitrators:     map[string]node.ArbitratorStatus{},
+			// TODO: API fix
+			API:         8,
+			Arbitrators: map[string]node.ArbitratorStatus{},
+			// TODO: Compat fix
 			Compat:          12,
 			FrozenAt:        frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          node.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
-			IsSpeaker:       false,
-			Lsnr:            node.Lsnr{UpdatedAt: time.Now()},
+			Lsnr:            node.Lsnr{UpdatedAt: now},
 		},
 		Os: node.Os{
 			Paths: san.Paths{},
+		},
+		Daemon: dsubsystem.Deamon{
+			Nodename:  localNode,
+			CreatedAt: now,
+
+			Daemondata: dsubsystem.Daemondata{
+				DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
+					ID:           "daemondata",
+					ConfiguredAt: now,
+					CreatedAt:    now,
+					UpdatedAt:    now,
+					State:        "running",
+					Alerts:       make([]dsubsystem.ThreadAlert, 0),
+				},
+			},
+			Hb: dsubsystem.Hb{
+				Streams:      make([]dsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]dsubsystem.HbLastMessage, 0),
+			},
 		},
 	}
 	return nodeStatus

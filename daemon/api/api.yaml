@@ -4349,7 +4349,7 @@ components:
         - gen
         - min_avail_mem
         - min_avail_swap
-        - is_speaker
+        - is_leader
         - labels
       properties:
         agent:
@@ -4372,7 +4372,7 @@ components:
           type: integer
         min_avail_swap:
           type: integer
-        is_speaker:
+        is_leader:
           type: boolean
         labels:
           type: object

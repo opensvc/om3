@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/util/render/listener"
 )
 
@@ -18,24 +19,24 @@ func (f Frame) wThreadDaemon() string {
 
 func (f Frame) wThreadCollector() string {
 	var s string
-	s += bold(" collector") + "\t"
-	if f.Current.Daemon.Collector.State == "running" {
-		s += green("running") + "\t"
-	} else {
-		s += yellow(f.Current.Daemon.Collector.State) + "\t"
-	}
-	s += "\t"
+	s += bold(" collector") + "\t\t\t"
 	s += f.info.separator + "\t"
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		if f.Current.Cluster.Node[node].Status.IsSpeaker {
-			if f.Current.Cluster.Node[node].Monitor.IsPreserved {
-				s += yellow("O") + "\t"
-			} else {
-				s += green("O") + "\t"
-			}
-		} else {
-			s += "\t"
+		switch f.Current.Cluster.Node[node].Daemon.Collector.State {
+		case "speaker":
+			s += iconUp
+		case "speaker-candidate":
+			s += iconStandbyUp
+		case "speaker-warning":
+			s += iconDownIssue
+		case "warning":
+			s += iconStandbyDown
+		case "disabled":
+			s += iconNotApplicable
+		default:
+			s += iconUndef
 		}
+		s += "\t"
 	}
 	return s
 }
@@ -79,7 +80,7 @@ func (f Frame) wThreadScheduler() string {
 func (f Frame) wThreadMonitor() string {
 	var s string
 	s += bold(" monitor") + "\t"
-	if f.Current.Daemon.Monitor.State == "running" {
+	if f.Current.Daemon.Daemondata.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -93,7 +94,7 @@ func (f Frame) wThreadMonitor() string {
 func (f Frame) wThreadDNS() string {
 	var s string
 	s += bold(" dns") + "\t"
-	if f.Current.Daemon.DNS.State == "running" {
+	if f.Current.Daemon.Dns.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -143,7 +144,7 @@ func (f Frame) wThreadHeartbeats() string {
 	return s
 }
 
-func sThreadAlerts(data []ThreadAlert) string {
+func sThreadAlerts(data []dsubsystem.ThreadAlert) string {
 	if len(data) > 0 {
 		return yellow("!")
 	}

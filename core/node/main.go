@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 )
 
 type (
@@ -15,6 +16,9 @@ type (
 		Status   Status                       `json:"status"`
 		Os       Os                           `json:"os"`
 		Config   Config                       `json:"config"`
+
+		Daemon dsubsystem.Deamon `json:"daemon"`
+
 		//Locks map[string]Lock `json:"locks"`
 	}
 )

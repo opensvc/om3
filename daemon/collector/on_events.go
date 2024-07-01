@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 var (
@@ -31,10 +30,6 @@ func (t *T) onRefreshTicker() {
 	}
 }
 
-func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	t.onConfigUpdated()
-}
-
 func (t *T) onConfigUpdated() {
 	t.log.Debugf("reconfigure")
 	if collector.Alive.Load() {
@@ -48,20 +43,15 @@ func (t *T) onConfigUpdated() {
 	if err := t.setupRequester(); err != nil {
 		t.log.Errorf("can't setup requester: %s", err)
 	}
-	var state string
 	if err != nil {
 		t.log.Infof("the collector routine is dormant: %s", err)
-		state = "dormant"
 	} else {
-		state = "running"
 		t.log.Infof("feeding %s", t.feedClient)
 		t.feedPinger = t.feedClient.NewPinger()
 		time.Sleep(time.Microsecond * 10)
 		t.feedPinger.Start(t.ctx, FeedPingerInterval)
 	}
-	t.status.DaemonSubsystemStatus.State = state
-	t.status.DaemonSubsystemStatus.ConfiguredAt = time.Now()
-	t.bus.Pub(&msgbus.DaemonCollector{Node: t.localhost, Value: t.status}, pubsub.Label{"node", t.localhost})
+	t.publishOnChange(t.getState())
 }
 
 func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
@@ -106,9 +96,9 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		t.daemonStatusChange[c.Node] = struct{}{}
 	}
 	if c.Node == t.localhost {
-		if t.isSpeaker != c.Value.IsSpeaker {
-			t.isSpeaker = c.Value.IsSpeaker
-			t.log.Infof("speaker is now %v", t.isSpeaker)
+		if t.isSpeaker != c.Value.IsLeader {
+			t.isSpeaker = c.Value.IsLeader
+			t.publishOnChange(t.getState())
 		}
 	}
 }

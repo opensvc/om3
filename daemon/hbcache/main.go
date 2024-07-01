@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/draincommand"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -54,7 +54,7 @@ func (t *T) Stop() error {
 
 func (t *T) run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
-	heartbeats := make([]cluster.HeartbeatStream, 0)
+	heartbeats := make([]dsubsystem.HeartbeatStream, 0)
 	log := plog.NewDefaultLogger().WithPrefix("daemon: hbcache: ").Attr("pkg", "daemon/hbcache")
 	log.Debugf("started")
 	defer log.Debugf("done")
@@ -67,15 +67,15 @@ func (t *T) run(ctx context.Context) {
 		case i := <-cmdI:
 			switch cmd := i.(type) {
 			case getHeartbeats:
-				result := make([]cluster.HeartbeatStream, 0)
+				result := make([]dsubsystem.HeartbeatStream, 0)
 				for _, hb := range heartbeats {
 					status := hb.DaemonSubsystemStatus
-					status.Alerts = append([]cluster.ThreadAlert{}, hb.Alerts...)
-					peers := make(map[string]cluster.HeartbeatPeerStatus)
+					status.Alerts = append([]dsubsystem.ThreadAlert{}, hb.Alerts...)
+					peers := make(map[string]dsubsystem.HeartbeatPeerStatus)
 					for node, peerStatus := range hb.Peers {
 						peers[node] = peerStatus
 					}
-					result = append(result, cluster.HeartbeatStream{
+					result = append(result, dsubsystem.HeartbeatStream{
 						DaemonSubsystemStatus: status,
 						Peers:                 peers,
 						Type:                  hb.Type,
@@ -96,9 +96,9 @@ func (t *T) run(ctx context.Context) {
 
 // Getters
 
-func Heartbeats() []cluster.HeartbeatStream {
+func Heartbeats() []dsubsystem.HeartbeatStream {
 	err := make(chan error, 1)
-	response := make(chan []cluster.HeartbeatStream)
+	response := make(chan []dsubsystem.HeartbeatStream)
 	cmd := getHeartbeats{
 		errC:     err,
 		response: response,
@@ -122,7 +122,7 @@ func DropPeer(peer string) {
 // SetHeartbeats updates the heartbeats status cache
 //
 // can be used from a heartbeat controller
-func SetHeartbeats(hbs []cluster.HeartbeatStream) {
+func SetHeartbeats(hbs []dsubsystem.HeartbeatStream) {
 	var i interface{} = setHeartbeats(hbs)
 	cmdI <- i
 }
@@ -134,10 +134,10 @@ type (
 	// getters
 	getHeartbeats struct {
 		errC
-		response chan<- []cluster.HeartbeatStream
+		response chan<- []dsubsystem.HeartbeatStream
 	}
 
 	// setters
 	dropPeer      string
-	setHeartbeats []cluster.HeartbeatStream
+	setHeartbeats []dsubsystem.HeartbeatStream
 )

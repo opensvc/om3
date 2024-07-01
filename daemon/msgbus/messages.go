@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
@@ -53,7 +54,7 @@ var (
 
 		"ClientUnsubscribed": func() any { return &ClientUnsubscribed{} },
 
-		"DaemonCollector": func() any { return &DaemonCollector{} },
+		"DaemonCollectorUpdated": func() any { return &DaemonCollectorUpdated{} },
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
@@ -263,10 +264,10 @@ type (
 		Value      cluster.Status `json:"cluster_status" yaml:"cluster_status"`
 	}
 
-	DaemonCollector struct {
+	DaemonCollectorUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string                  `json:"node" yaml:"node"`
-		Value      cluster.DaemonCollector `json:"collector" yaml:"collector"`
+		Node       string               `json:"node" yaml:"node"`
+		Value      dsubsystem.Collector `json:"collector" yaml:"collector"`
 	}
 
 	DaemonCtl struct {
@@ -277,8 +278,8 @@ type (
 
 	DaemonHb struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string           `json:"node" yaml:"node"`
-		Value      cluster.DaemonHb `json:"hb" yaml:"hb"`
+		Node       string        `json:"node" yaml:"node"`
+		Value      dsubsystem.Hb `json:"hb" yaml:"hb"`
 	}
 
 	DaemonStart struct {
@@ -372,8 +373,8 @@ type (
 
 	HbStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string                  `json:"node" yaml:"node"`
-		Value      cluster.HeartbeatStream `json:"stream" yaml:"stream"`
+		Node       string                     `json:"node" yaml:"node"`
+		Value      dsubsystem.HeartbeatStream `json:"stream" yaml:"stream"`
 	}
 
 	InstanceConfigDeleted struct {
@@ -796,8 +797,8 @@ func (e *ClientUnsubscribed) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
-func (e *DaemonCollector) Kind() string {
-	return "DaemonCollector"
+func (e *DaemonCollectorUpdated) Kind() string {
+	return "DaemonCollectorUpdated"
 }
 
 func (e *DaemonCtl) Kind() string {

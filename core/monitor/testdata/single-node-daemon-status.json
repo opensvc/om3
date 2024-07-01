@@ -77,6 +77,15 @@
           "maintenance_grace_period": 0,
           "ready_period": 0,
           "rejoin_grace_period": 0
+        },
+        "daemon": {
+          "collector": {
+            "id": "collector",
+            "configured_at": "2024-07-01T17:34:09.972396996+02:00",
+            "created_at": "2024-07-01T17:34:09.940669111+02:00",
+            "updated_at": "2024-07-01T17:34:14.974697436+02:00",
+            "state": "speaker-candidate"
+          }
         }
       }
     }

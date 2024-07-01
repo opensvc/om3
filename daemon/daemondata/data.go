@@ -90,6 +90,7 @@ type (
 
 	// remoteInfo struct holds information about remote node used to publish diff on full message received
 	remoteInfo struct {
+		collectorUpdated  time.Time
 		nmonUpdated       time.Time
 		nodeStats         node.Stats
 		nodeStatus        node.Status
@@ -375,7 +376,7 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.DaemonCollector{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
@@ -423,6 +424,8 @@ func (d *data) forwardEvent(i event.Kinder) {
 // localEventMustBeForwarded returns true when local event i must be forwarded to peers
 func localEventMustBeForwarded(i interface{}) bool {
 	switch i.(type) {
+	// node daemon...
+	case *msgbus.DaemonCollectorUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 	case *msgbus.InstanceConfigUpdated:
