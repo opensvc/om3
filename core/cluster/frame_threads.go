@@ -19,24 +19,24 @@ func (f Frame) wThreadDaemon() string {
 
 func (f Frame) wThreadCollector() string {
 	var s string
-	s += bold(" collector") + "\t"
-	if f.Current.Daemon.Collector.State == "running" {
-		s += green("running") + "\t"
-	} else {
-		s += yellow(f.Current.Daemon.Collector.State) + "\t"
-	}
-	s += "\t"
+	s += bold(" collector") + "\t\t\t"
 	s += f.info.separator + "\t"
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		if f.Current.Cluster.Node[node].Status.IsSpeaker {
-			if f.Current.Cluster.Node[node].Monitor.IsPreserved {
-				s += yellow("O") + "\t"
-			} else {
-				s += green("O") + "\t"
-			}
-		} else {
-			s += "\t"
+		switch f.Current.Cluster.Node[node].Daemon.Collector.State {
+		case "speaker":
+			s += iconUp
+		case "speaker-candidate":
+			s += iconStandbyUp
+		case "speaker-warning":
+			s += iconDownIssue
+		case "warning":
+			s += iconStandbyDown
+		case "disabled":
+			s += iconNotApplicable
+		default:
+			s += iconUndef
 		}
+		s += "\t"
 	}
 	return s
 }
