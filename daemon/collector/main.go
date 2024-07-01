@@ -234,8 +234,10 @@ func (t *T) Start(ctx context.Context) error {
 		if err := t.setupRequester(); err != nil {
 			t.log.Errorf("can't setup requester: %s", err)
 		}
-		t.publishOnChange(t.getState())
 		errC <- nil
+		// delay collector allows more consistent state during startup and
+		// reduces state transitions: undef->speaker->speaker-candidate
+		<-time.After(5 * time.Second)
 		t.loop()
 	}(errC)
 
@@ -270,6 +272,9 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
+	t.isSpeaker = node.StatusData.Get(t.localhost).IsSpeaker
+	t.publishOnChange(t.getState())
+
 	t.initChanges()
 	sub := t.startSubscriptions()
 	defer func() {
