@@ -1,4 +1,4 @@
-package dsubsystem
+package daemonsubsystem
 
 import (
 	"sync"

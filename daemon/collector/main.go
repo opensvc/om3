@@ -18,7 +18,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -39,7 +39,7 @@ type (
 		bus        *pubsub.Bus
 		created    map[string]time.Time
 
-		status dsubsystem.Collector
+		status daemonsubsystem.Collector
 
 		postTicker *time.Ticker
 
@@ -163,8 +163,8 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		localhost:   hostname.Hostname(),
 		clusterData: daemondata.FromContext(ctx),
 		subQS:       subQS,
-		status: dsubsystem.Collector{
-			DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
+		status: daemonsubsystem.Collector{
+			DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
 				ID:        "collector",
 				CreatedAt: now,
 				State:     "undef",
@@ -370,7 +370,7 @@ func (t *T) dropChanges() {
 }
 
 func (t *T) publish() {
-	dsubsystem.DataCollector.Set(t.localhost, t.status.DeepCopy())
+	daemonsubsystem.DataCollector.Set(t.localhost, t.status.DeepCopy())
 	t.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 

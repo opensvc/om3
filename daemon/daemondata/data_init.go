@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -29,7 +29,7 @@ func newData() *data {
 	node.ConfigData.Set(localNode, &nodeData.Config)
 	node.GenData.Set(localNode, &nodeData.Status.Gen)
 
-	dsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
+	daemonsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
 
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
@@ -43,13 +43,13 @@ func newData() *data {
 				localNode: nodeData,
 			},
 		},
-		Daemon: dsubsystem.Deamon{
+		Daemon: daemonsubsystem.Deamon{
 			Nodename:  localNode,
 			CreatedAt: time.Now(),
 
-			Hb: dsubsystem.Hb{
-				Streams:      make([]dsubsystem.HeartbeatStream, 0),
-				LastMessages: make([]dsubsystem.HbLastMessage, 0),
+			Hb: daemonsubsystem.Hb{
+				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
 			},
 		},
 	}
@@ -99,23 +99,23 @@ func newNodeData(localNode string) node.Node {
 		Os: node.Os{
 			Paths: san.Paths{},
 		},
-		Daemon: dsubsystem.Deamon{
+		Daemon: daemonsubsystem.Deamon{
 			Nodename:  localNode,
 			CreatedAt: now,
 
-			Daemondata: dsubsystem.Daemondata{
-				DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
+			Daemondata: daemonsubsystem.Daemondata{
+				DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
 					ID:           "daemondata",
 					ConfiguredAt: now,
 					CreatedAt:    now,
 					UpdatedAt:    now,
 					State:        "running",
-					Alerts:       make([]dsubsystem.ThreadAlert, 0),
+					Alerts:       make([]daemonsubsystem.ThreadAlert, 0),
 				},
 			},
-			Hb: dsubsystem.Hb{
-				Streams:      make([]dsubsystem.HeartbeatStream, 0),
-				LastMessages: make([]dsubsystem.HbLastMessage, 0),
+			Hb: daemonsubsystem.Hb{
+				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
 			},
 		},
 	}

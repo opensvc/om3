@@ -32,7 +32,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
@@ -266,8 +266,9 @@ type (
 
 	DaemonCollectorUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string               `json:"node" yaml:"node"`
-		Value      dsubsystem.Collector `json:"collector" yaml:"collector"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.Collector `json:"collector" yaml:"collector"`
 	}
 
 	DaemonCtl struct {
@@ -278,8 +279,9 @@ type (
 
 	DaemonHb struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string        `json:"node" yaml:"node"`
-		Value      dsubsystem.Hb `json:"hb" yaml:"hb"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.Hb `json:"hb" yaml:"hb"`
 	}
 
 	DaemonStart struct {
@@ -373,8 +375,9 @@ type (
 
 	HbStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string                     `json:"node" yaml:"node"`
-		Value      dsubsystem.HeartbeatStream `json:"stream" yaml:"stream"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.HeartbeatStream `json:"stream" yaml:"stream"`
 	}
 
 	InstanceConfigDeleted struct {

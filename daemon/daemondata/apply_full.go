@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -222,7 +222,7 @@ func (d *data) pubMsgFromNodeCollectorDiffForNode(peer string, current *remoteIn
 	prevTimes, hasPrev := d.previousRemoteInfo[peer]
 	if !hasPrev || current.collectorUpdated.After(prevTimes.collectorUpdated) {
 		dCollector := d.clusterData.Cluster.Node[peer].Daemon.Collector
-		dsubsystem.DataCollector.Set(peer, dCollector.DeepCopy())
+		daemonsubsystem.DataCollector.Set(peer, dCollector.DeepCopy())
 		d.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: peer, Value: *dCollector.DeepCopy()},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
