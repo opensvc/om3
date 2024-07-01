@@ -201,10 +201,15 @@ func (t *T) setupRequester() error {
 		t.client = nil
 		if errors.Is(err, object.ErrNodeCollectorConfig) {
 			t.disable = true
+		} else {
+			// It is now enabled, clear previous disable state
+			t.disable = false
 		}
 		return err
 	} else {
 		t.client = cli
+		// It is now enabled, clear previous disable state
+		t.disable = false
 		return nil
 	}
 }
