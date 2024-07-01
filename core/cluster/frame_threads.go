@@ -3,7 +3,7 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/render/listener"
 )
 
@@ -144,7 +144,7 @@ func (f Frame) wThreadHeartbeats() string {
 	return s
 }
 
-func sThreadAlerts(data []dsubsystem.ThreadAlert) string {
+func sThreadAlerts(data []daemonsubsystem.ThreadAlert) string {
 	if len(data) > 0 {
 		return yellow("!")
 	}

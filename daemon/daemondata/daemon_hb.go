@@ -4,14 +4,14 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/opensvc/om3/daemon/dsubsystem"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (d *data) setDaemonHb() {
-	lastMessages := make([]dsubsystem.HbLastMessage, 0)
+	lastMessages := make([]daemonsubsystem.HbLastMessage, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgPatchLength {
 		if !slices.Contains(d.clusterData.Cluster.Config.Nodes, node) {
@@ -23,14 +23,14 @@ func (d *data) setDaemonHb() {
 	}
 	sort.Strings(nodes)
 	for _, node := range nodes {
-		lastMessages = append(lastMessages, dsubsystem.HbLastMessage{
+		lastMessages = append(lastMessages, daemonsubsystem.HbLastMessage{
 			From:        node,
 			PatchLength: d.hbMsgPatchLength[node],
 			Type:        d.hbMsgType[node],
 		})
 	}
 
-	subHb := dsubsystem.Hb{
+	subHb := daemonsubsystem.Hb{
 		Streams:      hbcache.Heartbeats(),
 		LastMessages: lastMessages,
 	}
