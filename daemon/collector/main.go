@@ -3,6 +3,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -80,6 +81,9 @@ type (
 		// isSpeaker is true when localhost NodeStatus.IsSpeaker is true
 		isSpeaker bool
 
+		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
+		disable bool
+
 		subQS pubsub.QueueSizer
 	}
 
@@ -153,6 +157,7 @@ var (
 )
 
 func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
+	now := time.Now()
 	t := &T{
 		log:         plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
 		localhost:   hostname.Hostname(),
@@ -160,10 +165,9 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		subQS:       subQS,
 		status: dsubsystem.Collector{
 			DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
-				ID:           "collector",
-				ConfiguredAt: time.Now(),
-				CreatedAt:    time.Now(),
-				State:        "undef",
+				ID:        "collector",
+				CreatedAt: now,
+				State:     "undef",
 			},
 		},
 	}
@@ -189,11 +193,15 @@ func (t *T) setNodeFeedClient() error {
 func (t *T) setupRequester() error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
+	t.status.DaemonSubsystemStatus.ConfiguredAt = time.Now()
 	if node, err := object.NewNode(); err != nil {
 		t.client = nil
 		return err
 	} else if cli, err := node.CollectorClient(); err != nil {
 		t.client = nil
+		if errors.Is(err, object.ErrNodeCollectorConfig) {
+			t.disable = true
+		}
 		return err
 	} else {
 		t.client = cli
@@ -218,6 +226,10 @@ func (t *T) Start(ctx context.Context) error {
 			t.feedPinger.Start(t.ctx, FeedPingerInterval)
 			defer t.feedPinger.Stop()
 		}
+		if err := t.setupRequester(); err != nil {
+			t.log.Errorf("can't setup requester: %s", err)
+		}
+		t.publishOnChange(t.getState())
 		errC <- nil
 		t.loop()
 	}(errC)
@@ -256,8 +268,8 @@ func (t *T) loop() {
 	t.initChanges()
 	sub := t.startSubscriptions()
 	defer func() {
-		t.status.DaemonSubsystemStatus.State = "stopped"
-		t.publishUpdate()
+		t.status.DaemonSubsystemStatus.State = "disabled"
+		t.publish()
 
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
@@ -347,7 +359,50 @@ func (t *T) dropChanges() {
 	t.daemonStatusChange = make(map[string]struct{})
 }
 
-func (t *T) publishUpdate() {
+func (t *T) publish() {
 	dsubsystem.DataCollector.Set(t.localhost, t.status.DeepCopy())
 	t.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
+}
+
+// getState compute and return new state.
+//
+// possible states:
+//
+//	disable: node has no collector configuration
+//	speaker: node is collector speaker
+//	speaker-warning: node is collector speaker, but has client errors
+//	speaker-candidate: node is collector speaker candidate
+//	warning: node is collector speaker candidate, but has client errors
+func (t *T) getState() string {
+	if t.disable {
+		return "disabled"
+	} else if t.isSpeaker {
+		if t.client != nil {
+			return "speaker"
+		} else {
+			return "speaker-warning"
+		}
+	} else {
+		if t.client != nil {
+			return "speaker-candidate"
+		} else {
+			return "warning"
+		}
+	}
+}
+
+// publishOnChange publishes DaemonCollectorUpdated when state is changed or
+// if ConfiguredAt > UpdatedAt.
+// UpdatedAt is the time of last publication (updated each time publication is
+// done).
+func (t *T) publishOnChange(state string) {
+	if state != t.status.DaemonSubsystemStatus.State {
+		t.log.Infof("state change %s -> %s", t.status.DaemonSubsystemStatus.State, state)
+		t.status.DaemonSubsystemStatus.State = state
+		t.status.DaemonSubsystemStatus.UpdatedAt = time.Now()
+		t.publish()
+	} else if t.status.DaemonSubsystemStatus.ConfiguredAt.After(t.status.DaemonSubsystemStatus.UpdatedAt) {
+		t.status.DaemonSubsystemStatus.UpdatedAt = time.Now()
+		t.publish()
+	}
 }
