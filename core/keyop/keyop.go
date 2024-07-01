@@ -247,3 +247,12 @@ func ParseList(exprs ...string) L {
 	}
 	return l
 }
+
+func (t L) Drop(k key.T) (l L) {
+	for _, kop := range t {
+		if kop.Key.String() != k.String() {
+			l = append(l, kop)
+		}
+	}
+	return l
+}
