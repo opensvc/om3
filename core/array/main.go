@@ -1,6 +1,7 @@
 package array
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -102,4 +103,29 @@ func skipArgs(args []string) []string {
 		}
 	}
 	return []string{}
+}
+
+func ParseMappings(mappings []string) (Mappings, error) {
+	m := make(Mappings)
+	for _, s := range mappings {
+		elements := strings.Split(s, ":")
+		if len(elements) != 2 {
+			return m, fmt.Errorf("invalid mapping: %s: no target part: must be <hba>:<tgt>[,<tgt>...]", s)
+		}
+		hbaId := elements[0]
+		tgtIds := strings.Split(elements[1], ",")
+		if len(tgtIds) == 0 {
+			return m, fmt.Errorf("invalid mapping: %s: empty target part: must be <hba>:<tgt>[,<tgt>...]", s)
+		}
+		for _, tgtId := range tgtIds {
+			if len(tgtId) == 0 {
+				return m, fmt.Errorf("invalid mapping: %s: empty target element: must be <hba>:<tgt>[,<tgt>...]", s)
+			}
+			m[hbaId+":"+tgtId] = Mapping{
+				HBAID: hbaId,
+				TGTID: tgtId,
+			}
+		}
+	}
+	return m, nil
 }

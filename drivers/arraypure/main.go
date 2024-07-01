@@ -1072,35 +1072,6 @@ func (t *Array) addVolume(name, size string) (pureVolume, error) {
 	return responseData.Items[0], nil
 }
 
-/*
-func (t *Array) getHostGroupName(hbaID string) (string, error) {
-	opt := OptGetItems{
-		Filter: fmt.Sprintf("wwns='%s'", hbaID),
-	}
-	hosts, err := t.GetHosts(opt)
-	if err != nil {
-		return "", err
-	}
-	l := make([]string, 0)
-	for _, host := range hosts {
-		if !host.IsLocal {
-			continue
-		}
-		if host.HostGroup.Name == "" {
-			continue
-		}
-		l = append(l, host.HostGroup.Name)
-	}
-	if n := len(l); n == 1 {
-		return l[0], nil
-	} else if n == 0 {
-		return "", fmt.Errorf("hba id %s not found in any hostgroup", hbaID)
-	} else {
-		return "", fmt.Errorf("too many hosts found for hba id %s", hbaID)
-	}
-}
-*/
-
 func (t *Array) getHostName(hbaID string) (string, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("wwns='%s'", hbaID),
@@ -1138,101 +1109,43 @@ func formatWWN(s string) (string, error) {
 
 func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, error) {
 	m := make(map[string][]string)
-	for _, mapping := range mappings {
-		elements := strings.Split(mapping, ":")
-		if len(elements) != 2 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-		}
-		hbaID := elements[0]
-		wwn, err := formatWWN(hbaID)
+
+	parsedMappings, err := array.ParseMappings(mappings)
+	if err != nil {
+		return m, err
+	}
+
+	for _, mapping := range parsedMappings {
+		wwn, err := formatWWN(mapping.HBAID)
 		if err != nil {
 			return nil, err
-		}
-		if len(elements[1]) == 0 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-		}
-		targets := strings.Split(elements[1], ",")
-		if len(targets) == 0 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
 		}
 		hostName, err := t.getHostName(wwn)
 		if err != nil {
 			return nil, err
 		}
-		for _, target := range targets {
-			wwn, err := formatWWN(target)
-			if err != nil {
-				return nil, err
-			}
-			opt := OptGetItems{
-				Filter: fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn),
-			}
-			networkInterfaces, err := t.GetNetworkInterfaces(opt)
-			if err != nil {
-				return nil, err
-			}
-			if len(networkInterfaces) == 0 {
-				continue
-			}
-			if v, ok := m[hostName]; ok {
-				m[hostName] = append(v, wwn)
-			} else {
-				m[hostName] = []string{wwn}
-			}
+		wwn, err = formatWWN(mapping.TGTID)
+		if err != nil {
+			return nil, err
+		}
+		opt := OptGetItems{
+			Filter: fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn),
+		}
+		networkInterfaces, err := t.GetNetworkInterfaces(opt)
+		if err != nil {
+			return nil, err
+		}
+		if len(networkInterfaces) == 0 {
+			continue
+		}
+		if v, ok := m[hostName]; ok {
+			m[hostName] = append(v, wwn)
+		} else {
+			m[hostName] = []string{wwn}
 		}
 	}
 	return m, nil
 }
-
-/*
-func (t *Array) getHostGroupsFromMappings(mappings []string) (map[string][]string, error) {
-	m := make(map[string][]string)
-	for _, mapping := range mappings {
-		elements := strings.Split(mapping, ":")
-		if len(elements) != 2 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-		}
-		hbaID := elements[0]
-		wwn, err := formatWWN(hbaID)
-		if err != nil {
-			return nil, err
-		}
-		if len(elements[1]) == 0 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-		}
-		targets := strings.Split(elements[1], ",")
-		if len(targets) == 0 {
-			return nil, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", mapping)
-		}
-		hostGroupName, err := t.getHostGroupName(wwn)
-		if err != nil {
-			return nil, err
-		}
-		for _, target := range targets {
-			wwn, err := formatWWN(target)
-			if err != nil {
-				return nil, err
-			}
-			opt := OptGetItems{
-				Filter: fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn),
-			}
-			networkInterfaces, err := t.GetNetworkInterfaces(opt)
-			if err != nil {
-				return nil, err
-			}
-			if len(networkInterfaces) == 0 {
-				continue
-			}
-			if v, ok := m[hostGroupName]; ok {
-				m[hostGroupName] = append(v, wwn)
-			} else {
-				m[hostGroupName] = []string{wwn}
-			}
-		}
-	}
-	return m, nil
-}
-*/
 
 func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (pureVolumeConnection, error) {
 	params := map[string]string{

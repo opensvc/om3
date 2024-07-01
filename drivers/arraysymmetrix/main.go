@@ -73,7 +73,7 @@ type (
 	InitiatorGroupInfo struct {
 		XMLName       xml.Name      `xml:"Group_Info" json:"-"`
 		GroupName     string        `xml:"group_name" json:"group_name"`
-		ConsistentLUN bool          `xml:"consistent_lun" json:"consistent_lun"`
+		ConsistentLUN string        `xml:"consistent_lun" json:"consistent_lun"`
 		DevCount      int           `xml:"dev_count" json:"dev_count"`
 		SGCount       int           `xml:"sg_count" json:"sg_count"`
 		ViewCount     int           `xml:"view_count" json:"view_count"`
@@ -678,8 +678,8 @@ const (
 
 var (
 	// PromptReader is bufio.NewReader(os.Stdin) for testing dangerous command only, normally nil
-	PromptReader *bufio.Reader
-	//PromptReader = bufio.NewReader(os.Stdin)
+	//PromptReader *bufio.Reader
+	PromptReader = bufio.NewReader(os.Stdin)
 
 	ErrNotFree = errors.New("device is not free")
 )
@@ -865,7 +865,7 @@ func (t *Array) MaskDBFile() (string, error) {
 
 func (t *Array) SymAccessShowViewDetail(name string) ([]MaskingView, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "show", "view", name, "-detail"}
+	args := []string{"-sid", sid, "-output", "xml_e", "show", "view", name, "-detail"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
@@ -887,7 +887,7 @@ func (t *Array) SymAccessShowViewDetail(name string) ([]MaskingView, error) {
 
 func (t *Array) SymAccessListViewDetail() ([]MaskingView, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "list", "view", "-detail"}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "view", "-detail"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
@@ -917,7 +917,7 @@ func (t *Array) parseSymAccessListViewDetail(b []byte) ([]MaskingView, error) {
 
 func (t *Array) SymCfgList(s string) (SymmInfo, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "list"}
+	args := []string{"-sid", sid, "-output", "xml_e", "list"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -947,7 +947,7 @@ func (t *Array) parseSymCfgList(b []byte) (SymmInfo, error) {
 
 func (t *Array) SymCfgDirectorList(s string) ([]Director, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "-dir", s, "-v", "list"}
+	args := []string{"-sid", sid, "-output", "xml_e", "-dir", s, "-v", "list"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -977,7 +977,7 @@ func (t *Array) parseSymCfgDirectorList(b []byte) ([]Director, error) {
 
 func (t *Array) SymCfgRDFGList(s string) ([]RDFGroup, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "-rdfg", s, "list"}
+	args := []string{"-sid", sid, "-output", "xml_e", "-rdfg", s, "list"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -1007,7 +1007,7 @@ func (t *Array) parseSymCfgRDFGList(b []byte) ([]RDFGroup, error) {
 
 func (t *Array) SymCfgPoolList() ([]DevicePool, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "-pool", "list", "-v"}
+	args := []string{"-sid", sid, "-output", "xml_e", "-pool", "list", "-v"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -1037,7 +1037,7 @@ func (t *Array) parseSymCfgPoolList(b []byte) ([]DevicePool, error) {
 
 func (t *Array) SymCfgSLOList() ([]SLO, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "list", "-slo", "-detail", "-v"}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "-slo", "-detail", "-v"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -1067,7 +1067,7 @@ func (t *Array) parseSymCfgSLOList(b []byte) ([]SLO, error) {
 
 func (t *Array) SymCfgSRPList() ([]SRP, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "list", "-srp", "-detail", "-v"}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "-srp", "-detail", "-v"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
@@ -1097,7 +1097,7 @@ func (t *Array) parseSymCfgSRPList(b []byte) ([]SRP, error) {
 
 func (t *Array) SymDiskListDiskGroupSummary() ([]DiskGroup, error) {
 	sid := t.kwSID()
-	args := []string{"-sid", sid, "-ouput", "xml_e", "list", "-dskgroup_summary"}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "-dskgroup_summary"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdisk()),
@@ -1446,7 +1446,7 @@ func (t *Array) parseSymAccessListPort(b []byte) ([]PortGroup, error) {
 }
 
 func (t *Array) SymAccessListDevInitiator(sid, wwn string) ([]InitiatorGroup, error) {
-	args := []string{"-sid", sid, "list", "-type", "initiator", "-wwn", wwn}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "-type", "initiator", "-wwn", wwn}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
@@ -1572,29 +1572,19 @@ func (t *Array) bestSG(sid string, mappings []string, slo, srp string) (string, 
 
 func (t *Array) getStorageGroupOfMappings(sid string, mappings []string) (mappingSGs, error) {
 	var m mappingSGs
-	for _, s := range mappings {
-		elements := strings.Split(s, ":")
-		if len(elements) != 2 {
-			return m, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
+	parsedMappings, err := array.ParseMappings(mappings)
+	if err != nil {
+		return m, err
+	}
+	for _, mapping := range parsedMappings {
+		this, err := t.getStorageGroupOfMapping(sid, mapping.HBAID, mapping.TGTID)
+		if err != nil {
+			return m, err
 		}
-		hbaId := elements[0]
-		if len(elements[1]) == 0 {
-			return m, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
-		}
-		tgtIds := strings.Split(elements[1], ",")
-		if len(tgtIds) == 0 {
-			return m, fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
-		}
-		for _, tgtId := range tgtIds {
-			this, err := t.getStorageGroupOfMapping(sid, hbaId, tgtId)
-			if err != nil {
-				return m, err
-			}
-			if m == nil {
-				m = this
-			} else {
-				m = m.Intersect(this)
-			}
+		if m == nil {
+			m = this
+		} else {
+			m = m.Intersect(this)
 		}
 	}
 	return m, nil
@@ -2497,11 +2487,15 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 	disk.DiskID = dev.Product.WWN
 	disk.DevID = dev.DevInfo.DevName
 
+	if len(opt.Mappings) == 0 && opt.SG == "" {
+		return disk, fmt.Errorf("--sg or --mappings is required")
+	}
+
 	if err := t.mapDisk(opt); err != nil {
 		return disk, err
 	}
 
-	if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName, opt.Mappings); err != nil {
+	if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	} else {
 		disk.Mappings = data
@@ -2524,7 +2518,7 @@ func (t *Array) mapDisk(opt OptMapDisk) error {
 	return nil
 }
 
-func (t *Array) getMappings(sid, devId string, mappings []string) (array.Mappings, error) {
+func (t *Array) getMappings(sid, devId string) (array.Mappings, error) {
 	sgs, err := t.getDevSGs(sid, dev)
 	if err != nil {
 		return nil, err
@@ -2614,7 +2608,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 			return disk, err
 		}
 
-		if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName, opt.Mappings); err != nil {
+		if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName); err != nil {
 			return disk, err
 		} else {
 			disk.Mappings = data
