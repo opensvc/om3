@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
@@ -98,7 +99,9 @@ func (d *data) dropPeer(peer string) {
 	}
 	if v := node.MonitorData.Get(peer); v != nil {
 		node.DropNode(peer)
+		daemonsubsystem.DropNode(peer)
 		// TODO: find a way to clear parts of cluster.node.<peer>.Status
+		// TODO: move LsnrData to daemonsubsystem.Listener
 		node.LsnrData.Unset(peer) // keep this even if it is already done during DropNode
 		d.bus.Pub(&msgbus.ListenerUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)

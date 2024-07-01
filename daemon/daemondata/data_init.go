@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -18,13 +19,18 @@ import (
 
 func newData() *data {
 	localNode := hostname.Hostname()
+
 	nodeData := newNodeData(localNode)
+
 	node.LsnrData.Set(localNode, &nodeData.Status.Lsnr)
 	node.MonitorData.Set(localNode, &nodeData.Monitor)
 	node.StatusData.Set(localNode, &nodeData.Status)
 	node.StatsData.Set(localNode, &nodeData.Stats)
 	node.ConfigData.Set(localNode, &nodeData.Config)
 	node.GenData.Set(localNode, &nodeData.Status.Gen)
+
+	daemonsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
+
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
 			Status: cluster.Status{
@@ -96,6 +102,24 @@ func newNodeData(localNode string) node.Node {
 		},
 		Os: node.Os{
 			Paths: san.Paths{},
+		},
+		Daemon: daemonsubsystem.Deamon{
+			Nodename:  localNode,
+			CreatedAt: time.Now(),
+
+			Daemondata: daemonsubsystem.Daemondata{
+				DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
+					ID:           "daemondata",
+					ConfiguredAt: time.Now(),
+					CreatedAt:    time.Now(),
+					State:        "running",
+					Alerts:       make([]daemonsubsystem.ThreadAlert, 0),
+				},
+			},
+			Hb: daemonsubsystem.Hb{
+				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
+				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
+			},
 		},
 	}
 	return nodeStatus

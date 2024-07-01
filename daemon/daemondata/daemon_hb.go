@@ -34,7 +34,7 @@ func (d *data) setDaemonHb() {
 		Streams:      hbcache.Heartbeats(),
 		LastMessages: lastMessages,
 	}
-	d.clusterData.Daemon.HB = subHb
+	d.clusterData.Daemon.Hb = subHb
 	d.bus.Pub(&msgbus.DaemonHb{Node: d.localNode, Value: subHb}, d.labelLocalNode)
 }
 

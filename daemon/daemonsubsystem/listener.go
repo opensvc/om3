@@ -1,4 +1,4 @@
-package cluster
+package daemonsubsystem
 
 import (
 	"net"
@@ -6,6 +6,26 @@ import (
 )
 
 type (
+	// Listener describes the OpenSVC daemon listener thread,
+	// which is responsible for serving the API.
+	Listener struct {
+		DaemonSubsystemStatus
+
+		Config ListenerThreadStatusConfig `json:"config"`
+		Stats  ListenerThreadStats        `json:"stats"`
+	}
+
+	// ListenerThreadStatusConfig holds a summary of the listener configuration
+	ListenerThreadStatusConfig struct {
+		Addr net.IP `json:"addr"`
+		Port int    `json:"port"`
+	}
+
+	// ListenerThreadStats describes the statistics of the api listener.
+	ListenerThreadStats struct {
+		Sessions ListenerThreadSessions `json:"sessions"`
+	}
+
 	// ListenerThreadSession describes statistics of a session of the api listener.
 	ListenerThreadSession struct {
 		Addr      string    `json:"addr"`
@@ -31,24 +51,5 @@ type (
 		TX            uint64                           `json:"tx"`
 		Alive         map[string]ListenerThreadSession `json:"alive"`
 		Clients       map[string]ListenerThreadClient  `json:"clients"`
-	}
-
-	// ListenerThreadStats describes the statistics of the api listener.
-	ListenerThreadStats struct {
-		Sessions ListenerThreadSessions `json:"sessions"`
-	}
-
-	// DaemonListener describes the OpenSVC daemon listener thread,
-	// which is responsible for serving the API.
-	DaemonListener struct {
-		DaemonSubsystemStatus
-		Config ListenerThreadStatusConfig `json:"config"`
-		Stats  ListenerThreadStats        `json:"stats"`
-	}
-
-	// ListenerThreadStatusConfig holds a summary of the listener configuration
-	ListenerThreadStatusConfig struct {
-		Addr net.IP `json:"addr"`
-		Port int    `json:"port"`
 	}
 )
