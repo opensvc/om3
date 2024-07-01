@@ -78,7 +78,7 @@ type (
 		// On ticker event those updates are posted to the collector.
 		instanceConfigChange map[naming.Path]*msgbus.InstanceConfigUpdated
 
-		// isSpeaker is true when localhost NodeStatus.IsSpeaker is true
+		// isSpeaker is true when localhost NodeStatus.IsLeader is true
 		isSpeaker bool
 
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
@@ -274,7 +274,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
-	t.isSpeaker = node.StatusData.Get(t.localhost).IsSpeaker
+	t.isSpeaker = node.StatusData.Get(t.localhost).IsLeader
 	t.publishOnChange(t.getState())
 
 	t.initChanges()

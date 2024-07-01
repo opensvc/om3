@@ -1,6 +1,6 @@
 package nmon
 
-// updateSpeaker refresh the t.nodeStatus.IsSpeaker value. It returns true
+// updateSpeaker refresh the t.nodeStatus.IsLeader value. It returns true
 // if value have been changed, and we have to publish NodeStatusUpdated.
 //
 // It must be called during following events:
@@ -10,9 +10,9 @@ package nmon
 //
 // onStartup value may be true, because live peers are not yet discovered
 func (t *Manager) updateSpeaker() bool {
-	if t.isSpeakerNode() != t.nodeStatus.IsSpeaker {
-		t.nodeStatus.IsSpeaker = !t.nodeStatus.IsSpeaker
-		t.log.Infof("node speaker: %v", t.nodeStatus.IsSpeaker)
+	if t.isSpeakerNode() != t.nodeStatus.IsLeader {
+		t.nodeStatus.IsLeader = !t.nodeStatus.IsLeader
+		t.log.Infof("node speaker: %v", t.nodeStatus.IsLeader)
 		return true
 	}
 	return false

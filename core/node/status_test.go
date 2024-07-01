@@ -28,7 +28,7 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 		},
 		MinAvailMemPct:  9,
 		MinAvailSwapPct: 15,
-		IsSpeaker:       true,
+		IsLeader:        true,
 		Labels: map[string]string{
 			"node1": "abc",
 			"node2": "efg",

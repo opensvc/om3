@@ -96,8 +96,8 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		t.daemonStatusChange[c.Node] = struct{}{}
 	}
 	if c.Node == t.localhost {
-		if t.isSpeaker != c.Value.IsSpeaker {
-			t.isSpeaker = c.Value.IsSpeaker
+		if t.isSpeaker != c.Value.IsLeader {
+			t.isSpeaker = c.Value.IsLeader
 			t.publishOnChange(t.getState())
 		}
 	}

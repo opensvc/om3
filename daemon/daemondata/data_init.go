@@ -84,16 +84,16 @@ func newNodeData(localNode string) node.Node {
 		},
 		Stats: node.Stats{},
 		Status: node.Status{
-			Agent:           "3.0-0",
-			API:             8,
-			Arbitrators:     map[string]node.ArbitratorStatus{},
+			// TODO: API fix
+			API:         8,
+			Arbitrators: map[string]node.ArbitratorStatus{},
+			// TODO: Compat fix
 			Compat:          12,
 			FrozenAt:        frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          node.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
-			IsSpeaker:       false,
 			Lsnr:            node.Lsnr{UpdatedAt: now},
 		},
 		Os: node.Os{
