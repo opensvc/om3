@@ -255,12 +255,14 @@ func (t *T) Stop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := t.bus.Sub("daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
-	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
+
+	// Reminder: NodeConfigUpdated will be fired on ClusterConfigUpdated
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
+
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
@@ -293,8 +295,6 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
-			case *msgbus.ClusterConfigUpdated:
-				t.onClusterConfigUpdated(c)
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(c)
 			case *msgbus.InstanceConfigUpdated:

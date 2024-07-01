@@ -30,10 +30,6 @@ func (t *T) onRefreshTicker() {
 	}
 }
 
-func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	t.onConfigUpdated()
-}
-
 func (t *T) onConfigUpdated() {
 	t.log.Debugf("reconfigure")
 	if collector.Alive.Load() {
