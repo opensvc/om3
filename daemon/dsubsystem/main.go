@@ -26,6 +26,7 @@ type (
 		ID           string        `json:"id"`
 		ConfiguredAt time.Time     `json:"configured_at"`
 		CreatedAt    time.Time     `json:"created_at"`
+		UpdatedAt    time.Time     `json:"updated_at"`
 		State        string        `json:"state"`
 		Alerts       []ThreadAlert `json:"alerts,omitempty"`
 	}
@@ -36,3 +37,10 @@ type (
 		Severity string `json:"severity"`
 	}
 )
+
+func (d *DaemonSubsystemStatus) DeepCopy() *DaemonSubsystemStatus {
+	var v DaemonSubsystemStatus
+	v = *d
+	v.Alerts = append(v.Alerts, d.Alerts...)
+	return &v
+}

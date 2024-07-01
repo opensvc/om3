@@ -8,3 +8,9 @@ type (
 		DaemonSubsystemStatus
 	}
 )
+
+func (c *Collector) DeepCopy() *Collector {
+	return &Collector{
+		DaemonSubsystemStatus: *c.DaemonSubsystemStatus.DeepCopy(),
+	}
+}

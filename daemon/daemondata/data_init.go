@@ -74,6 +74,7 @@ func newData() *data {
 func newNodeData(localNode string) node.Node {
 	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
 	frozen := file.ModTime(nodeFrozenFile)
+	now := time.Now()
 	nodeStatus := node.Node{
 		Instance: map[string]instance.Instance{},
 		Monitor: node.Monitor{
@@ -93,20 +94,21 @@ func newNodeData(localNode string) node.Node {
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
 			IsSpeaker:       false,
-			Lsnr:            node.Lsnr{UpdatedAt: time.Now()},
+			Lsnr:            node.Lsnr{UpdatedAt: now},
 		},
 		Os: node.Os{
 			Paths: san.Paths{},
 		},
 		Daemon: dsubsystem.Deamon{
 			Nodename:  localNode,
-			CreatedAt: time.Now(),
+			CreatedAt: now,
 
 			Daemondata: dsubsystem.Daemondata{
 				DaemonSubsystemStatus: dsubsystem.DaemonSubsystemStatus{
 					ID:           "daemondata",
-					ConfiguredAt: time.Now(),
-					CreatedAt:    time.Now(),
+					ConfiguredAt: now,
+					CreatedAt:    now,
+					UpdatedAt:    now,
 					State:        "running",
 					Alerts:       make([]dsubsystem.ThreadAlert, 0),
 				},

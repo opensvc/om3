@@ -3,7 +3,7 @@
     - JoinError, JoinIgnored, JoinRequest, JoinSuccess, LeaveError, LeaveIgnored, LeaveRequest, LeaveSuccess
     - ArbitratorError, ForgetPeer, forget_peer
  config file updates: ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
- daemon: DaemonCollector, DaemonCtl, DaemonHb, DaemonStart
+ daemon: DaemonCollectorUpdated, DaemonCtl, DaemonHb, DaemonStart
  dns: ZoneRecordDeleted, ZoneRecordUpdated
  execs: Exec, ExecFailed, ExecSuccess
  heartbeat: HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated

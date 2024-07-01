@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/dsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
@@ -132,6 +133,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	d.clusterData.ApplyMessage(msg)
 
 	switch c := msg.(type) {
+	// daemon
+	case *msgbus.DaemonCollectorUpdated:
+		dsubsystem.DataCollector.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)

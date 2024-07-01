@@ -257,7 +257,7 @@ func (t *T) loop() {
 	sub := t.startSubscriptions()
 	defer func() {
 		t.status.DaemonSubsystemStatus.State = "stopped"
-		t.bus.Pub(&msgbus.DaemonCollector{Node: t.localhost, Value: t.status}, pubsub.Label{"node", t.localhost})
+		t.publishUpdate()
 
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
@@ -345,4 +345,9 @@ func (t *T) dropChanges() {
 	t.changes.instanceStatusUpdates = make(map[string]*msgbus.InstanceStatusUpdated)
 	t.changes.instanceStatusDeletes = make(map[string]*msgbus.InstanceStatusDeleted)
 	t.daemonStatusChange = make(map[string]struct{})
+}
+
+func (t *T) publishUpdate() {
+	dsubsystem.DataCollector.Set(t.localhost, t.status.DeepCopy())
+	t.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
