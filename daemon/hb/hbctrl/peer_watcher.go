@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -25,7 +25,7 @@ var (
 // when beating state change a hb_beating or hb_stale event is fired
 // Once beating, a hb_stale event is fired if no beating are received after timeout
 func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename string, timeout time.Duration) {
-	peer := cluster.HeartbeatPeerStatus{}
+	peer := daemonsubsystem.HeartbeatPeerStatus{}
 	started := make(chan bool)
 	go func() {
 		// changes tracks beating value changes

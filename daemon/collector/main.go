@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -37,7 +38,7 @@ type (
 		bus        *pubsub.Bus
 		created    map[string]time.Time
 
-		status cluster.DaemonCollector
+		status daemonsubsystem.Collector
 
 		postTicker *time.Ticker
 
@@ -157,12 +158,12 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		localhost:   hostname.Hostname(),
 		clusterData: daemondata.FromContext(ctx),
 		subQS:       subQS,
-		status: cluster.DaemonCollector{
-			DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{
+		status: daemonsubsystem.Collector{
+			DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
 				ID:           "collector",
 				ConfiguredAt: time.Now(),
 				CreatedAt:    time.Now(),
-				State:        "created",
+				State:        "undef",
 			},
 		},
 	}

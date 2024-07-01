@@ -4,14 +4,14 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (d *data) setDaemonHb() {
-	lastMessages := make([]cluster.HbLastMessage, 0)
+	lastMessages := make([]daemonsubsystem.HbLastMessage, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgPatchLength {
 		if !slices.Contains(d.clusterData.Cluster.Config.Nodes, node) {
@@ -23,18 +23,18 @@ func (d *data) setDaemonHb() {
 	}
 	sort.Strings(nodes)
 	for _, node := range nodes {
-		lastMessages = append(lastMessages, cluster.HbLastMessage{
+		lastMessages = append(lastMessages, daemonsubsystem.HbLastMessage{
 			From:        node,
 			PatchLength: d.hbMsgPatchLength[node],
 			Type:        d.hbMsgType[node],
 		})
 	}
 
-	subHb := cluster.DaemonHb{
+	subHb := daemonsubsystem.Hb{
 		Streams:      hbcache.Heartbeats(),
 		LastMessages: lastMessages,
 	}
-	d.clusterData.Daemon.Hb = subHb
+	d.clusterData.Daemon.HB = subHb
 	d.bus.Pub(&msgbus.DaemonHb{Node: d.localNode, Value: subHb}, d.labelLocalNode)
 }
 
