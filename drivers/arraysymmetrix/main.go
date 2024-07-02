@@ -1545,7 +1545,7 @@ func (t *Array) filterMappingsSGs(current mappingSGs, sid string, slo, srp strin
 	return m, nil
 }
 
-func (t *Array) bestSG(sid string, mappings []string, slo, srp string) (string, error) {
+func (t *Array) bestSG(sid string, mappings array.Mappings, slo, srp string) (string, error) {
 	if mappings == nil || len(mappings) == 0 {
 		return "", nil
 	}
@@ -1570,13 +1570,9 @@ func (t *Array) bestSG(sid string, mappings []string, slo, srp string) (string, 
 	return narrowest, nil
 }
 
-func (t *Array) getStorageGroupOfMappings(sid string, mappings []string) (mappingSGs, error) {
+func (t *Array) getStorageGroupOfMappings(sid string, mappings array.Mappings) (mappingSGs, error) {
 	var m mappingSGs
-	parsedMappings, err := array.ParseMappings(mappings)
-	if err != nil {
-		return m, err
-	}
-	for _, mapping := range parsedMappings {
+	for _, mapping := range mappings {
 		this, err := t.getStorageGroupOfMapping(sid, mapping.HBAID, mapping.TGTID)
 		if err != nil {
 			return m, err

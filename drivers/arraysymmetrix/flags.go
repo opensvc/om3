@@ -1,6 +1,9 @@
 package arraysymmetrix
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/opensvc/om3/core/array"
+	"github.com/spf13/cobra"
+)
 
 var (
 	name       string
@@ -8,7 +11,7 @@ var (
 	data       string
 	force      bool
 	pair       string
-	mappings   []string
+	mappings   = make(array.Mappings)
 	size       string
 	slo        string
 	srp        string
@@ -41,7 +44,7 @@ func useFlagPair(cmd *cobra.Command) {
 }
 
 func useFlagMapping(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&mappings, "mapping", []string{}, "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --hostgroup. Can be specified multiple times")
+	cmd.Flags().Var(&mappings, "mapping", "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --hostgroup. Can be specified multiple times")
 }
 
 func useFlagSize(cmd *cobra.Command) {

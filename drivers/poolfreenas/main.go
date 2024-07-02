@@ -159,7 +159,7 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 
 func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	disk := pool.Disk{}
-	paths, err := pool.GetMapping(t, nodenames)
+	paths, err := pool.GetPaths(t, nodenames, san.ISCSI)
 	if err != nil {
 		return []pool.Disk{}, err
 	}

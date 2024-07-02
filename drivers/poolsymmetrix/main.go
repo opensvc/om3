@@ -263,7 +263,8 @@ func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.
 
 func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetMapping(t, nodenames)
+	paths, err := pool.GetPaths(t, nodenames, "fc")
+	mappings, err := pool.GetMappings(t, nodenames, "fc")
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -272,7 +273,7 @@ func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
 		SLO:      t.slo(),
 		SRP:      t.srp(),
 		SID:      t.sid(),
-		Mappings: paths.MappingList(),
+		Mappings: mappings,
 	})
 
 	if err != nil {
@@ -286,7 +287,8 @@ func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
 
 func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetMapping(t, nodenames)
+	paths, err := pool.GetPaths(t, nodenames, "fc")
+	mappings, err := pool.GetMappings(t, nodenames, "fc")
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -302,7 +304,7 @@ func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]poo
 		SRP:      t.srp(),
 		SLO:      t.slo(),
 		SRDF:     t.srdf(),
-		Mappings: paths.MappingList(),
+		Mappings: mappings,
 	})
 	if err != nil {
 		return []pool.Disk{}, err

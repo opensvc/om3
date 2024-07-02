@@ -39,6 +39,19 @@ type (
 	}
 )
 
+func (c *Mappings) String() string {
+	return fmt.Sprintf("%v", *c)
+}
+
+func (c *Mappings) Set(value string) error {
+	c.Parse(value)
+	return nil
+}
+
+func (c *Mappings) Type() string {
+	return "array.Mappings"
+}
+
 func New() *Array {
 	t := &Array{}
 	return t
@@ -108,24 +121,37 @@ func skipArgs(args []string) []string {
 func ParseMappings(mappings []string) (Mappings, error) {
 	m := make(Mappings)
 	for _, s := range mappings {
-		elements := strings.Split(s, ":")
-		if len(elements) != 2 {
-			return m, fmt.Errorf("invalid mapping: %s: no target part: must be <hba>:<tgt>[,<tgt>...]", s)
+		m, err := m.Parse(s)
+		if err != nil {
+			return m, err
 		}
-		hbaId := elements[0]
-		tgtIds := strings.Split(elements[1], ",")
-		if len(tgtIds) == 0 {
-			return m, fmt.Errorf("invalid mapping: %s: empty target part: must be <hba>:<tgt>[,<tgt>...]", s)
+	}
+	return m, nil
+}
+
+func (m Mappings) Add(hbaId, tgtId string) Mappings {
+	m[hbaId+":"+tgtId] = Mapping{
+		HBAID: hbaId,
+		TGTID: tgtId,
+	}
+	return m
+}
+
+func (m Mappings) Parse(s string) (Mappings, error) {
+	elements := strings.Split(s, ":")
+	if len(elements) != 2 {
+		return m, fmt.Errorf("invalid mapping: %s: no target part: must be <hba>:<tgt>[,<tgt>...]", s)
+	}
+	hbaId := elements[0]
+	tgtIds := strings.Split(elements[1], ",")
+	if len(tgtIds) == 0 {
+		return m, fmt.Errorf("invalid mapping: %s: empty target part: must be <hba>:<tgt>[,<tgt>...]", s)
+	}
+	for _, tgtId := range tgtIds {
+		if len(tgtId) == 0 {
+			return m, fmt.Errorf("invalid mapping: %s: empty target element: must be <hba>:<tgt>[,<tgt>...]", s)
 		}
-		for _, tgtId := range tgtIds {
-			if len(tgtId) == 0 {
-				return m, fmt.Errorf("invalid mapping: %s: empty target element: must be <hba>:<tgt>[,<tgt>...]", s)
-			}
-			m[hbaId+":"+tgtId] = Mapping{
-				HBAID: hbaId,
-				TGTID: tgtId,
-			}
-		}
+		m = m.Add(hbaId, tgtId)
 	}
 	return m, nil
 }

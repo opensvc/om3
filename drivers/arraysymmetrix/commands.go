@@ -1,6 +1,7 @@
 package arraysymmetrix
 
 import (
+	"github.com/opensvc/om3/core/array"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +153,7 @@ type OptMapDisk struct {
 	SLO      string
 	SRP      string
 	SG       string
-	Mappings []string
+	Mappings array.Mappings
 }
 
 func newMapDiskCmd(t *Array) *cobra.Command {
@@ -340,7 +341,7 @@ type OptAddDisk struct {
 	SRDFMode string
 	SRDFType string
 	RDFG     string
-	Mappings []string
+	Mappings array.Mappings
 }
 
 func newAddDiskCmd(t *Array) *cobra.Command {
