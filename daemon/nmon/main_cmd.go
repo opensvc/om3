@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"slices"
 	"time"
 
@@ -18,6 +19,10 @@ import (
 )
 
 var (
+	// MinMaxParallel is the minimum value of the setting of maximum number of CRM
+	// actions allowed to run in parallel.
+	MinMaxParallel = 2
+
 	splitActions = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,
@@ -66,6 +71,7 @@ func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 func (t *Manager) getNodeConfig() node.Config {
 	var (
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
+		keyMaxParallel            = key.New("node", "max_parallel")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
 		keyEnv                    = key.New("node", "env")
@@ -81,8 +87,17 @@ func (t *Manager) getNodeConfig() node.Config {
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
 	}
+	cfg.MaxParallel = t.config.GetInt(keyMaxParallel)
 	cfg.Env = t.config.GetString(keyEnv)
 	cfg.SplitAction = t.config.GetString(keySplitAction)
+
+	if cfg.MaxParallel == 0 {
+		cfg.MaxParallel = runtime.NumCPU()
+	}
+	if cfg.MaxParallel < MinMaxParallel {
+		cfg.MaxParallel = MinMaxParallel
+	}
+
 	return cfg
 }
 
