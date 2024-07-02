@@ -97,15 +97,20 @@ type (
 		GroupInfo StorageGroupInfo `xml:"Group_Info" json:"Group_Info"`
 	}
 	StorageGroupInfo struct {
-		XMLName           xml.Name      `xml:"Group_Info" json:"-"`
-		GroupName         string        `xml:"group_name" json:"group_name"`
-		DevCount          int           `xml:"dev_count" json:"dev_count"`
-		SGCount           int           `xml:"sg_count" json:"sg_count"`
-		ViewCount         int           `xml:"view_count" json:"view_count"`
-		LastUpdated       string        `xml:"last_updated" json:"last_updated"`
-		MaskViewNames     MaskViewNames `xml:"Mask_View_Names" json:"Mask_View_Names"`
-		CascadedViewNames MaskViewNames `xml:"Cascaded_View_Names" json:"Cascaded_View_Names"`
-		Status            string        `xml:"status" json:"status"`
+		XMLName           xml.Name          `xml:"Group_Info" json:"-"`
+		GroupName         string            `xml:"group_name" json:"group_name"`
+		DevCount          int               `xml:"dev_count" json:"dev_count"`
+		SGCount           int               `xml:"sg_count" json:"sg_count"`
+		ViewCount         int               `xml:"view_count" json:"view_count"`
+		LastUpdated       string            `xml:"last_updated" json:"last_updated"`
+		MaskViewNames     MaskViewNames     `xml:"Mask_View_Names" json:"Mask_View_Names"`
+		CascadedViewNames CascadedViewNames `xml:"Cascaded_View_Names" json:"Cascaded_View_Names"`
+		Status            string            `xml:"status" json:"status"`
+	}
+	CascadedViewNames struct {
+		XMLName   xml.Name `xml:"Cascaded_View_Names" json:"-"`
+		ViewCount int      `xml:"view_count" json:"view_count"`
+		ViewNames []string `xml:"view_name" json:"view_name"`
 	}
 	MaskViewNames struct {
 		XMLName   xml.Name `xml:"Mask_View_Names" json:"-"`
@@ -1644,7 +1649,7 @@ func (t *Array) getStorageGroupOfMapping(sid, hbaId, tgtId string) (mappingSGs, 
 }
 
 func (t *Array) SymAccessListDevStorage(sid, devId string) ([]StorageGroup, error) {
-	args := []string{"-sid", sid, "list", "-type", "storage", "-devs", devId}
+	args := []string{"-sid", sid, "-output", "xml_e", "list", "-type", "storage", "-devs", devId}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
