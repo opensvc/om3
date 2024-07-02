@@ -53,7 +53,7 @@ func (t *Manager) doShutdown() {
 	if t.setWaitChildren() {
 		return
 	}
-	t.doAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
+	t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
 }
 
 func (t *Manager) isLocalShutdown() bool {

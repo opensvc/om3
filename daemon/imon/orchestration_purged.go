@@ -65,11 +65,11 @@ func (t *Manager) purgedFromDeleted() {
 }
 
 func (t *Manager) purgedFromUnprovisioned() {
-	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStatePurgeFailed)
+	t.queueAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStatePurgeFailed)
 }
 
 func (t *Manager) purgedFromIdleUp() {
-	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
 func (t *Manager) purgedFromIdleProvisioned() {
@@ -78,7 +78,7 @@ func (t *Manager) purgedFromIdleProvisioned() {
 		t.purgedFromWaitNonLeader()
 		return
 	}
-	t.doAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
+	t.queueAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
 }
 
 func (t *Manager) purgedFromWaitNonLeader() {
@@ -89,5 +89,5 @@ func (t *Manager) purgedFromWaitNonLeader() {
 	if t.hasNonLeaderProvisioned() {
 		return
 	}
-	t.doAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
+	t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateUnprovisioned, instance.MonitorStatePurgeFailed)
 }

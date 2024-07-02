@@ -1,0 +1,40 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Disk_Group>
+      <Disk_Group_Info>
+        <disk_group_number>1</disk_group_number>
+        <disk_group_name>GRP_XXX1</disk_group_name>
+        <disk_location>Internal</disk_location>
+        <disks_selected>100</disks_selected>
+        <technology>EFD</technology>
+        <speed>0</speed>
+        <form_factor>N/A</form_factor>
+        <hyper_size_megabytes>58126</hyper_size_megabytes>
+        <hyper_size_gigabytes>56.8</hyper_size_gigabytes>
+        <hyper_size_terabytes>0.06</hyper_size_terabytes>
+        <max_hypers_per_disk>64</max_hypers_per_disk>
+        <disk_size_megabytes>3720056</disk_size_megabytes>
+        <disk_size_gigabytes>3632.9</disk_size_gigabytes>
+        <disk_size_terabytes>3.55</disk_size_terabytes>
+        <rated_disk_size_gigabytes>3840</rated_disk_size_gigabytes>
+        <rated_disk_size_terabytes>3.75</rated_disk_size_terabytes>
+      </Disk_Group_Info>
+      <Disk_Group_Totals>
+        <units>megabytes</units>
+        <total>372005563</total>
+        <free>0</free>
+        <actual>372006206</actual>
+      </Disk_Group_Totals>
+    </Disk_Group>
+    <Disk_Group_Summary_Totals>
+      <units>megabytes</units>
+      <total>372005563</total>
+      <free>0</free>
+      <actual>372006206</actual>
+    </Disk_Group_Summary_Totals>
+  </Symmetrix>
+</SymCLI_ML>

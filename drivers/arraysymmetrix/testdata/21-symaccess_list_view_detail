@@ -1,0 +1,803 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Masking_View>
+      <View_Info>
+        <view_name>MV_XXX1</view_name>
+        <last_updated>08:48:07 AM on Tue Nov 28,2023</last_updated>
+        <view_last_update_time>03:49:16 PM on Thu Nov 30,2023</view_last_update_time>
+        <init_grpname>IG_XXX1</init_grpname>
+        <Initiators>
+          <wwn>510000000000b816</wwn>
+          <user_node_name>510000000000b816</user_node_name>
+          <user_port_name>510000000000b816</user_port_name>
+          <wwn>510000000000b814</wwn>
+          <user_node_name>510000000000b814</user_node_name>
+          <user_port_name>510000000000b814</user_port_name>
+        </Initiators>
+        <Initiator_List>
+          <Initiator>
+            <wwn>510000000000b816</wwn>
+            <user_node_name>510000000000b816</user_node_name>
+            <user_port_name>510000000000b816</user_port_name>
+          </Initiator>
+          <Initiator>
+            <wwn>510000000000b814</wwn>
+            <user_node_name>510000000000b814</user_node_name>
+            <user_port_name>510000000000b814</user_port_name>
+          </Initiator>
+        </Initiator_List>
+        <port_grpname>PG_XXX1</port_grpname>
+        <port_info>
+          <Director_Identification>
+            <dir>FA-2D</dir>
+            <port>8</port>
+            <port_wwn>5000000000000448</port_wwn>
+          </Director_Identification>
+          <Director_Identification>
+            <dir>FA-4D</dir>
+            <port>8</port>
+            <port_wwn>50000000000004c8</port_wwn>
+          </Director_Identification>
+        </port_info>
+        <stor_grpname>CSG_XXX1</stor_grpname>
+        <SG_Child_info>
+          <child_count>2</child_count>
+          <SG>
+            <group_name>SG_XXX1</group_name>
+            <Status>IsChild</Status>
+          </SG>
+          <SG>
+            <group_name>SG_XXX1_GK</group_name>
+            <Status>IsChild</Status>
+          </SG>
+        </SG_Child_info>
+        <Device>
+          <dev_name>00178</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>1</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>1</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>1</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>1</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>1</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>1</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>1</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>1</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>002ED</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>2</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>2</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>2</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>2</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>2</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>2</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>2</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>2</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004D6</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>3</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>3</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>3</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>3</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>3</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>3</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>3</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>3</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004D7</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>4</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>4</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>4</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>4</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>4</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>4</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>4</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>4</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004EF</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>5</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>5</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>5</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>5</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>5</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>5</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>5</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>5</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004FB</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>6</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>6</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>6</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>6</host_lun>
+          <attr>N/A</attr>
+          <capacity>6</capacity>
+          <capacity_gb>0.0</capacity_gb>
+          <capacity_tb>0.00</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>6</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>6</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>6</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>6</host_lun>
+            <attr>N/A</attr>
+            <capacity>6</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004FE</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>8</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>8</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>8</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>8</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>8</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>8</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>8</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>8</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>004FF</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>9</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>9</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>9</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>9</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>9</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>9</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>9</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>9</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>00500</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>a</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>a</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>a</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>a</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>a</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>a</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>a</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>a</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>00503</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>d</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>d</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>d</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>d</host_lun>
+          <attr>N/A</attr>
+          <capacity>92160</capacity>
+          <capacity_gb>90.0</capacity_gb>
+          <capacity_tb>0.09</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>d</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>d</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>d</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>d</host_lun>
+            <attr>N/A</attr>
+            <capacity>92160</capacity>
+          </dev_port_info>
+        </Device>
+        <Device>
+          <dev_name>00504</dev_name>
+          <director>01D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>e</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>02D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>e</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>03D</director>
+          <port>9</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>e</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <director>04D</director>
+          <port>8</port>
+          <pd_name>Not Visible</pd_name>
+          <host_lun>e</host_lun>
+          <attr>N/A</attr>
+          <capacity>51201</capacity>
+          <capacity_gb>50.0</capacity_gb>
+          <capacity_tb>0.05</capacity_tb>
+          <dev_port_info>
+            <director>01D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>e</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>02D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>e</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>03D</director>
+            <port>9</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>e</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+          <dev_port_info>
+            <director>04D</director>
+            <port>8</port>
+            <pd_name>Not Visible</pd_name>
+            <host_lun>e</host_lun>
+            <attr>N/A</attr>
+            <capacity>51201</capacity>
+          </dev_port_info>
+        </Device>
+        <Totals>
+          <total_dev_cap_mb>337959</total_dev_cap_mb>
+          <total_dev_cap_gb>330.0</total_dev_cap_gb>
+          <total_dev_cap_tb>0.32</total_dev_cap_tb>
+        </Totals>
+      </View_Info>
+    </Masking_View>
+  </Symmetrix>
+</SymCLI_ML>

@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestKeyopsDrop(t *testing.T) {
+	op1 := T{
+		Key:   key.Parse("topology"),
+		Op:    Set,
+		Value: "failover",
+	}
+	op2 := T{
+		Key:   key.Parse("priority"),
+		Op:    Set,
+		Value: "50",
+	}
+	ops := L{op1, op2}
+
+	ops = ops.Drop(key.T{"DEFAULT", "priority"})
+	assert.Len(t, ops, 1)
+	assert.Equal(t, ops[0], op1)
+
+	ops = ops.Drop(key.T{"DEFAULT", "foo"})
+	assert.Len(t, ops, 1)
+}
+
 func TestKeyopParse(t *testing.T) {
 	tests := []struct {
 		expr  string

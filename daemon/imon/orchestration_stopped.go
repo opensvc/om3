@@ -95,7 +95,7 @@ func (t *Manager) doStop() {
 		return
 	}
 	t.createPendingWithDuration(stopDuration)
-	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
+	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
 }
 
 func (t *Manager) stoppedFromReady() {

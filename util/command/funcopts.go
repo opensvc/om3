@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bufio"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -41,6 +42,15 @@ func WithLogger(l *plog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.log = l
+		return nil
+	})
+}
+
+// WithLogger defines the Logger that will receive this pkg logs and process outputs
+func WithPrompt(l *bufio.Reader) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.promptReader = l
 		return nil
 	})
 }

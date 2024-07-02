@@ -45,13 +45,11 @@ func (t *CmdObjectPrintDevices) Run(selector, kind string) error {
 	}
 
 	output.Renderer{
-		Output:   t.Output,
-		Color:    t.Color,
-		Data:     data,
-		Colorize: rawconfig.Colorize,
-		HumanRenderer: func() string {
-			return data.Render()
-		},
+		DefaultOutput: "tab=OBJECT:path,RESOURCE:rid,DRIVER_GROUP:driver.group,DRIVER_NAME:driver.name,ROLE:role,DEVICE:device",
+		Output:        t.Output,
+		Color:         t.Color,
+		Data:          data,
+		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil
 }

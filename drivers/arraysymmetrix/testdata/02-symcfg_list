@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+      <attachment>Local</attachment>
+      <model>PowerMax_8000</model>
+      <microcode_version>5978</microcode_version>
+      <cache_megabytes>1736704</cache_megabytes>
+      <devices>1992</devices>
+      <physical_devices>64</physical_devices>
+    </Symm_Info>
+  </Symmetrix>
+</SymCLI_ML>

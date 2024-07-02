@@ -32,7 +32,7 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		t.doAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 		return
 	} else {
 		t.transitionTo(instance.MonitorStateWaitLeader)
@@ -47,7 +47,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	t.doAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 	return
 }
 

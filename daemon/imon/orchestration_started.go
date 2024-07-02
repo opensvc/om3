@@ -125,7 +125,7 @@ func (t *Manager) startedFromReady() {
 			t.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		t.doAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
+		t.queueAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
 		return
 	default:
 		return

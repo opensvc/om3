@@ -125,7 +125,7 @@ func (t *Manager) placedUnfreeze() {
 }
 
 func (t *Manager) doPlacedStart() {
-	t.doAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
+	t.queueAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
 }
 
 func (t *Manager) placedStart() {
@@ -154,7 +154,7 @@ func (t *Manager) placedStop() {
 
 func (t *Manager) doPlacedStop() {
 	t.createPendingWithDuration(stopDuration)
-	t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
 func (t *Manager) skipPlacedStop() {

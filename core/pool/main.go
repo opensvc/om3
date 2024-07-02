@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -65,6 +66,7 @@ type (
 		Eval(key.T) (any, error)
 		GetInt(key.T) int
 		GetString(key.T) string
+		GetStringAs(key.T, string) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string
 		GetBool(k key.T) bool
@@ -87,7 +89,7 @@ type (
 	ArrayPooler interface {
 		Pooler
 		GetTargets() (san.Targets, error)
-		CreateDisk(name string, size int64, paths san.Paths) ([]Disk, error)
+		CreateDisk(name string, size int64, nodenames []string) ([]Disk, error)
 		DeleteDisk(name, wwid string) ([]Disk, error)
 	}
 	Translater interface {
@@ -112,6 +114,17 @@ type (
 		Driver any
 	}
 )
+
+func MappingsFromPaths(paths san.Paths) (array.Mappings, error) {
+	m := make(array.Mappings)
+	for _, path := range paths.MappingList() {
+		m, err := m.Parse(path)
+		if err != nil {
+			return m, err
+		}
+	}
+	return m, nil
+}
 
 func NewStatus() Status {
 	t := Status{}
@@ -245,6 +258,11 @@ func (t *T) GetInt(s string) int {
 func (t *T) GetString(s string) string {
 	k := pk(t.name, s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) GetStringAs(s, nodename string) string {
+	k := pk(t.name, s)
+	return t.Config().GetStringAs(k, nodename)
 }
 
 func (t *T) GetBool(s string) bool {
@@ -544,7 +562,19 @@ func (t Status) HasCapability(s string) bool {
 
 }
 
-func GetMapping(p ArrayPooler, nodes []string) (san.Paths, error) {
+func GetMappings(p ArrayPooler, nodes []string, pathType string) (array.Mappings, error) {
+	m := make(array.Mappings)
+	paths, err := GetPaths(p, nodes, pathType)
+	if err != nil {
+		return m, err
+	}
+	for _, p := range paths {
+		m = m.Add(p.Initiator.Name, p.Target.Name)
+	}
+	return m, nil
+}
+
+func GetPaths(p ArrayPooler, nodes []string, pathType string) (san.Paths, error) {
 	targets, err := p.GetTargets()
 	if err != nil {
 		return san.Paths{}, err
@@ -560,7 +590,15 @@ func GetMapping(p ArrayPooler, nodes []string) (san.Paths, error) {
 			continue
 		}
 		for _, target := range targets {
-			filteredPaths = append(filteredPaths, nodeInfo.Paths.WithTargetName(target.Name)...)
+			for _, p := range nodeInfo.Paths {
+				if p.Initiator.Type != pathType {
+					continue
+				}
+				if p.Target.Name != target.Name {
+					continue
+				}
+				filteredPaths = append(filteredPaths, p)
+			}
 		}
 	}
 	return filteredPaths, nil

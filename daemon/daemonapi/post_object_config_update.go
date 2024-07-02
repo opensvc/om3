@@ -47,6 +47,10 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		}
 	}
 
+	if !grantsFromContext(ctx).HasGrant(rbac.GrantPrioritizer) {
+		sets = sets.Drop(key.Parse("priority"))
+	}
+
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)

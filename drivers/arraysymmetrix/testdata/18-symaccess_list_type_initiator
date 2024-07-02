@@ -1,0 +1,34 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Initiator_Group>
+      <Group_Info>
+        <group_name>IG_XXX1</group_name>
+        <init_count>N/A</init_count>
+        <view_count>N/A</view_count>
+        <consistent_lun>No</consistent_lun>
+        <bw_limits>No</bw_limits>
+        <last_updated>N/A</last_updated>
+        <group_last_update_time>N/A</group_last_update_time>
+        <Mask_View_Names>
+        </Mask_View_Names>
+      </Group_Info>
+    </Initiator_Group>
+    <Initiator_Group>
+      <Group_Info>
+        <group_name>IG_XXX2</group_name>
+        <init_count>N/A</init_count>
+        <view_count>N/A</view_count>
+        <consistent_lun>No</consistent_lun>
+        <bw_limits>No</bw_limits>
+        <last_updated>N/A</last_updated>
+        <group_last_update_time>N/A</group_last_update_time>
+        <Mask_View_Names>
+        </Mask_View_Names>
+      </Group_Info>
+    </Initiator_Group>
+  </Symmetrix>
+</SymCLI_ML>

@@ -113,7 +113,7 @@ func (t *Manager) orchestrateResourceRestart() {
 			}
 		case instance.MonitorActionSwitch:
 			t.createPendingWithDuration(stopDuration)
-			t.doAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
+			t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 		}
 	}
 
@@ -232,7 +232,7 @@ func (t *Manager) orchestrateResourceRestart() {
 				t.change = true
 			}
 			action := func() error {
-				return t.crmResourceStart(rids)
+				return t.queueResourceStart(rids)
 			}
 			t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		})
@@ -266,7 +266,7 @@ func (t *Manager) orchestrateResourceRestart() {
 				t.change = true
 			}
 			action := func() error {
-				return t.crmResourceStartStandby(rids)
+				return t.queueResourceStartStandby(rids)
 			}
 			t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		})

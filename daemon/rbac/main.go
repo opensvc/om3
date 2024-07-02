@@ -20,6 +20,7 @@ const (
 	RoleRoot           Role = "root"
 	RoleAdmin          Role = "admin"
 	RoleOperator       Role = "operator"
+	RolePrioritizer    Role = "prioritizer"
 	RoleGuest          Role = "guest"
 	RoleSquatter       Role = "squatter"
 	RoleBlacklistAdmin Role = "blacklistadmin"
@@ -34,6 +35,7 @@ var (
 		"root":           RoleRoot,
 		"admin":          RoleAdmin,
 		"operator":       RoleOperator,
+		"prioritizer":    RolePrioritizer,
 		"guest":          RoleGuest,
 		"squatter":       RoleSquatter,
 		"blacklistadmin": RoleBlacklistAdmin,
@@ -48,6 +50,7 @@ var (
 	GrantBlacklistAdmin = NewGrant("blacklistadmin", "")
 	GrantJoin           = NewGrant("join", "")
 	GrantLeave          = NewGrant("leave", "")
+	GrantPrioritizer    = NewGrant("prioritizer", "")
 )
 
 func NewGrants(l ...string) Grants {

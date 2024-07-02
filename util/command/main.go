@@ -56,6 +56,7 @@ type (
 		stderr          []byte
 		started         bool // Prevent relaunch
 		waited          bool // Prevent relaunch
+		promptReader    *bufio.Reader
 	}
 
 	ErrExitCode struct {
@@ -68,6 +69,7 @@ type (
 var (
 	ErrAlreadyStarted = errors.New("command: already started")
 	ErrAlreadyWaited  = errors.New("command: already waited")
+	ErrPromptAbort    = errors.New("command: aborted by prompt")
 )
 
 func New(opts ...funcopt.O) *T {
@@ -127,6 +129,9 @@ func (t *T) Start() (err error) {
 		return fmt.Errorf("%w", ErrAlreadyStarted)
 	}
 	t.started = true
+	if !t.prompt() {
+		return ErrPromptAbort
+	}
 	cmd := t.Cmd()
 	if err = t.update(); err != nil {
 		return err
@@ -410,4 +415,32 @@ func stripFistByte(b []byte) []byte {
 		return b[1:]
 	}
 	return b
+}
+
+func (t *T) prompt() bool {
+	if t.promptReader == nil {
+		return true
+	}
+	fmt.Println(t)
+	for {
+		fmt.Print("Do you want to proceed? (y/n): ")
+		input, err := t.promptReader.ReadString('\n')
+		if err != nil {
+			fmt.Println("An error occurred while reading input. Please try again.", err)
+			continue
+		}
+
+		// Trim newline and spaces, and convert to lowercase
+		input = strings.TrimSpace(strings.ToLower(input))
+		if input == "y" || input == "yes" {
+			fmt.Println("Proceeding...")
+			return true
+		} else if input == "n" || input == "no" {
+			fmt.Println("Operation cancelled.")
+			return false
+		} else {
+			fmt.Println("Invalid input. Please enter 'y' or 'n'.")
+		}
+	}
+	return false
 }

@@ -166,13 +166,19 @@ func (t *T) mergeDevs() ([]string, error) {
 }
 
 // devIDFromDevPath uses syminq to resolve a device path into a symmetrix device id.
-func (t *T) devIDFromDevPath(s string) (string, error) {
-	devPath, err := os.Readlink(s)
+func (t *T) devIDFromDevPath(devPath string) (string, error) {
+	info, err := os.Lstat(devPath)
 	if err != nil {
 		return "", err
 	}
-	if !strings.HasPrefix(devPath, "/") {
-		devPath = filepath.Join(filepath.Dir(s), devPath)
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(devPath)
+		if err != nil {
+			return "", err
+		}
+		if !strings.HasPrefix(devPath, "/") {
+			devPath = filepath.Join(filepath.Dir(devPath), target)
+		}
 	}
 	args := []string{"-pdevfile", devPath, "-output", "xml_e"}
 	cmd := exec.Command("syminq", args...)

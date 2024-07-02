@@ -1,0 +1,32 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Device>
+      <symid>000297600001</symid>
+      <dev_name>00001</dev_name>
+      <pd_name>Not Visible</pd_name>
+      <configuration>TDEV</configuration>
+      <flags>
+        <meta>None</meta>
+        <datadev>False</datadev>
+        <snap_save_device>False</snap_save_device>
+      </flags>
+      <wwn>60000000000000000000000000000031</wwn>
+    </Device>
+    <Device>
+      <symid>000297600001</symid>
+      <dev_name>00024</dev_name>
+      <pd_name>Not Visible</pd_name>
+      <configuration>RDF1+TDEV</configuration>
+      <flags>
+        <meta>None</meta>
+        <datadev>False</datadev>
+        <snap_save_device>False</snap_save_device>
+      </flags>
+      <wwn>60000000000000000000000000003234</wwn>
+    </Device>
+  </Symmetrix>
+</SymCLI_ML>

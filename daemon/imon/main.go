@@ -234,12 +234,18 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 func (t *Manager) worker(initialNodes []string) {
 	defer t.log.Debugf("worker stopped")
 
-	// Initiate crmStatus first, this will update our instance status cache
+	// queueStatus() will need instance config Priority
+	if iConfig := instance.ConfigData.Get(t.path, t.localhost); iConfig != nil {
+		t.instConfig = *iConfig
+		t.scopeNodes = append([]string{}, t.instConfig.Scope...)
+	}
+
+	// Initiate a CRM status refresh first, this will update our instance status cache
 	// as soon as possible.
-	// crmStatus => publish instance status update
+	// queueStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
-	if err := t.crmStatus(); err != nil {
+	if err := t.queueStatus(); err != nil {
 		t.log.Errorf("error during initial crm status: %s", err)
 	}
 
@@ -256,10 +262,6 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 	for _, v := range node.MonitorData.GetAll() {
 		t.nodeMonitor[v.Node] = *v.Value
-	}
-	if iConfig := instance.ConfigData.Get(t.path, t.localhost); iConfig != nil {
-		t.instConfig = *iConfig
-		t.scopeNodes = append([]string{}, t.instConfig.Scope...)
 	}
 	for n, v := range instance.MonitorData.GetByPath(t.path) {
 		if n == t.localhost {
@@ -380,7 +382,7 @@ func (t *Manager) ensureBooted() {
 		// try boot and refresh last instance boot id if succeed
 		t.log.Infof("need boot (node boot id differ from last object boot id)")
 		t.transitionTo(instance.MonitorStateBooting)
-		if err := t.crmBoot(); err == nil {
+		if err := t.queueBoot(); err == nil {
 			t.log.Infof("set last object boot id")
 			if err := updateLastBootID(t.path, nodeLastBootID); err != nil {
 				t.log.Errorf("can't update instance last boot id file: %s", err)
