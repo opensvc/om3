@@ -583,10 +583,10 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 		}
 	}
 	crm := crmBuilder(t, setup, p, c.sideEffects)
-	crmAction = crm.action
+	testCRMAction = crm.action
 	defer func() {
 		defaultReadyDuration = initialReadyDuration
-		crmAction = nil
+		testCRMAction = nil
 	}()
 
 	evC, errC := waitExpectations(t, setup, maxWaitTime, c)

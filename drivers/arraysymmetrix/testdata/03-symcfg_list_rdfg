@@ -1,0 +1,45 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <RdfGroup>
+      <ra_group_num>1</ra_group_num>
+      <ra_group_num_hex>0</ra_group_num_hex>
+      <link_limbo_in_sec>10</link_limbo_in_sec>
+      <remote_ra_group_num>1</remote_ra_group_num>
+      <remote_ra_group_num_hex>0</remote_ra_group_num_hex>
+      <remote_symid>000297600002</remote_symid>
+      <ra_group_status>Online</ra_group_status>
+      <ra_group_type>Dynamic</ra_group_type>
+      <ra_group_label>93_97_R001</ra_group_label>
+      <prevent_auto_link_recovery>Enabled</prevent_auto_link_recovery>
+      <prevent_ra_online_upon_pwr_on>Enabled</prevent_ra_online_upon_pwr_on>
+      <link_domino>Disabled</link_domino>
+      <star_mode>OFF</star_mode>
+      <star_sqar_mode>OFF</star_sqar_mode>
+      <rdf_sw_compression>Enabled</rdf_sw_compression>
+      <rdf_hw_compression>Disabled</rdf_hw_compression>
+      <single_round_trip>Enabled</single_round_trip>
+      <rdf_metro>Not_Configured</rdf_metro>
+      <rdf_copy_jobs>-</rdf_copy_jobs>
+      <director_config>Fibre-Switch</director_config>
+      <rdfa_consistency_mode>Not_Applicable</rdfa_consistency_mode>
+      <rdfa_status>Inactive</rdfa_status>
+      <rdfa_mode>Single-session</rdfa_mode>
+      <msc_cleanup>Not_Applicable</msc_cleanup>
+      <rdfa_cycle_time>15</rdfa_cycle_time>
+      <rdfa_cycle_time_in_hex>F</rdfa_cycle_time_in_hex>
+      <rdfa_priority>33</rdfa_priority>
+      <rdfa_priority_in_hex>21</rdfa_priority_in_hex>
+      <rdf_metro_cfg_type>Not_Applicable</rdf_metro_cfg_type>
+      <rdf_metro_eff_type>Not_Applicable</rdf_metro_eff_type>
+      <rdf_metro_witness_status>Not_Applicable</rdf_metro_witness_status>
+      <witness_symid>Not_Applicable</witness_symid>
+      <witness_id>Not_Applicable</witness_id>
+      <rdf_group_type>Not_Specified</rdf_group_type>
+    </RdfGroup>
+  </Symmetrix>
+
+</SymCLI_ML>

@@ -1,0 +1,5 @@
+STARTING a TDEV Create Device operation on Symm 000197600056.
+Wait for device create...............................Started.
+Wait for device create...............................Done.
+ The TDEV Create Device operation SUCCESSFULLY COMPLETED: 1 devices created.
+1 TDEVs create requested in request 1 and devices created are 1[ 0DCD9 ]

@@ -15,7 +15,7 @@ var (
 	cmdArray  = &cobra.Command{
 		Use:   "array",
 		Short: "Manage storage arrays",
-		Long:  ` A array is backend storage provider for pools.`,
+		Long:  `A array is a backend storage provider for pools.`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runArray(args)
 		},
@@ -36,17 +36,17 @@ func init() {
 }
 
 func runArray(args []string) error {
-	o, err := object.NewCluster(object.WithVolatile(true))
+	o, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return err
 	}
 	if !strings.HasPrefix(arrayName, "array#") {
 		arrayName = "array#" + arrayName
 	}
-	if !o.Config().HasSectionString(arrayName) {
-		return fmt.Errorf("no section found matching %s in the cluster config", arrayName)
+	if !o.MergedConfig().HasSectionString(arrayName) {
+		return fmt.Errorf("no section found matching %s in the node or cluster config", arrayName)
 	}
-	arrayType, err := o.Config().GetStringStrict(key.T{Section: arrayName, Option: "type"})
+	arrayType, err := o.MergedConfig().GetStringStrict(key.T{Section: arrayName, Option: "type"})
 	if err != nil {
 		return err
 	}
@@ -55,6 +55,6 @@ func runArray(args []string) error {
 		return fmt.Errorf("no array driver found matching type %s", arrayType)
 	}
 	drv.SetName(arrayName)
-	drv.SetConfig(o.Config())
+	drv.SetConfig(o.MergedConfig())
 	return drv.Run(args)
 }

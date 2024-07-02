@@ -1,6 +1,8 @@
 package array
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
@@ -21,17 +23,34 @@ type (
 		config *xconfig.T
 	}
 	Disk struct {
-		DiskID     string             `json:"disk_id"`
-		DevID      string             `json:"dev_id"`
-		Mappings   map[string]Mapping `json:"mappings"`
-		DriverData any                `json:"driver_data"`
+		DiskID     string   `json:"disk_id"`
+		DevID      string   `json:"dev_id"`
+		Mappings   Mappings `json:"mappings"`
+		DriverData any      `json:"driver_data"`
 	}
+
+	// Mappings is a map of Mapping indexed by "<hbaId>:<tgtId>"
+	Mappings map[string]Mapping
+
 	Mapping struct {
 		HBAID string `json:"hba_id"`
 		TGTID string `json:"tgt_id"`
 		LUN   string `json:"lun"`
 	}
 )
+
+func (c *Mappings) String() string {
+	return fmt.Sprintf("%v", *c)
+}
+
+func (c *Mappings) Set(value string) error {
+	c.Parse(value)
+	return nil
+}
+
+func (c *Mappings) Type() string {
+	return "array.Mappings"
+}
 
 func New() *Array {
 	t := &Array{}
@@ -81,4 +100,58 @@ func (t Array) Key(s string) key.T {
 		panic("array has no name")
 	}
 	return key.T{Section: t.name, Option: s}
+}
+
+func SkipArgs() []string {
+	return skipArgs(os.Args)
+}
+
+func skipArgs(args []string) []string {
+	for i, s := range args {
+		switch {
+		case s == "--array":
+			return args[i+2:]
+		case strings.HasPrefix(s, "--array="):
+			return args[i+1:]
+		}
+	}
+	return []string{}
+}
+
+func ParseMappings(mappings []string) (Mappings, error) {
+	m := make(Mappings)
+	for _, s := range mappings {
+		m, err := m.Parse(s)
+		if err != nil {
+			return m, err
+		}
+	}
+	return m, nil
+}
+
+func (m Mappings) Add(hbaId, tgtId string) Mappings {
+	m[hbaId+":"+tgtId] = Mapping{
+		HBAID: hbaId,
+		TGTID: tgtId,
+	}
+	return m
+}
+
+func (m Mappings) Parse(s string) (Mappings, error) {
+	elements := strings.Split(s, ":")
+	if len(elements) != 2 {
+		return m, fmt.Errorf("invalid mapping: %s: no target part: must be <hba>:<tgt>[,<tgt>...]", s)
+	}
+	hbaId := elements[0]
+	tgtIds := strings.Split(elements[1], ",")
+	if len(tgtIds) == 0 {
+		return m, fmt.Errorf("invalid mapping: %s: empty target part: must be <hba>:<tgt>[,<tgt>...]", s)
+	}
+	for _, tgtId := range tgtIds {
+		if len(tgtId) == 0 {
+			return m, fmt.Errorf("invalid mapping: %s: empty target element: must be <hba>:<tgt>[,<tgt>...]", s)
+		}
+		m = m.Add(hbaId, tgtId)
+	}
+	return m, nil
 }

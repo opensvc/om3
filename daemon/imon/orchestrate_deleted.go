@@ -30,7 +30,7 @@ func (t *Manager) deletedFromIdle() {
 	if t.setWaitChildren() {
 		return
 	}
-	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
+	t.queueAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
 	return
 }
 
@@ -42,6 +42,6 @@ func (t *Manager) deletedFromWaitChildren() {
 	if t.setWaitChildren() {
 		return
 	}
-	t.doAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
+	t.queueAction(t.crmDelete, instance.MonitorStateDeleting, instance.MonitorStateDeleted, instance.MonitorStateDeleteFailed)
 	return
 }

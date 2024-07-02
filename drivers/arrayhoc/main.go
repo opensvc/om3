@@ -755,7 +755,7 @@ func (t *Array) Run(args []string) error {
 	parent := newParent()
 
 	// skip past the --array <array> arguments
-	parent.SetArgs(os.Args[4:])
+	parent.SetArgs(array.SkipArgs())
 
 	addCmd := newAddCmd()
 	addCmd.AddCommand(newAddDiskCmd())
@@ -1216,38 +1216,29 @@ func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
 		return port, nil
 	}
 
-	for _, s := range mapping.Mappings {
-		elements := strings.Split(s, ":")
-		if len(elements) != 2 {
-			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
-		}
-		hbaID := elements[0]
-		hostWWPN, err := formatWWN(hbaID)
+	parsedMappings, err := array.ParseMappings(mapping.Mappings)
+	if err != nil {
+		return err
+	}
+
+	for _, mapping := range parsedMappings {
+		hostWWPN, err := formatWWN(mapping.HBAID)
 		if err != nil {
 			return err
-		}
-		if len(elements[1]) == 0 {
-			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
-		}
-		targets := strings.Split(elements[1], ",")
-		if len(targets) == 0 {
-			return fmt.Errorf("invalid mapping: %s: must be <hba>:<tgt>[,<tgt>...]", s)
 		}
 		server, err := cachingGetServer(hostWWPN)
 		if err != nil {
 			return nil
 		}
-		for _, target := range targets {
-			targetWWPN, err := formatWWN(target)
-			if err != nil {
-				return err
-			}
-			port, err := cachingGetPort(targetWWPN)
-			if err != nil {
-				return nil
-			}
-			addPortsByHostWWPN(hostWWPN, server.ServerId, port.StoragePortId)
+		targetWWPN, err := formatWWN(mapping.TGTID)
+		if err != nil {
+			return err
 		}
+		port, err := cachingGetPort(targetWWPN)
+		if err != nil {
+			return nil
+		}
+		addPortsByHostWWPN(hostWWPN, server.ServerId, port.StoragePortId)
 	}
 	for _, port := range portsByHostWWPN {
 		opt := OptAttach{

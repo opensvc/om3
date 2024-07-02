@@ -627,6 +627,12 @@ func (t *T) write() (err error) {
 	}
 	fName := f.Name()
 	defer os.Remove(fName)
+
+	ini.PrettyEqual = false
+	ini.PrettyFormat = false
+	ini.DefaultFormatLeft = " "
+	ini.DefaultFormatRight = " "
+
 	if _, err = t.file.WriteTo(f); err != nil {
 		return err
 	}

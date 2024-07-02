@@ -1,0 +1,45 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Symmetrix>
+    <Symm_Info>
+      <symid>000297600001</symid>
+    </Symm_Info>
+    <Storage_Group>
+      <Group_Info>
+        <group_name>CSG_XXX1</group_name>
+        <dev_count>2</dev_count>
+        <sg_count>1</sg_count>
+        <view_count>1</view_count>
+        <last_updated>04:44:42 PM on Fri Jun 02,2023</last_updated>
+        <group_last_update_time>04:44:42 PM on Fri Jun 02,2023</group_last_update_time>
+        <Mask_View_Names>
+          <view_count>1</view_count>
+          <view_name>MV_XXX1</view_name>
+        </Mask_View_Names>
+        <Cascaded_View_Names>
+          <view_count>0</view_count>
+        </Cascaded_View_Names>
+        <Status>IsParent</Status>
+      </Group_Info>
+    </Storage_Group>
+    <Storage_Group>
+      <Group_Info>
+        <group_name>SG_XXX1</group_name>
+        <dev_count>2</dev_count>
+        <sg_count>1</sg_count>
+        <view_count>1</view_count>
+        <last_updated>04:44:42 PM on Fri Jun 02,2023</last_updated>
+        <group_last_update_time>04:44:42 PM on Fri Jun 02,2023</group_last_update_time>
+        <Mask_View_Names>
+          <view_count>0</view_count>
+        </Mask_View_Names>
+        <Cascaded_View_Names>
+          <view_count>1</view_count>
+          <view_name>MV_XXX1</view_name>
+        </Cascaded_View_Names>
+        <Status>IsChild</Status>
+      </Group_Info>
+    </Storage_Group>
+  </Symmetrix>
+</SymCLI_ML>
+
