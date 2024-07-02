@@ -37,6 +37,7 @@ import (
 	"github.com/opensvc/om3/daemon/listener"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/nmon"
+	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/daemon/scheduler"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/hostname"
@@ -166,6 +167,7 @@ func (t *T) Start(ctx context.Context) error {
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),
 		daemonvip.New(qsSmall),
+		runner.NewDefault(qsSmall),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {
 			return err
