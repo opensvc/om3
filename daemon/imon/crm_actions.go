@@ -9,17 +9,13 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 var (
 	cmdPath string
-
-	maxRunners = 25
-
-	// runners chan limit number of // crmActions to maxRunners
-	runners = make(chan struct{}, maxRunners)
 
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
@@ -46,6 +42,42 @@ func (t *Manager) orchestrateAfterAction(state, newState instance.MonitorState) 
 	default:
 	}
 	t.cmdC <- cmdOrchestrate{state: state, newState: newState}
+}
+
+func (t *Manager) queueBoot() error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmBoot()
+	})
+}
+
+func (t *Manager) queueFreeze() error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmFreeze()
+	})
+}
+
+func (t *Manager) queueStatus() error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmStatus()
+	})
+}
+
+func (t *Manager) queueResourceStartStandby(rids []string) error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmResourceStartStandby(rids)
+	})
+}
+
+func (t *Manager) queueResourceStart(rids []string) error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmResourceStart(rids)
+	})
+}
+
+func (t *Manager) queueUnfreeze() error {
+	return runner.Run(t.instConfig.Priority, func() error {
+		return t.crmUnfreeze()
+	})
 }
 
 func (t *Manager) crmBoot() error {
@@ -114,10 +146,6 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 }
 
 func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
-	runners <- struct{}{}
-	defer func() {
-		<-runners
-	}()
 	sid := uuid.New()
 	cmd := command.New(
 		command.WithName(cmdPath),

@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/util/errcontext"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
@@ -335,7 +336,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 	if srcCmd.Node == t.localhost {
 		defer func() {
-			if err := t.crmStatus(); err != nil {
+			if err := t.queueStatus(); err != nil {
 				t.log.Warnf("evaluate instance status via CRM: %s", err)
 			}
 		}()
@@ -1045,6 +1046,13 @@ func (t *Manager) doTransitionAction(action func() error, newState, successState
 	}
 }
 
+func (t *Manager) queueAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	_ = runner.Run(t.instConfig.Priority, func() error {
+		t.doAction(action, newState, successState, errorState)
+		return nil
+	})
+}
+
 // doAction runs action + background orchestration from action state result
 //
 // 1- set transient state to newState
@@ -1100,7 +1108,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		}
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
 			msg := fmt.Sprintf("Freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
-			if err := t.crmFreeze(); err != nil {
+			if err := t.queueFreeze(); err != nil {
 				t.log.Infof("%s: %s", msg, err)
 			} else {
 				t.log.Infof(msg)

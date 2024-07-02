@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/core/priority"
@@ -21,7 +22,7 @@ type (
 	}
 
 	T struct {
-		running    int
+		running    atomic.Int32
 		maxRunning int
 		interval   time.Duration
 		stage      chan Item
@@ -52,21 +53,25 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	return sub
 }
 
+// TODO: expose queue len via prometheus
 func (t *T) run() {
 	for {
-		if t.running >= t.maxRunning {
-			t.log.Debugf("priority run queue full: %d running %d waiting", t.running, t.queue.Len())
+		running := t.running.Load()
+		if running >= int32(t.maxRunning) {
+			//t.log.Debugf("priority run queue full: %d running %d waiting", running, t.queue.Len())
 			return
 		}
 		i := t.queue.Pop()
 		if i == nil {
+			//t.log.Debugf("priority run queue empty")
 			return
 		}
 		item := i.(Item)
-		t.running += 1
+		t.running.Add(1)
+		//t.log.Debugf("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
 		go func() {
 			item.errC <- item.f()
-			t.running -= 1
+			t.running.Add(-1)
 		}()
 	}
 }
