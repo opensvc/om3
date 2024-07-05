@@ -162,6 +162,10 @@ func (t *T) SetMaxRunning(n int) {
 	t.maxRunning = n
 }
 
+func (t *T) SetInterval(d time.Duration) {
+	t.interval = d
+}
+
 func Stop() error {
 	return def.Stop()
 }

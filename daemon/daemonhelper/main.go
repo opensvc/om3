@@ -73,6 +73,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	qsSmall := pubsub.WithQueueSize(daemonenv.SubQSSmall)
 	testRunner := runner.NewDefault(qsSmall)
 	testRunner.SetMaxRunning(20)
+	testRunner.SetInterval(2 * time.Millisecond)
 	testRunner.Start(ctx)
 
 	cancelD := func() {
