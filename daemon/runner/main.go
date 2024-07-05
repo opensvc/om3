@@ -144,7 +144,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	t.wg.Add(1)
-	go t.do(ctx)
+	go t.do(t.ctx)
 	return nil
 }
 
