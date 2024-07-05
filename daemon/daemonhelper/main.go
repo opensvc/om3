@@ -18,7 +18,9 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -67,6 +69,11 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration, pubsub.WithQueueSize(100))
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
+
+	qsSmall := pubsub.WithQueueSize(daemonenv.SubQSSmall)
+	testRunner := runner.NewDefault(qsSmall)
+	testRunner.SetMaxRunning(20)
+	testRunner.Start(ctx)
 
 	cancelD := func() {
 		cancel()
