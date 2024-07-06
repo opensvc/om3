@@ -60,6 +60,9 @@ type (
 		Current  Data
 		Previous Data
 		Stats    Stats
+		// Nodename is the nodename from which we have received data (value of
+		// .daemon.nodename)
+		Nodename string
 
 		// private
 		w           *tabwriter.TabWriter

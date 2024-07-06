@@ -74,7 +74,7 @@ func (o opGetClusterNodeData) call(ctx context.Context, d *data) error {
 // It drops <peer> from instance data holders and publish associated msgbus.Instance<xxx>Deleted
 // It drops <peer> node data holder and publish associated msgbus.Node<xxx>Deleted
 // It delete <peer> d.clusterData.Cluster.Node
-// It calls setDaemonHb()
+// It calls setDaemonHeartbeat()
 // It publish ForgetPeer
 func (d *data) dropPeer(peer string) {
 	d.log.Infof("drop peer node %s", peer)
@@ -121,6 +121,6 @@ func (d *data) dropPeer(peer string) {
 	}
 	delete(d.clusterData.Cluster.Node, peer)
 
-	d.setDaemonHb()
+	d.setDaemonHeartbeat()
 	d.bus.Pub(&msgbus.ForgetPeer{Node: peer}, peerLabels...)
 }

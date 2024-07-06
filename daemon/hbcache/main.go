@@ -67,19 +67,9 @@ func (t *T) run(ctx context.Context) {
 		case i := <-cmdI:
 			switch cmd := i.(type) {
 			case getHeartbeats:
-				result := make([]daemonsubsystem.HeartbeatStream, 0)
+				result := make([]daemonsubsystem.HeartbeatStream, 0, len(heartbeats))
 				for _, hb := range heartbeats {
-					status := hb.DaemonSubsystemStatus
-					status.Alerts = append([]daemonsubsystem.ThreadAlert{}, hb.Alerts...)
-					peers := make(map[string]daemonsubsystem.HeartbeatPeerStatus)
-					for node, peerStatus := range hb.Peers {
-						peers[node] = peerStatus
-					}
-					result = append(result, daemonsubsystem.HeartbeatStream{
-						DaemonSubsystemStatus: status,
-						Peers:                 peers,
-						Type:                  hb.Type,
-					})
+					result = append(result, *hb.DeepCopy())
 				}
 				cmd.errC <- nil
 				cmd.response <- result

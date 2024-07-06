@@ -135,6 +135,7 @@ func (m *T) doOneShot(data cluster.Data, clear bool, eventsetCount uint64, out i
 			Selector: m.selector,
 			Current:  data,
 			Sections: m.sections,
+			Nodename: data.Daemon.Nodename,
 		}
 		return f.Render()
 	}

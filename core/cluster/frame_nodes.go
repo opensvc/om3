@@ -201,35 +201,32 @@ func (f Frame) sNodeVersion(n string) string {
 
 func (f Frame) sNodeHbMode() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator+"\t")
-	mode := make(map[string]string)
-	for _, lastMessage := range f.Current.Daemon.Hb.LastMessages {
-		switch lastMessage.Type {
-		case "patch":
-			mode[lastMessage.From] = fmt.Sprintf("%d", lastMessage.PatchLength)
-		default:
-			mode[lastMessage.From] = lastMessage.Type
-		}
-
-	}
 	nodeCount := len(f.Current.Cluster.Config.Nodes)
 	for _, peer := range f.Current.Cluster.Config.Nodes {
-		if v, ok := mode[peer]; ok {
-			switch v {
-			case "full":
-				v = yellow("full")
-			case "ping":
-				if nodeCount > 1 {
-					v = yellow(v)
-				}
-			}
-			s += v + "\t"
-		} else {
-			v = "?"
-			if nodeCount > 1 {
-				v = red(v)
-			}
-			s += v + "\t"
+		var mode string
+		lastMessage := f.Current.Cluster.Node[peer].Daemon.Heartbeat.LastMessage
+		switch lastMessage.Type {
+		case "patch":
+			mode = fmt.Sprintf("%d", lastMessage.PatchLength)
+		default:
+			mode = lastMessage.Type
 		}
+		switch mode {
+		case "full":
+			mode = yellow(mode)
+		case "ping":
+			if nodeCount > 1 {
+				mode = yellow(mode)
+			}
+		case "":
+			if nodeCount > 1 {
+				mode = red("?")
+			} else {
+				mode = "?"
+			}
+		default:
+		}
+		s += mode + "\t"
 	}
 	return s
 }
@@ -242,7 +239,7 @@ func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
-	if len(f.Current.Daemon.Hb.LastMessages) > 1 {
+	if len(f.Current.Cluster.Config.Nodes) > 1 {
 		fmt.Fprintln(f.w, f.sNodeHbMode())
 	}
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())

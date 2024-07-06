@@ -42,6 +42,10 @@ func (t *T) DoRequest(method string, relPath string, body io.Reader) (*http.Resp
 	}
 }
 
+func (t *T) URL() string {
+	return t.factory.URL.String()
+}
+
 func New(cli *http.Client, factory *requestfactory.T) *T {
 	return &T{
 		client:  cli,

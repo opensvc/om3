@@ -1,9 +1,9 @@
  cluster:
     - ClusterConfigUpdated, ClusterStatusUpdated
     - JoinError, JoinIgnored, JoinRequest, JoinSuccess, LeaveError, LeaveIgnored, LeaveRequest, LeaveSuccess
-    - ArbitratorError, ForgetPeer
+    - ArbitratorError, ForgetPeer, forget_peer
  config file updates: ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
- daemon: DaemonCtl, DaemonHb, DaemonStart
+ daemon: DaemonCollectorUpdated, DaemonCtl, DaemonHeartbeatUpdated, DaemonStart
  dns: ZoneRecordDeleted, ZoneRecordUpdated
  execs: Exec, ExecFailed, ExecSuccess
  heartbeat: HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated

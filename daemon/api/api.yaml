@@ -3176,86 +3176,169 @@ components:
     Daemon:
       type: object
       required:
+        - nodename
+        - pid
+        - daemondata
         - collector
         - dns
-        - hb
+        - heartbeat
         - listener
         - monitor
         - routines
+        - imon_runner
         - scheduler
+        - started_at
       properties:
+        nodename:
+          type: string
+        pid:
+          type: integer
+          description: the main daemon process id
+        daemondata:
+          $ref: '#/components/schemas/DaemonDaemondata'
         collector:
           $ref: '#/components/schemas/DaemonCollector'
         dns:
-          $ref: '#/components/schemas/DaemonDNS'
-        hb:
-          $ref: '#/components/schemas/DaemonHb'
+          $ref: '#/components/schemas/DaemonDns'
+        heartbeat:
+          $ref: '#/components/schemas/DaemonHeartbeat'
         listener:
           $ref: '#/components/schemas/DaemonListener'
-        monitor:
-          $ref: '#/components/schemas/DaemonMonitor'
+        runner_imon:
+          $ref: '#/components/schemas/DaemonRunnerImon'
         routines:
           type: integer
         scheduler:
           $ref: '#/components/schemas/DaemonScheduler'
+        started_at:
+          type: string
+          format: date-time
 
     DaemonCollector:
+      description: |
+        DaemonCollector describes the OpenSVC daemon collector subsystem state,
+        which is responsible for communicating with the collector on behalf
+        of the cluster. Only one node on the cluster is the collector speaker
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          properties:
+            url:
+              type: string
+          required:
+            - url
 
-    DaemonDNS:
+    DaemonDaemondata:
+      description: |
+        DaemonDaemondata describes the OpenSVC daemon data subsystem state,
+        which is responsible for aggregating data messages and selecting
+        candidate data messages to forward to peer nodes.
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          properties:
+            queue_size:
+              type: integer
+              description: the subscription queue size
+          required:
+            - queue_size
 
-    DaemonHb:
+    DaemonDns:
+      description: |
+        DaemonDNS describes the OpenSVC daemon dns subsystem state, which is 
+        responsible for janitoring and serving the cluster Dns zone.
+        This zone is dynamically populated by ip address allocated for the 
+        services (frontend and backend).
+      allOf:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          properties:
+            nameservers:
+              type: array
+              items:
+                type: string
+              description: list of nameservers
+          required:
+            - nameservers
+
+    DaemonHeartbeat:
       type: object
       required:
         - streams
-        - modes
+        - last_message
+        - last_messages
       properties:
         streams:
           type: array
+          description: |
+            list of sending or receiving heartbeats:
+              - a sending daemon heartbeat is responsible for sending node dataset
+                changes to peers
+              - a receiving daemon heartbeat is responsible for receiving node dataset
+                changes from peers
           items:
-            $ref: '#/components/schemas/DaemonHbStream'
-        modes:
+            $ref: '#/components/schemas/DaemonHeartbeatStream'
+        last_message:
+          description: The last message mode sent by node
+          $ref: '#/components/schemas/DaemonHeartbeatLastMessage'
+        last_messages:
           type: array
           items:
-            $ref: '#/components/schemas/DaemonHbMode'
+            $ref: '#/components/schemas/DaemonHeartbeatLastMessage'
 
-    DaemonHbStream:
-      allOf:
-        - $ref: '#/components/schemas/DaemonSubsystemStatus'
-        - $ref: '#/components/schemas/DaemonHbStreamType'
-        - $ref: '#/components/schemas/DaemonHbStreamPeer'
-
-    DaemonHbMode:
+    DaemonHeartbeatLastMessage:
       type: object
+      description: describe the hb messaging mode
       required:
-        - node
-        - mode
+        - from
         - type
+        - patch_length
       properties:
-        node:
+        from:
           type: string
           description: a cluster node
-        mode:
-          type: string
-          description: the type of hb message used by node except when Type is patch where it is the patch queue length
+        patch_length:
+          type: integer
+          description: the patch queue length when type is patch, else it is 0
         type:
           type: string
           description: the heartbeat message type used by node
+          enum:
+            - unset
+            - ping
+            - full
+            - patch
 
-    DaemonHbStreamType:
+    DaemonHeartbeatStream:
+      allOf:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - $ref: '#/components/schemas/DaemonHeartbeatStreamType'
+        - $ref: '#/components/schemas/DaemonHeartbeatStreamPeers'
+
+    DaemonHeartbeatStreamType:
       type: object
       required:
         - type
       properties:
         type:
           type: string
-          description: hb stream type
+          description: heartbeat stream type (unicast, multicast, ...)
+          example: unicast
 
-    DaemonHbStreamPeer:
+    DaemonHeartbeatStreamPeers:
       type: object
+      required:
+        - peers
+      properties:
+        peers:
+          type: object
+          description: map of peer names to daemon heartbeat stream peer status
+          additionalProperties:
+            $ref: '#/components/schemas/DaemonHeartbeatStreamPeerStatus'
+
+    DaemonHeartbeatStreamPeerStatus:
+      type: object
+      description: status of the communication with a specific peer node.
       required:
         - is_beating
         - last_at
@@ -3267,12 +3350,20 @@ components:
           format: date-time
 
     DaemonListener:
+      description: |
+        DaemonListener describes the OpenSVC daemon listener subsystem state,
+        which is responsible for serving the API.
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
-
-    DaemonMonitor:
-      allOf:
-        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          properties:
+            addr:
+              type: string
+            port:
+              type: string
+          required:
+            - addr
+            - port
 
     DaemonPid:
       type: object
@@ -3282,38 +3373,49 @@ components:
         pid:
           type: integer
 
-    DaemonScheduler:
+    DaemonRunnerImon:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          properties:
+            count:
+              type: integer
+          required:
+            - count
 
-    DaemonSubsystemAlert:
-      type: object
-      required:
-        - message
-        - severity
-      properties:
-        message:
-          type: string
-        severity:
-          type: string
+    DaemonScheduler:
+      description: |
+        DaemonScheduler describes the OpenSVC daemon scheduler subsystem state,
+        which is responsible for executing node and objects scheduled jobs.
+      allOf:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - type: object
+          required:
+            - count
+          properties:
+            count:
+              type: integer
+              description: count of defined scheduled jobs
 
     DaemonSubsystemStatus:
       type: object
       required:
-        - alerts
-        - configured
+        - configured_at
         - created_at
+        - updated_at
         - id
         - state
+      description: |
+        Describes a OpenSVC daemon subsystem: when it was last created, 
+        configured an updated, what its current state is and its id.
       properties:
-        alerts:
-          type: array
-          items:
-            $ref: '#/components/schemas/DaemonSubsystemAlert'
-        configured:
+        configured_at:
           type: string
           format: date-time
         created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
         id:

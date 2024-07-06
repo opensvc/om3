@@ -21,7 +21,6 @@ type (
 		IsLeader        bool                        `json:"is_leader"`
 		Labels          Labels                      `json:"labels"`
 		Lsnr            Lsnr                        `json:"lsnr"`
-		Pid             int                         `json:"pid"`
 	}
 
 	// Instances groups instances configuration digest and status
@@ -128,6 +127,5 @@ func (t *Status) Unstructured() map[string]any {
 		"is_leader":      t.IsLeader,
 		"labels":         t.Labels,
 		"lsnr":           t.Lsnr,
-		"pid":            t.Pid,
 	}
 }

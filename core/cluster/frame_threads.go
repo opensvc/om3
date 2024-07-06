@@ -44,12 +44,14 @@ func (f Frame) wThreadCollector() string {
 func (f Frame) wThreadListener() string {
 	var s string
 	s += bold(" listener") + "\t"
-	if f.Current.Cluster.Node[f.Current.Daemon.Nodename].Status.Lsnr.Port != "" {
+	if f.Current.Cluster.Node[f.Nodename].Status.Lsnr.Port != "" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
 	}
-	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Daemon.Listener.Config.Addr, f.Current.Cluster.Config.Listener.Port))
+	addr := f.Current.Cluster.Node[f.Nodename].Daemon.Listener.Addr
+	port := f.Current.Cluster.Node[f.Nodename].Daemon.Listener.Port
+	s += fmt.Sprintf("%s\t", listener.Render(addr, port))
 	s += f.info.separator + "\t"
 	for _, node := range f.Current.Cluster.Config.Nodes {
 		port := f.Current.Cluster.Node[node].Status.Lsnr.Port
@@ -108,7 +110,7 @@ func (f Frame) wThreadDNS() string {
 func (f Frame) wThreadHeartbeats() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator+"\t")
 	s += f.info.emptyNodes
-	for _, hbStatus := range f.Current.Daemon.Hb.Streams {
+	for _, hbStatus := range f.Current.Cluster.Node[f.Nodename].Daemon.Heartbeat.Streams {
 		name := hbStatus.ID
 		s += bold("\n  "+name) + "\t"
 		switch hbStatus.State {
@@ -124,7 +126,7 @@ func (f Frame) wThreadHeartbeats() string {
 		s += "\t" + hbStatus.Type + "\t"
 		s += f.info.separator + "\t"
 		for _, peer := range f.Current.Cluster.Config.Nodes {
-			if peer == f.Current.Daemon.Nodename {
+			if peer == f.Nodename {
 				s += iconNotApplicable + "\t"
 				continue
 			}
@@ -144,7 +146,7 @@ func (f Frame) wThreadHeartbeats() string {
 	return s
 }
 
-func sThreadAlerts(data []daemonsubsystem.ThreadAlert) string {
+func sThreadAlerts(data []daemonsubsystem.Alert) string {
 	if len(data) > 0 {
 		return yellow("!")
 	}
