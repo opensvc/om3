@@ -2,12 +2,14 @@ package object
 
 import (
 	"embed"
+	"fmt"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
@@ -361,7 +363,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "priority",
-		Default:   "50",
+		Default:   fmt.Sprint(priority.Default),
 		Scopable:  false,
 		Inherit:   keywords.InheritHead,
 		Converter: converters.Int,

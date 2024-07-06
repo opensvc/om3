@@ -77,11 +77,15 @@ func (t *T) run() {
 }
 
 func (t *T) do(ctx context.Context) {
-	defer t.wg.Done()
 	ticker := time.NewTicker(t.interval)
-	defer ticker.Stop()
 	sub := t.startSubscriptions()
-	defer sub.Stop()
+	defer func() {
+		sub.Stop()
+		ticker.Stop()
+		t.ctx = nil
+		t.cancel = nil
+		t.wg.Done()
+	}()
 	for {
 		select {
 		case ev := <-sub.C:
@@ -101,10 +105,18 @@ func (t *T) do(ctx context.Context) {
 	}
 }
 
-func NewDefault(subQS pubsub.QueueSizer) *T {
-	if def == nil {
-		def = New(subQS)
+func SetDefault(t *T) {
+	if def != nil {
+		panic("a default runner is already installed")
 	}
+	def = t
+}
+
+func NewDefault(subQS pubsub.QueueSizer) *T {
+	if def != nil {
+		return def
+	}
+	def = New(subQS)
 	return def
 }
 
@@ -127,9 +139,12 @@ func (t *T) Stop() error {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if t.ctx != nil {
+		return nil
+	}
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	t.wg.Add(1)
-	go t.do(ctx)
+	go t.do(t.ctx)
 	return nil
 }
 
@@ -147,8 +162,16 @@ func (t *T) SetMaxRunning(n int) {
 	t.maxRunning = n
 }
 
-func Start(ctx context.Context) {
-	def.Start(ctx)
+func (t *T) SetInterval(d time.Duration) {
+	t.interval = d
+}
+
+func Stop() error {
+	return def.Stop()
+}
+
+func Start(ctx context.Context) error {
+	return def.Start(ctx)
 }
 
 func Run(p priority.T, f func() error) error {

@@ -14,6 +14,10 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
+var (
+	priorityKey = key.Parse("priority")
+)
+
 func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
 	log := LogHandler(ctx, "PostObjectConfigUpdate")
 
@@ -38,17 +42,20 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")
 	}
 
-	if !grantsFromContext(ctx).HasGrant(rbac.GrantRoot) {
-		// Non-root is not allowed to set dangerous keywords.
+	hasGrantRoot := grantsFromContext(ctx).HasGrant(rbac.GrantRoot)
+	hasGrantPrioritizer := grantsFromContext(ctx).HasGrant(rbac.GrantPrioritizer)
+
+	if !hasGrantRoot {
 		for _, kop := range sets {
+			// Dangerous keywords require GrantRoot.
 			if err := keyopRbac(kop); err != nil {
 				return JSONProblemf(ctx, http.StatusUnauthorized, "Not allowed keyword (root-only)", "%s", err)
 			}
+			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
+			if !hasGrantPrioritizer && (kop.Key == priorityKey) {
+				return JSONProblemf(ctx, http.StatusUnauthorized, "Not allowed to set priority (the root or prioritizer grant is required)", "")
+			}
 		}
-	}
-
-	if !grantsFromContext(ctx).HasGrant(rbac.GrantPrioritizer) {
-		sets = sets.Drop(key.Parse("priority"))
 	}
 
 	p, err := naming.NewPath(namespace, kind, name)
