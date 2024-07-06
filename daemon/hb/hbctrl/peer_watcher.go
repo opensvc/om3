@@ -25,7 +25,7 @@ var (
 // when beating state change a hb_beating or hb_stale event is fired
 // Once beating, a hb_stale event is fired if no beating are received after timeout
 func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename string, timeout time.Duration) {
-	peer := daemonsubsystem.HeartbeatPeerStatus{}
+	peer := daemonsubsystem.HeartbeatStreamPeerStatus{}
 	started := make(chan bool)
 	go func() {
 		// changes tracks beating value changes

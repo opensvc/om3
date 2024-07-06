@@ -6,7 +6,7 @@ import (
 
 type (
 	Cacher interface {
-		Collector | Dns | Daemondata | Hb | Listener | Scheduler
+		Collector | Dns | Daemondata | Heartbeat | Listener | Scheduler
 	}
 
 	CacheElement[T Cacher] struct {
@@ -31,8 +31,8 @@ var (
 	// DataDaemondata is the package data holder for all nodes Daemondata
 	DataDaemondata *CacheData[Daemondata]
 
-	// DataHb is the package data holder for all nodes Hb
-	DataHb *CacheData[Hb]
+	// DataHeartbeat is the package data holder for all nodes Heartbeat
+	DataHeartbeat *CacheData[Heartbeat]
 
 	// DataListener is the package data holder for all nodes Listener
 	DataListener *CacheData[Listener]
@@ -51,7 +51,7 @@ func DropNode(nodename string) {
 	DataCollector.Unset(nodename)
 	DataDns.Unset(nodename)
 	DataDaemondata.Unset(nodename)
-	DataHb.Unset(nodename)
+	DataHeartbeat.Unset(nodename)
 	DataListener.Unset(nodename)
 	DataScheduler.Unset(nodename)
 }
@@ -97,7 +97,7 @@ func InitData() {
 	DataCollector = NewData[Collector]()
 	DataDns = NewData[Dns]()
 	DataDaemondata = NewData[Daemondata]()
-	DataHb = NewData[Hb]()
+	DataHeartbeat = NewData[Heartbeat]()
 	DataListener = NewData[Listener]()
 	DataScheduler = NewData[Scheduler]()
 }

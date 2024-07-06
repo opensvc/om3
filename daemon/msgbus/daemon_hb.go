@@ -1,5 +1,8 @@
 package msgbus
 
-func (data *ClusterData) onDaemonHb(m *DaemonHb) {
-	data.Daemon.Hb = m.Value
+func (data *ClusterData) onDaemonHeartbeatUpdated(m *DaemonHeartbeatUpdated) {
+	if ndata, ok := data.Cluster.Node[m.Node]; ok {
+		ndata.Daemon.Heartbeat = m.Value
+		data.Cluster.Node[m.Node] = ndata
+	}
 }

@@ -4,7 +4,9 @@
 
 package api
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var (
 	HeaderLastModifiedNano = "x-last-modified-rfc3339nano"

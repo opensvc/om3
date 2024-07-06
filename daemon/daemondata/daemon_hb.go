@@ -10,8 +10,8 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (d *data) setDaemonHb() {
-	lastMessages := make([]daemonsubsystem.HbLastMessage, 0)
+func (d *data) setDaemonHeartbeat() {
+	lastMessages := make([]daemonsubsystem.HeartbeatLastMessage, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgPatchLength {
 		if !slices.Contains(d.clusterData.Cluster.Config.Nodes, node) {
@@ -23,19 +23,23 @@ func (d *data) setDaemonHb() {
 	}
 	sort.Strings(nodes)
 	for _, node := range nodes {
-		lastMessages = append(lastMessages, daemonsubsystem.HbLastMessage{
+		lastMessages = append(lastMessages, daemonsubsystem.HeartbeatLastMessage{
 			From:        node,
 			PatchLength: d.hbMsgPatchLength[node],
 			Type:        d.hbMsgType[node],
 		})
 	}
 
-	subHb := daemonsubsystem.Hb{
+	subHb := daemonsubsystem.Heartbeat{
 		Streams:      hbcache.Heartbeats(),
 		LastMessages: lastMessages,
+		LastMessage: daemonsubsystem.HeartbeatLastMessage{
+			From:        d.localNode,
+			PatchLength: d.hbMsgPatchLength[d.localNode],
+			Type:        d.hbMsgType[d.localNode],
+		},
 	}
-	d.clusterData.Daemon.Hb = subHb
-	d.bus.Pub(&msgbus.DaemonHb{Node: d.localNode, Value: subHb}, d.labelLocalNode)
+	d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: subHb}, d.labelLocalNode)
 }
 
 func (d *data) setHbMsgPatchLength(node string, length int) {

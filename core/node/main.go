@@ -17,7 +17,7 @@ type (
 		Os       Os                           `json:"os"`
 		Config   Config                       `json:"config"`
 
-		Daemon daemonsubsystem.Deamon `json:"daemon"`
+		Daemon daemonsubsystem.Daemon `json:"daemon"`
 
 		//Locks map[string]Lock `json:"locks"`
 	}

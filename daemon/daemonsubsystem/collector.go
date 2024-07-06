@@ -1,16 +1,15 @@
 package daemonsubsystem
 
 type (
-	// Collector describes the OpenSVC daemon collector subsystem,
-	// which is responsible for communicating with the collector on behalf
-	// of the cluster. Only one node on the cluster is the collector speaker.
+	// Collector describes the daemon collector subsystem.
 	Collector struct {
-		DaemonSubsystemStatus
+		Status
+
+		Url string `json:"url"`
 	}
 )
 
 func (c *Collector) DeepCopy() *Collector {
-	return &Collector{
-		DaemonSubsystemStatus: *c.DaemonSubsystemStatus.DeepCopy(),
-	}
+	n := *c
+	return &n
 }

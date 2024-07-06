@@ -88,6 +88,7 @@ type (
 	}
 
 	requester interface {
+		URL() string
 		Do(*http.Request) (*http.Response, error)
 		DoRequest(method string, relPath string, body io.Reader) (*http.Response, error)
 		NewRequest(method string, relPath string, body io.Reader) (*http.Request, error)
@@ -164,11 +165,12 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		clusterData: daemondata.FromContext(ctx),
 		subQS:       subQS,
 		status: daemonsubsystem.Collector{
-			DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
-				ID:        "collector",
+			Status: daemonsubsystem.Status{
 				CreatedAt: now,
-				State:     "undef",
+				ID:        "collector",
+				State:     "",
 			},
+			Url: "",
 		},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -193,7 +195,7 @@ func (t *T) setNodeFeedClient() error {
 func (t *T) setupRequester() error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
-	t.status.DaemonSubsystemStatus.ConfiguredAt = time.Now()
+	t.status.ConfiguredAt = time.Now()
 	if node, err := object.NewNode(); err != nil {
 		t.client = nil
 		return err
@@ -201,13 +203,16 @@ func (t *T) setupRequester() error {
 		t.client = nil
 		if errors.Is(err, object.ErrNodeCollectorConfig) {
 			t.disable = true
+			t.status.Url = ""
 		} else {
 			// It is now enabled, clear previous disable state
 			t.disable = false
+			t.status.Url = "unknown"
 		}
 		return err
 	} else {
 		t.client = cli
+		t.status.Url = cli.URL()
 		// It is now enabled, clear previous disable state
 		t.disable = false
 		return nil
@@ -280,7 +285,7 @@ func (t *T) loop() {
 	t.initChanges()
 	sub := t.startSubscriptions()
 	defer func() {
-		t.status.DaemonSubsystemStatus.State = "disabled"
+		t.status.State = "disabled"
 		t.publish()
 
 		if err := sub.Stop(); err != nil {
@@ -406,13 +411,13 @@ func (t *T) getState() string {
 // UpdatedAt is the time of last publication (updated each time publication is
 // done).
 func (t *T) publishOnChange(state string) {
-	if state != t.status.DaemonSubsystemStatus.State {
-		t.log.Infof("state change %s -> %s", t.status.DaemonSubsystemStatus.State, state)
-		t.status.DaemonSubsystemStatus.State = state
-		t.status.DaemonSubsystemStatus.UpdatedAt = time.Now()
+	if state != t.status.State {
+		t.log.Infof("state change %s -> %s", t.status.State, state)
+		t.status.State = state
+		t.status.UpdatedAt = time.Now()
 		t.publish()
-	} else if t.status.DaemonSubsystemStatus.ConfiguredAt.After(t.status.DaemonSubsystemStatus.UpdatedAt) {
-		t.status.DaemonSubsystemStatus.UpdatedAt = time.Now()
+	} else if t.status.ConfiguredAt.After(t.status.UpdatedAt) {
+		t.status.UpdatedAt = time.Now()
 		t.publish()
 	}
 }

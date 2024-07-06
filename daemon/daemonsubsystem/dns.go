@@ -1,11 +1,19 @@
 package daemonsubsystem
 
 type (
-	// Dns describes the OpenSVC daemon dns thread, which is
-	// responsible for janitoring and serving the cluster Dns zone. This
-	// zone is dynamically populated by ip address allocated for the
-	// services (frontend and backend).
+	// Dns defines model for Dns daemon subsystem.
 	Dns struct {
-		DaemonSubsystemStatus
+		Status
+
+		// Nameservers list of nameservers
+		Nameservers []string `json:"nameservers"`
 	}
 )
+
+func (c *Dns) DeepCopy() *Dns {
+	return &Dns{
+		Status: c.Status,
+
+		Nameservers: append([]string{}, c.Nameservers...),
+	}
+}

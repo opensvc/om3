@@ -284,7 +284,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 			case <-ctx.Done():
 				return
 			case <-subHbRefreshTicker.C:
-				d.setDaemonHb()
+				d.setDaemonHeartbeat()
 				d.log.Debugf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
@@ -377,6 +377,7 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
@@ -425,6 +426,7 @@ func (d *data) forwardEvent(i event.Kinder) {
 func localEventMustBeForwarded(i interface{}) bool {
 	switch i.(type) {
 	// node daemon...
+	case *msgbus.DaemonHeartbeatUpdated:
 	case *msgbus.DaemonCollectorUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:

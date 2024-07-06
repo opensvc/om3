@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
+
+var startedAt = time.Now()
 
 func newData() *data {
 	localNode := hostname.Hostname()
@@ -43,16 +46,13 @@ func newData() *data {
 				localNode: nodeData,
 			},
 		},
-		Daemon: daemonsubsystem.Deamon{
+		Daemon: daemonsubsystem.Daemon{
 			Nodename:  localNode,
-			CreatedAt: time.Now(),
-
-			Hb: daemonsubsystem.Hb{
-				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
-				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
-			},
+			Pid:       os.Getpid(),
+			StartedAt: startedAt,
 		},
 	}
+
 	initialMsgType := "undef"
 	return &data{
 		statCount:          make(map[int]uint64),
@@ -99,23 +99,21 @@ func newNodeData(localNode string) node.Node {
 		Os: node.Os{
 			Paths: san.Paths{},
 		},
-		Daemon: daemonsubsystem.Deamon{
-			Nodename:  localNode,
-			CreatedAt: now,
+		Daemon: daemonsubsystem.Daemon{
+			Nodename: localNode,
+
+			Pid: os.Getpid(),
+
+			StartedAt: startedAt,
 
 			Daemondata: daemonsubsystem.Daemondata{
-				DaemonSubsystemStatus: daemonsubsystem.DaemonSubsystemStatus{
+				Status: daemonsubsystem.Status{
 					ID:           "daemondata",
 					ConfiguredAt: now,
 					CreatedAt:    now,
 					UpdatedAt:    now,
 					State:        "running",
-					Alerts:       make([]daemonsubsystem.ThreadAlert, 0),
 				},
-			},
-			Hb: daemonsubsystem.Hb{
-				Streams:      make([]daemonsubsystem.HeartbeatStream, 0),
-				LastMessages: make([]daemonsubsystem.HbLastMessage, 0),
 			},
 		},
 	}

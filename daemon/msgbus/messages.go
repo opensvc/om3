@@ -58,7 +58,7 @@ var (
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
-		"DaemonHb": func() any { return &DaemonHb{} },
+		"DaemonHeartbeatUpdated": func() any { return &DaemonHeartbeatUpdated{} },
 
 		"DaemonStart": func() any { return &DaemonStart{} },
 
@@ -277,11 +277,11 @@ type (
 		Action     string `json:"action" yaml:"action"`
 	}
 
-	DaemonHb struct {
+	DaemonHeartbeatUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 
-		Value daemonsubsystem.Hb `json:"hb" yaml:"hb"`
+		Value daemonsubsystem.Heartbeat `json:"hb" yaml:"hb"`
 	}
 
 	DaemonStart struct {
@@ -808,8 +808,8 @@ func (e *DaemonCtl) Kind() string {
 	return "DaemonCtl"
 }
 
-func (e *DaemonHb) Kind() string {
-	return "DaemonHb"
+func (e *DaemonHeartbeatUpdated) Kind() string {
+	return "DaemonHeartbeatUpdated"
 }
 
 func (e *DaemonStart) Kind() string {

@@ -187,7 +187,6 @@ func (t *Manager) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.databus = daemondata.FromContext(t.ctx)
 	t.bus = pubsub.BusFromContext(t.ctx)
-	t.nodeStatus.Pid = os.Getpid()
 
 	// trigger an initial pool status eval
 	t.poolC <- nil
