@@ -45,10 +45,8 @@ func newData() *data {
 				localNode: nodeData,
 			},
 		},
-		Daemon: daemonsubsystem.Daemon{
-			Nodename:  localNode,
-			Pid:       os.Getpid(),
-			StartedAt: startedAt,
+		Daemon: daemonsubsystem.DaemonLocal{
+			Nodename: localNode,
 		},
 	}
 

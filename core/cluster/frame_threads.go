@@ -60,7 +60,7 @@ func (f Frame) wThreadListener() string {
 func (f Frame) wThreadScheduler() string {
 	var s string
 	s += bold(" scheduler") + "\t"
-	if f.Current.Daemon.Scheduler.State == "running" {
+	if f.Current.Cluster.Node[f.Nodename].Daemon.Scheduler.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -74,7 +74,7 @@ func (f Frame) wThreadScheduler() string {
 func (f Frame) wThreadMonitor() string {
 	var s string
 	s += bold(" monitor") + "\t"
-	if f.Current.Daemon.Daemondata.State == "running" {
+	if f.Current.Cluster.Node[f.Nodename].Daemon.Daemondata.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -88,7 +88,7 @@ func (f Frame) wThreadMonitor() string {
 func (f Frame) wThreadDNS() string {
 	var s string
 	s += bold(" dns") + "\t"
-	if f.Current.Daemon.Dns.State == "running" {
+	if f.Current.Cluster.Node[f.Nodename].Daemon.Dns.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"

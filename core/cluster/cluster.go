@@ -16,7 +16,7 @@ type (
 	Data struct {
 		Cluster Cluster `json:"cluster"`
 
-		Daemon daemonsubsystem.Daemon `json:"daemon"`
+		Daemon daemonsubsystem.DaemonLocal `json:"daemon"`
 	}
 
 	Cluster struct {
