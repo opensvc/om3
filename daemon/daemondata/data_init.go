@@ -54,7 +54,6 @@ func newData() *data {
 
 	initialMsgType := "undef"
 	return &data{
-		statCount:          make(map[int]uint64),
 		gen:                nodeData.Status.Gen[localNode],
 		hbGens:             map[string]map[string]uint64{localNode: {localNode: 0}},
 		hbMessageType:      initialMsgType,

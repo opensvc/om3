@@ -38,7 +38,6 @@ func (t T) DropPeerNode(peerNode string) error {
 }
 
 func (o opDropPeerNode) call(ctx context.Context, d *data) error {
-	d.statCount[idDropPeerNode]++
 	d.dropPeer(o.node)
 	return nil
 }

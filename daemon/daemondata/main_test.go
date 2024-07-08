@@ -284,12 +284,5 @@ func TestDaemonData(t *testing.T) {
 			require.Equal(t, instance.MonitorStateStarting, remoteNodeInstanceX.Monitor.State)
 		})
 		require.False(t, t.Failed()) // fail on first error
-
-		t.Run("bus count stats", func(t *testing.T) {
-			for name, count := range bus.Stats() {
-				require.Greaterf(t, count, uint64(0), "expect %s count > 0", name)
-				t.Logf("cout %s: %d", name, count)
-			}
-		})
 	})
 }
