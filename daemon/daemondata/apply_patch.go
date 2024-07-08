@@ -140,6 +140,9 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.DaemonHeartbeatUpdated:
 		daemonsubsystem.DataHeartbeat.Set(c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.DaemonListenerUpdated:
+		daemonsubsystem.DataListener.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
@@ -158,10 +161,6 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusUpdated:
 		instance.StatusData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
-	// listener...
-	case *msgbus.ListenerUpdated:
-		node.LsnrData.Set(c.Node, &c.Lsnr)
 		d.bus.Pub(c, labelFromPeer)
 	// node...
 	case *msgbus.NodeConfigUpdated:

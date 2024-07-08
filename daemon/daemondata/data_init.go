@@ -25,7 +25,6 @@ func newData() *data {
 
 	nodeData := newNodeData(localNode)
 
-	node.LsnrData.Set(localNode, &nodeData.Status.Lsnr)
 	node.MonitorData.Set(localNode, &nodeData.Monitor)
 	node.StatusData.Set(localNode, &nodeData.Status)
 	node.StatsData.Set(localNode, &nodeData.Stats)
@@ -94,7 +93,6 @@ func newNodeData(localNode string) node.Node {
 			Labels:          node.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
-			Lsnr:            node.Lsnr{UpdatedAt: now},
 		},
 		Os: node.Os{
 			Paths: san.Paths{},

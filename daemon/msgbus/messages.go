@@ -60,6 +60,8 @@ var (
 
 		"DaemonHeartbeatUpdated": func() any { return &DaemonHeartbeatUpdated{} },
 
+		"DaemonListenerUpdated": func() any { return &DaemonListenerUpdated{} },
+
 		"DaemonStart": func() any { return &DaemonStart{} },
 
 		"Exec": func() any { return &Exec{} },
@@ -122,8 +124,6 @@ var (
 		"LeaveRequest": func() any { return &LeaveRequest{} },
 
 		"LeaveSuccess": func() any { return &LeaveSuccess{} },
-
-		"ListenerUpdated": func() any { return &ListenerUpdated{} },
 
 		"Log": func() any { return &Log{} },
 
@@ -282,6 +282,12 @@ type (
 		Node       string `json:"node" yaml:"node"`
 
 		Value daemonsubsystem.Heartbeat `json:"hb" yaml:"hb"`
+	}
+
+	DaemonListenerUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string                   `json:"node" yaml:"node"`
+		Value      daemonsubsystem.Listener `json:"listener" yaml:"listener"`
 	}
 
 	DaemonStart struct {
@@ -504,12 +510,6 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		// Node is the successfully removed node from cluster config nodes
 		Node string `json:"node" yaml:"node"`
-	}
-
-	ListenerUpdated struct {
-		pubsub.Msg `yaml:",inline"`
-		Node       string    `json:"node" yaml:"node"`
-		Lsnr       node.Lsnr `json:"lsnr" yaml:"lsnr"`
 	}
 
 	// Log is a log message.
@@ -812,6 +812,10 @@ func (e *DaemonHeartbeatUpdated) Kind() string {
 	return "DaemonHeartbeatUpdated"
 }
 
+func (e *DaemonListenerUpdated) Kind() string {
+	return "DaemonListenerUpdated"
+}
+
 func (e *DaemonStart) Kind() string {
 	return "DaemonStart"
 }
@@ -950,10 +954,6 @@ func (e *LeaveRequest) Kind() string {
 
 func (e *LeaveSuccess) Kind() string {
 	return "LeaveSuccess"
-}
-
-func (e *ListenerUpdated) Kind() string {
-	return "ListenerUpdated"
 }
 
 func (e *Log) Kind() string {

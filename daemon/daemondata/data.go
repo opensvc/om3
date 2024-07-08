@@ -95,6 +95,7 @@ type (
 		nodeStats         node.Stats
 		nodeStatus        node.Status
 		nodeConfig        node.Config
+		listenerUpdated   time.Time
 		imonUpdated       map[string]time.Time
 		instConfigUpdated map[string]time.Time
 		instStatusUpdated map[string]time.Time
@@ -378,6 +379,7 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 
 	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonListenerUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
@@ -387,8 +389,6 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
-
-	sub.AddFilter(&msgbus.ListenerUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalNode)
 
@@ -425,9 +425,10 @@ func (d *data) forwardEvent(i event.Kinder) {
 // localEventMustBeForwarded returns true when local event i must be forwarded to peers
 func localEventMustBeForwarded(i interface{}) bool {
 	switch i.(type) {
-	// node daemon...
-	case *msgbus.DaemonHeartbeatUpdated:
+	// daemon...
 	case *msgbus.DaemonCollectorUpdated:
+	case *msgbus.DaemonHeartbeatUpdated:
+	case *msgbus.DaemonListenerUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 	case *msgbus.InstanceConfigUpdated:
@@ -435,8 +436,6 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.InstanceMonitorUpdated:
 	case *msgbus.InstanceStatusUpdated:
 	case *msgbus.InstanceStatusDeleted:
-	// listener...
-	case *msgbus.ListenerUpdated:
 	// node...
 	case *msgbus.NodeConfigUpdated:
 	case *msgbus.NodeMonitorDeleted:

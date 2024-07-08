@@ -1,28 +1,17 @@
 package daemonsubsystem
 
-import (
-	"net"
-)
-
 type (
 	// Listener defines daemon Listener subsystem state.
 	Listener struct {
 		Status
 
-		Addr net.IP `json:"addr"`
+		Addr string `json:"addr"`
 
-		Port int `json:"port"`
+		Port string `json:"port"`
 	}
 )
 
 func (c *Listener) DeepCopy() *Listener {
-	var addr net.IP
-	if c.Addr != nil {
-		addr = append(addr, c.Addr...)
-	}
-	return &Listener{
-		Status: c.Status,
-		Addr:   addr,
-		Port:   c.Port,
-	}
+	d := *c
+	return &d
 }
