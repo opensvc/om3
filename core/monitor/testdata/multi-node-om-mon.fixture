@@ -1,12 +1,11 @@
 Threads                                node1         node2         node3         
- daemon            running           |                                           
+ daemon                              | O             O             O             
  dns                                 |                                           
  collector                           | O             X             o             
  hb                                  |                                           
   hb#1.rx          running unicast   | O             X             /             
   hb#1.tx          running unicast   | X             O             /             
  listener                            | 1215          1215          1215          
- monitor                             |                                           
  scheduler                           |                                           
                                                                                  
 Nodes                                  node1         node2         node3         
