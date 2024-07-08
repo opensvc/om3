@@ -36,14 +36,6 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
-// Defines values for DaemonHeartbeatLastMessageType.
-const (
-	DaemonHeartbeatLastMessageTypeFull  DaemonHeartbeatLastMessageType = "full"
-	DaemonHeartbeatLastMessageTypePatch DaemonHeartbeatLastMessageType = "patch"
-	DaemonHeartbeatLastMessageTypePing  DaemonHeartbeatLastMessageType = "ping"
-	DaemonHeartbeatLastMessageTypeUnset DaemonHeartbeatLastMessageType = "unset"
-)
-
 // Defines values for DiskItemKind.
 const (
 	DiskItemKindDiskItem DiskItemKind = "DiskItem"
@@ -406,146 +398,10 @@ type DRBDConfig struct {
 	Data []byte `json:"data"`
 }
 
-// Daemon defines model for Daemon.
-type Daemon struct {
-	// Collector DaemonCollector describes the OpenSVC daemon collector subsystem state,
-	// which is responsible for communicating with the collector on behalf
-	// of the cluster. Only one node on the cluster is the collector speaker
-	Collector DaemonCollector `json:"collector"`
-
-	// Daemondata DaemonDaemondata describes the OpenSVC daemon data subsystem state,
-	// which is responsible for aggregating data messages and selecting
-	// candidate data messages to forward to peer nodes.
-	Daemondata DaemonDaemondata `json:"daemondata"`
-
-	// Dns DaemonDNS describes the OpenSVC daemon dns subsystem state, which is
-	// responsible for janitoring and serving the cluster Dns zone.
-	// This zone is dynamically populated by ip address allocated for the
-	// services (frontend and backend).
-	Dns       DaemonDns       `json:"dns"`
-	Heartbeat DaemonHeartbeat `json:"heartbeat"`
-
-	// Listener DaemonListener describes the OpenSVC daemon listener subsystem state,
-	// which is responsible for serving the API.
-	Listener DaemonListener `json:"listener"`
-	Nodename string         `json:"nodename"`
-
-	// Pid the main daemon process id
-	Pid        int               `json:"pid"`
-	Routines   int               `json:"routines"`
-	RunnerImon *DaemonRunnerImon `json:"runner_imon,omitempty"`
-
-	// Scheduler DaemonScheduler describes the OpenSVC daemon scheduler subsystem state,
-	// which is responsible for executing node and objects scheduled jobs.
-	Scheduler DaemonScheduler `json:"scheduler"`
-	StartedAt time.Time       `json:"started_at"`
-}
-
-// DaemonCollector defines model for DaemonCollector.
-type DaemonCollector struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-	State        string    `json:"state"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Url          string    `json:"url"`
-}
-
-// DaemonDaemondata defines model for DaemonDaemondata.
-type DaemonDaemondata struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-
-	// QueueSize the subscription queue size
-	QueueSize int       `json:"queue_size"`
-	State     string    `json:"state"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// DaemonDns defines model for DaemonDns.
-type DaemonDns struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-
-	// Nameservers list of nameservers
-	Nameservers []string  `json:"nameservers"`
-	State       string    `json:"state"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-// DaemonHeartbeat defines model for DaemonHeartbeat.
-type DaemonHeartbeat struct {
-	// LastMessage describe the hb messaging mode
-	LastMessage  DaemonHeartbeatLastMessage   `json:"last_message"`
-	LastMessages []DaemonHeartbeatLastMessage `json:"last_messages"`
-
-	// Streams list of sending or receiving heartbeats:
-	//   - a sending daemon heartbeat is responsible for sending node dataset
-	//     changes to peers
-	//   - a receiving daemon heartbeat is responsible for receiving node dataset
-	//     changes from peers
-	Streams []DaemonHeartbeatStream `json:"streams"`
-}
-
-// DaemonHeartbeatLastMessage describe the hb messaging mode
-type DaemonHeartbeatLastMessage struct {
-	// From a cluster node
-	From string `json:"from"`
-
-	// PatchLength the patch queue length when type is patch, else it is 0
-	PatchLength int `json:"patch_length"`
-
-	// Type the heartbeat message type used by node
-	Type DaemonHeartbeatLastMessageType `json:"type"`
-}
-
-// DaemonHeartbeatLastMessageType the heartbeat message type used by node
-type DaemonHeartbeatLastMessageType string
-
-// DaemonHeartbeatStream defines model for DaemonHeartbeatStream.
-type DaemonHeartbeatStream struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-
-	// Peers map of peer names to daemon heartbeat stream peer status
-	Peers map[string]DaemonHeartbeatStreamPeerStatus `json:"peers"`
-	State string                                     `json:"state"`
-
-	// Type heartbeat stream type (unicast, multicast, ...)
-	Type      string    `json:"type"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// DaemonHeartbeatStreamPeerStatus status of the communication with a specific peer node.
-type DaemonHeartbeatStreamPeerStatus struct {
-	IsBeating bool      `json:"is_beating"`
-	LastAt    time.Time `json:"last_at"`
-}
-
-// DaemonHeartbeatStreamPeers defines model for DaemonHeartbeatStreamPeers.
-type DaemonHeartbeatStreamPeers struct {
-	// Peers map of peer names to daemon heartbeat stream peer status
-	Peers map[string]DaemonHeartbeatStreamPeerStatus `json:"peers"`
-}
-
-// DaemonHeartbeatStreamType defines model for DaemonHeartbeatStreamType.
-type DaemonHeartbeatStreamType struct {
-	// Type heartbeat stream type (unicast, multicast, ...)
-	Type string `json:"type"`
-}
-
-// DaemonListener defines model for DaemonListener.
-type DaemonListener struct {
-	Addr         string    `json:"addr"`
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-	Port         string    `json:"port"`
-	State        string    `json:"state"`
-	UpdatedAt    time.Time `json:"updated_at"`
+// DaemonLocal defines model for DaemonLocal.
+type DaemonLocal struct {
+	Nodename string `json:"nodename"`
+	Routines int    `json:"routines"`
 }
 
 // DaemonPid defines model for DaemonPid.
@@ -553,42 +409,10 @@ type DaemonPid struct {
 	Pid int `json:"pid"`
 }
 
-// DaemonRunnerImon defines model for DaemonRunnerImon.
-type DaemonRunnerImon struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	Count        int       `json:"count"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-	State        string    `json:"state"`
-	UpdatedAt    time.Time `json:"updated_at"`
-}
-
-// DaemonScheduler defines model for DaemonScheduler.
-type DaemonScheduler struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-
-	// Count count of defined scheduled jobs
-	Count     int       `json:"count"`
-	CreatedAt time.Time `json:"created_at"`
-	ID        string    `json:"id"`
-	State     string    `json:"state"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
 // DaemonStatus defines model for DaemonStatus.
 type DaemonStatus struct {
-	Cluster Cluster `json:"cluster"`
-	Daemon  Daemon  `json:"daemon"`
-}
-
-// DaemonSubsystemStatus Describes a OpenSVC daemon subsystem: when it was last created,
-// configured an updated, what its current state is and its id.
-type DaemonSubsystemStatus struct {
-	ConfiguredAt time.Time `json:"configured_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	ID           string    `json:"id"`
-	State        string    `json:"state"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Cluster Cluster     `json:"cluster"`
+	Daemon  DaemonLocal `json:"daemon"`
 }
 
 // Disk defines model for Disk.

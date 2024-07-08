@@ -5,6 +5,13 @@ import (
 )
 
 type (
+	// DaemonLocal defines model for DaemonLocal data that are not sent to peers.
+	DaemonLocal struct {
+		// Nodename is used to identify the nodename that have sent Daemon struct
+		Nodename string `json:"nodename"`
+		Routines int    `json:"routines"`
+	}
+
 	// Daemon defines model for Daemon.
 	Daemon struct {
 		// Collector DaemonCollector describes the OpenSVC daemon collector subsystem state,
@@ -32,10 +39,11 @@ type (
 		Nodename string `json:"nodename"`
 
 		// Pid the main daemon process id
+		// it is sent on the full hb message, then not anymore changed
 		Pid int `json:"pid"`
 
-		Routines int `json:"routines"`
-
+		// StartedAt is the time when daemon has been started
+		// it is sent on the full hb message, then not anymore changed
 		StartedAt time.Time `json:"started_at"`
 
 		RunnerImon RunnerImon `json:"runner_imon"`
@@ -66,10 +74,8 @@ type (
 
 func (d *Daemon) DeepCopy() *Daemon {
 	return &Daemon{
-		Nodename: d.Nodename,
-		Pid:      d.Pid,
-		Routines: d.Routines,
-
+		Pid:        d.Pid,
+		StartedAt:  d.StartedAt,
 		Collector:  *d.Collector.DeepCopy(),
 		Daemondata: *d.Daemondata.DeepCopy(),
 		Dns:        *d.Dns.DeepCopy(),

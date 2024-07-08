@@ -78,6 +78,14 @@
           "rejoin_grace_period": 0
         },
         "daemon": {
+          "daemondata": {
+            "id": "daemondata",
+            "state": "running",
+            "configured_at": "2024-07-08T23:08:53.066270731+02:00",
+            "created_at": "2024-07-08T23:08:53.066270731+02:00",
+            "updated_at": "2024-07-08T23:08:53.066270731+02:00",
+            "queue_size": 0
+          },
           "collector": {
             "id": "collector",
             "configured_at": "2024-07-01T17:34:09.972396996+02:00",

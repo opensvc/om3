@@ -3184,7 +3184,6 @@ components:
         - heartbeat
         - listener
         - monitor
-        - routines
         - imon_runner
         - scheduler
         - started_at
@@ -3206,13 +3205,22 @@ components:
           $ref: '#/components/schemas/DaemonListener'
         runner_imon:
           $ref: '#/components/schemas/DaemonRunnerImon'
-        routines:
-          type: integer
         scheduler:
           $ref: '#/components/schemas/DaemonScheduler'
         started_at:
           type: string
           format: date-time
+
+    DaemonLocal:
+      type: object
+      required:
+        - nodename
+        - routines
+      properties:
+        nodename:
+          type: string
+        routines:
+          type: integer
 
     DaemonCollector:
       description: |
@@ -5277,7 +5285,7 @@ components:
         cluster:
           $ref: '#/components/schemas/Cluster'
         daemon:
-          $ref: '#/components/schemas/Daemon'
+          $ref: '#/components/schemas/DaemonLocal'
 
     LogList:
       description: responseLogList is a list of sse

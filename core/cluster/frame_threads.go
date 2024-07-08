@@ -8,11 +8,17 @@ import (
 
 func (f Frame) wThreadDaemon() string {
 	var s string
-	s += bold(" daemon") + "\t"
-	s += green("running") + "\t"
-	s += "\t"
+	s += bold(" daemon") + "\t\t\t"
 	s += f.info.separator + "\t"
-	s += f.info.emptyNodes
+	for _, node := range f.Current.Cluster.Config.Nodes {
+		switch f.Current.Cluster.Node[node].Daemon.Daemondata.State {
+		case "running":
+			s += iconUp
+		default:
+			s += iconUndef
+		}
+		s += "\t"
+	}
 	return s
 }
 
@@ -60,21 +66,7 @@ func (f Frame) wThreadListener() string {
 func (f Frame) wThreadScheduler() string {
 	var s string
 	s += bold(" scheduler") + "\t"
-	if f.Current.Daemon.Scheduler.State == "running" {
-		s += green("running") + "\t"
-	} else {
-		s += "\t"
-	}
-	s += "\t"
-	s += f.info.separator + "\t"
-	s += f.info.emptyNodes
-	return s
-}
-
-func (f Frame) wThreadMonitor() string {
-	var s string
-	s += bold(" monitor") + "\t"
-	if f.Current.Daemon.Daemondata.State == "running" {
+	if f.Current.Cluster.Node[f.Nodename].Daemon.Scheduler.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -88,7 +80,7 @@ func (f Frame) wThreadMonitor() string {
 func (f Frame) wThreadDNS() string {
 	var s string
 	s += bold(" dns") + "\t"
-	if f.Current.Daemon.Dns.State == "running" {
+	if f.Current.Cluster.Node[f.Nodename].Daemon.Dns.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -152,7 +144,6 @@ func (f Frame) wThreads() {
 	fmt.Fprintln(f.w, f.wThreadCollector())
 	fmt.Fprintln(f.w, f.wThreadHeartbeats())
 	fmt.Fprintln(f.w, f.wThreadListener())
-	fmt.Fprintln(f.w, f.wThreadMonitor())
 	fmt.Fprintln(f.w, f.wThreadScheduler())
 	fmt.Fprintln(f.w, f.info.empty)
 }

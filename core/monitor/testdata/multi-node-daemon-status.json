@@ -1524,8 +1524,6 @@
     },
     "daemon": {
         "nodename": "node3",
-        "pid": 1779120,
-        "routines": 100,
-        "started_at": "2024-07-08T19:09:39.866885307+02:00"
+        "routines": 100
     }
 }
