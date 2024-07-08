@@ -26,7 +26,6 @@ type opGetClusterData struct {
 }
 
 func (o opGetClusterData) call(ctx context.Context, d *data) error {
-	d.statCount[idGetStatus]++
 	o.status <- d.clusterData.DeepCopy()
 	return nil
 }

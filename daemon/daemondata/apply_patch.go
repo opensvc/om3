@@ -19,7 +19,6 @@ var (
 )
 
 func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
-	d.statCount[idApplyPatch]++
 	local := d.localNode
 	remote := msg.Nodename
 	d.log.Debugf("apply patch %s", remote)

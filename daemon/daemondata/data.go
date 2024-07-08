@@ -8,6 +8,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
@@ -45,11 +48,9 @@ type (
 		// msgbus.ClusterConfigUpdated {NodesAdded, NodesRemoved}
 		clusterNodes map[string]struct{}
 
-		// statCount is a map[<stat id>] to track number of <id> calls
-		statCount map[int]uint64
-		log       *plog.Logger
-		bus       *pubsub.Bus
-		sub       *pubsub.Subscription
+		log *plog.Logger
+		bus *pubsub.Bus
+		sub *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -121,6 +122,13 @@ var (
 	ErrDrained = errors.New("drained command")
 
 	labelFromPeer = pubsub.Label{"from", "peer"}
+
+	onReceiveQueueOperationTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_daemondata_receive_queue_operation_total",
+			Help: "The total number of daemondata on receive queue operations",
+		},
+		[]string{"operation"})
 )
 
 func PropagationInterval() time.Duration {
@@ -345,7 +353,6 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				}
 			} else {
 				d.log.Debugf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
-				d.statCount[idUndef]++
 			}
 		case i := <-d.sub.C:
 			d.onSubEvent(i)

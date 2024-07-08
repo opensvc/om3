@@ -14,7 +14,6 @@ import (
 )
 
 func (d *data) applyNodeData(msg *hbtype.Msg) error {
-	d.statCount[idApplyFull]++
 	remote := msg.Nodename
 	peerLabel := pubsub.Label{"node", remote}
 	local := d.localNode

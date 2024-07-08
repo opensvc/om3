@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/opensvc/om3/core/hbtype"
 )
 
@@ -13,6 +15,8 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		}
 		// cleanup previous applied full info
 		delete(d.previousRemoteInfo, msg.Nodename)
+		onReceiveQueueOperationTotal.With(prometheus.Labels{"operation": "patch"}).Inc()
+
 	case "full":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
@@ -39,10 +43,12 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		if err := d.applyNodeData(msg); err != nil {
 			d.log.Errorf("apply message %s node data from %s gens: %v: %s", msg.Kind, msg.Nodename, msg.Gen, err)
 		}
+		onReceiveQueueOperationTotal.With(prometheus.Labels{"operation": "full"}).Inc()
 	case "ping":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		// cleanup previous applied full info
 		delete(d.previousRemoteInfo, msg.Nodename)
+		onReceiveQueueOperationTotal.With(prometheus.Labels{"operation": "ping"}).Inc()
 	}
 }
 
