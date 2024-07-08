@@ -99,7 +99,6 @@ type (
 		imonUpdated       map[string]time.Time
 		instConfigUpdated map[string]time.Time
 		instStatusUpdated map[string]time.Time
-		gen               uint64
 	}
 
 	errC chan<- error

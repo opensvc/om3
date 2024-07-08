@@ -31,12 +31,6 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 }
 
 func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
-	if prev, ok := d.previousRemoteInfo[peer]; ok {
-		if prev.gen == d.clusterData.Cluster.Node[peer].Status.Gen[peer] {
-			d.log.Debugf("refreshPreviousUpdated skipped (already computed gen %d)", prev.gen)
-			return nil
-		}
-	}
 	c := d.clusterData.Cluster.Node[peer]
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
@@ -75,7 +69,6 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 			result.imonUpdated[p] = imonUpdated
 		}
 	}
-	result.gen = c.Status.Gen[peer]
 
 	return &result
 }
