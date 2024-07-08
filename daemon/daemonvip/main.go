@@ -63,18 +63,23 @@ func (t *T) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.bus = pubsub.BusFromContext(t.ctx)
 
-	t.startSubscriptions()
-	t.onClusterConfigUpdated(cluster.ConfigData.Get())
 	t.wg.Add(1)
 	go func() {
+		defer func() {
+			t.wg.Done()
+			t.log.Infof("stopped")
+		}()
+		// Add delay to ensure icfg is started for vip
+		// TODO: change to wait on discove initial discover loop is done ?
+		time.Sleep(250 * time.Millisecond)
+		t.startSubscriptions()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Warnf("subscription stop: %s", err)
 			}
-			t.wg.Done()
-			t.log.Infof("stopped")
 		}()
 		t.log.Infof("started")
+		t.onClusterConfigUpdated(cluster.ConfigData.Get())
 		t.worker()
 	}()
 
@@ -131,6 +136,7 @@ func (t *T) onClusterConfigUpdated(c *cluster.Config) {
 		"DEFAULT.orchestrate":      "ha",
 		"DEFAULT.monitor_action":   "switch",
 		"DEFAULT.monitor_schedule": "@1m",
+		"DEFAULT.priority":         "0",
 		"ip#0.ipname":              c.Vip.Addr,
 		"ip#0.netmask":             c.Vip.Netmask,
 		"ip#0.ipdev":               c.Vip.Dev,
