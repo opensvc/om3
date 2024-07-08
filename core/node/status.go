@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/san"
 )
 
@@ -20,7 +21,6 @@ type (
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		IsLeader        bool                        `json:"is_leader"`
 		Labels          Labels                      `json:"labels"`
-		Lsnr            Lsnr                        `json:"lsnr"`
 	}
 
 	// Instances groups instances configuration digest and status
@@ -37,13 +37,6 @@ type (
 		Status status.T `json:"status"`
 	}
 
-	// Lsnr describes the inet listener addr and port
-	Lsnr struct {
-		Addr      string    `json:"addr"`
-		Port      string    `json:"port"`
-		UpdatedAt time.Time `json:"updated_at"`
-	}
-
 	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
 	// used by nodes to:
 	// * expand node selector expressions based on labels
@@ -54,17 +47,10 @@ type (
 		Env    string    `json:"env"`
 		Labels Labels    `json:"labels"`
 		Paths  san.Paths `json:"paths"`
-		Lsnr   Lsnr      `json:"lsnr"`
+
+		Lsnr daemonsubsystem.Listener `json:"listener"`
 	}
 )
-
-func (l *Lsnr) DeepCopy() *Lsnr {
-	return &Lsnr{
-		Addr:      l.Addr,
-		Port:      l.Port,
-		UpdatedAt: l.UpdatedAt,
-	}
-}
 
 func (t Status) IsFrozen() bool {
 	return !t.FrozenAt.IsZero()
@@ -88,7 +74,6 @@ func (t *Status) DeepCopy() *Status {
 	}
 	result.Gen = newGen
 	result.Labels = t.Labels.DeepCopy()
-	result.Lsnr = *t.Lsnr.DeepCopy()
 
 	return &result
 }
@@ -126,6 +111,5 @@ func (t *Status) Unstructured() map[string]any {
 		"min_avail_swap": t.MinAvailSwapPct,
 		"is_leader":      t.IsLeader,
 		"labels":         t.Labels,
-		"lsnr":           t.Lsnr,
 	}
 }

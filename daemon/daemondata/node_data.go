@@ -99,12 +99,12 @@ func (d *data) dropPeer(peer string) {
 	}
 	if v := node.MonitorData.Get(peer); v != nil {
 		node.DropNode(peer)
-		daemonsubsystem.DropNode(peer)
 		// TODO: find a way to clear parts of cluster.node.<peer>.Status
-		// TODO: move LsnrData to daemonsubsystem.Listener
-		node.LsnrData.Unset(peer) // keep this even if it is already done during DropNode
-		d.bus.Pub(&msgbus.ListenerUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)
+
+		daemonsubsystem.DropNode(peer)
+		d.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: peer}, peerLabels...)
+		d.bus.Pub(&msgbus.DaemonListenerUpdated{Node: peer}, peerLabels...)
 	}
 
 	// delete peer from internal caches

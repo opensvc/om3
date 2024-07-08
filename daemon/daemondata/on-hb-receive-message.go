@@ -11,6 +11,8 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		if err := d.applyMsgEvents(msg); err != nil {
 			d.log.Errorf("apply message %s events from %s gens: %v: %s", msg.Kind, msg.Nodename, msg.Gen, err)
 		}
+		// cleanup previous applied full info
+		delete(d.previousRemoteInfo, msg.Nodename)
 	case "full":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
@@ -39,6 +41,8 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		}
 	case "ping":
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
+		// cleanup previous applied full info
+		delete(d.previousRemoteInfo, msg.Nodename)
 	}
 }
 

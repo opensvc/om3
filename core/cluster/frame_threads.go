@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/util/render/listener"
 )
 
 func (f Frame) wThreadDaemon() string {
@@ -43,24 +42,17 @@ func (f Frame) wThreadCollector() string {
 
 func (f Frame) wThreadListener() string {
 	var s string
-	s += bold(" listener") + "\t"
-	if f.Current.Cluster.Node[f.Nodename].Status.Lsnr.Port != "" {
-		s += green("running") + "\t"
-	} else {
-		s += "\t"
-	}
-	addr := f.Current.Cluster.Node[f.Nodename].Daemon.Listener.Addr
-	port := f.Current.Cluster.Node[f.Nodename].Daemon.Listener.Port
-	s += fmt.Sprintf("%s\t", listener.Render(addr, port))
-	s += f.info.separator + "\t"
+	s += bold(" listener") + "\t\t\t" + f.info.separator + "\t"
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		port := f.Current.Cluster.Node[node].Status.Lsnr.Port
-		switch port {
-		case "":
-			s += iconDownIssue + "\t"
-		default:
-			s += port + "\t"
+		lsnr := f.Current.Cluster.Node[node].Daemon.Listener
+		if lsnr.State != "running" {
+			s += iconDownIssue
+		} else if lsnr.Port == "" {
+			s += iconWarning
+		} else {
+			s += lsnr.Port
 		}
+		s += "\t"
 	}
 	return s
 }

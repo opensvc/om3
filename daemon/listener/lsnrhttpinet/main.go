@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
@@ -31,12 +31,25 @@ type (
 		certFile string
 		keyFile  string
 		wg       sync.WaitGroup
+		status   daemonsubsystem.Listener
+
+		labelLocalhost pubsub.Label
+		localhost      string
 	}
 )
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
+	localhost := hostname.Hostname()
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpinet").Attr("lsnr_type", "inet").WithPrefix("daemon: listener: inet: "),
+		log: plog.NewDefaultLogger().
+			Attr("pkg", "daemon/listener/lsnrhttpinet").
+			Attr("lsnr_type", "inet").
+			WithPrefix("daemon: listener: inet: "),
+
+		status: daemonsubsystem.Listener{Status: daemonsubsystem.Status{CreatedAt: time.Now()}},
+
+		localhost:      localhost,
+		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
@@ -112,16 +125,20 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	addr := tcpAddr.IP.String()
 
 	now := time.Now()
-	localhost := hostname.Hostname()
-	labelLocalhost := pubsub.Label{"node", localhost}
-	node.LsnrData.Set(localhost, &node.Lsnr{Addr: addr, Port: port, UpdatedAt: now})
-	t.bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{Addr: addr, Port: port, UpdatedAt: now}},
-		labelLocalhost)
+	t.status.UpdatedAt = now
+	t.status.ConfiguredAt = now
+	t.status.State = "running"
+	t.status.Addr = addr
+	t.status.Port = port
+
+	t.publish()
 	defer func() {
 		now := time.Now()
-		node.LsnrData.Set(localhost, &node.Lsnr{UpdatedAt: now})
-		t.bus.Pub(&msgbus.ListenerUpdated{Node: localhost, Lsnr: node.Lsnr{UpdatedAt: now}},
-			labelLocalhost)
+		t.status.State = "stopped"
+		t.status.Port = ""
+		t.status.Addr = ""
+		t.status.UpdatedAt = now
+		t.publish()
 	}()
 	t.log.Infof("started")
 	errC <- nil
@@ -146,8 +163,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	var started bool
 	sub := t.bus.Sub("daemon.lsnr.http.inet")
-	sub.AddFilter(&msgbus.ClusterConfigUpdated{},
-		pubsub.Label{"node", hostname.Hostname()})
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})
 	sub.Start()
 	defer func() {
@@ -242,4 +258,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			}
 		}
 	}
+}
+
+func (t *T) publish() {
+	daemonsubsystem.DataListener.Set(t.localhost, t.status.DeepCopy())
+	t.bus.Pub(&msgbus.DaemonListenerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, t.labelLocalhost)
 }

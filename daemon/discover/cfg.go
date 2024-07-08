@@ -11,9 +11,9 @@ import (
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/remoteconfig"
@@ -381,7 +381,7 @@ func newDaemonClient(n string) (*client.T, error) {
 func peerURL(s string) string {
 	addr := s
 	port := fmt.Sprintf("%d", daemonenv.HTTPPort)
-	if lsnr := node.LsnrData.Get(s); lsnr != nil {
+	if lsnr := daemonsubsystem.DataListener.Get(s); lsnr != nil {
 		if lsnr.Port != "" {
 			port = lsnr.Port
 		}

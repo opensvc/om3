@@ -42,6 +42,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/bootid"
 	"github.com/opensvc/om3/util/file"
@@ -303,11 +304,13 @@ func (t *Manager) startSubscriptions() {
 	// We don't need to watch for ConfigFileUpdated on path cluster, instead
 	// we watch for ClusterConfigUpdated.
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
+
+	sub.AddFilter(&msgbus.DaemonListenerUpdated{})
+
 	sub.AddFilter(&msgbus.ForgetPeer{})
 	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.ListenerUpdated{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
 	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
@@ -414,14 +417,14 @@ func (t *Manager) worker() {
 				t.onClusterConfigUpdated(c)
 			case *msgbus.ConfigFileUpdated:
 				t.onConfigFileUpdated(c)
+			case *msgbus.DaemonListenerUpdated:
+				t.onDaemonListenerUpdated(c)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.JoinRequest:
 				t.onJoinRequest(c)
 			case *msgbus.HbMessageTypeUpdated:
 				t.onHbMessageTypeUpdated(c)
-			case *msgbus.ListenerUpdated:
-				t.onListenerUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
@@ -598,16 +601,11 @@ func (t *Manager) refreshSanPaths() {
 	t.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: paths}, t.labelLocalhost)
 }
 
-func (t *Manager) onListenerUpdated(m *msgbus.ListenerUpdated) {
+func (t *Manager) onDaemonListenerUpdated(m *msgbus.DaemonListenerUpdated) {
 	nodeInfo := t.cacheNodesInfo[m.Node]
-	nodeInfo.Lsnr = m.Lsnr
+	nodeInfo.Lsnr = m.Value
 	t.cacheNodesInfo[m.Node] = nodeInfo
 	t.saveNodesInfo()
-
-	if m.Node == t.localhost {
-		t.nodeStatus.Lsnr = m.Lsnr
-		t.publishNodeStatus()
-	}
 }
 
 func (t *Manager) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
@@ -667,9 +665,8 @@ func (t *Manager) loadConfig() error {
 	t.nodeConfig = t.getNodeConfig()
 	localNodeInfo.Env = t.nodeConfig.Env
 
-	if lsnr := node.LsnrData.Get(t.localhost); lsnr != nil {
+	if lsnr := daemonsubsystem.DataListener.Get(t.localhost); lsnr != nil {
 		localNodeInfo.Lsnr = *lsnr
-		t.nodeStatus.Lsnr = *lsnr
 	}
 	t.cacheNodesInfo[t.localhost] = localNodeInfo
 	return nil

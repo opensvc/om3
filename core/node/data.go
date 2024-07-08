@@ -10,7 +10,7 @@ type (
 	Gen = map[string]uint64
 
 	Dataer interface {
-		Config | Monitor | Lsnr | san.Paths | Stats | Status | Gen
+		Config | Monitor | san.Paths | Stats | Status | Gen
 	}
 
 	DataElement[T Dataer] struct {
@@ -31,9 +31,6 @@ var (
 
 	// MonitorData is the package data holder for all nodes Monitors
 	MonitorData *Data[Monitor]
-
-	// LsnrData is the package data holder for all nodes Lsnr
-	LsnrData *Data[Lsnr]
 
 	// OsPathsData is the package data holder for all nodes Os paths data
 	OsPathsData *Data[san.Paths]
@@ -93,7 +90,6 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 func DropNode(nodename string) {
 	ConfigData.Unset(nodename)
 	MonitorData.Unset(nodename)
-	LsnrData.Unset(nodename)
 	OsPathsData.Unset(nodename)
 	StatusData.Unset(nodename)
 	StatsData.Unset(nodename)
@@ -104,7 +100,6 @@ func DropNode(nodename string) {
 func InitData() {
 	ConfigData = NewData[Config]()
 	MonitorData = NewData[Monitor]()
-	LsnrData = NewData[Lsnr]()
 	OsPathsData = NewData[san.Paths]()
 	StatusData = NewData[Status]()
 	StatsData = NewData[Stats]()
