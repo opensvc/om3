@@ -1,18 +1,18 @@
-Threads                         dev1n3        
- daemon            running    |               
- dns                          |               
- collector                    | o             
- hb                           |               
- listener                  :0 | 2222          
- monitor                      |               
- scheduler                    |               
-                                              
-Nodes                           dev1n3        
- score                        | 96            
-  load15m                     | 0.1           
-  mem                         | 26/100%:1.94g 
-  swap                        | 0/100%:1.92g  
-  compat           warn       | 12            
- state                        | *             
-                                              
-Objects matching *              dev1n3        
+Threads                       node3         
+ daemon            running  |               
+ dns                        |               
+ collector                  | o             
+ hb                         |               
+ listener                   | 2222          
+ monitor                    |               
+ scheduler                  |               
+                                            
+Nodes                         node3         
+ score                      | 96            
+  load15m                   | 0.1           
+  mem                       | 26/100%:1.94g 
+  swap                      | 0/100%:1.92g  
+  compat           warn     | 12            
+ state                      | *             
+                                            
+Objects matching *            node3         

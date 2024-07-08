@@ -1,0 +1,24 @@
+Threads                                node1         node2         node3         
+ daemon            running           |                                           
+ dns                                 |                                           
+ collector                           | O             X             o             
+ hb                                  |                                           
+  hb#1.rx          running unicast   | O             X             /             
+  hb#1.tx          running unicast   | X             O             /             
+ listener                            | 1215          1215          1215          
+ monitor                             |                                           
+ scheduler                           |                                           
+                                                                                 
+Nodes                                  node1         node2         node3         
+ score                               | 95            96            96            
+  load15m                            | 0.1           0.2           0.1           
+  mem                                | 27/100%:1.94g 24/100%:1.94g 26/100%:1.94g 
+  swap                               | 2/100%:1.92g  0/100%:1.92g  1/100%:1.92g  
+ hb-q                                | 1             0             0             
+ state                               |                                           
+                                                                                 
+Objects matching *                     node1         node2         node3         
+ cluster           n/a               | /             /             /             
+ foo               up      ha    1/1 | O^            X             X             
+ system/sec/ca     n/a     no        | /             /             /             
+ system/sec/cert   n/a     no        | /             /             /             

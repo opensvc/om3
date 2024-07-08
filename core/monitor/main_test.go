@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/mock_monitor"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type recorder struct {
@@ -68,8 +69,11 @@ func TestMonitorOutputIsCorrectWithGoMock(t *testing.T) {
 func TestMonitorOutput(t *testing.T) {
 	for _, s := range []string{
 		"single-node",
+		"multi-node",
 	} {
 		t.Run(s, func(t *testing.T) {
+			hostname.SetHostnameForGoTest("node3")
+			defer hostname.SetHostnameForGoTest("")
 			b, err := os.ReadFile(path.Join("testdata", s+"-daemon-status.json"))
 			require.Nil(t, err)
 			expected, err := os.ReadFile(path.Join("testdata", s+"-om-mon.fixture"))
@@ -87,7 +91,7 @@ func TestMonitorOutput(t *testing.T) {
 
 			m.Do(daemonStatusGetter, &spy)
 
-			assert.Equal(t, string(expected), string(spy.data), "they should be equal")
+			assert.Equalf(t, string(expected), string(spy.data), "they should be equal:\nexpected:\n%s\nfound:\n%s", expected, spy.data)
 
 		})
 	}

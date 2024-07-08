@@ -1,19 +1,19 @@
-Threads                         
- daemon            running      
- dns                            
- collector                      
- hb                             
- listener                  :0   
- monitor                        
- scheduler                      
-                                
-Nodes                           
- score                          
-  load15m                       
-  mem                           
-  swap                          
-  version          warn         
-  compat           warn         
- state                          
-                                
-Objects matching *              
+Threads                       
+ daemon            running    
+ dns                          
+ collector                    
+ hb                           
+ listener                     
+ monitor                      
+ scheduler                    
+                              
+Nodes                         
+ score                        
+  load15m                     
+  mem                         
+  swap                        
+  version          warn       
+  compat           warn       
+ state                        
+                              
+Objects matching *            

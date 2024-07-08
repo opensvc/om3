@@ -1,0 +1,1531 @@
+{
+    "cluster": {
+        "config": {
+            "id": "456db33b-6df2-48a8-89f4-4bacdcad5342",
+            "name": "dev1",
+            "nodes": [
+                "node1",
+                "node2",
+                "node3"
+            ],
+            "dns": [],
+            "ca_sec_paths": [],
+            "listener": {
+                "crl": "/var/lib/opensvc/certs/ca_crl",
+                "addr": "",
+                "port": 1215,
+                "openid_well_known": "",
+                "dns_sock_gid": "953",
+                "dns_sock_uid": "953"
+            },
+            "quorum": false,
+            "vip": {
+                "default": "",
+                "name": "",
+                "netmask": "",
+                "dev": "",
+                "devs": null
+            }
+        },
+        "status": {
+            "is_compat": true,
+            "is_frozen": false
+        },
+        "object": {
+            "cluster": {
+                "avail": "n/a",
+                "frozen": "thawed",
+                "orchestrate": "",
+                "overall": "n/a",
+                "placement_policy": "",
+                "placement_state": "optimal",
+                "priority": 0,
+                "provisioned": "undef",
+                "scope": [
+                    "node1",
+                    "node2",
+                    "node3"
+                ],
+                "topology": "invalid",
+                "up_instances_count": 0,
+                "size": 0,
+                "updated_at": "2024-07-08T19:10:08.121681666+02:00"
+            },
+            "foo": {
+                "avail": "up",
+                "frozen": "thawed",
+                "orchestrate": "ha",
+                "overall": "up",
+                "placement_policy": "nodes order",
+                "placement_state": "optimal",
+                "priority": 50,
+                "provisioned": "true",
+                "scope": [
+                    "node1",
+                    "node2",
+                    "node3"
+                ],
+                "topology": "failover",
+                "up_instances_count": 1,
+                "size": 0,
+                "updated_at": "2024-07-08T19:10:09.577540975+02:00"
+            },
+            "system/sec/ca": {
+                "avail": "n/a",
+                "frozen": "thawed",
+                "orchestrate": "no",
+                "overall": "n/a",
+                "placement_policy": "nodes order",
+                "placement_state": "optimal",
+                "priority": 50,
+                "provisioned": "undef",
+                "scope": [
+                    "node1",
+                    "node2",
+                    "node3"
+                ],
+                "topology": "failover",
+                "up_instances_count": 0,
+                "size": 0,
+                "updated_at": "2024-07-08T19:10:08.121660888+02:00"
+            },
+            "system/sec/cert": {
+                "avail": "n/a",
+                "frozen": "thawed",
+                "orchestrate": "no",
+                "overall": "n/a",
+                "placement_policy": "nodes order",
+                "placement_state": "optimal",
+                "priority": 50,
+                "provisioned": "undef",
+                "scope": [
+                    "node1",
+                    "node2",
+                    "node3"
+                ],
+                "topology": "failover",
+                "up_instances_count": 0,
+                "size": 0,
+                "updated_at": "2024-07-08T19:10:08.122425746+02:00"
+            }
+        },
+        "node": {
+            "node1": {
+                "instance": {
+                    "cluster": {
+                        "config": {
+                            "csum": "9c96613e0ebc831c6dc34d1b67799334",
+                            "orchestrate": "",
+                            "placement_policy": "",
+                            "resources": {
+                                "cluster": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "hb#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "node": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "invalid",
+                            "updated_at": "2024-07-08T19:05:12.484268638+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:09:39.996882644+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "cluster": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "hb#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "node": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:09:40.261336116+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:09:40.25438062+02:00"
+                        }
+                    },
+                    "foo": {
+                        "config": {
+                            "app": "default",
+                            "csum": "ba666a6f843ae2321c188943f510c61a",
+                            "orchestrate": "ha",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "fs#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": 500000000
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T19:05:54.912076128+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "2024-07-08T19:06:44.453515722+02:00",
+                            "global_expect_options": null,
+                            "is_leader": true,
+                            "is_ha_leader": true,
+                            "local_expect": "started",
+                            "local_expect_updated_at": "2024-07-08T19:09:40.528369722+02:00",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:09:39.997058202+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "fs#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:09.122401463+02:00"
+                        },
+                        "status": {
+                            "avail": "up",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "overall": "up",
+                            "provisioned": "true",
+                            "resources": {
+                                "fs#1": {
+                                    "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
+                                    "status": "up",
+                                    "type": "fs.flag",
+                                    "provisioned": {
+                                        "mtime": "2024-07-08T19:05:59.471625579+02:00",
+                                        "state": "true"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:09:40.272007129+02:00"
+                        }
+                    },
+                    "system/sec/ca": {
+                        "config": {
+                            "app": "default",
+                            "csum": "578274db2f241afb218f8ad3d7f4d003",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:58:58.709189881+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:09:39.998078265+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:09:40.267509173+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:09:40.263453685+02:00"
+                        }
+                    },
+                    "system/sec/cert": {
+                        "config": {
+                            "app": "default",
+                            "csum": "71ed5a2d3f3ef9d954e3103566ce2d9a",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:59:01.616902784+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:09:39.998615244+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:09:40.262481628+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:09:40.253584059+02:00"
+                        }
+                    }
+                },
+                "monitor": {
+                    "global_expect": "none",
+                    "local_expect": "none",
+                    "state": "idle",
+                    "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                    "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                    "state_updated_at": "2024-07-08T19:10:08.871643857+02:00",
+                    "updated_at": "0001-01-01T00:00:00Z",
+                    "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                    "orchestration_is_done": false,
+                    "session_id": "00000000-0000-0000-0000-000000000000",
+                    "preserved": false
+                },
+                "stats": {
+                    "load_15m": 0.10,
+                    "mem_avail": 73,
+                    "mem_total": 1987,
+                    "score": 95,
+                    "swap_avail": 98,
+                    "swap_total": 1961
+                },
+                "status": {
+                    "agent": "v3.0.0-alpha10-466-g85614ef4",
+                    "api": 0,
+                    "arbitrators": {},
+                    "compat": 0,
+                    "frozen_at": "0001-01-01T00:00:00Z",
+                    "gen": {
+                        "node1": 36,
+                        "node2": 28,
+                        "node3": 93
+                    },
+                    "min_avail_mem": 0,
+                    "min_avail_swap": 0,
+                    "is_leader": true,
+                    "labels": {}
+                },
+                "os": {
+                    "paths": [
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node1.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node1.storage.target.1",
+                                "type": "iscsi"
+                            }
+                        },
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node1.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node1.storage.target.2",
+                                "type": "iscsi"
+                            }
+                        }
+                    ]
+                },
+                "config": {
+                    "env": "TST",
+                    "maintenance_grace_period": 60000000000,
+                    "max_parallel": 10,
+                    "ready_period": 5000000000,
+                    "rejoin_grace_period": 90000000000,
+                    "split_action": "crash"
+                },
+                "daemon": {
+                    "collector": {
+                        "id": "collector",
+                        "state": "speaker",
+                        "configured_at": "2024-07-08T19:13:45.881813952+02:00",
+                        "created_at": "2024-07-08T19:09:39.95700779+02:00",
+                        "updated_at": "2024-07-08T19:13:45.88203018+02:00",
+                        "url": "https://collector.vdc.opensvc.com"
+                    },
+                    "daemondata": {
+                        "id": "daemondata",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:09:39.951721779+02:00",
+                        "created_at": "2024-07-08T19:09:39.951721779+02:00",
+                        "updated_at": "2024-07-08T19:09:39.951721779+02:00",
+                        "queue_size": 0
+                    },
+                    "dns": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "nameservers": null
+                    },
+                    "heartbeat": {
+                        "last_messages": [
+                            {
+                                "from": "node1",
+                                "patch_length": 1,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node2",
+                                "patch_length": 0,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node3",
+                                "patch_length": 1,
+                                "type": "patch"
+                            }
+                        ],
+                        "last_message": {
+                            "from": "node1",
+                            "patch_length": 1,
+                            "type": "patch"
+                        },
+                        "streams": [
+                            {
+                                "id": "hb#1.rx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:09:39.987877935+02:00",
+                                "created_at": "2024-07-08T19:09:39.987877935+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node2": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:07.888562019+02:00"
+                                    },
+                                    "node3": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:09:40.41123683+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            },
+                            {
+                                "id": "hb#1.tx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:09:39.988395081+02:00",
+                                "created_at": "2024-07-08T19:09:39.988395081+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node2": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:08.05359292+02:00"
+                                    },
+                                    "node3": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:09:40.235948118+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            }
+                        ]
+                    },
+                    "listener": {
+                        "id": "",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:09:39.970712169+02:00",
+                        "created_at": "2024-07-08T19:09:39.968197413+02:00",
+                        "updated_at": "2024-07-08T19:09:39.970712169+02:00",
+                        "addr": "::",
+                        "port": "1215"
+                    },
+                    "nodename": "node1",
+                    "pid": 1779120,
+                    "routines": 0,
+                    "started_at": "2024-07-08T19:09:39.866885307+02:00",
+                    "runner_imon": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    },
+                    "scheduler": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    }
+                }
+            },
+            "node2": {
+                "instance": {
+                    "cluster": {
+                        "config": {
+                            "csum": "9c96613e0ebc831c6dc34d1b67799334",
+                            "orchestrate": "",
+                            "placement_policy": "",
+                            "resources": {
+                                "cluster": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "hb#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "node": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "invalid",
+                            "updated_at": "2024-07-08T19:05:12.484268638+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:10:05.582325262+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "cluster": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "hb#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "node": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:05.927162927+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:10:05.923727322+02:00"
+                        }
+                    },
+                    "foo": {
+                        "config": {
+                            "app": "default",
+                            "csum": "ba666a6f843ae2321c188943f510c61a",
+                            "orchestrate": "ha",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "fs#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": 500000000
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T19:05:54.912076128+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "2024-07-08T19:06:44.453515722+02:00",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:10:06.063560366+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "fs#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:09.11896371+02:00"
+                        },
+                        "status": {
+                            "avail": "down",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "overall": "down",
+                            "provisioned": "true",
+                            "resources": {
+                                "fs#1": {
+                                    "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
+                                    "status": "down",
+                                    "type": "fs.flag",
+                                    "provisioned": {
+                                        "mtime": "2024-07-08T19:06:00.018766278+02:00",
+                                        "state": "true"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:06.056190678+02:00"
+                        }
+                    },
+                    "system/sec/ca": {
+                        "config": {
+                            "app": "default",
+                            "csum": "578274db2f241afb218f8ad3d7f4d003",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:58:58.709189881+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:10:05.600686135+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:05.918808287+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:10:05.91510981+02:00"
+                        }
+                    },
+                    "system/sec/cert": {
+                        "config": {
+                            "app": "default",
+                            "csum": "71ed5a2d3f3ef9d954e3103566ce2d9a",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:59:01.616902784+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:10:05.608129106+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:05.888545769+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:10:05.87350997+02:00"
+                        }
+                    }
+                },
+                "monitor": {
+                    "global_expect": "none",
+                    "local_expect": "none",
+                    "state": "idle",
+                    "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                    "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                    "state_updated_at": "2024-07-08T19:10:08.868286255+02:00",
+                    "updated_at": "0001-01-01T00:00:00Z",
+                    "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                    "orchestration_is_done": false,
+                    "session_id": "00000000-0000-0000-0000-000000000000",
+                    "preserved": false
+                },
+                "stats": {
+                    "load_15m": 0.2,
+                    "mem_avail": 76,
+                    "mem_total": 1987,
+                    "score": 96,
+                    "swap_avail": 100,
+                    "swap_total": 1961
+                },
+                "status": {
+                    "agent": "v3.0.0-alpha10-466-g85614ef4",
+                    "api": 0,
+                    "arbitrators": {},
+                    "compat": 0,
+                    "frozen_at": "0001-01-01T00:00:00Z",
+                    "gen": {
+                        "node1": 36,
+                        "node2": 28,
+                        "node3": 93
+                    },
+                    "min_avail_mem": 0,
+                    "min_avail_swap": 0,
+                    "is_leader": false,
+                    "labels": {}
+                },
+                "os": {
+                    "paths": [
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node2.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node2.storage.target.1",
+                                "type": "iscsi"
+                            }
+                        },
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node2.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node2.storage.target.2",
+                                "type": "iscsi"
+                            }
+                        }
+                    ]
+                },
+                "config": {
+                    "env": "TST",
+                    "maintenance_grace_period": 60000000000,
+                    "max_parallel": 10,
+                    "ready_period": 5000000000,
+                    "rejoin_grace_period": 90000000000,
+                    "split_action": "crash"
+                },
+                "daemon": {
+                    "collector": {
+                        "id": "collector",
+                        "state": "speaker-warning",
+                        "configured_at": "2024-07-08T19:13:31.005111804+02:00",
+                        "created_at": "2024-07-08T19:10:05.530372172+02:00",
+                        "updated_at": "2024-07-08T19:13:31.005316383+02:00",
+                        "url": "https://collector.vdc.opensvc.com"
+                    },
+                    "daemondata": {
+                        "id": "daemondata",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:10:05.527898832+02:00",
+                        "created_at": "2024-07-08T19:10:05.527898832+02:00",
+                        "updated_at": "2024-07-08T19:10:05.527898832+02:00",
+                        "queue_size": 0
+                    },
+                    "dns": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "nameservers": null
+                    },
+                    "heartbeat": {
+                        "last_messages": [
+                            {
+                                "from": "node1",
+                                "patch_length": 0,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node2",
+                                "patch_length": 0,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node3",
+                                "patch_length": 1,
+                                "type": "patch"
+                            }
+                        ],
+                        "last_message": {
+                            "from": "node2",
+                            "patch_length": 0,
+                            "type": "patch"
+                        },
+                        "streams": [
+                            {
+                                "id": "hb#1.rx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:10:05.576980619+02:00",
+                                "created_at": "2024-07-08T19:10:05.576980619+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node1": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:05.99911514+02:00"
+                                    },
+                                    "node3": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:05.988028525+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            },
+                            {
+                                "id": "hb#1.tx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:10:05.577905315+02:00",
+                                "created_at": "2024-07-08T19:10:05.577905315+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node1": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:05.817878799+02:00"
+                                    },
+                                    "node3": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:05.81794727+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            }
+                        ]
+                    },
+                    "listener": {
+                        "id": "",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:10:05.55421962+02:00",
+                        "created_at": "2024-07-08T19:10:05.547411808+02:00",
+                        "updated_at": "2024-07-08T19:10:05.55421962+02:00",
+                        "addr": "::",
+                        "port": "1215"
+                    },
+                    "nodename": "node2",
+                    "pid": 3410,
+                    "routines": 0,
+                    "started_at": "2024-07-08T19:10:05.382713008+02:00",
+                    "runner_imon": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    },
+                    "scheduler": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    }
+                }
+            },
+            "node3": {
+                "instance": {
+                    "cluster": {
+                        "config": {
+                            "csum": "9c96613e0ebc831c6dc34d1b67799334",
+                            "orchestrate": "",
+                            "placement_policy": "",
+                            "resources": {
+                                "cluster": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "hb#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                },
+                                "node": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "invalid",
+                            "updated_at": "2024-07-08T19:05:12.484268638+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:03:17.833155852+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "cluster": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "hb#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                },
+                                "node": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:05:14.364981418+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:05:14.293575722+02:00"
+                        }
+                    },
+                    "foo": {
+                        "config": {
+                            "app": "default",
+                            "csum": "ba666a6f843ae2321c188943f510c61a",
+                            "orchestrate": "ha",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "fs#1": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": 500000000
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T19:05:54.912076128+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "2024-07-08T19:06:44.453515722+02:00",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:06:45.342604242+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "fs#1": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:10:09.321163116+02:00"
+                        },
+                        "status": {
+                            "avail": "down",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "overall": "down",
+                            "provisioned": "true",
+                            "resources": {
+                                "fs#1": {
+                                    "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
+                                    "status": "down",
+                                    "type": "fs.flag",
+                                    "provisioned": {
+                                        "mtime": "2024-07-08T19:06:00.045950219+02:00",
+                                        "state": "true"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:06:45.342504306+02:00"
+                        }
+                    },
+                    "system/sec/ca": {
+                        "config": {
+                            "app": "default",
+                            "csum": "578274db2f241afb218f8ad3d7f4d003",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:58:58.709189881+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:03:17.833794179+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:03:18.103374863+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:03:18.097393871+02:00"
+                        }
+                    },
+                    "system/sec/cert": {
+                        "config": {
+                            "app": "default",
+                            "csum": "71ed5a2d3f3ef9d954e3103566ce2d9a",
+                            "orchestrate": "no",
+                            "placement_policy": "nodes order",
+                            "priority": 50,
+                            "resources": {
+                                "data": {
+                                    "is_disabled": false,
+                                    "is_monitored": false,
+                                    "is_standby": false,
+                                    "restart": 0,
+                                    "restart_delay": null
+                                }
+                            },
+                            "scope": [
+                                "node1",
+                                "node2",
+                                "node3"
+                            ],
+                            "subsets": {},
+                            "topology": "failover",
+                            "updated_at": "2024-07-08T18:59:01.616902784+02:00",
+                            "size": 0
+                        },
+                        "monitor": {
+                            "global_expect": "none",
+                            "global_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "global_expect_options": null,
+                            "is_leader": false,
+                            "is_ha_leader": false,
+                            "local_expect": "none",
+                            "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                            "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                            "orchestration_is_done": false,
+                            "session_id": "00000000-0000-0000-0000-000000000000",
+                            "state": "idle",
+                            "state_updated_at": "2024-07-08T19:03:17.834643071+02:00",
+                            "monitor_action_executed_at": "0001-01-01T00:00:00Z",
+                            "preserved": false,
+                            "resources": {
+                                "data": {
+                                    "restart": {
+                                        "remaining": 0,
+                                        "last_at": "0001-01-01T00:00:00Z"
+                                    }
+                                }
+                            },
+                            "updated_at": "2024-07-08T19:03:18.125055455+02:00"
+                        },
+                        "status": {
+                            "avail": "n/a",
+                            "frozen_at": "0001-01-01T00:00:00Z",
+                            "last_started_at": "0001-01-01T00:00:00Z",
+                            "optional": "n/a",
+                            "overall": "n/a",
+                            "provisioned": "undef",
+                            "updated_at": "2024-07-08T19:03:18.116025438+02:00"
+                        }
+                    }
+                },
+                "monitor": {
+                    "global_expect": "none",
+                    "local_expect": "none",
+                    "state": "idle",
+                    "global_expect_updated_at": "2024-07-08T19:06:46.857658819+02:00",
+                    "local_expect_updated_at": "0001-01-01T00:00:00Z",
+                    "state_updated_at": "2024-07-08T19:06:47.143820314+02:00",
+                    "updated_at": "0001-01-01T00:00:00Z",
+                    "orchestration_id": "00000000-0000-0000-0000-000000000000",
+                    "orchestration_is_done": false,
+                    "session_id": "00000000-0000-0000-0000-000000000000",
+                    "preserved": false
+                },
+                "stats": {
+                    "load_15m": 0.1,
+                    "mem_avail": 74,
+                    "mem_total": 1987,
+                    "score": 96,
+                    "swap_avail": 99,
+                    "swap_total": 1961
+                },
+                "status": {
+                    "agent": "v3.0.0-alpha10-466-g85614ef4",
+                    "api": 0,
+                    "arbitrators": {},
+                    "compat": 0,
+                    "frozen_at": "0001-01-01T00:00:00Z",
+                    "gen": {
+                        "node1": 36,
+                        "node2": 28,
+                        "node3": 93
+                    },
+                    "min_avail_mem": 0,
+                    "min_avail_swap": 0,
+                    "is_leader": false,
+                    "labels": {}
+                },
+                "os": {
+                    "paths": [
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node3.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node3.storage.target.1",
+                                "type": "iscsi"
+                            }
+                        },
+                        {
+                            "initiator": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node3.storage.initiator",
+                                "type": "iscsi"
+                            },
+                            "target": {
+                                "name": "iqn.2009-11.com.opensvc.srv:node3.storage.target.2",
+                                "type": "iscsi"
+                            }
+                        }
+                    ]
+                },
+                "config": {
+                    "env": "TST",
+                    "maintenance_grace_period": 60000000000,
+                    "max_parallel": 10,
+                    "ready_period": 5000000000,
+                    "rejoin_grace_period": 90000000000,
+                    "split_action": "crash"
+                },
+                "daemon": {
+                    "collector": {
+                        "id": "collector",
+                        "state": "speaker-candidate",
+                        "configured_at": "2024-07-08T19:14:08.617222814+02:00",
+                        "created_at": "2024-07-08T19:03:17.781313727+02:00",
+                        "updated_at": "2024-07-08T19:14:08.61745557+02:00",
+                        "url": "https://collector.vdc.opensvc.com"
+                    },
+                    "daemondata": {
+                        "id": "daemondata",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:03:17.779932873+02:00",
+                        "created_at": "2024-07-08T19:03:17.779932873+02:00",
+                        "updated_at": "2024-07-08T19:03:17.779932873+02:00",
+                        "queue_size": 0
+                    },
+                    "dns": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "nameservers": null
+                    },
+                    "heartbeat": {
+                        "last_messages": [
+                            {
+                                "from": "node1",
+                                "patch_length": 1,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node2",
+                                "patch_length": 0,
+                                "type": "patch"
+                            },
+                            {
+                                "from": "node3",
+                                "patch_length": 0,
+                                "type": "patch"
+                            }
+                        ],
+                        "last_message": {
+                            "from": "node3",
+                            "patch_length": 0,
+                            "type": "patch"
+                        },
+                        "streams": [
+                            {
+                                "id": "hb#1.rx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:03:17.815684749+02:00",
+                                "created_at": "2024-07-08T19:03:17.815684749+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node1": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:03:19.921195525+02:00"
+                                    },
+                                    "node2": {
+                                        "is_beating": false,
+                                        "last_at": "2024-07-08T19:10:07.873258707+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            },
+                            {
+                                "id": "hb#1.tx",
+                                "state": "running",
+                                "configured_at": "2024-07-08T19:03:17.821556419+02:00",
+                                "created_at": "2024-07-08T19:03:17.821556419+02:00",
+                                "updated_at": "0001-01-01T00:00:00Z",
+                                "type": "unicast",
+                                "peers": {
+                                    "node1": {
+                                        "is_beating": false,
+                                        "last_at": "2024-07-08T19:03:39.242869492+02:00"
+                                    },
+                                    "node2": {
+                                        "is_beating": true,
+                                        "last_at": "2024-07-08T19:10:08.041446629+02:00"
+                                    }
+                                },
+                                "alerts": []
+                            }
+                        ]
+                    },
+                    "listener": {
+                        "id": "",
+                        "state": "running",
+                        "configured_at": "2024-07-08T19:03:17.793191996+02:00",
+                        "created_at": "2024-07-08T19:03:17.790944444+02:00",
+                        "updated_at": "2024-07-08T19:03:17.793191996+02:00",
+                        "addr": "::",
+                        "port": "1215"
+                    },
+                    "nodename": "node3",
+                    "pid": 1733002,
+                    "routines": 0,
+                    "started_at": "2024-07-08T19:03:17.70630652+02:00",
+                    "runner_imon": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    },
+                    "scheduler": {
+                        "id": "",
+                        "state": "",
+                        "configured_at": "0001-01-01T00:00:00Z",
+                        "created_at": "0001-01-01T00:00:00Z",
+                        "updated_at": "0001-01-01T00:00:00Z",
+                        "count": 0
+                    }
+                }
+            }
+        }
+    },
+    "daemon": {
+        "nodename": "node3",
+        "pid": 1779120,
+        "routines": 100,
+        "started_at": "2024-07-08T19:09:39.866885307+02:00"
+    }
+}
