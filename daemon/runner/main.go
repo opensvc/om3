@@ -6,7 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -33,6 +35,7 @@ type (
 		bus        *pubsub.Bus
 		subQS      pubsub.QueueSizer
 		log        *plog.Logger
+		status     daemonsubsystem.RunnerImon
 	}
 )
 
@@ -78,6 +81,7 @@ func (t *T) run() {
 
 func (t *T) do(ctx context.Context) {
 	ticker := time.NewTicker(t.interval)
+
 	sub := t.startSubscriptions()
 	defer func() {
 		sub.Stop()
@@ -88,6 +92,8 @@ func (t *T) do(ctx context.Context) {
 	}()
 
 	t.maxRunning = node.ConfigData.Get(hostname.Hostname()).MaxParallel
+	t.status.MaxRunning = t.maxRunning
+	t.publishUpdate()
 
 	for {
 		select {
@@ -95,6 +101,11 @@ func (t *T) do(ctx context.Context) {
 			switch c := ev.(type) {
 			case *msgbus.NodeConfigUpdated:
 				t.maxRunning = c.Value.MaxParallel
+
+				if t.status.MaxRunning != t.maxRunning {
+					t.status.MaxRunning = t.maxRunning
+					t.publishUpdate()
+				}
 			}
 		case item := <-t.stage:
 			// serialize pushes
@@ -131,7 +142,11 @@ func New(subQS pubsub.QueueSizer) *T {
 		stage: make(chan Item),
 		queue: prioqueue.New(),
 		subQS: subQS,
-		log:   plog.NewDefaultLogger().Attr("pkg", "runner"),
+		log:   plog.NewDefaultLogger().Attr("pkg", "runner_imon"),
+
+		status: daemonsubsystem.RunnerImon{
+			Status: daemonsubsystem.Status{CreatedAt: time.Now(), ID: "runner_imon"},
+		},
 	}
 }
 
@@ -147,6 +162,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	t.wg.Add(1)
+	t.status.State = "running"
 	go t.do(t.ctx)
 	return nil
 }
@@ -167,6 +183,13 @@ func (t *T) SetMaxRunning(n int) {
 
 func (t *T) SetInterval(d time.Duration) {
 	t.interval = d
+}
+
+func (t *T) publishUpdate() {
+	t.status.UpdatedAt = time.Now()
+	localhost := hostname.Hostname()
+	daemonsubsystem.DataRunnerImon.Set(localhost, t.status.DeepCopy())
+	t.bus.Pub(&msgbus.DaemonRunnerImonUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
 }
 
 func Stop() error {
