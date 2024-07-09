@@ -86,6 +86,9 @@ func (t *T) do(ctx context.Context) {
 		t.cancel = nil
 		t.wg.Done()
 	}()
+
+	t.maxRunning = node.ConfigData.Get(hostname.Hostname()).MaxParallel
+
 	for {
 		select {
 		case ev := <-sub.C:
