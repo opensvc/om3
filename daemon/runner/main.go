@@ -83,12 +83,14 @@ func (t *T) do(ctx context.Context) {
 	ticker := time.NewTicker(t.interval)
 
 	sub := t.startSubscriptions()
+	t.log.Infof("started")
 	defer func() {
 		sub.Stop()
 		ticker.Stop()
 		t.ctx = nil
 		t.cancel = nil
 		t.wg.Done()
+		t.log.Infof("stopped")
 	}()
 
 	t.maxRunning = node.ConfigData.Get(hostname.Hostname()).MaxParallel
@@ -142,7 +144,7 @@ func New(subQS pubsub.QueueSizer) *T {
 		stage: make(chan Item),
 		queue: prioqueue.New(),
 		subQS: subQS,
-		log:   plog.NewDefaultLogger().Attr("pkg", "runner_imon"),
+		log:   plog.NewDefaultLogger().Attr("pkg", "runner_imon").WithPrefix("daemon: runner_imon: "),
 
 		status: daemonsubsystem.RunnerImon{
 			Status: daemonsubsystem.Status{CreatedAt: time.Now(), ID: "runner_imon"},
