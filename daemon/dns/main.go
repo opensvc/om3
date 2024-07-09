@@ -101,11 +101,10 @@ func (t *Manager) Start(parent context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.cluster = *cluster.ConfigData.Get()
-
 	t.bus = pubsub.BusFromContext(t.ctx)
 
 	t.startSubscriptions()
+	t.cluster = *cluster.ConfigData.Get()
 
 	if err := t.startUDSListener(); err != nil {
 		return err
