@@ -3,6 +3,7 @@ package dns
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
@@ -42,7 +43,27 @@ func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 
 func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
-	_ = t.sockChown()
+	change, err := t.sockChown()
+	if err != nil {
+		// TODO: change status.state to warning ? for om mon -w
+		t.log.Errorf("sock chown error: %s", err)
+	}
+	if change {
+		t.status.ConfiguredAt = time.Now()
+	}
+	if len(t.cluster.DNS) != len(t.status.Nameservers) {
+		change = true
+	} else {
+		for i := 0; i < len(t.status.Nameservers); i++ {
+			if t.cluster.DNS[i] != t.status.Nameservers[i] {
+				change = true
+				break
+			}
+		}
+	}
+	if change {
+		t.publishSubsystemDnsUpdated()
+	}
 }
 
 func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {

@@ -137,30 +137,30 @@ func (t *Manager) sockUID() (int, error) {
 	}
 }
 
-func (t *Manager) sockChown() error {
+// sockChown chown dns uds file and return bool true on changes
+func (t *Manager) sockChown() (bool, error) {
 	var uid, gid int
 	sockPath := rawconfig.DNSUDSFile()
 	if info, err := os.Stat(sockPath); os.IsNotExist(err) {
-		t.log.Warnf("sockpath doesn't exist: %s", sockPath)
-		return err
+		return false, err
 	} else if err != nil {
-		return err
+		return false, err
 	} else if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 		uid = int(stat.Uid)
 		gid = int(stat.Gid)
 	}
 	if sockUID, err := t.sockUID(); err != nil {
-		return err
+		return false, err
 	} else if sockGID, err := t.sockGID(); err != nil {
-		return err
+		return false, err
 	} else if (sockUID == uid) && (sockGID == gid) {
 		// no change
-		return nil
+		return false, nil
 	} else if err := os.Chown(sockPath, sockUID, sockGID); err != nil {
-		return err
+		return false, err
 	} else {
 		t.log.Infof("chown %d:%d %s", sockUID, sockGID, sockPath)
-		return nil
+		return true, nil
 	}
 }
 
@@ -179,8 +179,11 @@ func (t *Manager) startUDSListener() error {
 		return err
 	}
 
-	if err := t.sockChown(); err != nil {
-		return err
+	if changed, err := t.sockChown(); err != nil {
+		return fmt.Errorf("sock chown error: %s", err)
+	} else if changed {
+		t.status.ConfiguredAt = time.Now()
+		t.publishSubsystemDnsUpdated()
 	}
 
 	type PDNSResponse struct {
