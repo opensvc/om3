@@ -3400,10 +3400,14 @@ components:
         - type: object
           required:
             - count
+            - max_running
           properties:
             count:
               type: integer
               description: count of defined scheduled jobs
+            max_running:
+              type: integer
+              description: maximum number of running jobs
 
     DaemonSubsystemStatus:
       type: object

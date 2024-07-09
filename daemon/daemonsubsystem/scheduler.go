@@ -7,6 +7,9 @@ type (
 
 		// Count is the number of defined scheduled jobs
 		Count int `json:"count"`
+
+		// MaxRunning is the maximum number of running jobs
+		MaxRunning int `json:"max_running"`
 	}
 )
 
