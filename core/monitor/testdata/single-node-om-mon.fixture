@@ -1,6 +1,6 @@
 Threads                    node3         
  daemon                  | O             
- dns                     |               
+ dns                     | O             
  collector               | o             
  hb                      |               
  listener                | 2222          

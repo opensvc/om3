@@ -8,7 +8,7 @@
                 "node2",
                 "node3"
             ],
-            "dns": [],
+            "dns": ["192.168.0.2"],
             "ca_sec_paths": [],
             "listener": {
                 "crl": "/var/lib/opensvc/certs/ca_crl",
@@ -478,8 +478,8 @@
                         "queue_size": 0
                     },
                     "dns": {
-                        "id": "",
-                        "state": "",
+                        "id": "dns",
+                        "state": "running",
                         "configured_at": "0001-01-01T00:00:00Z",
                         "created_at": "0001-01-01T00:00:00Z",
                         "updated_at": "0001-01-01T00:00:00Z",
@@ -948,7 +948,7 @@
                         "queue_size": 0
                     },
                     "dns": {
-                        "id": "",
+                        "id": "dns",
                         "state": "",
                         "configured_at": "0001-01-01T00:00:00Z",
                         "created_at": "0001-01-01T00:00:00Z",
@@ -1418,8 +1418,8 @@
                         "queue_size": 0
                     },
                     "dns": {
-                        "id": "",
-                        "state": "",
+                        "id": "dns",
+                        "state": "running",
                         "configured_at": "0001-01-01T00:00:00Z",
                         "created_at": "0001-01-01T00:00:00Z",
                         "updated_at": "0001-01-01T00:00:00Z",
