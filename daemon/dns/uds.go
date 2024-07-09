@@ -141,7 +141,8 @@ func (t *Manager) sockChown() error {
 	var uid, gid int
 	sockPath := rawconfig.DNSUDSFile()
 	if info, err := os.Stat(sockPath); os.IsNotExist(err) {
-		return nil
+		t.log.Warnf("sockpath doesn't exist: %s", sockPath)
+		return err
 	} else if err != nil {
 		return err
 	} else if stat, ok := info.Sys().(*syscall.Stat_t); ok {
