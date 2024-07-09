@@ -92,11 +92,16 @@ type (
 	// remoteInfo struct holds information about remote node used to publish diff on full message received
 	remoteInfo struct {
 		collectorUpdated  time.Time
+		daemondataUpdated time.Time
+		dnsUpdated        time.Time
+		listenerUpdated   time.Time
+		runnerImon        time.Time
+		scheduler         time.Time
+
 		nmonUpdated       time.Time
 		nodeStats         node.Stats
 		nodeStatus        node.Status
 		nodeConfig        node.Config
-		listenerUpdated   time.Time
 		imonUpdated       map[string]time.Time
 		instConfigUpdated map[string]time.Time
 		instStatusUpdated map[string]time.Time
@@ -384,8 +389,12 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonDataUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonDnsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.DaemonListenerUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonRunnerImonUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
@@ -433,8 +442,12 @@ func localEventMustBeForwarded(i interface{}) bool {
 	switch i.(type) {
 	// daemon...
 	case *msgbus.DaemonCollectorUpdated:
+	case *msgbus.DaemonDataUpdated:
+	case *msgbus.DaemonDnsUpdated:
 	case *msgbus.DaemonHeartbeatUpdated:
 	case *msgbus.DaemonListenerUpdated:
+	case *msgbus.DaemonRunnerImonUpdated:
+	case *msgbus.DaemonSchedulerUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 	case *msgbus.InstanceConfigUpdated:

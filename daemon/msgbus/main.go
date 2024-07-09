@@ -22,10 +22,18 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 		data.onClusterConfigUpdated(c)
 	case *DaemonCollectorUpdated:
 		data.onDaemonCollector(c)
+	case *DaemonDataUpdated:
+		data.onDaemonDataUpdated(c)
+	case *DaemonDnsUpdated:
+		data.onDaemonDnsUpdated(c)
 	case *DaemonHeartbeatUpdated:
 		data.onDaemonHeartbeatUpdated(c)
 	case *DaemonListenerUpdated:
 		data.onDaemonListenerUpdated(c)
+	case *DaemonRunnerImonUpdated:
+		data.onDaemonRunnerImonUpdated(c)
+	case *DaemonSchedulerUpdated:
+		data.onDaemonSchedulerUpdated(c)
 	case *ForgetPeer:
 		data.onForgetPeer(c)
 	case *ObjectStatusDeleted:
