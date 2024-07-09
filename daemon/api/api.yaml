@@ -3386,10 +3386,10 @@ components:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
         - type: object
           properties:
-            count:
+            max_running:
               type: integer
           required:
-            - count
+            - max_running
 
     DaemonScheduler:
       description: |
