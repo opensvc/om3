@@ -72,6 +72,10 @@ func newNodeData(localNode string) node.Node {
 	frozen := file.ModTime(nodeFrozenFile)
 	now := time.Now()
 	nodeStatus := node.Node{
+		Config: node.Config{
+			// use initial default value
+			MaxParallel: object.DefaultNodeMaxParallel,
+		},
 		Instance: map[string]instance.Instance{},
 		Monitor: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,

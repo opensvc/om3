@@ -11,6 +11,10 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
+const (
+	DefaultNodeMaxParallel = 10
+)
+
 var nodePrivateKeywords = []keywords.Keyword{
 	{
 		Section: "node",
@@ -210,7 +214,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section:   "node",
 		Option:    "max_parallel",
-		Default:   "10",
+		Default:   fmt.Sprintf("%d", DefaultNodeMaxParallel),
 		Converter: converters.Int,
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
 	},
