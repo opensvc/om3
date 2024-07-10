@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -37,6 +38,10 @@ type (
 		wg sync.WaitGroup
 
 		subQS pubsub.QueueSizer
+
+		status daemonsubsystem.Scheduler
+
+		maxRunning int
 	}
 
 	Jobs map[string]Job
@@ -70,6 +75,11 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		jobs:        make(Jobs),
 		provisioned: make(map[naming.Path]bool),
 		subQS:       subQS,
+
+		status: daemonsubsystem.Scheduler{
+			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
+			MaxRunning: 5,
+		},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -256,6 +266,18 @@ func (t *T) loop() {
 		t.toggleEnabled(nodeMonitorData.State)
 	}
 
+	t.status.State = "running"
+	t.status.ConfiguredAt = time.Now()
+	if nodeConfig := node.ConfigData.Get(hostname.Hostname()); nodeConfig != nil {
+		if nodeConfig.MaxParallel > 0 {
+			t.maxRunning = nodeConfig.MaxParallel
+			t.status.MaxRunning = t.maxRunning
+			t.publishUpdate()
+		} else {
+			t.log.Warnf("ignore node config with MaxParallel value 0")
+		}
+	}
+
 	for {
 		select {
 		case ev := <-sub.C:
@@ -320,6 +342,17 @@ func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 }
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
+	if c.Value.MaxParallel > 0 {
+		t.maxRunning = c.Value.MaxParallel
+
+		if t.status.MaxRunning != t.maxRunning {
+			t.log.Infof("max running changed %d -> %d", t.status.MaxRunning, t.maxRunning)
+			t.status.MaxRunning = t.maxRunning
+			t.publishUpdate()
+		}
+	} else {
+		t.log.Warnf("on NodeConfigUpdated ignore MaxParallel value 0")
+	}
 	switch {
 	case t.enabled:
 		t.log.Infof("node: update schedules")
@@ -409,4 +442,11 @@ func (t *T) scheduleObject(p naming.Path) {
 
 func (t *T) unschedule(p naming.Path) {
 	t.jobs.DelPath(p)
+}
+
+func (t *T) publishUpdate() {
+	t.status.UpdatedAt = time.Now()
+	localhost := hostname.Hostname()
+	daemonsubsystem.DataScheduler.Set(localhost, t.status.DeepCopy())
+	t.pubsub.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
 }

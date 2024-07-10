@@ -5,7 +5,7 @@ type (
 	RunnerImon struct {
 		Status
 
-		Count int `json:"count"`
+		MaxRunning int `json:"max_running"`
 	}
 )
 

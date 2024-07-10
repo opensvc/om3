@@ -15,8 +15,10 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -62,6 +64,15 @@ type (
 		subQS pubsub.QueueSizer
 
 		wg sync.WaitGroup
+
+		// status is the daemon dns subsystem status
+		//    - state: "running" when started, or ""
+		//    - configured_at: is the time of last chown on dns socket
+		//    - updated_at: is the time of last update (chown on dns socket or NameServers)
+		//    - NameServers: is the list of name servers from the cluster dns configuration
+		status daemonsubsystem.Dns
+
+		localhost string
 	}
 
 	cmdGet struct {
@@ -93,6 +104,12 @@ func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 		state:         make(map[stateKey]Zone),
 		score:         make(map[string]uint64),
 		subQS:         subQS,
+
+		status: daemonsubsystem.Dns{
+			Status:      daemonsubsystem.Status{ID: "dns", CreatedAt: time.Now()},
+			Nameservers: make([]string, 0),
+		},
+		localhost: hostname.Hostname(),
 	}
 }
 
@@ -101,11 +118,12 @@ func (t *Manager) Start(parent context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.cluster = *cluster.ConfigData.Get()
-
 	t.bus = pubsub.BusFromContext(t.ctx)
 
+	t.status.State = "running"
+
 	t.startSubscriptions()
+	t.cluster = *cluster.ConfigData.Get()
 
 	if err := t.startUDSListener(); err != nil {
 		return err
@@ -118,6 +136,8 @@ func (t *Manager) Start(parent context.Context) error {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Errorf("subscription stop: %s", err)
 			}
+			t.status.State = ""
+			t.publishSubsystemDnsUpdated()
 			draincommand.Do(t.cmdC, t.drainDuration)
 		}()
 		t.worker()
@@ -182,6 +202,13 @@ func (t *Manager) worker() {
 			}
 		}
 	}
+}
+
+func (t *Manager) publishSubsystemDnsUpdated() {
+	t.status.UpdatedAt = time.Now()
+	t.status.Nameservers = append([]string{}, t.cluster.DNS...)
+	daemonsubsystem.DataDns.Set(t.localhost, t.status.DeepCopy())
+	t.bus.Pub(&msgbus.DaemonDnsUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 
 func GetZone() Zone {

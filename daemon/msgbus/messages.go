@@ -15,6 +15,12 @@
 //					- can update some caches
 //					- republish event with label from: peer
 //			- peer msgX may be published from full diff during applyNodeData
+//			- dropPeer may also publish associated messages:
+//	          examples:
+//	         	- drop peer node must also publish InstanceConfigDeleted, ...
+//	              => InstanceConfigUpdated needs publish InstanceConfigDeleted
+//				- drop peer node may publish empty DaemonXXXUpdated to reset
+//				  daemon subsystem state
 package msgbus
 
 import (
@@ -58,9 +64,17 @@ var (
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
+		"DaemonDataUpdated": func() any { return &DaemonDataUpdated{} },
+
+		"DaemonDnsUpdated": func() any { return &DaemonDnsUpdated{} },
+
 		"DaemonHeartbeatUpdated": func() any { return &DaemonHeartbeatUpdated{} },
 
 		"DaemonListenerUpdated": func() any { return &DaemonListenerUpdated{} },
+
+		"DaemonRunnerImonUpdated": func() any { return &DaemonRunnerImonUpdated{} },
+
+		"DaemonSchedulerUpdated": func() any { return &DaemonSchedulerUpdated{} },
 
 		"DaemonStart": func() any { return &DaemonStart{} },
 
@@ -277,6 +291,20 @@ type (
 		Action     string `json:"action" yaml:"action"`
 	}
 
+	DaemonDataUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.Daemondata `json:"daemondata" yaml:"daemondata"`
+	}
+
+	DaemonDnsUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.Dns `json:"dns" yaml:"dns"`
+	}
+
 	DaemonHeartbeatUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
@@ -288,6 +316,20 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string                   `json:"node" yaml:"node"`
 		Value      daemonsubsystem.Listener `json:"listener" yaml:"listener"`
+	}
+
+	DaemonRunnerImonUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.RunnerImon `json:"runner_imon" yaml:"runner_imon"`
+	}
+
+	DaemonSchedulerUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+
+		Value daemonsubsystem.Scheduler `json:"scheduler" yaml:"scheduler"`
 	}
 
 	DaemonStart struct {
@@ -808,12 +850,28 @@ func (e *DaemonCtl) Kind() string {
 	return "DaemonCtl"
 }
 
+func (e *DaemonDataUpdated) Kind() string {
+	return "DaemonDataUpdated"
+}
+
+func (e *DaemonDnsUpdated) Kind() string {
+	return "DaemonDnsUpdated"
+}
+
 func (e *DaemonHeartbeatUpdated) Kind() string {
 	return "DaemonHeartbeatUpdated"
 }
 
 func (e *DaemonListenerUpdated) Kind() string {
 	return "DaemonListenerUpdated"
+}
+
+func (e *DaemonRunnerImonUpdated) Kind() string {
+	return "DaemonRunnerImonUpdated"
+}
+
+func (e *DaemonSchedulerUpdated) Kind() string {
+	return "DaemonSchedulerUpdated"
 }
 
 func (e *DaemonStart) Kind() string {

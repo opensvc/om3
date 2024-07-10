@@ -3,6 +3,7 @@ package daemondata
 import (
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
@@ -39,7 +40,9 @@ func (d *data) setDaemonHeartbeat() {
 			Type:        d.hbMsgType[d.localNode],
 		},
 	}
-	d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: subHb}, d.labelLocalNode)
+	subHb.UpdatedAt = time.Now()
+	daemonsubsystem.DataHeartbeat.Set(d.localNode, subHb.DeepCopy())
+	d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, d.labelLocalNode)
 }
 
 func (d *data) setHbMsgPatchLength(node string, length int) {

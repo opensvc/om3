@@ -79,15 +79,16 @@ func (f Frame) wThreadScheduler() string {
 
 func (f Frame) wThreadDNS() string {
 	var s string
-	s += bold(" dns") + "\t"
-	if f.Current.Cluster.Node[f.Nodename].Daemon.Dns.State == "running" {
-		s += green("running") + "\t"
-	} else {
+	s += bold(" dns") + "\t\t\t" + f.info.separator + "\t"
+	for _, peer := range f.Current.Cluster.Config.Nodes {
+		switch f.Current.Cluster.Node[peer].Daemon.Dns.State {
+		case "running":
+			s += iconUp
+		default:
+			s += iconUndef
+		}
 		s += "\t"
 	}
-	s += "\t"
-	s += f.info.separator + "\t"
-	s += f.info.emptyNodes
 	return s
 }
 
@@ -140,7 +141,9 @@ func sThreadAlerts(data []daemonsubsystem.Alert) string {
 func (f Frame) wThreads() {
 	fmt.Fprintln(f.w, f.title("Threads"))
 	fmt.Fprintln(f.w, f.wThreadDaemon())
-	fmt.Fprintln(f.w, f.wThreadDNS())
+	if len(f.Current.Cluster.Config.DNS) > 0 {
+		fmt.Fprintln(f.w, f.wThreadDNS())
+	}
 	fmt.Fprintln(f.w, f.wThreadCollector())
 	fmt.Fprintln(f.w, f.wThreadHeartbeats())
 	fmt.Fprintln(f.w, f.wThreadListener())

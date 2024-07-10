@@ -136,11 +136,23 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.DaemonCollectorUpdated:
 		daemonsubsystem.DataCollector.Set(c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.DaemonDataUpdated:
+		daemonsubsystem.DataDaemondata.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.DaemonDnsUpdated:
+		daemonsubsystem.DataDns.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.DaemonHeartbeatUpdated:
 		daemonsubsystem.DataHeartbeat.Set(c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.DaemonListenerUpdated:
 		daemonsubsystem.DataListener.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.DaemonRunnerImonUpdated:
+		daemonsubsystem.DataRunnerImon.Set(c.Node, &c.Value)
+		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.DaemonSchedulerUpdated:
+		daemonsubsystem.DataScheduler.Set(c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
 	// instances...
 	case *msgbus.InstanceConfigDeleted:

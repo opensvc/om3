@@ -1,6 +1,6 @@
 Threads                                node1         node2         node3         
  daemon                              | O             O             O             
- dns                                 |                                           
+ dns                                 | O             ?             O             
  collector                           | O             X             o             
  hb                                  |                                           
   hb#1.rx          running unicast   | O             X             /             

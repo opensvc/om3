@@ -3275,6 +3275,7 @@ components:
         - streams
         - last_message
         - last_messages
+        - updated_at
       properties:
         streams:
           type: array
@@ -3293,6 +3294,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DaemonHeartbeatLastMessage'
+        updated_at:
+          type: string
+          format: date-time
 
     DaemonHeartbeatLastMessage:
       type: object
@@ -3386,10 +3390,10 @@ components:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
         - type: object
           properties:
-            count:
+            max_running:
               type: integer
           required:
-            - count
+            - max_running
 
     DaemonScheduler:
       description: |
@@ -3400,10 +3404,14 @@ components:
         - type: object
           required:
             - count
+            - max_running
           properties:
             count:
               type: integer
               description: count of defined scheduled jobs
+            max_running:
+              type: integer
+              description: maximum number of running jobs
 
     DaemonSubsystemStatus:
       type: object

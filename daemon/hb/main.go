@@ -317,13 +317,18 @@ func (t *T) msgToTx(ctx context.Context) error {
 		defer t.wg.Done()
 		defer t.log.Infof("multiplexer message to hb tx drivers stopped")
 		t.log.Infof("multiplexer message to hb tx drivers started")
-		defer func() {
-			if err := databus.SetHBSendQ(nil); err != nil {
-				t.log.Errorf("msgToTx can't unset daemondata HBSendQ: %s", err)
-			}
-		}()
 		registeredTxMsgQueue := make(map[string]chan []byte)
 		defer func() {
+			// We have to async ask daemondata to not anymore write to hbSendQ
+			// async because daemon data can be waiting on running queueNewHbMsg():
+			//    hbSendQ <- msg
+			go func() {
+				if err := databus.SetHBSendQ(nil); err != nil {
+					t.log.Errorf("msgToTx can't unset daemondata HBSendQ: %s", err)
+				}
+			}()
+
+			// drop pending data from hbSendQ (=> release daemondata queueNewHbMsg())
 			tC := time.After(daemonenv.DrainChanDuration)
 			for {
 				select {

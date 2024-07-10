@@ -47,7 +47,11 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 	result.nmonUpdated = nmonUpdated
 
 	result.collectorUpdated = c.Daemon.Collector.UpdatedAt
+	result.daemondataUpdated = c.Daemon.Daemondata.UpdatedAt
+	result.dnsUpdated = c.Daemon.Dns.UpdatedAt
 	result.listenerUpdated = c.Daemon.Listener.UpdatedAt
+	result.runnerImon = c.Daemon.RunnerImon.UpdatedAt
+	result.scheduler = c.Daemon.Scheduler.UpdatedAt
 
 	for p, inst := range c.Instance {
 		if inst.Status != nil {
@@ -83,7 +87,11 @@ func (d *data) pubPeerDataChanges(peer string) {
 	d.pubMsgFromNodeStatusDiffForNode(peer)
 	d.pubMsgFromNodeStatsDiffForNode(peer)
 	d.pubMsgFromNodeCollectorDiffForNode(peer, current)
+	d.pubMsgFromNodeDaemondataDiffForNode(peer, current)
+	d.pubMsgFromNodeDnsDiffForNode(peer, current)
 	d.pubMsgFromNodeListenerDiffForNode(peer, current)
+	d.pubMsgFromNodeRunnerImonDiffForNode(peer, current)
+	d.pubMsgFromNodeSchedulerDiffForNode(peer, current)
 	d.pubMsgFromNodeMonitorDiffForNode(peer, current)
 	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
 	d.previousRemoteInfo[peer] = *current
@@ -218,6 +226,38 @@ func (d *data) pubMsgFromNodeCollectorDiffForNode(peer string, current *remoteIn
 	}
 }
 
+func (d *data) pubMsgFromNodeDaemondataDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.daemondataUpdated.After(prevTimes.daemondataUpdated) {
+		a := d.clusterData.Cluster.Node[peer].Daemon.Daemondata
+		daemonsubsystem.DataDaemondata.Set(peer, a.DeepCopy())
+		d.bus.Pub(&msgbus.DaemonDataUpdated{Node: peer, Value: *a.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+		return
+	}
+}
+
+func (d *data) pubMsgFromNodeDnsDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.dnsUpdated.After(prevTimes.dnsUpdated) {
+		a := d.clusterData.Cluster.Node[peer].Daemon.Dns
+		daemonsubsystem.DataDns.Set(peer, a.DeepCopy())
+		d.bus.Pub(&msgbus.DaemonDnsUpdated{Node: peer, Value: *a.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+		return
+	}
+}
+
 func (d *data) pubMsgFromNodeListenerDiffForNode(peer string, current *remoteInfo) {
 	if current == nil {
 		return
@@ -227,6 +267,38 @@ func (d *data) pubMsgFromNodeListenerDiffForNode(peer string, current *remoteInf
 		found := d.clusterData.Cluster.Node[peer].Daemon.Listener
 		daemonsubsystem.DataListener.Set(peer, found.DeepCopy())
 		d.bus.Pub(&msgbus.DaemonListenerUpdated{Node: peer, Value: *found.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+		return
+	}
+}
+
+func (d *data) pubMsgFromNodeRunnerImonDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.runnerImon.After(prevTimes.runnerImon) {
+		a := d.clusterData.Cluster.Node[peer].Daemon.RunnerImon
+		daemonsubsystem.DataRunnerImon.Set(peer, a.DeepCopy())
+		d.bus.Pub(&msgbus.DaemonRunnerImonUpdated{Node: peer, Value: *a.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+		return
+	}
+}
+
+func (d *data) pubMsgFromNodeSchedulerDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.scheduler.After(prevTimes.scheduler) {
+		a := d.clusterData.Cluster.Node[peer].Daemon.Scheduler
+		daemonsubsystem.DataScheduler.Set(peer, a.DeepCopy())
+		d.bus.Pub(&msgbus.DaemonSchedulerUpdated{Node: peer, Value: *a.DeepCopy()},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
 		)
