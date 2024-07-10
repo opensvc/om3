@@ -602,6 +602,14 @@ func (t *Manager) refreshSanPaths() {
 }
 
 func (t *Manager) onDaemonListenerUpdated(m *msgbus.DaemonListenerUpdated) {
+	if m.Value.State == "stopped" {
+		// Don't update nodes info file when peer listener is stopped
+		// TODO: verify the skip update nodes info file rule
+		nodeInfo := t.cacheNodesInfo[m.Node]
+		nodeInfo.Lsnr.UpdatedAt = m.Value.UpdatedAt
+		nodeInfo.Lsnr.State = m.Value.State
+		return
+	}
 	nodeInfo := t.cacheNodesInfo[m.Node]
 	nodeInfo.Lsnr = m.Value
 	t.cacheNodesInfo[m.Node] = nodeInfo
