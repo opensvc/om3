@@ -105,6 +105,7 @@ func (d *data) dropPeer(peer string) {
 		d.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.DaemonDataUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.DaemonDnsUpdated{Node: peer}, peerLabels...)
+		d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.DaemonListenerUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.DaemonRunnerImonUpdated{Node: peer}, peerLabels...)
 		d.bus.Pub(&msgbus.DaemonSchedulerUpdated{Node: peer}, peerLabels...)
