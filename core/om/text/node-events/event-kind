@@ -1,9 +1,12 @@
  cluster:
     - ClusterConfigUpdated, ClusterStatusUpdated
-    - JoinError, JoinIgnored, JoinRequest, JoinSuccess, LeaveError, LeaveIgnored, LeaveRequest, LeaveSuccess
+    - JoinError, JoinIgnored, JoinRequest, JoinSuccess, LeaveError,
+      LeaveIgnored, LeaveRequest, LeaveSuccess
     - ArbitratorError, ForgetPeer, forget_peer
  config file updates: ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
- daemon: DaemonCollectorUpdated, DaemonCtl, DaemonHeartbeatUpdated, DaemonListenerUpdated, DaemonStart
+ daemon: DaemonCollectorUpdated, DaemonCtl, DaemonDataUpdated,
+         DaemonDnsUpdated, DaemonHeartbeatUpdated, DaemonListenerUpdated,
+         DaemonRunnerImonUpdated, DaemonSchedulerUpdated, DaemonStart
  dns: ZoneRecordDeleted, ZoneRecordUpdated
  execs: Exec, ExecFailed, ExecSuccess
  heartbeat: HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated
@@ -12,13 +15,18 @@
    - InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
    - InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated
    - InstanceStatusDeleted, InstanceStatusPost, InstanceStatusUpdated
-   - ProgressInstanceMonitor, SetInstanceMonitor, SetInstanceMonitorRefused, SetNodeMonitor
+   - ProgressInstanceMonitor, SetInstanceMonitor, SetInstanceMonitorRefused,
+     SetNodeMonitor
  node:
-    - NodeConfigUpdated, NodeDataUpdated, NodeFrozen, NodeFrozenFileRemoved, NodeFrozenFileUpdated
+    - NodeConfigUpdated, NodeDataUpdated, NodeFrozen, NodeFrozenFileRemoved,
+      NodeFrozenFileUpdated
     - NodeMonitorDeleted, NodeMonitorUpdated
     - NodeOsPathsUpdated
     - NodeRejoin, NodeSplitAction
-    - NodeStatsUpdated, NodeStatusArbitratorsUpdated, NodeStatusGenUpdates, NodeStatusLabelsUpdated, NodeStatusUpdated
- object: ObjectOrchestrationEnd, ObjectOrchestrationRefused, ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
- pubsub client: ClientSubscribed, ClientUnsubscribed, SubscriptionError, SubscriptionQueueThreshold
+    - NodeStatsUpdated, NodeStatusArbitratorsUpdated, NodeStatusGenUpdates,
+      NodeStatusLabelsUpdated, NodeStatusUpdated
+ object: ObjectOrchestrationEnd, ObjectOrchestrationRefused,
+         ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
+ pubsub client: ClientSubscribed, ClientUnsubscribed, SubscriptionError,
+                SubscriptionQueueThreshold
  dummy: Exit, Log, WatchDog
