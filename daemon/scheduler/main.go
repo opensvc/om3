@@ -76,7 +76,10 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		provisioned: make(map[naming.Path]bool),
 		subQS:       subQS,
 
-		status: daemonsubsystem.Scheduler{Status: daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"}},
+		status: daemonsubsystem.Scheduler{
+			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
+			MaxRunning: 5,
+		},
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -265,10 +268,14 @@ func (t *T) loop() {
 
 	t.status.State = "running"
 	t.status.ConfiguredAt = time.Now()
-	if nodeConfigData := node.ConfigData.Get(t.localhost); nodeConfigData != nil {
-		t.maxRunning = nodeConfigData.MaxParallel
-		t.status.MaxRunning = t.maxRunning
-		t.publishUpdate()
+	if nodeConfig := node.ConfigData.Get(hostname.Hostname()); nodeConfig != nil {
+		if nodeConfig.MaxParallel > 0 {
+			t.maxRunning = nodeConfig.MaxParallel
+			t.status.MaxRunning = t.maxRunning
+			t.publishUpdate()
+		} else {
+			t.log.Warnf("ignore node config with MaxParallel value 0")
+		}
 	}
 
 	for {
@@ -335,11 +342,16 @@ func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 }
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
-	t.maxRunning = c.Value.MaxParallel
+	if c.Value.MaxParallel > 0 {
+		t.maxRunning = c.Value.MaxParallel
 
-	if t.status.MaxRunning != t.maxRunning {
-		t.status.MaxRunning = t.maxRunning
-		t.publishUpdate()
+		if t.status.MaxRunning != t.maxRunning {
+			t.log.Infof("max running changed %d -> %d", t.status.MaxRunning, t.maxRunning)
+			t.status.MaxRunning = t.maxRunning
+			t.publishUpdate()
+		}
+	} else {
+		t.log.Warnf("on NodeConfigUpdated ignore MaxParallel value 0")
 	}
 	switch {
 	case t.enabled:

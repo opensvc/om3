@@ -93,20 +93,33 @@ func (t *T) do(ctx context.Context) {
 		t.log.Infof("stopped")
 	}()
 
-	t.maxRunning = node.ConfigData.Get(hostname.Hostname()).MaxParallel
-	t.status.MaxRunning = t.maxRunning
+	if nodeConfig := node.ConfigData.Get(hostname.Hostname()); nodeConfig != nil {
+		if nodeConfig.MaxParallel > 0 {
+			t.maxRunning = nodeConfig.MaxParallel
+			t.status.MaxRunning = t.maxRunning
+		} else {
+			t.log.Warnf("ignore node config with MaxParallel value 0")
+		}
+	}
+
 	t.publishUpdate()
+	t.log.Infof("started with interval %s, max running: %d", t.interval, t.maxRunning)
 
 	for {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
 			case *msgbus.NodeConfigUpdated:
-				t.maxRunning = c.Value.MaxParallel
+				if c.Value.MaxParallel > 0 {
+					t.maxRunning = c.Value.MaxParallel
 
-				if t.status.MaxRunning != t.maxRunning {
-					t.status.MaxRunning = t.maxRunning
-					t.publishUpdate()
+					if t.status.MaxRunning != t.maxRunning {
+						t.log.Infof("max running changed %d -> %d", t.status.MaxRunning, t.maxRunning)
+						t.status.MaxRunning = t.maxRunning
+						t.publishUpdate()
+					}
+				} else {
+					t.log.Warnf("on NodeConfigUpdated ignore MaxParallel value 0")
 				}
 			}
 		case item := <-t.stage:
