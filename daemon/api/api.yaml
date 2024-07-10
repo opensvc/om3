@@ -3275,6 +3275,7 @@ components:
         - streams
         - last_message
         - last_messages
+        - updated_at
       properties:
         streams:
           type: array
@@ -3293,6 +3294,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DaemonHeartbeatLastMessage'
+        updated_at:
+          type: string
+          format: date-time
 
     DaemonHeartbeatLastMessage:
       type: object

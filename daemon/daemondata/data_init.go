@@ -32,6 +32,7 @@ func newData() *data {
 	node.GenData.Set(localNode, &nodeData.Status.Gen)
 
 	daemonsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
+	daemonsubsystem.DataHeartbeat.Set(localNode, &nodeData.Daemon.Heartbeat)
 
 	status := cluster.Data{
 		Cluster: cluster.Cluster{

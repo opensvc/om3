@@ -18,6 +18,8 @@ type (
 
 		// Streams list of daemon heartbeat streams
 		Streams []HeartbeatStream `json:"streams"`
+
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 
 	HeartbeatLastMessage struct {
