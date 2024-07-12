@@ -18,6 +18,8 @@ import (
 var (
 	ErrNodeCollectorConfig       = errors.New("collector is not configured: empty configuration keyword node.dbopensvc")
 	ErrNodeCollectorUnregistered = errors.New("this node is not registered. try 'om node register'")
+
+	defaultPostCollectorTimeout = 1 * time.Second
 )
 
 func (t Node) CollectorFeedClient() (*collector.Client, error) {

@@ -2,8 +2,10 @@ package object
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,27 +55,43 @@ func (t Node) LoadPkg() ([]packages.Pkg, error) {
 }
 
 func (t Node) pushPkg(data []packages.Pkg) error {
+	var (
+		req  *http.Request
+		resp *http.Response
+
+		ioReader io.Reader
+
+		method = http.MethodPost
+		path   = "/oc3/feed/system"
+	)
 	oc3, err := t.CollectorClient()
 	if err != nil {
 		return err
 	}
 
-	b, err := json.Marshal(map[string]any{"package": data})
-	if err != nil {
+	if b, err := json.Marshal(map[string]any{"package": data}); err != nil {
 		return fmt.Errorf("encode request body: %w", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
 	}
 
-	method := http.MethodPost
-	path := "/oc3/feed/system"
+	ctx, cancel := context.WithTimeout(context.Background(), defaultPostCollectorTimeout)
+	defer cancel()
 
-	response, err := oc3.DoRequest(method, path, bytes.NewBuffer(b))
+	req, err = oc3.NewRequestWithContext(ctx, method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("create collector request %s %s: %w", method, path, err)
+	}
+
+	resp, err = oc3.Do(req)
 	if err != nil {
 		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusAccepted {
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
-			method, path, http.StatusAccepted, response.StatusCode)
+			method, path, http.StatusAccepted, resp.StatusCode)
 	}
 	return nil
 }
