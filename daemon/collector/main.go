@@ -90,8 +90,7 @@ type (
 	requester interface {
 		URL() string
 		Do(*http.Request) (*http.Response, error)
-		DoRequest(method string, relPath string, body io.Reader) (*http.Response, error)
-		NewRequest(method string, relPath string, body io.Reader) (*http.Request, error)
+		NewRequestWithContext(ctx context.Context, method string, relPath string, body io.Reader) (*http.Request, error)
 	}
 
 	clusterDataer interface {
@@ -155,6 +154,9 @@ var (
 	WatchDir = filepath.Join(rawconfig.Paths.Log, "actions")
 
 	FeedPingerInterval = time.Second * 5
+
+	// defaultPostMaxDuration is the max duration of post request context.
+	defaultPostMaxDuration = 1000 * time.Millisecond
 )
 
 func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {

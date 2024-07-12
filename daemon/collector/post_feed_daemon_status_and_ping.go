@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -58,15 +59,31 @@ func (t *T) postPing() error {
 		t.dropChanges()
 		return nil
 	}
+	var (
+		req  *http.Request
+		resp *http.Response
+
+		err error
+
+		method = http.MethodPost
+		path   = "/oc3/feed/daemon/ping"
+	)
 	instances := make([]string, 0, len(t.instances))
 	for k := range t.instances {
 		instances = append(instances, k)
 	}
 	now := time.Now()
-	method := http.MethodPost
-	path := "/oc3/feed/daemon/ping"
+
+	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	defer cancel()
+
+	req, err = t.client.NewRequestWithContext(ctx, method, path, nil)
+	if err != nil {
+		return fmt.Errorf("%s %s create request: %w", method, path, err)
+	}
+
 	t.log.Debugf("%s %s", method, path)
-	resp, err := t.client.DoRequest(method, path, nil)
+	resp, err = t.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -96,9 +113,15 @@ func (t *T) postChanges() error {
 		return nil
 	}
 	var (
+		req  *http.Request
+		resp *http.Response
+
 		ioReader io.Reader
-		method   = http.MethodPost
-		path     = "/oc3/feed/daemon/changes"
+
+		err error
+
+		method = http.MethodPost
+		path   = "/oc3/feed/daemon/changes"
 	)
 	now := time.Now()
 
@@ -108,8 +131,16 @@ func (t *T) postChanges() error {
 		ioReader = bytes.NewBuffer(b)
 	}
 
+	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	defer cancel()
+
+	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("%s %s create request: %w", method, path, err)
+	}
+
 	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
-	resp, err := t.client.DoRequest(method, path, ioReader)
+	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("post daemon change call: %w", err)
 	}
@@ -162,8 +193,10 @@ func (t *T) postStatus() error {
 		ioReader = bytes.NewBuffer(b)
 	}
 
-	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
-	req, err = t.client.NewRequest(method, path, ioReader)
+	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	defer cancel()
+
+	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
 	if err != nil {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
@@ -171,6 +204,7 @@ func (t *T) postStatus() error {
 	req.Header.Set(headerPreviousUpdatedAt, t.previousUpdatedAt.Format(time.RFC3339Nano))
 	req.Header.Set(headerDaemonChange, strings.Join(xmap.Keys(t.daemonStatusChange), " "))
 
+	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s %s: %w", method, path, err)

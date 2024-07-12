@@ -3,6 +3,7 @@
 package httphelper
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -64,11 +65,15 @@ func NewHttpsClient(insecure bool) *http.Client {
 }
 
 func (t *T) NewRequest(method string, relPath string, body io.Reader) (*http.Request, error) {
+	return t.NewRequestWithContext(context.Background(), method, relPath, body)
+}
+
+func (t *T) NewRequestWithContext(ctx context.Context, method string, relPath string, body io.Reader) (*http.Request, error) {
 	if t == nil {
 		return nil, fmt.Errorf("new request from undef httphelper")
 	}
 	if t.factory == nil {
 		return nil, fmt.Errorf("new request from undef request factory")
 	}
-	return t.factory.NewRequest(method, relPath, body)
+	return t.factory.NewRequestWithContext(ctx, method, relPath, body)
 }
