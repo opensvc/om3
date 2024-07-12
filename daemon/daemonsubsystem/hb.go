@@ -58,7 +58,7 @@ type (
 )
 
 func (c *Heartbeat) DeepCopy() *Heartbeat {
-	streams := make([]HeartbeatStream, len(c.Streams))
+	streams := make([]HeartbeatStream, 0, len(c.Streams))
 	for _, stream := range c.Streams {
 		streams = append(streams, *stream.DeepCopy())
 	}
