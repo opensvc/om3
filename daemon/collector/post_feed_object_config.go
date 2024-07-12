@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -110,10 +111,26 @@ func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
 	if t.client == nil {
 		return nil
 	}
-	method := http.MethodPost
-	path := "/oc3/feed/object/config"
+	var (
+		req  *http.Request
+		resp *http.Response
+
+		err error
+
+		method = http.MethodPost
+		path   = "/oc3/feed/object/config"
+	)
+
+	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	defer cancel()
+
+	req, err = t.client.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
+	if err != nil {
+		return fmt.Errorf("%s %s create request: %w", method, path, err)
+	}
+
 	t.log.Infof("%s %s %s@%s", method, path, p, nodename)
-	resp, err := t.client.DoRequest(method, path, bytes.NewBuffer(b))
+	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s %s: %s", method, path, err)
 	}
