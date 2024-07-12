@@ -2,6 +2,7 @@
 package requestfactory
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,13 +24,17 @@ func New(server *url.URL, header http.Header) *T {
 }
 
 func (r *T) NewRequest(method, relPath string, body io.Reader) (req *http.Request, err error) {
+	return r.NewRequestWithContext(context.Background(), method, relPath, body)
+}
+
+func (r *T) NewRequestWithContext(ctx context.Context, method, relPath string, body io.Reader) (req *http.Request, err error) {
 	var url *url.URL
 	url, err = r.URL.Parse(r.URL.JoinPath(relPath).String())
 	if err != nil {
 		return
 	}
 
-	req, err = http.NewRequest(method, url.String(), body)
+	req, err = http.NewRequestWithContext(ctx, method, url.String(), body)
 	if err != nil {
 		return
 	}
