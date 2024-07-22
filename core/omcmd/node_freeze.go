@@ -55,7 +55,7 @@ func (t *CmdNodeFreeze) doRemote() error {
 			} else {
 				switch resp.StatusCode() {
 				case http.StatusOK:
-					fmt.Printf("%s: %s\n", nodename, *resp.JSON200)
+					fmt.Printf("node %s: action started with SID=%s\n", nodename, (*resp.JSON200).SessionID)
 				case 401:
 					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON401)
 				case 403:
