@@ -122,13 +122,13 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		}
 		// sanity check the state value
 		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
-			err := fmt.Errorf("%w: %s", node.ErrInvalidState, *c.Value.State)
+			err := fmt.Errorf("%w %s", node.ErrInvalidState, *c.Value.State)
 			t.log.Warnf("%s", err)
 			return err
 		}
 
 		if t.state.State == *c.Value.State {
-			err := fmt.Errorf("%w: state is already %s", node.ErrSameState, *c.Value.State)
+			err := fmt.Errorf("%w %s", node.ErrSameState, *c.Value.State)
 			t.log.Infof("%s", err)
 			return err
 		}
@@ -145,13 +145,13 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		}
 		// sanity check the local expect value
 		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
-			err := fmt.Errorf("%w: %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", node.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			t.log.Warnf("%s", err)
 			return err
 		}
 
 		if t.state.LocalExpect == *c.Value.LocalExpect {
-			err := fmt.Errorf("%w: %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", node.ErrSameLocalExpect, *c.Value.LocalExpect)
 			t.log.Infof("%s", err)
 			return err
 		}
@@ -173,17 +173,17 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range t.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
-					err := fmt.Errorf("%w: %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
+					err := fmt.Errorf("%w %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					t.log.Infof("%s", err)
 					return err
 				}
 				if !data.State.IsRankable() {
-					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
+					err := fmt.Errorf("%w %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					t.log.Errorf("%s", err)
 					return err
 				}
 				if data.State.IsDoing() {
-					err := fmt.Errorf("%w: %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
+					err := fmt.Errorf("%w %s: node %s state is %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, nodename, data.State)
 					t.log.Errorf("%s", err)
 					return err
 				}

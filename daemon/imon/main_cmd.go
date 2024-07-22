@@ -467,16 +467,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return nil
 		}
 		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
 		}
 		if *c.Value.State == instance.MonitorStateZero {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			return err
 		}
 		if t.state.State == *c.Value.State {
-			err := fmt.Errorf("%w: %s", instance.ErrSameState, *c.Value.State)
+			err := fmt.Errorf("%w %s", instance.ErrSameState, *c.Value.State)
 			t.log.Infof("set instance monitor: %s", err)
 			return err
 		}
@@ -499,7 +499,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return nil
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
 			t.log.Warnf("set instance monitor: %s", err)
 			globalExpectRefused()
 			return err
@@ -593,13 +593,13 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorLocalExpectStarted:
 		case instance.MonitorLocalExpectShutdown:
 		default:
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
 		}
 		target := *c.Value.LocalExpect
 		if t.state.LocalExpect == target {
-			err := fmt.Errorf("%w: %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
 			t.log.Infof("set instance monitor: %s", err)
 			return err
 		}

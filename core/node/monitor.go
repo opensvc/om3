@@ -100,7 +100,7 @@ var (
 		MonitorStateShutdownFailed: "shutdown failed",
 		MonitorStateShutting:       "shutting",
 		MonitorStateMaintenance:    "maintenance",
-		MonitorStateZero:           "",
+		MonitorStateZero:           "empty",
 		MonitorStateUpgrade:        "upgrade",
 		MonitorStateRejoin:         "rejoin",
 	}
@@ -119,19 +119,19 @@ var (
 		"shutdown failed": MonitorStateShutdownFailed,
 		"shutting":        MonitorStateShutting,
 		"maintenance":     MonitorStateMaintenance,
-		"":                MonitorStateZero,
+		"empty":           MonitorStateZero,
 		"upgrade":         MonitorStateUpgrade,
 		"rejoin":          MonitorStateRejoin,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
-		MonitorLocalExpectZero:    "",
+		MonitorLocalExpectZero:    "empty",
 		MonitorLocalExpectDrained: "drained",
 		MonitorLocalExpectNone:    "none",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
-		"":        MonitorLocalExpectZero,
+		"empty":   MonitorLocalExpectZero,
 		"drained": MonitorLocalExpectDrained,
 		"none":    MonitorLocalExpectNone,
 	}
@@ -141,7 +141,7 @@ var (
 		MonitorGlobalExpectFrozen:  "frozen",
 		MonitorGlobalExpectNone:    "none",
 		MonitorGlobalExpectThawed:  "thawed",
-		MonitorGlobalExpectZero:    "",
+		MonitorGlobalExpectZero:    "empty",
 	}
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
@@ -149,7 +149,7 @@ var (
 		"frozen":  MonitorGlobalExpectFrozen,
 		"none":    MonitorGlobalExpectNone,
 		"thawed":  MonitorGlobalExpectThawed,
-		"":        MonitorGlobalExpectZero,
+		"empty":   MonitorGlobalExpectZero,
 	}
 
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
@@ -265,4 +265,18 @@ func (t *Monitor) Unstructured() map[string]any {
 		"orchestration_is_done":    t.OrchestrationIsDone,
 		"session_id":               t.SessionID,
 	}
+}
+
+func (t MonitorUpdate) String() string {
+	s := fmt.Sprintf("CandidateOrchestrationID=%s", t.CandidateOrchestrationID)
+	if t.State != nil {
+		s += fmt.Sprintf(" State=%s", t.State)
+	}
+	if t.LocalExpect != nil {
+		s += fmt.Sprintf(" LocalExpect=%s", t.LocalExpect)
+	}
+	if t.GlobalExpect != nil {
+		s += fmt.Sprintf(" GlobalExpect=%s", t.GlobalExpect)
+	}
+	return fmt.Sprintf("node.MonitorUpdate{%s}", s)
 }

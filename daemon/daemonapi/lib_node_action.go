@@ -22,10 +22,10 @@ func JSONFromSetNodeMonitorError(eCtx echo.Context, value *node.MonitorUpdate, e
 	case err == nil:
 		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
 	case errors.Is(err, context.DeadlineExceeded):
-		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set node monitor", "timeout publishing the node %s expectation", *value)
+		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set node monitor", "timeout publishing %s", *value)
 	case errors.Is(err, context.Canceled):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set node monitor", "client context canceled")
 	default:
-		return JSONProblemf(eCtx, http.StatusConflict, "set node monitor", "expectation %s: %s", *value, err)
+		return JSONProblemf(eCtx, http.StatusConflict, "set node monitor", "%s", err)
 	}
 }

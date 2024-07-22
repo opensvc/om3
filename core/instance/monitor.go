@@ -190,11 +190,11 @@ var (
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
 		MonitorStateWaitParents:       "wait parents",
-		MonitorStateZero:              "",
+		MonitorStateZero:              "empty",
 	}
 
 	MonitorStateValues = map[string]MonitorState{
-		"":                   MonitorStateZero,
+		"empty":              MonitorStateZero,
 		"booted":             MonitorStateBooted,
 		"boot failed":        MonitorStateBootFailed,
 		"booting":            MonitorStateBooting,
@@ -235,20 +235,20 @@ var (
 		MonitorLocalExpectStarted:  "started",
 		MonitorLocalExpectShutdown: "shutdown",
 		MonitorLocalExpectNone:     "none",
-		MonitorLocalExpectZero:     "",
+		MonitorLocalExpectZero:     "empty",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
 		"shutdown": MonitorLocalExpectShutdown,
 		"started":  MonitorLocalExpectStarted,
 		"none":     MonitorLocalExpectNone,
-		"":         MonitorLocalExpectZero,
+		"empty":    MonitorLocalExpectZero,
 	}
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
 		MonitorGlobalExpectAborted:       "aborted",
 		MonitorGlobalExpectDeleted:       "deleted",
-		MonitorGlobalExpectZero:          "",
+		MonitorGlobalExpectZero:          "empty",
 		MonitorGlobalExpectFrozen:        "frozen",
 		MonitorGlobalExpectNone:          "none",
 		MonitorGlobalExpectPlaced:        "placed",
@@ -265,7 +265,7 @@ var (
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted":       MonitorGlobalExpectAborted,
 		"deleted":       MonitorGlobalExpectDeleted,
-		"":              MonitorGlobalExpectZero,
+		"empty":         MonitorGlobalExpectZero,
 		"frozen":        MonitorGlobalExpectFrozen,
 		"placed":        MonitorGlobalExpectPlaced,
 		"placed@":       MonitorGlobalExpectPlacedAt,
@@ -286,7 +286,7 @@ var (
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 
-	MonitorActionNone       MonitorAction = ""
+	MonitorActionNone       MonitorAction = "empty"
 	MonitorActionCrash      MonitorAction = "crash"
 	MonitorActionFreezeStop MonitorAction = "freeze_stop"
 	MonitorActionReboot     MonitorAction = "reboot"
@@ -504,4 +504,21 @@ func (t ResourceMonitors) Unstructured() map[string]map[string]any {
 		m[k] = v.Unstructured()
 	}
 	return m
+}
+
+func (t MonitorUpdate) String() string {
+	s := fmt.Sprintf("CandidateOrchestrationID=%s", t.CandidateOrchestrationID)
+	if t.State != nil {
+		s += fmt.Sprintf(" State=%s", t.State)
+	}
+	if t.LocalExpect != nil {
+		s += fmt.Sprintf(" LocalExpect=%s", t.LocalExpect)
+	}
+	if t.GlobalExpect != nil {
+		s += fmt.Sprintf(" GlobalExpect=%s", t.GlobalExpect)
+	}
+	if t.GlobalExpectOptions != nil {
+		s += fmt.Sprintf(" GlobalExpectOptions=%#v", t.GlobalExpectOptions)
+	}
+	return fmt.Sprintf("instance.MonitorUpdate{%s}", s)
 }
