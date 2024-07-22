@@ -217,6 +217,12 @@ func (t *Manager) onArbitratorTicker() {
 }
 
 func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
+	// normally the NodeMonitorDeleted event handler deletes the
+	// nodeMonitor cache entry, but if the node is dropped before
+	// we receive any hb from it, no NodeMonitorDeleted is published.
+	// A ForgetPeer event is always published though.
+	delete(t.nodeMonitor, c.Node)
+
 	delete(t.livePeers, c.Node)
 
 	delete(t.cacheNodesInfo, c.Node)
