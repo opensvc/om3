@@ -465,17 +465,17 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		// probably testing
 		return nil
 	}
+	var errs error
 	for _, run := range mgr.Apply(t.GetPGID()) {
 		if !run.Changed {
 			continue
 		}
+		t.Log().Debugf("applied %s", run.Config)
 		if run.Err != nil {
-			return run.Err
-		} else {
-			t.Log().Infof("applied %s", run.Config)
+			errs = errors.Join(errs, run.Err)
 		}
 	}
-	return nil
+	return errs
 }
 
 // SetObject holds the useful interface of the parent object of the resource.

@@ -91,6 +91,8 @@ func (t *Manager) orchestrate() {
 		t.orchestratePlacedAt()
 	case instance.MonitorGlobalExpectPurged:
 		t.orchestratePurged()
+	case instance.MonitorGlobalExpectRestarted:
+		t.orchestrateRestarted()
 	case instance.MonitorGlobalExpectStarted:
 		t.orchestrateStarted()
 	case instance.MonitorGlobalExpectStopped:

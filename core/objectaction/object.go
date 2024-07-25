@@ -547,6 +547,27 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON500)
 				}
 			}
+		case instance.MonitorGlobalExpectRestarted:
+			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				}
+			}
 		case instance.MonitorGlobalExpectStarted:
 			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
@@ -679,6 +700,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON500)
 				}
 			}
+		default:
+			return fmt.Errorf("unexpected global expect: %s", target)
 		}
 		var r result
 		if err != nil {

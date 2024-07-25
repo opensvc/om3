@@ -96,6 +96,7 @@ const (
 	MonitorStateBootFailed
 	MonitorStateBooting
 	MonitorStateIdle
+	MonitorStateInterrupted
 	MonitorStateDeleted
 	MonitorStateDeleteFailed
 	MonitorStateDeleting
@@ -107,6 +108,7 @@ const (
 	MonitorStateProvisionFailed
 	MonitorStatePurgeFailed
 	MonitorStateReady
+	MonitorStateRestarted
 	MonitorStateRunning
 	MonitorStateShutdownFailed
 	MonitorStateShutdown
@@ -127,6 +129,7 @@ const (
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
 	MonitorStateWaitParents
+	MonitorStateWaitPriors
 )
 
 const (
@@ -165,11 +168,13 @@ var (
 		MonitorStateFreezing:          "freezing",
 		MonitorStateFrozen:            "frozen",
 		MonitorStateIdle:              "idle",
+		MonitorStateInterrupted:       "interrupted",
 		MonitorStateProvisioned:       "provisioned",
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
 		MonitorStateReady:             "ready",
+		MonitorStateRestarted:         "restarted",
 		MonitorStateRunning:           "running",
 		MonitorStateShutdown:          "shutdown",
 		MonitorStateShutdownFailed:    "shutdown failed",
@@ -190,6 +195,7 @@ var (
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
 		MonitorStateWaitParents:       "wait parents",
+		MonitorStateWaitPriors:        "wait priors",
 		MonitorStateZero:              "empty",
 	}
 
@@ -199,6 +205,7 @@ var (
 		"boot failed":        MonitorStateBootFailed,
 		"booting":            MonitorStateBooting,
 		"idle":               MonitorStateIdle,
+		"interrupted":        MonitorStateInterrupted,
 		"deleted":            MonitorStateDeleted,
 		"deleting":           MonitorStateDeleting,
 		"freeze failed":      MonitorStateFreezeFailed,
@@ -209,6 +216,7 @@ var (
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
 		"ready":              MonitorStateReady,
+		"restarted":          MonitorStateRestarted,
 		"running":            MonitorStateRunning,
 		"shutdown":           MonitorStateShutdown,
 		"shutdown failed":    MonitorStateShutdownFailed,
@@ -229,6 +237,7 @@ var (
 		"wait leader":        MonitorStateWaitLeader,
 		"wait non-leader":    MonitorStateWaitNonLeader,
 		"wait parents":       MonitorStateWaitParents,
+		"wait priors":        MonitorStateWaitPriors,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{

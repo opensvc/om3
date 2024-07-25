@@ -76,6 +76,9 @@ type (
 		localhost   string
 		change      bool
 
+		// priors is the list of peer instance nodenames that need restarting before we can restart locally
+		priors []string
+
 		sub *pubsub.Subscription
 
 		pubsubBus *pubsub.Bus
@@ -183,6 +186,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		nodeMonitor:   make(map[string]node.Monitor),
 		nodeStats:     make(map[string]node.Stats),
 		nodeStatus:    make(map[string]node.Status),
+		priors:        make([]string, 0),
 		localhost:     localhost,
 		scopeNodes:    nodes,
 		change:        true,
