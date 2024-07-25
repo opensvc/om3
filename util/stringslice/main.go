@@ -17,6 +17,17 @@ func Index(s string, l []string) int {
 	return -1
 }
 
+// Remove returns a slice containing the elements of <slice> except <element>
+func Remove[T comparable](slice []T, element T) []T {
+	var result []T
+	for _, item := range slice {
+		if item != element {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // Equal returns a boolean reporting whether a == b
 func Equal(a, b []string) bool {
 	if len(a) != len(b) {
