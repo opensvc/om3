@@ -319,8 +319,11 @@ func (t T) notifyRunDone() error {
 
 func (t T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "run",
-		Option: "schedule",
-		Base:   "",
+		Action:              "run",
+		Option:              "schedule",
+		Base:                "",
+		RequireConfirmation: t.Confirmation,
+		RequireProvisioned:  true,
+		RequireCollector:    false,
 	}
 }
