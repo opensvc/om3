@@ -73,6 +73,9 @@ func (t *actor) Schedules() schedule.Table {
 		if !needResMon && r.IsMonitored() {
 			needResMon = true
 		}
+		if r.IsDisabled() {
+			continue
+		}
 		if i, ok := r.(scheduleOptioner); ok {
 			opts := i.ScheduleOptions()
 			rid := r.RID()
