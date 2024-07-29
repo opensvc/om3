@@ -371,6 +371,12 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
+		case c.Ref == "object.encapnodes":
+			if nodes, err := t.EncapNodes(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
+				return err
+			}
 		case c.Ref == "object.nodes":
 			if nodes, err := t.Nodes(); err != nil {
 				return err
