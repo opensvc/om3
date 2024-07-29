@@ -28,6 +28,7 @@ func (t T) Manifest() *manifest.T {
 	m.Add(
 		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
+		manifest.ContextEncapNodes,
 		manifest.ContextPeers,
 		manifest.ContextDNS,
 		manifest.ContextTopology,
