@@ -867,7 +867,7 @@ func (t Array) DelZvol(name string) (*Dataset, error) {
 	if !ok {
 		return nil, fmt.Errorf("dataset not found")
 	}
-	path := fmt.Sprintf("/pool/dataset/%s", dataset.Id)
+	path := fmt.Sprintf("/pool/dataset/id/%s", dataset.Id)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return dataset, err
@@ -881,7 +881,7 @@ func (t Array) DelZvol(name string) (*Dataset, error) {
 }
 
 func (t Array) delISCSIExtent(extent ISCSIExtent) error {
-	path := fmt.Sprintf("/iscsi/extent/%d", extent.Id)
+	path := fmt.Sprintf("/iscsi/extent/id/%d", extent.Id)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
@@ -903,7 +903,7 @@ func (t Array) DelISCSIExtent(opt DelISCSIExtentOptions) (*ISCSIExtent, error) {
 	if opt.Id >= 0 {
 		extent = extents.GetById(opt.Id)
 	} else if opt.Name != "" {
-		extent = extents.GetByPath("zvol/" + opt.Name)
+		extent = extents.GetByName(opt.Name)
 	}
 	if extent == nil {
 		return nil, fmt.Errorf("extent %v not found (%d scanned)", opt, len(extents))
