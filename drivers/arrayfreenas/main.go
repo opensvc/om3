@@ -1717,14 +1717,21 @@ func (t Array) addISCSIPortal(params CreateISCSIPortalParams) (*ISCSIPortal, err
 }
 
 func (t *Array) client() *http.Client {
-	return &http.Client{
+	c := http.Client{
 		Timeout: t.timeout(),
-		Transport: &http.Transport{
+	}
+	u, err := url.Parse(t.api())
+	if err != nil {
+		return &c
+	}
+	if u.Scheme == "https" {
+		c.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: t.insecure(),
 			},
-		},
+		}
 	}
+	return &c
 }
 
 func basicAuth(username, password string) string {

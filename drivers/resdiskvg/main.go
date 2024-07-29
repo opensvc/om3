@@ -50,6 +50,9 @@ type (
 	VGDriverWiper interface {
 		Wipe() error
 	}
+	VGDriverImportDeviceser interface {
+		ImportDevices() error
+	}
 )
 
 func New() resource.Driver {
@@ -193,6 +196,13 @@ func (t T) ExposedDevices() device.L {
 
 func (t T) ClaimedDevices() device.L {
 	return t.SubDevices()
+}
+
+func (t *T) ImportDevices() error {
+	if vgi, ok := t.vg().(VGDriverImportDeviceser); ok {
+		return vgi.ImportDevices()
+	}
+	return nil
 }
 
 func (t *T) ReservableDevices() device.L {

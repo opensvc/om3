@@ -6,14 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/fcache"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sizeconv"
@@ -73,6 +76,32 @@ func (t *VG) Activate() error {
 
 func (t *VG) Deactivate() error {
 	return t.change([]string{"-an"})
+}
+
+func (t *VG) ImportDevices() error {
+	if v, err := file.ExistsAndRegular("/etc/lvm/devices/system.devices"); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+	cmd := command.New(
+		command.WithName("vgimportdevices"),
+		command.WithVarArgs(t.VGName),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	err := cmd.Run()
+	if pathErr, ok := err.(*os.PathError); ok && pathErr.Err == syscall.ENOENT {
+		return nil
+	}
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
 }
 
 func (t *VG) change(args []string) error {
