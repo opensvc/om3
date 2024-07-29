@@ -1046,6 +1046,13 @@ func (t *Manager) doTransitionAction(action func() error, newState, successState
 	}
 }
 
+func (t *Manager) queueLastAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	_ = runner.Run(t.instConfig.Priority, func() error {
+		t.doLastAction(action, newState, successState, errorState)
+		return nil
+	})
+}
+
 func (t *Manager) queueAction(action func() error, newState, successState, errorState instance.MonitorState) {
 	_ = runner.Run(t.instConfig.Priority, func() error {
 		t.doAction(action, newState, successState, errorState)
@@ -1064,6 +1071,16 @@ func (t *Manager) doAction(action func() error, newState, successState, errorSta
 	if action() != nil {
 		nextState = errorState
 	}
+	go t.orchestrateAfterAction(newState, nextState)
+}
+
+func (t *Manager) doLastAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	t.transitionTo(newState)
+	nextState := successState
+	if action() != nil {
+		nextState = errorState
+	}
+	t.done()
 	go t.orchestrateAfterAction(newState, nextState)
 }
 
