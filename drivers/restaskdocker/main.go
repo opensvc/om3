@@ -70,8 +70,7 @@ type T struct {
 	UTSNS           string         `json:"utsns"`
 	RegistryCreds   string         `json:"registry_creds"`
 	PullTimeout     *time.Duration `json:"pull_timeout"`
-	StartTimeout    *time.Duration `json:"start_timeout"`
-	StopTimeout     *time.Duration `json:"stop_timeout"`
+	Timeout         *time.Duration `json:"timeout"`
 
 	RetCodes string `json:"retcodes"`
 
@@ -131,7 +130,7 @@ func (t T) Container() *rescontainerdocker.T {
 		UTSNS:                     t.UTSNS,
 		RegistryCreds:             t.RegistryCreds,
 		PullTimeout:               t.PullTimeout,
-		StartTimeout:              t.StartTimeout,
+		StartTimeout:              t.Timeout,
 	}
 }
 
@@ -176,6 +175,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	// TODO: if t.LogOutputs {}
 	container := t.Container()
 	if err := container.Start(ctx); err != nil {
+		t.Log().Errorf("%s", err)
 		return err
 	}
 	inspect, err := container.Inspect(ctx)
