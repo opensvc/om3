@@ -189,30 +189,10 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	if s, err := t.ExitCodeToStatus(inspect.State.ExitCode); err != nil {
 		return err
 	} else if s != status.Up {
-		/* ? TODO:
-		if err := t.onError(); err != nil {
-			t.Log().Warnf("on error: %s", err)
-		}
-		*/
 		return fmt.Errorf("command exited with code %d", inspect.State.ExitCode)
 	}
 	return nil
 }
-
-/*
-func (t T) onError() error {
-	opts, err := t.GetFuncOpts(t.OnErrorCmd, "on_error")
-	if err != nil {
-		return err
-	}
-	if len(opts) == 0 {
-		return nil
-	}
-	cmd := command.New(opts...)
-	t.Log().Infof("on error run")
-	return cmd.Run()
-}
-*/
 
 func (t *T) Kill(ctx context.Context) error {
 	return t.Container().Signal(syscall.SIGKILL)
