@@ -788,7 +788,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section: "array",
 		Types:   []string{"hoc"},
 		Option:  "wwid_prefix",
-		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.wwid_prefix"),
+		Text:    keywords.NewText(fs, "text/kw/node/array.hoc.wwid_prefix"),
 	},
 	{
 		Section: "pool",

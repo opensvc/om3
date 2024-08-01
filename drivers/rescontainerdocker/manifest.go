@@ -71,7 +71,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:   true,
 			Candidates: []string{"once", "always"},
 			Example:    "once",
-			Text:       keywords.NewText(fs, "text/kw/virtinst"),
+			Text:       keywords.NewText(fs, "text/kw/image_pull_policy"),
 		},
 		keywords.Keyword{
 			Option:   "cwd",

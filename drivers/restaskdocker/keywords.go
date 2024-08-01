@@ -99,7 +99,7 @@ var (
 			Scopable:   true,
 			Candidates: []string{"once", "always"},
 			Example:    "once",
-			Text:       keywords.NewText(fs, "text/kw/virtinst"),
+			Text:       keywords.NewText(fs, "text/kw/image_pull_policy"),
 		},
 		{
 			Option:   "cwd",
