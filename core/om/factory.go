@@ -1069,7 +1069,8 @@ func newCmdNodeDrivers() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsGlobalColor(flags, &options.OptsGlobal)
+	addFlagsGlobalOutput(flags, &options.OptsGlobal)
 	return cmd
 }
 
