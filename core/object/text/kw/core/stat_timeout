@@ -1,0 +1,5 @@
+The fs resources status evaluation includes a stat syscall test.
+This keyword defines the maximum wait time for those stat calls to respond.
+
+When expired, the resource status is degraded is to warn, which can trigger
+a monitor action (reboot or crash the node) if the resource is monitored.
