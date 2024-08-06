@@ -30,9 +30,7 @@ type (
 		Set(context.Context, ...keyop.T) error
 		Update(context.Context, []string, []key.T, []keyop.T) error
 		Unset(context.Context, ...key.T) error
-		Doc(string, string) (string, error)
-		DriverDoc(string) (string, error)
-		KeywordDoc(string) (string, error)
+		Doc(string, string, int) (string, error)
 	}
 
 	scheduler interface {

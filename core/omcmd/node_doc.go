@@ -10,6 +10,7 @@ type (
 		OptsGlobal
 		Keyword string
 		Driver  string
+		Depth   int
 	}
 )
 
@@ -17,21 +18,12 @@ func (t *CmdNodeDoc) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
 			}
-			switch {
-			case t.Driver != "":
-				return n.DriverDoc(t.Driver)
-			case t.Keyword != "":
-				return n.KeywordDoc(t.Keyword)
-			default:
-				return "", nil
-			}
+			return n.Doc(t.Driver, t.Keyword, t.Depth)
 		}),
 	).Do()
 }

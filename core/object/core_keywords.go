@@ -372,6 +372,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "subset",
 		Option:    "parallel",
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Scopable:  true,
 		Converter: converters.Bool,
 		Text:      keywords.NewText(fs, "text/kw/core/parallel"),

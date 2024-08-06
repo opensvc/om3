@@ -23,9 +23,11 @@ type (
 )
 
 // NewSvc allocates a svc kind object.
-func NewSvc(p naming.Path, opts ...funcopt.O) (*svc, error) {
+func NewSvc(path naming.Path, opts ...funcopt.O) (*svc, error) {
 	s := &svc{}
-	err := s.init(s, p, opts...)
+	s.path = path
+	s.path.Kind = naming.KindSvc
+	err := s.init(s, path, opts...)
 	return s, err
 }
 

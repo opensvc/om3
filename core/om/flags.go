@@ -124,6 +124,10 @@ func addFlagCron(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "cron", false, "Run the action as if executed by the daemon. For example, the run action requirements error message are disabled.")
 }
 
+func addFlagDepth(flagSet *pflag.FlagSet, p *int) {
+	flagSet.IntVar(p, "depth", 0, "Format markdown titles so they can be rooted inside a chapter nested at the specified depth.")
+}
+
 func addFlagDevRoles(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "roles", "all", "Display only devices matching these roles all=exposed,sub,base.")
 }
