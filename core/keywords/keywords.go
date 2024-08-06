@@ -247,7 +247,7 @@ func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, dept
 	if len(cfgL) > 0 {
 		buff += fmt.Sprint("Minimal configlet:\n\n")
 		if driver.NewGroup(section) == driver.GroupUnknown {
-			buff += fmt.Sprintf("\t[%s]\n")
+			buff += fmt.Sprintf("\t[%s]\n", section)
 		} else {
 			buff += fmt.Sprintf("\t[%s#1]\n", section)
 		}
