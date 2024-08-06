@@ -1,5 +1,7 @@
 package naming
 
+import "strings"
+
 type (
 	// Kind is opensvc object kind.
 	Kind string
@@ -104,4 +106,13 @@ func (t Kinds) Or(kinds ...Kind) Kinds {
 		t[kind] = nil
 	}
 	return t
+}
+
+func (t Kinds) String() string {
+	l := make([]string, len(t))
+	i := 0
+	for key := range t {
+		l[i] = key.String()
+	}
+	return strings.Join(l, "|")
 }
