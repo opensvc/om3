@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/resourceset"
@@ -85,8 +86,8 @@ func (t *actor) PG() *pg.Config {
 	return t.pg
 }
 
-func (t *actor) init(referrer xconfig.Referrer, p any, opts ...funcopt.O) error {
-	if err := t.core.init(referrer, p, opts...); err != nil {
+func (t *actor) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt.O) error {
+	if err := t.core.init(referrer, path, opts...); err != nil {
 		return err
 	}
 	t.pg = t.pgConfig("")

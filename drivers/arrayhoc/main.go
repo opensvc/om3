@@ -18,6 +18,7 @@ import (
 
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/sizeconv"
 )
@@ -838,7 +839,11 @@ func (t *Array) sec() (object.Sec, error) {
 	if err != nil {
 		return nil, err
 	}
-	return object.NewSec(s, object.WithVolatile(true))
+	path, err := naming.ParsePath(s)
+	if err != nil {
+		return nil, err
+	}
+	return object.NewSec(path, object.WithVolatile(true))
 }
 
 func (t *Array) password() (string, error) {

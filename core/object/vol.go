@@ -36,9 +36,11 @@ type (
 )
 
 // NewVol allocates a vol kind object.
-func NewVol(p any, opts ...funcopt.O) (*vol, error) {
+func NewVol(path naming.Path, opts ...funcopt.O) (*vol, error) {
 	s := &vol{}
-	err := s.init(s, p, opts...)
+	s.path = path
+	s.path.Kind = naming.KindVol
+	err := s.init(s, path, opts...)
 	return s, err
 }
 

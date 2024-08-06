@@ -36,9 +36,11 @@ func NewCluster(opts ...funcopt.O) (*Ccfg, error) {
 }
 
 // newCcfg allocates a ccfg kind object.
-func newCcfg(p any, opts ...funcopt.O) (*Ccfg, error) {
+func newCcfg(path naming.Path, opts ...funcopt.O) (*Ccfg, error) {
 	s := &Ccfg{}
-	err := s.init(s, p, opts...)
+	s.path = path
+	s.path.Kind = naming.KindCcfg
+	err := s.init(s, path, opts...)
 	return s, err
 }
 

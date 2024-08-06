@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
@@ -37,11 +38,13 @@ type (
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(p any, opts ...funcopt.O) (*sec, error) {
+func NewSec(path naming.Path, opts ...funcopt.O) (*sec, error) {
 	s := &sec{}
+	s.path = path
+	s.path.Kind = naming.KindSec
 	s.customEncode = secEncode
 	s.customDecode = secDecode
-	if err := s.init(s, p, opts...); err != nil {
+	if err := s.init(s, path, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)

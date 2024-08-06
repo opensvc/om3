@@ -30,11 +30,13 @@ type (
 )
 
 // NewUsr allocates a usr kind object.
-func NewUsr(p any, opts ...funcopt.O) (*usr, error) {
+func NewUsr(path naming.Path, opts ...funcopt.O) (*usr, error) {
 	s := &usr{}
+	s.path = path
+	s.path.Kind = naming.KindUsr
 	s.customEncode = secEncode
 	s.customDecode = secDecode
-	if err := s.init(s, p, opts...); err != nil {
+	if err := s.init(s, path, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
