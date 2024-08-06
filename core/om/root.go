@@ -188,7 +188,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
-	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server. scheme https|tls.")
+	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
 	root.PersistentFlags().StringVar(&logFlag, "log", "", "Display logs on the console at the specified level.")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
 }

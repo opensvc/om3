@@ -48,7 +48,7 @@ func addFlagsGlobalLog(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 }
 
 func addFlagsGlobalServer(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme https|tls.")
+	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server.")
 }
 
 func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
