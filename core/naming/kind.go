@@ -88,6 +88,9 @@ func NewKinds(kinds ...Kind) Kinds {
 }
 
 func (t Kinds) Has(kind Kind) bool {
+	if kind == KindInvalid {
+		return true
+	}
 	if t == nil {
 		return true
 	}
