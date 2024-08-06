@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 )
 
 type (
@@ -17,6 +18,7 @@ type (
 	//
 	T struct {
 		DriverID driver.ID `json:"driver"`
+		Kinds    naming.Kinds
 		Attrs    map[string]Attr
 	}
 
@@ -109,6 +111,7 @@ func New(did driver.ID, r any) *T {
 	t := &T{
 		DriverID: did,
 		Attrs:    make(map[string]Attr),
+		Kinds:    make(naming.Kinds),
 	}
 	t.Add(genericKeywords...)
 	t.AddInterfacesKeywords(r)

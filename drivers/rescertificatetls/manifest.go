@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 )
 
 var (
@@ -22,6 +23,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		keywords.Keyword{
 			Option:   "certificate_secret",
