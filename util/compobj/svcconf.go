@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"encoding/json"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -194,7 +195,7 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	if filter == "" {
 		return true
 	}
-	o, err := object.NewConfigurer(svcName)
+	o, err := object.NewConfigurer(naming.Parse(svcName))
 	var op, leftFilter, rightFilter string
 	if err != nil {
 		t.Errorf("can't create an configurer obj: %s\n", err)
