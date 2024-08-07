@@ -575,14 +575,6 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/unprovision_timeout"),
 	},
 	{
-		Option:    "run_timeout",
-		Attr:      "RunTimeout",
-		Converter: converters.Duration,
-		Scopable:  true,
-		Example:   "1m30s",
-		Text:      keywords.NewText(fs, "text/kw/core/run_timeout"),
-	},
-	{
 		Option:    "sync_timeout",
 		Attr:      "SyncTimeout",
 		Converter: converters.Duration,

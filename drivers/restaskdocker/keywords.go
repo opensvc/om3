@@ -295,6 +295,15 @@ var (
 			Default:  "0:up 1:down",
 			Example:  "0:up 1:down 3:warn 4: n/a 5:undef",
 		},
+		{
+			Option:    "run_timeout",
+			Attr:      "RunTimeout",
+			Converter: converters.Duration,
+			Scopable:  true,
+			Example:   "1m30s",
+			Text:      keywords.NewText(fs, "text/kw/run_timeout"),
+		},
+
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 	}

@@ -71,5 +71,13 @@ var (
 			Converter: converters.Bool,
 			Text:      keywords.NewText(fs, "text/kw/confirmation"),
 		},
+		{
+			Option:    "run_timeout",
+			Attr:      "RunTimeout",
+			Converter: converters.Duration,
+			Scopable:  true,
+			Example:   "1m30s",
+			Text:      keywords.NewText(fs, "text/kw/run_timeout"),
+		},
 	}
 )
