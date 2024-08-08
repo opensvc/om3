@@ -84,7 +84,7 @@ func (t *Manager) initRelationAvailStatus() {
 	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
-			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation)
+			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation, err)
 		} else if node == "" {
 			t.log.Infof("init relation subscribe to %s %s object avail status updates and deletes", name, objectPath)
 			t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
@@ -93,7 +93,7 @@ func (t *Manager) initRelationAvailStatus() {
 				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
 				cache[relationS] = st.Avail
 			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", t.path, name, relation, status.Undef)
+				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
 				cache[relationS] = status.Undef
 			}
 		} else {
