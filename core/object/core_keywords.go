@@ -246,16 +246,6 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Section:    "DEFAULT",
-		Option:     "constraints",
-		Inherit:    keywords.InheritHead,
-		Scopable:   true,
-		Deprecated: "2.1",
-		Example:    "$(\"{nodename}\"==\"n2.opensvc.com\")",
-		Depends:    keyop.ParseList("orchestrate=ha"),
-		Text:       keywords.NewText(fs, "text/kw/core/constraints"),
-	},
-	{
-		Section:    "DEFAULT",
 		Option:     "placement",
 		Scopable:   false,
 		Inherit:    keywords.InheritHead,

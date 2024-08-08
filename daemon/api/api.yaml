@@ -3919,7 +3919,6 @@ components:
       type: object
       required:
         - avail
-        - constraints
         - csum
         - frozen_at
         - last_started_at
@@ -3934,8 +3933,6 @@ components:
       properties:
         avail:
           $ref: '#/components/schemas/Status'
-        constraints:
-          type: boolean
         csum:
           type: string
         frozen_at:

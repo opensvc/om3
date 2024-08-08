@@ -112,11 +112,6 @@ func (t States) descString() string {
 		l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
 	}
 
-	// Constraints
-	if t.Status.Constraints {
-		l = append(l, rawconfig.Colorize.Error("constraints-violation"))
-	}
-
 	// Provisioned
 	switch t.Status.Provisioned {
 	case provisioned.False:
