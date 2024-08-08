@@ -471,7 +471,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
 		}
-		if *c.Value.State == instance.MonitorStateZero {
+		if *c.Value.State == instance.MonitorStateInit {
 			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			return err
 		}
@@ -555,7 +555,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			if instMon.GlobalExpect == *c.Value.GlobalExpect {
 				continue
 			}
-			if instMon.GlobalExpect == instance.MonitorGlobalExpectZero {
+			if instMon.GlobalExpect == instance.MonitorGlobalExpectInit {
 				continue
 			}
 			if instMon.GlobalExpect == instance.MonitorGlobalExpectNone {
@@ -772,7 +772,7 @@ func (t *Manager) isStarted() bool {
 }
 
 func (t *Manager) needOrchestrate(c cmdOrchestrate) {
-	if c.state == instance.MonitorStateZero {
+	if c.state == instance.MonitorStateInit {
 		return
 	}
 	select {
