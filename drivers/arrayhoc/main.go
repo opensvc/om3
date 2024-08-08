@@ -154,7 +154,7 @@ type (
 		Description                   string                       `json:"description,omitempty"`
 		IpAddress                     *string                      `json:"ipAddress,omitempty"`
 		WWPNs                         []string                     `json:"wwpns,omitempty"`
-		wwpnsWithUserDefinedName      []hocWWPNWithUserDefinedName `json:"wwpnsWithUserDefinedName,omitempty"`
+		WWPNsWithUserDefinedName      []hocWWPNWithUserDefinedName `json:"wwpnsWithUserDefinedName,omitempty"`
 		ISCSINames                    []any                        `json:"iscsiNames,omitempty"`
 		ISCSINamesWithUserDefinedName []any                        `json:"iscsiNamesWithUserDefinedName,omitempty"`
 		OSType                        string                       `json:"osType,omitempty"`
@@ -226,7 +226,7 @@ type (
 		LUNs                             []int                               `json:"luns,omitempty"`
 		NumberOfLunPaths                 int                                 `json:"numberOfLunPaths,omitempty"`
 		DkcDataSavingType                string                              `json:"dkcDataSavingType,omitempty"`
-		virtualStorageMachineInformation hocVirtualStorageMachineInformation `json:"virtualStorageMachineInformation,omitempty"`
+		VirtualStorageMachineInformation hocVirtualStorageMachineInformation `json:"virtualStorageMachineInformation,omitempty"`
 		ResourceGroupId                  int                                 `json:"resourceGroupId,omitempty"`
 		ResourceGroupName                string                              `json:"resourceGroupName,omitempty"`
 		AluaEnabled                      bool                                `json:"aluaEnabled,omitempty"`
@@ -962,7 +962,6 @@ func (t *Array) DoJob(req *http.Request) (hocJob, error) {
 		}
 	}
 
-	return job, fmt.Errorf("unexpected")
 }
 
 func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {

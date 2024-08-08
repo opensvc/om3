@@ -207,7 +207,7 @@ type (
 	SGShort struct {
 		XMLName   xml.Name `xml:"SG" json:"-"`
 		GroupName string   `xml:"group_name" json:"group_name"`
-		Status    string   `xml:"Status" json:Status"`
+		Status    string   `xml:"Status" json:"Status"`
 	}
 
 	//
