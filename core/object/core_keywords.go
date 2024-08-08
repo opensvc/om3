@@ -283,14 +283,6 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Section:   "DEFAULT",
-		Option:    "check_carrier",
-		Scopable:  true,
-		Default:   "true",
-		Converter: converters.Bool,
-		Text:      keywords.NewText(fs, "text/kw/core/check_carrier"),
-	},
-	{
-		Section:   "DEFAULT",
 		Option:    "flex_min",
 		Aliases:   []string{"flex_min_nodes"},
 		Default:   "1",
