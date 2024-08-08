@@ -235,8 +235,16 @@ func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, dept
 	cfgL := make([]string, 0)
 	cmdL := make([]string, 0)
 
+	if typ != "" {
+		cfgL = append(cfgL, fmt.Sprintf("\t%s = %s\n", "type", typ))
+		cmdL = append(cmdL, fmt.Sprintf("--kw=\"%s=%s\"", "type", typ))
+	}
+
 	for _, name := range optL {
 		kw := m[name]
+		if name == "type" {
+			continue
+		}
 		if !kw.Required {
 			continue
 		}
@@ -256,10 +264,18 @@ func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, dept
 
 	if len(cmdL) > 0 {
 		buff += fmt.Sprint("Minimal setup command:\n\n")
+		var selector string
+		switch kind {
+		case naming.KindInvalid:
+			selector = "node"
+		default:
+			path := naming.Path{Namespace: "test", Kind: kind, Name: "foo"}
+			selector = path.String()
+		}
 		if len(cmdL) > 1 {
-			buff += fmt.Sprintf("\tom test/%s/foo set \\\n\t\t", kind) + strings.Join(cmdL, " \\\n\t\t") + "\n\n"
+			buff += fmt.Sprintf("\tom %s set \\\n\t\t", selector) + strings.Join(cmdL, " \\\n\t\t") + "\n\n"
 		} else {
-			buff += fmt.Sprintf("\tom test/%s/foo set %s\n\n", kind, cmdL[0])
+			buff += fmt.Sprintf("\tom %s set %s\n\n", selector, cmdL[0])
 		}
 	}
 

@@ -577,6 +577,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:   "uri",
 		Aliases:  []string{"name"},
 		Required: true,
+		Example:  "http://www.opensvc.com",
 		Text:     keywords.NewText(fs, "text/kw/node/arbitrator.uri"),
 	},
 	{
@@ -686,6 +687,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"disk"},
 		Scopable: true,
 		Required: true,
+		Example:  "/dev/mapper/36589cfc000000e03957c51dabab8373a",
 		Text:     keywords.NewText(fs, "text/kw/node/hb.disk.dev"),
 	},
 	{
