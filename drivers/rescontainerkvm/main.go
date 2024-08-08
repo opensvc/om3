@@ -54,7 +54,7 @@ type (
 		Path       naming.Path `json:"path"`
 		ObjectID   uuid.UUID   `json:"object_id"`
 		Peers      []string    `json:"peers"`
-		EncapNodes []string    `json:"peers"`
+		EncapNodes []string    `json:"encapnodes"`
 		DNS        []string    `json:"dns"`
 		Topology   topology.T
 
