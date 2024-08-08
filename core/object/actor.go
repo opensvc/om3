@@ -79,6 +79,11 @@ type (
 
 		PrintSchedule() schedule.Table
 		PushResInfo(context.Context) (resource.Infos, error)
+
+		HardAffinity() []string
+		HardAntiAffinity() []string
+		SoftAffinity() []string
+		SoftAntiAffinity() []string
 	}
 )
 
@@ -373,7 +378,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				return err
 			}
 		case c.Ref == "object.encapnodes":
-			if nodes, err := t.EncapNodes(); err != nil {
+			if nodes, err := EncapNodes(t); err != nil {
 				return err
 			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
@@ -469,4 +474,32 @@ func (t *actor) IsDesc() bool {
 func (t *actor) IsDisabled() bool {
 	k := key.Parse("disable")
 	return t.config.GetBool(k)
+}
+
+func EncapNodes(o Core) ([]string, error) {
+	if i, ok := o.(Svc); ok {
+		return i.EncapNodes()
+	} else {
+		return []string{}, nil
+	}
+}
+
+func (t *actor) HardAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) HardAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) SoftAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) SoftAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
+	return l.([]string)
 }

@@ -388,31 +388,3 @@ func (t *core) DRPNodes() ([]string, error) {
 	}
 	return l.([]string), nil
 }
-
-func (t *core) EncapNodes() ([]string, error) {
-	l, err := t.config.Eval(key.Parse("encapnodes"))
-	if err != nil {
-		return nil, err
-	}
-	return l.([]string), nil
-}
-
-func (t *core) HardAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("hard_affinity"))
-	return l.([]string)
-}
-
-func (t *core) HardAntiAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
-	return l.([]string)
-}
-
-func (t *core) SoftAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("soft_affinity"))
-	return l.([]string)
-}
-
-func (t *core) SoftAntiAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
-	return l.([]string)
-}

@@ -19,6 +19,8 @@ type (
 	//
 	Svc interface {
 		Actor
+
+		EncapNodes() ([]string, error)
 	}
 )
 
@@ -33,4 +35,12 @@ func NewSvc(path naming.Path, opts ...funcopt.O) (*svc, error) {
 
 func (t *svc) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
+}
+
+func (t *svc) EncapNodes() ([]string, error) {
+	l, err := t.config.Eval(key.Parse("encapnodes"))
+	if err != nil {
+		return nil, err
+	}
+	return l.([]string), nil
 }

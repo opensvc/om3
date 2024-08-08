@@ -55,6 +55,10 @@ type (
 		// for scoping
 		Nodes() ([]string, error)
 		DRPNodes() ([]string, error)
+	}
+
+	encapNodeser interface {
+		// for scoping
 		EncapNodes() ([]string, error)
 	}
 
@@ -958,11 +962,15 @@ func (t *T) IsInDRPNodes(impersonate string) (bool, error) {
 }
 
 func (t *T) IsInEncapNodes(impersonate string) (bool, error) {
-	nodes, err := t.Referrer.EncapNodes()
-	if err != nil {
-		return false, err
+	if i, ok := t.Referrer.(encapNodeser); ok {
+		nodes, err := i.EncapNodes()
+		if err != nil {
+			return false, err
+		}
+		return slices.Contains(nodes, impersonate), nil
+	} else {
+		return false, nil
 	}
-	return slices.Contains(nodes, impersonate), nil
 }
 
 func (t T) dereference(ref string, section string, impersonate string) (string, error) {
