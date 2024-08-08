@@ -349,12 +349,12 @@ func (t *Manager) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
 
 func (t *Manager) getChildren(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyChildren)
-	return naming.NewRelationsFromStrings(l)
+	return naming.ParseRelations(l)
 }
 
 func (t *Manager) getParents(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyParents)
-	return naming.NewRelationsFromStrings(l)
+	return naming.ParseRelations(l)
 }
 
 func (t *Manager) getPlacementPolicy(cf *xconfig.T) placement.Policy {
