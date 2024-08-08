@@ -70,8 +70,8 @@ func (t Kind) String() string {
 	return string(t)
 }
 
-// NewKind returns a Kind from its string representation.
-func NewKind(s string) Kind {
+// ParseKind returns a Kind from its string representation.
+func ParseKind(s string) Kind {
 	if _, ok := kindMap[s]; ok {
 		return Kind(s)
 	} else {
