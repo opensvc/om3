@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/resourceset"
@@ -78,6 +79,11 @@ type (
 
 		PrintSchedule() schedule.Table
 		PushResInfo(context.Context) (resource.Infos, error)
+
+		HardAffinity() []string
+		HardAntiAffinity() []string
+		SoftAffinity() []string
+		SoftAntiAffinity() []string
 	}
 )
 
@@ -85,8 +91,8 @@ func (t *actor) PG() *pg.Config {
 	return t.pg
 }
 
-func (t *actor) init(referrer xconfig.Referrer, p any, opts ...funcopt.O) error {
-	if err := t.core.init(referrer, p, opts...); err != nil {
+func (t *actor) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt.O) error {
+	if err := t.core.init(referrer, path, opts...); err != nil {
 		return err
 	}
 	t.pg = t.pgConfig("")
@@ -371,6 +377,12 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
+		case c.Ref == "object.encapnodes":
+			if nodes, err := EncapNodes(t); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
+				return err
+			}
 		case c.Ref == "object.nodes":
 			if nodes, err := t.Nodes(); err != nil {
 				return err
@@ -462,4 +474,32 @@ func (t *actor) IsDesc() bool {
 func (t *actor) IsDisabled() bool {
 	k := key.Parse("disable")
 	return t.config.GetBool(k)
+}
+
+func EncapNodes(o Core) ([]string, error) {
+	if i, ok := o.(Svc); ok {
+		return i.EncapNodes()
+	} else {
+		return []string{}, nil
+	}
+}
+
+func (t *actor) HardAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) HardAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) SoftAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_affinity"))
+	return l.([]string)
+}
+
+func (t *actor) SoftAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
+	return l.([]string)
 }

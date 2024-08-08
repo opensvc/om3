@@ -117,8 +117,9 @@ func TestSvcconfCheckRuleFixRule(t *testing.T) {
 	oriSvcName := svcName
 	defer func() { svcName = oriSvcName }()
 	svcName = "test/svc/svc1"
+	svcPath, _ := naming.ParsePath(svcName)
 
-	s, err := object.NewConfigurer(svcName)
+	s, err := object.NewConfigurer(svcPath)
 	require.NoError(t, err)
 
 	testCases := map[string]struct {

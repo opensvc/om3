@@ -4,7 +4,7 @@ import "github.com/opensvc/om3/core/node"
 
 func (t *Manager) orchestrate() {
 	switch t.state.State {
-	case node.MonitorStateZero:
+	case node.MonitorStateInit:
 		return
 	case node.MonitorStateRejoin:
 		return
@@ -15,14 +15,14 @@ func (t *Manager) orchestrate() {
 	}
 
 	switch t.state.LocalExpect {
-	case node.MonitorLocalExpectZero:
+	case node.MonitorLocalExpectInit:
 	case node.MonitorLocalExpectNone:
 	case node.MonitorLocalExpectDrained:
 		t.orchestrateDrained()
 	}
 
 	switch t.state.GlobalExpect {
-	case node.MonitorGlobalExpectZero:
+	case node.MonitorGlobalExpectInit:
 	case node.MonitorGlobalExpectNone:
 	case node.MonitorGlobalExpectAborted:
 		t.orchestrateAborted()

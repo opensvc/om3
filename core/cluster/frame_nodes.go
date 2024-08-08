@@ -165,13 +165,13 @@ func (f Frame) sNodeMonTarget(n string) string {
 		s := ""
 		switch val.Monitor.GlobalExpect {
 		case node.MonitorGlobalExpectNone:
-		case node.MonitorGlobalExpectZero:
+		case node.MonitorGlobalExpectInit:
 		default:
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect.String())
 		}
 		switch val.Monitor.LocalExpect {
 		case node.MonitorLocalExpectNone:
-		case node.MonitorLocalExpectZero:
+		case node.MonitorLocalExpectInit:
 		default:
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect.String())
 		}

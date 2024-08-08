@@ -25,11 +25,11 @@ func (t *Manager) UnprovisionedFromIdle() {
 		if t.hasNonLeaderProvisioned() {
 			t.transitionTo(instance.MonitorStateWaitNonLeader)
 		} else {
-			t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+			t.queueLastAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 		}
 	} else {
 		// immediate action on non-leaders
-		t.queueAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+		t.queueLastAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 	}
 }
 
@@ -45,7 +45,7 @@ func (t *Manager) UnprovisionedFromWaitNonLeader() {
 	if t.hasNonLeaderProvisioned() {
 		return
 	}
-	t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
+	t.queueLastAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisioning, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailed)
 }
 
 func (t *Manager) hasNonLeaderProvisioned() bool {

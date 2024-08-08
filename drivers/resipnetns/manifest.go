@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
@@ -30,6 +31,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
 		resip.KeywordWaitDNS,

@@ -303,7 +303,11 @@ func (t T) Start(ctx context.Context) error {
 func (t T) start(ctx context.Context, c *container.Container) error {
 	errs := make(chan error, 1)
 	go func() {
-		t.Log().Infof("start container (timeout %s)", t.StartTimeout)
+		if t.StartTimeout != nil {
+			t.Log().Infof("start container (timeout %s)", t.StartTimeout)
+		} else {
+			t.Log().Infof("start container (no timeout)")
+		}
 		if err := c.Start(ctx); err != nil {
 			errs <- err
 			return
@@ -312,9 +316,25 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 			errs <- nil
 			return
 		}
-		_, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning))
-		errs <- err
+		ws, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning))
+		if err != nil {
+			errs <- nil
+			return
+		}
+		i, err := ws.ExitCode()
+		if err != nil {
+			errs <- nil
+			return
+		}
+		t.Log().Infof("foreground container exited with code %d)", i)
+		errs <- nil
 	}()
+	var timerC <-chan time.Time
+	if t.StartTimeout != nil {
+		timerC = time.After(*t.StartTimeout)
+	} else {
+		timerC = make(<-chan time.Time)
+	}
 	select {
 	case err := <-errs:
 		if err == nil {
@@ -323,7 +343,7 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 			})
 		}
 		return err
-	case <-time.After(*t.StartTimeout):
+	case <-timerC:
 		return fmt.Errorf("timeout")
 	}
 }

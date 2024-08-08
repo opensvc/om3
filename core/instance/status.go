@@ -16,7 +16,6 @@ type (
 	// Status describes the instance status.
 	Status struct {
 		Avail         status.T           `json:"avail"`
-		Constraints   bool               `json:"constraints,omitempty"`
 		FrozenAt      time.Time          `json:"frozen_at,omitempty"`
 		LastStartedAt time.Time          `json:"last_started_at"`
 		Optional      status.T           `json:"optional,omitempty"`
@@ -146,7 +145,6 @@ func (t ResourceStatuses) Unstructured() map[string]map[string]any {
 func (t Status) Unstructured() map[string]any {
 	m := map[string]any{
 		"avail":           t.Avail,
-		"constraints":     t.Constraints,
 		"last_started_at": t.LastStartedAt,
 		"optional":        t.Optional,
 		"overall":         t.Overall,

@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/filesystems"
 )
@@ -19,6 +20,7 @@ var (
 		Attr:     "Device",
 		Scopable: true,
 		Required: true,
+		Example:  "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
 		Text:     keywords.NewText(fs, "text/kw/dev"),
 	}
 	KeywordMKFSOptions = keywords.Keyword{
@@ -43,6 +45,7 @@ var (
 		Attr:     "MountPoint",
 		Scopable: true,
 		Required: true,
+		Example:  "/srv/{fqdn}",
 		Text:     keywords.NewText(fs, "text/kw/mnt"),
 	}
 	KeywordMountOptions = keywords.Keyword{
@@ -144,6 +147,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(driver.NewID(driver.GroupFS, t.Type), t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)

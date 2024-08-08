@@ -63,32 +63,8 @@ func NewList(paths naming.Paths, opts ...funcopt.O) ([]any, error) {
 	return l, errs
 }
 
-func toPathType(id any) (naming.Path, error) {
-	var p naming.Path
-	switch i := id.(type) {
-	case string:
-		if parsed, err := naming.ParsePath(i); err != nil {
-			return p, err
-		} else {
-			p = parsed
-		}
-		return p, nil
-	case naming.Path:
-		p = i
-		return p, nil
-	default:
-		return p, fmt.Errorf("unsupported object path type: %#v", i)
-	}
-}
-
 // New allocates a new kinded object
-func New(id any, opts ...funcopt.O) (any, error) {
-	var p naming.Path
-	if parsed, err := toPathType(id); err != nil {
-		return nil, err
-	} else {
-		p = parsed
-	}
+func New(p naming.Path, opts ...funcopt.O) (any, error) {
 	switch p.Kind {
 	case naming.KindSvc:
 		return NewSvc(p, opts...)
@@ -108,7 +84,7 @@ func New(id any, opts ...funcopt.O) (any, error) {
 }
 
 // NewCore returns a Core interface from an object path
-func NewCore(p any, opts ...funcopt.O) (Core, error) {
+func NewCore(p naming.Path, opts ...funcopt.O) (Core, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -117,7 +93,7 @@ func NewCore(p any, opts ...funcopt.O) (Core, error) {
 }
 
 // NewConfigurer returns a Configurer interface from an object path
-func NewConfigurer(p any, opts ...funcopt.O) (Configurer, error) {
+func NewConfigurer(p naming.Path, opts ...funcopt.O) (Configurer, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -126,7 +102,7 @@ func NewConfigurer(p any, opts ...funcopt.O) (Configurer, error) {
 }
 
 // NewActor returns a Actor interface from an object path
-func NewActor(p any, opts ...funcopt.O) (Actor, error) {
+func NewActor(p naming.Path, opts ...funcopt.O) (Actor, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -135,7 +111,7 @@ func NewActor(p any, opts ...funcopt.O) (Actor, error) {
 }
 
 // NewKeystore returns a Keystore interface from an object path
-func NewKeystore(p any, opts ...funcopt.O) (Keystore, error) {
+func NewKeystore(p naming.Path, opts ...funcopt.O) (Keystore, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {

@@ -112,11 +112,6 @@ func (t States) descString() string {
 		l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
 	}
 
-	// Constraints
-	if t.Status.Constraints {
-		l = append(l, rawconfig.Colorize.Error("constraints-violation"))
-	}
-
 	// Provisioned
 	switch t.Status.Provisioned {
 	case provisioned.False:
@@ -149,7 +144,7 @@ func (t States) descString() string {
 		// Monitor global expect
 		switch t.Monitor.GlobalExpect {
 		case MonitorGlobalExpectNone:
-		case MonitorGlobalExpectZero:
+		case MonitorGlobalExpectInit:
 		default:
 			l = append(l, t.Monitor.GlobalExpect.String())
 		}
@@ -157,7 +152,7 @@ func (t States) descString() string {
 		// Monitor local expect
 		switch t.Monitor.LocalExpect {
 		case MonitorLocalExpectNone:
-		case MonitorLocalExpectZero:
+		case MonitorLocalExpectInit:
 		default:
 			l = append(l, t.Monitor.LocalExpect.String())
 		}

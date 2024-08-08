@@ -4,6 +4,7 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/converters"
 
 	"github.com/opensvc/om3/core/driver"
@@ -24,6 +25,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
 		manifest.ContextObjectPath,

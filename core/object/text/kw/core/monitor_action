@@ -1,7 +1,7 @@
 The action to trigger when a monitored resource is no longer up or standby up,
 and the resource restart trials have failed.
 
-The reboot and crash monitor actions do not try to cleanly any process. On
+The reboot and crash monitor actions do not try to cleanly stop any process. On
 Linux they use the sysrq triggers.
 
 This behaviour is meant to ensure the host stops writing to the shared disks

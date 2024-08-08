@@ -139,34 +139,6 @@ func (t *core) Peers() ([]string, error) {
 	return nil, fmt.Errorf("node %s has no peers: not in nodes nor drpnodes", impersonate)
 }
 
-func (t *core) Children() []naming.Relation {
-	data := make([]naming.Relation, 0)
-	k := key.Parse("children")
-	l, err := t.config.GetStringsStrict(k)
-	if err != nil {
-		t.log.Errorf("%s", err)
-		return data
-	}
-	for _, e := range l {
-		data = append(data, naming.Relation(e))
-	}
-	return data
-}
-
-func (t *core) Parents() []naming.Relation {
-	data := make([]naming.Relation, 0)
-	k := key.Parse("parents")
-	l, err := t.config.GetStringsStrict(k)
-	if err != nil {
-		t.log.Errorf("%s", err)
-		return data
-	}
-	for _, e := range l {
-		data = append(data, naming.Relation(e))
-	}
-	return data
-}
-
 func (t *core) FlexMin() (int, error) {
 	var (
 		i, maxValue int
@@ -415,32 +387,4 @@ func (t *core) DRPNodes() ([]string, error) {
 		return nil, err
 	}
 	return l.([]string), nil
-}
-
-func (t *core) EncapNodes() ([]string, error) {
-	l, err := t.config.Eval(key.Parse("encapnodes"))
-	if err != nil {
-		return nil, err
-	}
-	return l.([]string), nil
-}
-
-func (t *core) HardAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("hard_affinity"))
-	return l.([]string)
-}
-
-func (t *core) HardAntiAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
-	return l.([]string)
-}
-
-func (t *core) SoftAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("soft_affinity"))
-	return l.([]string)
-}
-
-func (t *core) SoftAntiAffinity() []string {
-	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
-	return l.([]string)
 }

@@ -3,6 +3,7 @@ package resappsimple
 import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resapp"
 )
 
@@ -17,6 +18,7 @@ func init() {
 // Manifest ...
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
 		manifest.ContextNodes,

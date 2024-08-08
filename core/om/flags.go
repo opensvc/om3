@@ -25,17 +25,44 @@ func addFlagsAsync(flagSet *pflag.FlagSet, p *commands.OptsAsync) {
 	addFlagWatch(flagSet, &p.Watch)
 }
 
-func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+func addFlagsGlobalLocal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.BoolVar(&p.Local, "local", false, "Inline action on local instance.")
-	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Display no logs and no progress.")
-	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto.")
-	flagSet.StringVar(&p.Output, "format", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.StringVarP(&p.Output, "output", "o", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.StringVar(&p.Log, "log", "", "Display the logs on the console at the specified level.")
-	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme https|tls.")
-	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
-	flagSet.MarkHidden("format")
+}
 
+func addFlagsGlobalQuiet(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Display no logs and no progress.")
+}
+
+func addFlagsGlobalColor(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto.")
+}
+
+func addFlagsGlobalOutput(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVarP(&p.Output, "output", "o", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.StringVar(&p.Output, "format", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.MarkHidden("format")
+}
+
+func addFlagsGlobalLog(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVar(&p.Log, "log", "", "Display the logs on the console at the specified level.")
+}
+
+func addFlagsGlobalServer(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server.")
+}
+
+func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
+}
+
+func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	addFlagsGlobalLocal(flagSet, p)
+	addFlagsGlobalQuiet(flagSet, p)
+	addFlagsGlobalColor(flagSet, p)
+	addFlagsGlobalOutput(flagSet, p)
+	addFlagsGlobalLog(flagSet, p)
+	addFlagsGlobalServer(flagSet, p)
+	addFlagsGlobalObjectSelector(flagSet, p)
 }
 
 func addFlagsLogs(flagSet *pflag.FlagSet, p *commands.OptsLogs) {
@@ -95,6 +122,10 @@ func addFlagCreateRestore(flagSet *pflag.FlagSet, p *bool) {
 
 func addFlagCron(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "cron", false, "Run the action as if executed by the daemon. For example, the run action requirements error message are disabled.")
+}
+
+func addFlagDepth(flagSet *pflag.FlagSet, p *int) {
+	flagSet.IntVar(p, "depth", 0, "Format markdown titles so they can be rooted inside a chapter nested at the specified depth.")
 }
 
 func addFlagDevRoles(flagSet *pflag.FlagSet, p *string) {

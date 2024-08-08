@@ -144,7 +144,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
-	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server. scheme https|tls.")
+	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
 }
 
 // initConfig reads in config file and ENV variables if set.

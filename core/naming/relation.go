@@ -45,7 +45,7 @@ func (relations Relations) Strings() []string {
 	return l
 }
 
-func NewRelationsFromStrings(l []string) Relations {
+func ParseRelations(l []string) Relations {
 	relations := make(Relations, len(l))
 	for i, s := range l {
 		relations[i] = Relation(s)

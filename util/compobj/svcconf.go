@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"encoding/json"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -194,7 +195,12 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 	if filter == "" {
 		return true
 	}
-	o, err := object.NewConfigurer(svcName)
+	path, err := naming.ParsePath(svcName)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return false
+	}
+	o, err := object.NewConfigurer(path)
 	var op, leftFilter, rightFilter string
 	if err != nil {
 		t.Errorf("can't create an configurer obj: %s\n", err)
@@ -225,7 +231,12 @@ func (t CompSvcconfs) checkFilter(resourceName string, filter string) bool {
 }
 
 func (t CompSvcconfs) checkValue(resourceName string, keyName string, value string, op string) bool {
-	o, err := object.NewConfigurer(svcName)
+	path, err := naming.ParsePath(svcName)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return false
+	}
+	o, err := object.NewConfigurer(path)
 	if err != nil {
 		t.Errorf("can't create an configurer obj: %s\n", err)
 		return false
@@ -237,7 +248,12 @@ func (t CompSvcconfs) checkValue(resourceName string, keyName string, value stri
 }
 
 func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
-	o, err := object.NewConfigurer(svcName)
+	path, err := naming.ParsePath(svcName)
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return false
+	}
+	o, err := object.NewConfigurer(path)
 	if err != nil {
 		t.Errorf("can't create an configurer obj: %s\n", err)
 		return false
@@ -326,7 +342,12 @@ func (t CompSvcconfs) fixRule(rule CompSvcconf) ExitCode {
 		}
 		t.VerboseErrorf("the resource %s does not respect the rule %s%s%s\n", resourceName, rule.Key, rule.Op, rule.Value)
 		changement = true
-		o, err := object.NewConfigurer(svcName)
+		path, err := naming.ParsePath(svcName)
+		if err != nil {
+			t.Errorf("%s\n", err)
+			return ExitNok
+		}
+		o, err := object.NewConfigurer(path)
 		if err != nil {
 			t.Errorf("error can't create a configurer obj: %s\n", err)
 			return ExitNok

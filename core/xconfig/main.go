@@ -55,6 +55,10 @@ type (
 		// for scoping
 		Nodes() ([]string, error)
 		DRPNodes() ([]string, error)
+	}
+
+	encapNodeser interface {
+		// for scoping
 		EncapNodes() ([]string, error)
 	}
 
@@ -289,7 +293,7 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 			return true
 		}
 		v := t.Get(k)
-		sectionType := t.sectionType(k)
+		sectionType := t.SectionType(k)
 		kw, err := getKeyword(k, sectionType, t.Referrer)
 		if err != nil {
 			iv := v
@@ -666,7 +670,7 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	case "data", "env", "labels":
 		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
 	}
-	sectionType := t.sectionType(k)
+	sectionType := t.SectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
 		return nil, err
@@ -674,21 +678,12 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
 
-func (t *T) Doc(k key.T) (string, error) {
-	sectionType := t.sectionType(k)
-	kw, err := getKeyword(k, sectionType, t.Referrer)
-	if err != nil {
-		return "", err
-	}
-	return kw.Doc(), nil
-}
-
 func (t *T) EvalNoConv(k key.T) (string, error) {
 	return t.EvalAsNoConv(k, "")
 }
 
 func (t *T) EvalAsNoConv(k key.T, impersonate string) (string, error) {
-	sectionType := t.sectionType(k)
+	sectionType := t.SectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
 		return "", err
@@ -696,7 +691,7 @@ func (t *T) EvalAsNoConv(k key.T, impersonate string) (string, error) {
 	return t.evalStringAs(k, kw, impersonate)
 }
 
-func (t *T) sectionType(k key.T) string {
+func (t *T) SectionType(k key.T) string {
 	if k.Option == "type" {
 		return ""
 	}
@@ -967,11 +962,15 @@ func (t *T) IsInDRPNodes(impersonate string) (bool, error) {
 }
 
 func (t *T) IsInEncapNodes(impersonate string) (bool, error) {
-	nodes, err := t.Referrer.EncapNodes()
-	if err != nil {
-		return false, err
+	if i, ok := t.Referrer.(encapNodeser); ok {
+		nodes, err := i.EncapNodes()
+		if err != nil {
+			return false, err
+		}
+		return slices.Contains(nodes, impersonate), nil
+	} else {
+		return false, nil
 	}
-	return slices.Contains(nodes, impersonate), nil
 }
 
 func (t T) dereference(ref string, section string, impersonate string) (string, error) {
@@ -1040,7 +1039,7 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 	}
 
 	nodeKey := key.Parse(nodeRef)
-	sectionType := t.sectionType(nodeKey)
+	sectionType := t.SectionType(nodeKey)
 	kw, err := getKeyword(nodeKey, sectionType, t.NodeReferrer)
 	if err != nil {
 		return ref, err

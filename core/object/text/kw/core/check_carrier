@@ -1,2 +1,0 @@
-Activate the link carrier check. Set to `false` if ipdev is a backend bridge
-or switch.

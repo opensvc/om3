@@ -20,11 +20,11 @@ func TestKeyopsDrop(t *testing.T) {
 	}
 	ops := L{op1, op2}
 
-	ops = ops.Drop(key.T{"DEFAULT", "priority"})
+	ops = ops.Drop(key.T{Section: "DEFAULT", Option: "priority"})
 	assert.Len(t, ops, 1)
 	assert.Equal(t, ops[0], op1)
 
-	ops = ops.Drop(key.T{"DEFAULT", "foo"})
+	ops = ops.Drop(key.T{Section: "DEFAULT", Option: "foo"})
 	assert.Len(t, ops, 1)
 }
 

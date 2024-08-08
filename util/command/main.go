@@ -442,5 +442,4 @@ func (t *T) prompt() bool {
 			fmt.Println("Invalid input. Please enter 'y' or 'n'.")
 		}
 	}
-	return false
 }

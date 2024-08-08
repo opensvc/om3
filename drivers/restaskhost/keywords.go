@@ -39,7 +39,9 @@ var (
 		{
 			Option:    "log",
 			Attr:      "LogOutputs",
+			Default:   "true",
 			Converter: converters.Bool,
+			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/log"),
 		},
 		{
@@ -68,6 +70,14 @@ var (
 			Attr:      "Confirmation",
 			Converter: converters.Bool,
 			Text:      keywords.NewText(fs, "text/kw/confirmation"),
+		},
+		{
+			Option:    "run_timeout",
+			Attr:      "RunTimeout",
+			Converter: converters.Duration,
+			Scopable:  true,
+			Example:   "1m30s",
+			Text:      keywords.NewText(fs, "text/kw/run_timeout"),
 		},
 	}
 )

@@ -6,6 +6,11 @@ var (
 		Attr: "Path",
 		Ref:  "object.path",
 	}
+	ContextEncapNodes = Context{
+		Key:  "encapnodes",
+		Attr: "EncapNodes",
+		Ref:  "object.encapnodes",
+	}
 	ContextDRPNodes = Context{
 		Key:  "drpnodes",
 		Attr: "DRPNodes",

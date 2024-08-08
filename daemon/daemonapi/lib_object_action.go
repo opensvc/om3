@@ -51,10 +51,10 @@ func JSONFromSetInstanceMonitorError(eCtx echo.Context, value *instance.MonitorU
 	case err == nil:
 		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
 	case errors.Is(err, context.DeadlineExceeded):
-		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing the node %s expectation", *value)
+		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing %s", *value)
 	case errors.Is(err, context.Canceled):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "client context canceled")
 	default:
-		return JSONProblemf(eCtx, http.StatusConflict, "set instance monitor", "expectation %s: %s", *value, err)
+		return JSONProblemf(eCtx, http.StatusConflict, "set instance monitor", "%s", err)
 	}
 }

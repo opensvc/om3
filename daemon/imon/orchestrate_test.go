@@ -898,7 +898,7 @@ func waitNmonStates(ctx context.Context, desc string, d time.Duration, p naming.
 		for {
 			select {
 			case <-ctx.Done():
-				stateC <- instance.MonitorStateZero
+				stateC <- instance.MonitorStateInit
 				errC <- ctx.Err()
 				return
 			case i := <-sub.C:

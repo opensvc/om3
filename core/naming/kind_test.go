@@ -23,7 +23,7 @@ func TestKind(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		k := NewKind(test.kind)
+		k := ParseKind(test.kind)
 		output := k.String()
 		assert.Equal(t, test.output, output)
 	}

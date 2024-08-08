@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -50,11 +51,12 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
-		Path     naming.Path `json:"path"`
-		ObjectID uuid.UUID   `json:"object_id"`
-		Peers    []string    `json:"peers"`
-		DNS      []string    `json:"dns"`
-		Topology topology.T
+		Path       naming.Path `json:"path"`
+		ObjectID   uuid.UUID   `json:"object_id"`
+		Peers      []string    `json:"peers"`
+		EncapNodes []string    `json:"encapnodes"`
+		DNS        []string    `json:"dns"`
+		Topology   topology.T
 
 		SCSIReserv   bool           `json:"scsireserv"`
 		PromoteRW    bool           `json:"promote_rw"`
@@ -165,6 +167,10 @@ func (t T) checkCapabilities() bool {
 		return false
 	}
 	return true
+}
+
+func (t T) hasEncap() bool {
+	return slices.Contains(t.EncapNodes, t.Name)
 }
 
 func (t T) isOperational() (bool, error) {
@@ -307,6 +313,11 @@ func (t *T) Start(ctx context.Context) error {
 	})
 	if err := t.waitForUp(); err != nil {
 		return err
+	}
+	if !t.hasEncap() {
+		// No need to wait for ping exec access if we don't need to
+		// execute anything in the vm.
+		return nil
 	}
 	if err := t.waitForPing(); err != nil {
 		return err

@@ -1,5 +1,7 @@
 package naming
 
+import "strings"
+
 type (
 	// Kind is opensvc object kind.
 	Kind string
@@ -68,8 +70,8 @@ func (t Kind) String() string {
 	return string(t)
 }
 
-// NewKind returns a Kind from its string representation.
-func NewKind(s string) Kind {
+// ParseKind returns a Kind from its string representation.
+func ParseKind(s string) Kind {
 	if _, ok := kindMap[s]; ok {
 		return Kind(s)
 	} else {
@@ -86,6 +88,9 @@ func NewKinds(kinds ...Kind) Kinds {
 }
 
 func (t Kinds) Has(kind Kind) bool {
+	if kind == KindInvalid {
+		return true
+	}
 	if t == nil {
 		return true
 	}
@@ -104,4 +109,13 @@ func (t Kinds) Or(kinds ...Kind) Kinds {
 		t[kind] = nil
 	}
 	return t
+}
+
+func (t Kinds) String() string {
+	l := make([]string, len(t))
+	i := 0
+	for key := range t {
+		l[i] = key.String()
+	}
+	return strings.Join(l, "|")
 }

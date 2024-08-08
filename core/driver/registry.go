@@ -48,6 +48,16 @@ func List() IDs {
 	return l
 }
 
+func NamesByGroup() map[Group][]string {
+	m := make(map[Group][]string)
+	for did := range registry {
+		var l []string
+		l, _ = m[did.Group]
+		m[did.Group] = append(l, did.Name)
+	}
+	return m
+}
+
 func ListWithGroup(group Group) Registry {
 	m := NewRegistry()
 	for _, did := range List() {

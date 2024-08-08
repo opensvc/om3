@@ -110,7 +110,7 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 
 func sObjectInstanceMonitorState(instanceMonitor instance.Monitor) string {
 	switch instanceMonitor.State {
-	case instance.MonitorStateZero:
+	case instance.MonitorStateInit:
 		return ""
 	case instance.MonitorStateIdle:
 		return ""
@@ -121,7 +121,7 @@ func sObjectInstanceMonitorState(instanceMonitor instance.Monitor) string {
 
 func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string {
 	switch instanceMonitor.GlobalExpect {
-	case instance.MonitorGlobalExpectZero:
+	case instance.MonitorGlobalExpectInit:
 		return ""
 	case instance.MonitorGlobalExpectNone:
 		return ""

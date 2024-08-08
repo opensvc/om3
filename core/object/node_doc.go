@@ -1,61 +1,33 @@
 package object
 
 import (
-	"slices"
-	"sort"
-	"strings"
+	"fmt"
 
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/key"
 )
 
-func nodeDrvDoc(group, name string) (string, error) {
-	buff := ""
-	sort.Sort(nodeKeywordStore)
-	for _, kw := range nodeKeywordStore {
-		if kw.Section != group {
-			continue
-		}
-		if len(kw.Types) > 0 && !slices.Contains(kw.Types, name) {
-			continue
-		}
-		buff += kw.Doc()
-		buff += "\n"
-	}
-	return buff, nil
-}
-
-func nodeSectionDoc(s string) (string, error) {
-	buff := ""
-	sort.Sort(nodeKeywordStore)
-	for _, kw := range nodeKeywordStore {
-		if kw.Section != s {
-			continue
-		}
-		buff += kw.Doc()
-		buff += "\n"
-	}
-	return buff, nil
-}
-
-// KeywordDoc returns the documentation of a single keyword.
-func (t *Node) KeywordDoc(s string) (string, error) {
-	k := key.Parse(s)
+func (t *Node) Doc(drvStr, kwStr string, depth int) (string, error) {
+	store := nodeKeywordStore
 	switch {
-	case (k.Option != "") && (k.Option != "*"):
-		return t.config.Doc(k)
-	case k.Section != "":
-		return nodeSectionDoc(k.Section)
+	case drvStr == "" && kwStr == "":
+		return store.Doc(naming.KindInvalid, depth)
+	case drvStr != "" && kwStr != "":
+		l := keywords.ParseIndex(drvStr)
+		return store.KeywordDoc(l[0], l[1], kwStr, naming.KindInvalid, depth)
+	case drvStr != "":
+		l := keywords.ParseIndex(drvStr)
+		return store.DriverDoc(l[0], l[1], naming.KindInvalid, depth)
+	case kwStr != "":
+		k := key.Parse(kwStr)
+		sectionType := t.config.SectionType(k)
+		kw := t.config.Referrer.KeywordLookup(k, sectionType)
+		if kw.IsZero() {
+			return "", fmt.Errorf("keyword not found")
+		}
+		return kw.Doc(depth), nil
 	default:
 		return "", nil
-	}
-}
-
-// DriverDoc returns the documentation of all keywords of the specified driver.
-func (t *Node) DriverDoc(s string) (string, error) {
-	l := strings.SplitN(s, ".", 2)
-	if len(l) == 2 {
-		return nodeDrvDoc(l[0], l[1])
-	} else {
-		return nodeDrvDoc(s, "")
 	}
 }

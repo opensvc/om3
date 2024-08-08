@@ -155,12 +155,12 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateZero, // this prevents imon orchestration
+			State:        node.MonitorStateInit, // this prevents imon orchestration
 		},
 		previousState: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateZero,
+			State:        node.MonitorStateInit,
 		},
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceselector"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -41,7 +42,9 @@ func (t *actor) lockedPushResInfo(ctx context.Context) (resource.Infos, error) {
 
 func (t *actor) masterResInfo(ctx context.Context) ([]resource.Info, error) {
 	l := make([]resource.Info, 0)
-	err := t.action(ctx, func(ctx context.Context, r resource.Driver) error {
+	resourceLister := resourceselector.FromContext(ctx, t)
+	barrier := actioncontext.To(ctx)
+	err := t.ResourceSets().Do(ctx, resourceLister, barrier, "resinfo", func(ctx context.Context, r resource.Driver) error {
 		info, err := resource.GetInfo(ctx, r)
 		if err != nil {
 			return err

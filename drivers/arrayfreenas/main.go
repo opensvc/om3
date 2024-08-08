@@ -859,29 +859,33 @@ func (t *Array) Run(args []string) error {
 }
 
 func (t Array) DelZvol(name string) (*Dataset, error) {
-	datasets, err := t.GetDatasets()
+	dataset, err := t.GetDataset(name)
 	if err != nil {
 		return nil, err
 	}
-	dataset, ok := datasets.GetByName(name)
-	if !ok {
+	if dataset == nil {
 		return nil, fmt.Errorf("dataset not found")
 	}
-	path := fmt.Sprintf("/pool/dataset/%s", dataset.Id)
+	err = t.delZvolById(dataset.Id)
+	return dataset, err
+}
+
+func (t Array) delZvolById(id string) error {
+	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(id))
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
-		return dataset, err
+		return err
 	}
 	var data any
 	_, err = t.Do(req, &data)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("%s %s: %w", req.Method, req.URL, err)
 	}
-	return dataset, nil
+	return nil
 }
 
 func (t Array) delISCSIExtent(extent ISCSIExtent) error {
-	path := fmt.Sprintf("/iscsi/extent/%d", extent.Id)
+	path := fmt.Sprintf("/iscsi/extent/id/%d", extent.Id)
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
@@ -903,10 +907,10 @@ func (t Array) DelISCSIExtent(opt DelISCSIExtentOptions) (*ISCSIExtent, error) {
 	if opt.Id >= 0 {
 		extent = extents.GetById(opt.Id)
 	} else if opt.Name != "" {
-		extent = extents.GetByPath("zvol/" + opt.Name)
+		extent = extents.GetByName(opt.Name)
 	}
 	if extent == nil {
-		return nil, fmt.Errorf("extent %v not found (%d scanned)", opt, len(extents))
+		return nil, fmt.Errorf("extent %#v not found (%d scanned)", opt, len(extents))
 	}
 	return extent, t.delISCSIExtent(*extent)
 }
@@ -954,11 +958,17 @@ func (t Array) DelDisk(name string) (*Disk, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := t.DelISCSIExtent(DelISCSIExtentOptions{Name: name}); err != nil {
-		return nil, err
-	}
-	if _, err := t.DelZvol(name); err != nil {
-		return nil, err
+	if disk != nil {
+		if disk.ISCSI != nil && disk.ISCSI.Extent != nil {
+			if _, err := t.DelISCSIExtent(DelISCSIExtentOptions{Id: disk.ISCSI.Extent.Id}); err != nil {
+				return disk, err
+			}
+		}
+		if disk.Dataset != nil {
+			if err := t.delZvolById(disk.Dataset.Id); err != nil {
+				return disk, err
+			}
+		}
 	}
 	return disk, nil
 }
@@ -1099,15 +1109,15 @@ func (t Array) CreateDataset(params CreateDatasetParams) (*Dataset, error) {
 	return &data, nil
 }
 
-func (t Array) DeleteDataset(id string) (*Dataset, error) {
-	dataset, err := t.GetDataset(id)
+func (t Array) DeleteDataset(name string) (*Dataset, error) {
+	dataset, err := t.GetDataset(name)
 	if err != nil {
 		return nil, err
 	}
 	if dataset == nil {
-		return nil, fmt.Errorf("dataset %s does not exist", id)
+		return nil, fmt.Errorf("dataset %s does not exist", name)
 	}
-	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(id))
+	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(dataset.Id))
 	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return nil, err
@@ -1318,6 +1328,9 @@ func (t Array) GetDisk(name string) (*Disk, error) {
 	if err != nil {
 		return nil, err
 	}
+	if dataset == nil {
+		return nil, nil
+	}
 	disk.Dataset = dataset
 
 	extents, err := t.GetISCSIExtents()
@@ -1366,29 +1379,32 @@ func (t Array) GetDatasets() (Datasets, error) {
 	return items, nil
 }
 
-func (t Array) dumpDataset(id string) error {
-	data, err := t.GetDataset(id)
+func (t Array) dumpDataset(name string) error {
+	data, err := t.GetDataset(name)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetDataset(id string) (*Dataset, error) {
-	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(id))
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+func (t Array) GetDataset(name string) (*Dataset, error) {
+	path := fmt.Sprintf("/pool/dataset")
+	params := map[string]string{
+		"name": name,
+	}
+	req, err := t.newRequest(http.MethodGet, path, params, nil)
 	if err != nil {
 		return nil, err
 	}
-	var data Dataset
-	resp, err := t.Do(req, &data)
+	var data Datasets
+	_, err = t.Do(req, &data)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode == http.StatusNotFound {
+	if len(data) == 0 {
 		return nil, nil
 	}
-	return &data, nil
+	return &data[0], nil
 }
 
 func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
@@ -1717,14 +1733,21 @@ func (t Array) addISCSIPortal(params CreateISCSIPortalParams) (*ISCSIPortal, err
 }
 
 func (t *Array) client() *http.Client {
-	return &http.Client{
+	c := http.Client{
 		Timeout: t.timeout(),
-		Transport: &http.Transport{
+	}
+	u, err := url.Parse(t.api())
+	if err != nil {
+		return &c
+	}
+	if u.Scheme == "https" {
+		c.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: t.insecure(),
 			},
-		},
+		}
 	}
+	return &c
 }
 
 func basicAuth(username, password string) string {

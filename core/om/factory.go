@@ -1034,9 +1034,11 @@ func newCmdNodeDoc() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsGlobalColor(flags, &options.OptsGlobal)
+	addFlagsGlobalOutput(flags, &options.OptsGlobal)
 	addFlagKeyword(flags, &options.Keyword)
 	addFlagDriver(flags, &options.Driver)
+	addFlagDepth(flags, &options.Depth)
 	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
 	return cmd
 }
@@ -1069,7 +1071,8 @@ func newCmdNodeDrivers() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsGlobalColor(flags, &options.OptsGlobal)
+	addFlagsGlobalOutput(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -2160,9 +2163,11 @@ func newCmdObjectDoc(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsGlobalColor(flags, &options.OptsGlobal)
+	addFlagsGlobalOutput(flags, &options.OptsGlobal)
 	addFlagKeyword(flags, &options.Keyword)
 	addFlagDriver(flags, &options.Driver)
+	addFlagDepth(flags, &options.Depth)
 	return cmd
 }
 

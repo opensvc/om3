@@ -2454,6 +2454,38 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /object/path/{namespace}/{kind}/{name}/action/restart:
+    post:
+      operationId: PostObjectActionRestart
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /object/path/{namespace}/{kind}/{name}/action/start:
     post:
       operationId: PostObjectActionStart
@@ -3887,7 +3919,6 @@ components:
       type: object
       required:
         - avail
-        - constraints
         - csum
         - frozen_at
         - last_started_at
@@ -3902,8 +3933,6 @@ components:
       properties:
         avail:
           $ref: '#/components/schemas/Status'
-        constraints:
-          type: boolean
         csum:
           type: string
         frozen_at:

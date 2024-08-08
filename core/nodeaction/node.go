@@ -355,11 +355,13 @@ func (t T) DoAsync() error {
 			return fmt.Errorf("unexpected target: %s", t.Target)
 		}
 
-		var orchestrationQueued api.OrchestrationQueued
-		if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
-			fmt.Println(orchestrationQueued.OrchestrationID)
-		} else {
-			fmt.Fprintln(os.Stderr, err)
+		if err == nil {
+			var orchestrationQueued api.OrchestrationQueued
+			if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
+				fmt.Println(orchestrationQueued.OrchestrationID)
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+			}
 		}
 	}
 
@@ -371,7 +373,8 @@ func (t T) DoAsync() error {
 			return err
 		}
 	}
-	return nil
+
+	return err
 }
 
 // DoRemote posts the action to a peer node agent API, for synchronous

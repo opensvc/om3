@@ -1,0 +1,2 @@
+As Hitachi arrays do not provide directly the disk wwid, it must be deduced from the concatenation of a array-specific prefix and the device id.
+This parameter defines this prefix.

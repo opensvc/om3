@@ -27,6 +27,7 @@ var (
 	}
 	KWGuestOS = keywords.Keyword{
 		Option:     "guest_os",
+		Aliases:    []string{"guestos"},
 		Attr:       "GuestOS",
 		Scopable:   true,
 		Candidates: []string{"unix", "windows"},

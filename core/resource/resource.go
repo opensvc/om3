@@ -168,6 +168,10 @@ type (
 		PersistentReservationKey() string
 	}
 
+	devImporter interface {
+		ImportDevices() error
+	}
+
 	SCSIPersistentReservation struct {
 		Key            string
 		NoPreemptAbort bool
@@ -245,11 +249,12 @@ type (
 	// ScheduleOptions contains the information needed by the object to create a
 	// schedule.Entry to append to the object's schedule.Table.
 	ScheduleOptions struct {
-		Action             string
-		Option             string
-		Base               string
-		RequireCollector   bool
-		RequireProvisioned bool
+		Action              string
+		Option              string
+		Base                string
+		RequireCollector    bool
+		RequireProvisioned  bool
+		RequireConfirmation bool
 	}
 )
 
@@ -465,17 +470,17 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		// probably testing
 		return nil
 	}
+	var errs error
 	for _, run := range mgr.Apply(t.GetPGID()) {
 		if !run.Changed {
 			continue
 		}
+		t.Log().Debugf("applied %s", run.Config)
 		if run.Err != nil {
-			return run.Err
-		} else {
-			t.Log().Infof("applied %s", run.Config)
+			errs = errors.Join(errs, run.Err)
 		}
 	}
-	return nil
+	return errs
 }
 
 // SetObject holds the useful interface of the parent object of the resource.
@@ -1120,7 +1125,24 @@ func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 	}
 }
 
+// ImportDevices execute the Driver ImportDevices() function if defined.
+// Some drivers need to import devices before they can list the
+// reservable devices to register. So use this in the start codepath.
+func ImportDevices(r Driver) error {
+	var i any = r
+	o, ok := i.(devImporter)
+	if !ok {
+		r.Log().Debugf("resource does not implement ImportDevices()")
+		return nil
+	}
+	return o.ImportDevices()
+}
+
 func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
+	if err := ImportDevices(r); err != nil {
+		return err
+	}
+
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {

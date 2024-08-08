@@ -46,7 +46,7 @@ type (
 )
 
 const (
-	MonitorStateZero MonitorState = iota
+	MonitorStateInit MonitorState = iota
 	MonitorStateIdle
 	MonitorStateDraining
 	MonitorStateDrainFailed
@@ -72,13 +72,13 @@ const (
 )
 
 const (
-	MonitorLocalExpectZero MonitorLocalExpect = iota
+	MonitorLocalExpectInit MonitorLocalExpect = iota
 	MonitorLocalExpectDrained
 	MonitorLocalExpectNone
 )
 
 const (
-	MonitorGlobalExpectZero MonitorGlobalExpect = iota
+	MonitorGlobalExpectInit MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
 	MonitorGlobalExpectFrozen
 	MonitorGlobalExpectNone
@@ -100,7 +100,7 @@ var (
 		MonitorStateShutdownFailed: "shutdown failed",
 		MonitorStateShutting:       "shutting",
 		MonitorStateMaintenance:    "maintenance",
-		MonitorStateZero:           "",
+		MonitorStateInit:           "init",
 		MonitorStateUpgrade:        "upgrade",
 		MonitorStateRejoin:         "rejoin",
 	}
@@ -119,19 +119,19 @@ var (
 		"shutdown failed": MonitorStateShutdownFailed,
 		"shutting":        MonitorStateShutting,
 		"maintenance":     MonitorStateMaintenance,
-		"":                MonitorStateZero,
+		"init":            MonitorStateInit,
 		"upgrade":         MonitorStateUpgrade,
 		"rejoin":          MonitorStateRejoin,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
-		MonitorLocalExpectZero:    "",
+		MonitorLocalExpectInit:    "init",
 		MonitorLocalExpectDrained: "drained",
 		MonitorLocalExpectNone:    "none",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
-		"":        MonitorLocalExpectZero,
+		"init":    MonitorLocalExpectInit,
 		"drained": MonitorLocalExpectDrained,
 		"none":    MonitorLocalExpectNone,
 	}
@@ -141,7 +141,7 @@ var (
 		MonitorGlobalExpectFrozen:  "frozen",
 		MonitorGlobalExpectNone:    "none",
 		MonitorGlobalExpectThawed:  "thawed",
-		MonitorGlobalExpectZero:    "",
+		MonitorGlobalExpectInit:    "init",
 	}
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
@@ -149,14 +149,14 @@ var (
 		"frozen":  MonitorGlobalExpectFrozen,
 		"none":    MonitorGlobalExpectNone,
 		"thawed":  MonitorGlobalExpectThawed,
-		"":        MonitorGlobalExpectZero,
+		"init":    MonitorGlobalExpectInit,
 	}
 
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
 		MonitorStateMaintenance:    nil,
 		MonitorStateUpgrade:        nil,
-		MonitorStateZero:           nil,
+		MonitorStateInit:           nil,
 		MonitorStateShutdown:       nil,
 		MonitorStateShutdownFailed: nil,
 		MonitorStateShutting:       nil,
@@ -265,4 +265,18 @@ func (t *Monitor) Unstructured() map[string]any {
 		"orchestration_is_done":    t.OrchestrationIsDone,
 		"session_id":               t.SessionID,
 	}
+}
+
+func (t MonitorUpdate) String() string {
+	s := fmt.Sprintf("CandidateOrchestrationID=%s", t.CandidateOrchestrationID)
+	if t.State != nil {
+		s += fmt.Sprintf(" State=%s", t.State)
+	}
+	if t.LocalExpect != nil {
+		s += fmt.Sprintf(" LocalExpect=%s", t.LocalExpect)
+	}
+	if t.GlobalExpect != nil {
+		s += fmt.Sprintf(" GlobalExpect=%s", t.GlobalExpect)
+	}
+	return fmt.Sprintf("node.MonitorUpdate{%s}", s)
 }

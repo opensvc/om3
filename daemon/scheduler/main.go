@@ -60,7 +60,7 @@ type (
 
 var (
 	incompatibleNodeMonitorStatus = map[node.MonitorState]any{
-		node.MonitorStateZero:        nil,
+		node.MonitorStateInit:        nil,
 		node.MonitorStateUpgrade:     nil,
 		node.MonitorStateShutting:    nil,
 		node.MonitorStateMaintenance: nil,

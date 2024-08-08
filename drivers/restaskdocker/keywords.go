@@ -23,7 +23,7 @@ var (
 		},
 		{
 			Option:    "timeout",
-			Attr:      "StartTimeout",
+			Attr:      "Timeout",
 			Converter: converters.Duration,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
@@ -40,7 +40,9 @@ var (
 		{
 			Option:    "log",
 			Attr:      "LogOutputs",
+			Default:   "true",
 			Converter: converters.Bool,
+			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/log"),
 		},
 		{
@@ -97,7 +99,7 @@ var (
 			Scopable:   true,
 			Candidates: []string{"once", "always"},
 			Example:    "once",
-			Text:       keywords.NewText(fs, "text/kw/virtinst"),
+			Text:       keywords.NewText(fs, "text/kw/image_pull_policy"),
 		},
 		{
 			Option:   "cwd",
@@ -269,24 +271,6 @@ var (
 			Default:   "2m",
 		},
 		{
-			Option:    "start_timeout",
-			Attr:      "StartTimeout",
-			Scopable:  true,
-			Converter: converters.Duration,
-			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
-			Example:   "1m5s",
-			Default:   "5s",
-		},
-		{
-			Option:    "stop_timeout",
-			Attr:      "StopTimeout",
-			Scopable:  true,
-			Converter: converters.Duration,
-			Text:      keywords.NewText(fs, "text/kw/stop_timeout"),
-			Example:   "2m",
-			Default:   "2m30s",
-		},
-		{
 			Option:    "secrets_environment",
 			Attr:      "SecretsEnv",
 			Scopable:  true,
@@ -311,6 +295,15 @@ var (
 			Default:  "0:up 1:down",
 			Example:  "0:up 1:down 3:warn 4: n/a 5:undef",
 		},
+		{
+			Option:    "run_timeout",
+			Attr:      "RunTimeout",
+			Converter: converters.Duration,
+			Scopable:  true,
+			Example:   "1m30s",
+			Text:      keywords.NewText(fs, "text/kw/run_timeout"),
+		},
+
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 	}

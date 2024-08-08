@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 )
@@ -34,11 +35,13 @@ type (
 )
 
 // NewCfg allocates a cfg kind object.
-func NewCfg(p any, opts ...funcopt.O) (*cfg, error) {
+func NewCfg(path naming.Path, opts ...funcopt.O) (*cfg, error) {
 	s := &cfg{}
+	s.path = path
+	s.path.Kind = naming.KindCfg
 	s.customEncode = cfgEncode
 	s.customDecode = cfgDecode
-	if err := s.init(s, p, opts...); err != nil {
+	if err := s.init(s, path, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)

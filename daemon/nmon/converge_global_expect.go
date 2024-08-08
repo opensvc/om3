@@ -11,7 +11,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
 	for nodename, data := range t.nodeMonitor {
-		if data.GlobalExpect == node.MonitorGlobalExpectZero {
+		if data.GlobalExpect == node.MonitorGlobalExpectInit {
 			continue
 		}
 		if data.GlobalExpect == node.MonitorGlobalExpectNone {

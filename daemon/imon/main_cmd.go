@@ -84,7 +84,7 @@ func (t *Manager) initRelationAvailStatus() {
 	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
-			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation)
+			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation, err)
 		} else if node == "" {
 			t.log.Infof("init relation subscribe to %s %s object avail status updates and deletes", name, objectPath)
 			t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
@@ -93,7 +93,7 @@ func (t *Manager) initRelationAvailStatus() {
 				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
 				cache[relationS] = st.Avail
 			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", t.path, name, relation, status.Undef)
+				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
 				cache[relationS] = status.Undef
 			}
 		} else {
@@ -467,16 +467,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return nil
 		}
 		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
 		}
-		if *c.Value.State == instance.MonitorStateZero {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidState, *c.Value.State)
+		if *c.Value.State == instance.MonitorStateInit {
+			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			return err
 		}
 		if t.state.State == *c.Value.State {
-			err := fmt.Errorf("%w: %s", instance.ErrSameState, *c.Value.State)
+			err := fmt.Errorf("%w %s", instance.ErrSameState, *c.Value.State)
 			t.log.Infof("set instance monitor: %s", err)
 			return err
 		}
@@ -499,7 +499,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return nil
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
 			t.log.Warnf("set instance monitor: %s", err)
 			globalExpectRefused()
 			return err
@@ -555,7 +555,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			if instMon.GlobalExpect == *c.Value.GlobalExpect {
 				continue
 			}
-			if instMon.GlobalExpect == instance.MonitorGlobalExpectZero {
+			if instMon.GlobalExpect == instance.MonitorGlobalExpectInit {
 				continue
 			}
 			if instMon.GlobalExpect == instance.MonitorGlobalExpectNone {
@@ -593,13 +593,13 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorLocalExpectStarted:
 		case instance.MonitorLocalExpectShutdown:
 		default:
-			err := fmt.Errorf("%w: %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrInvalidLocalExpect, *c.Value.LocalExpect)
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
 		}
 		target := *c.Value.LocalExpect
 		if t.state.LocalExpect == target {
-			err := fmt.Errorf("%w: %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
+			err := fmt.Errorf("%w %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
 			t.log.Infof("set instance monitor: %s", err)
 			return err
 		}
@@ -772,7 +772,7 @@ func (t *Manager) isStarted() bool {
 }
 
 func (t *Manager) needOrchestrate(c cmdOrchestrate) {
-	if c.state == instance.MonitorStateZero {
+	if c.state == instance.MonitorStateInit {
 		return
 	}
 	select {
@@ -1046,6 +1046,13 @@ func (t *Manager) doTransitionAction(action func() error, newState, successState
 	}
 }
 
+func (t *Manager) queueLastAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	_ = runner.Run(t.instConfig.Priority, func() error {
+		t.doLastAction(action, newState, successState, errorState)
+		return nil
+	})
+}
+
 func (t *Manager) queueAction(action func() error, newState, successState, errorState instance.MonitorState) {
 	_ = runner.Run(t.instConfig.Priority, func() error {
 		t.doAction(action, newState, successState, errorState)
@@ -1064,6 +1071,16 @@ func (t *Manager) doAction(action func() error, newState, successState, errorSta
 	if action() != nil {
 		nextState = errorState
 	}
+	go t.orchestrateAfterAction(newState, nextState)
+}
+
+func (t *Manager) doLastAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	t.transitionTo(newState)
+	nextState := successState
+	if action() != nil {
+		nextState = errorState
+	}
+	t.done()
 	go t.orchestrateAfterAction(newState, nextState)
 }
 

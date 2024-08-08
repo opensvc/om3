@@ -91,11 +91,12 @@ type (
 )
 
 const (
-	MonitorStateZero MonitorState = iota
+	MonitorStateInit MonitorState = iota
 	MonitorStateBooted
 	MonitorStateBootFailed
 	MonitorStateBooting
 	MonitorStateIdle
+	MonitorStateInterrupted
 	MonitorStateDeleted
 	MonitorStateDeleteFailed
 	MonitorStateDeleting
@@ -107,6 +108,7 @@ const (
 	MonitorStateProvisionFailed
 	MonitorStatePurgeFailed
 	MonitorStateReady
+	MonitorStateRestarted
 	MonitorStateRunning
 	MonitorStateShutdownFailed
 	MonitorStateShutdown
@@ -127,17 +129,18 @@ const (
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
 	MonitorStateWaitParents
+	MonitorStateWaitPriors
 )
 
 const (
-	MonitorLocalExpectZero MonitorLocalExpect = iota
+	MonitorLocalExpectInit MonitorLocalExpect = iota
 	MonitorLocalExpectNone
 	MonitorLocalExpectStarted
 	MonitorLocalExpectShutdown
 )
 
 const (
-	MonitorGlobalExpectZero MonitorGlobalExpect = iota
+	MonitorGlobalExpectInit MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
 	MonitorGlobalExpectDeleted
 	MonitorGlobalExpectFrozen
@@ -165,11 +168,13 @@ var (
 		MonitorStateFreezing:          "freezing",
 		MonitorStateFrozen:            "frozen",
 		MonitorStateIdle:              "idle",
+		MonitorStateInterrupted:       "interrupted",
 		MonitorStateProvisioned:       "provisioned",
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
 		MonitorStateReady:             "ready",
+		MonitorStateRestarted:         "restarted",
 		MonitorStateRunning:           "running",
 		MonitorStateShutdown:          "shutdown",
 		MonitorStateShutdownFailed:    "shutdown failed",
@@ -190,15 +195,17 @@ var (
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
 		MonitorStateWaitParents:       "wait parents",
-		MonitorStateZero:              "",
+		MonitorStateWaitPriors:        "wait priors",
+		MonitorStateInit:              "init",
 	}
 
 	MonitorStateValues = map[string]MonitorState{
-		"":                   MonitorStateZero,
+		"init":               MonitorStateInit,
 		"booted":             MonitorStateBooted,
 		"boot failed":        MonitorStateBootFailed,
 		"booting":            MonitorStateBooting,
 		"idle":               MonitorStateIdle,
+		"interrupted":        MonitorStateInterrupted,
 		"deleted":            MonitorStateDeleted,
 		"deleting":           MonitorStateDeleting,
 		"freeze failed":      MonitorStateFreezeFailed,
@@ -209,6 +216,7 @@ var (
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
 		"ready":              MonitorStateReady,
+		"restarted":          MonitorStateRestarted,
 		"running":            MonitorStateRunning,
 		"shutdown":           MonitorStateShutdown,
 		"shutdown failed":    MonitorStateShutdownFailed,
@@ -229,26 +237,27 @@ var (
 		"wait leader":        MonitorStateWaitLeader,
 		"wait non-leader":    MonitorStateWaitNonLeader,
 		"wait parents":       MonitorStateWaitParents,
+		"wait priors":        MonitorStateWaitPriors,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
 		MonitorLocalExpectStarted:  "started",
 		MonitorLocalExpectShutdown: "shutdown",
 		MonitorLocalExpectNone:     "none",
-		MonitorLocalExpectZero:     "",
+		MonitorLocalExpectInit:     "init",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
 		"shutdown": MonitorLocalExpectShutdown,
 		"started":  MonitorLocalExpectStarted,
 		"none":     MonitorLocalExpectNone,
-		"":         MonitorLocalExpectZero,
+		"init":     MonitorLocalExpectInit,
 	}
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
 		MonitorGlobalExpectAborted:       "aborted",
 		MonitorGlobalExpectDeleted:       "deleted",
-		MonitorGlobalExpectZero:          "",
+		MonitorGlobalExpectInit:          "init",
 		MonitorGlobalExpectFrozen:        "frozen",
 		MonitorGlobalExpectNone:          "none",
 		MonitorGlobalExpectPlaced:        "placed",
@@ -265,7 +274,7 @@ var (
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted":       MonitorGlobalExpectAborted,
 		"deleted":       MonitorGlobalExpectDeleted,
-		"":              MonitorGlobalExpectZero,
+		"init":          MonitorGlobalExpectInit,
 		"frozen":        MonitorGlobalExpectFrozen,
 		"placed":        MonitorGlobalExpectPlaced,
 		"placed@":       MonitorGlobalExpectPlacedAt,
@@ -286,7 +295,7 @@ var (
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
 
-	MonitorActionNone       MonitorAction = ""
+	MonitorActionNone       MonitorAction = "none"
 	MonitorActionCrash      MonitorAction = "crash"
 	MonitorActionFreezeStop MonitorAction = "freeze_stop"
 	MonitorActionReboot     MonitorAction = "reboot"
@@ -504,4 +513,21 @@ func (t ResourceMonitors) Unstructured() map[string]map[string]any {
 		m[k] = v.Unstructured()
 	}
 	return m
+}
+
+func (t MonitorUpdate) String() string {
+	s := fmt.Sprintf("CandidateOrchestrationID=%s", t.CandidateOrchestrationID)
+	if t.State != nil {
+		s += fmt.Sprintf(" State=%s", t.State)
+	}
+	if t.LocalExpect != nil {
+		s += fmt.Sprintf(" LocalExpect=%s", t.LocalExpect)
+	}
+	if t.GlobalExpect != nil {
+		s += fmt.Sprintf(" GlobalExpect=%s", t.GlobalExpect)
+	}
+	if t.GlobalExpectOptions != nil {
+		s += fmt.Sprintf(" GlobalExpectOptions=%#v", t.GlobalExpectOptions)
+	}
+	return fmt.Sprintf("instance.MonitorUpdate{%s}", s)
 }

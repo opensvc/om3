@@ -88,7 +88,7 @@ func NewPathFromStrings(namespace, kind, name string) (Path, error) {
 		namespace = "root"
 	}
 
-	k := NewKind(kind)
+	k := ParseKind(kind)
 	switch k {
 	case KindInvalid:
 		return path, fmt.Errorf("%w: invalid kind %s", ErrInvalid, kind)
@@ -465,7 +465,7 @@ func InstalledPaths() (Paths, error) {
 		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
 	}
 	envNamespace := env.Namespace()
-	envKind := NewKind(env.Kind())
+	envKind := ParseKind(env.Kind())
 	for _, ps := range matches {
 		for _, r := range replacements {
 			ps = strings.Replace(ps, r, "", 1)

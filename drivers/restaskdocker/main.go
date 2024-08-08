@@ -70,8 +70,7 @@ type T struct {
 	UTSNS           string         `json:"utsns"`
 	RegistryCreds   string         `json:"registry_creds"`
 	PullTimeout     *time.Duration `json:"pull_timeout"`
-	StartTimeout    *time.Duration `json:"start_timeout"`
-	StopTimeout     *time.Duration `json:"stop_timeout"`
+	Timeout         *time.Duration `json:"timeout"`
 
 	RetCodes string `json:"retcodes"`
 
@@ -131,7 +130,7 @@ func (t T) Container() *rescontainerdocker.T {
 		UTSNS:                     t.UTSNS,
 		RegistryCreds:             t.RegistryCreds,
 		PullTimeout:               t.PullTimeout,
-		StartTimeout:              t.StartTimeout,
+		StartTimeout:              t.Timeout,
 	}
 }
 
@@ -176,6 +175,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	// TODO: if t.LogOutputs {}
 	container := t.Container()
 	if err := container.Start(ctx); err != nil {
+		t.Log().Errorf("%s", err)
 		return err
 	}
 	inspect, err := container.Inspect(ctx)
@@ -189,30 +189,10 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	if s, err := t.ExitCodeToStatus(inspect.State.ExitCode); err != nil {
 		return err
 	} else if s != status.Up {
-		/* ? TODO:
-		if err := t.onError(); err != nil {
-			t.Log().Warnf("on error: %s", err)
-		}
-		*/
 		return fmt.Errorf("command exited with code %d", inspect.State.ExitCode)
 	}
 	return nil
 }
-
-/*
-func (t T) onError() error {
-	opts, err := t.GetFuncOpts(t.OnErrorCmd, "on_error")
-	if err != nil {
-		return err
-	}
-	if len(opts) == 0 {
-		return nil
-	}
-	cmd := command.New(opts...)
-	t.Log().Infof("on error run")
-	return cmd.Run()
-}
-*/
 
 func (t *T) Kill(ctx context.Context) error {
 	return t.Container().Signal(syscall.SIGKILL)
@@ -321,8 +301,11 @@ func (t T) notifyRunDone() error {
 
 func (t T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "run",
-		Option: "schedule",
-		Base:   "",
+		Action:              "run",
+		Option:              "schedule",
+		Base:                "",
+		RequireConfirmation: t.Confirmation,
+		RequireProvisioned:  true,
+		RequireCollector:    false,
 	}
 }

@@ -73,12 +73,20 @@ func (t *actor) Schedules() schedule.Table {
 		if !needResMon && r.IsMonitored() {
 			needResMon = true
 		}
-		if i, ok := r.(scheduleOptioner); ok {
-			opts := i.ScheduleOptions()
-			rid := r.RID()
-			e := t.newScheduleEntry(opts.Action, key.T{Section: rid, Option: opts.Option}.String(), rid, opts.Base, opts.RequireCollector, opts.RequireProvisioned)
-			table = table.Add(e)
+		if r.IsDisabled() {
+			continue
 		}
+		i, ok := r.(scheduleOptioner)
+		if !ok {
+			continue
+		}
+		opts := i.ScheduleOptions()
+		if opts.RequireConfirmation {
+			continue
+		}
+		rid := r.RID()
+		e := t.newScheduleEntry(opts.Action, key.T{Section: rid, Option: opts.Option}.String(), rid, opts.Base, opts.RequireCollector, opts.RequireProvisioned)
+		table = table.Add(e)
 	}
 	if needResMon {
 		e := t.newScheduleEntry("resource_monitor", "monitor_schedule", "", "resource_monitor", false, true)
