@@ -281,7 +281,7 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
 			types = kw.Types
 		} else if l, ok := typesByGroup[kw.Section]; ok {
 			types = append(types, l...)
-		} else {
+		} else if driver.NewGroup(kw.Section) == driver.GroupUnknown {
 			types = append(types, "")
 		}
 		for _, typ := range types {
@@ -296,9 +296,9 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
 		if kw.Section != "" && kw.Kind.Has(kind) {
 			sections[kw.Section] = nil
 		}
-		if kw.Option == "type" {
-			typesByGroup[kw.Section] = kw.Candidates
-		}
+	}
+	for group, names := range driver.NamesByGroup() {
+		typesByGroup[group.String()] = names
 	}
 	for _, kw := range t {
 		if !kw.Kind.Has(kind) {
