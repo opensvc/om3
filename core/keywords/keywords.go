@@ -129,8 +129,8 @@ func (t Indices) Len() int {
 }
 
 func (t Indices) Less(i, j int) bool {
-	if t[i][0] < t[j][0] {
-		return true
+	if t[i][0] != t[j][0] {
+		return t[i][0] < t[j][0]
 	}
 	return t[i][1] < t[j][1]
 }
