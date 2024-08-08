@@ -160,3 +160,13 @@ func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) naming.Paths {
 	}
 	return l
 }
+
+func (t *vol) Children() naming.Relations {
+	k := key.Parse("children")
+	l, err := t.config.GetStringsStrict(k)
+	if err != nil {
+		t.log.Errorf("%s", err)
+		return naming.Relations{}
+	}
+	return naming.ParseRelations(l)
+}

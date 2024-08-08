@@ -139,34 +139,6 @@ func (t *core) Peers() ([]string, error) {
 	return nil, fmt.Errorf("node %s has no peers: not in nodes nor drpnodes", impersonate)
 }
 
-func (t *core) Children() []naming.Relation {
-	data := make([]naming.Relation, 0)
-	k := key.Parse("children")
-	l, err := t.config.GetStringsStrict(k)
-	if err != nil {
-		t.log.Errorf("%s", err)
-		return data
-	}
-	for _, e := range l {
-		data = append(data, naming.Relation(e))
-	}
-	return data
-}
-
-func (t *core) Parents() []naming.Relation {
-	data := make([]naming.Relation, 0)
-	k := key.Parse("parents")
-	l, err := t.config.GetStringsStrict(k)
-	if err != nil {
-		t.log.Errorf("%s", err)
-		return data
-	}
-	for _, e := range l {
-		data = append(data, naming.Relation(e))
-	}
-	return data
-}
-
 func (t *core) FlexMin() (int, error) {
 	var (
 		i, maxValue int

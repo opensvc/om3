@@ -315,6 +315,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "parents",
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Inherit:   keywords.InheritHead,
 		Converter: converters.ListLowercase,
 		Text:      keywords.NewText(fs, "text/kw/core/parents"),
@@ -322,6 +323,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "children",
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Inherit:   keywords.InheritHead,
 		Converter: converters.ListLowercase,
 		Text:      keywords.NewText(fs, "text/kw/core/children"),
