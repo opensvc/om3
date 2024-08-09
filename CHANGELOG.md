@@ -256,6 +256,8 @@
   previously the default value *default*. Now daemon startup will automatically
   replace undefined cluster.name with a random value.
 
+* **breaking change:** keyword `cluster.name` is not anymore scopable.
+
 ## upgrade from b2.1
 ### cluster config
 
