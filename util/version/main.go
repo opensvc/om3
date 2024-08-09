@@ -37,7 +37,7 @@ func ExplicitVersion() string {
 //
 // Example VERSION generation:
 //
-//	git describe --tags >util/version/VERSION
+//	git describe --tags > util/version/text/VERSION
 func Version() string {
 	if v := ExplicitVersion(); v != "" {
 		return v
