@@ -18,6 +18,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
@@ -75,6 +76,11 @@ func bootStrapCcfg() error {
 			Obfuscate: false,
 		},
 		{
+			Key:       key.New("cluster", "name"),
+			Default:   naming.Random(),
+			Obfuscate: false,
+		},
+		{
 			Key:       key.New("cluster", "nodes"),
 			Default:   hostname.Hostname(),
 			Obfuscate: false,
@@ -103,6 +109,24 @@ func bootStrapCcfg() error {
 			op.Value = "xxxx"
 		}
 		log.Infof("bootstrap cluster config: %s", op)
+	}
+
+	// Prepares futures node join, because it requires at least one heartbeat.
+	// So on cluster config where no hb exists, we automatically set hb#1.type=unicast.
+	hasHbSection := false
+	for _, section := range ccfg.Config().SectionStrings() {
+		if strings.HasPrefix(section, "hb") {
+			hasHbSection = true
+			break
+		}
+	}
+	if !hasHbSection {
+		k := key.New("hb#1", "type")
+		op := keyop.New(k, keyop.Set, "unicast", 0)
+		if err := ccfg.Config().PrepareSet(*op); err != nil {
+			return err
+		}
+		log.Infof("bootstrap cluster config to have at least one heartbeat: %s", op)
 	}
 
 	if err := ccfg.Config().Commit(); err != nil {

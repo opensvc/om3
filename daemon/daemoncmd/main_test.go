@@ -150,11 +150,16 @@ func TestDaemonBootstrap(t *testing.T) {
 				err = json.Unmarshal(b, &cData)
 				require.NoErrorf(t, err, "unmarshall daemon status response: %s", b)
 				t.Logf("get daemon status response: %+v", cData)
-				expectedClusterName := "cluster1"
-				if !hasConfig {
-					expectedClusterName = "default"
+				if hasConfig {
+					require.Equal(t, "cluster1", cData.Cluster.Config.Name)
+				} else {
+					require.Greaterf(t, len(cData.Cluster.Config.Name), 2,
+						"automatically defined cluster name is too short: %s", cData.Cluster.Config.Name)
+					require.Contains(t, cData.Cluster.Config.Name, "-",
+						"automatically random cluster name should contain '-', found: %s",
+						cData.Cluster.Config.Name)
+					// TODO: check for automatically defined heartbeat hb#1.type=unicast
 				}
-				require.Equal(t, expectedClusterName, cData.Cluster.Config.Name)
 				for _, objectName := range []string{
 					"system/sec/cert",
 					"system/sec/ca",

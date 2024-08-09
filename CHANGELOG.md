@@ -224,6 +224,7 @@
 
 * The **origin=daemon** log entries attribute is replaced with **origin=daemon/monitor**
 
+### cluster config
 #### arbitrator
 
 * The new keyword **uri** replaces **name**.
@@ -246,3 +247,21 @@
   The internal timeout value is now set to a third of the ready period.
 
 * The **secret** keyword is now ignored.
+
+#### cluster section
+
+##### cluster.name
+
+* **breaking change:** keyword `cluster.name` has no default value. It has
+  previously the default value *default*. Now daemon startup will automatically
+  replace undefined cluster.name with a random value.
+
+* **breaking change:** keyword `cluster.name` is not anymore scopable.
+
+## upgrade from b2.1
+### cluster config
+
+* Need explicit cluster.name because of v3 random cluster name:
+
+		# Ensure cluster.name is defined before upgrade to v3
+		om cluster set --kw cluster.name=$(om cluster eval --kw cluster.name)
