@@ -4,9 +4,9 @@ The cluster name is used,
 * in the {fqdn} configuration reference
 * in the AES secret encryption metadata
 
-The cluster name should be unique site-wide and be set right before starting
-to add `sec` keys. Missing cluster name will be automatically created with
-random value during daemon startup.
+The cluster name should be unique site-wide.
+Missing cluster name will be automatically created with random value during
+daemon startup.
 
 It is always lowercased, so better to set it to a lowercase value to avoid
 confusion.
