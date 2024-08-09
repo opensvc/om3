@@ -535,7 +535,6 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section:  "cluster",
 		Option:   "name",
 		Scopable: true,
-		Default:  "default",
 		Text:     keywords.NewText(fs, "text/kw/node/cluster.name"),
 	},
 	{

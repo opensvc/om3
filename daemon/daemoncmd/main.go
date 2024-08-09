@@ -18,6 +18,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
@@ -72,6 +73,11 @@ func bootStrapCcfg() error {
 		{
 			Key:       key.New("cluster", "id"),
 			Default:   uuid.New().String(),
+			Obfuscate: false,
+		},
+		{
+			Key:       key.New("cluster", "name"),
+			Default:   naming.Random(),
 			Obfuscate: false,
 		},
 		{
