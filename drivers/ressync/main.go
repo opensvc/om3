@@ -37,19 +37,19 @@ var (
 	fs embed.FS
 
 	KWMaxDelay = keywords.Keyword{
-		Option:        "max_delay",
-		DefaultOption: "sync_max_delay",
 		Aliases:       []string{"sync_max_delay"},
 		Attr:          "MaxDelay",
 		Converter:     converters.Duration,
+		DefaultOption: "sync_max_delay",
+		Option:        "max_delay",
 		Text:          keywords.NewText(fs, "text/kw/max_delay"),
 	}
 	KWSchedule = keywords.Keyword{
-		Option:        "schedule",
-		DefaultOption: "sync_schedule",
 		Attr:          "Schedule",
-		Scopable:      true,
+		DefaultOption: "sync_schedule",
 		Example:       "00:00-01:00 mon",
+		Option:        "schedule",
+		Scopable:      true,
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 

@@ -28,19 +28,19 @@ func (t T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(
 		keywords.Keyword{
-			Option:   "path",
 			Attr:     "SharePath",
+			Example:  "/srv/{fqdn}/share",
+			Option:   "path",
 			Required: true,
 			Scopable: true,
-			Example:  "/srv/{fqdn}/share",
 			Text:     keywords.NewText(fs, "text/kw/path"),
 		},
 		keywords.Keyword{
-			Option:   "opts",
 			Attr:     "ShareOpts",
+			Example:  "*(ro)",
+			Option:   "opts",
 			Required: true,
 			Scopable: true,
-			Example:  "*(ro)",
 			Text:     keywords.NewText(fs, "text/kw/opts"),
 		},
 	)

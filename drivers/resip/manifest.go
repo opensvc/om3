@@ -12,12 +12,12 @@ var (
 	fs embed.FS
 
 	KeywordWaitDNS = keywords.Keyword{
-		Option:    "wait_dns",
 		Attr:      "WaitDNS",
-		Scopable:  true,
+		Converter: converters.Duration,
 		Default:   "0",
 		Example:   "10s",
-		Converter: converters.Duration,
+		Option:    "wait_dns",
+		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/wait_dns"),
 	}
 )

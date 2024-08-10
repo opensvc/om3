@@ -13,12 +13,12 @@ var (
 
 	Keywords = []keywords.Keyword{
 		{
-			Option:    "start_timeout",
 			Attr:      "StartTimeout",
 			Converter: converters.Duration,
+			Example:   "180",
+			Option:    "start_timeout",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
-			Example:   "180",
 		},
 	}
 )

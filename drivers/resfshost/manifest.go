@@ -16,84 +16,84 @@ var (
 	fs embed.FS
 
 	KeywordDevice = keywords.Keyword{
-		Option:   "dev",
 		Attr:     "Device",
-		Scopable: true,
-		Required: true,
 		Example:  "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
+		Option:   "dev",
+		Required: true,
+		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/dev"),
 	}
 	KeywordMKFSOptions = keywords.Keyword{
-		Option:       "mkfs_opt",
 		Attr:         "MKFSOptions",
 		Converter:    converters.Shlex,
 		Default:      "",
+		Option:       "mkfs_opt",
 		Provisioning: true,
 		Scopable:     true,
 		Text:         keywords.NewText(fs, "text/kw/mkfs_opt"),
 	}
 	KeywordStatTimeout = keywords.Keyword{
-		Option:    "stat_timeout",
 		Attr:      "StatTimeout",
 		Converter: converters.Duration,
 		Default:   "5s",
+		Option:    "stat_timeout",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/stat_timeout"),
 	}
 	KeywordMountPoint = keywords.Keyword{
-		Option:   "mnt",
 		Attr:     "MountPoint",
-		Scopable: true,
-		Required: true,
 		Example:  "/srv/{fqdn}",
+		Option:   "mnt",
+		Required: true,
+		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/mnt"),
 	}
 	KeywordMountOptions = keywords.Keyword{
-		Option:   "mnt_opt",
 		Attr:     "MountOptions",
+		Option:   "mnt_opt",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/mnt_opt"),
 	}
 	KeywordPromoteRW = keywords.Keyword{
-		Option:    "promote_rw",
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
+		Option:    "promote_rw",
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 	KeywordZone = keywords.Keyword{
-		Option:   "zone",
 		Attr:     "Zone",
+		Option:   "zone",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/zone"),
 	}
 	KeywordUser = keywords.Keyword{
-		Option:    "user",
 		Attr:      "User",
 		Converter: converters.User,
-		Scopable:  true,
 		Example:   "root",
+		Option:    "user",
+		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/user"),
 	}
 	KeywordGroup = keywords.Keyword{
-		Option:    "group",
 		Attr:      "Group",
 		Converter: converters.Group,
-		Scopable:  true,
 		Example:   "sys",
+		Option:    "group",
+		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/group"),
 	}
 	KeywordPerm = keywords.Keyword{
-		Option:    "perm",
 		Attr:      "Perm",
 		Converter: converters.FileMode,
-		Scopable:  true,
 		Example:   "1777",
+		Option:    "perm",
+		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/group"),
 	}
 	KeywordCheckRead = keywords.Keyword{
-		Option:    "check_read",
 		Attr:      "CheckRead",
 		Converter: converters.Bool,
+		Option:    "check_read",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
 	}

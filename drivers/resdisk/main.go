@@ -22,9 +22,9 @@ var (
 	fs embed.FS
 
 	KWPromoteRW = keywords.Keyword{
-		Option:    "promote_rw",
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
+		Option:    "promote_rw",
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 

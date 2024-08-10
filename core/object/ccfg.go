@@ -21,10 +21,10 @@ type (
 
 var ccfgPrivateKeywords = []keywords.Keyword{
 	{
-		Section:     "DEFAULT",
+		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
 		Option:      "id",
 		Scopable:    false,
-		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
+		Section:     "DEFAULT",
 		Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
 	},
 }
