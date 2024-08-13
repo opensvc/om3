@@ -311,8 +311,17 @@ func (t T) Validate() (Alerts, error) {
 			}
 			kw, err := getKeyword(k, sectionType, t.Referrer)
 			if err != nil {
-				alerts = append(alerts, t.NewAlertUnknown(k, did))
-				continue
+				if k.Section == "DEFAULT" {
+					// if a DEFAULT.<option> is not declared as a keyword, don't
+					// raise an issue if a keyword exists in drivers, as it
+					// may be the default value for this keyword.
+					relaxedKey := key.T{Section: "*", Option: k.Option}
+					kw, err = getKeyword(relaxedKey, sectionType, t.Referrer)
+					if err != nil {
+						alerts = append(alerts, t.NewAlertUnknown(k, did))
+						continue
+					}
+				}
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
 				alerts = append(alerts, t.NewAlertScoping(k, did))

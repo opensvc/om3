@@ -61,7 +61,7 @@ func NamesByGroup() map[Group][]string {
 func ListWithGroup(group Group) Registry {
 	m := NewRegistry()
 	for _, did := range List() {
-		if did.Group != group {
+		if group != GroupUnknown && did.Group != group {
 			continue
 		}
 		m[did] = Get(did)
