@@ -85,6 +85,9 @@ type (
 		disable bool
 
 		subQS pubsub.QueueSizer
+
+		// version is the data version
+		version string
 	}
 
 	requester interface {
@@ -113,6 +116,8 @@ type (
 		PreviousUpdatedAt time.Time     `json:"previous_updated_at"`
 		UpdatedAt         time.Time     `json:"updated_at"`
 		Data              *cluster.Data `json:"data"`
+		Changes           []string      `json:"changes"`
+		Version           string        `json:"version"`
 	}
 
 	// End action:
@@ -174,6 +179,7 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			},
 			Url: "",
 		},
+		version: "3.0.0",
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)

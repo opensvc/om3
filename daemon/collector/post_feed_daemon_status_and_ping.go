@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -183,6 +182,8 @@ func (t *T) postStatus() error {
 		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
 		Data:              t.clusterData.ClusterData(),
+		Changes:           xmap.Keys(t.daemonStatusChange),
+		Version:           t.version,
 	}
 	if body.Data == nil {
 		return fmt.Errorf("%s %s abort on empty cluster data", method, path)
@@ -202,7 +203,6 @@ func (t *T) postStatus() error {
 	}
 
 	req.Header.Set(headerPreviousUpdatedAt, t.previousUpdatedAt.Format(time.RFC3339Nano))
-	req.Header.Set(headerDaemonChange, strings.Join(xmap.Keys(t.daemonStatusChange), " "))
 
 	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	resp, err = t.client.Do(req)
