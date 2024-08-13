@@ -1,38 +1,38 @@
-A Go template string with custom extra functions:
+`string` is a Go template string with custom extra functions:
 
-- `hasNodeLabel(labels []pubsub.Label, expected ...string) bool`
+* `hasNodeLabel(labels []pubsub.Label, expected ...string) bool`
 
-- `hasPathLabel(labels []pubsub.Label, expected ...string) bool`
+* `hasPathLabel(labels []pubsub.Label, expected ...string) bool`
 
-- `hasInstanceLabel(labels []pubsub.Label, expected ...string) bool`
+* `hasInstanceLabel(labels []pubsub.Label, expected ...string) bool`
 
-- `passSet(s string, b bool)`
+* `passSet(s string, b bool)`
 
   Add s to passed if b else remove s from passed.
   Return true when passed items has been changed.
 
-- `passCount() int`
+* `passCount() int`
 
   Return count of passed items.
 
-- `setSuccess(b bool)`
+* `setSuccess(b bool)`
 
   Set success to b.
   When b is true and 'om node --wait' exit with 0 exit code.
 
-- `toInst(p path, node string) string`
+* `toInst(p path, node string) string`
 
   Return instance id from path and nodeaaa.
 
-- `stringsContains(s string, substr string) bool`
+* `stringsContains(s string, substr string) bool`
 
   Alias of strings.Contains.
 
-- `stringsHasPrefix(s string, prefix string) bool`
+* `stringsHasPrefix(s string, prefix string) bool`
 
   Alias of strings.HasPrefix.
 
-- `stringsHasSuffix(s string, suffix string) bool`
+* `stringsHasSuffix(s string, suffix string) bool`
 
   Alias of strings.HasSuffix.
 
@@ -45,19 +45,19 @@ Simple template examples:
 
 Label filtering examples:
 
-- By node:
+* By node:
 
       --filter InstanceMonitorUpdated,path=foo --template \
           '{{if hasNodeLabel .data.labels "dev1n1" "dev1n2" -}}
               {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
 
-- By path:
+* By path:
 
       --filter InstanceMonitorUpdated,node=dev1n1 --template \
           '{{if hasPathLabel .data.labels "foo001" "foo002" -}}
               {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
 
-- By instance:
+* By instance:
 
       --filter InstanceMonitorUpdated --template \
           '{{if hasInstanceLabel .data.labels "foo001@dev1n1" "foo002@dev1n2" -}}
@@ -66,37 +66,37 @@ Label filtering examples:
 
 Wait template examples:
 
-- Object is avail up and provisioned true:
+* Object is avail up and provisioned true:
 
       --wait --filter ObjectStatusUpdated,path=foo --template \
           '{{if setSuccess (and (eq .data.instance_status.avail "up")
                            (eq .data.instance_status.provisioned "true"))}}{{end}}'
 
-- Instance is avail up and provisioned true:
+* Instance is avail up and provisioned true:
 
       --wait --filter InstanceStatusUpdated,path=foo,node=dev1n1 --template \
           '{{if setSuccess (and (eq .data.instance_status.avail "up")
                                 (eq .data.instance_status.provisioned "true"))}}{{end}}'
 
-- Node is frozen:
+* Node is frozen:
 
       --wait --filter NodeStatusUpdated,node=dev1n1 --template '{{if setSuccess (eq .data.instance_status.frozen_at "0001-01-01T00:00:00Z")}}{{end}}'
 
-- All cluster nodes are frozen:
+* All cluster nodes are frozen:
 
       --wait --filter ClusterStatusUpdated --template '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
 
-- All cluster nodes are thawed:
+* All cluster nodes are thawed:
 
       --wait --filter ClusterStatusUpdated --template '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
 
-- Object avail is up on 3 objects:
+* Object avail is up on 3 objects:
 
       --wait --filter ObjectStatusUpdated --template \
           '{{if passSet (toInst .data.path .data.node) (eq .data.object_statys.avail "up") -}}
               {{with setSuccess (eq passCount 3)}}{{end}}{{end}}'
 
-- Object avail is up on 3 objects that starts with "foo":
+* Object avail is up on 3 objects that starts with "foo":
 
       --wait --filter ObjectStatusUpdated --template \
           '{{if eq (slice .data.path 0 3) "foo" -}}
