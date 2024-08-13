@@ -654,11 +654,11 @@ func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
 
 func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) keywords.Keyword {
 	switch k.Section {
-	case "data", "env":
+	case "data", "env", "labels":
 		return keywords.Keyword{
 			Option:   "*", // trick IsZero()
-			Required: false,
-			Scopable: true,
+			Scopable: kind != naming.KindInvalid,
+			Inherit:  keywords.InheritLeaf,
 		}
 	}
 	driverGroup := driver.GroupUnknown

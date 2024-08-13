@@ -1029,6 +1029,7 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 	// Examples:
 	//   "node.env" => "env"
 	//   "node.labels.az" => "labels.az"
+	//   "node.env.az" => "env.az"
 	//
 	l := strings.SplitN(ref, ".", 2)
 	nodeRef := l[1]
