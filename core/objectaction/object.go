@@ -548,7 +548,14 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectRestarted:
-			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
+			params := api.PostObjectActionRestart{}
+			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsRestarted); !ok {
+				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
+			} else {
+				params.Force = &options.Force
+			}
+
+			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {

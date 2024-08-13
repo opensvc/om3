@@ -100,6 +100,10 @@ func (t *Manager) crmProvisionLeader() error {
 	return t.crmAction("provision leader", t.path.String(), "provision", "--local", "--leader", "--disable-rollback")
 }
 
+func (t *Manager) crmStartStandby() error {
+	return t.crmAction("start", t.path.String(), "startstandby", "--local")
+}
+
 func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
 	return t.crmAction("start", t.path.String(), "startstandby", "--local", "--rid", s)
