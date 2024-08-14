@@ -5,7 +5,7 @@ type (
 )
 
 var (
-	registry = NewRegistry()
+	All = NewRegistry()
 )
 
 func NewRegistry() Registry {
@@ -13,7 +13,7 @@ func NewRegistry() Registry {
 }
 
 func Register(id ID, allocator any) {
-	registry[id] = allocator
+	All[id] = allocator
 }
 
 func Exists(id ID) bool {
@@ -21,7 +21,7 @@ func Exists(id ID) bool {
 }
 
 func Get(id ID) any {
-	allocator, ok := registry[id]
+	allocator, ok := All[id]
 	if !ok {
 		// <group>.<name> driver not found, ... try <group>
 		// used for example by the volume driver, whose
@@ -34,14 +34,14 @@ func Get(id ID) any {
 }
 
 func GetStrict(id ID) any {
-	allocator, _ := registry[id]
+	allocator, _ := All[id]
 	return allocator
 }
 
 func List() IDs {
-	l := make(IDs, len(registry))
+	l := make(IDs, len(All))
 	i := 0
-	for did := range registry {
+	for did := range All {
 		l[i] = did
 		i = i + 1
 	}
@@ -50,7 +50,7 @@ func List() IDs {
 
 func NamesByGroup() map[Group][]string {
 	m := make(map[Group][]string)
-	for did := range registry {
+	for did := range All {
 		var l []string
 		l, _ = m[did.Group]
 		m[did.Group] = append(l, did.Name)
@@ -58,13 +58,13 @@ func NamesByGroup() map[Group][]string {
 	return m
 }
 
-func ListWithGroup(group Group) Registry {
+func (t Registry) WithGroup(group Group) Registry {
 	m := NewRegistry()
-	for _, did := range List() {
-		if group != GroupUnknown && did.Group != group {
+	for did, allocator := range t {
+		if did.Group != group {
 			continue
 		}
-		m[did] = Get(did)
+		m[did] = allocator
 	}
 	return m
 }

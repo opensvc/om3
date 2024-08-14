@@ -667,12 +667,20 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		driverGroup = rid.DriverGroup()
 	}
 
+	// base keyword
 	if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
-		// base keyword
 		return kw
 	}
 
-	for _, i := range driver.ListWithGroup(driverGroup) {
+	// driver keyword
+	var drivers driver.Registry
+	if k.Section == "*" && driverGroup == driver.GroupUnknown {
+		drivers = driver.All
+	} else {
+		drivers = driver.All.WithGroup(driverGroup)
+	}
+
+	for _, i := range drivers {
 		allocator, ok := i.(func() resource.Driver)
 		if !ok {
 			continue
@@ -681,8 +689,7 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		if kws == nil {
 			continue
 		}
-		store := keywords.Store(kws)
-		if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
+		if kw := keywords.Store(kws).Lookup(k, kind, sectionType); !kw.IsZero() {
 			return kw
 		}
 	}
