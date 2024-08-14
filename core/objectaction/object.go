@@ -46,6 +46,14 @@ type (
 		LocalFunc  func(context.Context, naming.Path) (any, error)
 		RemoteFunc func(context.Context, naming.Path, string) (any, error)
 	}
+
+	asyncResult struct {
+		Path            string    `json:"path"`
+		OrchestrationID uuid.UUID `json:"orchestration_id,omitempty"`
+		Error           error     `json:"error,omitempty"`
+	}
+
+	asyncResults []asyncResult
 )
 
 // New allocates a new client configuration and returns the reference
@@ -406,14 +414,6 @@ func (t T) DoAsync() error {
 	if err != nil {
 		return err
 	}
-	type (
-		result struct {
-			Path            string    `json:"path"`
-			OrchestrationID uuid.UUID `json:"orchestration_id,omitempty"`
-			Error           error     `json:"error,omitempty"`
-		}
-		results []result
-	)
 	var (
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -428,7 +428,7 @@ func (t T) DoAsync() error {
 		ctx, cancel = context.WithCancel(context.Background())
 		defer cancel()
 	}
-	rs := make(results, 0)
+	rs := make(asyncResults, 0)
 	if t.Wait {
 		waitC = make(chan error, len(paths))
 	}
@@ -548,7 +548,14 @@ func (t T) DoAsync() error {
 				}
 			}
 		case instance.MonitorGlobalExpectRestarted:
-			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
+			params := api.PostObjectActionRestart{}
+			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsRestarted); !ok {
+				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
+			} else {
+				params.Force = &options.Force
+			}
+
+			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
 				err = e
 			} else {
 				switch resp.StatusCode() {
@@ -703,9 +710,9 @@ func (t T) DoAsync() error {
 		default:
 			return fmt.Errorf("unexpected global expect: %s", target)
 		}
-		var r result
+		var r asyncResult
 		if err != nil {
-			r = result{
+			r = asyncResult{
 				Error: err,
 				Path:  p.String(),
 			}
@@ -713,12 +720,12 @@ func (t T) DoAsync() error {
 			toWait++
 			var orchestrationQueued api.OrchestrationQueued
 			if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
-				r = result{
+				r = asyncResult{
 					OrchestrationID: orchestrationQueued.OrchestrationID,
 					Path:            p.String(),
 				}
 			} else {
-				r = result{
+				r = asyncResult{
 					Error: err,
 					Path:  p.String(),
 				}
@@ -726,22 +733,11 @@ func (t T) DoAsync() error {
 		}
 		rs = append(rs, r)
 	}
-	human := func() string {
-		s := ""
-		for _, r := range rs {
-			if r.Error != nil {
-				s += fmt.Sprintf("%s %s %s\n", r.OrchestrationID, r.Path, rawconfig.Colorize.Error(r.Error))
-			} else {
-				s += fmt.Sprintf("%s %s\n", r.OrchestrationID, r.Path)
-			}
-		}
-		return s
-	}
 	output.Renderer{
+		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,ERROR:error",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          rs,
-		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	if t.Wait && toWait > 0 {
@@ -1068,4 +1064,18 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 			}
 		}
 	}()
+}
+
+func (t asyncResult) Unstructured() map[string]any {
+	var errorString string
+	if t.Error != nil {
+		errorString = t.Error.Error()
+	} else {
+		errorString = "-"
+	}
+	return map[string]any{
+		"orchestration_id": t.OrchestrationID.String(),
+		"path":             t.Path,
+		"error":            errorString,
+	}
 }

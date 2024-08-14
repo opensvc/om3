@@ -85,6 +85,10 @@ type (
 	MonitorLocalExpect  int
 	MonitorGlobalExpect int
 
+	MonitorGlobalExpectOptionsRestarted struct {
+		Force bool `json:"force"`
+	}
+
 	MonitorGlobalExpectOptionsPlacedAt struct {
 		Destination []string `json:"destination"`
 	}
@@ -96,7 +100,6 @@ const (
 	MonitorStateBootFailed
 	MonitorStateBooting
 	MonitorStateIdle
-	MonitorStateInterrupted
 	MonitorStateDeleted
 	MonitorStateDeleteFailed
 	MonitorStateDeleting
@@ -168,7 +171,6 @@ var (
 		MonitorStateFreezing:          "freezing",
 		MonitorStateFrozen:            "frozen",
 		MonitorStateIdle:              "idle",
-		MonitorStateInterrupted:       "interrupted",
 		MonitorStateProvisioned:       "provisioned",
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
@@ -205,7 +207,6 @@ var (
 		"boot failed":        MonitorStateBootFailed,
 		"booting":            MonitorStateBooting,
 		"idle":               MonitorStateIdle,
-		"interrupted":        MonitorStateInterrupted,
 		"deleted":            MonitorStateDeleted,
 		"deleting":           MonitorStateDeleting,
 		"freeze failed":      MonitorStateFreezeFailed,

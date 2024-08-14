@@ -1,5 +1,54 @@
 package imon
 
+/*
+   +------------------------------+
+   |              idle            |
+   +------------------------------+
+      ^             |          |
+      |             |          |
+      |             |          |
+      |             v          |
+      |      +-------------+   |
+      |      | wait priors |   |
+      |      +-------------+   |
+      |             |          |
+      |             |          |
+      |             |          |
+      |             v          v
+      |       +------------------+
+      |       |   ready          |
+      |       +------------------+
+      |             |
+      |             |
+      |             |
+      |             v
+      |      +-------------+          +---------------+
+      |      |   stopping  |--------->|  stop failed  |
+      |      +-------------+          +---------------+
+      |             |
+      |             |
+      |             |
+      |             v
+      |       +-----------+
+      |       |  stopped  |
+      |       +-----------+
+      |             |
+      |             |
+      |             |
+      |             v
+      |      +------------+           +----------------+
+      |      |  starting  |---------->|  start failed  |
+      |      +------------+           +----------------+
+      |             |
+      |             |
+      |             |
+      |             v
+      |      +-------------+
+      +------|  restarted  |
+             +-------------+
+
+*/
+
 import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
@@ -14,8 +63,10 @@ func (t *Manager) orchestrateRestarted() {
 		t.orchestrateRestartedOnWaitPriors()
 	case instance.MonitorStateReady:
 		t.orchestrateRestartedOnReady()
-	case instance.MonitorStateInterrupted:
-		t.orchestrateRestartedOnInterrupted()
+	case instance.MonitorStateShutdown:
+		t.orchestrateRestartedOnShutdown()
+	case instance.MonitorStateStopped:
+		t.orchestrateRestartedOnStopped()
 	case instance.MonitorStateRestarted:
 		t.orchestrateRestartedOnRestarted()
 	case instance.MonitorStateFrozen:
@@ -37,17 +88,33 @@ func (t *Manager) getPriors() []string {
 		if t.localhost == candidate {
 			return candidates
 		}
-		if instStatus, ok := t.instStatus[candidate]; ok {
-			switch instStatus.Avail {
-			case status.Up, status.Warn:
-				candidates = append(candidates, candidate)
-			}
-		}
+		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
 
+func (t *Manager) restartedOptions() (options instance.MonitorGlobalExpectOptionsRestarted) {
+	options, _ = t.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsRestarted)
+	return
+}
+
 func (t *Manager) orchestrateRestartedOnIdle() {
+	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
+		switch instanceStatus.Avail {
+		case status.Warn, status.Up:
+		case status.StandbyUp:
+			if !t.restartedOptions().Force {
+				t.log.Infof("local instance initial avail is %s and restart is not forced -> set done")
+				t.done()
+				return
+			}
+		default:
+			t.log.Infof("local instance initial avail is %s -> set done")
+			t.done()
+			return
+		}
+	}
+
 	t.priors = t.getPriors()
 	priorsLength := len(t.priors)
 	switch priorsLength {
@@ -62,6 +129,26 @@ func (t *Manager) orchestrateRestartedOnIdle() {
 	}
 }
 
+func (t *Manager) orchestrateRestartedOnReady() {
+	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
+		switch instanceStatus.Avail {
+		case status.Warn, status.Up, status.StandbyUp:
+			t.log.Infof("all prior instances are restarted, ready to restart")
+			t.state.LocalExpect = instance.MonitorLocalExpectStarted
+			t.change = true
+			t.createPendingWithDuration(stopDuration)
+			if t.restartedOptions().Force {
+				t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
+			} else {
+				t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+			}
+		default:
+			t.log.Infof("all prior instances are restarted, local instance avail is %s -> done")
+			t.doneAndIdle()
+		}
+	}
+}
+
 func (t *Manager) orchestrateRestartedOnWaitPriors() {
 	for _, nodename := range t.priors {
 		instanceMonitor, ok := t.instMonitor[nodename]
@@ -70,34 +157,43 @@ func (t *Manager) orchestrateRestartedOnWaitPriors() {
 			t.priors = stringslice.Remove(t.priors, nodename)
 			continue
 		}
-		if instanceMonitor.State == instance.MonitorStateRestarted {
+		if instanceMonitor.State == instance.MonitorStateRestarted || instanceMonitor.OrchestrationIsDone {
 			continue
 		}
-		t.log.Debugf("prior instance on %s is not restarted yet, keep waiting", nodename)
+		t.log.Debugf("prior instance on %s is not done nor restarted yet (%s), keep waiting", nodename, instanceMonitor.State)
 		return
 	}
-	t.log.Infof("all prior instances are restarted, ready to restart")
+	t.log.Infof("no prior instances, ready to restart")
 	t.state.State = instance.MonitorStateReady
 	t.change = true
 	t.priors = []string{}
 }
 
-func (t *Manager) orchestrateRestartedOnInterrupted() {
+func (t *Manager) orchestrateRestartedOnStopped() {
 	t.doTransitionAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateRestarted, instance.MonitorStateStartFailed)
 }
 
-func (t *Manager) orchestrateRestartedOnReady() {
-	t.state.LocalExpect = instance.MonitorLocalExpectStarted
-	t.change = true
-	t.createPendingWithDuration(stopDuration)
-	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateInterrupted, instance.MonitorStateStopFailed)
+func (t *Manager) orchestrateRestartedOnShutdown() {
+	t.doTransitionAction(t.crmStartStandby, instance.MonitorStateStarting, instance.MonitorStateRestarted, instance.MonitorStateStartFailed)
 }
 
 func (t *Manager) orchestrateRestartedOnRestarted() {
-	if t.state.OrchestrationIsDone {
+	for nodename, instanceMonitor := range t.instMonitor {
+		if instanceMonitor.OrchestrationIsDone {
+			continue
+		}
+		switch instanceMonitor.State {
+		case instance.MonitorStateRestarted:
+			continue
+		case instance.MonitorStateStartFailed:
+			continue
+		case instance.MonitorStateStopFailed:
+			continue
+		}
+		t.loggerWithState().Infof("instance on %s state is %s -> wait", nodename, instanceMonitor.State)
 		return
 	}
-	t.loggerWithState().Infof("instance state is restarted -> set done and idle, clear local expect")
+	t.loggerWithState().Infof("all instances are restarted, failed or done -> set done and local expect")
 	t.doneAndIdle()
 	t.state.LocalExpect = instance.MonitorLocalExpectStarted
 	t.clearPending()

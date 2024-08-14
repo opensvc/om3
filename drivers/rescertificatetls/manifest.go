@@ -26,38 +26,38 @@ func (t T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		keywords.Keyword{
-			Option:   "certificate_secret",
 			Attr:     "CertificateSecret",
+			Option:   "certificate_secret",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/certificate_secret"),
 		},
 		keywords.Keyword{
-			Option:   "validation_secret",
 			Attr:     "ValidationSecret",
+			Option:   "validation_secret",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/validation_secret"),
 		},
 		keywords.Keyword{
-			Option:   "certificate_chain_filename",
 			Attr:     "CertificateChainFilename",
+			Option:   "certificate_chain_filename",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/certificate_chain_filename"),
 		},
 		keywords.Keyword{
-			Option:   "private_key_filename",
 			Attr:     "PrivateKeyFilename",
+			Option:   "private_key_filename",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/private_key_filename"),
 		},
 		keywords.Keyword{
-			Option:   "certificate_chain_inline_string",
 			Attr:     "CertificateChainInlineString",
+			Option:   "certificate_chain_inline_string",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/certificate_chain_inline_string"),
 		},
 		keywords.Keyword{
-			Option:   "private_key_inline_string",
 			Attr:     "PrivateKeyInlineString",
+			Option:   "private_key_inline_string",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/private_key_inline_string"),
 		},

@@ -1,11 +1,10 @@
 package object
 
 import (
-	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/core/freeze"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,32 +15,15 @@ func (t *Node) frozenFile() string {
 
 // Frozen returns the unix timestamp of the last freeze.
 func (t *Node) Frozen() time.Time {
-	p := t.frozenFile()
-	fi, err := os.Stat(p)
-	if err != nil {
-		return time.Time{}
-	}
-	return fi.ModTime()
+	return freeze.Frozen(t.frozenFile())
 }
 
 // Freeze creates a persistant flag file that prevents orchestration
 // of the object instance.
 func (t *Node) Freeze() error {
-	p := t.frozenFile()
-	if file.Exists(p) {
-		return nil
-	}
-	d := filepath.Dir(p)
-	if !file.Exists(d) {
-		if err := os.MkdirAll(d, os.ModePerm); err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(p)
-	if err != nil {
+	if err := freeze.Freeze(t.frozenFile()); err != nil {
 		return err
 	}
-	f.Close()
 	log.Info().Msg("now frozen")
 	return nil
 }
@@ -49,12 +31,7 @@ func (t *Node) Freeze() error {
 // Unfreeze removes the persistant flag file that prevents orchestration
 // of the object instance.
 func (t *Node) Unfreeze() error {
-	p := t.frozenFile()
-	if !file.Exists(p) {
-		return nil
-	}
-	err := os.Remove(p)
-	if err != nil {
+	if err := freeze.Unfreeze(t.frozenFile()); err != nil {
 		return err
 	}
 	log.Info().Msg("now unfrozen")

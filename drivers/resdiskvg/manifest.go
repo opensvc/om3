@@ -34,31 +34,31 @@ func (t T) Manifest() *manifest.T {
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.Add(
 		keywords.Keyword{
-			Option:   "name",
+			Aliases:  []string{"vgname"},
 			Attr:     "VGName",
+			Example:  "vg1",
+			Option:   "name",
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
-			Example:  "vg1",
-			Aliases:  []string{"vgname"},
 		},
 		keywords.Keyword{
-			Option:       "pvs",
 			Attr:         "PVs",
-			Scopable:     true,
 			Converter:    converters.List,
-			Provisioning: true,
-			Text:         keywords.NewText(fs, "text/kw/pvs"),
 			Example:      "/dev/mapper/23 /dev/mapper/24",
+			Option:       "pvs",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/pvs"),
 		},
 		keywords.Keyword{
-			Option:       "options",
 			Attr:         "Options",
 			Converter:    converters.Shlex,
-			Scopable:     true,
-			Provisioning: true,
-			Text:         keywords.NewText(fs, "text/kw/options"),
 			Example:      "--zero=y",
+			Option:       "options",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/options"),
 		},
 	)
 	return m

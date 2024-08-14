@@ -1024,11 +1024,12 @@ func stop(ctx context.Context, r Driver) error {
 		i              any = r
 		fn             func(context.Context) error
 	)
-	if r.IsStandby() {
+	if r.IsStandby() && !actioncontext.IsForce(ctx) {
 		if s, ok := i.(stopstandbyer); ok {
 			fn = s.StopStandby
 			progressAction = "standby"
 		} else {
+			r.Log().Infof("skip 'stop' on standby resource (--force to override)")
 			return ErrActionNotSupported
 		}
 	} else {

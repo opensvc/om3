@@ -22,14 +22,24 @@ func Freeze(p string) error {
 	if err != nil {
 		return err
 	}
-	return f.Close()
+	defer f.Close()
+	return f.Sync()
 }
 
 func Unfreeze(p string) error {
 	if !file.Exists(p) {
 		return nil
 	}
-	return os.Remove(p)
+	if err := os.Remove(p); err != nil {
+		return err
+	}
+	dir := filepath.Dir(p)
+	fd, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+	return fd.Sync()
 }
 
 func Frozen(p string) time.Time {

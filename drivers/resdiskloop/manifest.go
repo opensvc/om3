@@ -28,19 +28,19 @@ func (t T) Manifest() *manifest.T {
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.Add(
 		keywords.Keyword{
-			Option:   "file",
 			Attr:     "File",
+			Example:  "/srv/{fqdn}-loop-{rindex}",
+			Option:   "file",
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/file"),
-			Example:  "/srv/{fqdn}-loop-{rindex}",
 		},
 		keywords.Keyword{
-			Option:       "size",
 			Attr:         "Size",
-			Scopable:     true,
-			Provisioning: true,
 			Example:      "100m",
+			Option:       "size",
+			Provisioning: true,
+			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
 	)

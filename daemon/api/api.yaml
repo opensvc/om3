@@ -2466,6 +2466,12 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionRestart'
       responses:
         200:
           description: OK
@@ -5005,6 +5011,12 @@ components:
         size:
           type: integer
           format: int64
+
+    PostObjectActionRestart:
+      type: object
+      properties:
+        force:
+          type: boolean
 
     PostObjectActionSwitch:
       type: object

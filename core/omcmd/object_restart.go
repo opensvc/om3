@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -24,6 +25,10 @@ type (
 
 func (t *CmdObjectRestart) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	options := instance.MonitorGlobalExpectOptionsRestarted{
+		Force: t.Force,
+	}
+
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
@@ -34,6 +39,7 @@ func (t *CmdObjectRestart) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithAsyncTarget("restarted"),
+		objectaction.WithAsyncTargetOptions(options),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
