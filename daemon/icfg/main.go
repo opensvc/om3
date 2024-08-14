@@ -302,13 +302,11 @@ func (t *Manager) configFileCheck() error {
 	cfg.Scope = scope
 	cfg.Topology = t.getTopology(cf)
 	cfg.UpdatedAt = mtime
+	cfg.Size = cf.GetSize(keySize)
 	cfg.Subsets = t.getSubsets(cf)
 
 	if pool := cf.GetString(keyPool); pool != "" {
 		cfg.Pool = &pool
-	}
-	if sz := cf.GetSize(keySize); sz != nil {
-		cfg.Size = sz
 	}
 	if cfg.Topology == topology.Flex {
 		cfg.FlexMin = t.getFlexMin(cf)
