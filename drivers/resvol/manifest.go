@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/converters"
 )
 
@@ -66,6 +67,15 @@ func (t T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pool"),
+		},
+		keywords.Keyword{
+			Attr:         "Nodes",
+			Converter:    xconfig.NodesConverter,
+			Default:      "{.nodes}",
+			Option:       "nodes",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/nodes"),
 		},
 		keywords.Keyword{
 			Attr:         "Format",

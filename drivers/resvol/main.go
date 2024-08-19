@@ -61,10 +61,10 @@ type (
 		Perm        *os.FileMode `json:"perm"`
 		DirPerm     *os.FileMode `json:"dirperm"`
 		Signal      string       `json:"signal"`
+		Nodes       []string
 
 		Path     naming.Path
 		Topology topology.T
-		Nodes    []string
 	}
 )
 
@@ -321,6 +321,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	if err != nil {
 		return nil, err
 	}
+	l.Nodes = t.Nodes
 	if withUsage {
 		l.Usage = true
 	}
