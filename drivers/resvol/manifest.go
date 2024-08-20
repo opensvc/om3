@@ -69,7 +69,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         keywords.NewText(fs, "text/kw/pool"),
 		},
 		keywords.Keyword{
-			Attr:         "Nodes",
+			Attr:         "VolNodes",
 			Converter:    xconfig.NodesConverter,
 			Default:      "{.nodes}",
 			Option:       "nodes",
