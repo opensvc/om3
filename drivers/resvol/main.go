@@ -405,7 +405,7 @@ func (t T) UnprovisionLeaded(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		t.Log().Infof("volume %s already unprovisioned", volume.Path())
+		t.Log().Infof("volume %s is already unprovisioned", volume.Path())
 		return nil
 	}
 	return nil
