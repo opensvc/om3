@@ -59,9 +59,6 @@ func SetupEnv(env Env) Env {
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		panic(err)
 	}
-	if err := os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm); err != nil {
-		panic(err)
-	}
 
 	return env
 }

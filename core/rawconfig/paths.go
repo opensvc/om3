@@ -78,8 +78,9 @@ func CreateMandatoryDirectories() error {
 		DNSUDSDir(),
 		Paths.Certs,
 		Paths.Etc,
-		Paths.Lsnr,
 		filepath.Join(Paths.Etc, "namespaces"),
+		Paths.Lsnr,
+		Paths.Tmp,
 	}
 	for _, d := range mandatoryDirs {
 		info, err := os.Stat(d)

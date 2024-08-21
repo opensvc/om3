@@ -3,8 +3,6 @@ package integrationtest
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -32,9 +30,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
-		panic(err)
-	}
-	if err := os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm); err != nil {
 		panic(err)
 	}
 
