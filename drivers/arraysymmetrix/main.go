@@ -1843,7 +1843,7 @@ func (t *Array) createGatekeepers(sid, sgName string, count *int) (Result, error
 	if sg.NumOfGKs > *count {
 		return result, nil
 	}
-	args := []string{"-sid", sid, "create", "-gk", "-N", fmt.Sprint(*count - sg.NumOfGKs), "-sg", sgName}
+	args := []string{"-sid", sid, "create", "-gk", "-N", fmt.Sprint(*count - sg.NumOfGKs), "-sg", sgName, "-noprompt"}
 	cmd := command.New(
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
@@ -2867,9 +2867,16 @@ func (t *Array) addDumpStorageGroup(data MaskingDumpSG) ([]Result, error) {
 	} else {
 		results = append(results, result)
 	}
-	if result, err := t.addStorageGroupsToStorageGroup(t.kwSID(), data.Name, data.StorageGroups); err != nil {
-		return results, err
-	} else {
+	for _, sg := range data.StorageGroups {
+		result, err := t.addStorageGroupsToStorageGroup(t.kwSID(), data.Name, []string{sg})
+		if err != nil {
+			return results, err
+		}
+		if result.Ret != 0 && strings.Contains(result.Err, "group is currently within device masking view") {
+			result.Ret = 0
+			result.Out = result.Err
+			result.Err = ""
+		}
 		results = append(results, result)
 	}
 	return results, nil

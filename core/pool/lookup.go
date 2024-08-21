@@ -23,6 +23,7 @@ type (
 		Format bool
 		Shared bool
 		Usage  bool
+		Nodes  []string
 
 		manager manager
 	}
@@ -175,11 +176,5 @@ func (t Lookup) ConfigureVolume(volume Volumer, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	var nodes []string
-	if i, err := c.Config().Eval(key.T{Section: "DEFAULT", Option: "nodes"}); err != nil {
-		return err
-	} else {
-		nodes = i.([]string)
-	}
-	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, nodes, env)
+	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
 }

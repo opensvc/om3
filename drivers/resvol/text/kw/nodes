@@ -1,0 +1,3 @@
+A node selector expression filtering the creator nodes to determine the volume nodes.
+
+If not set, all the creator nodes will be volume nodes.

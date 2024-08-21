@@ -73,8 +73,8 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	}
 	Setenv(r)
 	if r.IsProvisionDisabled() {
-		r.Log().Infof("provision is disabled")
-		return nil
+		r.Log().Infof("provision is disabled or n/a")
+		return startLeader(ctx, r, leader)
 	}
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("provision requires: %w", err)
@@ -109,7 +109,7 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 		if err := unprovisionStop(ctx, r); err != nil {
 			return err
 		}
-		r.Log().Infof("unprovision is disabled")
+		r.Log().Infof("unprovision is disabled or n/a")
 		return nil
 	}
 	if err := checkRequires(ctx, r); err != nil {

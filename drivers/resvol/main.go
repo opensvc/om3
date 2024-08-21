@@ -40,6 +40,8 @@ import (
 	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -61,6 +63,7 @@ type (
 		Perm        *os.FileMode `json:"perm"`
 		DirPerm     *os.FileMode `json:"dirperm"`
 		Signal      string       `json:"signal"`
+		VolNodes    []string
 
 		Path     naming.Path
 		Topology topology.T
@@ -271,6 +274,9 @@ func (t *T) Volume() (object.Vol, error) {
 }
 
 func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
+	if err := t.ValidateNodesAndName(); err != nil {
+		return nil, err
+	}
 	p := filepath.Join(volume.Path().VarDir(), "create_volume.lock")
 	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	timeout, err := time.ParseDuration("20s")
@@ -321,6 +327,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	if err != nil {
 		return nil, err
 	}
+	l.Nodes = t.VolNodes
 	if withUsage {
 		l.Usage = true
 	}
@@ -348,13 +355,46 @@ func (t T) Label() string {
 	return t.Name
 }
 
+func (t T) ValidateNodesAndName() error {
+	m := make(map[string]string)
+	for _, nodename := range t.VolNodes {
+		m[nodename] = t.Name
+	}
+	obj := t.GetObject().(object.Configurer)
+	k := key.T{t.RID(), "name"}
+	localhost := hostname.Hostname()
+	for _, nodename := range t.Nodes {
+		if nodename == localhost {
+			continue
+		}
+		otherName, err := obj.Config().EvalAs(k, nodename)
+		if err != nil {
+			return err
+		}
+		if _, ok := m[nodename]; !ok && t.Name == otherName {
+			return fmt.Errorf("%s conflicts with a volume of the same name on %s", t.Name, nodename)
+		}
+	}
+	return nil
+}
+
 func (t T) ProvisionLeaded(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("volume %s does not exists", volume.Path())
+		if t.IsShared() {
+			return fmt.Errorf("shared volume %s does not exists", volume.Path())
+		}
+		if volume, err = t.createVolume(volume); err != nil {
+			return err
+		}
+		// the volume resources cache is now wrong. Allocate a new one.
+		volume, err = t.Volume()
+		if err != nil {
+			return err
+		}
 	}
 	return volume.Provision(ctx)
 }
@@ -386,7 +426,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 			return err
 		}
 	} else {
-		t.Log().Infof("volume %s is already provisioned", volume.Path())
+		t.Log().Infof("volume %s is already created", volume.Path())
 	}
 	return volume.Provision(ctx)
 }
