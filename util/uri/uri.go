@@ -32,13 +32,13 @@ func (t T) Fetch() (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("fetch %s error %d: %s", t.uri, resp.StatusCode, resp.Status)
+	}
 	if f, err = os.CreateTemp(rawconfig.Paths.Tmp, ".fetch.*"); err != nil {
 		return "", err
 	}
 	fName := f.Name()
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("fetch %s error %d: %s", t.uri, resp.StatusCode, resp.Status)
-	}
 	if _, err = io.Copy(f, resp.Body); err != nil {
 		return "", err
 	}
