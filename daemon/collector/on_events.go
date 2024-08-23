@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"errors"
+	"io/fs"
 	"time"
 
 	"github.com/opensvc/om3/core/collector"
@@ -19,7 +21,7 @@ func (t *T) onRefreshTicker() {
 		if err != nil {
 			t.log.Warnf("sendCollectorData: %s", err)
 		}
-		if len(t.instanceConfigChange) > 0 {
+		if len(t.objectConfigToSend) > 0 {
 			if err := t.sendObjectConfigChange(); err != nil {
 				t.log.Warnf("sendObjectConfigChange", err)
 			}
@@ -55,14 +57,40 @@ func (t *T) onConfigUpdated() {
 }
 
 func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
-	delete(t.instanceConfigChange, c.Path)
+	if instanceConfig, ok := t.objectConfigToSend[c.Path]; ok {
+		if instanceConfig == nil {
+			// nothing to drop
+			return
+		}
+		if instanceConfig.Node != c.Node {
+			// don't drop yet, wait for event InstanceConfigDeleted from the same
+			// node that emit the InstanceConfigUpdated.
+			return
+		}
+		delete(t.objectConfigToSend, c.Path)
+	}
 }
 
 func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	if !kindsConfigToPost.Has(c.Path.Kind) {
 		return
 	}
-	t.instanceConfigChange[c.Path] = c
+	sent, ok := t.objectConfigSent[c.Path]
+	if !ok {
+		sent.path = c.Path
+		if err := sent.read(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			t.log.Warnf("can't read sent config: %s", err)
+		} else {
+			t.log.Debugf("init sent config cache: %s", sent.path)
+			t.objectConfigSent[c.Path] = sent
+		}
+	}
+	if sent.Checksum == c.Value.Checksum {
+		// skip already sent config
+		//t.log.Debugf("drop InstanceConfigUpdated on already sent config cache: %s", c.Path)
+		return
+	}
+	t.objectConfigToSend[c.Path] = c
 }
 
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {

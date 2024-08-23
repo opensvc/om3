@@ -3,15 +3,25 @@ package collector
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
+	"time"
 
-	"github.com/goccy/go-json"
-
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -40,39 +50,84 @@ type (
 
 		RawConfig []byte `json:"raw_config"`
 	}
+
+	// objectConfigSent describes object config sent to the collector db.
+	// It is used to prevent send already sent configs to the collector and
+	// is dumped to the filesystem config_sent_v3.json to populate sent cache
+	// after daemon restart.
+	objectConfigSent struct {
+		SentAt   time.Time `json:"sent_at"`
+		Checksum string    `json:"csum"`
+
+		path naming.Path
+	}
+)
+
+var (
+	ErrZeroPath = errors.New("zero path")
 )
 
 func (t *T) sendObjectConfigChange() (err error) {
 	t.log.Debugf("sendObjectConfigChange")
-	for p, v := range t.instanceConfigChange {
-		b, err := t.asPostFeedObjectConfigBody(p, v)
+	for p, v := range t.objectConfigToSend {
+		checksum, b, err := t.asPostFeedObjectConfigBody(p, v)
 		if err != nil {
 			// skip os.ErrNotExist, path may be deleted
 			if !errors.Is(err, os.ErrNotExist) {
-				t.log.Warnf("skip send instance config %s@%s: %s", v.Path, v.Node, err)
+				t.log.Warnf("skip send instance config %s: %s", p, err)
 			}
 			continue
 		} else if len(b) == 0 {
-			t.log.Warnf("skip send instance config %s@%s: empty body", v.Path, v.Node)
+			t.log.Warnf("skip send instance config %s: empty body", p)
 			continue
 		}
 
-		if err := t.doPostObjectConfig(b, v.Path, v.Node); err != nil {
-			t.log.Warnf("post instance config %s@%s: %s", v.Path, v.Node, err)
+		sent := objectConfigSent{path: p}
+		if err1 := sent.read(); err1 != nil && !errors.Is(err1, fs.ErrNotExist) {
+			t.log.Warnf("removing corrupted sent config flag for %s: %s", p, err1)
+			if err1 := sent.drop(); err1 != nil && !errors.Is(err1, fs.ErrNotExist) {
+				t.log.Errorf("remove corrupted sent config flag for %s: %s", p, err1)
+			}
+			continue
+		}
+
+		if checksum == sent.Checksum {
+			t.log.Infof("skip already sent instance config %s with checksum %s", p, checksum)
+			continue
+		}
+		if err := t.doPostObjectConfig(checksum, b, p); err != nil {
+			t.log.Warnf("post instance config %s: %s", p, err)
 			continue
 		}
 	}
-	t.instanceConfigChange = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
+	t.objectConfigToSend = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
 	return
 }
 
-func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) ([]byte, error) {
+func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) (checksum string, b []byte, err error) {
 	if v == nil {
-		return []byte{}, fmt.Errorf("asPostFeedObjectConfigBody called with nil InstanceConfigUpdated")
+		var (
+			updatedAt  time.Time
+			recentNode string
+		)
+		for nodename, cfg := range instance.ConfigData.GetByPath(p) {
+			if cfg.UpdatedAt.After(updatedAt) {
+				updatedAt = cfg.UpdatedAt
+				recentNode = nodename
+				v = &msgbus.InstanceConfigUpdated{
+					Path:  p,
+					Node:  nodename,
+					Value: *cfg,
+				}
+			}
+		}
+		if recentNode == "" {
+			return "", []byte{}, fmt.Errorf("can't detect node holder for config")
+		}
 	}
 	path := v.Path.String()
 	if len(path) == 0 {
-		return []byte{}, fmt.Errorf("asPostFeedObjectConfigBody called with empty path")
+		return "", []byte{}, fmt.Errorf("called from empty object path")
 	}
 	value := v.Value
 
@@ -97,17 +152,61 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 	}
 
 	// TODO: set DrpNode, DrpNodes, Comment, encap
+	peer := v.Node
 
-	if rawConfig, err := os.ReadFile(p.ConfigFile()); err != nil {
-		return []byte{}, err
+	if peer == t.localhost {
+		if rawConfig, err := os.ReadFile(p.ConfigFile()); err != nil {
+			return "", []byte{}, err
+		} else {
+			pa.RawConfig = rawConfig
+		}
+	} else if peer != "" {
+		// retrieve from api
+		var (
+			port, addr string
+		)
+		if lsnr := daemonsubsystem.DataListener.Get(peer); lsnr != nil {
+			if lsnr.Port != "" {
+				port = lsnr.Port
+			}
+			if lsnr.Addr == "::" {
+				addr = peer
+			} else {
+				addr = lsnr.Addr
+			}
+		}
+		t.log.Debugf("use client url from %s and %s: %s", addr, port, daemonenv.HTTPNodeAndPortURL(addr, port))
+		cli, err := client.New(
+			client.WithURL(daemonenv.HTTPNodeAndPortURL(addr, port)),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(cluster.ConfigData.Get().Secret()),
+			client.WithCertificate(daemonenv.CertChainFile()),
+		)
+		if err != nil {
+			return "", nil, fmt.Errorf("new client: %s", err)
+		}
+		t.log.Infof("retrieve remote config %s@%s", p, peer)
+		if resp, err := cli.GetObjectConfigFile(t.ctx, p.Namespace, p.Kind, p.Name); err != nil {
+			return "", []byte{}, err
+		} else if resp.StatusCode == http.StatusOK {
+			if b, err := io.ReadAll(resp.Body); err != nil {
+				return "", []byte{}, err
+			} else {
+				pa.RawConfig = b
+			}
+		} else {
+			return "", nil, fmt.Errorf("retrieve remote config unexpected status code: %d", resp.StatusCode)
+		}
 	} else {
-		pa.RawConfig = rawConfig
+		t.log.Infof("no peer node to fetch config")
+		return "", nil, nil
 	}
-
-	return json.Marshal(pa)
+	checksum = fmt.Sprintf("%x", md5.Sum(pa.RawConfig))
+	b, err = json.Marshal(pa)
+	return checksum, b, err
 }
 
-func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
+func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 	if t.client == nil {
 		return nil
 	}
@@ -129,7 +228,7 @@ func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
 
-	t.log.Infof("%s %s %s@%s", method, path, p, nodename)
+	t.log.Infof("%s %s %s", method, path, p)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s %s: %s", method, path, err)
@@ -138,9 +237,60 @@ func (t *T) doPostObjectConfig(b []byte, p naming.Path, nodename string) error {
 
 	switch resp.StatusCode {
 	case http.StatusAccepted:
-		t.log.Debugf("%s %s %s@%s status code %d", method, path, p, nodename, resp.StatusCode)
+		t.log.Debugf("%s %s %s status code %d", method, path, p, resp.StatusCode)
+		sent := objectConfigSent{path: p, Checksum: checksum, SentAt: time.Now()}
+		if err := sent.write(); err != nil {
+			return err
+		}
+		t.objectConfigSent[p] = sent
 		return nil
 	default:
 		return fmt.Errorf("%s %s unexpected status code: %d", method, path, resp.StatusCode)
 	}
+}
+
+func (o *objectConfigSent) filename() string {
+	if o == nil || o.path.IsZero() {
+		return ""
+	}
+	return filepath.Join(o.path.VarDir(), "config_sent_v3.json")
+}
+
+func (o *objectConfigSent) write() error {
+	if o == nil || o.path.IsZero() {
+		return ErrZeroPath
+	}
+	f, err := os.Create(o.filename())
+	if err != nil {
+		if err1 := os.MkdirAll(filepath.Dir(o.filename()), 0755); err1 != nil {
+			return errors.Join(err, err1)
+		}
+		if f, err = os.Create(o.filename()); err != nil {
+			return err
+		}
+	}
+	defer func() { _ = f.Close() }()
+	return json.NewEncoder(f).Encode(o)
+}
+
+func (o *objectConfigSent) read() error {
+	if o == nil || o.path.IsZero() {
+		return ErrZeroPath
+	}
+	f, err := os.Open(o.filename())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return json.NewDecoder(f).Decode(&o)
+}
+
+func (o *objectConfigSent) drop() error {
+	if o == nil || o.path.IsZero() {
+		return ErrZeroPath
+	}
+	if err := os.Remove(o.filename()); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }
