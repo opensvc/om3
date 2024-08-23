@@ -385,6 +385,11 @@ type ClientInterface interface {
 	// PostObjectConfigUpdate request
 	PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchObjectKeysWithBody request with any body
+	PatchObjectKeysWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchObjectKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKeysJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPools request
 	GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1611,6 +1616,30 @@ func (c *Client) GetObjectConfigGet(ctx context.Context, namespace InPathNamespa
 
 func (c *Client) PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectConfigUpdateRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchObjectKeysWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectKeysRequestWithBody(c.Server, namespace, kind, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchObjectKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKeysJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectKeysRequest(c.Server, namespace, kind, name, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7722,6 +7751,67 @@ func NewPostObjectConfigUpdateRequest(server string, namespace InPathNamespace, 
 	return req, nil
 }
 
+// NewPatchObjectKeysRequest calls the generic PatchObjectKeys builder with application/json body
+func NewPatchObjectKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKeysJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchObjectKeysRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
+}
+
+// NewPatchObjectKeysRequestWithBody generates requests for PatchObjectKeys with any type of body
+func NewPatchObjectKeysRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/keys", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetPoolsRequest generates requests for GetPools
 func NewGetPoolsRequest(server string, params *GetPoolsParams) (*http.Request, error) {
 	var err error
@@ -8398,6 +8488,11 @@ type ClientWithResponsesInterface interface {
 
 	// PostObjectConfigUpdateWithResponse request
 	PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error)
+
+	// PatchObjectKeysWithBodyWithResponse request with any body
+	PatchObjectKeysWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectKeysResponse, error)
+
+	PatchObjectKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKeysJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectKeysResponse, error)
 
 	// GetPoolsWithResponse request
 	GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error)
@@ -10869,6 +10964,33 @@ func (r PostObjectConfigUpdateResponse) StatusCode() int {
 	return 0
 }
 
+type PatchObjectKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON408      *N408
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchObjectKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchObjectKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetPoolsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11944,6 +12066,23 @@ func (c *ClientWithResponses) PostObjectConfigUpdateWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePostObjectConfigUpdateResponse(rsp)
+}
+
+// PatchObjectKeysWithBodyWithResponse request with arbitrary body returning *PatchObjectKeysResponse
+func (c *ClientWithResponses) PatchObjectKeysWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectKeysResponse, error) {
+	rsp, err := c.PatchObjectKeysWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectKeysResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchObjectKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKeysJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectKeysResponse, error) {
+	rsp, err := c.PatchObjectKeys(ctx, namespace, kind, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectKeysResponse(rsp)
 }
 
 // GetPoolsWithResponse request returning *GetPoolsResponse
@@ -17094,6 +17233,67 @@ func ParsePostObjectConfigUpdateResponse(rsp *http.Response) (*PostObjectConfigU
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchObjectKeysResponse parses an HTTP response from a PatchObjectKeysWithResponse call
+func ParsePatchObjectKeysResponse(rsp *http.Response) (*PatchObjectKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchObjectKeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

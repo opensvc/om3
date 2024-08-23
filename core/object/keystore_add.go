@@ -11,23 +11,33 @@ import (
 	"github.com/opensvc/om3/util/uri"
 )
 
-// AddKey sets a new key and commits immediately
-func (t *keystore) AddKey(name string, b []byte) error {
+// TransactionAddKey sets a new key
+func (t *keystore) TransactionAddKey(name string, b []byte) error {
 	if t.HasKey(name) {
 		return fmt.Errorf("key already exist: %s. use the change action", name)
 	}
-	if err := t.addKey(name, b); err != nil {
+	return t.addKey(name, b)
+}
+
+// AddKey sets a new key and commits immediately
+func (t *keystore) AddKey(name string, b []byte) error {
+	if err := t.TransactionAddKey(name, b); err != nil {
 		return err
 	}
 	return t.config.Commit()
 }
 
-// ChangeKey changes the value of a existing key and commits immediately
-func (t *keystore) ChangeKey(name string, b []byte) error {
+// TransactionChangeKey changes the value of a existing key
+func (t *keystore) TransactionChangeKey(name string, b []byte) error {
 	if !t.HasKey(name) {
 		return fmt.Errorf("key does not exist: %s. use the add action", name)
 	}
-	if err := t.addKey(name, b); err != nil {
+	return t.addKey(name, b)
+}
+
+// ChangeKey changes the value of a existing key and commits immediately
+func (t *keystore) ChangeKey(name string, b []byte) error {
+	if err := t.TransactionChangeKey(name, b); err != nil {
 		return err
 	}
 	return t.config.Commit()

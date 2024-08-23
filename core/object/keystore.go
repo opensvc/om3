@@ -36,6 +36,10 @@ type (
 		EditKey(name string) error
 		InstallKey(name string) error
 		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, string, string) error
+
+		TransactionAddKey(name string, b []byte) error
+		TransactionChangeKey(name string, b []byte) error
+		TransactionRemoveKey(name string) error
 	}
 
 	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).

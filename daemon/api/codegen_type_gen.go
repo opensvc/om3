@@ -163,6 +163,13 @@ const (
 	PatchListKindPatchList PatchListKind = "PatchList"
 )
 
+// Defines values for PatchObjectKeyAction.
+const (
+	Add    PatchObjectKeyAction = "add"
+	Change PatchObjectKeyAction = "change"
+	Remove PatchObjectKeyAction = "remove"
+)
+
 // Defines values for PlacementPolicy.
 const (
 	PlacementPolicyLastStart  PlacementPolicy = "last start"
@@ -911,6 +918,20 @@ type PatchList struct {
 
 // PatchListKind defines model for PatchList.Kind.
 type PatchListKind string
+
+// PatchObjectKey defines model for PatchObjectKey.
+type PatchObjectKey struct {
+	Action PatchObjectKeyAction `json:"action"`
+	Bytes  *[]byte              `json:"bytes,omitempty"`
+	Key    string               `json:"key"`
+	String *string              `json:"string,omitempty"`
+}
+
+// PatchObjectKeyAction defines model for PatchObjectKey.Action.
+type PatchObjectKeyAction string
+
+// PatchObjectKeys defines model for PatchObjectKeys.
+type PatchObjectKeys = []PatchObjectKey
 
 // PlacementPolicy object placement policy
 type PlacementPolicy string
@@ -1838,6 +1859,9 @@ type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
 
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PatchObjectKeysJSONRequestBody defines body for PatchObjectKeys for application/json ContentType.
+type PatchObjectKeysJSONRequestBody = PatchObjectKeys
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

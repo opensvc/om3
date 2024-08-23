@@ -2343,6 +2343,42 @@ paths:
         500:
           $ref: '#/components/responses/500'
  
+  /object/path/{namespace}/{kind}/{name}/keys:
+    patch:
+      operationId: PatchObjectKeys
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchObjectKeys'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
@@ -5244,6 +5280,31 @@ components:
       properties:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
+
+    PatchObjectKeys:
+        type: array
+        items:
+          $ref: '#/components/schemas/PatchObjectKey'
+
+    PatchObjectKey:
+      type: object
+      required:
+        - action
+        - key
+      properties:
+        action:
+          type: string
+          enum:
+            - add
+            - change
+            - remove
+        key:
+          type: string
+        string:
+          type: string
+        bytes:
+          type: string
+          format: byte
 
     ResourceMonitorRestart:
       type: object
