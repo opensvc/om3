@@ -78,18 +78,41 @@ func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	sent, ok := t.objectConfigSent[c.Path]
 	if !ok {
 		sent.path = c.Path
-		if err := sent.read(); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			t.log.Warnf("can't read sent config: %s", err)
+		if err := sent.read(); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				t.log.Debugf("onInstanceConfigUpdated from %s@%s with checksum %s sent config cache absent", c.Path, c.Node, c.Value.Checksum)
+			} else {
+				t.log.Warnf("can't read sent config: %s", err)
+			}
 		} else {
-			t.log.Debugf("init sent config cache: %s", sent.path)
+			t.log.Debugf("onInstanceConfigUpdated from %s@%s with checksum %s init sent config cache %s", c.Path, c.Node, c.Value.Checksum, sent.Checksum)
 			t.objectConfigSent[c.Path] = sent
 		}
 	}
 	if sent.Checksum == c.Value.Checksum {
 		// skip already sent config
-		//t.log.Debugf("drop InstanceConfigUpdated on already sent config cache: %s", c.Path)
+		t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped on same checksum", c.Path, c.Node, sent.Checksum)
 		return
 	}
+
+	// Prefer the localhost objectConfigToSend if checksum match to avoid from
+	// fetching config from peer when already present on localhost.
+	// Example on node1 speaker:
+	//     create object on node1
+	//     => event 1: InstanceConfigUpdated{Node: <node1>
+	//     => event 2: InstanceConfigUpdated{Node: <node2> (after node2 fetch config from node1) we can drop
+	//                 event if its checksum value is same as event1 checksum.
+	if toSend, ok := t.objectConfigToSend[c.Path]; ok && toSend != nil {
+		// already have objectConfigToSend
+		if toSend.Value.Checksum == c.Value.Checksum {
+			if c.Node != t.localhost {
+				t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped: found localhost InstanceConfigUpdated with same checksum %s", c.Path, c.Node, sent.Checksum)
+				return
+			}
+		}
+	}
+
+	t.log.Debugf("onInstanceConfigUpdated from %s@%s checksum %s need send", c.Path, c.Node, c.Value.Checksum)
 	t.objectConfigToSend[c.Path] = c
 }
 
