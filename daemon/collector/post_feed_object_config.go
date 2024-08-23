@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -53,13 +54,16 @@ type (
 
 	// objectConfigSent describes object config sent to the collector db.
 	// It is used to prevent send already sent configs to the collector and
-	// is dumped to the filesystem config_sent_v3.json to populate sent cache
-	// after daemon restart.
+	// is dumped to the filesystem <var>/collector/config_sent/<fqdn>.json to
+	// populate sent cache after daemon restart.
 	objectConfigSent struct {
 		SentAt   time.Time `json:"sent_at"`
 		Checksum string    `json:"csum"`
 
 		path naming.Path
+
+		// cacheFile is the file path to store objectConfigSent struct
+		cacheFile string
 	}
 )
 
@@ -266,22 +270,30 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 }
 
 func (o *objectConfigSent) filename() string {
-	if o == nil || o.path.IsZero() {
+	if o == nil {
 		return ""
 	}
-	return filepath.Join(o.path.VarDir(), "config_sent_v3.json")
+	if len(o.cacheFile) == 0 {
+		if o.path.IsZero() {
+			return ""
+		}
+		flat := fmt.Sprintf("%s.%s.%s.json", o.path.Namespace, o.path.Kind, o.path.Name)
+		o.cacheFile = filepath.FromSlash(filepath.Join(rawconfig.CollectorSentDir(), flat))
+	}
+	return o.cacheFile
 }
 
 func (o *objectConfigSent) write() error {
 	if o == nil || o.path.IsZero() {
 		return ErrZeroPath
 	}
-	f, err := os.Create(o.filename())
+	sentTrace := o.filename()
+	f, err := os.Create(sentTrace)
 	if err != nil {
-		if err1 := os.MkdirAll(filepath.Dir(o.filename()), 0755); err1 != nil {
+		if err1 := os.MkdirAll(filepath.Dir(sentTrace), 0755); err1 != nil {
 			return errors.Join(err, err1)
 		}
-		if f, err = os.Create(o.filename()); err != nil {
+		if f, err = os.Create(sentTrace); err != nil {
 			return err
 		}
 	}
