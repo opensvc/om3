@@ -281,8 +281,28 @@ func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 // objectConfigToSendFromBody updates t.objectConfigToSend with missing
 // paths that are found from the decoded r into the ObjectWithoutConfig.
 // It returns the added paths.
+//
 // Invalid paths are ignored.
-// Too recently sent paths are delayed to the next iteration (objectConfigToSendMinDelay)
+//
+// Too recently sent paths are delayed to the next iteration with delay value:
+// objectConfigToSendMinDelay for the following reasons:
+//   - oc3 api ObjectWithoutConfig values have been computed during last
+//     job calls => it may contain objects path that have already been POSTED
+//   - collector-speaker may be called after POST ping or status
+//
+// Example:
+//   - @collector-speaker: POST oc3 ping or status
+//   - @oc3-api async job ping or status
+//     respond with previous job ping or status ObjectWithoutConfig "obj1"
+//   - @collector-speaker add "obj1" to list of configs to POST on next ticker
+//   - @oc3-worker job ping or status prepare next ObjectWithoutConfig "obj1"
+//   - @collector-speaker on ticker POST configs for path "obj1"
+//     and update t.objectConfigSent["obj1"].SentAt = now()
+//   - @collector-speaker: POST oc3 ping or status
+//   - @oc3-api async job ping or status
+//   - @oc3-api prepare job ping
+//     respond with previous job ping or status ObjectWithoutConfig "obj1"
+//   - @collector-speaker don't add "obj1" because of the objectConfigToSendMinDelay
 func (t *T) objectConfigToSendFromBody(r io.Reader) (added []naming.Path, err error) {
 	var obj ObjectWithoutConfig
 	if err = json.NewDecoder(r).Decode(&obj); err != nil {
