@@ -105,34 +105,20 @@ func (t *T) sendObjectConfigChange() (err error) {
 }
 
 func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) (checksum string, b []byte, err error) {
+	if p.IsZero() {
+		return "", []byte{}, fmt.Errorf("called from empty object path")
+	}
 	if v == nil {
-		var (
-			updatedAt  time.Time
-			recentNode string
-		)
-		for nodename, cfg := range instance.ConfigData.GetByPath(p) {
-			if cfg.UpdatedAt.After(updatedAt) {
-				updatedAt = cfg.UpdatedAt
-				recentNode = nodename
-				v = &msgbus.InstanceConfigUpdated{
-					Path:  p,
-					Node:  nodename,
-					Value: *cfg,
-				}
-			}
-		}
-		if recentNode == "" {
+		// lost config has been detected from collector db
+		v = t.createInstanceConfigUpdated(p)
+		if v == nil {
 			return "", []byte{}, fmt.Errorf("can't detect node holder for config")
 		}
 	}
-	path := v.Path.String()
-	if len(path) == 0 {
-		return "", []byte{}, fmt.Errorf("called from empty object path")
-	}
-	value := v.Value
+	config := v.Value
 
 	monResCount := 0
-	for _, r := range value.Resources {
+	for _, r := range config.Resources {
 		if r.IsMonitored {
 			monResCount++
 		}
@@ -140,15 +126,15 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 
 	pa := objectConfigPost{
 		Path:                   v.Path.String(),
-		Orchestrate:            value.Orchestrate,
-		Topology:               value.Topology.String(),
-		FlexMin:                value.FlexMin,
-		FlexMax:                value.FlexMax,
-		FlexTarget:             value.FlexTarget,
+		Orchestrate:            config.Orchestrate,
+		Topology:               config.Topology.String(),
+		FlexMin:                config.FlexMin,
+		FlexMax:                config.FlexMax,
+		FlexTarget:             config.FlexTarget,
 		MonitoredResourceCount: monResCount,
-		App:                    value.App,
-		Env:                    value.Env,
-		Scope:                  value.Scope,
+		App:                    config.App,
+		Env:                    config.Env,
+		Scope:                  config.Scope,
 	}
 
 	// TODO: set DrpNode, DrpNodes, Comment, encap
@@ -204,6 +190,36 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 	checksum = fmt.Sprintf("%x", md5.Sum(pa.RawConfig))
 	b, err = json.Marshal(pa)
 	return checksum, b, err
+}
+
+// createInstanceConfigUpdated returns *msgbus.InstanceConfigUpdated from found
+// instance config for p. If multiple value exists it will use localhost value
+// unless more recent peer value exists with another checksum.
+// nil is return when not found.
+func (t *T) createInstanceConfigUpdated(p naming.Path) (v *msgbus.InstanceConfigUpdated) {
+	configs := instance.ConfigData.GetByPath(p)
+	if cfg, ok := configs[t.localhost]; ok {
+		v = &msgbus.InstanceConfigUpdated{
+			Path:  p,
+			Node:  t.localhost,
+			Value: *cfg,
+		}
+	}
+	for nodename, cfg := range configs {
+		if nodename == t.localhost {
+			// already analysed
+			continue
+		}
+		if v == nil || (cfg.UpdatedAt.After(v.Value.UpdatedAt) && cfg.Checksum != v.Value.Checksum) {
+			// v is not yet set or found recent cfg with != checksum
+			v = &msgbus.InstanceConfigUpdated{
+				Path:  p,
+				Node:  nodename,
+				Value: *cfg,
+			}
+		}
+	}
+	return
 }
 
 func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
