@@ -91,7 +91,7 @@ func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	}
 	if sent.Checksum == c.Value.Checksum {
 		// skip already sent config
-		t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped on same checksum", c.Path, c.Node, sent.Checksum)
+		t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped on same checksum %s", c.Path, c.Node, sent.Checksum)
 		return
 	}
 
