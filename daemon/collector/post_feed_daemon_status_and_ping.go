@@ -4,13 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"time"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/xmap"
+)
+
+type (
+	// ObjectWithoutConfig used to decode response of post feed daemon status and ping
+	ObjectWithoutConfig struct {
+		ObjectWithoutConfig *[]string `json:"object_without_config"`
+	}
 )
 
 func (t *T) sendCollectorData() error {
@@ -33,7 +43,10 @@ func (t *T) sendCollectorDataLegacy() error {
 	if t.hasDaemonStatusChange() {
 		return t.postStatus()
 	} else {
-		return t.postPing()
+		if time.Now().After(t.postPingOrStatusAt.Add(t.postPingDelay)) {
+			return t.postPing()
+		}
+		return nil
 	}
 }
 
@@ -86,19 +99,27 @@ func (t *T) postPing() error {
 	if err != nil {
 		return err
 	}
+	t.postPingOrStatusAt = time.Now()
 	defer func() { _ = resp.Body.Close() }()
 
-	t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusNoContent:
 		// collector detect out of sync
 		t.initChanges()
 		t.previousUpdatedAt = time.Time{}
+		t.log.Infof("%s %s status code %d", method, path, resp.StatusCode)
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
 		t.previousUpdatedAt = now
 		t.dropChanges()
+		if addedPath, err := t.objectConfigToSendFromBody(resp.Body); err != nil {
+			t.log.Warnf("%s %s status code %d can't detect missing instance config: %s", method, path, resp.StatusCode, err)
+		} else if len(addedPath) > 0 {
+			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
+		} else {
+			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+		}
 		return nil
 	default:
 		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
@@ -209,17 +230,25 @@ func (t *T) postStatus() error {
 	if err != nil {
 		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
+	t.postPingOrStatusAt = time.Now()
 	defer func() { _ = resp.Body.Close() }()
 
-	t.log.Infof("%s %s status code %d", method, path, resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusConflict:
 		// collector detect out of sync (collector previousUpdatedAt is not t.previousUpdatedAt), recreate full
+		t.log.Infof("%s %s status code %d", method, path, resp.StatusCode)
 		t.initChanges()
 		t.previousUpdatedAt = time.Time{}
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
+		if addedPath, err := t.objectConfigToSendFromBody(resp.Body); err != nil {
+			t.log.Warnf("%s %s status code %d can't detect missing instance config: %s", method, path, resp.StatusCode, err)
+		} else if len(addedPath) > 0 {
+			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
+		} else {
+			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+		}
 		t.previousUpdatedAt = now
 		t.dropChanges()
 		return nil
@@ -247,4 +276,81 @@ func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 		InstanceStatusUpdates: iStatusChanges,
 		InstanceStatusDeletes: iStatusDeletes,
 	})
+}
+
+// objectConfigToSendFromBody updates t.objectConfigToSend with missing
+// paths that are found from the decoded r into the ObjectWithoutConfig.
+// It returns the added paths.
+//
+// Invalid paths are ignored.
+//
+// Too recently sent paths are delayed to the next iteration with delay value:
+// objectConfigToSendMinDelay for the following reasons:
+//   - oc3 api ObjectWithoutConfig values have been computed during last
+//     job calls => it may contain objects path that have already been POSTED
+//   - collector-speaker may be called after POST ping or status
+//
+// Example:
+//   - @collector-speaker: POST oc3 ping or status
+//   - @oc3-api async job ping or status
+//     respond with previous job ping or status ObjectWithoutConfig "obj1"
+//   - @collector-speaker add "obj1" to list of configs to POST on next ticker
+//   - @oc3-worker job ping or status prepare next ObjectWithoutConfig "obj1"
+//   - @collector-speaker on ticker POST configs for path "obj1"
+//     and update t.objectConfigSent["obj1"].SentAt = now()
+//   - @collector-speaker: POST oc3 ping or status
+//   - @oc3-api async job ping or status
+//   - @oc3-api prepare job ping
+//     respond with previous job ping or status ObjectWithoutConfig "obj1"
+//   - @collector-speaker don't add "obj1" because of the objectConfigToSendMinDelay
+func (t *T) objectConfigToSendFromBody(r io.Reader) (added []naming.Path, err error) {
+	var obj ObjectWithoutConfig
+	if err = json.NewDecoder(r).Decode(&obj); err != nil {
+		return
+	}
+	if obj.ObjectWithoutConfig == nil {
+		return
+	}
+
+	for _, s := range *obj.ObjectWithoutConfig {
+		p, err := naming.ParsePath(s)
+		if err != nil {
+			continue
+		}
+		if _, ok := t.objectConfigToSend[p]; !ok {
+			toAdd := true
+			if sent, ok := t.objectConfigSent[p]; ok {
+				if time.Now().Before(sent.SentAt.Add(t.objectConfigToSendMinDelay)) {
+					toAdd = false
+					t.log.Debugf("delay need instance config send %s", p)
+				}
+			}
+			if toAdd {
+				if ok = t.dropInstanceConfigSentFlag(objectConfigSent{path: p}); !ok {
+					t.log.Debugf("mark need instance config send %s", p)
+				}
+				delete(t.objectConfigSent, p)
+				t.objectConfigToSend[p] = nil
+				added = append(added, p)
+			}
+		}
+	}
+	return
+}
+
+// dropInstanceConfigSentFlag drops the instanceConfigSentFlag. It returns true
+// if existing instance config sent path has been removed, or false when flag is
+// absent.
+func (t *T) dropInstanceConfigSentFlag(sent objectConfigSent) bool {
+	if err := sent.drop(); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false
+		} else {
+			t.log.Errorf("drop instance config sent flag %s: %s", sent.path, err)
+			return false
+		}
+	} else {
+		t.log.Debugf("dropped previous instance config sent flag %s", sent.path)
+		return true
+	}
 }

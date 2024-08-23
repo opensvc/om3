@@ -43,6 +43,13 @@ type (
 
 		postTicker *time.Ticker
 
+		// postPingOrStatusAt is the timestamp of latest post daemon ping, status.
+		postPingOrStatusAt time.Time
+
+		// postPingDelay is the minimum delay to wait after postPingOrStatusAt
+		// for the next post daemon ping.
+		postPingDelay time.Duration
+
 		// previousUpdatedAt is the timestamp of the last successfully data sent to
 		// collector. It is used by the  collector to detect changes chain breaks.
 		// When a break happens, the collector responds with a 409, and the agent
@@ -73,10 +80,25 @@ type (
 		// featurePostChange when true, POST /oc3/feed/daemon/change instead of
 		featurePostChange bool
 
-		// instanceConfigChange is a map of InstanceConfigUpdated populated
-		// from localhost events: InstanceConfigUpdated/InstanceConfigDeleted.
-		// On ticker event those updates are posted to the collector.
-		instanceConfigChange map[naming.Path]*msgbus.InstanceConfigUpdated
+		// objectConfigToSend is a map of path to the most recent
+		// InstanceConfigUpdated populated from:
+		//    1- events: InstanceConfigUpdated or InstanceConfigDeleted
+		//    2- response body attr object_without_config of POST feed daemon
+		//      status or ping. objectConfigToSendMinDelay is the minimum
+		//      delay to wait after objectConfigSent[p].SentAt before to add
+		//      the path p to the map.
+		//
+		// On ticker event collector POST instance config of the mapped paths
+		// to the collector.
+		objectConfigToSend map[naming.Path]*msgbus.InstanceConfigUpdated
+
+		// objectConfigToSendMinDelay is the minimum interval to wait
+		// after objectConfigSent[p].SentAt before adding objectConfigToSend[p].
+		objectConfigToSendMinDelay time.Duration
+
+		// objectConfigSent is a cache of known sent object config to the
+		// collector.
+		objectConfigSent map[naming.Path]objectConfigSent
 
 		// isSpeaker is true when localhost NodeStatus.IsLeader is true
 		isSpeaker bool
@@ -166,11 +188,13 @@ var (
 
 func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	now := time.Now()
+	postPingOrStatusMinInterval := 10 * time.Second
 	t := &T{
-		log:         plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
-		localhost:   hostname.Hostname(),
-		clusterData: daemondata.FromContext(ctx),
-		subQS:       subQS,
+		log:           plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
+		localhost:     hostname.Hostname(),
+		postPingDelay: postPingOrStatusMinInterval,
+		clusterData:   daemondata.FromContext(ctx),
+		subQS:         subQS,
 		status: daemonsubsystem.Collector{
 			Status: daemonsubsystem.Status{
 				CreatedAt: now,
@@ -180,6 +204,8 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			Url: "",
 		},
 		version: "3.0.0",
+
+		objectConfigToSendMinDelay: 2 * postPingOrStatusMinInterval,
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -268,8 +294,8 @@ func (t *T) Stop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := t.bus.Sub("daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 
@@ -352,7 +378,8 @@ func (t *T) initChanges() {
 	}
 	t.daemonStatusChange = make(map[string]struct{})
 	t.nodeFrozenAt = map[string]time.Time{}
-	t.instanceConfigChange = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
+	t.objectConfigToSend = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
+	t.objectConfigSent = make(map[naming.Path]objectConfigSent)
 
 	for _, v := range object.StatusData.GetAll() {
 		t.daemonStatusChange[v.Path.String()] = struct{}{}
@@ -373,6 +400,14 @@ func (t *T) initChanges() {
 	for _, v := range node.StatusData.GetAll() {
 		t.daemonStatusChange["@"+v.Node] = struct{}{}
 		t.nodeFrozenAt[v.Node] = v.Value.FrozenAt
+	}
+
+	for _, v := range instance.ConfigData.GetAll() {
+		t.onInstanceConfigUpdated(&msgbus.InstanceConfigUpdated{
+			Path:  v.Path,
+			Node:  v.Node,
+			Value: *v.Value,
+		})
 	}
 }
 
