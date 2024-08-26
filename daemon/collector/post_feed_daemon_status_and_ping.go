@@ -11,12 +11,29 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/xmap"
 )
 
 type (
+	// postFeedDaemonPing describes the POST feed daemon ping payload
+	postFeedDaemonPing struct {
+		Nodes   []string `json:"nodes"`
+		objects []string `json:"objects"`
+		Version string   `json:"version"`
+	}
+
+	// postFeedDaemonStatus describes the POST feed daemon status payload
+	postFeedDaemonStatus struct {
+		PreviousUpdatedAt time.Time     `json:"previous_updated_at"`
+		UpdatedAt         time.Time     `json:"updated_at"`
+		Data              *cluster.Data `json:"data"`
+		Changes           []string      `json:"changes"`
+		Version           string        `json:"version"`
+	}
+
 	// ObjectWithoutConfig used to decode response of post feed daemon status and ping
 	ObjectWithoutConfig struct {
 		ObjectWithoutConfig *[]string `json:"object_without_config"`
@@ -79,17 +96,23 @@ func (t *T) postPing() error {
 
 		method = http.MethodPost
 		path   = "/oc3/feed/daemon/ping"
+
+		ioReader io.Reader
 	)
-	instances := make([]string, 0, len(t.instances))
-	for k := range t.instances {
-		instances = append(instances, k)
+
+	body := *t.postPingBody()
+	if b, err := json.Marshal(body); err != nil {
+		return fmt.Errorf("post daemon status body: %s", err)
+	} else {
+		ioReader = bytes.NewReader(b)
 	}
+	t.log.Debugf("postFeedDaemonPing: %v", body)
 	now := time.Now()
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
 	defer cancel()
 
-	req, err = t.client.NewRequestWithContext(ctx, method, path, nil)
+	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
 	if err != nil {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
@@ -123,6 +146,22 @@ func (t *T) postPing() error {
 		return nil
 	default:
 		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
+	}
+}
+
+func (t *T) postPingBody() *postFeedDaemonPing {
+	objects := make([]string, 0, len(t.clusterObject))
+	for k := range t.clusterObject {
+		objects = append(objects, k)
+	}
+	nodes := make([]string, 0, len(t.clusterNode))
+	for k := range t.clusterNode {
+		nodes = append(nodes, k)
+	}
+	return &postFeedDaemonPing{
+		Nodes:   nodes,
+		objects: objects,
+		Version: t.version,
 	}
 }
 
@@ -199,7 +238,7 @@ func (t *T) postStatus() error {
 		path     = "/oc3/feed/daemon/status"
 	)
 	now := time.Now()
-	body := statusPost{
+	body := postFeedDaemonStatus{
 		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
 		Data:              t.clusterData.ClusterData(),
@@ -212,7 +251,7 @@ func (t *T) postStatus() error {
 	if b, err := json.Marshal(body); err != nil {
 		return fmt.Errorf("post daemon status body: %s", err)
 	} else {
-		ioReader = bytes.NewBuffer(b)
+		ioReader = bytes.NewReader(b)
 	}
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)

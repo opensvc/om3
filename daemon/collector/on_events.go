@@ -32,6 +32,15 @@ func (t *T) onRefreshTicker() {
 	}
 }
 
+func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
+	for _, nodename := range c.NodesAdded {
+		t.clusterNode[nodename] = struct{}{}
+	}
+	for _, nodename := range c.NodesRemoved {
+		delete(t.clusterNode, nodename)
+	}
+}
+
 func (t *T) onConfigUpdated() {
 	t.log.Debugf("reconfigure")
 	if collector.Alive.Load() {
@@ -156,8 +165,10 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.daemonStatusChange[c.Path.String()] = struct{}{}
+	delete(t.clusterObject, c.Path.String())
 }
 
 func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	t.daemonStatusChange[c.Path.String()] = struct{}{}
+	t.clusterObject[c.Path.String()] = struct{}{}
 }
