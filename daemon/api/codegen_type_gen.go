@@ -637,6 +637,9 @@ type KVStoreEntry struct {
 	Key   string `json:"key"`
 }
 
+// KVStoreKeys defines model for KVStoreKeys.
+type KVStoreKeys = []string
+
 // KeywordData defines model for KeywordData.
 type KeywordData struct {
 	Value any `json:"value"`

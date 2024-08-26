@@ -2343,6 +2343,35 @@ paths:
         500:
           $ref: '#/components/responses/500'
  
+  /object/path/{namespace}/{kind}/{name}/kvstore/keys:
+    get:
+      operationId: GetObjectKVStoreKeys
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/KVStoreKeys'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /object/path/{namespace}/{kind}/{name}/kvstore/entry:
     get:
       operationId: GetObjectKVStoreEntry
@@ -2389,12 +2418,8 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryKey'
       responses:
-        200:
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+        204:
+          $ref: '#/components/responses/204'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -5451,6 +5476,11 @@ components:
         bytes:
           type: string
           format: byte
+
+    KVStoreKeys:
+        type: array
+        items:
+          type: string
 
     PatchKVStoreEntries:
         type: array

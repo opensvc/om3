@@ -405,6 +405,9 @@ type ClientInterface interface {
 	// PutObjectKVStoreEntryWithBody request with any body
 	PutObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetObjectKVStoreKeys request
+	GetObjectKVStoreKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPools request
 	GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1715,6 +1718,18 @@ func (c *Client) PostObjectKVStoreEntryWithBody(ctx context.Context, namespace I
 
 func (c *Client) PutObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutObjectKVStoreEntryRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetObjectKVStoreKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectKVStoreKeysRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
 	}
@@ -8225,6 +8240,54 @@ func NewPutObjectKVStoreEntryRequestWithBody(server string, namespace InPathName
 	return req, nil
 }
 
+// NewGetObjectKVStoreKeysRequest generates requests for GetObjectKVStoreKeys
+func NewGetObjectKVStoreKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/keys", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetPoolsRequest generates requests for GetPools
 func NewGetPoolsRequest(server string, params *GetPoolsParams) (*http.Request, error) {
 	var err error
@@ -8921,6 +8984,9 @@ type ClientWithResponsesInterface interface {
 
 	// PutObjectKVStoreEntryWithBodyWithResponse request with any body
 	PutObjectKVStoreEntryWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectKVStoreEntryResponse, error)
+
+	// GetObjectKVStoreKeysWithResponse request
+	GetObjectKVStoreKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectKVStoreKeysResponse, error)
 
 	// GetPoolsWithResponse request
 	GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error)
@@ -11545,6 +11611,31 @@ func (r PutObjectKVStoreEntryResponse) StatusCode() int {
 	return 0
 }
 
+type GetObjectKVStoreKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetObjectKVStoreKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetObjectKVStoreKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetPoolsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12682,6 +12773,15 @@ func (c *ClientWithResponses) PutObjectKVStoreEntryWithBodyWithResponse(ctx cont
 		return nil, err
 	}
 	return ParsePutObjectKVStoreEntryResponse(rsp)
+}
+
+// GetObjectKVStoreKeysWithResponse request returning *GetObjectKVStoreKeysResponse
+func (c *ClientWithResponses) GetObjectKVStoreKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectKVStoreKeysResponse, error) {
+	rsp, err := c.GetObjectKVStoreKeys(ctx, namespace, kind, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetObjectKVStoreKeysResponse(rsp)
 }
 
 // GetPoolsWithResponse request returning *GetPoolsResponse
@@ -18110,6 +18210,53 @@ func ParsePutObjectKVStoreEntryResponse(rsp *http.Response) (*PutObjectKVStoreEn
 	}
 
 	response := &PutObjectKVStoreEntryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetObjectKVStoreKeysResponse parses an HTTP response from a GetObjectKVStoreKeysWithResponse call
+func ParseGetObjectKVStoreKeysResponse(rsp *http.Response) (*GetObjectKVStoreKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetObjectKVStoreKeysResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
