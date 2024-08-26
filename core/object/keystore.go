@@ -26,9 +26,7 @@ type (
 		Core
 		HasKey(name string) bool
 		AddKey(name string, b []byte) error
-		AddKeyFrom(name string, from string) error
 		ChangeKey(name string, b []byte) error
-		ChangeKeyFrom(name string, from string) error
 		DecodeKey(keyname string) ([]byte, error)
 		AllKeys() ([]string, error)
 		MatchingKeys(string) ([]string, error)

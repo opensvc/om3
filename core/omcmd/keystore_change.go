@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/util/uri"
 )
 
 type (
@@ -30,12 +31,15 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			switch {
-			case t.From != "":
-				return nil, store.ChangeKeyFrom(t.Key, t.From)
-			default:
-				return nil, store.ChangeKey(t.Key, []byte(t.Value))
+			if t.From != "" {
+				b, err := uri.ReadAllFrom(t.From)
+				if err != nil {
+					return nil, err
+				}
+
+				return nil, store.ChangeKey(t.Key, b)
 			}
+			return nil, store.ChangeKey(t.Key, []byte(t.Value))
 
 		}),
 	).Do()

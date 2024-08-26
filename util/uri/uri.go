@@ -1,6 +1,7 @@
 package uri
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -9,12 +10,18 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (
 	T struct {
 		uri string
 	}
+)
+
+var (
+	ErrFromUnknown = errors.New("from is unknown")
+	ErrFromEmpty   = errors.New("from is empty")
 )
 
 func New(s string) T {
@@ -68,4 +75,55 @@ func IsValid(s string) bool {
 		return false
 	}
 	return true
+}
+
+func ReadAllFrom(from string) ([]byte, error) {
+	switch from {
+	case "":
+		return nil, ErrFromEmpty
+	case "-", "stdin", "/dev/stdin":
+		return readAllFromStdin()
+	default:
+		u := New(from)
+		if u.IsValid() {
+			return readAllFromURI(u)
+		}
+		if v, err := file.ExistsAndRegular(from); err != nil {
+			return nil, err
+		} else if v {
+			return readAllFromRegular(from)
+		}
+		if v, err := file.ExistsAndDir(from); err != nil {
+			return nil, err
+		} else if v {
+			return readAllFromDir(from)
+		}
+		return nil, ErrFromUnknown
+	}
+}
+
+func readAllFromStdin() ([]byte, error) {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		return io.ReadAll(reader)
+	}
+	return nil, fmt.Errorf("stdin must be a pipe")
+}
+
+func readAllFromRegular(p string) ([]byte, error) {
+	return os.ReadFile(p)
+}
+
+func readAllFromDir(p string) ([]byte, error) {
+	return nil, fmt.Errorf("TODO")
+}
+
+func readAllFromURI(u T) ([]byte, error) {
+	fName, err := u.Fetch()
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(fName)
+	return readAllFromRegular(fName)
 }
