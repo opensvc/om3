@@ -12,15 +12,15 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-func (a *DaemonAPI) PatchObjectKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	log := LogHandler(ctx, "PatchObjectKeys")
+func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "PatchObjectKVStore")
 
 	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
 		return err
 	}
 
 	var (
-		patches api.PatchObjectKeys
+		patches api.PatchKVStoreEntries
 	)
 
 	if err := ctx.Bind(&patches); err != nil {
@@ -39,7 +39,7 @@ func (a *DaemonAPI) PatchObjectKeys(ctx echo.Context, namespace string, kind nam
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	getBytes := func(patch api.PatchObjectKey) ([]byte, error) {
+	getBytes := func(patch api.PatchKVStoreEntry) ([]byte, error) {
 		switch {
 		case patch.Bytes == nil && patch.String == nil:
 			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "bytes or string is required to add or change key %s", patch.Key)
@@ -50,7 +50,7 @@ func (a *DaemonAPI) PatchObjectKeys(ctx echo.Context, namespace string, kind nam
 		case patch.String != nil:
 			return []byte(*patch.String), nil
 		default:
-			// no way here, just to please the builder
+			// no way to get here, just to please the builder
 			return nil, nil
 		}
 	}
@@ -99,7 +99,7 @@ func (a *DaemonAPI) PatchObjectKeys(ctx echo.Context, namespace string, kind nam
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PatchObjectKeysWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
+		if resp, err := c.PatchObjectKVStoreWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

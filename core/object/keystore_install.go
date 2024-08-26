@@ -239,7 +239,6 @@ func (t *keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, us
 		}
 	}
 	t.log.Infof("install %s/%s in %s", t.path.Name, vk.Key, dst)
-	fmt.Printf("install %s/%s in %s\n", t.path.Name, vk.Key, dst)
 	perm := os.ModePerm
 	if mode != nil {
 		perm = *mode

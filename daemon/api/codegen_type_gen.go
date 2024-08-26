@@ -158,16 +158,16 @@ const (
 	PacthItem PatchItemKind = "PacthItem"
 )
 
+// Defines values for PatchKVStoreEntryAction.
+const (
+	Add    PatchKVStoreEntryAction = "add"
+	Change PatchKVStoreEntryAction = "change"
+	Remove PatchKVStoreEntryAction = "remove"
+)
+
 // Defines values for PatchListKind.
 const (
 	PatchListKindPatchList PatchListKind = "PatchList"
-)
-
-// Defines values for PatchObjectKeyAction.
-const (
-	Add    PatchObjectKeyAction = "add"
-	Change PatchObjectKeyAction = "change"
-	Remove PatchObjectKeyAction = "remove"
 )
 
 // Defines values for PlacementPolicy.
@@ -628,6 +628,15 @@ type InstanceMonitor = instance.Monitor
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
 
+// KVStoreEntries defines model for KVStoreEntries.
+type KVStoreEntries = []KVStoreEntry
+
+// KVStoreEntry defines model for KVStoreEntry.
+type KVStoreEntry struct {
+	Bytes []byte `json:"bytes"`
+	Key   string `json:"key"`
+}
+
 // KeywordData defines model for KeywordData.
 type KeywordData struct {
 	Value any `json:"value"`
@@ -910,6 +919,20 @@ type PatchItemKind string
 // PatchItems defines model for PatchItems.
 type PatchItems = []PatchItem
 
+// PatchKVStoreEntries defines model for PatchKVStoreEntries.
+type PatchKVStoreEntries = []PatchKVStoreEntry
+
+// PatchKVStoreEntry defines model for PatchKVStoreEntry.
+type PatchKVStoreEntry struct {
+	Action PatchKVStoreEntryAction `json:"action"`
+	Bytes  *[]byte                 `json:"bytes,omitempty"`
+	Key    string                  `json:"key"`
+	String *string                 `json:"string,omitempty"`
+}
+
+// PatchKVStoreEntryAction defines model for PatchKVStoreEntry.Action.
+type PatchKVStoreEntryAction string
+
 // PatchList defines model for PatchList.
 type PatchList struct {
 	Items PatchItems    `json:"items"`
@@ -918,20 +941,6 @@ type PatchList struct {
 
 // PatchListKind defines model for PatchList.Kind.
 type PatchListKind string
-
-// PatchObjectKey defines model for PatchObjectKey.
-type PatchObjectKey struct {
-	Action PatchObjectKeyAction `json:"action"`
-	Bytes  *[]byte              `json:"bytes,omitempty"`
-	Key    string               `json:"key"`
-	String *string              `json:"string,omitempty"`
-}
-
-// PatchObjectKeyAction defines model for PatchObjectKey.Action.
-type PatchObjectKeyAction string
-
-// PatchObjectKeys defines model for PatchObjectKeys.
-type PatchObjectKeys = []PatchObjectKey
 
 // PlacementPolicy object placement policy
 type PlacementPolicy string
@@ -1411,6 +1420,12 @@ type InQueryForce = bool
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
+// InQueryKey A kvstore key name
+type InQueryKey = string
+
+// Keys defines model for inQueryKeys.
+type Keys = []string
+
 // InQueryKeywords defines model for inQueryKeywords.
 type InQueryKeywords = []string
 
@@ -1806,6 +1821,31 @@ type PostObjectConfigUpdateParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetObjectKVStoreParams defines parameters for GetObjectKVStore.
+type GetObjectKVStoreParams struct {
+	Keys *Keys `form:"key,omitempty" json:"key,omitempty"`
+}
+
+// DeleteObjectKVStoreEntryParams defines parameters for DeleteObjectKVStoreEntry.
+type DeleteObjectKVStoreEntryParams struct {
+	Key InQueryKey `form:"key" json:"key"`
+}
+
+// GetObjectKVStoreEntryParams defines parameters for GetObjectKVStoreEntry.
+type GetObjectKVStoreEntryParams struct {
+	Key InQueryKey `form:"key" json:"key"`
+}
+
+// PostObjectKVStoreEntryParams defines parameters for PostObjectKVStoreEntry.
+type PostObjectKVStoreEntryParams struct {
+	Key InQueryKey `form:"key" json:"key"`
+}
+
+// PutObjectKVStoreEntryParams defines parameters for PutObjectKVStoreEntry.
+type PutObjectKVStoreEntryParams struct {
+	Key InQueryKey `form:"key" json:"key"`
+}
+
 // GetPoolsParams defines parameters for GetPools.
 type GetPoolsParams struct {
 	// Name the name of a backend storage pool
@@ -1860,8 +1900,8 @@ type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PatchObjectKeysJSONRequestBody defines body for PatchObjectKeys for application/json ContentType.
-type PatchObjectKeysJSONRequestBody = PatchObjectKeys
+// PatchObjectKVStoreJSONRequestBody defines body for PatchObjectKVStore for application/json ContentType.
+type PatchObjectKVStoreJSONRequestBody = PatchKVStoreEntries
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

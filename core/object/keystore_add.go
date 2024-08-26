@@ -2,6 +2,7 @@ package object
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,10 +12,18 @@ import (
 	"github.com/opensvc/om3/util/uri"
 )
 
+var (
+	KeystoreErrExist              = errors.New("key already exists")
+	KeystoreErrKeyEmpty           = errors.New("key is empty")
+	KeystoreErrNotExist           = errors.New("key does not exist")
+	KeystoreErrValueSourceUnknown = errors.New("unknown value source")
+	KeystoreErrValueSourceEmpty   = errors.New("value source is empty")
+)
+
 // TransactionAddKey sets a new key
 func (t *keystore) TransactionAddKey(name string, b []byte) error {
 	if t.HasKey(name) {
-		return fmt.Errorf("key already exist: %s. use the change action", name)
+		return KeystoreErrExist
 	}
 	return t.addKey(name, b)
 }
@@ -30,7 +39,7 @@ func (t *keystore) AddKey(name string, b []byte) error {
 // TransactionChangeKey changes the value of a existing key
 func (t *keystore) TransactionChangeKey(name string, b []byte) error {
 	if !t.HasKey(name) {
-		return fmt.Errorf("key does not exist: %s. use the add action", name)
+		return KeystoreErrNotExist
 	}
 	return t.addKey(name, b)
 }
@@ -44,10 +53,10 @@ func (t *keystore) ChangeKey(name string, b []byte) error {
 }
 func (t *keystore) AddKeyFrom(name string, from string) error {
 	if name == "" {
-		return fmt.Errorf("key name can not be empty")
+		return KeystoreErrKeyEmpty
 	}
 	if t.HasKey(name) {
-		return fmt.Errorf("key already exist: %s. use the change action", name)
+		return KeystoreErrExist
 	}
 	if err := t.alterFrom(name, from); err != nil {
 		return err
@@ -57,10 +66,10 @@ func (t *keystore) AddKeyFrom(name string, from string) error {
 
 func (t *keystore) ChangeKeyFrom(name string, from string) error {
 	if name == "" {
-		return fmt.Errorf("key name can not be empty")
+		return KeystoreErrKeyEmpty
 	}
 	if !t.HasKey(name) {
-		return fmt.Errorf("key does not exist: %s. use the add action", name)
+		return KeystoreErrNotExist
 	}
 	if err := t.alterFrom(name, from); err != nil {
 		return err
@@ -71,7 +80,7 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 func (t *keystore) alterFrom(name string, from string) error {
 	switch from {
 	case "":
-		return fmt.Errorf("empty value source")
+		return KeystoreErrValueSourceEmpty
 	case "-", "stdin", "/dev/stdin":
 		return t.fromStdin(name)
 	default:
@@ -89,7 +98,7 @@ func (t *keystore) alterFrom(name string, from string) error {
 		} else if v {
 			return t.fromDir(name, from)
 		}
-		return fmt.Errorf("unexpected value source: %s", from)
+		return KeystoreErrValueSourceUnknown
 	}
 }
 
@@ -132,7 +141,7 @@ func (t *keystore) fromURI(name string, u uri.T) error {
 // Note: addKey does not commit, so it can be used multiple times efficiently.
 func (t *keystore) addKey(name string, b []byte) error {
 	if name == "" {
-		return fmt.Errorf("key name can not be empty")
+		return KeystoreErrKeyEmpty
 	}
 	if b == nil {
 		b = []byte{}
