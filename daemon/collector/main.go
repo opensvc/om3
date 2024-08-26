@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -110,6 +111,12 @@ type (
 
 		// version is the data version
 		version string
+
+		// clusterObject is a map of cluster objects
+		clusterObject map[string]struct{}
+
+		// clusterNode is a map of cluster nodenames
+		clusterNode map[string]struct{}
 	}
 
 	requester interface {
@@ -132,14 +139,6 @@ type (
 		UpdatedAt             time.Time                      `json:"updated_at"`
 		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
 		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
-	}
-
-	statusPost struct {
-		PreviousUpdatedAt time.Time     `json:"previous_updated_at"`
-		UpdatedAt         time.Time     `json:"updated_at"`
-		Data              *cluster.Data `json:"data"`
-		Changes           []string      `json:"changes"`
-		Version           string        `json:"version"`
 	}
 
 	// End action:
@@ -294,6 +293,9 @@ func (t *T) Stop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := t.bus.Sub("daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
+
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
+
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
@@ -306,6 +308,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+
 	sub.Start()
 	return sub
 }
@@ -334,6 +337,8 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.ClusterConfigUpdated:
+				t.onClusterConfigUpdated(c)
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(c)
 			case *msgbus.InstanceConfigUpdated:
@@ -377,12 +382,15 @@ func (t *T) initChanges() {
 		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
 	}
 	t.daemonStatusChange = make(map[string]struct{})
+	t.clusterObject = make(map[string]struct{})
+	t.clusterNode = make(map[string]struct{})
 	t.nodeFrozenAt = map[string]time.Time{}
 	t.objectConfigToSend = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
 	t.objectConfigSent = make(map[naming.Path]objectConfigSent)
 
 	for _, v := range object.StatusData.GetAll() {
 		t.daemonStatusChange[v.Path.String()] = struct{}{}
+		t.clusterObject[v.Path.String()] = struct{}{}
 	}
 
 	for _, v := range instance.StatusData.GetAll() {
@@ -408,6 +416,10 @@ func (t *T) initChanges() {
 			Node:  v.Node,
 			Value: *v.Value,
 		})
+	}
+
+	for _, nodename := range clusternode.Get() {
+		t.clusterNode[nodename] = struct{}{}
 	}
 }
 
