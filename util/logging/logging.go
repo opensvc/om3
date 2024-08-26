@@ -94,13 +94,19 @@ func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
 	consoleWriter = w
 }
 
-func Logger() zerolog.Logger {
-	return log.Logger
-}
-
 // Configure sets up the logging framework
 func Configure(config Config) error {
 	var writers []io.Writer
+
+	if config.Level == "none" {
+		zerolog.SetGlobalLevel(zerolog.NoLevel)
+	} else if config.Level == "" {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	} else if configLevel, err := zerolog.ParseLevel(config.Level); err != nil {
+		return fmt.Errorf("invalid log level %s", config.Level)
+	} else {
+		zerolog.SetGlobalLevel(configLevel)
+	}
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 
@@ -121,23 +127,6 @@ func Configure(config Config) error {
 	mw := io.MultiWriter(writers...)
 
 	logger := log.Output(mw)
-
-	switch config.Level {
-	case "debug":
-		logger = logger.Level(zerolog.DebugLevel)
-	case "info":
-		logger = logger.Level(zerolog.InfoLevel)
-	case "warn", "warning":
-		logger = logger.Level(zerolog.WarnLevel)
-	case "error":
-		logger = logger.Level(zerolog.ErrorLevel)
-	case "fatal":
-		logger = logger.Level(zerolog.FatalLevel)
-	case "panic":
-		logger = logger.Level(zerolog.PanicLevel)
-	default:
-		logger = logger.Level(zerolog.InfoLevel)
-	}
 
 	if config.WithCaller {
 		// skip one more for plog wrappers

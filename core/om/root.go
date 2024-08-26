@@ -3,7 +3,6 @@ package om
 import (
 	// Necessary to use go:embed
 	_ "embed"
-
 	"fmt"
 	"os"
 	"path/filepath"
@@ -189,7 +188,8 @@ func init() {
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
-	root.PersistentFlags().StringVar(&logFlag, "log", "", "Display logs on the console at the specified level.")
+	root.PersistentFlags().StringVar(&logFlag, "log", "info", "Display logs on the console with one of the specified level: "+
+		"trace, debug, info, warn, error, fatal, panic, none")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
 }
 
