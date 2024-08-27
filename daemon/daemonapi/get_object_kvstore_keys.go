@@ -36,8 +36,18 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 		if names, err := ks.AllKeys(); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Keys", "%s", err)
 		} else {
-			result := api.KVStoreKeys(names)
-			return ctx.JSON(http.StatusOK, result)
+			items := make(api.KVStoreKeyListItems, 0)
+			for _, name := range names {
+				items = append(items, api.KVStoreKeyListItem{
+					Object: p.String(),
+					Node:   a.localhost,
+					Key:    name,
+				})
+			}
+			return ctx.JSON(http.StatusOK, api.KVStoreKeyList{
+				Kind:  "KVStoreKeyList",
+				Items: items,
+			})
 		}
 	}
 

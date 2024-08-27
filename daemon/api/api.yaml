@@ -2360,9 +2360,9 @@ paths:
       responses:
         200:
           content:
-            application/octet-stream:
+            application/json:
               schema:
-                $ref: '#/components/schemas/KVStoreKeys'
+                $ref: '#/components/schemas/KVStoreKeyList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -5477,9 +5477,36 @@ components:
           type: string
           format: byte
 
-    KVStoreKeys:
+    KVStoreKeyList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - KVStoreKeyList
+        items:
+          $ref: '#/components/schemas/KVStoreKeyListItems'
+
+    KVStoreKeyListItems:
         type: array
         items:
+          $ref: '#/components/schemas/KVStoreKeyListItem'
+
+    KVStoreKeyListItem:
+      type: object
+      required:
+        - node
+        - object
+        - key
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        key:
           type: string
 
     PatchKVStoreEntries:

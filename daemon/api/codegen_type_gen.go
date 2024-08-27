@@ -96,6 +96,11 @@ const (
 	InstanceListKindInstanceList InstanceListKind = "InstanceList"
 )
 
+// Defines values for KVStoreKeyListKind.
+const (
+	KVStoreKeyListKindKVStoreKeyList KVStoreKeyListKind = "KVStoreKeyList"
+)
+
 // Defines values for KeywordItemKind.
 const (
 	KeywordItemKindKeywordItem KeywordItemKind = "KeywordItem"
@@ -637,8 +642,24 @@ type KVStoreEntry struct {
 	Key   string `json:"key"`
 }
 
-// KVStoreKeys defines model for KVStoreKeys.
-type KVStoreKeys = []string
+// KVStoreKeyList defines model for KVStoreKeyList.
+type KVStoreKeyList struct {
+	Items KVStoreKeyListItems `json:"items"`
+	Kind  KVStoreKeyListKind  `json:"kind"`
+}
+
+// KVStoreKeyListKind defines model for KVStoreKeyList.Kind.
+type KVStoreKeyListKind string
+
+// KVStoreKeyListItem defines model for KVStoreKeyListItem.
+type KVStoreKeyListItem struct {
+	Key    string `json:"key"`
+	Node   string `json:"node"`
+	Object string `json:"object"`
+}
+
+// KVStoreKeyListItems defines model for KVStoreKeyListItems.
+type KVStoreKeyListItems = []KVStoreKeyListItem
 
 // KeywordData defines model for KeywordData.
 type KeywordData struct {

@@ -11614,6 +11614,7 @@ func (r PutObjectKVStoreEntryResponse) StatusCode() int {
 type GetObjectKVStoreKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *KVStoreKeyList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -18262,6 +18263,13 @@ func ParseGetObjectKVStoreKeysResponse(rsp *http.Response) (*GetObjectKVStoreKey
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest KVStoreKeyList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

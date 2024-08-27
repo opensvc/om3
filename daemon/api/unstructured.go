@@ -507,3 +507,15 @@ func (t PoolVolume) Unstructured() map[string]any {
 		"size":      t.Size,
 	}
 }
+
+func (t KVStoreKeyList) GetItems() any {
+	return t.Items
+}
+
+func (t KVStoreKeyListItem) Unstructured() map[string]any {
+	return map[string]any{
+		"node":   t.Node,
+		"object": t.Object,
+		"key":    t.Key,
+	}
+}
