@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
@@ -49,6 +50,9 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
+		if !slices.Contains(naming.KindKVStore, path.Kind) {
+			continue
+		}
 		if err := t.RunForPath(ctx, c, path, r); err != nil {
 			return err
 		}

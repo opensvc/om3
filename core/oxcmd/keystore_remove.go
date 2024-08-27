@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
@@ -32,6 +33,9 @@ func (t *CmdKeystoreRemove) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
+		if !slices.Contains(naming.KindKVStore, path.Kind) {
+			continue
+		}
 		if err := t.RunForPath(ctx, c, path); err != nil {
 			return err
 		}

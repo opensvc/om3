@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
@@ -38,6 +39,9 @@ func (t *CmdKeystoreKeys) Run(selector, kind string) error {
 		Items: make(api.KVStoreKeyListItems, 0),
 	}
 	for _, path := range paths {
+		if !slices.Contains(naming.KindKVStore, path.Kind) {
+			continue
+		}
 		if moreKeys, err := t.RunForPath(ctx, c, path); err != nil {
 			return err
 		} else {
