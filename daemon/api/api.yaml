@@ -5501,6 +5501,7 @@ components:
         - node
         - object
         - key
+        - size
       properties:
         node:
           type: string
@@ -5508,6 +5509,8 @@ components:
           type: string
         key:
           type: string
+        size:
+          type: integer
 
     PatchKVStoreEntries:
         type: array

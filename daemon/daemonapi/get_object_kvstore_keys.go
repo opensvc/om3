@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/util/key"
 )
 
 func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
@@ -42,6 +43,7 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 					Object: p.String(),
 					Node:   a.localhost,
 					Key:    name,
+					Size:   len(ks.Config().GetString(key.T{"data", name})),
 				})
 			}
 			return ctx.JSON(http.StatusOK, api.KVStoreKeyList{

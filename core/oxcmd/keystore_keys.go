@@ -49,7 +49,7 @@ func (t *CmdKeystoreKeys) Run(selector, kind string) error {
 		}
 	}
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:object,NODE:node,KEY:key",
+		DefaultOutput: "tab=OBJECT:object,NODE:node,KEY:key,SIZE:size",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          result,

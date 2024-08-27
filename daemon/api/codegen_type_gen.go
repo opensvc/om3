@@ -656,6 +656,7 @@ type KVStoreKeyListItem struct {
 	Key    string `json:"key"`
 	Node   string `json:"node"`
 	Object string `json:"object"`
+	Size   int    `json:"size"`
 }
 
 // KVStoreKeyListItems defines model for KVStoreKeyListItems.

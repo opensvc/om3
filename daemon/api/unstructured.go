@@ -517,5 +517,6 @@ func (t KVStoreKeyListItem) Unstructured() map[string]any {
 		"node":   t.Node,
 		"object": t.Object,
 		"key":    t.Key,
+		"size":   t.Size,
 	}
 }
