@@ -30,7 +30,11 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
 		ks, err := object.NewKeystore(p)
-		if err != nil {
+
+		switch {
+		case errors.Is(err, object.ErrWrongType):
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
 		}
 
