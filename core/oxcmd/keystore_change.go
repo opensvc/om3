@@ -1,15 +1,14 @@
 package oxcmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"slices"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/uri"
@@ -25,16 +24,39 @@ type (
 	}
 )
 
+func makeKVStorePatch(key, value, from string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
+	data := make(api.PatchObjectKVStoreJSONRequestBody, 0)
+
+	if value != "" {
+		data = append(data, api.PatchKVStoreEntry{
+			Key:    key,
+			String: &value,
+			Action: action,
+		})
+		return data, nil
+	}
+	m, err := uri.ReadAllFrom(from)
+	if err != nil {
+		return data, err
+	}
+	for path, b := range m {
+		k, err := object.FileToKey(path, key)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, api.PatchKVStoreEntry{
+			Key:    k,
+			Bytes:  &b,
+			Action: action,
+		})
+	}
+	return data, nil
+}
+
 func (t *CmdKeystoreChange) Run(selector, kind string) error {
-	var (
-		r io.Reader
-	)
-	if t.Value != "" {
-		r = bytes.NewBuffer([]byte(t.Value))
-	} else if b, err := uri.ReadAllFrom(t.From); err != nil {
+	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Change)
+	if err != nil {
 		return err
-	} else {
-		r = bytes.NewBuffer(b)
 	}
 
 	ctx := context.Background()
@@ -53,18 +75,15 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 		if !slices.Contains(naming.KindKVStore, path.Kind) {
 			continue
 		}
-		if err := t.RunForPath(ctx, c, path, r); err != nil {
+		if err := t.RunForPath(ctx, c, path, data); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *CmdKeystoreChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, r io.Reader) error {
-	params := api.PutObjectKVStoreEntryParams{
-		Key: t.Key,
-	}
-	response, err := c.PutObjectKVStoreEntryWithBodyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params, "application/octet-stream", r)
+func (t *CmdKeystoreChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
+	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

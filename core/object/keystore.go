@@ -2,6 +2,7 @@ package object
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/util/key"
 )
@@ -74,4 +75,17 @@ func (t *keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 
 func (t *keystore) postCommit() error {
 	return t.postInstall("")
+}
+
+func FileToKey(path, prefix string) (string, error) {
+	if path == "" {
+		return prefix, nil
+	}
+	path = filepath.Clean(path)
+	dirName := filepath.Dir(path)
+	relPath, err := filepath.Rel(dirName, path)
+	if prefix == "" {
+		return relPath, err
+	}
+	return filepath.Join(prefix, relPath), nil
 }

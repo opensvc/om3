@@ -28,11 +28,8 @@ func (t *keystore) AddKey(name string, b []byte) error {
 	return t.config.Commit()
 }
 
-// TransactionChangeKey changes the value of a existing key
+// TransactionChangeKey inserts or updates the value of a existing key
 func (t *keystore) TransactionChangeKey(name string, b []byte) error {
-	if !t.HasKey(name) {
-		return KeystoreErrNotExist
-	}
 	return t.addKey(name, b)
 }
 

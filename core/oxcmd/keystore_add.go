@@ -1,10 +1,8 @@
 package oxcmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"slices"
 
@@ -12,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/uri"
 )
 
 type (
@@ -26,15 +23,9 @@ type (
 )
 
 func (t *CmdKeystoreAdd) Run(selector, kind string) error {
-	var (
-		r io.Reader
-	)
-	if t.Value != "" {
-		r = bytes.NewBuffer([]byte(t.Value))
-	} else if b, err := uri.ReadAllFrom(t.From); err != nil {
+	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Add)
+	if err != nil {
 		return err
-	} else {
-		r = bytes.NewBuffer(b)
 	}
 
 	ctx := context.Background()
@@ -53,18 +44,15 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 		if !slices.Contains(naming.KindKVStore, path.Kind) {
 			continue
 		}
-		if err := t.RunForPath(ctx, c, path, r); err != nil {
+		if err := t.RunForPath(ctx, c, path, data); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *CmdKeystoreAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, r io.Reader) error {
-	params := api.PostObjectKVStoreEntryParams{
-		Key: t.Key,
-	}
-	response, err := c.PostObjectKVStoreEntryWithBodyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params, "application/octet-stream", r)
+func (t *CmdKeystoreAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
+	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

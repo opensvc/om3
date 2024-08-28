@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/file"
@@ -77,7 +78,7 @@ func IsValid(s string) bool {
 	return true
 }
 
-func ReadAllFrom(from string) ([]byte, error) {
+func ReadAllFrom(from string) (map[string][]byte, error) {
 	switch from {
 	case "":
 		return nil, ErrFromEmpty
@@ -102,24 +103,47 @@ func ReadAllFrom(from string) ([]byte, error) {
 	}
 }
 
-func readAllFromStdin() ([]byte, error) {
+func readAllFromStdin() (map[string][]byte, error) {
+	m := make(map[string][]byte)
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		reader := bufio.NewReader(os.Stdin)
-		return io.ReadAll(reader)
+		b, err := io.ReadAll(reader)
+		m[""] = b
+		return m, err
 	}
-	return nil, fmt.Errorf("stdin must be a pipe")
+	return m, fmt.Errorf("stdin must be a pipe")
 }
 
-func readAllFromRegular(p string) ([]byte, error) {
-	return os.ReadFile(p)
+func readAllFromRegular(p string) (map[string][]byte, error) {
+	m := make(map[string][]byte)
+	b, err := os.ReadFile(p)
+	m[""] = b
+	return m, err
 }
 
-func readAllFromDir(p string) ([]byte, error) {
-	return nil, fmt.Errorf("TODO")
+func readAllFromDir(p string) (map[string][]byte, error) {
+	m := make(map[string][]byte)
+	err := filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode().IsRegular() {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if err != nil {
+				return err
+			}
+			m[path] = append([]byte{}, b...)
+		}
+		return nil
+	})
+	return m, err
 }
 
-func readAllFromURI(u T) ([]byte, error) {
+func readAllFromURI(u T) (map[string][]byte, error) {
 	fName, err := u.Fetch()
 	if err != nil {
 		return nil, err

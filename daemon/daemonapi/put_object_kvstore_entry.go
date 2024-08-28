@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"slices"
 
 	"github.com/labstack/echo/v4"
 
@@ -34,14 +35,19 @@ func (a *DaemonAPI) PutObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
 		}
+		keys, err := ks.AllKeys()
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "AllKeys", "%s", err)
+		}
+		if !slices.Contains(keys, params.Key) {
+			return JSONProblemf(ctx, http.StatusNotFound, "ChangeKey", "%s: %s. consider using the POST method.", params.Key, err)
+		}
 		b, err := ioutil.ReadAll(ctx.Request().Body)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Key, err)
 		}
 		err = ks.ChangeKey(params.Key, b)
 		switch {
-		case errors.Is(err, object.KeystoreErrNotExist):
-			return JSONProblemf(ctx, http.StatusNotFound, "ChangeKey", "%s: %s. consider using the POST method.", params.Key, err)
 		case errors.Is(err, object.KeystoreErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "ChangeKey", "%s: %s", params.Key, err)
 		case err != nil:

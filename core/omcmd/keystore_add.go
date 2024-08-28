@@ -32,14 +32,23 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			if t.From != "" {
-				b, err := uri.ReadAllFrom(t.From)
+			if t.Value != "" {
+				return nil, store.AddKey(t.Key, []byte(t.Value))
+			}
+			m, err := uri.ReadAllFrom(t.From)
+			if err != nil {
+				return nil, err
+			}
+			for path, b := range m {
+				k, err := object.FileToKey(path, t.Key)
 				if err != nil {
 					return nil, err
 				}
-				return nil, store.AddKey(t.Key, b)
+				if err := store.TransactionAddKey(k, b); err != nil {
+					return nil, err
+				}
 			}
-			return nil, store.AddKey(t.Key, []byte(t.Value))
+			return nil, store.Config().CommitInvalid()
 		}),
 	).Do()
 }

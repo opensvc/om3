@@ -129,6 +129,8 @@
   * `svc_flex_cpu_low_threshold`
   * `svc_flex_cpu_high_threshold`
 
+* **breaking change:** key-value stores (cfg, sec, usr kinded objects) `change` action is no longer failing if the key does not exist. The key is added instead.
+
 ### commands
 
 * **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
