@@ -524,30 +524,40 @@ func (t *T) DriverGroupSet(op keyop.T) error {
 
 func (t *T) set(op keyop.T) error {
 	setSet := func(op keyop.T) error {
-		current := t.file.Section(op.Key.Section).Key(op.Key.Option).Value()
-		if current == op.Value {
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
+		if current.Value() == op.Value {
 			return nil
 		}
-		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(op.Value)
+		current.SetValue(op.Value)
 		t.changed = true
 		return nil
 	}
 	setAppend := func(op keyop.T) error {
-		current := t.file.Section(op.Key.Section).Key(op.Key.Option).Value()
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
 		target := ""
-		if current == "" {
+		if current.Value() == "" {
 			target = op.Value
 		} else {
-			target = fmt.Sprintf("%s %s", current, op.Value)
+			target = fmt.Sprintf("%s %s", current.Value(), op.Value)
 		}
-		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(target)
+		current.SetValue(target)
 		t.changed = true
 		return nil
 	}
 	setMerge := func(op keyop.T) error {
-		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
+		currentFields := strings.Fields(current.Value())
 		currentSet := set.New()
-		for _, e := range current {
+		for _, e := range currentFields {
 			currentSet.Insert(e)
 		}
 		if currentSet.Has(op.Value) {
@@ -557,10 +567,14 @@ func (t *T) set(op keyop.T) error {
 	}
 
 	setRemove := func(op keyop.T) error {
-		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
+		currentFields := strings.Fields(current.Value())
 		target := []string{}
 		removed := 0
-		for _, e := range current {
+		for _, e := range currentFields {
 			if e == op.Value {
 				removed++
 				continue
@@ -570,15 +584,19 @@ func (t *T) set(op keyop.T) error {
 		if removed == 0 {
 			return nil
 		}
-		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
+		current.SetValue(strings.Join(target, " "))
 		t.changed = true
 		return nil
 	}
 
 	setToggle := func(op keyop.T) error {
-		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
+		currentFields := strings.Fields(current.Value())
 		hasValue := false
-		for _, e := range current {
+		for _, e := range currentFields {
 			if e == op.Value {
 				hasValue = true
 				break
@@ -591,11 +609,15 @@ func (t *T) set(op keyop.T) error {
 	}
 
 	setInsert := func(op keyop.T) error {
-		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
+		if current == nil {
+			return fmt.Errorf("invalid key in %s", op)
+		}
+		currentFields := strings.Fields(current.Value())
 		target := []string{}
-		target = append(target, current[:op.Index]...)
+		target = append(target, currentFields[:op.Index]...)
 		target = append(target, op.Value)
-		target = append(target, current[op.Index:]...)
+		target = append(target, currentFields[op.Index:]...)
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
 		t.changed = true
 		return nil

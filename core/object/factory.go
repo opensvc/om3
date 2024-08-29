@@ -9,6 +9,8 @@ import (
 	"github.com/opensvc/om3/util/plog"
 )
 
+var ErrWrongType = errors.New("wrong type provided for interface")
+
 // WithConfigFile sets a non-standard configuration location.
 func WithConfigFile(s string) funcopt.O {
 	return funcopt.F(func(t any) error {
@@ -87,8 +89,10 @@ func New(p naming.Path, opts ...funcopt.O) (any, error) {
 func NewCore(p naming.Path, opts ...funcopt.O) (Core, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
+	} else if i, ok := o.(Core); ok {
+		return i, nil
 	} else {
-		return o.(Core), nil
+		return nil, ErrWrongType
 	}
 }
 
@@ -96,8 +100,10 @@ func NewCore(p naming.Path, opts ...funcopt.O) (Core, error) {
 func NewConfigurer(p naming.Path, opts ...funcopt.O) (Configurer, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
+	} else if i, ok := o.(Configurer); ok {
+		return i, nil
 	} else {
-		return o.(Configurer), nil
+		return nil, ErrWrongType
 	}
 }
 
@@ -105,8 +111,10 @@ func NewConfigurer(p naming.Path, opts ...funcopt.O) (Configurer, error) {
 func NewActor(p naming.Path, opts ...funcopt.O) (Actor, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
+	} else if i, ok := o.(Actor); ok {
+		return i, nil
 	} else {
-		return o.(Actor), nil
+		return nil, ErrWrongType
 	}
 }
 
@@ -114,7 +122,9 @@ func NewActor(p naming.Path, opts ...funcopt.O) (Actor, error) {
 func NewKeystore(p naming.Path, opts ...funcopt.O) (Keystore, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
+	} else if i, ok := o.(Keystore); ok {
+		return i, nil
 	} else {
-		return o.(Keystore), nil
+		return nil, ErrWrongType
 	}
 }

@@ -46,6 +46,12 @@ var (
 		string(KindNscfg): nil,
 	}
 
+	KindKVStore = []Kind{
+		KindCfg,
+		KindSec,
+		KindUsr,
+	}
+
 	KindAll = []Kind{
 		KindSvc,
 		KindVol,
@@ -55,6 +61,7 @@ var (
 		KindCcfg,
 		KindNscfg,
 	}
+
 	KindStrings = []string{
 		string(KindSvc),
 		string(KindVol),

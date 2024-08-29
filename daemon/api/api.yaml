@@ -2343,6 +2343,221 @@ paths:
         500:
           $ref: '#/components/responses/500'
  
+  /object/path/{namespace}/{kind}/{name}/kvstore/keys:
+    get:
+      operationId: GetObjectKVStoreKeys
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVStoreKeyList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /object/path/{namespace}/{kind}/{name}/kvstore/entry:
+    get:
+      operationId: GetObjectKVStoreEntry
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKey'
+      responses:
+        200:
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+    delete:
+      operationId: DeleteObjectKVStoreEntry
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKey'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+    post:
+      operationId: PostObjectKVStoreEntry
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKey'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+    put:
+      operationId: PutObjectKVStoreEntry
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKey'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /object/path/{namespace}/{kind}/{name}/kvstore:
+    get:
+      operationId: GetObjectKVStore
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeys'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVStoreEntries'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchObjectKVStore
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchKVStoreEntries'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
@@ -5245,6 +5460,83 @@ components:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
 
+    KVStoreEntries:
+        type: array
+        items:
+          $ref: '#/components/schemas/KVStoreEntry'
+
+    KVStoreEntry:
+      type: object
+      required:
+        - key
+        - bytes
+      properties:
+        key:
+          type: string
+        bytes:
+          type: string
+          format: byte
+
+    KVStoreKeyList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - KVStoreKeyList
+        items:
+          $ref: '#/components/schemas/KVStoreKeyListItems'
+
+    KVStoreKeyListItems:
+        type: array
+        items:
+          $ref: '#/components/schemas/KVStoreKeyListItem'
+
+    KVStoreKeyListItem:
+      type: object
+      required:
+        - node
+        - object
+        - key
+        - size
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        key:
+          type: string
+        size:
+          type: integer
+
+    PatchKVStoreEntries:
+        type: array
+        items:
+          $ref: '#/components/schemas/PatchKVStoreEntry'
+
+    PatchKVStoreEntry:
+      type: object
+      required:
+        - action
+        - key
+      properties:
+        action:
+          type: string
+          enum:
+            - add
+            - change
+            - remove
+        key:
+          type: string
+        string:
+          type: string
+        bytes:
+          type: string
+          format: byte
+
     ResourceMonitorRestart:
       type: object
       required:
@@ -5707,6 +5999,24 @@ components:
       name: kw
       schema:
         type: string
+
+    inQueryKey:
+      in: query
+      name: key
+      required: true
+      schema:
+        type: string
+        description: A kvstore key name
+
+    inQueryKeys:
+      in: query
+      name: key
+      x-go-name: Keys
+      schema:
+        type: array
+        items:
+          type: string
+          description: A kvstore key name
 
     inQuerySets:
       in: query
