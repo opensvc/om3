@@ -69,6 +69,7 @@ type T struct {
 	IPCNS           string         `json:"ipcns"`
 	UTSNS           string         `json:"utsns"`
 	RegistryCreds   string         `json:"registry_creds"`
+	RunTimeout      *time.Duration `json:"run_timeout"`
 	PullTimeout     *time.Duration `json:"pull_timeout"`
 	Timeout         *time.Duration `json:"timeout"`
 

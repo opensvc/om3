@@ -32,12 +32,13 @@ import (
 // T is the driver structure.
 type T struct {
 	resapp.T
-	RunCmd       string
-	OnErrorCmd   string
 	Check        string
-	Schedule     string
 	Confirmation bool
 	LogOutputs   bool
+	OnErrorCmd   string
+	RunCmd       string
+	RunTimeout   *time.Duration
+	Schedule     string
 	Snooze       *time.Duration
 }
 
