@@ -122,16 +122,6 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/optional"),
 	}
 
-	KWOptionalTrue = keywords.Keyword{
-		Attr:      "Optional",
-		Converter: converters.Bool,
-		Default:   "true",
-		Inherit:   keywords.InheritHead2Leaf,
-		Option:    "optional",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/optional"),
-	}
-
 	KWPostProvision = keywords.Keyword{
 		Attr:     "PostProvision",
 		Option:   "post_provision",
@@ -358,12 +348,12 @@ var (
 	}
 
 	syncerKeywords = []Attr{
-		KWOptionalTrue,
+		KWOptional,
 		KWSyncRequires,
 	}
 
 	runnerKeywords = []Attr{
-		KWOptionalTrue,
+		KWOptional,
 		KWBlockingPostRun,
 		KWBlockingPreRun,
 		KWPostRun,

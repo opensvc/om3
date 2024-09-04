@@ -123,6 +123,8 @@
 
 *  **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
 
+* **breaking change:** Task and sync resources are now non-optional by default, but their status is never aggregated in the instance availability status. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
+
 ### objects
 
 * **breaking change:** drop support of some DEFAULT keywords:

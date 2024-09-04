@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/colorstatus"
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -199,7 +200,12 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		data.Resources[r.RID()] = xd
 		data.Overall.Add(xd.Status)
 		if !xd.Optional {
-			data.Avail.Add(xd.Status)
+			switch r.ID().DriverGroup() {
+			case driver.GroupSync:
+			case driver.GroupTask:
+			default:
+				data.Avail.Add(xd.Status)
+			}
 		}
 		data.Provisioned.Add(xd.Provisioned.State)
 		mu.Unlock()
