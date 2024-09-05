@@ -7,30 +7,22 @@ package restaskdocker
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mattn/go-isatty"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/rescontainerdocker"
-	"github.com/opensvc/om3/util/confirmation"
+	"github.com/opensvc/om3/drivers/restask"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/retcodes"
 )
 
 // T is the driver structure.
 type T struct {
-	resource.T
+	restask.BaseTask
 	resource.SCSIPersistentReservation
 	Detach          bool           `json:"detach"`
 	PG              pg.Config      `json:"pg"`
@@ -69,22 +61,9 @@ type T struct {
 	IPCNS           string         `json:"ipcns"`
 	UTSNS           string         `json:"utsns"`
 	RegistryCreds   string         `json:"registry_creds"`
-	RunTimeout      *time.Duration `json:"run_timeout"`
 	PullTimeout     *time.Duration `json:"pull_timeout"`
 	Timeout         *time.Duration `json:"timeout"`
-
-	RetCodes string `json:"retcodes"`
-
-	Check        string
-	Schedule     string
-	Confirmation bool
-	LogOutputs   bool
-	Snooze       *time.Duration
 }
-
-const (
-	lockName = "run"
-)
 
 func New() resource.Driver {
 	return &T{}
@@ -92,7 +71,7 @@ func New() resource.Driver {
 
 func (t T) Container() *rescontainerdocker.T {
 	return &rescontainerdocker.T{
-		T:                         t.T,
+		T:                         t.BaseTask.T,
 		Detach:                    false,
 		SCSIPersistentReservation: t.SCSIPersistentReservation,
 		PG:                        t.PG,
@@ -135,44 +114,11 @@ func (t T) Container() *rescontainerdocker.T {
 	}
 }
 
-func (t T) IsRunning() bool {
-	unlock, err := t.Lock(false, time.Second*0, lockName)
-	if err != nil {
-		return true
-	}
-	defer unlock()
-	return false
-}
-
 func (t T) Run(ctx context.Context) error {
-	disable := actioncontext.IsLockDisabled(ctx)
-	timeout := actioncontext.LockTimeout(ctx)
-	unlock, err := t.Lock(disable, timeout, lockName)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return t.lockedRun(ctx)
-}
-
-func (t T) ExitCodeToStatus(exitCode int) (status.T, error) {
-	m, err := retcodes.Parse(t.RetCodes)
-	if err != nil {
-		return status.Warn, err
-	}
-	return m.Status(exitCode), nil
+	return t.RunIf(ctx, t.lockedRun)
 }
 
 func (t T) lockedRun(ctx context.Context) (err error) {
-	if !env.HasDaemonOrigin() {
-		defer t.notifyRunDone()
-	}
-	if err := t.handleConfirmation(ctx); err != nil {
-		return err
-	}
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 	// TODO: if t.LogOutputs {}
 	container := t.Container()
 	if err := container.Start(ctx); err != nil {
@@ -183,11 +129,11 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := t.writeLastRun(inspect.State.ExitCode); err != nil {
+	if err := t.WriteLastRun(inspect.State.ExitCode); err != nil {
 		t.Log().Errorf("write last run: %s", err)
 		return err
 	}
-	if s, err := t.ExitCodeToStatus(inspect.State.ExitCode); err != nil {
+	if s, err := t.BaseTask.ExitCodeToStatus(inspect.State.ExitCode); err != nil {
 		return err
 	} else if s != status.Up {
 		return fmt.Errorf("command exited with code %d", inspect.State.ExitCode)
@@ -197,59 +143,6 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 
 func (t *T) Kill(ctx context.Context) error {
 	return t.Container().Signal(syscall.SIGKILL)
-}
-
-func (t *T) Status(ctx context.Context) status.T {
-	switch t.Check {
-	case "last_run":
-		return t.statusLastRun(ctx)
-	default:
-		return status.NotApplicable
-	}
-}
-
-func (t T) writeLastRun(retcode int) error {
-	p := t.lastRunFile()
-	f, err := os.Create(p)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "%d\n", retcode)
-	return nil
-}
-
-func (t T) readLastRun() (int, error) {
-	p := t.lastRunFile()
-	if b, err := os.ReadFile(p); err != nil {
-		return 0, err
-	} else {
-		return strconv.Atoi(strings.TrimSpace(string(b)))
-	}
-}
-
-func (t T) lastRunFile() string {
-	return filepath.Join(t.VarDir(), "last_run_retcode")
-}
-
-func (t *T) statusLastRun(ctx context.Context) status.T {
-	if err := resource.StatusCheckRequires(ctx, t); err != nil {
-		t.StatusLog().Info("requirements not met")
-		return status.NotApplicable
-	}
-	if i, err := t.readLastRun(); err != nil {
-		t.StatusLog().Info("never run")
-		return status.NotApplicable
-	} else {
-		s, err := t.ExitCodeToStatus(i)
-		if err != nil {
-			t.StatusLog().Info("%s", err)
-		}
-		if s != status.Up {
-			t.StatusLog().Info("last run failed (%d)", i)
-		}
-		return s
-	}
 }
 
 func (t *T) running(ctx context.Context) bool {
@@ -263,50 +156,4 @@ func (t *T) running(ctx context.Context) bool {
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
 	return ""
-}
-
-func (t T) handleConfirmation(ctx context.Context) error {
-	if !t.Confirmation {
-		return nil
-	}
-	if actioncontext.IsConfirm(ctx) {
-		t.Log().Infof("run confirmed by --confirm command line option")
-		return nil
-	}
-	if actioncontext.IsCron(ctx) {
-		// as set by the daemon scheduler subsystem
-		return fmt.Errorf("run aborted (--cron)")
-	}
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
-		return fmt.Errorf("run aborted (stdin is not a tty)")
-	}
-	description := fmt.Sprintf(`The resource %s requires a run confirmation.
-Please make sure you fully understand its role and effects before confirming the run.
-Enter "yes" if you really want to run.`, t.RID())
-	s, err := confirmation.ReadLn(description, time.Second*30)
-	if err != nil {
-		return fmt.Errorf("read confirmation: %w", err)
-	}
-	if s == "yes" {
-		t.Log().Infof("run confirmed interactively")
-		return nil
-	}
-	return fmt.Errorf("run aborted")
-}
-
-// notifyRunDone is a noop here as for now the daemon api has no support for
-// POST /run_done, and may not need one.
-func (t T) notifyRunDone() error {
-	return nil
-}
-
-func (t T) ScheduleOptions() resource.ScheduleOptions {
-	return resource.ScheduleOptions{
-		Action:              "run",
-		Option:              "schedule",
-		Base:                "",
-		RequireConfirmation: t.Confirmation,
-		RequireProvisioned:  true,
-		RequireCollector:    false,
-	}
 }

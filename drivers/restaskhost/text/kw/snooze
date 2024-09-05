@@ -1,3 +1,0 @@
-Snooze the service before running the task, so if the command is cause a
-status degradation the user can decide to snooze alarms for the duration
-set as value.

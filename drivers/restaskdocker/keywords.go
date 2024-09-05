@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/drivers/rescontainer"
 	"github.com/opensvc/om3/util/converters"
 )
 
@@ -13,52 +12,6 @@ var (
 	fs embed.FS
 
 	Keywords = []keywords.Keyword{
-		{
-			Attr:          "Schedule",
-			DefaultOption: "run_schedule",
-			Example:       "00:00-01:00 mon",
-			Option:        "schedule",
-			Scopable:      true,
-			Text:          keywords.NewText(fs, "text/kw/schedule"),
-		},
-		{
-			Attr:      "Timeout",
-			Converter: converters.Duration,
-			Example:   "5m",
-			Option:    "timeout",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/timeout"),
-		},
-		{
-			Attr:      "Snooze",
-			Converter: converters.Duration,
-			Example:   "10m",
-			Option:    "snooze",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/snooze"),
-		},
-		{
-			Attr:      "LogOutputs",
-			Converter: converters.Bool,
-			Default:   "true",
-			Option:    "log",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/log"),
-		},
-		{
-			Attr:       "Check",
-			Candidates: []string{"last_run", ""},
-			Example:    "last_run",
-			Option:     "check",
-			Scopable:   true,
-			Text:       keywords.NewText(fs, "text/kw/check"),
-		},
-		{
-			Attr:      "Confirmation",
-			Converter: converters.Bool,
-			Option:    "confirmation",
-			Text:      keywords.NewText(fs, "text/kw/confirmation"),
-		},
 		{
 			Attr:        "Name",
 			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
@@ -286,25 +239,5 @@ var (
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/configs_environment"),
 		},
-		{
-			Attr:     "RetCodes",
-			Default:  "0:up 1:down",
-			Example:  "0:up 1:down 3:warn 4: n/a 5:undef",
-			Option:   "retcodes",
-			Required: false,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/retcodes"),
-		},
-		{
-			Attr:      "RunTimeout",
-			Converter: converters.Duration,
-			Example:   "1m30s",
-			Option:    "run_timeout",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/run_timeout"),
-		},
-
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
 	}
 )
