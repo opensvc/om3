@@ -216,41 +216,6 @@
 	In 2.1 the instance status resources was a dict of rid to exposed status
   	now it is a list of exposed status, rid is now a property of exposed status
 
-* **breaking change:** relay heartbeat changes.
-
-    The v3 agent needs to address a v3 relay.
-
-    The v3 relay must have a user with the `heartbeat` grant that the client will need to use.
-    ```
-    om system/usr/relayuser create --kw grant=heartbeat
-    om system/usr/relayuser add --key password --value $PASSWORD
-    ```
-
-    On the cluster nodes, store the relay password in a secret:
-    ```
-    om system/sec/relay-v3 create
-    om system/sec/relay-v3 add --key password --value $PASSWORD
-    ```
-
-    And the heartbeat configuration:
-    ```
-    [hb#1]
-    type = relay
-    relay = relay-v2
-    secret = 3aaf0dae606212349b7123eb8cc7e89b
-    ```
-
-    Becomes:
-    ```
-    [hb#1]
-    type = relay
-    relay = relay1-v3
-    username = relayuser
-    password = system/sec/relay-v3
-    ```
-
-    Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
-
 #### logging
 
 * **breaking change:** OpenSVC no longer logs to private log files. It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
@@ -260,7 +225,43 @@
 * The **origin=daemon** log entries attribute is replaced with **origin=daemon/monitor**
 
 ### cluster config
-#### arbitrator
+
+#### Relay Heartbeat
+
+The v3 agent needs to address a v3 relay.
+
+The v3 relay must have a user with the `heartbeat` grant that the client will need to use.
+```
+om system/usr/relayuser create --kw grant=heartbeat
+om system/usr/relayuser add --key password --value $PASSWORD
+```
+
+On the cluster nodes, store the relay password in a secret:
+```
+om system/sec/relay-v3 create
+om system/sec/relay-v3 add --key password --value $PASSWORD
+```
+
+And the heartbeat configuration:
+```
+[hb#1]
+type = relay
+relay = relay-v2
+secret = 3aaf0dae606212349b7123eb8cc7e89b
+```
+
+Becomes:
+```
+[hb#1]
+type = relay
+relay = relay1-v3
+username = relayuser
+password = system/sec/relay-v3
+```
+
+Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
+
+#### Arbitrator
 
 * The new keyword **uri** replaces **name**.
 
