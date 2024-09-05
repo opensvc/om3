@@ -1,94 +1,162 @@
-# OpenSVC agent v3 Changelog
+# OpenSVC Agent v3 Changelog
 
 ## Breaking Changes
 
-### Core
+### Cluster and Node Configuration
 
-* Switch to RFC3389 time format in all internal and exposed data.
+* **Time format change:**
+    OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
 
-	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.
-
-* The keyword `cluster.name` has no default value.
-
+* **`cluster.name` default value:**
     In v2.1, the default cluster name was `default`.
+    In v3, if `cluster.name` is undefined at startup, it will be automatically replaced with a randomly generated human-readable value.
+
+* **`cluster.name` scope:**
+    This keyword is no longer scopable.
     
-    In v3, the startup will automatically replace the undefined `cluster.name` with a random human-readable value.
+* **`node.default_mon_format` removed:**
+    It should be a user-level setting, not a node-level config.
 
-* The keyword `cluster.name` is no longer scopable.
+* **`reboot` section removed:**
+    * `reboot.schedule`
+    
+    * `reboot.pre`
+    
+    * `reboot.once`
+    
+    * `reboot.blocking_pre`
 
-* Drop the `constraints` svc keyword. Use host label selectors instead.
+* **`rotate_root_pw` section removed:**
+    * `rotate_root_pw.schedule`
+    
+* **`stats_collection` section removed:**
+    * `stats_collection.schedule`
+    
+    * `stats.schedule`
+    
+    * `stats.disable`
+    
+### Object Configuration
 
-* The "om daemon dns dump" command is deprecated (with backward compatibility) in favour of "om dns dump". As a consequence, the "dns" object path, if used, is now masked. The root/svc/dns identifier can still be used to help with the transition to a new object name.
+* **Keywords removed:**
+    * `svc_flex_cpu_low_threshold`
+    
+    * `svc_flex_cpu_high_threshold`
 
-* `set`, `unset`, `get`, `eval` now need `--local` to operate on the local node without api calls.
+    * `constraints`
+        Replaced by host label selectors in `nodes`.
+        Example:
+        ```
+        [DEFAULT]
+        nodes = az=fr1 az=us1
+        ```
+        
+    * `always_on=<nodes>`
+        Replaced by `standby=true`.
+        This keyword was already marked deprecated in v2.1.
 
-* Drop the --dry-run flag.
+* **Driver Group Names Removed:**
 
-* Drop the `default_mon_format` node keyword. It should be a user-level setting, not a node-level config.
+    Drop support for driver group names:**
 
-* Drop the `reboot` node command and associated keywords: `reboot.schedule`, `reboot.pre`, `reboot.once`, `reboot.blocking_pre`
+	* `drbd`
+	   Replaced by `disk#foo.type=drbd`
+       
+	* `vdisk`
+	   Replaced by `disk#foo.type=vdisk`
+       
+	* `vmdg`
+	   Replaced by `disk#foo.type=ldom`
+       
+	* `pool`
+	   Replaced by `disk#foo.type=zpool`
+       
+	* `zpool`
+	   Replaced by `disk#foo.type=zpool`
+       
+	* `loop`
+	   Replaced by `disk#foo.type=loop`
+       
+	* `md`
+	   Replaced by `disk#foo.type=md`
+       
+	* `zvol`
+	   Replaced by `disk#foo.type=zvol`
+       
+	* `lv`
+	   Replaced by `disk#foo.type=lv`
+       
+	* `raw`
+	   Replaced by `disk#foo.type=raw`
+       
+	* `vxdg`
+	   Replaced by `disk#foo.type=vxdg`
+       
+	* `vxvol`
+	   Replaced by `disk#foo.type=vxvol`
 
-* Drop the `rotate root password` node command and associated keywords: `rotate_root_pw.schedule`
-
-* Drop the `pushstats` node command and associated keywords: `stats_collection.schedule`, `stats.schedule`, `stats.disable`
-
-* Deny object path name and namespaces longer than 63 character.
-
-* Replace the `--debug` flag with --log debug|info|warn|error|fatal|panic
-
-* Remove the `--eval` flag of the get command.
-
-	Users need to use the `eval` command instead.
-
-* Remove the `--unprovision` flag of the `delete` command.
-
-	Users need to use the `unprovision` and `delete` sequence instead, or `purge`.
-
-* Remove the `--rid` flag of the `delete` command.
-
-  Users can use the `unset --section <name>` command instead.
-
-* Command flags that accept a duration now require a unit.
-
-	change --waitlock=60 to --waitlock=1m
-	change --time=10 to --time=10s
-
-* Drop support for driver group names already deprecated in v2.1:
-
+    For example, a `[md#1]` section needs reformatting as:
     ```
-	drbd   disk.drbd
-	vdisk  disk.vdisk
-	vmdg   disk.ldom
-	pool   disk.zpool
-	zpool  disk.zpool
-	loop   disk.loop
-	md     disk.md
-	zvol   disk.zvol
-	lv     disk.lv
-	raw    disk.raw
-	vxdg   disk.vxdg
-	vxvol  disk.vxvol
+    [disk#1]
+    type = md
     ```
+      
+    These driver group names were already deprecated in v2.1.
 
-    For example, a [md#1] section needs reformatting as:
+### Commands
 
-      [disk#1]
-      type = md
+* **Deprecated:**
+    * `om daemon dns dump`
+    Replaced by `om dns dump`.
+    As a consequence, the `dns` object path is masked. The `root/svc/dns` path can still be used to help with the transition to a new object name.
 
-* Stop matching `DEFAULT.foo` with the `om foo: ls`.
+* **Configuration updates use the daemon api by default:**
+    `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
-    Match only objects with `foo` as a section basename (eg. `[foo#bar]`).
+* **Removed:**
+    * `om node reboot`
 
-* Drop backward compatibility for the `always_on=<nodes>` keyword.
+    * `om node rotate root password`
 
-    The `standby=true` keyword is the target since v2.1.
+    * `om node pushstats`
 
-* New cgroup layout.
+	* `node scan capabilities`
+        Replaced by `node capabilities scan`
+        
+	* `node print capabilities`
+        Replaced by `node capabilities list`
+        
+    * `om node abort`
+        Replaced by `om cluster abort` to abort the pending cluster action orchestration.
+        
 
-    The previous layout allowed conflicts between different object types (eg. `vol` and `svc`).
+ * **Flags Removed:**
 
-* Change the `print status` instance-level errors and warnings (to no-whitespace words):
+    * `--debug`
+        Replaced by `--log debug|info|warn|error|fatal|panic`.
 
+    * `om get --eval`
+        Replaced by `om eval`
+
+    * `om foo set|unset --param ... --value`
+        Replaced by `--kw`, which was also supported in v2.
+
+    * `om delete --unprovision`
+        Replaced by the `om unprovision` and `om delete` sequence or by `om purge`.
+
+    * `om delete --rid`
+        Replaced by `om unset --section <name>`.
+        
+    * `om <sel> <action> --dry-run`
+
+* **Duration flags now require a unit:**
+    ```
+	--waitlock=60  ->  --waitlock=1m
+	--time=10      ->  --time=10s
+    ```
+    
+* **`print status`**:
+    Change the instance-level errors and warnings (to no-whitespace words):
     ```
 	part provisioned  ->  mix-provisioned
 	not provisioned   ->  not-provisioned
@@ -96,34 +164,23 @@
 	daemon down       ->  daemon-down
     ```
 
-* Simplify the `om create` flags
- 
-    ```
-    --config           ->  --from
-    --template         ->  --from
-    ```
+* **`om create`:**
+    * Simplify the flags
+        ```
+        --config           ->  --from
+        --template         ->  --from
+        ```
 
-	Support the following template selector syntaxes:
+	* Support the following template selector syntaxes:
+        ```
+        --from 111
+        --from template://111
+        --from "template://my tmpl 111"
+        ```
 
-    ```
-    --from 111
-    --from template://111
-    --from "template://my tmpl 111"
-    ```
+*  **`om node get|eval`:**
+    In previous releases, `om node get --kw node.env` returned the keyword's raw string value from `cluster.conf` if it is not defined in `node.conf`:
 
-*  Rename commands
-
-    ```
-	node scan capabilities   ->  node capabilities scan
-	node print capabilities  ->  node capabilities list
-    ```
-
-
-*  In previous releases, `om node get --kw node.env` returned the keyword's raw string value from `cluster.conf` if it is not defined in `node.conf`.
-
-    In this release, this command returns the empty string. The `eval` command is unchanged though: it still falls back to `cluster.conf`.
-
-	In v2:
     ```
 	node.conf cluster.conf om node get om node eval om cluster get om cluster eval 
 	--------- ------------ ----------- ------------ -------------- ---------------
@@ -134,7 +191,7 @@
     ```
 
 
-	In v3:
+    In this release, this command returns the empty string. The `eval` command is unchanged though (it still falls back to `cluster.conf`):
 
     ```
 	node.conf cluster.conf om node get om node eval om cluster get om cluster eval 
@@ -145,8 +202,47 @@
 	-         -            -           -            -              -               
     ```
 
-* The `raw` jsonrpc protocol API is dropped.
+* **`om foo run` and `om foo sync *`:**
+    Propagate the task run and sync errors to a non-zero exitcode.
+    
+    The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
 
+
+* **`om <kvstore> change`:**
+    This action is no longer failing if the key does not exist. The key is added instead.
+
+* **`om node freeze`:**
+    This command is now local only.
+    Use `om cluster freeze` for the orchestrated freeze of all nodes.
+    Same applies to `om node unfreeze` and its hidden alias `om node thaw`.
+
+* **`om node logs`:**
+    Now display only local logs.
+    A new `om cluster logs` command displays all cluster nodes logs.
+
+* **`om <sel> unset`:**
+    Now accepts `--section <name>` to remove a cluster, node or object configuration section.
+
+* **`om monitor`:**
+    Instance availability icons changes:
+    ```
+	standby down: s => x
+	standby up:   S => o
+    ```
+ 
+### Core
+
+* **Object Names policy change:**
+    Deny names and namespaces longer than 63 character.
+
+* **Object selector policy:**
+    Stop matching `DEFAULT.foo` with the `om foo: ls`.
+    Match only objects with `foo` as a section basename (eg. `[foo#bar]`).
+
+* **New cgroup layout:**
+    The previous layout allowed conflicts between different object types (eg. `vol` and `svc`).
+
+* **The `raw` jsonrpc protocol socket is dropped.**
     For example, this v2.1 API call is no longer supported:
     ```
     echo '{"action": "daemon_status"}' | socat - /var/lib/opensvc/lsnr/lsnr.sock
@@ -157,56 +253,45 @@
     curl -o- -X GET -H "Content-Type: application/json" --unix-socket /var/lib/opensvc/lsnr/http.sock http://localhost/daemon/status
     ```
 
-* Propagate the task run and sync errors to a non-zero exitcode.
-
-    The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
-
-* Drop support of some `DEFAULT` section keywords:
-
-  * `svc_flex_cpu_low_threshold`
-  * `svc_flex_cpu_high_threshold`
-
-* Key-Value stores (cfg, sec, usr kinded objects) `change` action is no longer failing if the key does not exist. The key is added instead.
-
-* `om node freeze` is now local only. Use `om cluster freeze` for the orchestrated freeze of all nodes. Same applies to `unfreeze` and its hidden alias `thaw`.
-
-* `om cluster abort` replaces `om node abort` to abort the pending cluster action orchestration.
-
-* `om ... set|unset` no longer accept ``--param`` and ``--value``. Use ``--kw`` instead, which was also supported in v2.
-
-* `om node logs` now display only local logs. A new `om cluster logs` command displays all cluster nodes logs.
-
-* `om <sel> unset` now accepts `--section <name>` to remove a cluster, node or object configuration section.
-
-* `om monitor` instance availability icons changes:
-
-    ```
-	standby down: s => x
-	standby up:   S => o
-    ```
-    
+   
 ### Driver: ip
 
-* Drop the `dns_name_suffix`, `provisioner`, `dns_update` keywords. The zone management feature of the collector will be dropped in the collector too.
+* **Removed keywords:**
+    * `dns_name_suffix`
+    * `provisioner`
+    * `dns_update`
+   
+* **Collector DNS zone:**
+    This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
 ### Driver: fs
 
-* Keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
-
+* **Removed keywords:**
+    * `size`
+        Configure a disk.lv resource
+        
+    * `vg`
+        Configure a disk.lv resource
+ 
 ### Driver: sync
 
-* The `sync drp` action is removed. Use `sync update --target drpnodes` instead.
+* **Removed actions:**
+    * `om foo sync drp`
+    Replaced by `om foo sync update --target drpnodes`.
 
-* The `sync nodes` action is removed. Use `sync update --target nodes` instead.
+    * `om foo sync nodes`
+    Replaced by `om foo sync update --target nodes`.
 
-* The `sync all` action is deprecated. Use `sync update` with no `--target` flag instead.
+    * `om foo sync all`
+    Replaced by `om foo sync update`.
 
-* The `sync full` and `sync update` now both accept a `--target nodes|drpnodes|node_selector_expr` flag
+* **`sync full` and `sync update`:**
+    Now both accept a `--target nodes|drpnodes|node_selector_expr` flag.
 
 ### Driver: app
 
-* The keyword `environment` now keeps the variable names unchanged and accepts mixedCase.
-  
+* **`environment`**
+    Now keeps the variable names unchanged and accepts mixedCase.
     ```
     With:
       environment = Foo=one bar=2 Z=u
@@ -216,42 +301,40 @@
     Zoo=u       was previously changed to ZOO=u
     ```
 
-* Remove support of some deprecated environment variables.
-
+* **Removed environment variables:**
     The following variables are no longer added to process environment during actions:
+	* `OPENSVC_SVCNAME`
     
-    ```
-	OPENSVC_SVCNAME
-	OPENSVC_SVC_ID
-    ```
+	* `OPENSVC_SVC_ID`
 
-* Fix `OPENSVC_ID` environment variable value in `app` resources
-
-  In the `app` drivers, the object id is now exposed as the `OPENSVC_ID` environment variable.
+* **Changed environment variables:**
+    * `OPENSVC_ID`
+      In 2.1, `OPENSVC_ID` was set to the object name (for example `foo` in `test/svc/foo`).
+      In v3 , `OPENSVC_ID` is set to the `DEFAULT.id` value.
   
-  In 2.1, `OPENSVC_ID` was set to the object name (for example `foo` in `test/svc/foo`).
-  
-* The `kill` keyword is removed.
-
-    The default behaviour is now to kill all processes with the matching `OPENSVC_ID` and `OPENSVC_RID` variables in their environment.
+* **Removed keywords:**
+    * `kill`
+        The default behaviour is now to kill all processes with the matching `OPENSVC_ID` and `OPENSVC_RID` variables in their environment.
     
-    In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
+        In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
     
-    If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
+        If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
 
 ### Object: sec
 
-* Remove the `fullpem` action. Add the `fullpem` key on `gencert` action.
+* **Removed actions:**
+    * `om sec fullpem`
+        The `fullpem` key is added to the sec on `gencert` action.
 
 ### Logging
 
-* OpenSVC no longer logs to private log files.
+* **No more private log files:**
+    The agent logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
 
-    It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
+* **Log entries key changes:**
+    * The `sc` log entries attribute is replaced with `origin=daemon/scheduler`.
 
-* The `sc` log entries attribute is replaced with `origin=daemon/scheduler`.
-
-* The `origin=daemon` log entries attribute is replaced with `origin=daemon/monitor`.
+    * The `origin=daemon` log entries attribute is replaced with `origin=daemon/monitor`.
 
 ### Heartbeat: relay
 
