@@ -121,7 +121,7 @@
 	 -               -               -               -               -                -               
 	=============== =============== =============== =============== ================ =================
 
-*  **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
+* **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
 
 * **breaking change:** Task and sync resources are now non-optional by default, but their status is never aggregated in the instance availability status. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
 
@@ -216,13 +216,44 @@
 	In 2.1 the instance status resources was a dict of rid to exposed status
   	now it is a list of exposed status, rid is now a property of exposed status
 
-* **breaking change:** replace relay heartbeat secret keyword with username and password.
+* **breaking change:** relay heartbeat changes.
 
-	The password value is the sec object path containing the actual relay password encoded in the password key.
+    The v3 agent needs to address a v3 relay.
+
+    The v3 relay must have a user with the `heartbeat` grant that the client will need to use.
+    ```
+    om system/usr/relayuser create --kw grant=heartbeat
+    om system/usr/relayuser add --key password --value $PASSWORD
+    ```
+
+    On the cluster nodes, store the relay password in a secret:
+    ```
+    om system/sec/relay-v3 create
+    om system/sec/relay-v3 add --key password --value $PASSWORD
+    ```
+
+    And the heartbeat configuration:
+    ```
+    [hb#1]
+    type = relay
+    relay = relay-v2
+    secret = 3aaf0dae606212349b7123eb8cc7e89b
+    ```
+
+    Becomes:
+    ```
+    [hb#1]
+    type = relay
+    relay = relay1-v3
+    username = relayuser
+    password = system/sec/relay-v3
+    ```
+
+    Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 #### logging
 
-* **breaking change** OpenSVC no longer logs to private log files. It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
+* **breaking change:** OpenSVC no longer logs to private log files. It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
 
 * The **sc** log entries attribute is replaced with **origin=daemon/scheduler**.
 
