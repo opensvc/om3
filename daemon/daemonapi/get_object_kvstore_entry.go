@@ -50,7 +50,6 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 			}
 			return ctx.Blob(http.StatusOK, contentType, b)
 		}
-		return ctx.NoContent(http.StatusNoContent)
 	}
 
 	for nodename := range instanceConfigData {

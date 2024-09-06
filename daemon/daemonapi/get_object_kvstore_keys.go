@@ -44,11 +44,16 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 		} else {
 			items := make(api.KVStoreKeyListItems, 0)
 			for _, name := range names {
+				configKey := key.T{
+					Section: "data",
+					Option:  name,
+				}
+				size := len(ks.Config().GetString(configKey))
 				items = append(items, api.KVStoreKeyListItem{
 					Object: p.String(),
 					Node:   a.localhost,
 					Key:    name,
-					Size:   len(ks.Config().GetString(key.T{"data", name})),
+					Size:   size,
 				})
 			}
 			return ctx.JSON(http.StatusOK, api.KVStoreKeyList{
