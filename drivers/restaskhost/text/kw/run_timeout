@@ -1,3 +1,0 @@
-Wait for `<duration>` before declaring the action a failure.
-
-Takes precedence over `timeout`.

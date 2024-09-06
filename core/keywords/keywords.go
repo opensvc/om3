@@ -141,7 +141,7 @@ func (t Indices) Swap(i, j int) {
 
 func (t Text) String() string {
 	if b, err := t.fs.ReadFile(t.path); err != nil {
-		panic("missing documentation text file: " + t.path)
+		return "TODO"
 	} else {
 		return string(b)
 	}

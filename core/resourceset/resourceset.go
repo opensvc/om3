@@ -225,13 +225,16 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	nResources := len(resources)
 	for i := 0; i < nResources; i++ {
 		res := <-q
-		if res.Resource.IsOptional() {
+		switch {
+		case res.Error == nil:
 			continue
-		}
-		if res.Error != nil {
+		case res.Resource.IsOptional():
+			res.Resource.Log().Errorf("error from optional resource: %s", res.Error)
+			continue
+		default:
 			res.Resource.Log().Errorf("%s", res.Error)
+			errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 		}
-		errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 	}
 	return errs
 }
@@ -253,6 +256,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case err == nil:
 			continue
 		case r.IsOptional():
+			r.Log().Warnf("error from optional resource: %s", err)
 			continue
 		default:
 			r.Log().Errorf("%s", err)

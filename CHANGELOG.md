@@ -1,235 +1,379 @@
-# opensvc agent Changelog
+# OpenSVC Agent v3 Changelog
 
-## v3.0.0
+## Breaking Changes
 
-### core
+### Cluster and Node Configuration
 
-* **breaking change:** Drop the constraints svc keyword. Use host label selectors instead.
+* **Time format change:**
+    OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
 
-* **breaking change:** The "om daemon dns dump" command is deprecated (with backward compatibility) in favour of "om dns dump". As a consequence, the "dns" object path, if used, is now masked. The root/svc/dns identifier can still be used to help with the transition to a new object name.
+* **`cluster.name` default value:**
+    In v2.1, the default cluster name was `default`.
+    In v3, if `cluster.name` is undefined at startup, it will be automatically replaced with a randomly generated human-readable value.
 
-* The set and unset commands are superseded by update --set ... --unset ... --delete. This new command allow to have a single commit for different kind of changes. The set and unset commands are now hidden so users don't get tempted to use them anymore.
+* **`cluster.name` scope:**
+    This keyword is no longer scopable.
+    
+* **`node.default_mon_format` removed:**
+    It should be a user-level setting, not a node-level config.
 
-* **breaking change:** set/unset/get/eval now need --local to operate on the local node without api calls.
+* **`reboot` section removed:**
+    * `reboot.schedule`
+    
+    * `reboot.pre`
+    
+    * `reboot.once`
+    
+    * `reboot.blocking_pre`
 
-* New placement policy `last start`. Use the mtime of `<objvar>/last_start` as the candidate sort key. More recent has higher priority.
+* **`rotate_root_pw` section removed:**
+    * `rotate_root_pw.schedule`
+    
+* **`stats_collection` section removed:**
+    * `stats_collection.schedule`
+    
+    * `stats.schedule`
+    
+    * `stats.disable`
+    
+### Object Configuration
 
-* **breaking change:** Drop the --dry-run flag.
+* **Keywords removed:**
+    * `svc_flex_cpu_low_threshold`
+    
+    * `svc_flex_cpu_high_threshold`
 
-* **breaking change:** Drop the `default_mon_format` node keyword. It should be a user-level setting, not a node-level config.
+    * `constraints`
+        Replaced by host label selectors in `nodes`.
+        Example:
+        ```
+        [DEFAULT]
+        nodes = az=fr1 az=us1
+        ```
+        
+    * `always_on=<nodes>`
+        Replaced by `standby=true`.
+        This keyword was already marked deprecated in v2.1.
 
-* **breaking change:** Drop the `reboot` node command and associated keywords: `reboot.schedule`, `reboot.pre`, `reboot.once`, `reboot.blocking_pre`
+* **Driver Group Names Removed:**
 
-* **breaking change:** Drop the `rotate root password` node command and associated keywords: `rotate_root_pw.schedule`
+    Drop support for driver group names:**
 
-* **breaking change:** Drop the `pushstats` node command and associated keywords: `stats_collection.schedule`, `stats.schedule`, `stats.disable`
+	* `drbd`
+	   Replaced by `disk#foo.type=drbd`
+       
+	* `vdisk`
+	   Replaced by `disk#foo.type=vdisk`
+       
+	* `vmdg`
+	   Replaced by `disk#foo.type=vmdg`
+       
+	* `pool`
+	   Replaced by `disk#foo.type=zpool`
+       
+	* `zpool`
+	   Replaced by `disk#foo.type=zpool`
+       
+	* `loop`
+	   Replaced by `disk#foo.type=loop`
+       
+	* `md`
+	   Replaced by `disk#foo.type=md`
+       
+	* `zvol`
+	   Replaced by `disk#foo.type=zvol`
+       
+	* `lv`
+	   Replaced by `disk#foo.type=lv`
+       
+	* `raw`
+	   Replaced by `disk#foo.type=raw`
+       
+	* `vxdg`
+	   Replaced by `disk#foo.type=vxdg`
+       
+	* `vxvol`
+	   Replaced by `disk#foo.type=vxvol`
 
-* **breaking change:** Deny object path name and namespaces longer than 63 character.
+    For example, a `[md#1]` section needs reformatting as:
+    ```
+    [disk#1]
+    type = md
+    ```
+      
+    These driver group names were already deprecated in v2.1.
 
-* **breaking change:** replace the --debug flag with --log debug|info|warn|error|fatal|panic
+### Commands
 
-* Add --quiet to disable both the progress renderer and the console logging
+* **Deprecated:**
+    * `om daemon dns dump`
+    Replaced by `om dns dump`.
+    As a consequence, the `dns` object path is masked. The `root/svc/dns` path can still be used to help with the transition to a new object name.
 
-* **breaking change:** remove the --eval flag of the get command.
+* **Configuration updates use the daemon api by default:**
+    `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
-	users need to use the "eval" command instead.
+* **Removed:**
+    * `om node reboot`
 
-* **breaking change:** remove the --unprovision flag of the delete command.
+    * `om node rotate root password`
 
-	users need to use the "unprovision && delete" sequence instead.
+    * `om node pushstats`
 
-* **breaking change:** Remove the --rid flag of the delete command.
+	* `node scan capabilities`
+        Replaced by `node capabilities scan`
+        
+	* `node print capabilities`
+        Replaced by `node capabilities list`
+        
+    * `om node abort`
+        Replaced by `om cluster abort` to abort the pending cluster action orchestration.
+        
 
-  Users can use the "unset --section <name>" command instead.
+ * **Flags Removed:**
 
-* **breaking change:** command flags that accept a duration now require a unit.
+    * `--debug`
+        Replaced by `--log debug|info|warn|error|fatal|panic`.
 
-	change --waitlock=60 to --waitlock=1m
-	change --time=10 to --time=10s
+    * `om get --eval`
+        Replaced by `om eval`
 
-* **breaking change:** drop support for deprecated driver group names:
+    * `om foo set|unset --param ... --value`
+        Replaced by `--kw`, which was also supported in v2.
 
-	drbd: disk.drbd
-	vdisk: disk.vdisk
-	vmdg: disk.ldom
-	pool: disk.zpool
-	zpool: disk.zpool
-	loop: disk.loop
-	md: disk.md
-	zvol: disk.zvol
-	lv: disk.lv
-	raw: disk.raw
-	vxdg: disk.vxdg
-	vxvol: disk.vxvol
+    * `om delete --unprovision`
+        Replaced by the `om unprovision` and `om delete` sequence or by `om purge`.
 
-    For example, a [md#1] section needs reformatting as:
+    * `om delete --rid`
+        Replaced by `om unset --section <name>`.
+        
+    * `om <sel> <action> --dry-run`
 
-      [disk#1]
-      type = md
+* **Duration flags now require a unit:**
+    ```
+	--waitlock=60  ->  --waitlock=1m
+	--time=10      ->  --time=10s
+    ```
+    
+* **`print status`**:
+    Change the instance-level errors and warnings (to no-whitespace words):
+    ```
+	part provisioned  ->  mix-provisioned
+	not provisioned   ->  not-provisioned
+	node frozen       ->  node-frozen
+	daemon down       ->  daemon-down
+    ```
 
-* **breaking change:** stop matching DEFAULT.<string> for "<string>:" object selector expressions. Match only sections basename (like in [<basename>#<index>]).
+* **`om create`:**
+    * Simplify the flags
+        ```
+        --config           ->  --from
+        --template         ->  --from
+        ```
 
-* **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
+	* Support the following template selector syntaxes:
+        ```
+        --from 111
+        --from template://111
+        --from "template://my tmpl 111"
+        ```
 
-* New fields in print schedule json format: node, path
+*  **`om node get|eval`:**
+    In previous releases, `om node get --kw node.env` returned the keyword's raw string value from `cluster.conf` if it is not defined in `node.conf`:
 
-* **breaking change:** new cgroup layout. The previous organization allowed conflicts between different object types, and was hard to read.
-
-* Change the "print status" instance-level errors and warnings (to no-whitespace words):
-
-	part provisioned => mix-provisioned
-	not provisioned => not-provisioned
-	node frozen => node-frozen
-	daemon down => daemon-down
-
-* **breaking change:** Rename the create --config flag to --from, and merge --template into --from.
-
-	Support the following template selector syntaxes:
-
-		--from 111
-		--from template://111
-		--from "template://my tmpl 111"
-
-*  **breaking change:** Rename commands
-
-	node scan capabilities => node capabilities scan
-	node print capabilities => node capabilities list
-
-
-*  **breaking change:** In previous releases, om node get --kw node.env returned the keyword's raw string value from cluster.conf if it is not defined in node.conf. In this release, this get command returns the empty string. The eval command is unchanged though: it still falls back to cluster.conf.
-
-	In v2:
-
-	=============== =============== =============== =============== ================ =================
-	 node.conf       cluster.conf    om node get     om node eval    om cluster get   om cluster eval 
-	=============== =============== =============== =============== ================ =================
-	 fr              kr              fr              fr              kr               kr              
-	 fr              -               fr              fr              -                -               
-	 -               kr              kr              kr              kr               kr              
-	 -               -               -               -               -                -               
-	=============== =============== =============== =============== ================ =================
+    ```
+	node.conf cluster.conf om node get om node eval om cluster get om cluster eval 
+	--------- ------------ ----------- ------------ -------------- ---------------
+	fr        kr           fr          fr           kr             kr              
+	fr        -            fr          fr           -              -               
+	-         kr           kr          kr           kr             kr              
+	-         -            -           -            -              -               
+    ```
 
 
-	In v3:
+    In this release, this command returns the empty string. The `eval` command is unchanged though (it still falls back to `cluster.conf`):
 
-	=============== =============== =============== =============== ================ =================
-	 node.conf       cluster.conf    om node get     om node eval    om cluster get   om cluster eval 
-	=============== =============== =============== =============== ================ =================
-	 fr              kr              fr              fr              kr               kr              
-	 fr              -               fr              fr              -                -               
-	 -               kr              -               kr              kr               kr              
-	 -               -               -               -               -                -               
-	=============== =============== =============== =============== ================ =================
+    ```
+	node.conf cluster.conf om node get om node eval om cluster get om cluster eval 
+	--------- ------------ ----------- ------------ -------------- ---------------
+	fr        kr           fr          fr           kr             kr              
+	fr        -            fr          fr           -              -               
+	-         kr           -           kr           kr             kr              
+	-         -            -           -            -              -               
+    ```
 
-*  **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
+* **`om foo run` and `om foo sync *`:**
+    Propagate the task run and sync errors to a non-zero exitcode.
+    
+    The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
 
-### objects
 
-* **breaking change:** drop support of some DEFAULT keywords:
-  * `svc_flex_cpu_low_threshold`
-  * `svc_flex_cpu_high_threshold`
+* **`om <kvstore> change`:**
+    This action is no longer failing if the key does not exist. The key is added instead.
 
-* **breaking change:** key-value stores (cfg, sec, usr kinded objects) `change` action is no longer failing if the key does not exist. The key is added instead.
+* **`om node freeze`:**
+    This command is now local only.
+    Use `om cluster freeze` for the orchestrated freeze of all nodes.
+    Same applies to `om node unfreeze` and its hidden alias `om node thaw`.
 
-### commands
+* **`om node logs`:**
+    Now display only local logs.
+    A new `om cluster logs` command displays all cluster nodes logs.
 
-* **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
+* **`om <sel> unset`:**
+    Now accepts `--section <name>` to remove a cluster, node or object configuration section.
 
-* **breaking change:** "om cluster abort" replaces "om node abort" to abort the pending cluster action orchestration.
-
-* **breaking change:** "om ... set|unset" no longer accept --param and --value. Use --kw instead, which was also supported in v2.
-
-* **breaking change:** "om node logs" now display only local logs. A new "om cluster logs" command displays all cluster nodes logs.
-
-* "unset" now accepts "--section <name>" to remove an cluster, node or object configuration section.
-
-* "om monitor" instance availability icons changes:
-
+* **`om monitor`:**
+    Instance availability icons changes:
+    ```
 	standby down: s => x
 	standby up:   S => o
+    ```
+ 
+### Core
 
-### driver ip
+* **Object Names policy change:**
+    Deny names and namespaces longer than 63 character.
 
-* **breaking change:** Drop the `dns_name_suffix`, `provisioner`, `dns_update` keywords. The zone management feature of the collector will be dropped in the collector too.
+* **Object selector policy:**
+    Stop matching `DEFAULT.foo` with the `om foo: ls`.
+    Match only objects with `foo` as a section basename (eg. `[foo#bar]`).
 
-### driver fs
+* **New cgroup layout:**
+    The previous layout allowed conflicts between different object types (eg. `vol` and `svc`).
 
-* **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
+* **The `raw` jsonrpc protocol socket is dropped.**
+    For example, this v2.1 API call is no longer supported:
+    ```
+    echo '{"action": "daemon_status"}' | socat - /var/lib/opensvc/lsnr/lsnr.sock
+    ```
+    
+    To keep using a root Unix Socket in v3, you can switch to:
+    ```
+    curl -o- -X GET -H "Content-Type: application/json" --unix-socket /var/lib/opensvc/lsnr/http.sock http://localhost/daemon/status
+    ```
 
-### driver sync
+   
+### Driver: ip
 
-* **breaking change:** The "sync drp" action is removed. Use "sync update --target drpnodes" instead.
+* **Removed keywords:**
+    * `dns_name_suffix`
+    * `provisioner`
+    * `dns_update`
+   
+* **Collector DNS zone:**
+    This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
-* **breaking change:** The "sync nodes" action is removed. Use "sync update --target nodes" instead.
+### Driver: fs
 
-* The "sync all" action is deprecated. Use "sync update" with no --target flag instead.
+* **Removed keywords:**
+    * `size`
+        Configure a disk.lv resource
+        
+    * `vg`
+        Configure a disk.lv resource
+ 
+### Driver: sync
 
-* The "sync full" and "sync update" now both accept a "--target nodes|drpnodes|node_selector_expr" flag
+* **Removed actions:**
+    * `om foo sync drp`
+    Replaced by `om foo sync update --target drpnodes`.
 
-### driver app
+    * `om foo sync nodes`
+    Replaced by `om foo sync update --target nodes`.
 
-* **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
+    * `om foo sync all`
+    Replaced by `om foo sync update`.
+
+* **`sync full` and `sync update`:**
+    Now both accept a `--target nodes|drpnodes|node_selector_expr` flag.
+
+### Driver: app
+
+* **`environment`**
+    Now keeps the variable names unchanged and accepts mixedCase.
+    ```
+    With:
+      environment = Foo=one bar=2 Z=u
+      
+    Foo=one     was previsouly changed to FOO=one
+    bar=2       was previsouly changed to BAR=2
+    Zoo=u       was previously changed to ZOO=u
+    ```
+
+* **Removed environment variables:**
+    The following variables are no longer added to process environment during actions:
+	* `OPENSVC_SVCNAME`
+    
+	* `OPENSVC_SVC_ID`
+
+* **Changed environment variables:**
+    * `OPENSVC_ID`
+      In 2.1, `OPENSVC_ID` was set to the object name (for example `foo` in `test/svc/foo`).
+      In v3 , `OPENSVC_ID` is set to the `DEFAULT.id` value.
   
-        environment = Foo=one bar=2 Z=u
-        =>
-        Foo=one     was previsouly changed to FOO=one
-        bar=2       was previsouly changed to BAR=2
-        Zoo=u       was previously changed to ZOO=u
+* **Removed keywords:**
+    * `kill`
+        The default behaviour is now to kill all processes with the matching `OPENSVC_ID` and `OPENSVC_RID` variables in their environment.
+    
+        In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
+    
+        If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
 
-* **breaking change:** Remove support on some deprecated env var
+### Object: sec
 
-  The following env var are not anymore added to process env var during actions:
+* **Removed actions:**
+    * `om sec fullpem`
+        The `fullpem` key is added to the sec on `gencert` action.
 
-	OPENSVC_SVCNAME
-	OPENSVC_SVC_ID
+### Logging
 
-* **breaking change:** Fix OPENSVC_ID var value on app resources
+* **No more private log files:**
+    The agent logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=foo/svc/svc1 to filter only logs relevant to an object.
 
-  In the app drivers, the object id is now exposed as the OPENSVC_ID environment variable.
-  In 2.1, OPENSVC_ID was set to the object path name (for example "foo" from "test/svc/foo").
-  
-* The kill keyword is removed. The default behaviour is now to kill all processes with the matching OPENSVC_ID and OPENSVC_RID variables in their environment.
-  In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
-  If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
+* **Log entries key changes:**
+    * The `sc` log entries attribute is replaced with `origin=daemon/scheduler`.
 
-### object sec
+    * The `origin=daemon` log entries attribute is replaced with `origin=daemon/monitor`.
 
-* **breaking change:**  Remove the `fullpem` action. Add the `fullpem` key on `gencert` action.
+### Heartbeat: relay
 
-### daemon
+The v3 agent needs to address a v3 relay.
 
-* Add a 60 seconds timeout to pre_monitor_action. The 2.1 daemon waits forever for this callout to terminate.
+The v3 relay must have a user with the `heartbeat` grant that the client will need to use.
+```
+om system/usr/relayuser create --kw grant=heartbeat
+om system/usr/relayuser add --key password --value $PASSWORD
+```
 
-* Earlier local object instance orchestration after node boot
+On the cluster nodes, store the relay password in a secret:
+```
+om system/sec/relay-v3 create
+om system/sec/relay-v3 add --key password --value $PASSWORD
+```
 
-    * In 2.1 local object instance orchestration waits for all local object instances boot action done
-    * Now object instance <foo@localhost> orchestration only waits for <foo@localhost> boot action completed. Each instance has a last boot id.
+And the heartbeat configuration:
+```
+[hb#1]
+type = relay
+relay = relay-v2
+secret = 3aaf0dae606212349b7123eb8cc7e89b
+```
 
-* **breaking change:** switch to time.Time in RFC3389 format in all internal and exposed data
+Becomes:
+```
+[hb#1]
+type = relay
+relay = relay1-v3
+username = relayuser
+password = system/sec/relay-v3
+```
 
-	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.
+Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
-* **breaking change:** change instance status resources type
+### Arbitrator
 
-	In 2.1 the instance status resources was a dict of rid to exposed status
-  	now it is a list of exposed status, rid is now a property of exposed status
-
-* **breaking change:** replace relay heartbeat secret keyword with username and password.
-
-	The password value is the sec object path containing the actual relay password encoded in the password key.
-
-#### logging
-
-* **breaking change** OpenSVC no longer logs to private log files. It logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
-
-* The **sc** log entries attribute is replaced with **origin=daemon/scheduler**.
-
-* The **origin=daemon** log entries attribute is replaced with **origin=daemon/monitor**
-
-### cluster config
-#### arbitrator
-
-* The new keyword **uri** replaces **name**.
+* The new keyword `uri` replaces `name`.
 
 * When the uri scheme is http or https, the vote checker is based on a GET request, else it is based on a TCP connect.
   When the port is not specified in a TCP connect uri, the 1215 port is implied.
@@ -240,30 +384,46 @@
       uri = arbitrator1.opensvc.com:1215
       uri = arbitrator1.opensvc.com               # implicitly port 1215
 
-* The new keyword **insecure** disables the server certificate validation when the uri scheme is https, the default is false.
+* The new keyword `insecure` disables the server certificate validation when the uri scheme is https, the default is false.
 
-* The **name** keyword is deprecated. Aliased to **uri** to ease transition.
+* The `name* keyword is deprecated. Aliased to `uri` to ease transition.
 
-* The **timeout** keyword is removed to avoid users setting a value greater than the ready period,
+* The `timeout` keyword is removed to avoid users setting a value greater than the ready period,
   which would let the service double start before the end of the vote.
   The internal timeout value is now set to a third of the ready period.
 
-* The **secret** keyword is now ignored.
+* The `secret` keyword is now ignored.
 
-#### cluster section
+## Enhancements
 
-##### cluster.name
+### Core
+    
+* The `set` and `unset` commands are complemented by `update --set ... --unset ... --delete`. This new command allow to have a single commit for different kind of changes. The set and unset commands are now hidden so users don't get tempted to use them anymore.
+    
+* New placement policy `last start`. Use the mtime of `<objvar>/last_start` as the candidate sort key. More recent has higher priority.
 
-* **breaking change:** keyword `cluster.name` has no default value. It has
-  previously the default value *default*. Now daemon startup will automatically
-  replace undefined cluster.name with a random value.
+* Add --quiet to disable both the progress renderer and the console logging
 
-* **breaking change:** keyword `cluster.name` is not anymore scopable.
+* New fields in print schedule json format: node, path
 
-## upgrade from b2.1
-### cluster config
+### Daemon
 
-* Need explicit cluster.name because of v3 random cluster name:
+* Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
 
-		# Ensure cluster.name is defined before upgrade to v3
-		om cluster set --kw cluster.name=$(om cluster eval --kw cluster.name)
+* Earlier local object instance orchestration after node boot
+
+    In 2.1 local object instance orchestration waits for all local object instances boot action done
+    
+    Now object instance <foo@localhost> orchestration only waits for <foo@localhost> boot action completed. Each instance has a last boot id.
+
+## Upgrade from b2.1
+
+### Cluster Config
+
+* Need to set explicitely the `cluster.name` because the v3 daemon will generate a random cluster name if none is set:
+
+    ```
+    # Ensure cluster.name is defined before upgrade to v3
+    om cluster set --kw cluster.name=$(om cluster eval --kw cluster.name)
+    ```
+

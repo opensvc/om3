@@ -39,9 +39,9 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
 		}
 
-		if b, err := ks.DecodeKey(params.Key); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Key, err)
-		} else {
+		b, err := ks.DecodeKey(params.Key)
+		switch {
+		case err == nil:
 			var contentType string
 			if utf8.Valid(b) {
 				contentType = "text/plain"
@@ -49,8 +49,13 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 				contentType = "application/octet-stream"
 			}
 			return ctx.Blob(http.StatusOK, contentType, b)
+		case errors.Is(err, object.KeystoreErrKeyEmpty):
+			return JSONProblemf(ctx, http.StatusBadRequest, "DecodeKey", "%s", err)
+		case errors.Is(err, object.KeystoreErrNotExist):
+			return JSONProblemf(ctx, http.StatusNotFound, "DecodeKey", "%s", err)
+		default:
+			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Key, err)
 		}
-		return ctx.NoContent(http.StatusNoContent)
 	}
 
 	for nodename := range instanceConfigData {

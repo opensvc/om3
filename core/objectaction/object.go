@@ -277,8 +277,8 @@ func rsHumanRender(rs []actionrouter.Result) string {
 				fmt.Printf("%s\n", r.Error)
 			}
 			rs[i].Error = nil
-		case (r.Error != nil) && fmt.Sprint(r.Error) != "":
-			log.Error().Msgf("%s: %s", r.Path, r.Error)
+			//		case (r.Error != nil) && fmt.Sprint(r.Error) != "":
+			//			log.Error().Msgf("%s: %s", r.Path, r.Error)
 		case r.Panic != nil:
 			switch err := r.Panic.(type) {
 			case error:

@@ -66,6 +66,8 @@ func (t *CmdKeystoreDecode) RunForPath(ctx context.Context, c *client.T, path na
 		return fmt.Errorf("%s: %s", path, *response.JSON403)
 	case http.StatusInternalServerError:
 		return fmt.Errorf("%s: %s", path, *response.JSON500)
+	case http.StatusNotFound:
+		return fmt.Errorf("%s: %s", path, *response.JSON404)
 	default:
 		return fmt.Errorf("%s: unexpected response: %s", path, response.Status())
 	}

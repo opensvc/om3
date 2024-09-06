@@ -4,6 +4,8 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/drivers/rescontainer"
+	"github.com/opensvc/om3/drivers/restask"
 )
 
 var (
@@ -26,7 +28,10 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextObjectID,
 		manifest.ContextObjectID,
 		manifest.ContextDNS,
+		rescontainer.KWOsvcRootPath,
+		rescontainer.KWGuestOS,
 	)
+	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(Keywords...)
 	return m
 }

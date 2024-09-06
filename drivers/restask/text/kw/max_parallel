@@ -1,0 +1,13 @@
+Support limited, concurrent runs of tasks.
+
+The task#xx.max_parallel=2 setting limits the number of concurrent task runs to 2.
+
+The default value is 1, ensuring backward compatibility.
+
+The run count is determined based on PID files created in the <resource var>/run/ directories.
+
+The PID file is normally removed when the task execution ends, but if the executor dies abruptly (e.g., due to a SIGKILL), the stale PID file is not considered when computing the resource status. It is removed before the count check of the next run.
+
+Staleness is evaluated using the condition: (PID file mtime < process birth time).
+
+A new status log message may appear to indicate that the maximum concurrency limit has been reached.
