@@ -36,7 +36,7 @@ func TestRunFiles(t *testing.T) {
 
 	t.Run("CreateStale", func(t *testing.T) {
 		content := "foo"
-		err := d.create(2, []byte(content))
+		err := d.create(0, []byte(content))
 		assert.NoError(t, err)
 	})
 
