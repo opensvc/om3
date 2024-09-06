@@ -66,7 +66,7 @@
 	   Replaced by `disk#foo.type=vdisk`
        
 	* `vmdg`
-	   Replaced by `disk#foo.type=ldom`
+	   Replaced by `disk#foo.type=vmdg`
        
 	* `pool`
 	   Replaced by `disk#foo.type=zpool`
@@ -329,7 +329,7 @@
 ### Logging
 
 * **No more private log files:**
-    The agent logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=svc1 to filter only logs relevant to an object.
+    The agent logs to journald instead. So the log entries attributes are indexed and can be used to filter logs very fast. Use `journalctl _COMM=om3` to extract all OpenSVC logs. Add OBJ_PATH=foo/svc/svc1 to filter only logs relevant to an object.
 
 * **Log entries key changes:**
     * The `sc` log entries attribute is replaced with `origin=daemon/scheduler`.
