@@ -11,10 +11,10 @@ func (t *keystore) decode(keyname string) ([]byte, error) {
 		err error
 	)
 	if keyname == "" {
-		return []byte{}, fmt.Errorf("key name can not be empty")
+		return []byte{}, KeystoreErrKeyEmpty
 	}
 	if !t.HasKey(keyname) {
-		return []byte{}, fmt.Errorf("key does not exist: %s", keyname)
+		return []byte{}, fmt.Errorf("%w: %s", KeystoreErrNotExist, keyname)
 	}
 	k := keyFromName(keyname)
 	if s, err = t.config.GetStrict(k); err != nil {

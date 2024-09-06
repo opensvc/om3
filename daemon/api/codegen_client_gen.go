@@ -11542,6 +11542,7 @@ type GetObjectKVStoreEntryResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N403
 	JSON500      *N500
 }
 
@@ -18142,6 +18143,13 @@ func ParseGetObjectKVStoreEntryResponse(rsp *http.Response) (*GetObjectKVStoreEn
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
