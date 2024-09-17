@@ -6,23 +6,25 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/daemon/relay"
 )
 
 func (a *DaemonAPI) GetRelayMessage(ctx echo.Context, params api.GetRelayMessageParams) error {
-	data := api.RelayMessages{}
-	if params.ClusterID != nil && params.Nodename != nil {
-		if msg, ok := relay.Map.Load(*params.ClusterID, *params.Nodename); !ok {
-			return JSONProblem(ctx, http.StatusNotFound, "Not found", "")
-		} else {
-			data.Messages = []api.RelayMessage{msg.(api.RelayMessage)}
-		}
-	} else {
-		l := relay.Map.List()
-		data.Messages = make([]api.RelayMessage, len(l))
-		for i, a := range l {
-			data.Messages[i] = a.(api.RelayMessage)
-		}
+	if v, err := assertGrant(ctx, rbac.GrantHeartbeat, rbac.GrantRoot); !v {
+		return err
 	}
-	return ctx.JSON(http.StatusOK, data)
+	var username string
+	if grantsFromContext(ctx).HasGrant(rbac.GrantRoot) && params.Username != nil {
+		username = *params.Username
+	} else {
+		username = userFromContext(ctx).GetUserName()
+	}
+	if slot, ok := relay.Map.Load(username, params.ClusterID, params.Nodename); !ok {
+		return JSONProblem(ctx, http.StatusNotFound, "Not found", "")
+	} else {
+		message := slot.Value.(api.RelayMessage)
+		message.Relay = a.localhost
+		return ctx.JSON(http.StatusOK, message)
+	}
 }

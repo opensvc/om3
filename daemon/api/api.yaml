@@ -3208,6 +3208,34 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /relay/status:
+    get:
+      description: |
+        Get messages of all relays used by the responding node.
+        The login/password used to fetch information are the same the heartbeats use.
+      operationId: GetRelayStatus
+      tags:
+        - relay
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Relays'
+        - $ref: '#/components/parameters/RelayRemote'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelayStatusList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /relay/message:
     get:
       operationId: GetRelayMessage
@@ -3219,13 +3247,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/RelayNodename'
         - $ref: '#/components/parameters/RelayClusterID'
+        - $ref: '#/components/parameters/RelayUsername'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RelayMessages'
+                $ref: '#/components/schemas/RelayMessage'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -5298,17 +5327,73 @@ components:
         - n/a
         - true
 
+    RelayStatusItem:
+      type: object
+      required:
+        - relay
+        - node_addr
+        - cluster_id
+        - cluster_name
+        - msg_len
+        - nodename
+        - updated_at
+        - username
+        - status
+      properties:
+        relay:
+          type: string
+        node_addr:
+          type: string
+        cluster_id:
+          type: string
+          x-go-name: ClusterID
+        cluster_name:
+          type: string
+        msg_len:
+          type: integer
+        nodename:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        username:
+          type: string
+        status:
+          type: string
+
+    RelayStatusList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - RelayStatusList
+        items:
+          $ref: '#/components/schemas/RelayStatusItems'
+
+    RelayStatusItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/RelayStatusItem'
+
     RelayMessage:
       type: object
       required:
-        - addr
+        - relay
+        - node_addr
         - cluster_id
         - cluster_name
         - msg
         - nodename
         - updated_at
+        - username
       properties:
-        addr:
+        relay:
+          type: string
+        node_addr:
           type: string
         cluster_id:
           type: string
@@ -5322,19 +5407,8 @@ components:
         updated_at:
           type: string
           format: date-time
-
-    RelayMessageList:
-      type: array
-      items:
-        $ref: '#/components/schemas/RelayMessage'
-
-    RelayMessages:
-      type: object
-      required:
-        - messages
-      properties:
-        messages:
-          $ref: '#/components/schemas/RelayMessageList'
+        username:
+          type: string
 
     # ========================================================================
     # resource schemas
@@ -6252,12 +6326,35 @@ components:
       in: query
       description: the cluster id component of the slot id on the relay
       x-go-name: ClusterID
+      required: true
       schema:
         type: string
+    Relays:
+      name: relay
+      x-go-name: Relays
+      in: query
+      description: list of relays to include in the response dataset
+      schema:
+        type: array
+        items:
+          type: string
     RelayNodename:
       name: nodename
       in: query
       description: the nodename component of the slot id on the relay
+      required: true
+      schema:
+        type: string
+    RelayRemote:
+      name: remote
+      in: query
+      description: If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
+      schema:
+        type: boolean
+    RelayUsername:
+      name: username
+      in: query
+      description: If true and the requester has the root grant, read the message from the specified user relay partition instead of the requester's partition.
       schema:
         type: string
     SelectorOptional:

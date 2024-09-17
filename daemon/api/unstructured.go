@@ -520,3 +520,21 @@ func (t KVStoreKeyListItem) Unstructured() map[string]any {
 		"size":   t.Size,
 	}
 }
+
+func (t RelayStatusList) GetItems() any {
+	return t.Items
+}
+
+func (t RelayStatusItem) Unstructured() map[string]any {
+	return map[string]any{
+		"cluster_id":   t.ClusterID,
+		"cluster_name": t.ClusterName,
+		"nodename":     t.Nodename,
+		"node_addr":    t.NodeAddr,
+		"msg_len":      t.MsgLen,
+		"relay":        t.Relay,
+		"status":       t.Status,
+		"updated_at":   t.UpdatedAt,
+		"username":     t.Username,
+	}
+}

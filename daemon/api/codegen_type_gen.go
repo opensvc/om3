@@ -235,6 +235,11 @@ const (
 	ProvisionedTrue  Provisioned = "true"
 )
 
+// Defines values for RelayStatusListKind.
+const (
+	RelayStatusListKindRelayStatusList RelayStatusListKind = "RelayStatusList"
+)
+
 // Defines values for ResourceItemKind.
 const (
 	ResourceItemKindResourceItem ResourceItemKind = "ResourceItem"
@@ -1128,21 +1133,40 @@ type Region struct {
 
 // RelayMessage defines model for RelayMessage.
 type RelayMessage struct {
-	Addr        string    `json:"addr"`
 	ClusterID   string    `json:"cluster_id"`
 	ClusterName string    `json:"cluster_name"`
 	Msg         string    `json:"msg"`
+	NodeAddr    string    `json:"node_addr"`
 	Nodename    string    `json:"nodename"`
+	Relay       string    `json:"relay"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Username    string    `json:"username"`
 }
 
-// RelayMessageList defines model for RelayMessageList.
-type RelayMessageList = []RelayMessage
-
-// RelayMessages defines model for RelayMessages.
-type RelayMessages struct {
-	Messages RelayMessageList `json:"messages"`
+// RelayStatusItem defines model for RelayStatusItem.
+type RelayStatusItem struct {
+	ClusterID   string    `json:"cluster_id"`
+	ClusterName string    `json:"cluster_name"`
+	MsgLen      int       `json:"msg_len"`
+	NodeAddr    string    `json:"node_addr"`
+	Nodename    string    `json:"nodename"`
+	Relay       string    `json:"relay"`
+	Status      string    `json:"status"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Username    string    `json:"username"`
 }
+
+// RelayStatusItems defines model for RelayStatusItems.
+type RelayStatusItems = []RelayStatusItem
+
+// RelayStatusList defines model for RelayStatusList.
+type RelayStatusList struct {
+	Items RelayStatusItems    `json:"items"`
+	Kind  RelayStatusListKind `json:"kind"`
+}
+
+// RelayStatusListKind defines model for RelayStatusList.Kind.
+type RelayStatusListKind string
 
 // Resource defines model for Resource.
 type Resource struct {
@@ -1408,6 +1432,15 @@ type ClusterID = string
 
 // RelayNodename defines model for RelayNodename.
 type RelayNodename = string
+
+// RelayRemote defines model for RelayRemote.
+type RelayRemote = bool
+
+// RelayUsername defines model for RelayUsername.
+type RelayUsername = string
+
+// Relays defines model for Relays.
+type Relays = []string
 
 // RidOptional defines model for RidOptional.
 type RidOptional = string
@@ -1886,10 +1919,22 @@ type GetPoolVolumesParams struct {
 // GetRelayMessageParams defines parameters for GetRelayMessage.
 type GetRelayMessageParams struct {
 	// Nodename the nodename component of the slot id on the relay
-	Nodename *RelayNodename `form:"nodename,omitempty" json:"nodename,omitempty"`
+	Nodename RelayNodename `form:"nodename" json:"nodename"`
 
 	// ClusterId the cluster id component of the slot id on the relay
-	ClusterID *ClusterID `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
+	ClusterID ClusterID `form:"cluster_id" json:"cluster_id"`
+
+	// Username If true and the requester has the root grant, read the message from the specified user relay partition instead of the requester's partition.
+	Username *RelayUsername `form:"username,omitempty" json:"username,omitempty"`
+}
+
+// GetRelayStatusParams defines parameters for GetRelayStatus.
+type GetRelayStatusParams struct {
+	// Relay list of relays to include in the response dataset
+	Relays *Relays `form:"relay,omitempty" json:"relay,omitempty"`
+
+	// Remote If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
+	Remote *RelayRemote `form:"remote,omitempty" json:"remote,omitempty"`
 }
 
 // GetResourcesParams defines parameters for GetResources.

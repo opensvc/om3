@@ -7,9 +7,10 @@ import (
 )
 
 type (
-	capsule struct {
-		value any
-		timer *time.Timer
+	Slot struct {
+		Value    any
+		timer    *time.Timer
+		Username string
 	}
 	M struct {
 		*sync.Map
@@ -31,37 +32,39 @@ func (m *M) Stop() {
 	})
 }
 
-func (m *M) List() []any {
-	l := make([]any, 0)
+func (m *M) List(username string) []Slot {
+	slots := make([]Slot, 0)
 	m.Map.Range(func(key, value any) bool {
-		c := value.(capsule)
-		l = append(l, c.value)
+		slot := value.(Slot)
+		if username == "" || slot.Username == username {
+			slots = append(slots, slot)
+		}
 		return true
 	})
-	return l
+	return slots
 }
 
-func (m *M) Load(clusterID, nodename string) (any, bool) {
-	key := makeRelayKey(clusterID, nodename)
+func (m *M) Load(username, clusterID, nodename string) (Slot, bool) {
+	key := makeRelayKey(username, clusterID, nodename)
 	value, ok := m.Map.Load(key)
 	if !ok {
-		return nil, false
+		return Slot{}, false
 	}
-	c := value.(capsule)
-	return c.value, true
+	return value.(Slot), true
 }
 
-func (m *M) Store(clusterID, nodename string, value any) {
-	key := makeRelayKey(clusterID, nodename)
+func (m *M) Store(username, clusterID, nodename string, value any) {
+	key := makeRelayKey(username, clusterID, nodename)
 	m.stopTimer(key)
-	c := capsule{
-		value: value,
+	slot := Slot{
+		Value: value,
 		timer: time.AfterFunc(MaxAge, func() {
 			//fmt.Printf("drop key %s, aged %s\n", key, MaxAge)
 			m.Map.Delete(key)
 		}),
+		Username: username,
 	}
-	m.Map.Store(key, c)
+	m.Map.Store(key, slot)
 }
 
 func (m *M) stopTimer(key string) {
@@ -69,10 +72,10 @@ func (m *M) stopTimer(key string) {
 	if !ok {
 		return
 	}
-	c := i.(capsule)
-	c.timer.Stop()
+	slot := i.(Slot)
+	slot.timer.Stop()
 }
 
-func makeRelayKey(clusterID, nodename string) string {
-	return strings.Join([]string{clusterID, nodename}, "/")
+func makeRelayKey(username, clusterID, nodename string) string {
+	return strings.Join([]string{username, clusterID, nodename}, "/")
 }
