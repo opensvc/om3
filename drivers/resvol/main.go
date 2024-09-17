@@ -361,7 +361,10 @@ func (t T) ValidateNodesAndName() error {
 		m[nodename] = t.Name
 	}
 	obj := t.GetObject().(object.Configurer)
-	k := key.T{t.RID(), "name"}
+	k := key.T{
+		Section: t.RID(),
+		Option:  "name",
+	}
 	localhost := hostname.Hostname()
 	for _, nodename := range t.Nodes {
 		if nodename == localhost {
