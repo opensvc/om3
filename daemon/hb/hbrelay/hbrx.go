@@ -115,8 +115,8 @@ func (t *rx) recv(nodename string) {
 	}
 
 	params := api.GetRelayMessageParams{
-		Nodename:  &nodename,
-		ClusterID: &clusterID,
+		Nodename:  nodename,
+		ClusterID: clusterID,
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
@@ -130,12 +130,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debugf("recv: node %s data has no stored data", nodename)
 		return
 	}
-	messages := resp.JSON200
-	if len(messages.Messages) == 0 {
-		t.log.Debugf("recv: node %s data has no stored data", nodename)
-		return
-	}
-	c := messages.Messages[0]
+	c := *resp.JSON200
 	if c.UpdatedAt.IsZero() {
 		t.log.Debugf("recv: node %s data has never been updated", nodename)
 		return

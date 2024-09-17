@@ -425,6 +425,9 @@ type ClientInterface interface {
 
 	PostRelayMessage(ctx context.Context, body PostRelayMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRelayStatus request
+	GetRelayStatus(ctx context.Context, params *GetRelayStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetResources request
 	GetResources(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1802,6 +1805,18 @@ func (c *Client) PostRelayMessageWithBody(ctx context.Context, contentType strin
 
 func (c *Client) PostRelayMessage(ctx context.Context, body PostRelayMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostRelayMessageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRelayStatus(ctx context.Context, params *GetRelayStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRelayStatusRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -8435,25 +8450,33 @@ func NewGetRelayMessageRequest(server string, params *GetRelayMessageParams) (*h
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Nodename != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "nodename", runtime.ParamLocationQuery, *params.Nodename); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "nodename", runtime.ParamLocationQuery, params.Nodename); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.ClusterID != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cluster_id", runtime.ParamLocationQuery, params.ClusterID); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cluster_id", runtime.ParamLocationQuery, *params.ClusterID); err != nil {
+		if params.Username != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "username", runtime.ParamLocationQuery, *params.Username); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -8514,6 +8537,71 @@ func NewPostRelayMessageRequestWithBody(server string, contentType string, body 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetRelayStatusRequest generates requests for GetRelayStatus
+func NewGetRelayStatusRequest(server string, params *GetRelayStatusParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/relay/status")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Relays != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "relay", runtime.ParamLocationQuery, *params.Relays); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Remote != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "remote", runtime.ParamLocationQuery, *params.Remote); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9004,6 +9092,9 @@ type ClientWithResponsesInterface interface {
 	PostRelayMessageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRelayMessageResponse, error)
 
 	PostRelayMessageWithResponse(ctx context.Context, body PostRelayMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRelayMessageResponse, error)
+
+	// GetRelayStatusWithResponse request
+	GetRelayStatusWithResponse(ctx context.Context, params *GetRelayStatusParams, reqEditors ...RequestEditorFn) (*GetRelayStatusResponse, error)
 
 	// GetResourcesWithResponse request
 	GetResourcesWithResponse(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*GetResourcesResponse, error)
@@ -11716,7 +11807,7 @@ func (r GetSwaggerResponse) StatusCode() int {
 type GetRelayMessageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *RelayMessages
+	JSON200      *RelayMessage
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
@@ -11758,6 +11849,31 @@ func (r PostRelayMessageResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostRelayMessageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRelayStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *RelayStatusList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRelayStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRelayStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12837,6 +12953,15 @@ func (c *ClientWithResponses) PostRelayMessageWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParsePostRelayMessageResponse(rsp)
+}
+
+// GetRelayStatusWithResponse request returning *GetRelayStatusResponse
+func (c *ClientWithResponses) GetRelayStatusWithResponse(ctx context.Context, params *GetRelayStatusParams, reqEditors ...RequestEditorFn) (*GetRelayStatusResponse, error) {
+	rsp, err := c.GetRelayStatus(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRelayStatusResponse(rsp)
 }
 
 // GetResourcesWithResponse request returning *GetResourcesResponse
@@ -18467,7 +18592,7 @@ func ParseGetRelayMessageResponse(rsp *http.Response) (*GetRelayMessageResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest RelayMessages
+		var dest RelayMessage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -18526,6 +18651,53 @@ func ParsePostRelayMessageResponse(rsp *http.Response) (*PostRelayMessageRespons
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRelayStatusResponse parses an HTTP response from a GetRelayStatusWithResponse call
+func ParseGetRelayStatusResponse(rsp *http.Response) (*GetRelayStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRelayStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RelayStatusList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

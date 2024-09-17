@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/daemon/relay"
 )
 
@@ -18,6 +19,11 @@ func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostRelayMessage")
 	log.Debugf("starting")
 
+	if v, err := assertGrant(ctx, rbac.GrantHeartbeat); !v {
+		return err
+	}
+	username := userFromContext(ctx).GetUserName()
+
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
@@ -27,9 +33,10 @@ func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 	value.Nodename = payload.Nodename
 	value.Msg = payload.Msg
 	value.UpdatedAt = time.Now()
-	value.Addr = ctx.Request().RemoteAddr
+	value.NodeAddr = ctx.Request().RemoteAddr
+	value.Username = username
 
-	relay.Map.Store(payload.ClusterID, payload.Nodename, value)
+	relay.Map.Store(username, payload.ClusterID, payload.Nodename, value)
 	log.Debugf("stored %s %s", payload.ClusterID, payload.Nodename)
-	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.UpdatedAt, value.Addr)
+	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.UpdatedAt, value.NodeAddr)
 }
