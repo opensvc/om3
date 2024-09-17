@@ -105,11 +105,6 @@
 
 ### Commands
 
-* **Deprecated:**
-    * `om daemon dns dump`
-    Replaced by `om dns dump`.
-    As a consequence, the `dns` object path is masked. The `root/svc/dns` path can still be used to help with the transition to a new object name.
-
 * **Configuration updates use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
