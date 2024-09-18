@@ -33,7 +33,6 @@ var (
 	root = &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
 		Short:                  "Manage opensvc clusters.",
-		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,
 		SilenceErrors:          false,
 		ValidArgsFunction:      validArgs,
@@ -64,13 +63,6 @@ func listObjectPaths() []string {
 func listNodes() []string {
 	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.nodes"+contextSuffix())); err == nil {
 		return strings.Fields(string(b))
-	}
-	return nil
-}
-
-func persistentPreRunE(cmd *cobra.Command, _ []string) error {
-	if flag := cmd.Flags().Lookup("color"); flag != nil {
-		colorFlag = flag.Value.String()
 	}
 	return nil
 }
