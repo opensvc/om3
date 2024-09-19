@@ -1,4 +1,4 @@
-package cluster
+package monitor
 
 import (
 	"sort"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
+	"github.com/opensvc/om3/core/cluster"
 )
 
 const (
@@ -61,9 +62,9 @@ type (
 		Selector string
 		Nodes    []string
 		Sections []string
-		Current  Data
-		Previous Data
-		Stats    Stats
+		Current  cluster.Data
+		Previous cluster.Data
+		Stats    cluster.Stats
 		// Nodename is the nodename from which we have received data (value of
 		// .daemon.nodename)
 		Nodename string

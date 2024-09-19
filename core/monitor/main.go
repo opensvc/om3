@@ -131,7 +131,7 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 
 func (m *T) doOneShot(data cluster.Data, clear bool, eventsetCount uint64, out io.Writer) {
 	human := func() string {
-		f := cluster.Frame{
+		f := Frame{
 			Selector: m.selector,
 			Current:  data,
 			Sections: m.sections,

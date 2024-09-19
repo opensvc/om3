@@ -237,10 +237,9 @@ func loadSections() {
 	nodeViper.SetConfigFile(filepath.FromSlash(p))
 	_ = nodeViper.MergeInConfig()
 
-	p = fmt.Sprintf("$HOME/.%s", Program)
+	p = fmt.Sprintf("$HOME/.config/opensvc")
 	nodeViper.SetConfigType("yaml")
 	nodeViper.AddConfigPath(filepath.FromSlash(p))
-	nodeViper.AddConfigPath(".")
 	nodeViper.MergeInConfig()
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {

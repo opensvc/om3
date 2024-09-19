@@ -1,7 +1,7 @@
 package ccfg
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
@@ -19,11 +18,6 @@ import (
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
-	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
-		t.log.Errorf("can't create volatile cluster object on config file updated: %s", err)
-	} else {
-		t.clusterConfig = n.Config()
-	}
 	t.pubClusterConfig()
 }
 
@@ -54,53 +48,27 @@ func (t *Manager) pubClusterConfig() {
 }
 
 func (t *Manager) getClusterConfig() cluster.Config {
-	var (
-		keyID         = key.New("cluster", "id")
-		keySecret     = key.New("cluster", "secret")
-		keyName       = key.New("cluster", "name")
-		keyNodes      = key.New("cluster", "nodes")
-		keyDNS        = key.New("cluster", "dns")
-		keyCASecPaths = key.New("cluster", "ca")
-		keyQuorum     = key.New("cluster", "quorum")
-
-		keyListenerCRL             = key.New("listener", "crl")
-		keyListenerAddr            = key.New("listener", "addr")
-		keyListenerPort            = key.New("listener", "port")
-		keyListenerOpenIDWellKnown = key.New("listener", "openid_well_known")
-		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
-		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
-	)
-
-	cfg := cluster.Config{}
-	cfg.ID = t.clusterConfig.GetString(keyID)
-	cfg.DNS = t.clusterConfig.GetStrings(keyDNS)
-	cfg.Nodes = t.clusterConfig.GetStrings(keyNodes)
-	cfg.Name = t.clusterConfig.GetString(keyName)
-	cfg.CASecPaths = t.clusterConfig.GetStrings(keyCASecPaths)
-	cfg.SetSecret(t.clusterConfig.GetString(keySecret))
-	cfg.Quorum = t.clusterConfig.GetBool(keyQuorum)
-	cfg.Vip = t.getVipFromConfig(cfg.Nodes)
-	cfg.Listener.CRL = t.clusterConfig.GetString(keyListenerCRL)
-	if v, err := t.clusterConfig.Eval(keyListenerAddr); err != nil {
-		t.log.Errorf("eval listener addr: %s", err)
-	} else {
-		cfg.Listener.Addr = v.(string)
+	clu, err := object.NewCluster()
+	if err != nil {
+		t.log.Errorf("%s", err)
+		return cluster.Config{}
 	}
-	if v, err := t.clusterConfig.Eval(keyListenerPort); err != nil {
-		t.log.Errorf("eval listener port: %s", err)
-	} else {
-		cfg.Listener.Port = v.(int)
+	cfg, err := cluster.GetConfig()
+	switch {
+	case err == nil:
+	case errors.Is(err, cluster.ErrVIPScope):
+		t.log.Warnf("%s", err)
+	default:
+		t.log.Errorf("%s", err)
+
 	}
-	cfg.Listener.OpenIDWellKnown = t.clusterConfig.GetString(keyListenerOpenIDWellKnown)
-	cfg.Listener.DNSSockGID = t.clusterConfig.GetString(keyListenerDNSSockGID)
-	cfg.Listener.DNSSockUID = t.clusterConfig.GetString(keyListenerDNSSockUID)
 
 	var change bool
 
-	for _, name := range t.clusterConfig.SectionStrings() {
+	for _, name := range clu.Config().SectionStrings() {
 		if strings.HasPrefix(name, "network#") {
 			lastSig, _ := t.networkSigs[name]
-			sig := t.clusterConfig.SectionSig(name)
+			sig := clu.Config().SectionSig(name)
 			if sig != lastSig {
 				change = true
 				t.log.Infof("configuration section %s changed (sig %s is now %s)", name, lastSig, sig)
@@ -119,77 +87,4 @@ func (t *Manager) getClusterConfig() cluster.Config {
 		}
 	}
 	return cfg
-}
-
-// getVipFromConfig returns the Vip from cluster config
-func (t *Manager) getVipFromConfig(nodes []string) (vip cluster.Vip) {
-	keyVip := key.New("cluster", "vip")
-	defaultVip := t.clusterConfig.Get(keyVip)
-	if defaultVip == "" {
-		return cluster.Vip{}
-	}
-
-	// pickup defaults from vip keyword
-	ipname, netmask, dev, err := parseVip(defaultVip)
-	if err != nil {
-		t.log.Errorf("skip vip: %s", err)
-		return cluster.Vip{}
-	}
-
-	devs := make(map[string]string)
-
-	for _, n := range nodes {
-		v, err := t.clusterConfig.EvalAs(keyVip, n)
-		if err != nil {
-			t.log.Warnf("eval vip from node %s: %s", n, err)
-			continue
-		}
-		customVip := v.(string)
-		if customVip == "" || customVip == defaultVip {
-			continue
-		}
-		if _, _, customDev, err := parseVip(customVip); err != nil {
-			t.log.Errorf("skip vip value from node %s: %s", n, err)
-			continue
-		} else if customDev != dev {
-			devs[n] = customDev
-		}
-	}
-
-	return cluster.Vip{
-		Default: defaultVip,
-		Addr:    ipname,
-		Netmask: netmask,
-		Dev:     dev,
-		Devs:    devs,
-	}
-}
-
-func parseVip(s string) (ipname, netmask, ipdev string, err error) {
-	r := strings.Split(s, "@")
-	if len(r) != 2 {
-		err = fmt.Errorf("unexpected vip value: missing @ in %s", s)
-		return
-	}
-	if len(r[1]) == 0 {
-		err = fmt.Errorf("unexpected vip value: empty addr in %s", s)
-		return
-	}
-	ipdev = r[1]
-	r = strings.Split(r[0], "/")
-	if len(r) != 2 {
-		err = fmt.Errorf("unexpected vip value: missing / in %s", s)
-		return
-	}
-	if len(r[0]) == 0 {
-		err = fmt.Errorf("unexpected vip value: empty ipname in %s", s)
-		return
-	}
-	ipname = r[0]
-	if len(r[1]) == 0 {
-		err = fmt.Errorf("unexpected vip value: empty netmask in %s", s)
-		return
-	}
-	netmask = r[1]
-	return
 }
