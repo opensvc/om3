@@ -87,7 +87,7 @@ func (t *T) Start(ctx context.Context) error {
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
-	t.log.Infof("starting")
+	t.logTransition("starting 🟢")
 	go startProfiling()
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
@@ -175,7 +175,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
-	t.log.Infof("started")
+	t.logTransition("started 🟢")
 	return nil
 }
 
@@ -185,8 +185,8 @@ func (t *T) Stop() error {
 	}
 	var errs error
 	// stop goroutines without cancel context
-	defer t.log.Infof("stopped")
-	t.log.Infof("stopping")
+	t.logTransition("stopping 🟡")
+	defer t.logTransition("stopped 🟡")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
 		if err := t.stopFuncs[i](); err != nil {
 			t.log.Errorf("stop component %d: %s", i, err)
@@ -216,6 +216,11 @@ func (t *T) Running() bool {
 
 func (t *T) Wait() {
 	t.wg.Wait()
+}
+
+func (t *T) logTransition(state string) {
+	// use error level for main daemon transition
+	t.log.Errorf("Daemon %s", state)
 }
 
 func (t *T) stopWatcher() {
