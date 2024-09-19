@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -85,6 +86,10 @@ func (t *Manager) crmBoot() error {
 }
 
 func (t *Manager) crmDelete() error {
+	t.pubsubBus.Pub(&msgbus.InstanceConfigDeleting{
+		Path: t.path,
+		Node: t.localhost,
+	}, t.labelPath, t.labelLocalhost)
 	return t.crmAction("delete", t.path.String(), "delete", "--local")
 }
 

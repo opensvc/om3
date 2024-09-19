@@ -9,7 +9,7 @@
 //		       - update ClusterData.ApplyMessage function
 //			- msgX must be sent to peers (to patch):
 //				- update daemondata.startSubscriptions function
-//				- update daemondata.eventMustBeForwarded function
+//				- update daemondata.localEventMustBeForwarded function
 //			- peer msgX is received from peer (from patch):
 //				- update setCacheAndPublish function:
 //					- can update some caches
@@ -102,6 +102,8 @@ var (
 		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
+
+		"InstanceConfigDeleting": func() any { return &InstanceConfigDeleting{} },
 
 		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
@@ -429,6 +431,14 @@ type (
 	}
 
 	InstanceConfigDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// InstanceConfigDeleting event is pushed during imon orchestration deleting
+	// step.
+	InstanceConfigDeleting struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
@@ -940,6 +950,10 @@ func (e *HbStatusUpdated) Kind() string {
 
 func (e *InstanceConfigDeleted) Kind() string {
 	return "InstanceConfigDeleted"
+}
+
+func (e *InstanceConfigDeleting) Kind() string {
+	return "InstanceConfigDeleting"
 }
 
 func (e *InstanceConfigUpdated) Kind() string {
