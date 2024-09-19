@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
@@ -197,7 +196,6 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.ObjectCreated:
 		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
-		object.StatusData.Unset(c.Path)
 		d.bus.Pub(c, labelFromPeer)
 	default:
 		d.log.Errorf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)

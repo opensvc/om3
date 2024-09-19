@@ -37,9 +37,13 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 	case *ForgetPeer:
 		data.onForgetPeer(c)
 	case *ObjectStatusDeleted:
-		data.onObjectStatusDeleted(c)
+		if c.Node == data.localhost {
+			data.onObjectStatusDeleted(c)
+		}
 	case *ObjectStatusUpdated:
-		data.onObjectStatusUpdated(c)
+		if c.Node == data.localhost {
+			data.onObjectStatusUpdated(c)
+		}
 	case *InstanceConfigDeleted:
 		data.onInstanceConfigDeleted(c)
 	case *InstanceConfigUpdated:
