@@ -19,17 +19,19 @@ type (
 	}
 )
 
-var ccfgPrivateKeywords = []keywords.Keyword{
-	{
-		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
-		Option:      "id",
-		Scopable:    false,
-		Section:     "DEFAULT",
-		Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
-	},
-}
+var (
+	ccfgPrivateKeywords = []keywords.Keyword{
+		{
+			DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
+			Option:      "id",
+			Scopable:    false,
+			Section:     "DEFAULT",
+			Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
+		},
+	}
 
-var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
+	ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
+)
 
 func NewCluster(opts ...funcopt.O) (*Ccfg, error) {
 	return newCcfg(naming.Cluster, opts...)
