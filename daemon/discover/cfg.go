@@ -26,12 +26,16 @@ import (
 func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("daemon.discover.cfg", t.subQS)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
-	sub.AddFilter(&msgbus.ConfigFileUpdated{})
+
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{})
+
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+
 	sub.Start()
 	return sub
 }
@@ -71,18 +75,20 @@ func (t *Manager) cfg(started chan<- bool) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
-			case *msgbus.InstanceConfigUpdated:
-				t.onInstanceConfigUpdated(c)
-			case *msgbus.InstanceConfigDeleted:
-				t.onInstanceConfigDeleted(c)
-			case *msgbus.ConfigFileUpdated:
-				t.onConfigFileUpdated(c)
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
-			case *msgbus.ObjectStatusUpdated:
-				t.onObjectStatusUpdated(c)
+			case *msgbus.ConfigFileUpdated:
+				t.onConfigFileUpdated(c)
+
+			case *msgbus.InstanceConfigDeleted:
+				t.onInstanceConfigDeleted(c)
+			case *msgbus.InstanceConfigUpdated:
+				t.onInstanceConfigUpdated(c)
+
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
+			case *msgbus.ObjectStatusUpdated:
+				t.onObjectStatusUpdated(c)
 			}
 		case i := <-t.cfgCmdC:
 			switch c := i.(type) {
