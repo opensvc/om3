@@ -21,7 +21,6 @@ import (
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -30,12 +29,9 @@ import (
 
 type (
 	Manager struct {
-		status object.Status
-		path   naming.Path
-		id     string
+		path naming.Path
 
-		discoverCmdC chan<- any
-		databus      *daemondata.T
+		status object.Status
 
 		// imonCancel is the cancel function for the local imon we have started
 		// We start imon on local instance config received or exists (when instConfig[o.localhost] is created)
@@ -70,8 +66,9 @@ type (
 		bus *pubsub.Bus
 		sub *pubsub.Subscription
 
-		labelPath pubsub.Label
-		labelNode pubsub.Label
+		// pubLabel is the list of this imon publication labels
+		pubLabel []pubsub.Label
+
 		localhost string
 	}
 
@@ -81,10 +78,11 @@ type (
 )
 
 // Start a goroutine responsible for the status of an object
-func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
-	id := p.String()
+func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, imonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
 	t := &Manager{
+		path: p,
+
 		status: object.Status{
 			Scope:           cfg.Scope,
 			FlexTarget:      cfg.FlexTarget,
@@ -97,11 +95,8 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 			Size:            cfg.Size,
 			Topology:        cfg.Topology,
 		},
-		path:         p,
-		id:           id,
-		bus:          pubsub.BusFromContext(ctx),
-		discoverCmdC: discoverCmdC,
-		databus:      daemondata.FromContext(ctx),
+
+		bus: pubsub.BusFromContext(ctx),
 
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
 		instStatus: make(map[string]instance.Status),
@@ -112,8 +107,8 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 
 		ctx: ctx,
 
-		labelNode: pubsub.Label{"node", localhost},
-		labelPath: pubsub.Label{"path", id},
+		pubLabel: []pubsub.Label{{"path", p.String()}, {"node", localhost}},
+
 		localhost: localhost,
 
 		imonStarter: imonStarter,
@@ -138,17 +133,20 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 // startSubscriptions starts the subscriptions for omon.
 // For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
 func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
-	sub := t.bus.Sub("daemon.omon "+t.id, subQS)
+	pathString := t.path.String()
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, t.labelPath)
+	sub := t.bus.Sub("daemon.omon "+pathString, subQS)
+
+	labelPath := pubsub.Label{"path", pathString}
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPath)
 
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, labelPath)
 
 	sub.Start()
 	t.sub = sub
@@ -380,14 +378,14 @@ func (t *Manager) updateStatus() {
 func (t *Manager) delete() {
 	object.StatusData.Unset(t.path)
 	t.bus.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
 	t.bus.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
-	t.discoverCmdC <- &msgbus.ObjectStatusDone{Path: t.path}
+	t.bus.Pub(&msgbus.ObjectStatusDone{Path: t.path},
+		t.pubLabel...,
+	)
 }
 
 func (t *Manager) update() {
@@ -396,8 +394,7 @@ func (t *Manager) update() {
 	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
 	t.bus.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
 }
 

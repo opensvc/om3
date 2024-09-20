@@ -805,7 +805,7 @@ func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Fact
 				case *msgbus.InstanceConfigUpdated:
 					if !monStarted {
 						t.Logf("--- starting omon for %s", p)
-						if err := omon.Start(ctx, pubsub.WithQueueSize(50), p, o.Value, make(chan any, 100), factory); err != nil {
+						if err := omon.Start(ctx, pubsub.WithQueueSize(50), p, o.Value, factory); err != nil {
 							t.Errorf("omon.Start failed: %s", err)
 						}
 						monStarted = true

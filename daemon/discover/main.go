@@ -35,12 +35,11 @@ import (
 
 type (
 	Manager struct {
-		cfgCmdC           chan any
-		objectMonitorCmdC chan any
-		ctx               context.Context
-		cancel            context.CancelFunc
-		log               *plog.Logger
-		databus           *daemondata.T
+		cfgCmdC chan any
+		ctx     context.Context
+		cancel  context.CancelFunc
+		log     *plog.Logger
+		databus *daemondata.T
 
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
@@ -99,9 +98,8 @@ type (
 // returned *T
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
-		cfgCmdC:           make(chan any),
-		objectMonitorCmdC: make(chan any),
-		cfgMTime:          make(map[string]time.Time),
+		cfgCmdC:  make(chan any),
+		cfgMTime: make(map[string]time.Time),
 
 		objectMonitor: make(map[string]map[string]struct{}),
 
