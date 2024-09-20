@@ -31,6 +31,7 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceConfigManagerDone{}, pubsub.Label{"node", t.localhost})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
@@ -82,6 +83,8 @@ func (t *Manager) cfg(started chan<- bool) {
 
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(c)
+			case *msgbus.InstanceConfigManagerDone:
+				t.onInstanceConfigManagerDone(c)
 			case *msgbus.InstanceConfigUpdated:
 				t.onInstanceConfigUpdated(c)
 
@@ -94,8 +97,6 @@ func (t *Manager) cfg(started chan<- bool) {
 			switch c := i.(type) {
 			case *msgbus.RemoteFileConfig:
 				t.onRemoteConfigFetched(c)
-			case *msgbus.InstanceConfigManagerDone:
-				t.onMonConfigDone(c)
 			default:
 				t.log.Errorf("cfg: unsupported command bus message type: %#v", i)
 			}
@@ -144,8 +145,8 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	t.cfgMTime[s] = mtime
 }
 
-// cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
-func (t *Manager) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
+// onInstanceConfigManagerDone starts a new icfg when a local configuration file exists
+func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
 	s := p.String()
