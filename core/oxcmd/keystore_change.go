@@ -8,9 +8,9 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/keystore"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -40,7 +40,7 @@ func makeKVStorePatch(key, value, from string, action api.PatchKVStoreEntryActio
 		return data, err
 	}
 	for path, b := range m {
-		k, err := object.FileToKey(path, key)
+		k, err := keystore.FileToKey(path, key)
 		if err != nil {
 			return nil, err
 		}

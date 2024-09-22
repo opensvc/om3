@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/util/keystore"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -39,7 +40,7 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 				return nil, err
 			}
 			for path, b := range m {
-				k, err := object.FileToKey(path, t.Key)
+				k, err := keystore.FileToKey(path, t.Key)
 				if err != nil {
 					return nil, err
 				}
