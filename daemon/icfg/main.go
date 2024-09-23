@@ -119,6 +119,8 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	t.startSubscriptions()
 
 	go func() {
+		t.log.Infof("starting %s", t.path)
+		defer t.log.Infof("stopped %s", t.path)
 		defer t.log.Debugf("stopped")
 		defer func() {
 			cancel()
@@ -170,7 +172,7 @@ func (t *Manager) worker() {
 
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := t.configFileCheck(); err != nil {
-		t.log.Warnf("initial configFileCheck: %s", err)
+		t.log.Debugf("initial: %s", err)
 		return
 	}
 	defer t.delete()
@@ -201,7 +203,7 @@ func (t *Manager) configFileCheckRefresh(force bool) error {
 	}
 	err := t.configFileCheck()
 	if err != nil {
-		t.log.Errorf("configFileCheck: %s", err)
+		t.log.Debugf("refresh: %s", err)
 		t.cancel()
 	}
 	return err
@@ -290,7 +292,18 @@ func (t *Manager) configFileCheck() error {
 		return nil
 	}
 	if !slices.Contains(scope, t.localhost) {
-		t.log.Infof("localhost not anymore an instance node")
+		t.log.Infof("detect instance config file for peers")
+		cfg := t.instanceConfig
+		cfg.Scope = scope
+		cfg.UpdatedAt = mtime
+		cfg.Orchestrate = t.getOrchestrate(cf)
+		t.bus.Pub(&msgbus.InstanceConfigFor{
+			Path:        t.path,
+			Node:        t.localhost,
+			Orchestrate: cfg.Orchestrate,
+			Scope:       append([]string{}, cfg.Scope...),
+			UpdatedAt:   cfg.UpdatedAt,
+		}, t.pubLabel...)
 		return errConfigFileCheck
 	}
 
@@ -300,7 +313,6 @@ func (t *Manager) configFileCheck() error {
 	cfg.Children = t.getChildren(cf)
 	cfg.Env = cf.GetString(keyEnv)
 	cfg.MonitorAction = t.getMonitorAction(cf)
-	cfg.Nodename = t.localhost
 	cfg.Orchestrate = t.getOrchestrate(cf)
 	cfg.Parents = t.getParents(cf)
 	cfg.PlacementPolicy = t.getPlacementPolicy(cf)

@@ -31,6 +31,7 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceConfigFor{})
 	sub.AddFilter(&msgbus.InstanceConfigManagerDone{}, pubsub.Label{"node", t.localhost})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 
@@ -83,6 +84,8 @@ func (t *Manager) cfg(started chan<- bool) {
 
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(c)
+			case *msgbus.InstanceConfigFor:
+				t.onInstanceConfigFor(c)
 			case *msgbus.InstanceConfigManagerDone:
 				t.onInstanceConfigManagerDone(c)
 			case *msgbus.InstanceConfigUpdated:
@@ -198,7 +201,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 	if remoteFetcherUpdated, ok := t.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required
 		if remoteInstanceConfig.UpdatedAt.After(remoteFetcherUpdated) {
-			log.Warnf("cfg: cancel pending remote cfg fetcher, a more recent %s config is available on node %s", s, node)
+			log.Infof("cfg: cancel pending remote cfg fetcher, a more recent %s config is available on node %s", s, node)
 			t.cancelFetcher(s)
 		} else {
 			// let running fetcher does its job
@@ -206,7 +209,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		}
 	}
 	log.Infof("cfg: fetch %s config from node %s", s, node)
-	t.fetchConfigFromRemote(p, node, remoteInstanceConfig)
+	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, remoteInstanceConfig.Orchestrate, remoteInstanceConfig.Scope)
 }
 
 func (t *Manager) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
@@ -220,6 +223,116 @@ func (t *Manager) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 			t.cancelFetcher(s)
 		}
 	}
+}
+
+// onInstanceConfigFor is called on InstanceConfigFor event.
+//
+// It cancels obsolete fetcher if any.
+// If more recent local exists it returns
+// else it calls onInstanceConfigForFromLocalhost or onInstanceConfigForFromPeer
+func (t *Manager) onInstanceConfigFor(c *msgbus.InstanceConfigFor) {
+	if c.Path.Equal(naming.Cluster) {
+		t.log.Warnf("humm InstanceConfigFor for cluster!")
+		return
+	}
+
+	log := t.objectLogger(c.Path)
+	pathS := c.Path.String()
+
+	if fetchingUpdatingAt, ok := t.fetcherUpdated[pathS]; ok {
+		if c.UpdatedAt.After(fetchingUpdatingAt) {
+			log.Infof("cfg: cancel current fetcher because of more recent config file from %s@%s[%s] (was fetching from %s)",
+				c.Path, c.Node, c.Scope, t.fetcherFrom[pathS])
+			t.cancelFetcher(pathS)
+		}
+	}
+
+	if c.Node == t.localhost {
+		t.onInstanceConfigForFromLocalhost(c)
+	} else {
+		t.onInstanceConfigForFromPeer(c)
+	}
+}
+
+// onInstanceConfigForFromLocalhost is called on InstanceConfigFor event from localhost.
+func (t *Manager) onInstanceConfigForFromLocalhost(c *msgbus.InstanceConfigFor) {
+	log := t.objectLogger(c.Path)
+	cfgFile := c.Path.ConfigFile()
+	cfgFileUpdatedAt := file.ModTime(cfgFile)
+
+	if cfgFileUpdatedAt.IsZero() {
+		log.Infof("cfg: local config already deleted on local extra config for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+		t.abortKeepLocalFileForPeer(c.Path)
+	} else {
+		// we have local config file
+		if cfgFileUpdatedAt.After(c.UpdatedAt) {
+			log.Infof("cfg: ignore obsolete local extra config for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+			t.abortKeepLocalFileForPeer(c.Path)
+		} else if len(c.Scope) == 0 {
+			log.Infof("cfg: remove config file on local node scope extra config for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+			if err := os.Remove(cfgFile); err != nil {
+				log.Warnf("cfg: remove %s: %s", cfgFile, err)
+			}
+			t.abortKeepLocalFileForPeer(c.Path)
+		} else {
+			log.Infof("cfg: keep extra local config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+			t.waitPeerInstanceConfigUpdated[c.Path] = c.Scope
+		}
+	}
+}
+
+func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
+	log := t.objectLogger(c.Path)
+
+	pathS := c.Path.String()
+
+	cfgFile := c.Path.ConfigFile()
+	hasLocalConfigFile := file.Exists(cfgFile)
+	peerConfigUpdatedAt := c.UpdatedAt
+	localFileUpdated := file.ModTime(cfgFile)
+
+	if localFileUpdated.After(peerConfigUpdatedAt) {
+		log.Infof("cfg: ignore obsolete extra config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+		t.abortKeepLocalFileForPeer(c.Path)
+		return
+	}
+
+	if !inList(t.localhost, c.Scope) {
+		// peer node has an extra config file that is not for us
+		if hasLocalConfigFile {
+			log.Infof("cfg: remove local config file on extra config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+			if err := os.Remove(cfgFile); err != nil {
+				log.Debugf("cfg: remove %s: %s", cfgFile, err)
+			}
+			t.abortKeepLocalFileForPeer(c.Path)
+		}
+		return
+	}
+
+	// peer node has an extra config file for us
+	if mtime, ok := t.cfgMTime[pathS]; ok {
+		if !peerConfigUpdatedAt.After(mtime) {
+			log.Infof("cfg: more recent icfg has been started, ignore extra config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+			return
+		}
+	}
+	if !peerConfigUpdatedAt.After(localFileUpdated) {
+		log.Infof("cfg: more recent config file exists, ignore extra config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+		return
+	}
+	if t.fetcherUpdated[pathS].Equal(peerConfigUpdatedAt) {
+		// let running fetcher does its job
+		return
+	}
+	log.Infof("cfg: fetch config from extra config file for peers %s@%s[%s]", c.Path, c.Node, c.Scope)
+	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, c.Orchestrate, c.Scope)
+}
+
+func (t *Manager) abortKeepLocalFileForPeer(p naming.Path) {
+	if waitingPeers, ok := t.waitPeerInstanceConfigUpdated[p]; ok {
+		t.objectLogger(p).Infof("cfg: abort keep extra local config file for peers: %s@[%s]", p, waitingPeers)
+	}
+	delete(t.waitPeerInstanceConfigUpdated, p)
 }
 
 func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
@@ -258,20 +371,14 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 }
 
 func (t *Manager) inScope(cfg *instance.Config) bool {
-	localhost := t.localhost
-	for _, s := range cfg.Scope {
-		if s == localhost {
-			return true
-		}
-	}
-	return false
+	return inList(t.localhost, cfg.Scope)
 }
 
 func (t *Manager) cancelFetcher(s string) {
 	if cancel, ok := t.fetcherCancel[s]; ok {
-		t.log.Debugf("cfg: cancelFetcher %s", s)
-		cancel()
 		peer := t.fetcherFrom[s]
+		t.log.Debugf("cfg: cancelFetcher %s@%s", s, peer)
+		cancel()
 		delete(t.fetcherCancel, s)
 		delete(t.fetcherNodeCancel[peer], s)
 		delete(t.fetcherUpdated, s)
@@ -279,7 +386,11 @@ func (t *Manager) cancelFetcher(s string) {
 	}
 }
 
-func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, remoteInstanceConfig instance.Config) {
+func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, orchestrate string, scope []string) {
+	if peer == "" {
+		t.objectLogger(p).Errorf("cfg: fetch config %s from node ''", p)
+		return
+	}
 	s := p.String()
 	if n, ok := t.fetcherFrom[s]; ok {
 		t.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
@@ -288,7 +399,7 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, remoteInstan
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.fetcherCancel[s] = cancel
 	t.fetcherFrom[s] = peer
-	t.fetcherUpdated[s] = remoteInstanceConfig.UpdatedAt
+	t.fetcherUpdated[s] = updatedAt
 	if _, ok := t.fetcherNodeCancel[peer]; ok {
 		t.fetcherNodeCancel[peer][s] = cancel
 	} else {
@@ -300,14 +411,18 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, remoteInstan
 		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
 	}
-	go fetch(ctx, cli, p, peer, t.cfgCmdC, remoteInstanceConfig)
+	go fetch(ctx, cli, p, peer, t.cfgCmdC, orchestrate, scope)
 }
 
-func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, remoteInstanceConfig instance.Config) {
+func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, orchestrate string, scope []string) {
 	id := p.String() + "@" + peer
 	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
 		Attr("pkg", "daemon/discover").
 		Attr("id", id).WithPrefix("daemon: discover: cfg: fetch: ")
+	if peer == "" {
+		log.Errorf("fetch called without peer for %s", p)
+		panic("daemon/discover.cfg call fetch without peer")
+	}
 	tmpFilename, updated, err := remoteconfig.FetchObjectConfigFile(cli, p)
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)
@@ -353,7 +468,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		return
 	}
 	var freezeV bool
-	if remoteInstanceConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
+	if orchestrate == "ha" && len(scope) > 1 {
 		freezeV = true
 	}
 	select {
@@ -397,4 +512,13 @@ func peerURL(s string) string {
 		}
 	}
 	return daemonenv.HTTPNodeAndPortURL(addr, port)
+}
+
+func inList(s string, l []string) bool {
+	for _, v := range l {
+		if s == v {
+			return true
+		}
+	}
+	return false
 }

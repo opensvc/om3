@@ -105,6 +105,8 @@ var (
 
 		"InstanceConfigDeleting": func() any { return &InstanceConfigDeleting{} },
 
+		"InstanceConfigFor": func() any { return &InstanceConfigFor{} },
+
 		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
 		"InstanceFrozenFileRemoved": func() any { return &InstanceFrozenFileRemoved{} },
@@ -442,6 +444,21 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// InstanceConfigFor message is published by a node during analyse of
+	// instance config file that is scoped for foreign nodes (peers).
+	InstanceConfigFor struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		// Orchestrate is the config orchestrate value. it may be used by peers
+		// just after installation of fetched instance config file
+		Orchestrate string `json:"orchestrate" yaml:"orchestrate"`
+		// Scope is the list of nodes that have to fetch this config
+		Scope []string `json:"scope" yaml:"scope"`
+		// UpdatedAt is the config file time stamp
+		UpdatedAt time.Time `json:"updated_at" yaml:"updated_at"`
 	}
 
 	InstanceConfigUpdated struct {
@@ -954,6 +971,10 @@ func (e *InstanceConfigDeleted) Kind() string {
 
 func (e *InstanceConfigDeleting) Kind() string {
 	return "InstanceConfigDeleting"
+}
+
+func (e *InstanceConfigFor) Kind() string {
+	return "InstanceConfigFor"
 }
 
 func (e *InstanceConfigUpdated) Kind() string {

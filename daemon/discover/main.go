@@ -85,6 +85,15 @@ type (
 		imonStarter omon.IMonStarter
 
 		wg sync.WaitGroup
+
+		// waitPeerInstanceConfigUpdated tracks the nodes that haven't yet fetch local
+		// config file in the case of localhost event InstanceConfigFor.
+		//
+		// On localhost event ev InstanceConfigFor: waitPeerInstanceConfigUpdated[ev.path] = ev.Scope
+		//
+		// On peer event ev InstanceConfigUpdated: ev.Node is removed from waitPeerInstanceConfigUpdated[ev.path] array,
+		// when waitPeerInstanceConfigUpdated[ev.path] is empty we can remove local config file
+		waitPeerInstanceConfigUpdated map[naming.Path][]string
 	}
 )
 
@@ -101,7 +110,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cfgCmdC:  make(chan any),
 		cfgMTime: make(map[string]time.Time),
 
-		objectMonitor: make(map[string]map[string]struct{}),
+		waitPeerInstanceConfigUpdated: make(map[naming.Path][]string),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
