@@ -25,7 +25,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/util/hostname"
@@ -39,7 +38,6 @@ type (
 		ctx     context.Context
 		cancel  context.CancelFunc
 		log     *plog.Logger
-		databus *daemondata.T
 
 		// cfgDeleting is a map of local crm deleting call indexed by object path
 		cfgDeleting map[naming.Path]bool
@@ -154,7 +152,6 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 	}
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	t.databus = daemondata.FromContext(t.ctx)
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 
