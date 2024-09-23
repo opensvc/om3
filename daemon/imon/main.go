@@ -60,10 +60,20 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		// updated data from object status update srcEvent
-		instConfig    instance.Config
-		instStatus    map[string]instance.Status
-		instMonitor   map[string]instance.Monitor
+		// instConfig is the instance config value for path, it is updated on
+		// ObjectStatusUpdated for path events where srcEvent is InstanceConfigUpdated.
+		instConfig instance.Config
+
+		// instStatus is the instance status value for path, it is updated on
+		// ObjectStatusUpdated for path events where srcEvent is InstanceStatusDeleted
+		// or InstanceStatusUpdated.
+		instStatus map[string]instance.Status
+
+		// instMonitor tracks instance.Monitor for path on other nodes, iit is updated on
+		// ObjectStatusUpdated for path events where srcEvent is InstanceMonitorDeleted
+		// or InstanceMonitorUpdated from other nodes.
+		instMonitor map[string]instance.Monitor
+
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
 		nodeStatus    map[string]node.Status
@@ -269,7 +279,7 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 	for n, v := range instance.MonitorData.GetByPath(t.path) {
 		if n == t.localhost {
-			t.log.Warnf("bug: on init, instance.MonitorData[localhost] should be empty")
+			// skip localhost, t.instMonitor tracks t.path instance monitor of peers
 			continue
 		}
 		t.instMonitor[n] = *v
