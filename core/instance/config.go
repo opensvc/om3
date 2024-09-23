@@ -25,7 +25,6 @@ type (
 		FlexTarget       int              `json:"flex_target,omitempty"`
 		MonitorAction    MonitorAction    `json:"monitor_action,omitempty"`
 		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
-		Nodename         string           `json:"-"`
 		Orchestrate      string           `json:"orchestrate"`
 		Path             naming.Path      `json:"-"`
 		Parents          naming.Relations `json:"parents,omitempty"`
