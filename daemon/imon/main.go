@@ -295,20 +295,16 @@ func (t *Manager) worker(initialNodes []string) {
 				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
-		go func() {
-			instance.MonitorData.Unset(t.path, t.localhost)
-			t.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost},
-				t.labelPath,
-				t.labelLocalhost,
-			)
-		}()
-		go func() {
-			instance.StatusData.Unset(t.path, t.localhost)
-			t.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost},
-				t.labelPath,
-				t.labelLocalhost,
-			)
-		}()
+		instance.StatusData.Unset(t.path, t.localhost)
+		t.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost},
+			t.labelPath,
+			t.labelLocalhost,
+		)
+		instance.MonitorData.Unset(t.path, t.localhost)
+		t.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost},
+			t.labelPath,
+			t.labelLocalhost,
+		)
 		go func() {
 			tC := time.After(t.drainDuration)
 			for {
