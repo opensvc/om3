@@ -36,6 +36,9 @@ type (
 )
 
 var (
+	// messageTimeout
+	messageTimeout = 500 * time.Millisecond
+
 	msgBufferCount = 4
 	msgMaxSize     = 10000000 // max kind=full msg size
 	msgBufferChan  = make(chan []byte, msgBufferCount)
@@ -78,7 +81,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 	t.cancel = cancel
-	t.log.Infof("starting")
+	t.log.Infof("starting: timeout %s", t.timeout)
 	listener, err := net.Listen("tcp", t.addr+":"+t.port)
 	if err != nil {
 		t.log.Errorf("listen failed: %s", err)
@@ -140,7 +143,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				}
 				continue
 			}
-			if err := conn.SetDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+			if err := conn.SetDeadline(time.Now().Add(messageTimeout)); err != nil {
 				t.log.Infof("can't set read deadline for %s: %s", connAddr, err)
 				continue
 			}
