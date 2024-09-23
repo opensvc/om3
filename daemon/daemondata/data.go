@@ -383,6 +383,7 @@ func gensEqual(a, b gens) bool {
 }
 
 // startSubscriptions subscribes to label local node messages that change the cluster data view
+// or that must be forwarded to peers
 func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := d.bus.Sub("daemon.data", qs)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
@@ -397,6 +398,7 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
@@ -450,6 +452,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.DaemonSchedulerUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
+	case *msgbus.InstanceConfigFor:
 	case *msgbus.InstanceConfigUpdated:
 	case *msgbus.InstanceMonitorDeleted:
 	case *msgbus.InstanceMonitorUpdated:

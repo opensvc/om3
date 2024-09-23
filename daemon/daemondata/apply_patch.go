@@ -157,6 +157,8 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
 		d.bus.Pub(c, labelFromPeer)
+	case *msgbus.InstanceConfigFor:
+		d.bus.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigUpdated:
 		instance.ConfigData.Set(c.Path, c.Node, &c.Value)
 		d.bus.Pub(c, labelFromPeer)
