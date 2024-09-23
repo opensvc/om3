@@ -41,14 +41,18 @@ type (
 		log     *plog.Logger
 		databus *daemondata.T
 
+		// cfgDeleting is a map of local crm deleting call indexed by object path
+		cfgDeleting map[naming.Path]bool
+
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
+		// It is also refreshed (if defined) on paths during local instance config
+		// file removal when we are not anymore in scope.
 		// More recent remote config files are fetched.
 		cfgMTime map[string]time.Time
 
 		clusterConfig       cluster.Config
 		objectMonitorCancel map[string]context.CancelFunc
-		objectMonitor       map[string]map[string]struct{}
 
 		remoteNodeCtx        map[string]context.Context
 		remoteNodeCancel     map[string]context.CancelFunc
@@ -107,6 +111,8 @@ type (
 // returned *T
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
+		cfgDeleting: make(map[naming.Path]bool),
+
 		cfgCmdC:  make(chan any),
 		cfgMTime: make(map[string]time.Time),
 
