@@ -70,8 +70,8 @@ func (t *T) Start(parent context.Context) error {
 			t.log.Infof("stopped")
 		}()
 		// Add delay to ensure icfg is started for vip
-		// TODO: change to wait on discove initial discover loop is done ?
-		time.Sleep(250 * time.Millisecond)
+		// TODO: change to wait on discover initial discover loop is done ?
+		time.Sleep(1000 * time.Millisecond)
 		t.startSubscriptions()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
