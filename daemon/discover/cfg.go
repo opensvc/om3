@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
@@ -142,7 +143,7 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 		return
 	}
 	if _, ok := t.cfgMTime[s]; !ok {
-		log.Infof("cfg: config file updated time to start icfg for %s", c.Path)
+		log.Infof("cfg: config file updated for %s: start icfg", c.Path)
 		if err := icfg.Start(t.ctx, c.Path, c.File, t.cfgCmdC); err != nil {
 			log.Infof("cfg: can't start icfg for %s: %s", c.Path, err)
 			return
@@ -158,16 +159,19 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 // but have to be started again:
 //
 //   - when config file is absent,
-//     and it has not been deleted during a purge/delete imon orchestration,
-//     and it has not been deleted because of out of scope instance config
-//     (InstanceConfigFor event),
-//     and there is a peer with config for us that is more recent than t.cfgMTime[s]
-//     (remove a config because of out of scope refreshes t.cfgMTime[s])
-//     => we recover config file from this peer using t.onInstanceConfigUpdated
+//     and it has not been deleted during a purge/delete imon orchestration (
+//     t.cfgDeleting[p].
+//     and it has not been deleted because of out of foreign instance config (
+//     t.disableRecover[p]
+//     and there is a peer with config for us that is the most recent config
+//     where updated is >= t.cfgMTime[s]
+//     => recovering config file from this peer:
+//     calls t.onInstanceConfigUpdated with a recreated InstanceConfigUpdated
+//     event from peer.
 //
-//   - file exists and is more recent that last t.cfgMTime[s] (icfg startup time
-//     or time of InstanceConfigFor file)
-//     => start new icfg
+//   - file exists and is more recent than last t.cfgMTime[s] and t.disableRecover[p]
+//     is not set.
+//     => start new icfg and set the new t.cfgMTime[s]
 //
 // Example on delete/create config file:
 //
@@ -181,26 +185,28 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 //
 // Example on delete config file:
 //
-//		  1- rm config file
-//	   2- discover.cfg onInstanceConfigManagerDone, config file exists on peers
-//	      it is recovered using t.onInstanceConfigUpdated called with the most
-//	      recent InstanceConfigUpdated from peer
+//	1- rm config file
+//	2- discover.cfg onInstanceConfigManagerDone, config file exists on peers
+//	   it is recovered using t.onInstanceConfigUpdated called with the most
+//	   recent InstanceConfigUpdated from peer
 func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
 	s := p.String()
 	log := t.objectLogger(p)
 
-	if mtime := file.ModTime(filename); mtime.IsZero() {
-		cleanup := func() {
-			delete(t.cfgMTime, s)
-			delete(t.cfgDeleting, p)
-			delete(t.waitPeerInstanceConfigUpdated, p)
-		}
+	cleanup := func() {
+		delete(t.cfgMTime, s)
+		delete(t.cfgDeleting, p)
+		delete(t.disableRecover, p)
+	}
 
+	if mtime := file.ModTime(filename); mtime.IsZero() {
 		if _, ok := t.cfgDeleting[p]; ok {
-			log.Infof("cfg: on icfg done, no more local config file after imon crm deleting")
-		} else if waiters, ok := t.waitPeerInstanceConfigUpdated[p]; ok {
+			log.Infof("cfg: icfg is done, after imon crm deleting config file for %s", p)
+		} else if _, ok := t.disableRecover[p]; ok {
+			log.Infof("cfg: icfg is done, after removal foreign config file for %s", p)
+		} else if waiters, ok := t.retainForeignConfigFor[p]; ok {
 			if len(waiters) > 0 {
 				log.Infof("cfg: on icfg done, no more local config file, drop peer config waiters %s", waiters)
 			} else {
@@ -208,7 +214,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 			}
 		} else {
 			if peer, instanceConfig := t.mostRecentPeerConfig(p); instanceConfig != nil {
-				log.Infof("cfg: on icfg done, no more local config file => try to recover from peer %s", peer)
+				log.Infof("cfg: icfg is done, recovering config file for %s from %s", p, peer)
 				cleanup()
 				t.onInstanceConfigUpdated(&msgbus.InstanceConfigUpdated{
 					Path:  p,
@@ -217,19 +223,25 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 				})
 				return
 			}
-			log.Infof("cfg: on icfg done, no more local config file")
+			log.Infof("cfg: icfg is done for %s", p)
 		}
 		cleanup()
 	} else if mtime.After(t.cfgMTime[s]) {
-		log.Infof("cfg: on icfg done, updated config file => starting new icfg")
-		if err := icfg.Start(t.ctx, p, filename, t.cfgCmdC); err != nil {
-			log.Warnf("cfg: on icfg done, updated config file, start icfg failed: %s", err)
-			return
+		if _, ok := t.disableRecover[p]; ok {
+			log.Infof("cfg: icfg is done, foreign config file exists for %s", p)
+			cleanup()
 		} else {
-			t.cfgMTime[s] = mtime
+			log.Infof("cfg: icfg is done, but recent config file exists for %s: start new icfg", p)
+			if err := icfg.Start(t.ctx, p, filename, t.cfgCmdC); err != nil {
+				log.Warnf("cfg: start new icfg for %s failed: %s", p, err)
+				return
+			} else {
+				t.cfgMTime[s] = mtime
+			}
 		}
 	} else {
-		log.Infof("cfg: on icfg done, unchanged config file")
+		log.Infof("cfg: icfg is done for %s but unchanged config file", p)
+		cleanup()
 	}
 }
 
@@ -240,8 +252,8 @@ func (t *Manager) mostRecentPeerConfig(p naming.Path) (peer string, cfg *instanc
 			continue
 		}
 		if t.inScope(peerConfig) {
-			if (cfg == nil) || (cfg.UpdatedAt.Before(peerConfig.UpdatedAt) &&
-				peerConfig.UpdatedAt.After(t.cfgMTime[pathS])) {
+			if (cfg == nil || cfg.UpdatedAt.Before(peerConfig.UpdatedAt)) &&
+				!t.cfgMTime[pathS].After(peerConfig.UpdatedAt) {
 				cfg = peerConfig
 				peer = n
 			}
@@ -263,12 +275,12 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	if t.inScope(&remoteInstanceConfig) {
-		delete(t.waitPeerInstanceConfigUpdated, p)
+		delete(t.retainForeignConfigFor, p)
 	}
-	if waitPeerConfig, ok := t.waitPeerInstanceConfigUpdated[p]; ok {
+	if waitPeerConfig, ok := t.retainForeignConfigFor[p]; ok {
 		if t.inScope(&remoteInstanceConfig) {
-			log.Infof("cfg: abort removal local config file on instance config updated from %s@%s %s", p, node, remoteInstanceConfig.Scope)
-			delete(t.waitPeerInstanceConfigUpdated, p)
+			log.Infof("cfg: config not anymore foreign peer node %s has %s with scope (%s)", node, p, strings.Join(remoteInstanceConfig.Scope, ","))
+			delete(t.retainForeignConfigFor, p)
 		} else {
 			l := make([]string, 0)
 			updates := false
@@ -280,11 +292,12 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 				l = append(l, waiting)
 			}
 			if updates {
-				t.waitPeerInstanceConfigUpdated[p] = l
+				t.retainForeignConfigFor[p] = l
 				if len(l) > 0 {
-					log.Infof("cfg: keep local config for remaining peers %s%s", p, l)
+					log.Infof("cfg: retain the foreign config file for %s until remaining peers have retrieved it (%s)",
+						p, strings.Join(t.retainForeignConfigFor[p], ","))
 				} else {
-					log.Infof("cfg: can remove local config: no more remaining peers for %s", p)
+					log.Infof("cfg: can release the foreign config file for %s: all remaining peers have retrieved it", p)
 				}
 			}
 		}
@@ -295,9 +308,11 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		!t.inScope(&remoteInstanceConfig) {
 		t.cancelFetcher(pathS)
 		cfgFile := p.ConfigFile()
-		if file.Exists(cfgFile) && len(t.waitPeerInstanceConfigUpdated[p]) == 0 {
-			log.Infof("cfg: remove local config %s (localnode not in node %s config scope)", pathS, node)
+		if file.Exists(cfgFile) && len(t.retainForeignConfigFor[p]) == 0 {
+			log.Infof("cfg: remove foreign config file for %s", pathS)
 			t.removeConfigFileAndDisableRecover(p, remoteInstanceConfig.UpdatedAt)
+			delete(t.cfgMTime, pathS)
+			delete(t.retainForeignConfigFor, p)
 		}
 		return
 	}
@@ -328,7 +343,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 //
 // When t.cfgMTime[pathS] exists, it sets t.cfgMTime[pathS] to updatedAt. This
 // prevents onInstanceConfigManagerDone -> recover (icfg is running but will
-// die because of config file removal => icfg will publish InstanceConfigManagerDone.
+// die because of config file removal => icfg will publish InstanceConfigManagerDone).
 func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt time.Time) {
 	cfgFile := p.ConfigFile()
 	pathS := p.String()
@@ -336,13 +351,11 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 	if err := os.Remove(cfgFile); err != nil {
 		log.Debugf("cfg: remove %s: %s", cfgFile, err)
 	}
-	if cfgMtime, ok := t.cfgMTime[pathS]; ok {
-		// the running icfg will die soon, set its last cfgMTime
-		// we don't onInstanceConfigManagerDone call recover config from peer
-		if updatedAt.After(cfgMtime) {
-			log.Debugf("cfg: set last cfg time to prevent onInstanceConfigManagerDone -> recover %s", p)
-			t.cfgMTime[pathS] = updatedAt
-		}
+	if _, ok := t.cfgMTime[pathS]; ok {
+		// the running icfg will die soon, onInstanceConfigManagerDone will be called
+		// and must not try to recover the config.
+		t.disableRecover[p] = updatedAt
+		log.Debugf("cfg: disable the next onInstanceConfigManagerDone recovering of %s configuration", p)
 	}
 }
 
@@ -375,6 +388,10 @@ func (t *Manager) onInstanceConfigFor(c *msgbus.InstanceConfigFor) {
 		}
 	}
 
+	if _, ok := t.cfgMTime[pathS]; ok {
+		t.disableRecover[c.Path] = c.UpdatedAt
+	}
+
 	if c.Node == t.localhost {
 		t.onInstanceConfigForFromLocalhost(c)
 	} else {
@@ -389,21 +406,20 @@ func (t *Manager) onInstanceConfigForFromLocalhost(c *msgbus.InstanceConfigFor) 
 	cfgFileUpdatedAt := file.ModTime(cfgFile)
 
 	if cfgFileUpdatedAt.IsZero() {
-		log.Infof("cfg: local config already deleted on local extra config for peers %s@%s%s", c.Path, c.Node, c.Scope)
-		t.abortKeepLocalFileForPeer(c.Path)
+		log.Infof("cfg: foreign config file for %s has disappeared", c.Path)
+		t.abortRetainForeignConfig(c.Path)
 	} else {
 		// we have local config file
 		if cfgFileUpdatedAt.After(c.UpdatedAt) {
-			log.Infof("cfg: ignore obsolete local extra config for peers %s@%s%s", c.Path, c.Node, c.Scope)
-			t.abortKeepLocalFileForPeer(c.Path)
+			log.Infof("cfg: ignore obsolete foreign config file %s with scopes %s", c.Path, c.Scope)
+			t.abortRetainForeignConfig(c.Path)
 		} else if len(c.Scope) == 0 {
-			log.Infof("cfg: remove config file on local node scope extra config for peers %s@%s%s", c.Path, c.Node, c.Scope)
+			log.Infof("cfg: remove foreign config file %s that has no scopes", c.Path)
 			t.removeConfigFileAndDisableRecover(c.Path, c.UpdatedAt)
-			t.abortKeepLocalFileForPeer(c.Path)
+			t.abortRetainForeignConfig(c.Path)
 		} else {
-			log.Infof("cfg: keep extra local config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
-			t.waitPeerInstanceConfigUpdated[c.Path] = c.Scope
-			t.cfgMTime[c.Path.String()] = c.UpdatedAt
+			log.Infof("cfg: retain the foreign config file for %s until peers have retrieved it (%s)", c.Path, strings.Join(c.Scope, ","))
+			t.retainForeignConfigFor[c.Path] = c.Scope
 		}
 	}
 }
@@ -419,17 +435,17 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 	localFileUpdated := file.ModTime(cfgFile)
 
 	if localFileUpdated.After(peerConfigUpdatedAt) {
-		log.Infof("cfg: ignore obsolete extra config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
-		t.abortKeepLocalFileForPeer(c.Path)
+		log.Infof("cfg: ignore obsolete foreign config file for %s from %s", c.Path, c.Node)
+		t.abortRetainForeignConfig(c.Path)
 		return
 	}
 
 	if !inList(t.localhost, c.Scope) {
 		// peer node has an extra config file that is not for us
 		if hasLocalConfigFile {
-			log.Infof("cfg: remove local config file on extra config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
+			log.Infof("cfg: remove foreign config file for %s from %s", c.Path, c.Node)
 			t.removeConfigFileAndDisableRecover(c.Path, c.UpdatedAt)
-			t.abortKeepLocalFileForPeer(c.Path)
+			t.abortRetainForeignConfig(c.Path)
 		}
 		return
 	}
@@ -437,27 +453,27 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 	// peer node has an extra config file for us
 	if mtime, ok := t.cfgMTime[pathS]; ok {
 		if !peerConfigUpdatedAt.After(mtime) {
-			log.Infof("cfg: more recent icfg has been started, ignore extra config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
+			log.Infof("cfg: more recent icfg has been started, ignore foreign config file for %s from %s", c.Path, c.Node)
 			return
 		}
 	}
 	if !peerConfigUpdatedAt.After(localFileUpdated) {
-		log.Infof("cfg: more recent config file exists, ignore extra config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
+		log.Infof("cfg: more recent config file exists, ignore foreign config file for %s from %s", c.Path, c.Node)
 		return
 	}
 	if t.fetcherUpdated[pathS].Equal(peerConfigUpdatedAt) {
 		// let running fetcher does its job
 		return
 	}
-	log.Infof("cfg: fetch config from extra config file for peers %s@%s%s", c.Path, c.Node, c.Scope)
+	log.Infof("cfg: fetch config %s from foreign config file on %s", c.Path, c.Node)
 	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, c.Orchestrate, c.Scope)
 }
 
-func (t *Manager) abortKeepLocalFileForPeer(p naming.Path) {
-	if waitingPeers, ok := t.waitPeerInstanceConfigUpdated[p]; ok {
-		t.objectLogger(p).Infof("cfg: abort keep extra local config file for peers %s: %s", p, waitingPeers)
+func (t *Manager) abortRetainForeignConfig(p naming.Path) {
+	if waitingPeers, ok := t.retainForeignConfigFor[p]; ok {
+		t.objectLogger(p).Infof("cfg: abort retain foreign config file for %s peers (%s)", p, strings.Join(waitingPeers, ","))
 	}
-	delete(t.waitPeerInstanceConfigUpdated, p)
+	delete(t.retainForeignConfigFor, p)
 }
 
 func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {

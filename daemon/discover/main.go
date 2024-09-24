@@ -44,10 +44,12 @@ type (
 
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
-		// It is also refreshed (if defined) on paths during local instance config
-		// file removal when we are not anymore in scope.
 		// More recent remote config files are fetched.
 		cfgMTime map[string]time.Time
+
+		// disableRecover is a map of local running icfg (indexed by object) where
+		// the onInstanceConfigManagerDone recover is disabled.
+		disableRecover map[naming.Path]time.Time
 
 		clusterConfig       cluster.Config
 		objectMonitorCancel map[string]context.CancelFunc
@@ -88,14 +90,16 @@ type (
 
 		wg sync.WaitGroup
 
-		// waitPeerInstanceConfigUpdated tracks the nodes that haven't yet fetch local
+		// retainForeignConfigFor tracks the nodes that haven't yet fetch local
 		// config file in the case of localhost event InstanceConfigFor.
 		//
-		// On localhost event ev InstanceConfigFor: waitPeerInstanceConfigUpdated[ev.path] = ev.Scope
+		// On localhost event ev InstanceConfigFor: retainForeignConfigFor[ev.path] = ev.Scope
 		//
-		// On peer event ev InstanceConfigUpdated: ev.Node is removed from waitPeerInstanceConfigUpdated[ev.path] array,
-		// when waitPeerInstanceConfigUpdated[ev.path] is empty we can remove local config file
-		waitPeerInstanceConfigUpdated map[naming.Path][]string
+		// On peer event ev InstanceConfigUpdated: ev.Node is removed from the
+		// retainForeignConfigFor[ev.path] array.
+		//
+		// when retainForeignConfigFor[ev.path] is empty we can remove local config file
+		retainForeignConfigFor map[naming.Path][]string
 	}
 )
 
@@ -114,7 +118,9 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cfgCmdC:  make(chan any),
 		cfgMTime: make(map[string]time.Time),
 
-		waitPeerInstanceConfigUpdated: make(map[naming.Path][]string),
+		retainForeignConfigFor: make(map[naming.Path][]string),
+
+		disableRecover: make(map[naming.Path]time.Time),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
