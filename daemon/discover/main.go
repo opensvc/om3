@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/imon"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -38,6 +39,8 @@ type (
 		ctx     context.Context
 		cancel  context.CancelFunc
 		log     *plog.Logger
+
+		bus *pubsub.Bus
 
 		// cfgDeleting is a map of local crm deleting call indexed by object path
 		cfgDeleting map[naming.Path]bool
@@ -100,6 +103,13 @@ type (
 		//
 		// when retainForeignConfigFor[ev.path] is empty we can remove local config file
 		retainForeignConfigFor map[naming.Path][]string
+
+		// instanceConfigFor tracks the local instanceConfigFor events that have
+		// not been transmitted to peer during daemon warmup (the event is not
+		// applied during apply full).
+		// So we keep those pending event to retransmit them when hb message type
+		// become 'patch'
+		instanceConfigFor map[naming.Path]*msgbus.InstanceConfigFor
 	}
 )
 
@@ -119,6 +129,8 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cfgMTime: make(map[string]time.Time),
 
 		retainForeignConfigFor: make(map[naming.Path][]string),
+
+		instanceConfigFor: make(map[naming.Path]*msgbus.InstanceConfigFor),
 
 		disableRecover: make(map[naming.Path]time.Time),
 

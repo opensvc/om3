@@ -25,11 +25,13 @@ import (
 )
 
 func (t *Manager) startSubscriptions() *pubsub.Subscription {
-	bus := pubsub.BusFromContext(t.ctx)
-	sub := bus.Sub("daemon.discover.cfg", t.subQS)
+	t.bus = pubsub.BusFromContext(t.ctx)
+	sub := t.bus.Sub("daemon.discover.cfg", t.subQS)
 
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
+
+	sub.AddFilter(&msgbus.HbMessageTypeUpdated{}, pubsub.Label{"node", t.localhost})
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleting{}, pubsub.Label{"node", t.localhost})
 	sub.AddFilter(&msgbus.InstanceConfigFor{})
@@ -82,6 +84,9 @@ func (t *Manager) cfg(started chan<- bool) {
 				t.onClusterConfigUpdated(c)
 			case *msgbus.ConfigFileUpdated:
 				t.onConfigFileUpdated(c)
+
+			case *msgbus.HbMessageTypeUpdated:
+				t.onHbMessageTypeUpdated(c)
 
 			case *msgbus.InstanceConfigDeleting:
 				t.onInstanceConfigDeleting(c)
@@ -274,13 +279,15 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 	log := t.objectLogger(p)
 	localUpdated := file.ModTime(p.ConfigFile())
 
-	if t.inScope(&remoteInstanceConfig) {
-		delete(t.retainForeignConfigFor, p)
-	}
+	icfgFor, hasIcfgFor := t.instanceConfigFor[p]
+
 	if waitPeerConfig, ok := t.retainForeignConfigFor[p]; ok {
 		if t.inScope(&remoteInstanceConfig) {
-			log.Infof("cfg: config not anymore foreign peer node %s has %s with scope (%s)", node, p, strings.Join(remoteInstanceConfig.Scope, ","))
-			delete(t.retainForeignConfigFor, p)
+			if !hasIcfgFor || remoteInstanceConfig.UpdatedAt.After(icfgFor.UpdatedAt) {
+				log.Infof("cfg: config is not anymore foreign peer node %s has %s with scope (%s)", node, p, strings.Join(remoteInstanceConfig.Scope, ","))
+				delete(t.retainForeignConfigFor, p)
+				delete(t.instanceConfigFor, p)
+			}
 		} else {
 			l := make([]string, 0)
 			updates := false
@@ -313,6 +320,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			t.removeConfigFileAndDisableRecover(p, remoteInstanceConfig.UpdatedAt)
 			delete(t.cfgMTime, pathS)
 			delete(t.retainForeignConfigFor, p)
+			delete(t.instanceConfigFor, p)
 		}
 		return
 	}
@@ -356,6 +364,35 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 		// and must not try to recover the config.
 		t.disableRecover[p] = updatedAt
 		log.Debugf("cfg: disable the next onInstanceConfigManagerDone recovering of %s configuration", p)
+	}
+}
+
+// onHbMessageTypeUpdated must re-emit pending instanceConfigFor event when the
+// HbMessageTypeUpdated.To is "patch".
+// instanceConfigFor are not applied during apply full.
+func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
+	if c.To != "patch" {
+		return
+	}
+	t.log.Debugf("cfg: hb message type is now patch, verify if foreign config file event must be re-emmited")
+	for p, ev := range t.instanceConfigFor {
+		mtime := file.ModTime(p.ConfigFile())
+		if !mtime.IsZero() && len(ev.Scope) > 0 {
+			t.objectLogger(p).Infof("cfg: re-publish remaining foreign config file %s for peers", p)
+			t.bus.Pub(&msgbus.InstanceConfigFor{
+				Path:        p,
+				Node:        t.localhost,
+				Orchestrate: ev.Orchestrate,
+				Scope:       append([]string{}, ev.Scope...),
+				UpdatedAt:   ev.UpdatedAt,
+			},
+				pubsub.Label{"path", p.String()},
+				pubsub.Label{"node", t.localhost},
+			)
+		} else {
+			t.objectLogger(p).Debugf("cfg: drop obsolete foreign config file %s event, local config file is absent", ev.Path)
+			delete(t.instanceConfigFor, p)
+		}
 	}
 }
 
@@ -420,6 +457,7 @@ func (t *Manager) onInstanceConfigForFromLocalhost(c *msgbus.InstanceConfigFor) 
 		} else {
 			log.Infof("cfg: retain the foreign config file for %s until peers have retrieved it (%s)", c.Path, strings.Join(c.Scope, ","))
 			t.retainForeignConfigFor[c.Path] = c.Scope
+			t.instanceConfigFor[c.Path] = c
 		}
 	}
 }
@@ -474,6 +512,7 @@ func (t *Manager) abortRetainForeignConfig(p naming.Path) {
 		t.objectLogger(p).Infof("cfg: abort retain foreign config file for %s peers (%s)", p, strings.Join(waitingPeers, ","))
 	}
 	delete(t.retainForeignConfigFor, p)
+	delete(t.instanceConfigFor, p)
 }
 
 func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
