@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/clusternode"
@@ -119,8 +120,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	t.startSubscriptions()
 
 	go func() {
-		t.log.Infof("starting %s", t.path)
-		defer t.log.Infof("stopped %s", t.path)
+		t.log.Debugf("starting")
 		defer t.log.Debugf("stopped")
 		defer func() {
 			cancel()
@@ -167,9 +167,6 @@ func (t *Manager) startSubscriptions() {
 
 // worker watch for local instConfig config file updates until file is removed
 func (t *Manager) worker() {
-	defer t.log.Debugf("done")
-	t.log.Debugf("starting")
-
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := t.configFileCheck(); err != nil {
 		t.log.Debugf("initial: %s", err)
@@ -215,7 +212,7 @@ func (t *Manager) onClusterConfigUpdated() {
 }
 
 func (t *Manager) onConfigFileUpdated() {
-	t.log.Infof("config file changed => refresh")
+	t.log.Infof("refresh on config file event")
 	_ = t.configFileCheckRefresh(false)
 }
 
@@ -292,7 +289,7 @@ func (t *Manager) configFileCheck() error {
 		return nil
 	}
 	if !slices.Contains(scope, t.localhost) {
-		t.log.Infof("detect instance config file for peers")
+		t.log.Infof("foreign config file for peers (%s)", strings.Join(scope, ","))
 		cfg := t.instanceConfig
 		cfg.Scope = scope
 		cfg.UpdatedAt = mtime
