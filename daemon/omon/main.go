@@ -12,6 +12,8 @@ package omon
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/instance"
@@ -47,15 +49,18 @@ type (
 		//   Then instStatus map is updated from:
 		//      * msgbus.InstanceConfigDeleted
 		//      * msgbus.InstanceStatusUpdated,
-		//
 		instStatus map[string]instance.Status
 
+		// instMonitor is internal cache for nodes instance monitor.
 		instMonitor map[string]instance.Monitor
 
-		// instConfig track the known instance p configs.
-		// It is used to terminate omon (when instConfig len is 0)
+		// instConfig tracks the known instance configs.
 		// It is used to start imon (when instConfig[o.localhost] is [re]created)
 		instConfig map[string]instance.Config
+
+		// instConfigFor has a copy of the latest InstanceConfigFor events where
+		// recent InstanceConfigUpdated peers have been removed from scope.
+		instConfigFor msgbus.InstanceConfigFor
 
 		// srcEvent is the source event that triggered the object status update
 		srcEvent any
@@ -143,6 +148,7 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigFor{}, labelPath)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPath)
 
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelPath)
@@ -190,10 +196,17 @@ func (t *Manager) worker() {
 		t.delete()
 	}()
 	for {
-		if len(t.instConfig)+len(t.instStatus)+len(t.instMonitor) == 0 {
+		// len of instConfigFor.Scope participate in the decision of omon
+		// goroutine exit:
+		// The omon goroutine doesn't have to return during the transitory period
+		// when all object nodes have been replaced. There are no more instance
+		// configs, monitors and statuses until the new peer nodes have fetched
+		// the config and published the config, monitor or status.
+		if len(t.instConfig)+len(t.instStatus)+len(t.instMonitor)+len(t.instConfigFor.Scope) == 0 {
 			t.log.Infof("no more instance config, status and monitor")
 			return
 		}
+
 		t.srcEvent = nil
 		select {
 		case <-t.ctx.Done():
@@ -215,12 +228,34 @@ func (t *Manager) worker() {
 				delete(t.instStatus, c.Node)
 				t.updateStatus()
 
+			case *msgbus.InstanceConfigFor:
+				if c.UpdatedAt.After(t.instConfigFor.UpdatedAt) {
+					l := make([]string, 0)
+					for _, peer := range c.Scope {
+						if t.instConfig[peer].UpdatedAt.Before(c.UpdatedAt) {
+							// absent or older peer are retained in scope
+							l = append(l, peer)
+						}
+					}
+					t.instConfigFor = msgbus.InstanceConfigFor{
+						Scope:     l,
+						UpdatedAt: c.UpdatedAt,
+					}
+				}
+
 			case *msgbus.InstanceStatusUpdated:
 				t.srcEvent = c
 				t.instStatus[c.Node] = c.Value
 				t.updateStatus()
 
 			case *msgbus.InstanceConfigUpdated:
+				if !c.Value.UpdatedAt.Before(t.instConfigFor.UpdatedAt) {
+					if i := slices.Index(t.instConfigFor.Scope, c.Node); i >= 0 {
+						t.instConfigFor.Scope = slices.Delete(t.instConfigFor.Scope, i, i+1)
+						t.log.Debugf("remaining missing instance config update for nodes (%s)",
+							strings.Join(t.instConfigFor.Scope, ","))
+					}
+				}
 				t.status.Scope = c.Value.Scope
 				t.status.FlexTarget = c.Value.FlexTarget
 				t.status.FlexMin = c.Value.FlexMin
@@ -251,7 +286,7 @@ func (t *Manager) worker() {
 
 			case *msgbus.InstanceConfigDeleted:
 				if c.Node == t.localhost && t.imonCancel != nil {
-					t.log.Infof("local instance config deleted => cancel associated imon")
+					t.log.Infof("local instance config deleted: cancel associated imon")
 					t.imonCancel()
 					t.imonCancel = nil
 				}
