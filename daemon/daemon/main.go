@@ -219,8 +219,7 @@ func (t *T) Wait() {
 }
 
 func (t *T) logTransition(state string) {
-	// use error level for main daemon transition
-	t.log.Errorf("Daemon %s", state)
+	t.log.Infof("daemon %s", state)
 }
 
 func (t *T) stopWatcher() {
