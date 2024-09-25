@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
@@ -52,7 +53,9 @@ func (t *T) onConfigUpdated() {
 		t.feedPinger.Stop()
 	}
 	if err := t.setupRequester(); err != nil {
-		t.log.Errorf("can't setup requester: %s", err)
+		if !errors.Is(err, object.ErrNodeCollectorConfig) {
+			t.log.Errorf("can't setup requester: %s", err)
+		}
 	}
 	if err != nil {
 		t.log.Infof("the collector routine is dormant: %s", err)
@@ -156,8 +159,9 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		t.daemonStatusChange[c.Node] = struct{}{}
 	}
 	if c.Node == t.localhost {
-		if t.isSpeaker != c.Value.IsLeader {
-			t.isSpeaker = c.Value.IsLeader
+		isSpeaker := !t.disable && c.Value.IsLeader
+		if isSpeaker != t.isSpeaker {
+			t.isSpeaker = isSpeaker
 			t.publishOnChange(t.getState())
 		}
 	}
