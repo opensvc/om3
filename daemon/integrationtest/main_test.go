@@ -118,7 +118,7 @@ func Test_daemon(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		// need enough time for test with race
-		maxTestDuration := 2 * time.Second
+		maxTestDuration := 3 * time.Second
 		cli, err := GetClient(t)
 		require.Nil(t, err)
 		require.FileExistsf(t, filepath.Join(env.Root, "var", "node", "frozen"),
