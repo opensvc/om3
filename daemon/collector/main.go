@@ -237,6 +237,7 @@ func (t *T) setupRequester() error {
 		if errors.Is(err, object.ErrNodeCollectorConfig) {
 			t.disable = true
 			t.status.Url = ""
+			err = nil
 		} else {
 			// It is now enabled, clear previous disable state
 			t.disable = false
@@ -316,7 +317,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
-	t.isSpeaker = node.StatusData.Get(t.localhost).IsLeader
+	t.isSpeaker = !t.disable && node.StatusData.Get(t.localhost).IsLeader
 	t.publishOnChange(t.getState())
 
 	t.initChanges()
