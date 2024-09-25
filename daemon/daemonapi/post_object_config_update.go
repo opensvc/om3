@@ -72,30 +72,43 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewConfigurer", "%s", err)
 		}
 		if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
+			log.Debugf("PrepareUpdate %s: %s", p, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 		}
 		alerts, err := oc.Config().Validate()
 		if err != nil {
+			log.Debugf("Validate %s: %s", p, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Validate config", "%s", err)
 		}
 		if alerts.HasError() {
+			log.Debugf("Validate has errors %s", p)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts.StringWithoutMeta())
 		}
+		log.Infof("committing %s", p)
 		if err := oc.Config().CommitInvalid(); err != nil {
+			log.Errorf("CommitInvalid %s: %s", p, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
+		log.Infof("committed %s", p)
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
 	for nodename := range instanceConfigData {
 		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
+			log.Warnf("new client for %s@%s: %s", p, nodename, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
 		if resp, err := c.PostObjectConfigUpdateWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+			log.Warnf("request proxy %s@%s: %s", p, nodename, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-		} else if len(resp.Body) > 0 {
-			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+		} else {
+			log.Debugf("request proxy to %s for %s status: %s", nodename, p, resp.Status())
+			if len(resp.Body) > 0 {
+				return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+			} else {
+				return ctx.NoContent(resp.StatusCode())
+			}
 		}
 	}
 

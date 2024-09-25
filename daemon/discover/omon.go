@@ -3,6 +3,8 @@ package discover
 import (
 	"time"
 
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/util/plog"
@@ -12,10 +14,12 @@ import (
 func (t *Manager) omon(started chan<- bool) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: omon: ")
 	log.Infof("started")
+	omonStarted := make(map[naming.Path]bool)
 	defer log.Infof("stopped")
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("daemon.discover.omon", t.subQS)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusDone{}, pubsub.Label{"node", t.localhost})
 	sub.Start()
 	started <- true
 	defer func() {
@@ -29,10 +33,20 @@ func (t *Manager) omon(started chan<- bool) {
 			select {
 			case <-tC:
 				return
-			case <-t.objectMonitorCmdC:
 			}
 		}
 	}()
+
+	startOmon := func(p naming.Path, instanceConfig instance.Config, origin string) {
+		log := naming.LogWithPath(log, p)
+		log.Infof("%s: start new omon %s", origin, p)
+		if err := omon.Start(t.ctx, t.omonSubQS, p, instanceConfig, t.imonStarter); err != nil {
+			log.Errorf("%s: start new omon failed for %s: %s", origin, p, err)
+			return
+		}
+		omonStarted[p] = true
+	}
+
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -40,22 +54,35 @@ func (t *Manager) omon(started chan<- bool) {
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.InstanceConfigUpdated:
-				s := c.Path.String()
-				if _, ok := t.objectMonitor[s]; !ok {
-					log.Infof("new object %s", s)
-					if err := omon.Start(t.ctx, t.omonSubQS, c.Path, c.Value, t.objectMonitorCmdC, t.imonStarter); err != nil {
-						log.Errorf("start %s failed: %s", s, err)
-						return
-					}
-					t.objectMonitor[s] = make(map[string]struct{})
+				if _, ok := omonStarted[c.Path]; !ok {
+					startOmon(c.Path, c.Value, "instance config updated")
+				} else {
+					// see bellow ObjectStatusDone on t0 InstanceConfigDeleted,
+					// t1 InstanceConfigUpdated
 				}
-			}
-		case i := <-t.objectMonitorCmdC:
-			switch c := i.(type) {
 			case *msgbus.ObjectStatusDone:
-				delete(t.objectMonitor, c.Path.String())
-			default:
-				log.Errorf("unexpected cmd: %i", i)
+				delete(omonStarted, c.Path)
+				// We must verify if instance config has been recreated, without
+				// startOmon on InstanceConfigUpdated event. See following
+				// event flow:
+				//    t+0 omon: receive InstanceConfigDeleted
+				//    t+1 omon: terminating
+				//    t+2 discover.omon: receive InstanceConfigUpdated (skipped
+				//        because we don't have yet received ObjectStatusDone)
+				//    t+3 omon: publish ObjectStatusDone
+				//    t+4 discover.omon: receive ObjectStatusDone from t+3
+				//                       we have to start new omon
+				var lastestConfig *instance.Config
+				var lastestConfigFrom string
+				for nodename, iConfig := range instance.ConfigData.GetByPath(c.Path) {
+					if lastestConfig == nil || iConfig.UpdatedAt.After(lastestConfig.UpdatedAt) {
+						lastestConfig = iConfig
+						lastestConfigFrom = nodename
+					}
+				}
+				if lastestConfig != nil {
+					startOmon(c.Path, *lastestConfig, "object done but instance config exists on "+lastestConfigFrom)
+				}
 			}
 		}
 	}

@@ -60,7 +60,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		t.log.Infof("starting")
+		t.log.Infof("starting: timeout %s, interval: %s", t.timeout, t.interval)
 		for node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbID:     t.id,

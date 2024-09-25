@@ -22,6 +22,8 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 
+	log = naming.LogWithPath(log, objPath)
+
 	filename := objPath.ConfigFile()
 
 	mtime := file.ModTime(filename)
@@ -31,5 +33,6 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 	}
 
 	ctx.Response().Header().Add(api.HeaderLastModifiedNano, mtime.Format(time.RFC3339Nano))
+	log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
 	return ctx.File(filename)
 }

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/clusternode"
@@ -39,16 +40,20 @@ import (
 
 type (
 	Manager struct {
-		path                     naming.Path
-		configure                object.Configurer
-		filename                 string
-		log                      *plog.Logger
-		lastMtime                time.Time
-		localhost                string
-		forceRefresh             bool
-		published                bool
-		bus                      *pubsub.Bus
-		sub                      *pubsub.Subscription
+		path         naming.Path
+		configure    object.Configurer
+		filename     string
+		log          *plog.Logger
+		lastMtime    time.Time
+		localhost    string
+		forceRefresh bool
+
+		// pubLabel is the list of labels for this icfg publications (path and node)
+		pubLabel  []pubsub.Label
+		published bool
+		bus       *pubsub.Bus
+		sub       *pubsub.Subscription
+
 		instanceConfig           instance.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
@@ -101,6 +106,11 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 		log: naming.LogWithPath(plog.NewDefaultLogger(), p).
 			Attr("pkg", "daemon/icfg").
 			WithPrefix("daemon: icfg: " + p.String() + ": "),
+
+		pubLabel: []pubsub.Label{
+			{"path", p.String()},
+			{"node", localhost},
+		},
 	}
 
 	if err := t.setConfigure(); err != nil {
@@ -110,6 +120,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	t.startSubscriptions()
 
 	go func() {
+		t.log.Debugf("starting")
 		defer t.log.Debugf("stopped")
 		defer func() {
 			cancel()
@@ -125,17 +136,20 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 }
 
 func (t *Manager) startSubscriptions() {
-	clusterID := clusterPath.String()
-	label := pubsub.Label{"path", t.path.String()}
+	clusterPathString := clusterPath.String()
+
+	labelPath := pubsub.Label{"path", t.path.String()}
+	labelPathCluster := pubsub.Label{"path", clusterPathString}
+	labelLocalhost := pubsub.Label{"node", t.localhost}
+
 	t.sub = t.bus.Sub("daemon.icfg " + t.path.String())
-	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
-	if t.path.String() != clusterID {
-		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
+	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, labelPath)
+	if t.path.String() != clusterPathString {
+		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, labelPath)
 
 		// the scope value may depend on cluster nodes values: *, clusternodes ...
 		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
-		localClusterLabels := []pubsub.Label{{"path", clusterID}, {"node", t.localhost}}
-		t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, localClusterLabels...)
+		t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPathCluster, labelLocalhost)
 	} else {
 		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for
 		// ClusterConfigUpdated.
@@ -146,19 +160,16 @@ func (t *Manager) startSubscriptions() {
 		//     ccfg: ConfigFileUpdated =>  - update cached cluster nodes
 		//                                 - ClusterConfigUpdated
 		//     icfg:                         ClusterConfigUpdated         => cluster InstanceConfigUpdated
-		t.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", t.localhost})
+		t.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	}
 	t.sub.Start()
 }
 
 // worker watch for local instConfig config file updates until file is removed
 func (t *Manager) worker() {
-	defer t.log.Debugf("done")
-	t.log.Debugf("starting")
-
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := t.configFileCheck(); err != nil {
-		t.log.Warnf("initial configFileCheck: %s", err)
+		t.log.Debugf("initial: %s", err)
 		return
 	}
 	defer t.delete()
@@ -189,7 +200,7 @@ func (t *Manager) configFileCheckRefresh(force bool) error {
 	}
 	err := t.configFileCheck()
 	if err != nil {
-		t.log.Errorf("configFileCheck: %s", err)
+		t.log.Debugf("refresh: %s", err)
 		t.cancel()
 	}
 	return err
@@ -201,7 +212,7 @@ func (t *Manager) onClusterConfigUpdated() {
 }
 
 func (t *Manager) onConfigFileUpdated() {
-	t.log.Infof("config file changed => refresh")
+	t.log.Infof("refresh on config file event")
 	_ = t.configFileCheckRefresh(false)
 }
 
@@ -221,16 +232,12 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	if !t.published {
-		t.bus.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost},
-			pubsub.Label{"path", t.path.String()},
-			pubsub.Label{"node", t.localhost},
-		)
+		t.bus.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 	t.instanceConfig = *newConfig
 	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
 	t.bus.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()},
-		pubsub.Label{"path", t.path.String()},
-		pubsub.Label{"node", t.localhost},
+		t.pubLabel...,
 	)
 	t.published = true
 }
@@ -282,7 +289,18 @@ func (t *Manager) configFileCheck() error {
 		return nil
 	}
 	if !slices.Contains(scope, t.localhost) {
-		t.log.Infof("localhost not anymore an instance node")
+		t.log.Infof("foreign config file for peers (%s)", strings.Join(scope, ","))
+		cfg := t.instanceConfig
+		cfg.Scope = scope
+		cfg.UpdatedAt = mtime
+		cfg.Orchestrate = t.getOrchestrate(cf)
+		t.bus.Pub(&msgbus.InstanceConfigFor{
+			Path:        t.path,
+			Node:        t.localhost,
+			Orchestrate: cfg.Orchestrate,
+			Scope:       append([]string{}, cfg.Scope...),
+			UpdatedAt:   cfg.UpdatedAt,
+		}, t.pubLabel...)
 		return errConfigFileCheck
 	}
 
@@ -292,7 +310,6 @@ func (t *Manager) configFileCheck() error {
 	cfg.Children = t.getChildren(cf)
 	cfg.Env = cf.GetString(keyEnv)
 	cfg.MonitorAction = t.getMonitorAction(cf)
-	cfg.Nodename = t.localhost
 	cfg.Orchestrate = t.getOrchestrate(cf)
 	cfg.Parents = t.getParents(cf)
 	cfg.PlacementPolicy = t.getPlacementPolicy(cf)
@@ -458,24 +475,12 @@ func (t *Manager) setConfigure() error {
 }
 
 func (t *Manager) delete() {
-	labels := []pubsub.Label{
-		{"node", t.localhost},
-		{"path", t.path.String()},
-	}
 	if t.published {
 		instance.ConfigData.Unset(t.path, t.localhost)
-		t.bus.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, labels...)
+		t.bus.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 }
 
 func (t *Manager) done(parent context.Context, doneChan chan<- any) {
-	op := &msgbus.InstanceConfigManagerDone{
-		Path: t.path,
-		File: t.filename,
-	}
-	select {
-	case <-parent.Done():
-		return
-	case doneChan <- op:
-	}
+	t.bus.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
 }

@@ -25,8 +25,8 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/imon"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -35,21 +35,27 @@ import (
 
 type (
 	Manager struct {
-		cfgCmdC           chan any
-		objectMonitorCmdC chan any
-		ctx               context.Context
-		cancel            context.CancelFunc
-		log               *plog.Logger
-		databus           *daemondata.T
+		cfgCmdC chan any
+		ctx     context.Context
+		cancel  context.CancelFunc
+		log     *plog.Logger
+
+		bus *pubsub.Bus
+
+		// cfgDeleting is a map of local crm deleting call indexed by object path
+		cfgDeleting map[naming.Path]bool
 
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
 		// More recent remote config files are fetched.
 		cfgMTime map[string]time.Time
 
+		// disableRecover is a map of local running icfg (indexed by object) where
+		// the onInstanceConfigManagerDone recover is disabled.
+		disableRecover map[naming.Path]time.Time
+
 		clusterConfig       cluster.Config
 		objectMonitorCancel map[string]context.CancelFunc
-		objectMonitor       map[string]map[string]struct{}
 
 		remoteNodeCtx        map[string]context.Context
 		remoteNodeCancel     map[string]context.CancelFunc
@@ -86,6 +92,24 @@ type (
 		imonStarter omon.IMonStarter
 
 		wg sync.WaitGroup
+
+		// retainForeignConfigFor tracks the nodes that haven't yet fetch local
+		// config file in the case of localhost event InstanceConfigFor.
+		//
+		// On localhost event ev InstanceConfigFor: retainForeignConfigFor[ev.path] = ev.Scope
+		//
+		// On peer event ev InstanceConfigUpdated: ev.Node is removed from the
+		// retainForeignConfigFor[ev.path] array.
+		//
+		// when retainForeignConfigFor[ev.path] is empty we can remove local config file
+		retainForeignConfigFor map[naming.Path][]string
+
+		// instanceConfigFor tracks the local instanceConfigFor events that have
+		// not been transmitted to peer during daemon warmup (the event is not
+		// applied during apply full).
+		// So we keep those pending event to retransmit them when hb message type
+		// become 'patch'
+		instanceConfigFor map[naming.Path]*msgbus.InstanceConfigFor
 	}
 )
 
@@ -99,11 +123,16 @@ type (
 // returned *T
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
-		cfgCmdC:           make(chan any),
-		objectMonitorCmdC: make(chan any),
-		cfgMTime:          make(map[string]time.Time),
+		cfgDeleting: make(map[naming.Path]bool),
 
-		objectMonitor: make(map[string]map[string]struct{}),
+		cfgCmdC:  make(chan any),
+		cfgMTime: make(map[string]time.Time),
+
+		retainForeignConfigFor: make(map[naming.Path][]string),
+
+		instanceConfigFor: make(map[naming.Path]*msgbus.InstanceConfigFor),
+
+		disableRecover: make(map[naming.Path]time.Time),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -141,7 +170,6 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 	}
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	t.databus = daemondata.FromContext(t.ctx)
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 

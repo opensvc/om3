@@ -21,7 +21,7 @@ type (
 	// postFeedDaemonPing describes the POST feed daemon ping payload
 	postFeedDaemonPing struct {
 		Nodes   []string `json:"nodes"`
-		objects []string `json:"objects"`
+		Objects []string `json:"Objects"`
 		Version string   `json:"version"`
 	}
 
@@ -160,7 +160,7 @@ func (t *T) postPingBody() *postFeedDaemonPing {
 	}
 	return &postFeedDaemonPing{
 		Nodes:   nodes,
-		objects: objects,
+		Objects: objects,
 		Version: t.version,
 	}
 }
@@ -326,7 +326,7 @@ func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 // Too recently sent paths are delayed to the next iteration with delay value:
 // objectConfigToSendMinDelay for the following reasons:
 //   - oc3 api ObjectWithoutConfig values have been computed during last
-//     job calls => it may contain objects path that have already been POSTED
+//     job calls => it may contain already POSTED object paths
 //   - collector-speaker may be called after POST ping or status
 //
 // Example:

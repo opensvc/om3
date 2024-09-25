@@ -9,7 +9,7 @@
 //		       - update ClusterData.ApplyMessage function
 //			- msgX must be sent to peers (to patch):
 //				- update daemondata.startSubscriptions function
-//				- update daemondata.eventMustBeForwarded function
+//				- update daemondata.localEventMustBeForwarded function
 //			- peer msgX is received from peer (from patch):
 //				- update setCacheAndPublish function:
 //					- can update some caches
@@ -102,6 +102,10 @@ var (
 		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
+
+		"InstanceConfigDeleting": func() any { return &InstanceConfigDeleting{} },
+
+		"InstanceConfigFor": func() any { return &InstanceConfigFor{} },
 
 		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
@@ -432,6 +436,29 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// InstanceConfigDeleting event is pushed during imon orchestration deleting
+	// step.
+	InstanceConfigDeleting struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
+	// InstanceConfigFor message is published by a node during analyse of
+	// instance config file that is scoped for foreign nodes (peers).
+	InstanceConfigFor struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		// Orchestrate is the config orchestrate value. it may be used by peers
+		// just after installation of fetched instance config file
+		Orchestrate string `json:"orchestrate" yaml:"orchestrate"`
+		// Scope is the list of nodes that have to fetch this config
+		Scope []string `json:"scope" yaml:"scope"`
+		// UpdatedAt is the config file time stamp
+		UpdatedAt time.Time `json:"updated_at" yaml:"updated_at"`
 	}
 
 	InstanceConfigUpdated struct {
@@ -940,6 +967,14 @@ func (e *HbStatusUpdated) Kind() string {
 
 func (e *InstanceConfigDeleted) Kind() string {
 	return "InstanceConfigDeleted"
+}
+
+func (e *InstanceConfigDeleting) Kind() string {
+	return "InstanceConfigDeleting"
+}
+
+func (e *InstanceConfigFor) Kind() string {
+	return "InstanceConfigFor"
 }
 
 func (e *InstanceConfigUpdated) Kind() string {

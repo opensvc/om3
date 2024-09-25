@@ -12,6 +12,8 @@ package omon
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/instance"
@@ -21,7 +23,6 @@ import (
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -30,12 +31,9 @@ import (
 
 type (
 	Manager struct {
-		status object.Status
-		path   naming.Path
-		id     string
+		path naming.Path
 
-		discoverCmdC chan<- any
-		databus      *daemondata.T
+		status object.Status
 
 		// imonCancel is the cancel function for the local imon we have started
 		// We start imon on local instance config received or exists (when instConfig[o.localhost] is created)
@@ -51,15 +49,18 @@ type (
 		//   Then instStatus map is updated from:
 		//      * msgbus.InstanceConfigDeleted
 		//      * msgbus.InstanceStatusUpdated,
-		//
 		instStatus map[string]instance.Status
 
+		// instMonitor is internal cache for nodes instance monitor.
 		instMonitor map[string]instance.Monitor
 
-		// instConfig track the known instance p configs.
-		// It is used to terminate omon (when instConfig len is 0)
+		// instConfig tracks the known instance configs.
 		// It is used to start imon (when instConfig[o.localhost] is [re]created)
 		instConfig map[string]instance.Config
+
+		// instConfigFor has a copy of the latest InstanceConfigFor events where
+		// recent InstanceConfigUpdated peers have been removed from scope.
+		instConfigFor msgbus.InstanceConfigFor
 
 		// srcEvent is the source event that triggered the object status update
 		srcEvent any
@@ -70,8 +71,9 @@ type (
 		bus *pubsub.Bus
 		sub *pubsub.Subscription
 
-		labelPath pubsub.Label
-		labelNode pubsub.Label
+		// pubLabel is the list of this imon publication labels
+		pubLabel []pubsub.Label
+
 		localhost string
 	}
 
@@ -81,10 +83,11 @@ type (
 )
 
 // Start a goroutine responsible for the status of an object
-func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
-	id := p.String()
+func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, imonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
 	t := &Manager{
+		path: p,
+
 		status: object.Status{
 			Scope:           cfg.Scope,
 			FlexTarget:      cfg.FlexTarget,
@@ -97,11 +100,8 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 			Size:            cfg.Size,
 			Topology:        cfg.Topology,
 		},
-		path:         p,
-		id:           id,
-		bus:          pubsub.BusFromContext(ctx),
-		discoverCmdC: discoverCmdC,
-		databus:      daemondata.FromContext(ctx),
+
+		bus: pubsub.BusFromContext(ctx),
 
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
 		instStatus: make(map[string]instance.Status),
@@ -112,8 +112,8 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 
 		ctx: ctx,
 
-		labelNode: pubsub.Label{"node", localhost},
-		labelPath: pubsub.Label{"path", id},
+		pubLabel: []pubsub.Label{{"path", p.String()}, {"node", localhost}},
+
 		localhost: localhost,
 
 		imonStarter: imonStarter,
@@ -138,17 +138,21 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 // startSubscriptions starts the subscriptions for omon.
 // For each component Updated subscription, we need a component Deleted subscription to maintain internal cache.
 func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
-	sub := t.bus.Sub("daemon.omon "+t.id, subQS)
+	pathString := t.path.String()
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, t.labelPath)
+	sub := t.bus.Sub("daemon.omon "+pathString, subQS)
+
+	labelPath := pubsub.Label{"path", pathString}
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigFor{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPath)
 
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, labelPath)
 
 	sub.Start()
 	t.sub = sub
@@ -192,10 +196,17 @@ func (t *Manager) worker() {
 		t.delete()
 	}()
 	for {
-		if len(t.instConfig)+len(t.instStatus)+len(t.instMonitor) == 0 {
+		// len of instConfigFor.Scope participate in the decision of omon
+		// goroutine exit:
+		// The omon goroutine doesn't have to return during the transitory period
+		// when all object nodes have been replaced. There are no more instance
+		// configs, monitors and statuses until the new peer nodes have fetched
+		// the config and published the config, monitor or status.
+		if len(t.instConfig)+len(t.instStatus)+len(t.instMonitor)+len(t.instConfigFor.Scope) == 0 {
 			t.log.Infof("no more instance config, status and monitor")
 			return
 		}
+
 		t.srcEvent = nil
 		select {
 		case <-t.ctx.Done():
@@ -217,12 +228,34 @@ func (t *Manager) worker() {
 				delete(t.instStatus, c.Node)
 				t.updateStatus()
 
+			case *msgbus.InstanceConfigFor:
+				if c.UpdatedAt.After(t.instConfigFor.UpdatedAt) {
+					l := make([]string, 0)
+					for _, peer := range c.Scope {
+						if t.instConfig[peer].UpdatedAt.Before(c.UpdatedAt) {
+							// absent or older peer are retained in scope
+							l = append(l, peer)
+						}
+					}
+					t.instConfigFor = msgbus.InstanceConfigFor{
+						Scope:     l,
+						UpdatedAt: c.UpdatedAt,
+					}
+				}
+
 			case *msgbus.InstanceStatusUpdated:
 				t.srcEvent = c
 				t.instStatus[c.Node] = c.Value
 				t.updateStatus()
 
 			case *msgbus.InstanceConfigUpdated:
+				if !c.Value.UpdatedAt.Before(t.instConfigFor.UpdatedAt) {
+					if i := slices.Index(t.instConfigFor.Scope, c.Node); i >= 0 {
+						t.instConfigFor.Scope = slices.Delete(t.instConfigFor.Scope, i, i+1)
+						t.log.Debugf("remaining missing instance config update for nodes (%s)",
+							strings.Join(t.instConfigFor.Scope, ","))
+					}
+				}
 				t.status.Scope = c.Value.Scope
 				t.status.FlexTarget = c.Value.FlexTarget
 				t.status.FlexMin = c.Value.FlexMin
@@ -253,7 +286,7 @@ func (t *Manager) worker() {
 
 			case *msgbus.InstanceConfigDeleted:
 				if c.Node == t.localhost && t.imonCancel != nil {
-					t.log.Infof("local instance config deleted => cancel associated imon")
+					t.log.Infof("local instance config deleted: cancel associated imon")
 					t.imonCancel()
 					t.imonCancel = nil
 				}
@@ -380,14 +413,14 @@ func (t *Manager) updateStatus() {
 func (t *Manager) delete() {
 	object.StatusData.Unset(t.path)
 	t.bus.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
 	t.bus.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
-	t.discoverCmdC <- &msgbus.ObjectStatusDone{Path: t.path}
+	t.bus.Pub(&msgbus.ObjectStatusDone{Path: t.path},
+		t.pubLabel...,
+	)
 }
 
 func (t *Manager) update() {
@@ -396,8 +429,7 @@ func (t *Manager) update() {
 	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
 	t.bus.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent},
-		t.labelPath,
-		t.labelNode,
+		t.pubLabel...,
 	)
 }
 
