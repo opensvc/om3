@@ -317,7 +317,7 @@ func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.nodeMonitor[c.Node] = c.Value
 	if _, ok := t.livePeers[c.Node]; !ok {
 		t.livePeers[c.Node] = true
-		t.log.Infof("new peer %s => new live peers: %v", c.Node, t.livePeers)
+		t.log.Infof("new peer %s: new live peers: %v", c.Node, t.livePeers)
 		if t.updateSpeaker() {
 			t.publishNodeStatus()
 		}

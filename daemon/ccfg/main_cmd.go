@@ -103,7 +103,7 @@ func (t *Manager) getClusterConfig() cluster.Config {
 			sig := t.clusterConfig.SectionSig(name)
 			if sig != lastSig {
 				change = true
-				t.log.Infof("configuration section %s changed (sig %s => %s)", name, lastSig, sig)
+				t.log.Infof("configuration section %s changed (sig %s is now %s)", name, lastSig, sig)
 				t.networkSigs[name] = sig
 			}
 		}
