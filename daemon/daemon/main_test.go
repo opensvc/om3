@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/om"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/testhelper"
 )
@@ -23,7 +22,6 @@ func setup(t *testing.T) testhelper.Env {
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
-	rawconfig.LoadSections()
 	return env
 }
 

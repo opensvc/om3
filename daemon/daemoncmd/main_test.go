@@ -21,13 +21,14 @@ import (
 )
 
 func newClient(serverUrl string) (*client.T, error) {
-	return client.New(client.WithURL(serverUrl))
+	return client.New(client.WithURL(serverUrl), client.WithPassword(cluster.ConfigData.Get().Secret()))
 	//return client.New(client.WithURL(serverUrl), client.WithInsecureSkipVerify(true))
 }
 
 func setup(t *testing.T, withConfig bool) testhelper.Env {
 	env := testhelper.Setup(t)
 	if withConfig {
+		env.InstallFile("./testdata/nodes_info.json", "var/nodes_info.json")
 		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
 		b, err := os.ReadFile("./testdata/cluster.conf")
 		require.NoError(t, err)
@@ -35,7 +36,6 @@ func setup(t *testing.T, withConfig bool) testhelper.Env {
 		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	}
-	rawconfig.LoadSections()
 	return env
 }
 
@@ -188,7 +188,7 @@ func TestDaemonBootstrap(t *testing.T) {
 					t.Logf("daemonCli.Stop...")
 					// Use UrlInetHttp to avoid failed stop because of still running handler
 					// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
-					cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
+					cli, err := client.New(client.WithPassword(cluster.ConfigData.Get().Secret()), client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
 					require.NoError(t, err)
 					daemonCli = daemoncmd.New(cli)
 					e := daemonCli.Stop()

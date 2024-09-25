@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/xconfig"
@@ -248,7 +247,6 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Aliases:     []string{"service_type"},
-		Candidates:  rawconfig.Envs,
 		DefaultText: keywords.NewText(fs, "text/kw/core/env.default"),
 		Inherit:     keywords.InheritHead,
 		Option:      "env",

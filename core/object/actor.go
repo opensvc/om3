@@ -403,6 +403,16 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			if err := attr.SetValue(r, c.Attr, t.Topology()); err != nil {
 				return err
 			}
+		case c.Ref == "object.domain":
+			s := t.Domain()
+			if err := attr.SetValue(r, c.Attr, s); err != nil {
+				return err
+			}
+		case c.Ref == "object.fqdn":
+			s := t.FQDN()
+			if err := attr.SetValue(r, c.Attr, s); err != nil {
+				return err
+			}
 		case c.Ref == "node.dns":
 			if dns, err := getDNS(); err != nil {
 				return err

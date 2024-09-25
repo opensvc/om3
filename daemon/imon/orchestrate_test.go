@@ -542,7 +542,8 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 	istatD := istat.New(pubsub.WithQueueSize(100))
 	require.NoError(t, istatD.Start(setup.Ctx))
 
-	//c := c
+	setup.InstallFile("./testdata/nodes_info.json", "var/nodes_info.json")
+
 	p := naming.Path{Kind: naming.KindSvc, Name: c.obj}
 
 	if c.lastBootID != "" {

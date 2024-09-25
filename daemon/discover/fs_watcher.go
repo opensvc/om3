@@ -200,7 +200,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						err error
 					)
 					if filename == nodeConf {
-						rawconfig.LoadSections()
+						// pass
 					} else if p, err = cfgFilenameToPath(filename); err != nil {
 						log.Warnf("can't get associated object path from %s: %s", filename, err)
 						continue

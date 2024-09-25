@@ -160,7 +160,26 @@ func (s *Data) GetObjectStatus(p naming.Path) object.Digest {
 	return *data
 }
 
+// GetConfig returns the cached config data if any, or load the cache and return the cached config data.
 func GetConfig() (Config, error) {
+	cfg := ConfigData.Get()
+	if cfg != nil {
+		return *cfg, nil
+	}
+	cfg, err := getConfig()
+	ConfigData.Set(cfg)
+	return *cfg, err
+}
+
+// SetConfig refreshes the config data cache and returns the new config data.
+func SetConfig() (Config, error) {
+	cfg, err := getConfig()
+	ConfigData.Set(cfg)
+	return *cfg, err
+}
+
+// getConfig create the config data from the merged cluster and node configuration files.
+func getConfig() (*Config, error) {
 	var (
 		keyID         = key.New("cluster", "id")
 		keySecret     = key.New("cluster", "secret")
@@ -178,7 +197,7 @@ func GetConfig() (Config, error) {
 		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
 	)
 
-	cfg := Config{}
+	cfg := &Config{}
 	t, err := object.NewCluster(object.WithVolatile(true))
 	if err != nil {
 		return cfg, err

@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// Get returns a keyword value
+// decode returns a keyword value
 func (t *keystore) decode(keyname string) ([]byte, error) {
 	var (
 		s   string
@@ -20,7 +20,7 @@ func (t *keystore) decode(keyname string) ([]byte, error) {
 	if s, err = t.config.GetStrict(k); err != nil {
 		return []byte{}, err
 	}
-	return t.customDecode(s)
+	return t.encodeDecoder.Decode(s)
 }
 
 // DecodeKey returns the decoded bytes of the key value

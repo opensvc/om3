@@ -10,9 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/ressync"
@@ -30,6 +28,7 @@ type (
 		DevicesFrom []string
 		Delta       string
 		Name        string
+		ObjectFQDN  string
 		Secure      bool
 		SymID       string
 	}
@@ -324,11 +323,7 @@ func (t *T) formatName() string {
 	if t.Name != "" {
 		return t.Name
 	}
-	fqdn := naming.FQDN{
-		Path:    t.Path,
-		Cluster: rawconfig.GetClusterSection().Name,
-	}
-	return fmt.Sprintf("%s.%s", t.ResourceID.Index(), fqdn.String())
+	return fmt.Sprintf("%s.%s", t.ResourceID.Index(), t.ObjectFQDN)
 }
 
 func (t *T) establish() error {

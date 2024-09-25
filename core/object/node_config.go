@@ -84,7 +84,7 @@ func (t Node) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return rawconfig.GetNodeSection().Env
+	return "TST"
 }
 
 func (t Node) App() string {

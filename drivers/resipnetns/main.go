@@ -38,7 +38,9 @@ type (
 	T struct {
 		resource.T
 
-		Path naming.Path
+		Path       naming.Path
+		ObjectFQDN string
+		DNS        string
 
 		// config
 		NetNS        string         `json:"netns"`
@@ -125,7 +127,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startMode(ctx); err != nil {
 		return err
 	}
-	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, strings.Fields(t.DNS)); err != nil {
 		return err
 	}
 	return nil

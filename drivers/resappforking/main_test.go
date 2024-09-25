@@ -29,7 +29,7 @@ var (
 
 func prepareConfig(t *testing.T) (td string, cleanup func()) {
 	td = t.TempDir()
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	rawconfig.Load(map[string]string{"OSVC_ROOT_PATH": td})
 	cleanup = func() {
 		rawconfig.Load(map[string]string{})
 	}

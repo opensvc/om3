@@ -205,11 +205,10 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_swap"),
 	},
 	{
-		Candidates: rawconfig.Envs,
-		Default:    "TST",
-		Option:     "env",
-		Section:    "node",
-		Text:       keywords.NewText(fs, "text/kw/node/node.env"),
+		Default: "TST",
+		Option:  "env",
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	},
 	{
 		Converter: converters.Int,
@@ -555,6 +554,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "drpnodes",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.drpnodes"),
+	},
+	{
+		Converter: converters.List,
+		Option:    "envs",
+		Default:   "CERT DEV DRP FOR INT PRA PRD PRJ PPRD QUAL REC STG TMP TST UAT",
+		Section:   "cluster",
+		Text:      keywords.NewText(fs, "text/kw/node/cluster.envs"),
 	},
 	{
 		Converter: converters.Bool,
