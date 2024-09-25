@@ -237,6 +237,7 @@ func (t *T) setupRequester() error {
 		if errors.Is(err, object.ErrNodeCollectorConfig) {
 			t.disable = true
 			t.status.Url = ""
+			err = nil
 		} else {
 			// It is now enabled, clear previous disable state
 			t.disable = false
