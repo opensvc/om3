@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/rawconfig"
 	oapi "github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/funcopt"
@@ -178,7 +177,6 @@ func (t *T) configure() error {
 	} else if t.bearer == "" && t.username == "" && t.authorization == "" {
 		// TODO: need refactor or remove, this may send credential to unexpected url
 		t.username = hostname.Hostname()
-		t.password = rawconfig.GetClusterSection().Secret
 	}
 
 	err := t.newRequester()

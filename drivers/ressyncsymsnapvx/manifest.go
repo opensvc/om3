@@ -20,6 +20,7 @@ func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
+	m.Add(manifest.ContextObjectFQDN)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(Keywords...)
 	return m

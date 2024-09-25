@@ -23,7 +23,17 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 func (t *Manager) pubClusterConfig() {
 	previousNodes := t.state.Nodes
-	state := t.getClusterConfig()
+	state, err := cluster.SetConfig()
+	switch {
+	case err == nil:
+	case errors.Is(err, cluster.ErrVIPScope):
+		t.log.Warnf("%s", err)
+	default:
+		t.log.Errorf("%s", err)
+
+	}
+	t.handleConfigChanges()
+
 	t.state = *state.DeepCopy()
 	labelLocalNode := pubsub.Label{"node", t.localhost}
 
@@ -47,22 +57,12 @@ func (t *Manager) pubClusterConfig() {
 	}
 }
 
-func (t *Manager) getClusterConfig() cluster.Config {
+func (t *Manager) handleConfigChanges() {
 	clu, err := object.NewCluster()
 	if err != nil {
 		t.log.Errorf("%s", err)
-		return cluster.Config{}
+		return
 	}
-	cfg, err := cluster.GetConfig()
-	switch {
-	case err == nil:
-	case errors.Is(err, cluster.ErrVIPScope):
-		t.log.Warnf("%s", err)
-	default:
-		t.log.Errorf("%s", err)
-
-	}
-
 	var change bool
 
 	for _, name := range clu.Config().SectionStrings() {
@@ -86,5 +86,5 @@ func (t *Manager) getClusterConfig() cluster.Config {
 			}
 		}
 	}
-	return cfg
+	return
 }

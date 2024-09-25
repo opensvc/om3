@@ -37,21 +37,17 @@ func (env Env) InstallFile(srcFile, dstFile string) {
 }
 
 func Setup(t *testing.T) Env {
-	var env Env
-	if env.Root == "" {
-		env.Root = t.TempDir()
-	}
-	if env.ClusterName == "" {
-		env.ClusterName = "cluster1"
-	}
-	env.TestingT = t
-	return SetupEnv(env)
+	return SetupEnv(Env{
+		Root:        t.TempDir(),
+		ClusterName: "cluster1",
+		TestingT:    t,
+	})
 }
 
 func SetupEnv(env Env) Env {
 	rawconfig.Load(map[string]string{
-		"osvc_root_path":    env.Root,
-		"osvc_cluster_name": env.ClusterName,
+		"OSVC_ROOT_PATH":    env.Root,
+		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
 	setupLog()
 
@@ -90,8 +86,8 @@ func setupLog() {
 
 func SetupEnvWithoutCreateMandatoryDirectories(env Env) Env {
 	rawconfig.Load(map[string]string{
-		"osvc_root_path":    env.Root,
-		"osvc_cluster_name": env.ClusterName,
+		"OSVC_ROOT_PATH":    env.Root,
+		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
 	setupLog()
 

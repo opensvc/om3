@@ -30,6 +30,7 @@ func TestSecKeys(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/sec1.conf", "etc/namespaces/test/sec/sec1.conf")
 
@@ -79,6 +80,7 @@ func TestSecDecodeKeys(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/sec1.conf", "etc/namespaces/test/sec/sec1.conf")
 
@@ -137,6 +139,7 @@ func TestKeyActions(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/sec_empty.conf", "etc/namespaces/test/sec/sec1.conf")
 

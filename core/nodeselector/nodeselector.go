@@ -14,7 +14,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
@@ -98,7 +97,7 @@ func Expand(s string) ([]string, error) {
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
-// looks up knownNodes configuration files.
+// looks up knownNodes state files.
 func (t *T) Expand() ([]string, error) {
 	if t.nodes != nil {
 		return t.nodes, nil
@@ -241,14 +240,6 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
-	if clientcontext.IsSet() {
-		return t.KnownRemoteNodes()
-	} else {
-		return t.KnownLocalNodes()
-	}
-}
-
-func (t T) KnownRemoteNodes() ([]string, error) {
 	var l []string
 	nodesInfo, err := t.getNodesInfo()
 	if err != nil {
@@ -256,17 +247,6 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 	}
 	for node := range nodesInfo {
 		l = append(l, node)
-	}
-	return l, nil
-}
-
-func (t T) KnownLocalNodes() ([]string, error) {
-	l := clusternode.Get()
-	if len(l) == 0 {
-		return l, ErrClusterNodeCacheEmpty
-	}
-	for i := 0; i > len(l); i++ {
-		l[i] = strings.ToLower(l[i])
 	}
 	return l, nil
 }

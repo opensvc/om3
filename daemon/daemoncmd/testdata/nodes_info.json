@@ -1,0 +1,19 @@
+{
+  "node1": {
+    "env": "TST",
+    "labels": {
+      "az": "fr1",
+      "foo3": "bar3"
+    },
+    "paths": null,
+    "listener": {
+      "id": "",
+      "state": "running",
+      "configured_at": "2024-09-17T09:48:31.654725379+02:00",
+      "created_at": "2024-09-17T09:48:31.65167269+02:00",
+      "updated_at": "2024-09-17T09:48:31.654725379+02:00",
+      "addr": "::",
+      "port": "1315"
+    }
+  }
+}

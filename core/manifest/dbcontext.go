@@ -21,6 +21,16 @@ var (
 		Attr: "Nodes",
 		Ref:  "object.nodes",
 	}
+	ContextObjectFQDN = Context{
+		Key:  "object_fqdn",
+		Attr: "ObjectFQDN",
+		Ref:  "object.fqdn",
+	}
+	ContextObjectDomain = Context{
+		Key:  "object_domain",
+		Attr: "ObjectDomain",
+		Ref:  "object.domain",
+	}
 	ContextObjectID = Context{
 		Key:  "objectID",
 		Attr: "ObjectID",

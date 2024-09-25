@@ -11,69 +11,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
-	// Message is the message to encrypt
-	Message struct {
-		ClusterName string
-		NodeName    string
-		Key         string
-		Data        []byte
-	}
-
 	encryptedMessage struct {
 		ClusterName string `json:"clustername"`
 		NodeName    string `json:"nodename"`
 		IV          string `json:"iv"`
 		Data        string `json:"data"`
 	}
+
+	Factory struct {
+		NodeName    string
+		ClusterName string
+		Key         string
+	}
 )
 
-var (
-	clusterName   string
-	clusterSecret string
-)
-
-func SetClusterName(s string) {
-	clusterName = s
-}
-
-func SetClusterSecret(s string) {
-	clusterSecret = s
-}
-
-// NewMessage allocates a new Message configured for the local node and cluster context
-func NewMessage(b []byte) *Message {
-	if clusterName == "" {
+func (m *Factory) assertValid() {
+	if m.ClusterName == "" {
 		panic("NewMessage: unexpected empty cluster name")
 	}
-	if clusterSecret == "" {
-		panic("NewMessage: unexpected empty cluster secret")
+	if m.Key == "" {
+		panic("NewMessage: unexpected empty key")
 	}
-	m := &Message{
-		NodeName:    hostname.Hostname(),
-		ClusterName: clusterName,
-		Key:         clusterSecret,
-		Data:        b,
-	}
-	return m
 }
 
 // DecryptWithNode Decrypt the message
 //
 // returns decodedMsg []byte, encryptorNodename string, error
-func (m *Message) DecryptWithNode() ([]byte, string, error) {
-	if len(m.Data) == 0 {
+func (m *Factory) DecryptWithNode(data []byte) ([]byte, string, error) {
+	m.assertValid()
+	if len(data) == 0 {
 		// fast return, Unmarshal will fail
 		return nil, "", io.EOF
 	}
 	var b []byte
 	key := []byte(m.Key)
 	msg := &encryptedMessage{}
-	err := json.Unmarshal(m.Data, msg)
+	err := json.Unmarshal(data, msg)
 	if err != nil {
 		return nil, "", fmt.Errorf("analyse message unmarshal failure: %w", err)
 	}
@@ -87,21 +63,23 @@ func (m *Message) DecryptWithNode() ([]byte, string, error) {
 
 // Decrypt decrypts the message, if the nodename found in the message is a
 // cluster node.
-func (m *Message) Decrypt() (b []byte, err error) {
-	b, _, err = m.DecryptWithNode()
-	return
+func (m *Factory) Decrypt(data []byte) ([]byte, error) {
+	m.assertValid()
+	b, _, err := m.DecryptWithNode(data)
+	return b, err
 }
 
 // Encrypt encrypts the message and returns a json with head keys describing
 // the sender, and embedding the AES-encypted + Base64-encoded data.
-func (m *Message) Encrypt() ([]byte, error) {
+func (m *Factory) Encrypt(data []byte) ([]byte, error) {
+	m.assertValid()
 	var (
 		encoded   string
 		encodedIV string
 		err       error
 	)
 	key := []byte(m.Key)
-	if encoded, encodedIV, err = encode(m.Data, key); err != nil {
+	if encoded, encodedIV, err = encode(data, key); err != nil {
 		return nil, err
 	}
 	msg := &encryptedMessage{

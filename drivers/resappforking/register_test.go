@@ -31,6 +31,7 @@ func getAppRid(rid string, resources []resource.Driver) *T {
 
 func TestKeywords(t *testing.T) {
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
 	defer rawconfig.ReloadForTest(env.Root)()

@@ -1271,13 +1271,7 @@ func (t SCSIPersistentReservation) IsSCSIPersistentReservationEnabled() bool {
 }
 
 func (t SCSIPersistentReservation) PersistentReservationKey() string {
-	if t.Key != "" {
-		return t.Key
-	}
-	if nodePRKey := rawconfig.GetNodeSection().PRKey; nodePRKey != "" {
-		return scsi.StripPRKey(nodePRKey)
-	}
-	return ""
+	return t.Key
 }
 
 func (t *T) ProgressKey() []string {

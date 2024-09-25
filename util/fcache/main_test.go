@@ -16,7 +16,7 @@ func TestOutput(t *testing.T) {
 	td := t.TempDir()
 	tf, cleanup := testhelper.TempFile(t, td)
 	defer cleanup()
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	rawconfig.Load(map[string]string{"OSVC_ROOT_PATH": td})
 	defer rawconfig.Load(map[string]string{})
 
 	getRealCommandOutput := func() ([]byte, error) {

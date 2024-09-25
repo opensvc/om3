@@ -32,6 +32,7 @@ func (t T) Manifest() *manifest.T {
 	m.Add(
 		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
+		manifest.ContextObjectDomain,
 		manifest.ContextDNS,
 		keywords.Keyword{
 			Option:      "name",

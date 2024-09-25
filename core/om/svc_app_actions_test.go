@@ -142,6 +142,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking.conf", "etc/svcappforking.conf")
 	env.InstallFile("../../testdata/cfg1_svcappforking.conf", "etc/cfg/svcappforking.conf")
@@ -499,6 +500,7 @@ func TestAppStopStartSequence(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcapp1.conf", "etc/svcapp.conf")
 
@@ -545,6 +547,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappComplexCommand.conf", "etc/svcapp.conf")
 
@@ -589,6 +592,7 @@ func TestAppStopLimit(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_limit.conf", "etc/svcapp.conf")
 
@@ -628,6 +632,7 @@ func TestAppStopTimeout(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_timeout.conf", "etc/svcapp.conf")
 
@@ -716,6 +721,7 @@ func TestAppStartRollback(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			env := testhelper.Setup(t)
+			env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 			env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 			env.InstallFile("../../testdata/svcapp-rollback.conf", "etc/svcapp.conf")
 			args := getCmd(name)

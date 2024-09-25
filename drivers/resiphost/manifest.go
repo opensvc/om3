@@ -28,6 +28,8 @@ func (t T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
+		manifest.ContextObjectFQDN,
+		manifest.ContextDNS,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Attr:     "IPName",

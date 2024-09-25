@@ -41,6 +41,7 @@ func TestGenCert(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 
 	for _, tc := range cases {

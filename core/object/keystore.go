@@ -2,7 +2,6 @@ package object
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/opensvc/om3/util/key"
 )
@@ -13,18 +12,20 @@ const (
 )
 
 type (
-	encodeFunc func([]byte) (string, error)
-	decodeFunc func(string) ([]byte, error)
+	encodeDecoder interface {
+		Encode([]byte) (string, error)
+		Decode(string) ([]byte, error)
+	}
 
 	keystore struct {
 		core
-		customEncode encodeFunc
-		customDecode decodeFunc
+		encodeDecoder encodeDecoder
 	}
 
 	// Keystore is the base interface of sec, cfg and usr objects
 	Keystore interface {
 		Core
+
 		HasKey(name string) bool
 		AddKey(name string, b []byte) error
 		ChangeKey(name string, b []byte) error
@@ -75,17 +76,4 @@ func (t *keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 
 func (t *keystore) postCommit() error {
 	return t.postInstall("")
-}
-
-func FileToKey(path, prefix string) (string, error) {
-	if path == "" {
-		return prefix, nil
-	}
-	path = filepath.Clean(path)
-	dirName := filepath.Dir(path)
-	relPath, err := filepath.Rel(dirName, path)
-	if prefix == "" {
-		return relPath, err
-	}
-	return filepath.Join(prefix, relPath), nil
 }
