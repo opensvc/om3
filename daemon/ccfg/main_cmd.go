@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
@@ -23,10 +23,10 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 func (t *Manager) pubClusterConfig() {
 	previousNodes := t.state.Nodes
-	state, err := cluster.SetConfig()
+	state, err := clusterdump.SetConfig()
 	switch {
 	case err == nil:
-	case errors.Is(err, cluster.ErrVIPScope):
+	case errors.Is(err, clusterdump.ErrVIPScope):
 		t.log.Warnf("%s", err)
 	default:
 		t.log.Errorf("%s", err)
@@ -44,7 +44,7 @@ func (t *Manager) pubClusterConfig() {
 	if len(removed) > 0 {
 		t.log.Debugf("removed nodes: %s", removed)
 	}
-	cluster.ConfigData.Set(&state)
+	clusterdump.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)
 
 	t.bus.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)

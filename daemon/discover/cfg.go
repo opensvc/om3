@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -69,7 +69,7 @@ func (t *Manager) cfg(started chan<- bool) {
 			t.log.Errorf("cfg: subscription stop: %s", err)
 		}
 	}()
-	if last := cluster.ConfigData.Get(); last != nil {
+	if last := clusterdump.ConfigData.Get(); last != nil {
 		msg := &msgbus.ClusterConfigUpdated{Value: *last}
 		t.onClusterConfigUpdated(msg)
 	}
@@ -675,7 +675,7 @@ func newDaemonClient(n string) (*client.T, error) {
 	return client.New(
 		client.WithURL(peerURL(n)),
 		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(cluster.ConfigData.Get().Secret()),
+		client.WithPassword(clusterdump.ConfigData.Get().Secret()),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

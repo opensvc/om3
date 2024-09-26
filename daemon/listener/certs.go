@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -115,7 +115,7 @@ func (t *T) installCaFiles(clusterName string) error {
 	var b []byte
 	validCA := make([]string, 0)
 	caList := []string{caPath.String()}
-	caList = append(caList, cluster.ConfigData.Get().CASecPaths...)
+	caList = append(caList, clusterdump.ConfigData.Get().CASecPaths...)
 	for _, p := range caList {
 		caPath, err := naming.ParsePath(p)
 		if err != nil {

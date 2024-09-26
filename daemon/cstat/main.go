@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/plog"
@@ -20,7 +20,7 @@ import (
 
 type (
 	T struct {
-		state cluster.Status
+		state clusterdump.Status
 
 		ctx       context.Context
 		cancel    context.CancelFunc

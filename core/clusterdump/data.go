@@ -1,4 +1,4 @@
-package cluster
+package clusterdump
 
 import (
 	"sync"

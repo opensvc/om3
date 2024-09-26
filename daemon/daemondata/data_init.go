@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
@@ -34,9 +34,9 @@ func newData() *data {
 	daemonsubsystem.DataDaemondata.Set(localNode, &nodeData.Daemon.Daemondata)
 	daemonsubsystem.DataHeartbeat.Set(localNode, &nodeData.Daemon.Heartbeat)
 
-	status := cluster.Data{
-		Cluster: cluster.Cluster{
-			Status: cluster.Status{
+	status := clusterdump.Data{
+		Cluster: clusterdump.Cluster{
+			Status: clusterdump.Status{
 				IsCompat: false,
 				IsFrozen: true,
 			},

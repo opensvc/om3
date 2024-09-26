@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/xmap"
@@ -27,11 +27,11 @@ type (
 
 	// postFeedDaemonStatus describes the POST feed daemon status payload
 	postFeedDaemonStatus struct {
-		PreviousUpdatedAt time.Time     `json:"previous_updated_at"`
-		UpdatedAt         time.Time     `json:"updated_at"`
-		Data              *cluster.Data `json:"data"`
-		Changes           []string      `json:"changes"`
-		Version           string        `json:"version"`
+		PreviousUpdatedAt time.Time         `json:"previous_updated_at"`
+		UpdatedAt         time.Time         `json:"updated_at"`
+		Data              *clusterdump.Data `json:"data"`
+		Changes           []string          `json:"changes"`
+		Version           string            `json:"version"`
 	}
 
 	// ObjectWithoutConfig used to decode response of post feed daemon status and ping

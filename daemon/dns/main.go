@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/draincommand"
@@ -49,7 +49,7 @@ type (
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]uint64
 
-		cluster   cluster.Config
+		cluster   clusterdump.Config
 		ctx       context.Context
 		cancel    context.CancelFunc
 		cmdC      chan any
@@ -123,7 +123,7 @@ func (t *Manager) Start(parent context.Context) error {
 	t.status.State = "running"
 
 	t.startSubscriptions()
-	t.cluster = *cluster.ConfigData.Get()
+	t.cluster = *clusterdump.ConfigData.Get()
 
 	if err := t.startUDSListener(); err != nil {
 		return err

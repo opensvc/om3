@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -25,7 +25,7 @@ import (
 
 type (
 	Manager struct {
-		state       cluster.Config
+		state       clusterdump.Config
 		networkSigs map[string]string
 
 		ctx           context.Context
@@ -125,7 +125,7 @@ func (*NodeDB) AuthenticateNode(nodename, password string) error {
 	if nodename == "" {
 		return fmt.Errorf("can't authenticate: nodename is empty")
 	}
-	clu := cluster.ConfigData.Get()
+	clu := clusterdump.ConfigData.Get()
 	if !clu.Nodes.Contains(nodename) {
 		return fmt.Errorf("can't authenticate: %s is not a cluster node", nodename)
 	}

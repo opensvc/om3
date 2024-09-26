@@ -20,7 +20,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -54,7 +54,7 @@ type (
 		// the onInstanceConfigManagerDone recover is disabled.
 		disableRecover map[naming.Path]time.Time
 
-		clusterConfig       cluster.Config
+		clusterConfig       clusterdump.Config
 		objectMonitorCancel map[string]context.CancelFunc
 
 		remoteNodeCtx        map[string]context.Context

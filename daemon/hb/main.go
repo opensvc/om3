@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/hbtype"
@@ -353,7 +353,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 				t.log.Debugf("remove %s from hb transmitters", txID)
 				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
-				clusterConfig := cluster.ConfigData.Get()
+				clusterConfig := clusterdump.ConfigData.Get()
 				encrypterDecrypter := &omcrypto.Factory{
 					NodeName:    hostname.Hostname(),
 					ClusterName: clusterConfig.Name,

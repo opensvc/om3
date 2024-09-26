@@ -17,7 +17,7 @@ import (
 
 	"github.com/retailnext/cannula"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/collector"
 	"github.com/opensvc/om3/daemon/cstat"
@@ -131,7 +131,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration, qsSmall)); err != nil {
 		return err
 	}
-	initialCcfg := cluster.ConfigData.Get()
+	initialCcfg := clusterdump.ConfigData.Get()
 	if initialCcfg.Name == "" {
 		panic("cluster name read from ccfg is empty")
 	}

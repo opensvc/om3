@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -169,7 +169,7 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 		cli, err := client.New(
 			client.WithURL(daemonenv.HTTPNodeAndPortURL(addr, port)),
 			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(cluster.ConfigData.Get().Secret()),
+			client.WithPassword(clusterdump.ConfigData.Get().Secret()),
 			client.WithCertificate(daemonenv.CertChainFile()),
 		)
 		if err != nil {

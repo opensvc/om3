@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -118,7 +118,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	var (
 		err           error
 		b             []byte
-		clusterStatus cluster.Data
+		clusterStatus clusterdump.Data
 	)
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).

@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/render/tree"
@@ -90,7 +90,7 @@ func (t T) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText("")
 }
 
-func (t L) Load(clusterStatus cluster.Data) L {
+func (t L) Load(clusterStatus clusterdump.Data) L {
 	l := NewL()
 	for nodename, nodeData := range clusterStatus.Cluster.Node {
 		for ps, inst := range nodeData.Instance {

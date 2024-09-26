@@ -33,7 +33,7 @@ import (
 
 	"github.com/prometheus/procfs"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
@@ -87,7 +87,7 @@ type (
 		nodeMonitor map[string]node.Monitor
 
 		// clusterConfig is a cache of published ClusterConfigUpdated
-		clusterConfig cluster.Config
+		clusterConfig clusterdump.Config
 
 		// livePeers is a map of peer nodes
 		// exists when we receive msgbus.NodeMonitorUpdated
