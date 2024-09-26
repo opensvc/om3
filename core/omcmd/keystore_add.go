@@ -15,8 +15,8 @@ type (
 		OptsGlobal
 		OptsLock
 		Key   string
-		From  string
-		Value string
+		From  *string
+		Value *string
 	}
 )
 
@@ -33,10 +33,13 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			if t.Value != "" {
-				return nil, store.AddKey(t.Key, []byte(t.Value))
+			if t.Value != nil {
+				return nil, store.AddKey(t.Key, []byte(*t.Value))
 			}
-			m, err := uri.ReadAllFrom(t.From)
+			if t.From == nil {
+				return nil, store.AddKey(t.Key, []byte{})
+			}
+			m, err := uri.ReadAllFrom(*t.From)
 			if err != nil {
 				return nil, err
 			}

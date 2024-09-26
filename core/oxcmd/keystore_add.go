@@ -17,12 +17,16 @@ type (
 		OptsGlobal
 		OptsLock
 		Key   string
-		From  string
-		Value string
+		From  *string
+		Value *string
 	}
 )
 
 func (t *CmdKeystoreAdd) Run(selector, kind string) error {
+	if t.Value == nil && t.From == nil {
+		s := ""
+		t.Value = &s
+	}
 	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Add)
 	if err != nil {
 		return err
