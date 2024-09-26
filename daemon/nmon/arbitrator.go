@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -133,7 +133,7 @@ func (a *arbitratorConfig) checkDial(ctx context.Context) error {
 	d := net.Dialer{}
 	addr := a.URI
 	if !strings.Contains(addr, ":") {
-		addr = fmt.Sprintf("%s:%d", addr, clusterdump.ConfigData.Get().Listener.Port)
+		addr = fmt.Sprintf("%s:%d", addr, cluster.ConfigData.Get().Listener.Port)
 	}
 	dialContext, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/om"
@@ -21,7 +22,7 @@ import (
 )
 
 func newClient(serverUrl string) (*client.T, error) {
-	return client.New(client.WithURL(serverUrl), client.WithPassword(clusterdump.ConfigData.Get().Secret()))
+	return client.New(client.WithURL(serverUrl), client.WithPassword(cluster.ConfigData.Get().Secret()))
 	//return client.New(client.WithURL(serverUrl), client.WithInsecureSkipVerify(true))
 }
 
@@ -188,7 +189,7 @@ func TestDaemonBootstrap(t *testing.T) {
 					t.Logf("daemonCli.Stop...")
 					// Use UrlInetHttp to avoid failed stop because of still running handler
 					// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
-					cli, err := client.New(client.WithPassword(clusterdump.ConfigData.Get().Secret()), client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
+					cli, err := client.New(client.WithPassword(cluster.ConfigData.Get().Secret()), client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
 					require.NoError(t, err)
 					daemonCli = daemoncmd.New(cli)
 					e := daemonCli.Stop()

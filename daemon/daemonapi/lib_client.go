@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/util/funcopt"
@@ -41,7 +41,7 @@ func newProxyClient(ctx echo.Context, nodename string, opts ...funcopt.O) (*clie
 		// uxsock auth must be translated to root:<secret>
 		options = append(options,
 			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(clusterdump.ConfigData.Get().Secret()),
+			client.WithPassword(cluster.ConfigData.Get().Secret()),
 		)
 	}
 	options = append(options, opts...)

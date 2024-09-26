@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
@@ -69,7 +69,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 
-	clusterConfig := clusterdump.ConfigData.Get()
+	clusterConfig := cluster.ConfigData.Get()
 	t.encryptDecrypter = &omcrypto.Factory{
 		NodeName:    hostname.Hostname(),
 		ClusterName: clusterConfig.Name,

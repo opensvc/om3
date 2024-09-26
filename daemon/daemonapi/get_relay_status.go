@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
@@ -112,7 +112,7 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 		resp, err := cli.GetRelayStatusWithResponse(context.Background(), &params)
 		if err != nil {
 			// add a placeholder data, so the user can see something went wrong
-			clusterConfigData := clusterdump.ConfigData.Get()
+			clusterConfigData := cluster.ConfigData.Get()
 			items = append(items, api.RelayStatusItem{
 				ClusterID:   clusterConfigData.ID,
 				ClusterName: clusterConfigData.Name,
@@ -122,7 +122,7 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 			})
 		} else if resp.StatusCode() != http.StatusOK {
 			// add a placeholder data, so the user can see something went wrong
-			clusterConfigData := clusterdump.ConfigData.Get()
+			clusterConfigData := cluster.ConfigData.Get()
 			items = append(items, api.RelayStatusItem{
 				ClusterID:   clusterConfigData.ID,
 				ClusterName: clusterConfigData.Name,

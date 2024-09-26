@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/network"
@@ -44,7 +45,7 @@ func (t *Manager) pubClusterConfig() {
 	if len(removed) > 0 {
 		t.log.Debugf("removed nodes: %s", removed)
 	}
-	clusterdump.ConfigData.Set(&state)
+	cluster.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)
 
 	t.bus.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)

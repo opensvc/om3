@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
@@ -36,7 +36,7 @@ type (
 		subQS pubsub.QueueSizer
 
 		wg        sync.WaitGroup
-		previous  clusterdump.Vip
+		previous  cluster.Vip
 		localhost string
 	}
 )
@@ -79,7 +79,7 @@ func (t *T) Start(parent context.Context) error {
 			}
 		}()
 		t.log.Infof("started")
-		t.onClusterConfigUpdated(clusterdump.ConfigData.Get())
+		t.onClusterConfigUpdated(cluster.ConfigData.Get())
 		t.worker()
 	}()
 
@@ -115,7 +115,7 @@ func (t *T) worker() {
 	}
 }
 
-func (t *T) onClusterConfigUpdated(c *clusterdump.Config) {
+func (t *T) onClusterConfigUpdated(c *cluster.Config) {
 	if c == nil || t.previous.Equal(&c.Vip) {
 		return
 	}

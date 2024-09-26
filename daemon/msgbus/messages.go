@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
@@ -270,10 +271,10 @@ type (
 
 	ClusterConfigUpdated struct {
 		pubsub.Msg   `yaml:",inline"`
-		Node         string             `json:"node" yaml:"node"`
-		Value        clusterdump.Config `json:"cluster_config" yaml:"cluster_config"`
-		NodesAdded   []string           `json:"nodes_added" yaml:"nodes_added"`
-		NodesRemoved []string           `json:"nodes_removed" yaml:"nodes_removed"`
+		Node         string         `json:"node" yaml:"node"`
+		Value        cluster.Config `json:"cluster_config" yaml:"cluster_config"`
+		NodesAdded   []string       `json:"nodes_added" yaml:"nodes_added"`
+		NodesRemoved []string       `json:"nodes_removed" yaml:"nodes_removed"`
 	}
 
 	ClusterStatusUpdated struct {

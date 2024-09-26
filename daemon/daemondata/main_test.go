@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -104,7 +104,7 @@ func TestDaemonData(t *testing.T) {
 			require.NotNil(t, localNodeStatus)
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
 				"expected local node gen 1, got %+v", localNodeStatus)
-			clusterConfig := clusterdump.ConfigData.Get()
+			clusterConfig := cluster.ConfigData.Get()
 			require.Equal(t, "cluster1", clusterConfig.Name)
 			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", clusterConfig.ID,
 				"got %+v", clusterConfig)

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
@@ -112,7 +112,7 @@ func (t *tx) send(b []byte) {
 		return
 	}
 
-	clusterConfig := clusterdump.ConfigData.Get()
+	clusterConfig := cluster.ConfigData.Get()
 	params := api.PostRelayMessage{
 		Nodename:    hostname.Hostname(),
 		ClusterID:   clusterConfig.ID,

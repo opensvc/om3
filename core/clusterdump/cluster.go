@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -25,7 +26,7 @@ type (
 	}
 
 	Cluster struct {
-		Config Config                   `json:"config"`
+		Config cluster.Config           `json:"config"`
 		Status Status                   `json:"status"`
 		Object map[string]object.Status `json:"object"`
 
@@ -161,25 +162,25 @@ func (s *Data) GetObjectStatus(p naming.Path) object.Digest {
 }
 
 // GetConfig returns the cached config data if any, or load the cache and return the cached config data.
-func GetConfig() (Config, error) {
-	cfg := ConfigData.Get()
+func GetConfig() (cluster.Config, error) {
+	cfg := cluster.ConfigData.Get()
 	if cfg != nil {
 		return *cfg, nil
 	}
 	cfg, err := getConfig()
-	ConfigData.Set(cfg)
+	cluster.ConfigData.Set(cfg)
 	return *cfg, err
 }
 
 // SetConfig refreshes the config data cache and returns the new config data.
-func SetConfig() (Config, error) {
+func SetConfig() (cluster.Config, error) {
 	cfg, err := getConfig()
-	ConfigData.Set(cfg)
+	cluster.ConfigData.Set(cfg)
 	return *cfg, err
 }
 
 // getConfig create the config data from the merged cluster and node configuration files.
-func getConfig() (*Config, error) {
+func getConfig() (*cluster.Config, error) {
 	var (
 		keyID         = key.New("cluster", "id")
 		keySecret     = key.New("cluster", "secret")
@@ -197,7 +198,7 @@ func getConfig() (*Config, error) {
 		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
 	)
 
-	cfg := &Config{}
+	cfg := &cluster.Config{}
 	t, err := object.NewCluster(object.WithVolatile(true))
 	if err != nil {
 		return cfg, err
@@ -238,8 +239,8 @@ var (
 	ErrVIPScope = errors.New("vip scope")
 )
 
-func getVip(c *xconfig.T, nodes []string) (Vip, error) {
-	vip := Vip{}
+func getVip(c *xconfig.T, nodes []string) (cluster.Vip, error) {
+	vip := cluster.Vip{}
 	keyVip := key.New("cluster", "vip")
 	defaultVip := c.Get(keyVip)
 	if defaultVip == "" {
@@ -249,7 +250,7 @@ func getVip(c *xconfig.T, nodes []string) (Vip, error) {
 	// pickup defaults from vip keyword
 	ipname, netmask, dev, err := parseVip(defaultVip)
 	if err != nil {
-		return Vip{}, err
+		return cluster.Vip{}, err
 	}
 
 	devs := make(map[string]string)
@@ -274,7 +275,7 @@ func getVip(c *xconfig.T, nodes []string) (Vip, error) {
 		}
 	}
 
-	vip = Vip{
+	vip = cluster.Vip{
 		Default: defaultVip,
 		Addr:    ipname,
 		Netmask: netmask,

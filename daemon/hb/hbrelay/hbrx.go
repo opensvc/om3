@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/api"
@@ -70,7 +70,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.cancel = cancel
 	ticker := time.NewTicker(t.interval)
 
-	clusterConfig := clusterdump.ConfigData.Get()
+	clusterConfig := cluster.ConfigData.Get()
 	t.encryptDecrypter = &omcrypto.Factory{
 		NodeName:    hostname.Hostname(),
 		ClusterName: clusterConfig.Name,
@@ -112,7 +112,7 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	clusterID := clusterdump.ConfigData.Get().ID
+	clusterID := cluster.ConfigData.Get().ID
 	cli, err := client.New(
 		client.WithURL(t.relay),
 		client.WithUsername(t.username),

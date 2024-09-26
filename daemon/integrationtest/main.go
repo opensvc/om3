@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
@@ -66,7 +67,7 @@ func GetClient(t *testing.T) (*client.T, error) {
 	cli, err := client.New(
 		client.WithURL(daemonenv.HTTPLocalURL()),
 		client.WithTimeout(3*time.Second),
-		client.WithPassword(clusterdump.ConfigData.Get().Secret()),
+		client.WithPassword(cluster.ConfigData.Get().Secret()),
 	)
 	require.Nil(t, err)
 	return cli, err

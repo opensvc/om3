@@ -1,14 +1,16 @@
 package daemonapi
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/daemon/api"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
+
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
-	config := clusterdump.ConfigData.Get()
+	config := cluster.ConfigData.Get()
 	data := api.AuthInfo{
 		Methods: []api.AuthInfoMethods{"basic", "x509"},
 		Openid:  nil,
