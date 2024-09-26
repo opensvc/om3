@@ -17,7 +17,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -133,7 +132,7 @@ func bootStrapCcfg() error {
 	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
-	clusterdump.SetConfig()
+	object.SetClusterConfig()
 	return nil
 }
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
@@ -240,6 +241,14 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
+	if clientcontext.IsSet() {
+		return t.KnownRemoteNodes()
+	} else {
+		return t.KnownLocalNodes()
+	}
+}
+
+func (t T) KnownRemoteNodes() ([]string, error) {
 	var l []string
 	nodesInfo, err := t.getNodesInfo()
 	if err != nil {
@@ -247,6 +256,17 @@ func (t T) KnownNodes() ([]string, error) {
 	}
 	for node := range nodesInfo {
 		l = append(l, node)
+	}
+	return l, nil
+}
+
+func (t T) KnownLocalNodes() ([]string, error) {
+	l := cluster.ConfigData.Get().Nodes
+	if len(l) == 0 {
+		return l, ErrClusterNodeCacheEmpty
+	}
+	for i := 0; i > len(l); i++ {
+		l[i] = strings.ToLower(l[i])
 	}
 	return l, nil
 }

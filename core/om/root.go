@@ -15,6 +15,7 @@ import (
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
@@ -104,6 +105,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if err := configureLogger(); err != nil {
+		return err
+	}
+	if _, err := object.SetClusterConfig(); err != nil {
 		return err
 	}
 	if env.HasDaemonOrigin() {

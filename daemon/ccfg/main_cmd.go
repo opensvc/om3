@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
@@ -24,10 +23,10 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 func (t *Manager) pubClusterConfig() {
 	previousNodes := t.state.Nodes
-	state, err := clusterdump.SetConfig()
+	state, err := object.SetClusterConfig()
 	switch {
 	case err == nil:
-	case errors.Is(err, clusterdump.ErrVIPScope):
+	case errors.Is(err, object.ErrVIPScope):
 		t.log.Warnf("%s", err)
 	default:
 		t.log.Errorf("%s", err)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/omcrypto"
@@ -59,14 +60,11 @@ func GetSecEncryptDecrypter() (encryptDecrypter, error) {
 	if secEncryptDecrypterCache != nil {
 		return secEncryptDecrypterCache, nil
 	}
-	cluster, err := NewCluster()
-	if err != nil {
-		return nil, err
-	}
+	clusterConfig := cluster.ConfigData.Get()
 	secEncryptDecrypterCache = &omcrypto.Factory{
 		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Config().GetString(key.T{Section: "cluster", Option: "name"}),
-		Key:         cluster.Config().GetString(key.T{Section: "cluster", Option: "secret"}),
+		ClusterName: clusterConfig.Name,
+		Key:         clusterConfig.Secret(),
 	}
 	return secEncryptDecrypterCache, nil
 }
