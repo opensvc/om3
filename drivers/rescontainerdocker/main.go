@@ -220,7 +220,9 @@ func (t T) mounts() ([]mount.Mount, error) {
 		if len(m.Target) == 0 {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
 		}
-		if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
+		if strings.HasPrefix(m.Source, "/") {
+			// pass
+		} else if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
 			return mounts, err
 		} else if file.IsProtected(srcRealpath) {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
