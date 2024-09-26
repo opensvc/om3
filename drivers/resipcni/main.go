@@ -36,7 +36,7 @@ type (
 		resource.T
 
 		Path naming.Path
-		DNS  string
+		DNS  []string
 
 		// config
 		Expose     []string `json:"expose"`
@@ -289,7 +289,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(); err != nil {
 		return err
 	}
-	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, strings.Fields(t.DNS)); err != nil {
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
