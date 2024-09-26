@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/instance"
@@ -126,7 +126,7 @@ type (
 	}
 
 	clusterDataer interface {
-		ClusterData() *cluster.Data
+		ClusterData() *clusterdump.Data
 	}
 
 	changesData struct {

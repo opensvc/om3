@@ -1,18 +1,17 @@
 package rawconfig
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
-	"github.com/spf13/viper"
-
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/omcrypto"
+	"github.com/msoap/byline"
 	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render/palette"
+	"github.com/subosito/gotenv"
 )
 
 const (
@@ -28,232 +27,137 @@ var (
 	Colorize *palette.ColorPaletteFunc
 	Color    *palette.ColorPalette
 	Paths    AgentPaths
-	Envs     []string
-
-	// nodeViper is the global accessor to the viper instance handling configuration
-	nodeViper *viper.Viper
-	fromViper = conf{}
-
-	clusterSectionCmd = make(chan chan<- ClusterSection)
-	nodeSectionCmd    = make(chan chan<- NodeSection)
-	loadConfigCmd     = make(chan loadCmd)
-
-	sectionCluster ClusterSection
-	sectionNode    NodeSection
-
-	defaultEnvs = []string{
-		"CERT",
-		"DEV",
-		"DRP",
-		"FOR",
-		"INT",
-		"PRA",
-		"PRD",
-		"PRJ",
-		"PPRD",
-		"QUAL",
-		"REC",
-		"STG",
-		"TMP",
-		"TST",
-		"UAT",
-	}
-)
-
-type (
-	// conf is the merged config (defaults, cluster.conf then node.conf)
-	conf struct {
-		Cluster  ClusterSection        `mapstructure:"cluster"`
-		Hostname string                `mapstructure:"hostname"`
-		Node     NodeSection           `mapstructure:"node"`
-		Palette  palette.StringPalette `mapstructure:"palette"`
-		Paths    AgentPaths            `mapstructure:"paths"`
-		Envs     []string              `mapstructure:"envs"`
-	}
-
-	ClusterSection struct {
-		ID         string `mapstructure:"id"`
-		Name       string `mapstructure:"name"`
-		Secret     string `mapstructure:"secret"`
-		CASecPaths string `mapstructure:"ca"`
-		Nodes      string `mapstructure:"nodes"`
-		DNS        string `mapstructure:"dns"`
-	}
-
-	NodeSection struct {
-		Env       string `mapstructure:"env"`
-		Collector string `mapstructure:"dbopensvc"`
-		UUID      string `mapstructure:"uuid"`
-		PRKey     string `mapstructure:"prkey"`
-	}
-
-	loadCmd struct {
-		Env  map[string]string
-		Done chan struct{}
-	}
 )
 
 func init() {
-	running := make(chan bool)
-	go func() {
-		running <- true
-		for {
-			select {
-			case respChan := <-clusterSectionCmd:
-				respChan <- sectionCluster
-			case respChan := <-nodeSectionCmd:
-				respChan <- sectionNode
-			case cmd := <-loadConfigCmd:
-				loadSections()
-				cmd.Done <- struct{}{}
-			}
-		}
-	}()
-	<-running
 	Load(nil)
-
-	// TODO: move this outside, to remove omcrypto deps. keep this here for
-	// cmds that needs omcrypto
-	omcrypto.SetClusterName(sectionCluster.Name)
-	omcrypto.SetClusterSecret(sectionCluster.Secret)
 }
 
-func GetClusterSection() ClusterSection {
-	c := make(chan ClusterSection)
-	clusterSectionCmd <- c
-	return <-c
-}
-
-func GetNodeSection() NodeSection {
-	c := make(chan NodeSection)
-	nodeSectionCmd <- c
-	return <-c
-}
-
-func LoadSections() {
-	cmd := loadCmd{
-		Done: make(chan struct{}),
-	}
-	loadConfigCmd <- cmd
-	<-cmd.Done
-}
-
-// Load initializes the Viper and Config globals.
-// Done once in package init(), but can be called again to force env variables or detect changes.
 func Load(env map[string]string) {
-	nodeViper = viper.New()
-	nodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	nodeViper.AutomaticEnv()
-
 	if env == nil {
-		env = readEnvFile()
-	}
-	root := os.Getenv("OSVC_ROOT_PATH")
-	if root == "" {
-		root, _ = env["osvc_root_path"]
-	}
-	python, _ := env["osvc_python"]
-	getClusterName := func() string {
-		if s, ok := env["osvc_cluster_name"]; ok && s != "" {
-			return s
+		if m, err := readEnv(); err != nil {
+			panic(err)
+		} else {
+			env = m
 		}
-		return "default"
 	}
-	setDefaults(root)
-	nodeViper.SetDefault("paths.python", python)
-	nodeViper.SetDefault("cluster.name", getClusterName())
-	nodeViper.SetDefault("envs", defaultEnvs)
 
-	if err := nodeViper.Unmarshal(&fromViper); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
-		return
+	var root string
+	if s, ok := os.LookupEnv("OSVC_ROOT_PATH"); ok {
+		root = s
+	} else if env != nil {
+		root = env["OSVC_ROOT_PATH"]
 	}
-	Paths = fromViper.Paths
+	setPaths(root)
+
+	var colors string
+	if s, ok := os.LookupEnv("OSVC_COLORS"); ok {
+		root = s
+	} else if env != nil {
+		root = env["OSVC_COLORS"]
+	}
+	setColors(colors)
+
 	capabilities.SetCacheFile(Paths.Capabilities)
-
-	LoadSections()
-
-	Colorize = palette.NewFunc(fromViper.Palette)
-	Color = palette.New(fromViper.Palette)
 }
 
-func setDefaults(root string) {
-	nodeViper.SetDefault("hostname", hostname.Hostname())
-	if root == defPathRoot {
-		nodeViper.SetDefault("paths.root", "")
-		nodeViper.SetDefault("paths.bin", defPathBin)
-		nodeViper.SetDefault("paths.var", defPathVar)
-		nodeViper.SetDefault("paths.last_shutdown", defPathLastShutdown)
-		nodeViper.SetDefault("paths.capabilities", defPathCapabilities)
-		nodeViper.SetDefault("paths.lock", defPathLock)
-		nodeViper.SetDefault("paths.lsnr", defPathLsnr)
-		nodeViper.SetDefault("paths.cache", defPathCache)
-		nodeViper.SetDefault("paths.certs", defPathCerts)
-		nodeViper.SetDefault("paths.cacrl", defPathCACRL)
-		nodeViper.SetDefault("paths.log", defPathLog)
-		nodeViper.SetDefault("paths.etc", defPathEtc)
-		nodeViper.SetDefault("paths.etcns", defPathEtcNs)
-		nodeViper.SetDefault("paths.tmp", defPathTmp)
-		nodeViper.SetDefault("paths.doc", defPathDoc)
-		nodeViper.SetDefault("paths.compliance", defPathCompliance)
-		nodeViper.SetDefault("paths.html", defPathHTML)
-		nodeViper.SetDefault("paths.drivers", defPathDrivers)
+func readEnv() (map[string]string, error) {
+	candidates := []string{
+		filepath.FromSlash("/etc/sysconfig/" + Program),
+		filepath.FromSlash("/etc/default/" + Program),
+		filepath.FromSlash("/etc/defaults/" + Program),
+	}
+	for _, candidate := range candidates {
+		reader, err := os.Open(candidate)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s", candidate, err)
+		}
+		defer reader.Close()
+		lr := byline.NewReader(reader)
+		lr.GrepByRegexp(regexp.MustCompile(`^\s*[A-Z][A-Z_]*\s*=`))
+		env, err := gotenv.StrictParse(lr)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s", candidate, err)
+		}
+		return map[string]string(env), nil
+	}
+	m := make(map[string]string)
+	return m, nil
+}
+
+func setColors(colors string) {
+	p := palette.DefaultPalette()
+	for _, w := range strings.Split(colors, ":") {
+		l := strings.SplitN(w, "=", 2)
+		if len(l) != 2 {
+			continue
+		}
+		switch l[0] {
+		case "primary":
+			p.Primary = l[1]
+		case "secondary":
+			p.Secondary = l[1]
+		case "optimal":
+			p.Optimal = l[1]
+		case "error":
+			p.Error = l[1]
+		case "warning":
+			p.Warning = l[1]
+		case "frozen":
+			p.Frozen = l[1]
+		}
+	}
+	Colorize = palette.NewFunc(*p)
+	Color = palette.New(*p)
+}
+
+func setPaths(root string) {
+	if root == "" {
+		Paths = AgentPaths{
+			Root:         root,
+			Bin:          filepath.FromSlash("/usr/bin"),
+			Var:          filepath.FromSlash(fmt.Sprintf("/var/lib/%s", Program)),
+			LastShutdown: filepath.FromSlash(fmt.Sprintf("/var/lib/%s/last_shutdown", Program)),
+			Capabilities: filepath.FromSlash(fmt.Sprintf("/var/lib/%s/%s", Program, basenameCapabilities)),
+			Lock:         filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lock", Program)),
+			Cache:        filepath.FromSlash(fmt.Sprintf("/var/lib/%s/cache", Program)),
+			Certs:        filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs", Program)),
+			CACRL:        filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs/ca_crl", Program)),
+			Lsnr:         filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lsnr", Program)),
+			Log:          filepath.FromSlash(fmt.Sprintf("/var/log/%s", Program)),
+			Etc:          filepath.FromSlash(fmt.Sprintf("/etc/%s", Program)),
+			EtcNs:        filepath.FromSlash(fmt.Sprintf("/etc/%s/namespaces", Program)),
+			Tmp:          filepath.FromSlash(fmt.Sprintf("/var/tmp/%s", Program)),
+			Doc:          filepath.FromSlash(fmt.Sprintf("/usr/share/doc/%s", Program)),
+			HTML:         filepath.FromSlash(fmt.Sprintf("/usr/share/%s/html", Program)),
+			Drivers:      filepath.FromSlash(fmt.Sprintf("/usr/libexec/%s", Program)),
+			Compliance:   filepath.FromSlash(fmt.Sprintf("/usr/share/%s/compliance", Program)),
+		}
 	} else {
-		nodeViper.SetDefault("paths.root", root)
-		nodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
-		nodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
-		nodeViper.SetDefault("paths.last_shutdown", filepath.Join(root, "var", "last_shutdown"))
-		nodeViper.SetDefault("paths.capabilities", filepath.Join(root, "var", basenameCapabilities))
-		nodeViper.SetDefault("paths.lock", filepath.Join(root, "var", "lock"))
-		nodeViper.SetDefault("paths.lsnr", filepath.Join(root, "var", "lsnr"))
-		nodeViper.SetDefault("paths.cache", filepath.Join(root, "var", "cache"))
-		nodeViper.SetDefault("paths.certs", filepath.Join(root, "var", "certs"))
-		nodeViper.SetDefault("paths.cacrl", filepath.Join(root, "var", "certs", "ca_crl"))
-		nodeViper.SetDefault("paths.log", filepath.Join(root, "log"))
-		nodeViper.SetDefault("paths.etc", filepath.Join(root, "etc"))
-		nodeViper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
-		nodeViper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
-		nodeViper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
-		nodeViper.SetDefault("paths.compliance", filepath.Join(root, "share", "compliance"))
-		nodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
-		nodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
+		Paths = AgentPaths{
+			Root:         root,
+			Bin:          filepath.Join(root, "bin"),
+			Var:          filepath.Join(root, "var"),
+			LastShutdown: filepath.Join(root, "var", "last_shutdown"),
+			Capabilities: filepath.Join(root, "var", basenameCapabilities),
+			Lock:         filepath.Join(root, "var", "lock"),
+			Lsnr:         filepath.Join(root, "var", "lsnr"),
+			Cache:        filepath.Join(root, "var", "cache"),
+			Certs:        filepath.Join(root, "var", "certs"),
+			CACRL:        filepath.Join(root, "var", "certs", "ca_crl"),
+			Log:          filepath.Join(root, "log"),
+			Etc:          filepath.Join(root, "etc"),
+			EtcNs:        filepath.Join(root, "etc", "namespaces"),
+			Tmp:          filepath.Join(root, "tmp"),
+			Doc:          filepath.Join(root, "share", "doc"),
+			Compliance:   filepath.Join(root, "share", "compliance"),
+			HTML:         filepath.Join(root, "share", "html"),
+			Drivers:      filepath.Join(root, "drivers"),
+		}
 	}
-	nodeViper.SetDefault("palette.primary", palette.DefaultPrimary)
-	nodeViper.SetDefault("palette.secondary", palette.DefaultSecondary)
-	nodeViper.SetDefault("palette.optimal", palette.DefaultOptimal)
-	nodeViper.SetDefault("palette.error", palette.DefaultError)
-	nodeViper.SetDefault("palette.warning", palette.DefaultWarning)
-	nodeViper.SetDefault("palette.frozen", palette.DefaultFrozen)
-}
-
-func loadSections() {
-	nodeViper.SetConfigType("ini")
-
-	p := fmt.Sprintf("%s/cluster.conf", Paths.Etc)
-	nodeViper.SetConfigFile(filepath.FromSlash(p))
-	_ = nodeViper.MergeInConfig()
-
-	p = fmt.Sprintf("%s/node.conf", Paths.Etc)
-	nodeViper.SetConfigFile(filepath.FromSlash(p))
-	_ = nodeViper.MergeInConfig()
-
-	p = fmt.Sprintf("$HOME/.%s", Program)
-	nodeViper.SetConfigType("yaml")
-	nodeViper.AddConfigPath(filepath.FromSlash(p))
-	nodeViper.AddConfigPath(".")
-	nodeViper.MergeInConfig()
-
-	if err := nodeViper.Unmarshal(&fromViper); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
-		return
-	}
-	sectionCluster = fromViper.Cluster
-	clusterNodes := []string{}
-	for _, s := range strings.Fields(sectionCluster.Nodes) {
-		clusterNodes = append(clusterNodes, strings.ToLower(s))
-	}
-	clusternode.Set(clusterNodes)
-	sectionNode = fromViper.Node
 }
 
 // ReloadForTest can be used during tests to force a reload of config after root path populated
@@ -267,7 +171,7 @@ func loadSections() {
 //	  defer rawconfig.ReloadForTest(env.Root)()
 //	  ...
 func ReloadForTest(rootPath string) func() {
-	Load(map[string]string{"osvc_root_path": rootPath})
+	Load(map[string]string{"OSVC_ROOT_PATH": rootPath})
 	return func() {
 		Load(map[string]string{})
 	}

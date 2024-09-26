@@ -6,27 +6,6 @@ import (
 	"path/filepath"
 )
 
-var (
-	defPathRoot         = ""
-	defPathBin          = filepath.FromSlash("/usr/bin")
-	defPathVar          = filepath.FromSlash(fmt.Sprintf("/var/lib/%s", Program))
-	defPathLastShutdown = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/last_shutdown", Program))
-	defPathCapabilities = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/%s", Program, basenameCapabilities))
-	defPathLock         = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lock", Program))
-	defPathCache        = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/cache", Program))
-	defPathCerts        = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs", Program))
-	defPathCACRL        = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs/ca_crl", Program))
-	defPathLsnr         = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lsnr", Program))
-	defPathLog          = filepath.FromSlash(fmt.Sprintf("/var/log/%s", Program))
-	defPathEtc          = filepath.FromSlash(fmt.Sprintf("/etc/%s", Program))
-	defPathEtcNs        = filepath.FromSlash(fmt.Sprintf("/etc/%s/namespaces", Program))
-	defPathTmp          = filepath.FromSlash(fmt.Sprintf("/var/tmp/%s", Program))
-	defPathDoc          = filepath.FromSlash(fmt.Sprintf("/usr/share/doc/%s", Program))
-	defPathHTML         = filepath.FromSlash(fmt.Sprintf("/usr/share/%s/html", Program))
-	defPathDrivers      = filepath.FromSlash(fmt.Sprintf("/usr/libexec/%s", Program))
-	defPathCompliance   = filepath.FromSlash(fmt.Sprintf("/usr/share/%s/compliance", Program))
-)
-
 type (
 	// AgentPaths abstracts all paths of the agent file organisation
 	AgentPaths struct {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/clusterip"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
@@ -394,7 +394,7 @@ func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
 	var (
 		err           error
 		b             []byte
-		clusterStatus cluster.Data
+		clusterStatus clusterdump.Data
 	)
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).

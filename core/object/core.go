@@ -36,6 +36,7 @@ type (
 		configData any
 		config     *xconfig.T
 		node       *Node
+		cluster    *Ccfg
 		paths      struct {
 			varDir string
 			logDir string
@@ -125,7 +126,7 @@ func (t *core) ConfigFile() string {
 	return t.configFile
 }
 
-// Node returns a cache Node struct pointer. If none is already cached,
+// Node returns a cached Node struct pointer. If none is already cached,
 // allocate a new Node{} and cache it.
 func (t *core) Node() (*Node, error) {
 	if t.node != nil {
@@ -136,6 +137,20 @@ func (t *core) Node() (*Node, error) {
 	} else {
 		t.node = n
 		return t.node, nil
+	}
+}
+
+// Cluster returns a cached Ccfg struct pointer. If none is already cached,
+// allocate a new Ccfg{} and cache it.
+func (t *core) Cluster() (*Ccfg, error) {
+	if t.cluster != nil {
+		return t.cluster, nil
+	}
+	if n, err := NewCluster(); err != nil {
+		return nil, err
+	} else {
+		t.cluster = n
+		return t.cluster, nil
 	}
 }
 

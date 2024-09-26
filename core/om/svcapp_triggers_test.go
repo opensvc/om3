@@ -29,6 +29,7 @@ func TestAppStopTrigger(t *testing.T) {
 		"succeedTriggers":        0,
 	}
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/svcappforking_trigger.conf", "etc/svcapp.conf")
 	for name, expected := range cases {

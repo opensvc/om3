@@ -1,14 +1,14 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
 	// ClusterData struct holds cluster data that can be updated with msg
 	ClusterData struct {
-		*cluster.Data
+		*clusterdump.Data
 
 		localhost string
 	}
@@ -73,7 +73,7 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 	}
 }
 
-func NewClusterData(cd *cluster.Data) *ClusterData {
+func NewClusterData(cd *clusterdump.Data) *ClusterData {
 	return &ClusterData{
 		Data:      cd,
 		localhost: cd.Daemon.Nodename,

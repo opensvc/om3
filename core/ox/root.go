@@ -15,9 +15,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/version"
-
-	"github.com/mitchellh/go-homedir"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -33,7 +30,6 @@ var (
 	root = &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
 		Short:                  "Manage opensvc clusters.",
-		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,
 		SilenceErrors:          false,
 		ValidArgsFunction:      validArgs,
@@ -64,13 +60,6 @@ func listObjectPaths() []string {
 func listNodes() []string {
 	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.nodes"+contextSuffix())); err == nil {
 		return strings.Fields(string(b))
-	}
-	return nil
-}
-
-func persistentPreRunE(cmd *cobra.Command, _ []string) error {
-	if flag := cmd.Flags().Lookup("color"); flag != nil {
-		colorFlag = flag.Value.String()
 	}
 	return nil
 }
@@ -133,44 +122,16 @@ func ExecuteArgs(args []string) {
 	}
 }
 
+func init() {
+	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
+	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
+}
+
 func guessSubsystem(s string) string {
 	if p, err := naming.ParsePath(s); err == nil {
 		return p.Kind.String()
 	}
 	return "all"
-}
-
-func init() {
-	cobra.OnInitialize(initConfig)
-	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
-	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
-	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if configFlag != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(configFlag)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".opensvc" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".opensvc")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 )
 
 type (
@@ -49,11 +49,11 @@ func (t *CmdDaemonStats) Run() error {
 	return fmt.Errorf("todo")
 }
 
-func parseDaemonStats(b []byte) (cluster.Stats, error) {
+func parseDaemonStats(b []byte) (clusterdump.Stats, error) {
 	type (
 		nodeData struct {
-			Status int                     `json:"status"`
-			Data   cluster.NodeStatsBundle `json:"data"`
+			Status int                         `json:"status"`
+			Data   clusterdump.NodeStatsBundle `json:"data"`
 		}
 		responseType struct {
 			Status int                 `json:"status"`
@@ -61,7 +61,7 @@ func parseDaemonStats(b []byte) (cluster.Stats, error) {
 		}
 	)
 	var t responseType
-	ds := make(cluster.Stats)
+	ds := make(clusterdump.Stats)
 	err := json.Unmarshal(b, &t)
 	if err != nil {
 		return ds, err

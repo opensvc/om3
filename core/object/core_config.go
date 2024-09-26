@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
@@ -85,8 +84,19 @@ func (t *core) Orchestrate() string {
 }
 
 func (t *core) FQDN() string {
-	clusterName := rawconfig.GetClusterSection().Name
-	return naming.NewFQDN(t.path, clusterName).String()
+	return t.fqdn().String()
+}
+
+func (t *core) Domain() string {
+	return t.fqdn().Domain()
+}
+
+func (t *core) fqdn() *naming.FQDN {
+	if cluster, err := t.Cluster(); err != nil {
+		return nil
+	} else {
+		return naming.NewFQDN(t.path, cluster.Name())
+	}
 }
 
 func (t *core) Env() string {
@@ -94,7 +104,11 @@ func (t *core) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return rawconfig.GetNodeSection().Env
+	if node, err := t.Node(); err != nil {
+		return "TST"
+	} else {
+		return node.Env()
+	}
 }
 
 func (t *core) App() string {
@@ -318,7 +332,7 @@ func (t *core) Dereference(ref string) (string, error) {
 		if t.path.IsZero() {
 			return "", nil
 		}
-		return naming.NewFQDN(t.path, rawconfig.GetClusterSection().Name).Domain(), nil
+		return t.Domain(), nil
 	case "private_var":
 		return t.paths.varDir, nil
 	case "initd":
@@ -332,20 +346,44 @@ func (t *core) Dereference(ref string) (string, error) {
 			return url.String(), nil
 		}
 	case "clusterid":
-		return rawconfig.GetClusterSection().ID, nil
+		if cluster, err := t.Cluster(); err != nil {
+			return "", err
+		} else {
+			return cluster.ID().String(), nil
+		}
 	case "clustername":
-		return rawconfig.GetClusterSection().Name, nil
+		if cluster, err := t.Cluster(); err != nil {
+			return "", err
+		} else {
+			return cluster.Name(), nil
+		}
 	case "clusternodes":
-		return strings.Join(clusternode.Get(), " "), nil
+		if cluster, err := t.Cluster(); err != nil {
+			return "", err
+		} else {
+			nodes, _ := cluster.Nodes()
+			return strings.Join(nodes, " "), nil
+		}
 	case "clusterdrpnodes":
 		return ref, fmt.Errorf("deprecated")
 	case "dns":
-		return rawconfig.GetClusterSection().DNS, nil
+		if cluster, err := t.Cluster(); err != nil {
+			return "", err
+		} else {
+			l := cluster.Config().GetStrings(key.Parse("cluster.dns"))
+			return strings.Join(l, " "), nil
+		}
 	case "dnsnodes":
-		ips := rawconfig.GetClusterSection().DNS
+		ips := []string{}
+		nodes := []string{}
+		if cluster, err := t.Cluster(); err != nil {
+			return "", err
+		} else {
+			ips = cluster.Config().GetStrings(key.Parse("cluster.dns"))
+			nodes, _ = cluster.Nodes()
+		}
 		l := make([]string, 0)
-		nodes := clusternode.Get()
-		for _, ip := range strings.Fields(ips) {
+		for _, ip := range ips {
 			if names, err := net.LookupAddr(ip); err != nil {
 				return "", err
 			} else {

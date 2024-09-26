@@ -1959,6 +1959,10 @@ func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
 	return t.getDev(opt.SID, dev.DevInfo.DevName)
 }
 
+func (t *Array) cylinderSize() int64 {
+	return int64(1920 * 1024)
+}
+
 func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
@@ -1997,7 +2001,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 		return dev, fmt.Errorf("the target size is smaller than the current size. refuse to process. use --force if you accept the data loss risk.")
 	}
 
-	args := []string{"-sid", opt.SID, "modify", dev.DevInfo.DevName, "-tdev", "-cap", fmt.Sprint(sizeBytes / 1024 / 1024), "-captype", "mb", "-noprompt"}
+	args := []string{"-sid", opt.SID, "modify", dev.DevInfo.DevName, "-tdev", "-cap", fmt.Sprint(sizeBytes / t.cylinderSize()), "-captype", "cyl", "-noprompt"}
 	if t.IsPowerMax() && dev.RDF != nil {
 		args = append(args, "-rdfg", fmt.Sprint(dev.RDF.Local.RAGroupNum))
 	}
@@ -2267,7 +2271,7 @@ func (t *Array) CreateThinDev(opt OptAddThinDev) ([]string, error) {
 		opt.SID = t.kwSID()
 	}
 
-	args := []string{"-sid", opt.SID, "create", "-tdev", "-N", "1", "-cap", fmt.Sprint(sizeBytes / 1024 / 1024), "-captype", "mb"}
+	args := []string{"-sid", opt.SID, "create", "-tdev", "-N", "1", "-cap", fmt.Sprint(sizeBytes / t.cylinderSize()), "-captype", "cyl"}
 	if opt.SG != "" {
 		args = append(args, "-sg", opt.SG)
 	}

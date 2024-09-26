@@ -1,10 +1,12 @@
 package daemonapi
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/api"
-	"net/http"
 )
 
 func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {

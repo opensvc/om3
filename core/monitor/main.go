@@ -13,7 +13,7 @@ import (
 
 	"github.com/inancgumus/screen"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -121,7 +121,7 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var data cluster.Data
+	var data clusterdump.Data
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}
@@ -129,9 +129,9 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	return nil
 }
 
-func (m *T) doOneShot(data cluster.Data, clear bool, eventsetCount uint64, out io.Writer) {
+func (m *T) doOneShot(data clusterdump.Data, clear bool, eventsetCount uint64, out io.Writer) {
 	human := func() string {
-		f := cluster.Frame{
+		f := Frame{
 			Selector: m.selector,
 			Current:  data,
 			Sections: m.sections,
@@ -173,12 +173,12 @@ func (m *T) DoWatch(statusGetter Getter, evReader event.ReadCloser, out io.Write
 func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer) error {
 	var (
 		b    []byte
-		data *cluster.Data
+		data *clusterdump.Data
 		err  error
 
 		errC   = make(chan error)
 		eventC = make(chan event.Event, 100)
-		dataC  = make(chan *cluster.Data)
+		dataC  = make(chan *clusterdump.Data)
 
 		nextEventID uint64
 
@@ -216,7 +216,7 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 
 	cdata := msgbus.NewClusterData(data)
 	wg.Add(1)
-	go func(d *cluster.Data) {
+	go func(d *clusterdump.Data) {
 		defer wg.Done()
 		m.doOneShot(*d, true, 0, out)
 		// show data when new data published on dataC

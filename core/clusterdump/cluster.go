@@ -1,8 +1,8 @@
-package cluster
+package clusterdump
 
 import (
 	"encoding/json"
-
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -20,7 +20,7 @@ type (
 	}
 
 	Cluster struct {
-		Config Config                   `json:"config"`
+		Config cluster.Config           `json:"config"`
 		Status Status                   `json:"status"`
 		Object map[string]object.Status `json:"object"`
 

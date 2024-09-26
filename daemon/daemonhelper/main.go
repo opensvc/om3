@@ -90,10 +90,10 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 
 func initEnv(t *testing.T) *testhelper.Env {
 	env := testhelper.Setup(t)
-	t.Logf("Starting daemon with osvc_root_path=%s", env.Root)
+	t.Logf("Starting daemon with OSVC_ROOT_PATH=%s", env.Root)
 	rawconfig.Load(map[string]string{
-		"osvc_root_path":    env.Root,
-		"osvc_cluster_name": env.ClusterName,
+		"OSVC_ROOT_PATH":    env.Root,
+		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	out := zerolog.ConsoleWriter{
@@ -111,7 +111,8 @@ func initEnv(t *testing.T) *testhelper.Env {
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
-	rawconfig.LoadSections()
+
+	object.SetClusterConfig()
 
 	return &env
 }

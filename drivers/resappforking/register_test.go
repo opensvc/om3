@@ -33,6 +33,7 @@ func TestKeywords(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
+	object.SetClusterConfig()
 	defer rawconfig.ReloadForTest(env.Root)()
 	p, err := naming.ParsePath("svc1")
 	require.Nil(t, err)

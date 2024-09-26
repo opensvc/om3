@@ -39,6 +39,7 @@ func TestOmNodePush(t *testing.T) {
 	}
 
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 
 	for name, tc := range cases {

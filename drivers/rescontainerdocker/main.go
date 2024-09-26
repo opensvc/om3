@@ -26,7 +26,6 @@ import (
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
@@ -46,6 +45,7 @@ type (
 	T struct {
 		resource.T
 		resource.SCSIPersistentReservation
+		ObjectDomain    string         `json:"object_domain"`
 		PG              pg.Config      `json:"pg"`
 		Path            naming.Path    `json:"path"`
 		ObjectID        uuid.UUID      `json:"object_id"`
@@ -220,7 +220,9 @@ func (t T) mounts() ([]mount.Mount, error) {
 		if len(m.Target) == 0 {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
 		}
-		if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
+		if strings.HasPrefix(m.Source, "/") {
+			// pass
+		} else if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
 			return mounts, err
 		} else if file.IsProtected(srcRealpath) {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
@@ -840,7 +842,7 @@ func (t T) dnsSearch() []string {
 	if !t.needDNS() {
 		return []string{}
 	}
-	dom0 := naming.NewFQDN(t.Path, rawconfig.GetClusterSection().Name).Domain()
+	dom0 := t.ObjectDomain
 	dom1 := strings.SplitN(dom0, ".", 2)[1]
 	dom2 := strings.SplitN(dom1, ".", 2)[1]
 	return []string{dom0, dom1, dom2}

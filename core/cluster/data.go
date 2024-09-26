@@ -1,8 +1,6 @@
 package cluster
 
-import (
-	"sync"
-)
+import "sync"
 
 type (
 	Dataer interface {

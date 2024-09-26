@@ -49,7 +49,7 @@ func (t *keystore) addKey(name string, b []byte) error {
 	if b == nil {
 		b = []byte{}
 	}
-	s, err := t.customEncode(b)
+	s, err := t.encodeDecoder.Encode(b)
 	if err != nil {
 		return err
 	}

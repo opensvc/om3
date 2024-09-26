@@ -132,7 +132,7 @@ func bootStrapCcfg() error {
 	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
-	rawconfig.LoadSections()
+	object.SetClusterConfig()
 	return nil
 }
 

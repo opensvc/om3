@@ -1,7 +1,9 @@
 package omcmd
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
@@ -9,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -59,36 +62,36 @@ func (t *CmdObjectEditKey) doLocal(obj object.Keystore, c *client.T) error {
 }
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
-	/*
-		params := api.GetKey{}
-		params.Path = p.String()
-		params.Key = key
-		resp, err = c.GetKeyWithResponse(context.Background(), &params)
-		if err != nil {
-			return []byte{}, err
-		}
-		return *resp.JSON200.Data, nil
-	*/
-	return nil, fmt.Errorf("todo")
+	params := api.GetObjectKVStoreEntryParams{
+		Key: key,
+	}
+	resp, err := c.GetObjectKVStoreEntryWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+	if err != nil {
+		return []byte{}, err
+	}
+	if resp.StatusCode() == http.StatusOK {
+		return resp.Body, nil
+	}
+	return []byte{}, fmt.Errorf("%s", resp.Status())
 }
 
 func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
-	/*
-		var b []byte
-		if b, err = os.ReadFile(fName); err != nil {
-			return err
-		}
-		params := api.PostKey{
-			Path: p.String(),
-			Key:  key,
-			Data: b,
-		}
-		if _, err = c.PostKey(context.Background(), params); err != nil {
-			return err
-		}
-		return nil
-	*/
-	return fmt.Errorf("todo")
+	r, err := os.Open(fName)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	params := api.PutObjectKVStoreEntryParams{
+		Key: key,
+	}
+	resp, err := c.PutObjectKVStoreEntryWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("%s", resp.Status)
+	}
+	return nil
 }
 
 func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {

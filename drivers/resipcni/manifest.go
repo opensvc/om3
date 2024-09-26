@@ -33,6 +33,8 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextCNIConfig,
 		manifest.ContextObjectID,
 		manifest.ContextObjectPath,
+		manifest.ContextObjectFQDN,
+		manifest.ContextDNS,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Attr:      "Expose",

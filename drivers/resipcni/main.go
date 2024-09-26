@@ -36,6 +36,7 @@ type (
 		resource.T
 
 		Path naming.Path
+		DNS  []string
 
 		// config
 		Expose     []string `json:"expose"`
@@ -45,6 +46,7 @@ type (
 		CNIConfig  string
 		CNIPlugins string
 		ObjectID   uuid.UUID
+		ObjectFQDN string
 		WaitDNS    *time.Duration `json:"wait_dns"`
 	}
 
@@ -287,7 +289,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(); err != nil {
 		return err
 	}
-	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {

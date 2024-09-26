@@ -9,9 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/encryptconn"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -147,7 +150,12 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				t.log.Infof("can't set read deadline for %s: %s", connAddr, err)
 				continue
 			}
-			clearConn := encryptconn.New(conn)
+			clusterConfig := cluster.ConfigData.Get()
+			clearConn := encryptconn.New(conn, &omcrypto.Factory{
+				NodeName:    hostname.Hostname(),
+				ClusterName: clusterConfig.Name,
+				Key:         clusterConfig.Secret(),
+			})
 			t.Add(1)
 			go t.handle(clearConn)
 		}

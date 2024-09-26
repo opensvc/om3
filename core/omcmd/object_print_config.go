@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
@@ -100,7 +101,8 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (ra
 		Impersonate: &t.Impersonate,
 	}
 	for _, nodename := range nodenames {
-		scopeClient, err := client.New(client.WithURL(nodename))
+		secret := cluster.ConfigData.Get().Secret()
+		scopeClient, err := client.New(client.WithURL(nodename), client.WithPassword(secret))
 		if err != nil {
 			return rawconfig.T{}, err
 		}

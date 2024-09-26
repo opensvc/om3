@@ -30,7 +30,9 @@ type (
 	T struct {
 		resource.T
 
-		Path naming.Path
+		Path       naming.Path
+		ObjectFQDN string
+		DNS        []string
 
 		// config
 		IPName       string         `json:"ipname"`
@@ -82,7 +84,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.arpAnnounce(); err != nil {
 		return err
 	}
-	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
 	return nil

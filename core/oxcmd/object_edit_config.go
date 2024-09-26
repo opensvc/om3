@@ -5,9 +5,7 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
@@ -23,41 +21,14 @@ type (
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := objectselector.New(selector)
-	wc := clientcontext.IsSet()
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
 	for _, p := range paths {
-		obj, err := object.NewConfigurer(p)
-		if err != nil {
-			return err
-		}
-		if !wc && p.Exists() {
-			if err := t.doLocal(obj, c); err != nil {
-				return err
-			}
-			continue
-		}
 		if err := t.doRemote(p, c); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
-	var err error
-	switch {
-	case t.Discard:
-		err = obj.DiscardAndEditConfig()
-	case t.Recover:
-		err = obj.RecoverAndEditConfig()
-	default:
-		err = obj.EditConfig()
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }

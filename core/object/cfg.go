@@ -16,6 +16,8 @@ type (
 		keystore
 	}
 
+	cfgEncodeDecode struct{}
+
 	//
 	// Cfg is the cfg-kind object.
 	//
@@ -39,11 +41,10 @@ func NewCfg(path naming.Path, opts ...funcopt.O) (*cfg, error) {
 	s := &cfg{}
 	s.path = path
 	s.path.Kind = naming.KindCfg
-	s.customEncode = cfgEncode
-	s.customDecode = cfgDecode
 	if err := s.init(s, path, opts...); err != nil {
 		return s, err
 	}
+	s.encodeDecoder = &cfgEncodeDecode{}
 	s.Config().RegisterPostCommit(s.postCommit)
 	return s, nil
 }
@@ -52,7 +53,7 @@ func (t *cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
-func cfgEncode(b []byte) (string, error) {
+func (t *cfgEncodeDecode) Encode(b []byte) (string, error) {
 	switch {
 	case isAsciiPrintable(b):
 		return "literal:" + string(b), nil
@@ -61,7 +62,7 @@ func cfgEncode(b []byte) (string, error) {
 	}
 }
 
-func cfgDecode(s string) ([]byte, error) {
+func (t *cfgEncodeDecode) Decode(s string) ([]byte, error) {
 	switch {
 	case strings.HasPrefix(s, "base64:"):
 		return base64.URLEncoding.DecodeString(s[7:])

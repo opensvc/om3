@@ -106,7 +106,7 @@ type (
 		labelLocalhost pubsub.Label
 
 		// cacheNodesInfo is a map of nodes to node.NodeInfo, it is used to
-		// maintain the nodesinfo.json file.
+		// maintain the nodes_info.json file.
 		// local values are computed by nmon.
 		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
 		// and ForgetPeer.

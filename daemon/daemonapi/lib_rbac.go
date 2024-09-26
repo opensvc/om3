@@ -42,6 +42,15 @@ func keyopRbac(op keyop.T) error {
 		case "script", "start", "stop", "check", "info":
 			return fmt.Errorf("%s", op.Key)
 		}
+	case "container":
+		switch op.Key.Option {
+		case "volume_mounts":
+			for _, e := range strings.Fields(op.Value) {
+				if strings.HasPrefix(e, "_") || strings.Contains(e, "/../") || strings.HasPrefix(e, "../") || strings.HasSuffix(e, "../") {
+					return fmt.Errorf("not authorized to mount a host path in container: %s", op)
+				}
+			}
+		}
 	}
 	return nil
 }

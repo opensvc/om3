@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -22,10 +23,10 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	t.Helper()
 	hostname.SetHostnameForGoTest("node1")
 	env := testhelper.Setup(t)
-	t.Logf("Starting daemon with osvc_root_path=%s", env.Root)
+	t.Logf("Starting daemon with OSVC_ROOT_PATH=%s", env.Root)
 	rawconfig.Load(map[string]string{
-		"osvc_root_path":    env.Root,
-		"osvc_cluster_name": env.ClusterName,
+		"OSVC_ROOT_PATH":    env.Root,
+		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
 
 	// Create mandatory dirs
@@ -36,7 +37,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
-	rawconfig.LoadSections()
 
 	t.Logf("RunDaemon")
 	mainDaemon := daemon.New()
@@ -44,10 +44,10 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	require.NoError(t, err)
 
 	stop := func() {
-		t.Logf("Stopping daemon with osvc_root_path=%s", env.Root)
+		t.Logf("Stopping daemon with OSVC_ROOT_PATH=%s", env.Root)
 		err := mainDaemon.Stop()
 		assert.NoError(t, err, "Stop Daemon error")
-		t.Logf("Stopped daemon with osvc_root_path=%s", env.Root)
+		t.Logf("Stopped daemon with OSVC_ROOT_PATH=%s", env.Root)
 		time.Sleep(250 * time.Millisecond)
 		hostname.SetHostnameForGoTest("")
 	}
@@ -64,19 +64,23 @@ func GetClient(t *testing.T) (*client.T, error) {
 	t.Helper()
 	t.Logf("create client")
 	// need enough time when tes with race
-	cli, err := client.New(client.WithURL(daemonenv.HTTPLocalURL()), client.WithTimeout(3*time.Second))
+	cli, err := client.New(
+		client.WithURL(daemonenv.HTTPLocalURL()),
+		client.WithTimeout(3*time.Second),
+		client.WithPassword(cluster.ConfigData.Get().Secret()),
+	)
 	require.Nil(t, err)
 	return cli, err
 }
 
-func GetDaemonStatus(t *testing.T) (cluster.Data, error) {
+func GetDaemonStatus(t *testing.T) (clusterdump.Data, error) {
 	t.Helper()
 	cli, err := GetClient(t)
 	require.Nil(t, err)
 	b, err := cli.NewGetDaemonStatus().Get()
 	require.Nil(t, err)
 	require.Greater(t, len(b), 0)
-	cData := cluster.Data{}
+	cData := clusterdump.Data{}
 	err = json.Unmarshal(b, &cData)
 	require.Nil(t, err)
 	return cData, err

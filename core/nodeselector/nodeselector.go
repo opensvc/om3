@@ -14,7 +14,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
@@ -98,7 +98,7 @@ func Expand(s string) ([]string, error) {
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
-// looks up knownNodes configuration files.
+// looks up knownNodes state files.
 func (t *T) Expand() ([]string, error) {
 	if t.nodes != nil {
 		return t.nodes, nil
@@ -261,7 +261,7 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 }
 
 func (t T) KnownLocalNodes() ([]string, error) {
-	l := clusternode.Get()
+	l := cluster.ConfigData.Get().Nodes
 	if len(l) == 0 {
 		return l, ErrClusterNodeCacheEmpty
 	}

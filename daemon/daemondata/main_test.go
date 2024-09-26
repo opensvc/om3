@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/om"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -55,10 +54,10 @@ func TestMain(m *testing.M) {
 
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster-2-nodes.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
-	rawconfig.LoadSections()
 }
 
 // TestDaemonData runs sequence of data updates withing t.Run, and fail fast on

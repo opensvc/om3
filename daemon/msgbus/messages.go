@@ -33,6 +33,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -278,8 +279,8 @@ type (
 
 	ClusterStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string         `json:"node" yaml:"node"`
-		Value      cluster.Status `json:"cluster_status" yaml:"cluster_status"`
+		Node       string             `json:"node" yaml:"node"`
+		Value      clusterdump.Status `json:"cluster_status" yaml:"cluster_status"`
 	}
 
 	DaemonCollectorUpdated struct {

@@ -17,8 +17,8 @@ func TestJoin(t *testing.T) {
 	}
 	env := testhelper.Setup(t)
 	rawconfig.Load(map[string]string{
-		"osvc_root_path":    env.Root,
-		"osvc_cluster_name": env.ClusterName,
+		"OSVC_ROOT_PATH":    env.Root,
+		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
 	err := capabilities.Scan()
 	require.NoError(t, err)

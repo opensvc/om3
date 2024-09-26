@@ -1,4 +1,4 @@
-package cluster
+package monitor
 
 import (
 	"sort"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
+	"github.com/opensvc/om3/core/clusterdump"
 )
 
 const (
@@ -25,31 +26,35 @@ var (
 		"objects":     sectionObjects,
 		"services":    sectionObjects,
 	}
+	green, yellow, red, blue, hiblue, hiblack, bold                                                                                                                                                                        func(a ...interface{}) string
+	iconUp, iconWarning, iconDownIssue, iconPlacementAlert, iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue, iconUndef, iconFrozen, iconDown, iconDRP, iconLeader, iconNotApplicable, iconPreserved, iconStandbyUp string
+)
 
-	green   = color.New(color.FgGreen).SprintFunc()
-	yellow  = color.New(color.FgYellow).SprintFunc()
-	red     = color.New(color.FgRed).SprintFunc()
-	blue    = color.New(color.FgBlue).SprintFunc()
-	hiblue  = color.New(color.FgHiBlue).SprintFunc()
+func initColor() {
+	green = color.New(color.FgGreen).SprintFunc()
+	yellow = color.New(color.FgYellow).SprintFunc()
+	red = color.New(color.FgRed).SprintFunc()
+	blue = color.New(color.FgBlue).SprintFunc()
+	hiblue = color.New(color.FgHiBlue).SprintFunc()
 	hiblack = color.New(color.FgHiBlack).SprintFunc()
-	bold    = color.New(color.Bold).SprintFunc()
+	bold = color.New(color.Bold).SprintFunc()
 
-	iconUp             = green("O")
-	iconWarning        = yellow("!")
-	iconDownIssue      = red("X")
+	iconUp = green("O")
+	iconWarning = yellow("!")
+	iconDownIssue = red("X")
 	iconPlacementAlert = red("^")
 	iconProvisionAlert = red("P")
-	iconStandbyDown    = red("x")
+	iconStandbyDown = red("x")
 	iconStandbyUpIssue = red("o")
-	iconUndef          = red("?")
-	iconFrozen         = blue("*")
-	iconDown           = hiblack("X")
-	iconDRP            = hiblack("#")
-	iconLeader         = hiblack("^")
-	iconNotApplicable  = hiblack("/")
-	iconPreserved      = hiblack("?")
-	iconStandbyUp      = hiblack("o")
-)
+	iconUndef = red("?")
+	iconFrozen = blue("*")
+	iconDown = hiblack("X")
+	iconDRP = hiblack("#")
+	iconLeader = hiblack("^")
+	iconNotApplicable = hiblack("/")
+	iconPreserved = hiblack("?")
+	iconStandbyUp = hiblack("o")
+}
 
 type (
 	// Frame exposes daemon status renderer tunables.
@@ -57,9 +62,9 @@ type (
 		Selector string
 		Nodes    []string
 		Sections []string
-		Current  Data
-		Previous Data
-		Stats    Stats
+		Current  clusterdump.Data
+		Previous clusterdump.Data
+		Stats    clusterdump.Stats
 		// Nodename is the nodename from which we have received data (value of
 		// .daemon.nodename)
 		Nodename string
@@ -98,6 +103,16 @@ func (f Frame) hasSection(section string) bool {
 // representation of Render.
 func (f *Frame) Render() string {
 	var builder strings.Builder
+	initColor()
+
+	green = color.New(color.FgGreen).SprintFunc()
+	yellow = color.New(color.FgYellow).SprintFunc()
+	red = color.New(color.FgRed).SprintFunc()
+	blue = color.New(color.FgBlue).SprintFunc()
+	hiblue = color.New(color.FgHiBlue).SprintFunc()
+	hiblack = color.New(color.FgHiBlack).SprintFunc()
+	bold = color.New(color.Bold).SprintFunc()
+
 	f.setSectionMask()
 	f.scanData()
 	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)

@@ -5,17 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 )
 
 type (
 	sec struct {
 		keystore
+	}
+
+	secEncodeDecode struct {
+		encryptDecrypter encryptDecrypter
 	}
 
 	//
@@ -35,17 +42,47 @@ type (
 		Keystore
 		SecureKeystore
 	}
+
+	encryptDecrypter interface {
+		Decrypt([]byte) (b []byte, err error)
+		Encrypt([]byte) ([]byte, error)
+	}
 )
+
+var (
+	secEncryptDecrypterMutex sync.Mutex
+	secEncryptDecrypterCache encryptDecrypter
+)
+
+func GetSecEncryptDecrypter() (encryptDecrypter, error) {
+	secEncryptDecrypterMutex.Lock()
+	defer secEncryptDecrypterMutex.Unlock()
+	if secEncryptDecrypterCache != nil {
+		return secEncryptDecrypterCache, nil
+	}
+	clusterConfig := cluster.ConfigData.Get()
+	secEncryptDecrypterCache = &omcrypto.Factory{
+		NodeName:    hostname.Hostname(),
+		ClusterName: clusterConfig.Name,
+		Key:         clusterConfig.Secret(),
+	}
+	return secEncryptDecrypterCache, nil
+}
 
 // NewSec allocates a sec kind object.
 func NewSec(path naming.Path, opts ...funcopt.O) (*sec, error) {
 	s := &sec{}
 	s.path = path
 	s.path.Kind = naming.KindSec
-	s.customEncode = secEncode
-	s.customDecode = secDecode
 	if err := s.init(s, path, opts...); err != nil {
 		return s, err
+	}
+	ed, err := GetSecEncryptDecrypter()
+	if err != nil {
+		return s, err
+	}
+	s.encodeDecoder = &secEncodeDecode{
+		encryptDecrypter: ed,
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
 	return s, nil
@@ -55,16 +92,15 @@ func (t *sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
-func secEncode(b []byte) (string, error) {
-	m := omcrypto.NewMessage(b)
-	b, err := m.Encrypt()
+func (t *secEncodeDecode) Encode(b []byte) (string, error) {
+	b, err := t.encryptDecrypter.Encrypt(b)
 	if err != nil {
 		return "", err
 	}
 	return "crypt:" + base64.URLEncoding.Strict().EncodeToString(b), nil
 }
 
-func secDecode(s string) ([]byte, error) {
+func (t *secEncodeDecode) Decode(s string) ([]byte, error) {
 	if !strings.HasPrefix(s, "crypt:") {
 		return []byte{}, fmt.Errorf("unsupported value (no crypt prefix)")
 	}
@@ -82,8 +118,7 @@ func secDecode(s string) ([]byte, error) {
 	}
 
 	// decrypt AES
-	m := omcrypto.NewMessage(b)
-	b, err = m.Decrypt()
+	b, err = t.encryptDecrypter.Decrypt(b)
 	if err != nil {
 		return []byte{}, err
 	}

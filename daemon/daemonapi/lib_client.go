@@ -6,9 +6,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error)) error {
@@ -31,7 +33,16 @@ func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) 
 func newProxyClient(ctx echo.Context, nodename string, opts ...funcopt.O) (*client.T, error) {
 	options := []funcopt.O{
 		client.WithURL(nodename),
-		client.WithAuthorization(ctx.Request().Header.Get("authorization")),
+	}
+	authHeader := ctx.Request().Header.Get("authorization")
+	if authHeader != "" {
+		options = append(options, client.WithAuthorization(authHeader))
+	} else if userFromContext(ctx).GetUserName() == "root" {
+		// uxsock auth must be translated to root:<secret>
+		options = append(options,
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(cluster.ConfigData.Get().Secret()),
+		)
 	}
 	options = append(options, opts...)
 	return client.New(options...)

@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -36,6 +37,8 @@ type (
 		cmdC   chan<- any
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+
+		encryptDecrypter *omcrypto.Factory
 	}
 )
 
@@ -66,6 +69,13 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 	ticker := time.NewTicker(t.interval)
+
+	clusterConfig := cluster.ConfigData.Get()
+	t.encryptDecrypter = &omcrypto.Factory{
+		NodeName:    hostname.Hostname(),
+		ClusterName: clusterConfig.Name,
+		Key:         clusterConfig.Secret(),
+	}
 
 	for _, node := range t.nodes {
 		cmdC <- hbctrl.CmdAddWatcher{
@@ -144,8 +154,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debugf("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
 	}
-	encMsg := omcrypto.NewMessage([]byte(c.Msg))
-	b, msgNodename, err := encMsg.DecryptWithNode()
+	b, msgNodename, err := t.encryptDecrypter.DecryptWithNode([]byte(c.Msg))
 	if err != nil {
 		t.log.Debugf("recv: decrypting node %s: %s", nodename, err)
 		return

@@ -15,19 +15,16 @@ import (
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/version"
 	"github.com/opensvc/om3/util/xsession"
-
-	"github.com/mitchellh/go-homedir"
-	"github.com/spf13/viper"
 )
 
 var (
-	configFlag     string
 	colorFlag      string
 	logFlag        string
 	selectorFlag   string
@@ -110,6 +107,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if err := configureLogger(); err != nil {
 		return err
 	}
+	if _, err := object.SetClusterConfig(); err != nil {
+		return err
+	}
 	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
 			log.Logger.Debug().Err(err).Send()
@@ -184,39 +184,11 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
 	root.PersistentFlags().StringVar(&logFlag, "log", "info", "Display logs on the console with one of the specified level: "+
 		"trace, debug, info, warn, error, fatal, panic, none")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if configFlag != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(configFlag)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".opensvc" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".opensvc")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

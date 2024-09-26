@@ -17,8 +17,6 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -30,7 +28,6 @@ type (
 		state       cluster.Config
 		networkSigs map[string]string
 
-		clusterConfig *xconfig.T
 		ctx           context.Context
 		cancel        context.CancelFunc
 		drainDuration time.Duration
@@ -73,12 +70,6 @@ func New(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 func (t *Manager) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.bus = pubsub.BusFromContext(t.ctx)
-
-	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
-		return err
-	} else {
-		t.clusterConfig = n.Config()
-	}
 
 	t.pubClusterConfig()
 

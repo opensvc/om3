@@ -8,17 +8,21 @@ import (
 	"bytes"
 	"io"
 	"net"
-
-	"github.com/opensvc/om3/core/omcrypto"
 )
 
 type (
+	encryptDecrypter interface {
+		DecryptWithNode([]byte) ([]byte, string, error)
+		Encrypt([]byte) ([]byte, error)
+	}
+
 	// T struct provides net.Conn over enc net.Conn
 	T struct {
 		net.Conn
 
 		// srcNode is the encrypter nodename returned by ReadWithNode
-		srcNode string
+		srcNode          string
+		encryptDecrypter encryptDecrypter
 	}
 
 	ConnNoder interface {
@@ -43,16 +47,18 @@ func init() {
 }
 
 // New returns a new *T that will use encrypted net.Conn
-func New(encConn net.Conn) *T {
-	return &T{Conn: encConn}
+func New(encConn net.Conn, ed encryptDecrypter) *T {
+	return &T{
+		Conn:             encConn,
+		encryptDecrypter: ed,
+	}
 }
 
 // Write implement Writer interface for T
 //
 // Write encrypted d to T.Conn
 func (t *T) Write(b []byte) (n int, err error) {
-	msg := omcrypto.NewMessage(b)
-	encBytes, err := msg.Encrypt()
+	encBytes, err := t.encryptDecrypter.Encrypt(b)
 	if err != nil {
 		return 0, err
 	}
@@ -76,8 +82,7 @@ func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 	if encBytes, err = getMessage(t.Conn); err != nil {
 		return
 	}
-	encMsg := omcrypto.NewMessage(encBytes)
-	if clearBytes, nodename, err = encMsg.DecryptWithNode(); err != nil {
+	if clearBytes, nodename, err = t.encryptDecrypter.DecryptWithNode(encBytes); err != nil {
 		return
 	}
 	n = copy(b, clearBytes)
