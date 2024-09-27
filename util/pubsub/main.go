@@ -133,6 +133,13 @@ type (
 		resp     chan<- error
 	}
 
+	// cmdBufferPublications is the command to enable or disable publication buffer
+	cmdBufferPublications struct {
+		enabled  bool
+		capacity int32
+		done     chan<- bool
+	}
+
 	cmdSubDelFilter struct {
 		id       uuid.UUID
 		labels   Labels
@@ -425,6 +432,8 @@ func (b *Bus) Start(ctx context.Context) {
 			b.warnExceededNotification(watchDurationCtx, notifyDurationWarn)
 		}()
 
+		var cmdPubC chan cmdPub
+		cmdPubBuffered := false
 		started <- true
 		for {
 			select {
@@ -434,7 +443,14 @@ func (b *Bus) Start(ctx context.Context) {
 				beginCmd <- cmd
 				switch c := cmd.(type) {
 				case cmdPub:
-					b.onPubCmd(c)
+					if !cmdPubBuffered {
+						b.onPubCmd(c)
+					} else {
+						resp := c.resp
+						c.resp = nil
+						cmdPubC <- c
+						resp <- true
+					}
 				case cmdSubAddFilter:
 					b.onSubAddFilter(c)
 				case cmdSubDelFilter:
@@ -443,6 +459,31 @@ func (b *Bus) Start(ctx context.Context) {
 					b.onSubCmd(c)
 				case cmdUnsub:
 					b.onUnsubCmd(c)
+				case cmdBufferPublications:
+					if c.enabled && !cmdPubBuffered {
+						cmdPubBuffered = true
+						cmdPubC = make(chan cmdPub, c.capacity)
+						b.log.Infof("publication buffering is now enabled")
+					} else if !c.enabled && cmdPubBuffered {
+						b.log.Infof("disabling publication buffering and emit queued publications")
+						for {
+							if !cmdPubBuffered {
+								break
+							}
+							select {
+							case <-b.ctx.Done():
+								return
+							case c := <-cmdPubC:
+								b.onPubCmd(c)
+							default:
+								cmdPubBuffered = false
+								close(cmdPubC)
+								break
+							}
+						}
+						b.log.Infof("publication buffering is now disabled")
+					}
+					c.done <- true
 				}
 				endCmd <- true
 			}
@@ -603,7 +644,9 @@ func (b *Bus) onPubCmd(c cmdPub) {
 			}
 		}
 	}
-	c.resp <- true
+	if c.resp != nil {
+		c.resp <- true
+	}
 	publicationTotal.With(prometheus.Labels{"kind": c.dataType}).Inc()
 }
 
@@ -689,6 +732,45 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 	dataType := reflect.TypeOf(v)
 	if dataType != nil {
 		op.dataType = dataType.String()
+	}
+	select {
+	case b.cmdC <- op:
+	case <-b.ctx.Done():
+		return
+	}
+	<-done
+}
+
+// DisableBufferPublication disable the publication buffering.
+// It dequeues the publication buffer channel for retransmission.
+// publication buffer channel is then closed and the new publications are
+// immediately delivered
+// pubsub default behavior is unbuffered.
+func (b *Bus) DisableBufferPublication() {
+	done := make(chan bool)
+	op := cmdBufferPublications{
+		enabled: false,
+		done:    done,
+	}
+	select {
+	case b.cmdC <- op:
+	case <-b.ctx.Done():
+		return
+	}
+	<-done
+}
+
+// EnableBufferPublication enable the publication buffering.
+// The future publication commands are push to a fresh buffered channel
+// of cmdPub with cap capacity, instead of being delivered immediately.
+//
+// pubsub default behavior is unbuffered.
+func (b *Bus) EnableBufferPublication(capacity int32) {
+	done := make(chan bool)
+	op := cmdBufferPublications{
+		enabled:  true,
+		capacity: capacity,
+		done:     done,
 	}
 	select {
 	case b.cmdC <- op:
