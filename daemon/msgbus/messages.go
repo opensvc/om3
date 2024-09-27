@@ -77,7 +77,7 @@ var (
 
 		"DaemonSchedulerUpdated": func() any { return &DaemonSchedulerUpdated{} },
 
-		"DaemonStart": func() any { return &DaemonStart{} },
+		"DaemonStatusUpdated": func() any { return &DaemonStatusUpdated{} },
 
 		"Exec": func() any { return &Exec{} },
 
@@ -337,10 +337,12 @@ type (
 		Value daemonsubsystem.Scheduler `json:"scheduler" yaml:"scheduler"`
 	}
 
-	DaemonStart struct {
+	// DaemonStatusUpdated message informs about main daemon status
+	DaemonStatusUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 		Version    string `json:"version" yaml:"version"`
+		Status     string `json:"status" yaml:"status"`
 	}
 
 	// Exec message describes an exec call
@@ -902,8 +904,8 @@ func (e *DaemonSchedulerUpdated) Kind() string {
 	return "DaemonSchedulerUpdated"
 }
 
-func (e *DaemonStart) Kind() string {
-	return "DaemonStart"
+func (e *DaemonStatusUpdated) Kind() string {
+	return "DaemonStatusUpdated"
 }
 
 func (e *Exec) Kind() string {

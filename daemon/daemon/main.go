@@ -89,6 +89,8 @@ func (t *T) Start(ctx context.Context) error {
 	t.logTransition("starting 🟢")
 	go startProfiling()
 	t.ctx, t.cancel = context.WithCancel(ctx)
+	localhost := hostname.Hostname()
+	labelLocalhost := pubsub.Label{"node", localhost}
 
 	bus := pubsub.NewBus("daemon")
 	bus.SetDefaultSubscriptionQueueSize(defaultSubscriptionQueueSize)
@@ -105,7 +107,6 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Infof("stopped pubsub bus")
 		return nil
 	})
-	localhost := hostname.Hostname()
 
 	defer t.stopWatcher()
 
@@ -170,8 +171,12 @@ func (t *T) Start(ctx context.Context) error {
 		}
 	}
 
-	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
 	t.logTransition("started 🟢")
+	bus.Pub(&msgbus.DaemonStatusUpdated{
+		Node:    localhost,
+		Version: version.Version(),
+		Status:  "started",
+	}, labelLocalhost)
 	return nil
 }
 
