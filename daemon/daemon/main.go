@@ -63,6 +63,12 @@ type (
 	}
 )
 
+var (
+	// bufferPublicationDuration is the minimum duration where pubsub buffer
+	// publications during daemon startup.
+	bufferPublicationDuration = 200 * time.Millisecond
+)
+
 func New() *T {
 	return &T{
 		log: plog.NewDefaultLogger().
@@ -99,14 +105,28 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 	t.wg.Add(1)
 	bus.Start(t.ctx)
+	bus.EnableBufferPublication(2000)
+	bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "starting"}, labelLocalhost)
+
 	t.bus = bus
 	t.stopFuncs = append(t.stopFuncs, func() error {
+		bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopped"}, labelLocalhost)
+		// give chance for DaemonStatusUpdated message to reach peers
+		time.Sleep(300 * time.Millisecond)
 		defer t.wg.Done()
 		t.log.Infof("stop pubsub bus")
 		t.bus.Stop()
 		t.log.Infof("stopped pubsub bus")
 		return nil
 	})
+
+	defer func() {
+		go func() {
+			// give a chance for event client to reconnect to the daemon
+			time.Sleep(bufferPublicationDuration)
+			bus.DisableBufferPublication()
+		}()
+	}()
 
 	defer t.stopWatcher()
 
@@ -187,6 +207,9 @@ func (t *T) Stop() error {
 	var errs error
 	// stop goroutines without cancel context
 	t.logTransition("stopping 🟡")
+	localhost := hostname.Hostname()
+	t.bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
+	time.Sleep(300 * time.Millisecond)
 	defer t.logTransition("stopped 🟡")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
 		if err := t.stopFuncs[i](); err != nil {
@@ -372,4 +395,8 @@ func startProfiling() {
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
 	cannula.Start(daemonenv.ProfileUnixFile())
+}
+
+func GetBufferPublicationDuration() time.Duration {
+	return bufferPublicationDuration
 }
