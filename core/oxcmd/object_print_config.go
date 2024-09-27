@@ -3,7 +3,6 @@ package oxcmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -51,51 +50,26 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 }
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
-	var nodenames []string
-	var errs error
-	resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
-	if err != nil {
-		return rawconfig.T{}, err
-	}
-	switch {
-	case resp.JSON200 != nil:
-		if len(resp.JSON200.Data.Scope) == 0 {
-			return rawconfig.T{}, nil
-		} else {
-			nodenames = resp.JSON200.Data.Scope
-		}
-	default:
-		return rawconfig.T{}, fmt.Errorf("unexpected GetObject response: %s", resp.Status())
-	}
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
 	}
-	for _, nodename := range nodenames {
-		scopeClient, err := client.New(client.WithURL(nodename))
-		if err != nil {
-			return rawconfig.T{}, err
-		}
-		resp, err := scopeClient.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		} else if resp.StatusCode() != http.StatusOK {
-			errs = errors.Join(errs, fmt.Errorf("get object config: %s", resp.Status()))
-			continue
-		}
-		data := rawconfig.T{}
-		if b, err := json.Marshal(resp.JSON200.Data); err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		} else if err := json.Unmarshal(b, &data); err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		} else {
-			return data, nil
-		}
+	data := rawconfig.T{}
+	resp, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+
+	if err != nil {
+		return data, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return data, fmt.Errorf("get object config: %s", resp.Status())
 	}
-	return rawconfig.T{}, errs
+
+	if b, err := json.Marshal(resp.JSON200.Data); err != nil {
+		return data, err
+	} else if err := json.Unmarshal(b, &data); err != nil {
+		return data, err
+	}
+
+	return data, nil
 }
 
 func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
