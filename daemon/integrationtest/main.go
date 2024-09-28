@@ -52,10 +52,9 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 		hostname.SetHostnameForGoTest("")
 	}
 
-	//waitRunningDuration := 5 * time.Millisecond
-	waitRunningDuration := 50 * time.Millisecond
-	t.Logf("wait %s", waitRunningDuration)
-	time.Sleep(waitRunningDuration)
+	publicationDuration := 50 * time.Millisecond
+	t.Logf("wait buffer publication (%s) + delay %s", daemon.GetBufferPublicationDuration(), publicationDuration)
+	time.Sleep(daemon.GetBufferPublicationDuration()+publicationDuration)
 
 	return env, stop
 }

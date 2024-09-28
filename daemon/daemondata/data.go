@@ -396,6 +396,7 @@ func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.DaemonListenerUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.DaemonRunnerImonUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalNode)
@@ -450,6 +451,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.DaemonListenerUpdated:
 	case *msgbus.DaemonRunnerImonUpdated:
 	case *msgbus.DaemonSchedulerUpdated:
+	case *msgbus.DaemonStatusUpdated:
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 	case *msgbus.InstanceConfigFor:

@@ -6,7 +6,7 @@
  config file updates: ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
  daemon: DaemonCollectorUpdated, DaemonCtl, DaemonDataUpdated,
          DaemonDnsUpdated, DaemonHeartbeatUpdated, DaemonListenerUpdated,
-         DaemonRunnerImonUpdated, DaemonSchedulerUpdated, DaemonStart
+         DaemonRunnerImonUpdated, DaemonSchedulerUpdated, DaemonStatusUpdated
  dns: ZoneRecordDeleted, ZoneRecordUpdated
  execs: Exec, ExecFailed, ExecSuccess
  heartbeat: HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated
