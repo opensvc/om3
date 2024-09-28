@@ -982,11 +982,11 @@ func (pub cmdPub) String() string {
 	case stringer:
 		dataS = data.String()
 	default:
-		dataS = "type " + pub.dataType
+		dataS = pub.dataType
 	}
 	s := fmt.Sprintf("publication %s", dataS)
 	if len(pub.labels) > 0 {
-		s += " with " + pub.labels.String()
+		s += " (" + pub.labels.String()+")"
 	}
 	return s
 }
@@ -1027,16 +1027,16 @@ func keys(dataType string, labels Labels) []string {
 
 func (sub *Subscription) String() string {
 	s := fmt.Sprintf("subscription '%s'", sub.name)
-	for _, f := range sub.filters {
-		if f.dataType != "" {
-			s += " on msg type " + f.dataType
-		} else {
-			s += " on msg type *"
-		}
-		if len(f.labels) > 0 {
-			s += " with " + f.labels.String()
-		}
-	}
+	//for _, f := range sub.filters {
+	//	if f.dataType != "" {
+	//		s += " on msg type " + f.dataType
+	//	} else {
+	//		s += " on msg type *"
+	//	}
+	//	if len(f.labels) > 0 {
+	//		s += " with " + f.labels.String()
+	//	}
+	//}
 	return s
 }
 
@@ -1131,6 +1131,20 @@ func (sub *Subscription) Start() {
 		}
 	}()
 	<-started
+
+	var filters string
+	for _, f := range sub.filters {
+		if f.dataType != "" {
+			filters += f.dataType
+		} else {
+			filters += "*"
+		}
+		if len(f.labels) > 0 {
+			filters += " with labels (" + f.labels.String() + ")"
+		}
+		filters += ", "
+	}
+	sub.bus.log.Debugf("subscription '%s' started with filters [%s]", sub.name, filters)
 	subscriptionTotal.With(prometheus.Labels{"operation": "start"}).Inc()
 }
 
