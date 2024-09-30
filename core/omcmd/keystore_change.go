@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -14,8 +15,8 @@ type (
 	CmdKeystoreChange struct {
 		OptsGlobal
 		Key   string
-		From  string
-		Value string
+		From  *string
+		Value *string
 	}
 )
 
@@ -32,10 +33,13 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			if t.Value != "" {
-				return nil, store.ChangeKey(t.Key, []byte(t.Value))
+			if t.Value != nil {
+				return nil, store.ChangeKey(t.Key, []byte(*t.Value))
 			}
-			m, err := uri.ReadAllFrom(t.From)
+			if t.From == nil {
+				return nil, fmt.Errorf("value or value source mut be specified for a change action")
+			}
+			m, err := uri.ReadAllFrom(*t.From)
 			if err != nil {
 				return nil, err
 			}

@@ -22,12 +22,15 @@ type (
 )
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
-	sel := objectselector.New(selector)
-	wc := clientcontext.IsSet()
+	sel := objectselector.New(
+		selector,
+		objectselector.WithClient(c),
+	)
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
+	wc := clientcontext.IsSet()
 	for _, p := range paths {
 		obj, err := object.NewConfigurer(p)
 		if err != nil {

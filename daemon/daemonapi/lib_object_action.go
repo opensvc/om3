@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
@@ -16,28 +17,33 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect) error {
+func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect, fn func(c *client.T) (*http.Response, error)) error {
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblem(eCtx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
 
-	if instMon := instance.MonitorData.Get(p, a.localhost); instMon == nil {
-		return JSONProblemf(eCtx, http.StatusNotFound, "Not found", "Instance does not exist: %s@%s", p, a.localhost)
+	if instMon := instance.MonitorData.Get(p, a.localhost); instMon != nil {
+		ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
+		defer cancel()
+
+		value := instance.MonitorUpdate{
+			GlobalExpect:             &globalExpect,
+			CandidateOrchestrationID: uuid.New(),
+		}
+		msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
+
+		a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+
+		return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
 	}
-
-	ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
-	defer cancel()
-
-	value := instance.MonitorUpdate{
-		GlobalExpect:             &globalExpect,
-		CandidateOrchestrationID: uuid.New(),
+	for nodename, _ := range instance.MonitorData.GetByPath(p) {
+		if nodename == a.localhost {
+			continue
+		}
+		return a.proxy(eCtx, nodename, fn)
 	}
-	msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
-
-	a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
-
-	return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
+	return JSONProblem(eCtx, http.StatusNotFound, "object not found", "")
 }
 
 // JSONFromSetInstanceMonitorError sends a JSON response where status code depends

@@ -455,6 +455,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -476,6 +478,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -497,6 +501,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -518,6 +524,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -539,6 +547,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -567,6 +577,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -588,6 +600,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -609,6 +623,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -630,6 +646,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -651,6 +669,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -672,6 +692,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:
@@ -699,6 +721,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON401)
 				case 403:
 					err = fmt.Errorf("%s", resp.JSON403)
+				case 404:
+					err = fmt.Errorf("%s", resp.JSON404)
 				case 408:
 					err = fmt.Errorf("%s", resp.JSON408)
 				case 409:

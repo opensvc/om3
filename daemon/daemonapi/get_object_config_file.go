@@ -6,6 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
@@ -21,18 +23,24 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		log.Warnf("%s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
-
 	log = naming.LogWithPath(log, objPath)
 
-	filename := objPath.ConfigFile()
+	if instMon := instance.ConfigData.Get(objPath, a.localhost); instMon != nil {
+		filename := objPath.ConfigFile()
+		mtime := file.ModTime(filename)
+		if mtime.IsZero() {
+			log.Infof("%s: config file not found: %s", logName, filename)
+			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "config file not found: %s", filename)
+		}
 
-	mtime := file.ModTime(filename)
-	if mtime.IsZero() {
-		log.Infof("%s: configFile no present(mtime) %s %s", logName, filename, mtime)
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s", filename, mtime)
+		ctx.Response().Header().Add(api.HeaderLastModifiedNano, mtime.Format(time.RFC3339Nano))
+		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
+		return ctx.File(filename)
 	}
-
-	ctx.Response().Header().Add(api.HeaderLastModifiedNano, mtime.Format(time.RFC3339Nano))
-	log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
-	return ctx.File(filename)
+	for nodename, _ := range instance.ConfigData.GetByPath(objPath) {
+		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name)
+		})
+	}
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", objPath)
 }

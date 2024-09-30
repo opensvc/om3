@@ -19,23 +19,23 @@ type (
 		OptsGlobal
 		OptsLock
 		Key   string
-		From  string
-		Value string
+		From  *string
+		Value *string
 	}
 )
 
-func makeKVStorePatch(key, value, from string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
+func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
 	data := make(api.PatchObjectKVStoreJSONRequestBody, 0)
 
-	if value != "" {
+	if value != nil {
 		data = append(data, api.PatchKVStoreEntry{
 			Key:    key,
-			String: &value,
+			String: value,
 			Action: action,
 		})
 		return data, nil
 	}
-	m, err := uri.ReadAllFrom(from)
+	m, err := uri.ReadAllFrom(*from)
 	if err != nil {
 		return data, err
 	}
@@ -54,6 +54,9 @@ func makeKVStorePatch(key, value, from string, action api.PatchKVStoreEntryActio
 }
 
 func (t *CmdKeystoreChange) Run(selector, kind string) error {
+	if t.Value == nil && t.From == nil {
+		return fmt.Errorf("a value or value source mut be specified for a change action")
+	}
 	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Change)
 	if err != nil {
 		return err

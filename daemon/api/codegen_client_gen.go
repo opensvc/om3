@@ -264,6 +264,9 @@ type ClientInterface interface {
 	// PostInstanceClear request
 	PostInstanceClear(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInstanceConfigFile request
+	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInstanceStateFileWithBody request with any body
 	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1145,6 +1148,18 @@ func (c *Client) PostInstanceActionUnprovision(ctx context.Context, nodename InP
 
 func (c *Client) PostInstanceClear(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceClearRequest(c.Server, nodename, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceConfigFileRequest(c.Server, nodename, namespace, kind, name)
 	if err != nil {
 		return nil, err
 	}
@@ -5751,6 +5766,61 @@ func NewPostInstanceClearRequest(server string, nodename InPathNodeName, namespa
 	return req, nil
 }
 
+// NewGetInstanceConfigFileRequest generates requests for GetInstanceConfigFile
+func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceStateFileRequestWithBody generates requests for PostInstanceStateFile with any type of body
 func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -8932,6 +9002,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceClearWithResponse request
 	PostInstanceClearWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostInstanceClearResponse, error)
 
+	// GetInstanceConfigFileWithResponse request
+	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
+
 	// PostInstanceStateFileWithBodyWithResponse request with any body
 	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
 
@@ -9159,6 +9232,7 @@ type PostClusterActionAbortResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -10518,6 +10592,31 @@ func (r PostInstanceClearResponse) StatusCode() int {
 	return 0
 }
 
+type GetInstanceConfigFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceConfigFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceConfigFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostInstanceStateFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11064,6 +11163,7 @@ type PostObjectActionAbortResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11092,6 +11192,7 @@ type PostObjectActionDeleteResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11120,6 +11221,7 @@ type PostObjectActionFreezeResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11148,6 +11250,7 @@ type PostObjectActionGivebackResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11176,6 +11279,7 @@ type PostObjectActionProvisionResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11204,6 +11308,7 @@ type PostObjectActionPurgeResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11232,6 +11337,7 @@ type PostObjectActionRestartResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11260,6 +11366,7 @@ type PostObjectActionStartResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11288,6 +11395,7 @@ type PostObjectActionStopResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11316,6 +11424,7 @@ type PostObjectActionSwitchResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11344,6 +11453,7 @@ type PostObjectActionUnfreezeResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11372,6 +11482,7 @@ type PostObjectActionUnprovisionResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
@@ -11710,6 +11821,7 @@ type GetObjectKVStoreKeysResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON500      *N500
 }
 
@@ -12464,6 +12576,15 @@ func (c *ClientWithResponses) PostInstanceClearWithResponse(ctx context.Context,
 	return ParsePostInstanceClearResponse(rsp)
 }
 
+// GetInstanceConfigFileWithResponse request returning *GetInstanceConfigFileResponse
+func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error) {
+	rsp, err := c.GetInstanceConfigFile(ctx, nodename, namespace, kind, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceConfigFileResponse(rsp)
+}
+
 // PostInstanceStateFileWithBodyWithResponse request with arbitrary body returning *PostInstanceStateFileResponse
 func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
 	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, contentType, body, reqEditors...)
@@ -13110,6 +13231,13 @@ func ParsePostClusterActionAbortResponse(rsp *http.Response) (*PostClusterAction
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -15847,6 +15975,53 @@ func ParsePostInstanceClearResponse(rsp *http.Response) (*PostInstanceClearRespo
 	return response, nil
 }
 
+// ParseGetInstanceConfigFileResponse parses an HTTP response from a GetInstanceConfigFileWithResponse call
+func ParseGetInstanceConfigFileResponse(rsp *http.Response) (*GetInstanceConfigFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceConfigFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostInstanceStateFileResponse parses an HTTP response from a PostInstanceStateFileWithResponse call
 func ParsePostInstanceStateFileResponse(rsp *http.Response) (*PostInstanceStateFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -16974,6 +17149,13 @@ func ParsePostObjectActionAbortResponse(rsp *http.Response) (*PostObjectActionAb
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17041,6 +17223,13 @@ func ParsePostObjectActionDeleteResponse(rsp *http.Response) (*PostObjectActionD
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -17110,6 +17299,13 @@ func ParsePostObjectActionFreezeResponse(rsp *http.Response) (*PostObjectActionF
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17177,6 +17373,13 @@ func ParsePostObjectActionGivebackResponse(rsp *http.Response) (*PostObjectActio
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -17246,6 +17449,13 @@ func ParsePostObjectActionProvisionResponse(rsp *http.Response) (*PostObjectActi
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17313,6 +17523,13 @@ func ParsePostObjectActionPurgeResponse(rsp *http.Response) (*PostObjectActionPu
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -17382,6 +17599,13 @@ func ParsePostObjectActionRestartResponse(rsp *http.Response) (*PostObjectAction
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17449,6 +17673,13 @@ func ParsePostObjectActionStartResponse(rsp *http.Response) (*PostObjectActionSt
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -17518,6 +17749,13 @@ func ParsePostObjectActionStopResponse(rsp *http.Response) (*PostObjectActionSto
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17585,6 +17823,13 @@ func ParsePostObjectActionSwitchResponse(rsp *http.Response) (*PostObjectActionS
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -17654,6 +17899,13 @@ func ParsePostObjectActionUnfreezeResponse(rsp *http.Response) (*PostObjectActio
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -17721,6 +17973,13 @@ func ParsePostObjectActionUnprovisionResponse(rsp *http.Response) (*PostObjectAc
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
 		var dest N408
@@ -18423,6 +18682,13 @@ func ParseGetObjectKVStoreKeysResponse(rsp *http.Response) (*GetObjectKVStoreKey
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

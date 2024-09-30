@@ -20,7 +20,10 @@ type (
 )
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
-	sel := objectselector.New(selector)
+	sel := objectselector.New(
+		selector,
+		objectselector.WithClient(c),
+	)
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err

@@ -56,9 +56,9 @@ func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updat
 func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, err error) {
 	var (
 		mtime time.Time
-		resp  *api.GetObjectConfigFileResponse
+		resp  *api.GetInstanceConfigFileResponse
 	)
-	resp, err = cli.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+	resp, err = cli.GetInstanceConfigFileWithResponse(context.Background(), cli.Hostname(), p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {

@@ -418,10 +418,17 @@ func newCmdDaemonStop() *cobra.Command {
 
 func newCmdKeystoreAdd(kind string) *cobra.Command {
 	var options commands.CmdKeystoreAdd
+	var from, value string
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "add new keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("from").Changed {
+				options.From = &from
+			}
+			if cmd.Flag("value").Changed {
+				options.Value = &value
+			}
 			return options.Run(selectorFlag, kind)
 		},
 	}
@@ -429,26 +436,33 @@ func newCmdKeystoreAdd(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagKey(flags, &options.Key)
-	addFlagFrom(flags, &options.From)
-	addFlagValue(flags, &options.Value)
+	addFlagFrom(flags, &from)
+	addFlagValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
 
 func newCmdKeystoreChange(kind string) *cobra.Command {
 	var options commands.CmdKeystoreChange
+	var from, value string
 	cmd := &cobra.Command{
 		Use:   "change",
 		Short: "change existing keys value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("from").Changed {
+				options.From = &from
+			}
+			if cmd.Flag("value").Changed {
+				options.Value = &value
+			}
 			return options.Run(selectorFlag, kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagKey(flags, &options.Key)
-	addFlagFrom(flags, &options.From)
-	addFlagValue(flags, &options.Value)
+	addFlagFrom(flags, &from)
+	addFlagValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
