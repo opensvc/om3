@@ -16,9 +16,6 @@ func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
 		buff []byte
 		f    *os.File
 	)
-	if c, err = remoteClient(p, c); err != nil {
-		return "", err
-	}
 	if buff, err = fetchConfig(p, c); err != nil {
 		return "", err
 	}
@@ -76,7 +73,7 @@ func putConfig(p naming.Path, fName string, c *client.T) (err error) {
 		return err
 	}
 	switch resp.StatusCode {
-	case http.StatusOK:
+	case http.StatusNoContent:
 		return nil
 	default:
 		return fmt.Errorf("put object %s file from %s: %s", p, c.URL(), resp.Status)

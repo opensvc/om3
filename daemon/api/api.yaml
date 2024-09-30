@@ -1580,6 +1580,46 @@ paths:
         - instance / svc
         - instance / vol
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/file:
+    get:
+      description: |
+        Return the object configuration file from nodename. If nodename is not the local node, do proxy.
+      operationId: GetInstanceConfigFile
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          headers:
+            x-last-modified-rfc3339nano:
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
     post:
       description: |
@@ -2941,6 +2981,8 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/config/file:
     get:
+      description: |
+        Return the object configuration file from any node with a deployed instance. Look for the configuration file on the local node first. If the local node has no instance of the object, do proxy.
       operationId: GetObjectConfigFile
       tags:
         - object / svc

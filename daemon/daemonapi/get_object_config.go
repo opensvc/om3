@@ -35,29 +35,29 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Infof("%s: %s", logName, err)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Parameter", "invalid path: %s", err)
 	}
 	if impersonate != "" && !evaluate {
 		// Force evaluate when impersonate
 		evaluate = true
 	}
 
-	if instMon := instance.MonitorData.Get(objPath, a.localhost); instMon != nil {
+	if instConfig := instance.ConfigData.Get(objPath, a.localhost); instConfig != nil {
 		filename := objPath.ConfigFile()
 		mtime := file.ModTime(filename)
 		if mtime.IsZero() {
-			log.Errorf("configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
-			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
+			log.Errorf("config file not found: %s", filename)
+			return JSONProblemf(ctx, http.StatusNotFound, "Not Found", "config file no found: %s", filename)
 		}
 
 		data, err = configData(objPath, evaluate, impersonate)
 		if err != nil {
 			log.Errorf("can't get configData for %s %s", objPath, filename)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "can't get configData for %s %s", objPath, filename)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "can't get configData for %s %s", objPath, filename)
 		}
 		if file.ModTime(filename) != mtime {
-			log.Errorf("file has changed %s", filename)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "file has changed %s", filename)
+			log.Errorf("file has changed: %s", filename)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "file has changed: %s", filename)
 		}
 		respData := make(map[string]interface{})
 		respData["metadata"] = objPath.ToMetadata()
@@ -73,7 +73,7 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 		}
 		return ctx.JSON(http.StatusOK, resp)
 	}
-	for nodename, _ := range instance.MonitorData.GetByPath(objPath) {
+	for nodename, _ := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetObjectConfig(ctx.Request().Context(), namespace, kind, name, &params)
 		})
