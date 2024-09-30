@@ -908,12 +908,14 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 func (t T) Raw() rawconfig.T {
 	r := rawconfig.T{}
 	r.Data = orderedmap.New()
-	for _, s := range t.file.Sections() {
+	for _, section := range t.file.Sections() {
 		sectionMap := *orderedmap.New()
-		for k, v := range s.KeysHash() {
-			sectionMap.Set(k, v)
+		m := section.KeysHash()
+		for _, keyName := range section.KeyStrings() {
+			value := m[keyName]
+			sectionMap.Set(keyName, value)
 		}
-		r.Data.Set(s.Name(), sectionMap)
+		r.Data.Set(section.Name(), sectionMap)
 	}
 	return r
 }
@@ -922,9 +924,11 @@ func (t T) Raw() rawconfig.T {
 // This format is used by the volume pools framework.
 func (t T) Ops() []string {
 	l := make([]string, 0)
-	for _, s := range t.file.Sections() {
-		for k, v := range s.KeysHash() {
-			op := fmt.Sprintf("%s.%s=%s", s.Name(), k, v)
+	for _, section := range t.file.Sections() {
+		m := section.KeysHash()
+		for _, keyName := range section.KeyStrings() {
+			value := m[keyName]
+			op := fmt.Sprintf("%s.%s=%s", section.Name(), keyName, value)
 			l = append(l, op)
 		}
 	}
@@ -939,7 +943,7 @@ func (t T) RawEvaluatedAs(impersonate string) (rawconfig.T, error) {
 	r := rawconfig.New()
 	for _, s := range t.file.Sections() {
 		sectionMap := *orderedmap.New()
-		for k := range s.KeysHash() {
+		for _, k := range s.KeyStrings() {
 			_k := key.New(s.Name(), k)
 			_k.Option = _k.BaseOption()
 			if v, err := t.EvalAs(_k, impersonate); err != nil {
