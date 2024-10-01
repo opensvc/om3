@@ -39,13 +39,13 @@ clean:
 	rm -f $(OM) $(OX)
 
 om:
-	$(GOBUILD) -o $(OM) -v ./cmd/om/
+	$(GOBUILD) -o $(OM) ./cmd/om/
 
 ox:
-	$(GOBUILD) -o $(OX) -v ./cmd/ox/
+	$(GOBUILD) -o $(OX) ./cmd/ox/
 
 compobj:
-	$(GOBUILD) -o $(COMPOBJ) -v ./util/compobj/
+	$(GOBUILD) -o $(COMPOBJ) ./util/compobj/
 
 test:
 	$(GOTEST) -p 1 -timeout 60s ./...
