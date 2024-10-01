@@ -4945,6 +4945,10 @@ components:
       properties:
         data:
           type: object
+          additionalProperties: true
+          x-go-type: orderedmap.OrderedMap
+          x-go-type-import:
+            path: github.com/iancoleman/orderedmap
         mtime:
           type: string
           format: date-time

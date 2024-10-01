@@ -6,6 +6,7 @@ package api
 import (
 	"time"
 
+	"github.com/iancoleman/orderedmap"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -825,8 +826,8 @@ type NodesInfo = node.NodesInfo
 
 // ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {
-	Data  map[string]interface{} `json:"data"`
-	Mtime time.Time              `json:"mtime"`
+	Data  orderedmap.OrderedMap `json:"data"`
+	Mtime time.Time             `json:"mtime"`
 }
 
 // ObjectData defines model for ObjectData.

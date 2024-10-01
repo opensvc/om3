@@ -144,7 +144,17 @@ func (t Node) PushAsset() (asset.Data, error) {
 }
 
 func (t Node) dumpSystem(data asset.Data) error {
-	file, err := os.OpenFile(t.nodeSystemCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	filename := t.nodeSystemCacheFile()
+	tryOpen := func() (*os.File, error) {
+		return os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	}
+	file, err := tryOpen()
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(filename), 0700); err != nil {
+			return err
+		}
+		file, err = tryOpen()
+	}
 	if err != nil {
 		return err
 	}

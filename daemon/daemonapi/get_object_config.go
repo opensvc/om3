@@ -59,16 +59,9 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 			log.Errorf("file has changed: %s", filename)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "file has changed: %s", filename)
 		}
-		respData := make(map[string]interface{})
-		respData["metadata"] = objPath.ToMetadata()
-		for _, k := range data.Keys() {
-			if v, ok := data.Get(k); ok {
-				respData[k] = v
-			}
-		}
 		data.Set("metadata", objPath.ToMetadata())
 		resp := api.ObjectConfig{
-			Data:  respData,
+			Data:  *data,
 			Mtime: mtime,
 		}
 		return ctx.JSON(http.StatusOK, resp)

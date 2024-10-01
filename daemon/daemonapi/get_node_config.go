@@ -59,17 +59,11 @@ func (a *DaemonAPI) GetLocalNodeConfig(ctx echo.Context, nodename string, params
 		log.Errorf("file has changed %s", filename)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "file has changed %s", filename)
 	}
-	respData := make(map[string]interface{})
-	respData["metadata"] = map[string]string{
+	data.Set("metadata", map[string]string{
 		"node": nodename,
-	}
-	for _, k := range data.Keys() {
-		if v, ok := data.Get(k); ok {
-			respData[k] = v
-		}
-	}
+	})
 	resp := api.ObjectConfig{
-		Data:  respData,
+		Data:  *data,
 		Mtime: mtime,
 	}
 	return ctx.JSON(http.StatusOK, resp)
