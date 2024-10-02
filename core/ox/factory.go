@@ -2340,6 +2340,21 @@ func newCmdObjectPrintDevices(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
+	var options commands.CmdObjectPrintResourceInfo
+	cmd := &cobra.Command{
+		Use:   "resinfo",
+		Short: "print all objects resource info",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintSchedule
 	cmd := &cobra.Command{

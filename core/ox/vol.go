@@ -85,6 +85,7 @@ func init() {
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
 		newCmdObjectPrintDevices(kind),
+		newCmdObjectPrintResourceInfo(kind),
 		newCmdObjectPrintSchedule(kind),
 		newCmdObjectPrintStatus(kind),
 	)

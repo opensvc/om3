@@ -23,6 +23,10 @@ func NewData[T Dataer]() *DataT[T] {
 	return &DataT[T]{}
 }
 
+func (c *DataT[T]) IsSet() bool {
+	return c.data != nil
+}
+
 func (c *DataT[T]) Set(v *T) {
 	c.Lock()
 	defer c.Unlock()

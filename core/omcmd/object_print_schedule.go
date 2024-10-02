@@ -113,7 +113,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemons(selector string, c *client.T
 }
 
 func (t *CmdObjectPrintSchedule) extractFromDaemon(nodename string, path naming.Path, c *client.T) (api.ScheduleList, error) {
-	resp, err := c.GetObjectScheduleWithResponse(context.Background(), nodename, path.Namespace, path.Kind, path.Name)
+	resp, err := c.GetInstanceScheduleWithResponse(context.Background(), nodename, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return api.ScheduleList{}, err
 	}

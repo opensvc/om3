@@ -241,6 +241,11 @@ const (
 	RelayStatusListKindRelayStatusList RelayStatusListKind = "RelayStatusList"
 )
 
+// Defines values for ResourceInfoListKind.
+const (
+	ResourceInfoListKindResourceInfoList ResourceInfoListKind = "ResourceInfoList"
+)
+
 // Defines values for ResourceItemKind.
 const (
 	ResourceItemKindResourceItem ResourceItemKind = "ResourceItem"
@@ -1178,6 +1183,27 @@ type Resource struct {
 
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
+
+// ResourceInfoItem defines model for ResourceInfoItem.
+type ResourceInfoItem struct {
+	Key    string `json:"key"`
+	Node   string `json:"node"`
+	Object string `json:"object"`
+	Rid    string `json:"rid"`
+	Value  string `json:"value"`
+}
+
+// ResourceInfoItems defines model for ResourceInfoItems.
+type ResourceInfoItems = []ResourceInfoItem
+
+// ResourceInfoList defines model for ResourceInfoList.
+type ResourceInfoList struct {
+	Items ResourceInfoItems    `json:"items"`
+	Kind  ResourceInfoListKind `json:"kind"`
+}
+
+// ResourceInfoListKind defines model for ResourceInfoList.Kind.
+type ResourceInfoListKind string
 
 // ResourceItem defines model for ResourceItem.
 type ResourceItem struct {

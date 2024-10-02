@@ -12,12 +12,12 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetObjectResourceInfo(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
 	}
-	items := make(api.ScheduleItems, 0)
+	items := make(api.ResourceInfoItems, 0)
 	for nodename, _ := range instance.MonitorData.GetByPath(path) {
 		c, err := newProxyClient(ctx, nodename)
 		if err != nil {
@@ -25,12 +25,12 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 		} else if !clusternode.Has(nodename) {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 		}
-		if resp, err := c.GetInstanceSchedule(ctx.Request().Context(), nodename, namespace, kind, name); err != nil {
+		if resp, err := c.GetInstanceResourceInfo(ctx.Request().Context(), nodename, namespace, kind, name); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else {
 			switch resp.StatusCode {
 			case http.StatusOK:
-				var more api.ScheduleList
+				var more api.ResourceInfoList
 				dec := json.NewDecoder(resp.Body)
 				if err := dec.Decode(&more); err != nil {
 					return JSONProblemf(ctx, http.StatusInternalServerError, "Decode proxy response body", "%s: %s", nodename, err)
@@ -41,8 +41,8 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 			}
 		}
 	}
-	resp := api.ScheduleList{
-		Kind:  "ScheduleList",
+	resp := api.ResourceInfoList{
+		Kind:  "ResourceInfoList",
 		Items: items,
 	}
 	return ctx.JSON(http.StatusOK, resp)
