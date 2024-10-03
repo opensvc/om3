@@ -15,13 +15,13 @@ import (
 )
 
 type (
-	CmdObjectPrintSchedule struct {
+	CmdObjectPrintResourceInfo struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
+func (t *CmdObjectPrintResourceInfo) Run(selector, kind string) error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
@@ -45,15 +45,15 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	l := make(api.ScheduleItems, 0)
-	q := make(chan api.ScheduleItems)
+	l := make(api.ResourceInfoItems, 0)
+	q := make(chan api.ResourceInfoItems)
 	errC := make(chan error)
 	doneC := make(chan string)
 	todoP := len(paths)
 	for _, path := range paths {
 		go func(p naming.Path) {
 			defer func() { doneC <- p.String() }()
-			response, err := c.GetObjectScheduleWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+			response, err := c.GetObjectResourceInfoWithResponse(ctx, p.Namespace, p.Kind, p.Name)
 			if err != nil {
 				errC <- err
 				return
@@ -65,8 +65,6 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 				errC <- fmt.Errorf("%s: %s", p, *response.JSON401)
 			case response.JSON403 != nil:
 				errC <- fmt.Errorf("%s: %s", p, *response.JSON403)
-			case response.JSON404 != nil:
-				errC <- fmt.Errorf("%s: %s", p, *response.JSON404)
 			case response.JSON500 != nil:
 				errC <- fmt.Errorf("%s: %s", p, *response.JSON500)
 			default:
@@ -105,10 +103,10 @@ func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 out:
 
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
+		DefaultOutput: "tab=OBJECT:object,NODE:node,RID:rid,KEY:key,VALUE:value",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          api.ScheduleList{Items: l, Kind: "ScheduleList"},
+		Data:          api.ResourceInfoList{Items: l, Kind: "ResourceInfoList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return errs

@@ -2340,6 +2340,21 @@ func newCmdObjectPrintDevices(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
+	var options commands.CmdObjectPrintResourceInfo
+	cmd := &cobra.Command{
+		Use:   "resinfo",
+		Short: "print all objects resource info",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintSchedule
 	cmd := &cobra.Command{
@@ -2485,8 +2500,8 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPushResInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectPushResInfo
+func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
+	var options commands.CmdObjectPushResourceInfo
 	cmd := &cobra.Command{
 		Use:     "resinfo",
 		Short:   "push resource info key/val pairs",
@@ -2497,9 +2512,6 @@ func newCmdObjectPushResInfo(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsLock(flags, &options.OptsLock)
-	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagsTo(flags, &options.OptTo)
 	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

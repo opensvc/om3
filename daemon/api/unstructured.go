@@ -538,3 +538,17 @@ func (t RelayStatusItem) Unstructured() map[string]any {
 		"username":     t.Username,
 	}
 }
+
+func (t ResourceInfoList) GetItems() any {
+	return t.Items
+}
+
+func (t ResourceInfoItem) Unstructured() map[string]any {
+	return map[string]any{
+		"node":   t.Node,
+		"object": t.Object,
+		"rid":    t.Rid,
+		"key":    t.Key,
+		"value":  t.Value,
+	}
+}

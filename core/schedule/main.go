@@ -32,6 +32,19 @@ func NewTable(entries ...Entry) Table {
 	return Table(t).AddEntries(entries...)
 }
 
+func (t Table) Merge(i interface{}) Table {
+	switch o := i.(type) {
+	case Table:
+		return t.MergeEntries(o...)
+	case Entry:
+		return t.MergeEntries(o)
+	case []Entry:
+		return t.MergeEntries(o...)
+	default:
+		return t
+	}
+}
+
 func (t Table) Add(i interface{}) Table {
 	switch o := i.(type) {
 	case Table:
@@ -47,6 +60,32 @@ func (t Table) Add(i interface{}) Table {
 
 func (t Table) AddTable(l Table) Table {
 	return append(t, l...)
+}
+
+func (t Table) MergeEntry(e Entry) Table {
+	for i, x := range t {
+		if (x.Path == e.Path) && (x.Node == e.Node) && (x.Key == e.Key) {
+			t[i] = e
+			return t
+		}
+	}
+	return append(t, e)
+}
+
+func (t Table) DelEntry(e Entry) Table {
+	for i, x := range t {
+		if (x.Path == e.Path) && (x.Node == e.Node) && (x.Key == e.Key) {
+			return append(t[:i], t[i+1:]...)
+		}
+	}
+	return t
+}
+
+func (t Table) MergeEntries(l ...Entry) Table {
+	for _, e := range l {
+		t = t.MergeEntry(e)
+	}
+	return t
 }
 
 func (t Table) AddEntries(l ...Entry) Table {

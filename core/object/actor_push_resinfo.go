@@ -2,7 +2,10 @@ package object
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
@@ -37,7 +40,43 @@ func (t *actor) lockedPushResInfo(ctx context.Context) (resource.Infos, error) {
 	} else {
 		infos.Resources = append(infos.Resources, more...)
 	}
+	if err := t.saveResInfo(infos); err != nil {
+		t.log.Warnf("%s", err)
+	}
 	return infos, t.collectorPushResInfo(infos)
+}
+
+func (t *actor) resInfoCacheFilename() string {
+	return filepath.Join(t.varDir(), "resinfo.json")
+}
+
+func (t *actor) LoadResInfo() (resource.Infos, error) {
+	var data resource.Infos
+	filename := t.resInfoCacheFilename()
+	file, err := os.Open(filename)
+	if err != nil {
+		return data, err
+	}
+	defer file.Close()
+	dec := json.NewDecoder(file)
+	err = dec.Decode(&data)
+	return data, err
+}
+
+func (t *actor) saveResInfo(data resource.Infos) error {
+	filename := t.resInfoCacheFilename()
+	tempFile, err := os.CreateTemp(filepath.Dir(filename), filepath.Base(filename)+".*")
+	if err != nil {
+		return err
+	}
+	tempFilename := tempFile.Name()
+	enc := json.NewEncoder(tempFile)
+	if err := enc.Encode(data); err != nil {
+		tempFile.Close()
+		return err
+	}
+	tempFile.Close()
+	return os.Rename(tempFilename, filename)
 }
 
 func (t *actor) masterResInfo(ctx context.Context) ([]resource.Info, error) {

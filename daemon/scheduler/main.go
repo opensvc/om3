@@ -207,8 +207,6 @@ func (t *T) createJob(e schedule.Entry) {
 		tmr.Stop()
 	}
 	t.jobs.Add(e, cancel)
-	table := t.jobs.Table(e.Path)
-	schedule.TableData.Set(e.Path, &table)
 	return
 }
 
@@ -412,19 +410,17 @@ func (t *T) scheduleNode() {
 		t.log.Errorf("node: %s", err)
 		return
 	}
-	for _, e := range o.PrintSchedule() {
+
+	table := o.PrintSchedule()
+	defer schedule.TableData.Set(naming.Path{}, &table)
+
+	for _, e := range table {
 		t.createJob(e)
 	}
+	table = table.Merge(t.jobs.Table(naming.Path{}))
 }
 
 func (t *T) scheduleObject(p naming.Path) {
-	if isProvisioned, ok := t.provisioned[p]; !ok {
-		t.log.Debugf("%s: provisioned state has not been discovered yet", p)
-		return
-	} else if !isProvisioned {
-		t.log.Infof("%s: not provisioned", p)
-		return
-	}
 	i, err := object.New(p, object.WithVolatile(true))
 	if err != nil {
 		t.log.Errorf("%s: %s", p, err)
@@ -435,9 +431,22 @@ func (t *T) scheduleObject(p naming.Path) {
 		// only actor objects have scheduled actions
 		return
 	}
-	for _, e := range o.PrintSchedule() {
+
+	table := o.PrintSchedule()
+	defer schedule.TableData.Set(p, &table)
+
+	if isProvisioned, ok := t.provisioned[p]; !ok {
+		t.log.Debugf("%s: provisioned state has not been discovered yet", p)
+		return
+	} else if !isProvisioned {
+		t.log.Infof("%s: not provisioned", p)
+		return
+	}
+
+	for _, e := range table {
 		t.createJob(e)
 	}
+	table = table.Merge(t.jobs.Table(p))
 }
 
 func (t *T) unschedule(p naming.Path) {

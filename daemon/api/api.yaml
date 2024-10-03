@@ -1360,6 +1360,36 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
+  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/action/push/resource/info:
+    post:
+      operationId: PostInstanceActionPushResourceInfo
+      description: Refresh and send to the collector the object instance resource information.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
       description: Start the object instance.
@@ -1681,11 +1711,43 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/resource/info:
+    get:
+      operationId: GetInstanceResourceInfo
+      description: |
+        Return the resource info table of the object instance.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceInfoList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule:
     get:
-      operationId: GetObjectSchedule
+      operationId: GetInstanceSchedule
       description: |
-        Return the schedule table of the object.
+        Return the schedule table of the object instance.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -1704,6 +1766,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2614,6 +2678,70 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+
+  /object/path/{namespace}/{kind}/{name}/resource/info:
+    get:
+      operationId: GetObjectResourceInfo
+      description: |
+        Return the resource info table of all object instances.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceInfoList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
+  /object/path/{namespace}/{kind}/{name}/schedule:
+    get:
+      operationId: GetObjectSchedule
+      description: |
+        Return the schedule table of all the object instances.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
@@ -5609,6 +5737,44 @@ components:
       properties:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
+
+    ResourceInfoList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceInfoList
+        items:
+          $ref: '#/components/schemas/ResourceInfoItems'
+
+    ResourceInfoItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceInfoItem'
+
+    ResourceInfoItem:
+      type: object
+      required:
+        - node
+        - object
+        - rid
+        - key
+        - value
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        rid:
+          type: string
+        key:
+          type: string
+        value:
+          type: string
 
     KVStoreEntries:
         type: array

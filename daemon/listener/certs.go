@@ -178,12 +178,6 @@ func (t *T) installCertFiles(clusterName string) error {
 		t.log.Infof("install cert files dump cert certificate_chain to %s", dst)
 	}
 
-	dst = daemonenv.CertFile()
-	if err := certSec.InstallKeyTo("certificate", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
-		return fmt.Errorf("install cert files can't dump cert certificate to %s: %w", dst, err)
-	} else {
-		t.log.Infof("install cert files dump cert certificate to %s", dst)
-	}
 	return nil
 }
 
