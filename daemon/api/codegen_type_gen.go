@@ -1845,6 +1845,11 @@ type GetNodeLogsParams struct {
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
 }
 
+// PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
+type PostInstanceActionPushResourceInfoParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter

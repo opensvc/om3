@@ -2500,8 +2500,8 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPushResInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectPushResInfo
+func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
+	var options commands.CmdObjectPushResourceInfo
 	cmd := &cobra.Command{
 		Use:     "resinfo",
 		Short:   "push resource info key/val pairs",
@@ -2512,9 +2512,6 @@ func newCmdObjectPushResInfo(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsLock(flags, &options.OptsLock)
-	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagsTo(flags, &options.OptTo)
 	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

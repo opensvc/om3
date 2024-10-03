@@ -86,6 +86,7 @@ func init() {
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
 		newCmdObjectPrintDevices(kind),
+		newCmdObjectPrintResourceInfo(kind),
 		newCmdObjectPrintSchedule(kind),
 		newCmdObjectPrintStatus(kind),
 	)
@@ -93,7 +94,7 @@ func init() {
 		newCmdObjectPrintConfigMtime(kind),
 	)
 	cmdObjectPush.AddCommand(
-		newCmdObjectPushResInfo(kind),
+		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
 		newCmdObjectSyncFull(kind),

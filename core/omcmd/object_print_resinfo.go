@@ -1,7 +1,6 @@
 package omcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -15,14 +14,33 @@ import (
 )
 
 type (
-	CmdObjectPushResourceInfo struct {
+	CmdObjectPrintResourceInfo struct {
 		OptsGlobal
 		OptsLock
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoList, error) {
+func resourceInfosToAPI(infos resource.Infos, path, nodename string) api.ResourceInfoList {
+	data := api.ResourceInfoList{
+		Kind: "ResourceInfoList",
+	}
+	for _, r := range infos.Resources {
+		for _, e := range r.Keys {
+			item := api.ResourceInfoItem{
+				Node:   nodename,
+				Object: path,
+				Rid:    r.RID,
+				Key:    e.Key,
+				Value:  e.Value,
+			}
+			data.Items = append(data.Items, item)
+		}
+	}
+	return data
+}
+
+func (t *CmdObjectPrintResourceInfo) extractLocal(selector string) (api.ResourceInfoList, error) {
 	data := api.ResourceInfoList{
 		Kind: "ResourceInfoList",
 	}
@@ -30,26 +48,25 @@ func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoLi
 		selector,
 		objectselector.WithLocal(true),
 	)
-	type pushResInfoer interface {
-		PushResInfo(context.Context) (resource.Infos, error)
+	type loadResInfoer interface {
+		LoadResInfo() (resource.Infos, error)
 	}
 	paths, err := sel.Expand()
 	if err != nil {
 		return data, err
 	}
 	var errs error
-	ctx := context.Background()
 	for _, path := range paths {
 		obj, err := object.New(path)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
 		}
-		i, ok := obj.(pushResInfoer)
+		i, ok := obj.(loadResInfoer)
 		if !ok {
 			continue
 		}
-		infos, err := i.PushResInfo(ctx)
+		infos, err := i.LoadResInfo()
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
@@ -60,9 +77,9 @@ func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoLi
 	return data, errs
 }
 
-func (t *CmdObjectPushResourceInfo) Run(selector, kind string) error {
+func (t *CmdObjectPrintResourceInfo) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	data, err := t.doLocal(mergedSelector)
+	data, err := t.extractLocal(mergedSelector)
 	if err != nil {
 		return err
 	}

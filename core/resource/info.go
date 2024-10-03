@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (
@@ -99,21 +97,6 @@ func (t Infos) String() string {
 		}
 	}
 	return buff
-}
-
-func (t Infos) Render() string {
-	tree := tree.New()
-	tree.AddColumn().AddText(t.ObjectPath.String()).SetColor(rawconfig.Color.Bold)
-	for _, info := range t.Resources {
-		n1 := tree.AddNode()
-		n1.AddColumn().AddText(info.RID).SetColor(rawconfig.Color.Primary)
-		for _, key := range info.Keys {
-			n2 := n1.AddNode()
-			n2.AddColumn().AddText(key.Key).SetColor(rawconfig.Color.Secondary)
-			n2.AddColumn().AddText(key.Value)
-		}
-	}
-	return tree.Render()
 }
 
 func NewInfos(p naming.Path) Infos {

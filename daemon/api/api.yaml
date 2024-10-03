@@ -1360,6 +1360,36 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
+  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/action/push/resource/info:
+    post:
+      operationId: PostInstanceActionPushResourceInfo
+      description: Refresh and send to the collector the object instance resource information.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
       description: Start the object instance.

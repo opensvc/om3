@@ -90,7 +90,7 @@ func init() {
 		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectPush.AddCommand(
-		newCmdObjectPushResInfo(kind),
+		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
 		newCmdObjectSyncFull(kind),
