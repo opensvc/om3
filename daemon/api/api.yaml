@@ -5845,7 +5845,10 @@ components:
             - add
             - change
             - remove
+            - rename
         key:
+          type: string
+        name:
           type: string
         string:
           type: string

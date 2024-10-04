@@ -88,6 +88,13 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 				if err := ks.TransactionRemoveKey(patch.Key); err != nil {
 					return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", patch.Key, err)
 				}
+			case "rename":
+				if patch.Name == nil {
+					JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: rename with no target name", patch.Key)
+				}
+				if err := ks.TransactionRenameKey(patch.Key, *patch.Name); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "RenameKey", "%s: %s", patch.Key, err)
+				}
 			default:
 				return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: action %s is not supported, use add, change or remove", patch.Key, patch.Action)
 			}

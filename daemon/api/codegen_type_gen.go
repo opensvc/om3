@@ -169,6 +169,7 @@ const (
 	Add    PatchKVStoreEntryAction = "add"
 	Change PatchKVStoreEntryAction = "change"
 	Remove PatchKVStoreEntryAction = "remove"
+	Rename PatchKVStoreEntryAction = "rename"
 )
 
 // Defines values for PatchListKind.
@@ -963,6 +964,7 @@ type PatchKVStoreEntry struct {
 	Action PatchKVStoreEntryAction `json:"action"`
 	Bytes  *[]byte                 `json:"bytes,omitempty"`
 	Key    string                  `json:"key"`
+	Name   *string                 `json:"name,omitempty"`
 	String *string                 `json:"string,omitempty"`
 }
 
