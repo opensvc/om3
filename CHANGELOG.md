@@ -411,6 +411,11 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     
     Now object instance <foo@localhost> orchestration only waits for <foo@localhost> boot action completed. Each instance has a last boot id.
 
+### sec
+
+* Add "o[mx] rename --key old --to new" commands
+
+
 ## Upgrade from b2.1
 
 ### Cluster Config
