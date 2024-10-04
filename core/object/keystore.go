@@ -26,20 +26,23 @@ type (
 	Keystore interface {
 		Core
 
-		HasKey(name string) bool
 		AddKey(name string, b []byte) error
 		ChangeKey(name string, b []byte) error
-		DecodeKey(keyname string) ([]byte, error)
-		AllKeys() ([]string, error)
-		MatchingKeys(string) ([]string, error)
-		RemoveKey(name string) error
+		DecodeKey(name string) ([]byte, error)
 		EditKey(name string) error
 		InstallKey(name string) error
 		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, string, string) error
+		RemoveKey(name string) error
+		RenameKey(name, to string) error
+
+		HasKey(name string) bool
+		AllKeys() ([]string, error)
+		MatchingKeys(string) ([]string, error)
 
 		TransactionAddKey(name string, b []byte) error
 		TransactionChangeKey(name string, b []byte) error
 		TransactionRemoveKey(name string) error
+		TransactionRenameKey(name, to string) error
 	}
 
 	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).

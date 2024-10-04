@@ -189,6 +189,10 @@ func addFlagKey(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "key", "", "A keystore key name.")
 }
 
+func addFlagKeyTo(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "to", "", "The new key name.")
+}
+
 func addFlagKeyword(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "kw", "", "A configuration keyword, [<section>].<option>.")
 }

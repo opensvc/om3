@@ -40,6 +40,7 @@ func init() {
 		newCmdKeystoreKeys(kind),
 		newCmdKeystoreInstall(kind),
 		newCmdKeystoreRemove(kind),
+		newCmdKeystoreRename(kind),
 		newCmdObjectAbort(kind),
 		newCmdObjectBoot(kind),
 		newCmdObjectClear(kind),

@@ -130,6 +130,17 @@ func TestKeyActions(t *testing.T) {
 			extraArgs:       []string{"keys", "--match", "foo/*"},
 			expectedResults: "foo/bar\n",
 		},
+		"rename": {
+			extraArgs: []string{"rename", "--key", "foo/bar", "--to", "foo/baz"},
+		},
+		"keysAfterRename": {
+			extraArgs:       []string{"keys", "--match", "foo/*"},
+			expectedResults: "foo/baz\n",
+		},
+		"decodeAfterRename": {
+			extraArgs:       []string{"decode", "--key", "foo/baz"},
+			expectedResults: "fooBarValue",
+		},
 	}
 
 	getCmd := func(name string) []string {

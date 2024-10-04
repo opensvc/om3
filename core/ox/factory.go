@@ -452,6 +452,22 @@ func newCmdKeystoreRemove(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdKeystoreRename(kind string) *cobra.Command {
+	var options commands.CmdKeystoreRename
+	cmd := &cobra.Command{
+		Use:   "rename",
+		Short: "rename a key",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagKey(flags, &options.Key)
+	addFlagKeyTo(flags, &options.To)
+	return cmd
+}
+
 func newCmdMonitor() *cobra.Command {
 	var options commands.CmdObjectMonitor
 	cmd := &cobra.Command{

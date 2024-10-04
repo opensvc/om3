@@ -25,6 +25,7 @@ func init() {
 		newCmdKeystoreDecode(kind),
 		newCmdKeystoreKeys(kind),
 		newCmdKeystoreRemove(kind),
+		newCmdKeystoreRename(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDoc(kind),
