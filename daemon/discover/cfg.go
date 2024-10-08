@@ -239,6 +239,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 			log.Infof("cfg: icfg is done, but recent config file exists for %s: start new icfg", p)
 			if err := icfg.Start(t.ctx, p, filename, t.cfgCmdC); err != nil {
 				log.Warnf("cfg: start new icfg for %s failed: %s", p, err)
+				cleanup()
 				return
 			} else {
 				t.cfgMTime[s] = mtime
