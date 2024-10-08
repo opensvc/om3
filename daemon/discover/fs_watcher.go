@@ -182,10 +182,11 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 								log.Infof("file removed")
 								continue
 							} else {
-								if err := watcher.Add(filename); err != nil {
-									log.Errorf("re-add file watch %s: %s", filename, err)
+								dir := filepath.Dir(filename)
+								if err := watcher.Add(dir); err != nil {
+									log.Errorf("re-add dir watch of %s: %s", filename, err)
 								} else {
-									log.Debugf("re-add file watch %s", filename)
+									log.Debugf("re-add dir watch of %s", filename)
 								}
 							}
 						}
@@ -216,10 +217,11 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 								log.Infof("file removed: %s", filename)
 								continue
 							} else {
-								if err := watcher.Add(filename); err != nil {
-									log.Errorf("re-add file watch %s: %s", filename, err)
+								dir := filepath.Dir(filename)
+								if err := watcher.Add(dir); err != nil {
+									log.Errorf("re-add dir watch of %s: %s", filename, err)
 								} else {
-									log.Debugf("re-add file watch %s", filename)
+									log.Debugf("re-add dir watch of %s", filename)
 								}
 							}
 						}
