@@ -124,13 +124,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 		defer cleanup()
 		log.Infof("started")
 		defer log.Infof("stopped")
-		const createDeleteMask = fsnotify.Create | fsnotify.Remove
-		const needReAddMask = fsnotify.Remove | fsnotify.Rename
-		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+		const updateMask = fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+		const removeMask = fsnotify.Remove | fsnotify.Rename
 
 		// Add directory watches for:
-		//  etc/
-		//  var/node/
+		//  <etc>/
+		//  <var>/node/
 		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
 		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
 		for _, dir := range []string{rawconfig.Paths.Etc, varNodeDir} {
@@ -176,20 +175,6 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 							bus.Pub(&msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", t.localhost})
 						}
 					case event.Op&updateMask != 0:
-						if event.Op&needReAddMask != 0 {
-							time.Sleep(delayExistAfterRemove)
-							if !file.Exists(filename) {
-								log.Infof("file removed")
-								continue
-							} else {
-								dir := filepath.Dir(filename)
-								if err := watcher.Add(dir); err != nil {
-									log.Errorf("re-add dir watch of %s: %s", filename, err)
-								} else {
-									log.Debugf("re-add dir watch of %s", filename)
-								}
-							}
-						}
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
 							bus.Pub(&msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", t.localhost})
@@ -207,24 +192,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						continue
 					}
 					switch {
-					case event.Op&fsnotify.Remove != 0:
-						log.Debugf("detect removed file %s (%s)", filename, event.Op)
-						bus.Pub(&msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"path", p.String()})
-					case event.Op&updateMask != 0:
-						if event.Op&needReAddMask != 0 {
-							time.Sleep(delayExistAfterRemove)
-							if !file.Exists(filename) {
-								log.Infof("file removed: %s", filename)
-								continue
-							} else {
-								dir := filepath.Dir(filename)
-								if err := watcher.Add(dir); err != nil {
-									log.Errorf("re-add dir watch of %s: %s", filename, err)
-								} else {
-									log.Debugf("re-add dir watch of %s", filename)
-								}
-							}
+					case event.Op&removeMask != 0:
+						if !file.Exists(filename) {
+							log.Debugf("detect removed file %s (%s)", filename, event.Op)
+							bus.Pub(&msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 						}
+					case event.Op&updateMask != 0:
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						bus.Pub(&msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 					}
