@@ -53,6 +53,7 @@ func (t TTristate) Convert(s string) (interface{}, error) {
 	if s == "" {
 		return "", nil
 	}
+	s = strings.TrimSpace(s)
 	v, err := strconv.ParseBool(s)
 	if err != nil {
 		return "", err
@@ -105,6 +106,7 @@ func (t TBool) Convert(s string) (interface{}, error) {
 	if s == "" {
 		return false, nil
 	}
+	s = strings.TrimSpace(s)
 	return strconv.ParseBool(s)
 }
 
