@@ -73,6 +73,9 @@ type (
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
 
+		// debouncers is a map of delayed publications to cope with fs event storms
+		debouncers map[string]*Debouncer
+
 		fsWatcher     *fsnotify.Watcher
 		fsWatcherStop func()
 		localhost     string
@@ -134,6 +137,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 		disableRecover: make(map[naming.Path]time.Time),
 
+		debouncers:        make(map[string]*Debouncer),
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
