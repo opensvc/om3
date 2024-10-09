@@ -330,7 +330,8 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			// our version is more recent than remote one
 			return
 		}
-	} else if !remoteInstanceConfig.UpdatedAt.After(localUpdated) {
+	}
+	if !remoteInstanceConfig.UpdatedAt.After(localUpdated) {
 		// Not yet started icfg, but file exists
 		return
 	}
