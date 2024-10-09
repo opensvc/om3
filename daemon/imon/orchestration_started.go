@@ -74,6 +74,10 @@ func (t *Manager) startedFromThawed() {
 		t.log.Debugf("provisioned is false or undef")
 		return
 	}
+	if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+		t.log.Debugf("peer %s imon state is %s", nodename, state)
+		return
+	}
 	t.transitionTo(instance.MonitorStateReady)
 	t.createPendingWithDuration(t.readyDuration)
 	go func(ctx context.Context) {
@@ -104,6 +108,12 @@ func (t *Manager) cancelReadyState() bool {
 	}
 	if !t.state.IsHALeader {
 		t.loggerWithState().Infof("leadership lost, clear the ready state")
+		t.transitionTo(instance.MonitorStateIdle)
+		t.clearPending()
+		return true
+	}
+	if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+		t.loggerWithState().Infof("peer %s imon state is %s, clear the ready state", nodename, state)
 		t.transitionTo(instance.MonitorStateIdle)
 		t.clearPending()
 		return true
@@ -157,6 +167,20 @@ func (t *Manager) startedFromStartFailed() {
 		t.done()
 		return
 	}
+}
+
+func (t *Manager) isAnyPeerState(states ...instance.MonitorState) (string, instance.MonitorState) {
+	for nodename, instMon := range t.AllInstanceMonitors() {
+		if nodename == t.localhost {
+			continue
+		}
+		for _, state := range states {
+			if instMon.State == state {
+				return nodename, state
+			}
+		}
+	}
+	return "", instance.MonitorStateInit
 }
 
 func (t *Manager) isAllStartFailed() bool {
