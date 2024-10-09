@@ -105,6 +105,13 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/unprovision"),
 	}
 
+	KWEncap = keywords.Keyword{
+		Attr:      "Encap",
+		Converter: converters.Bool,
+		Option:    "encap",
+		Text:      keywords.NewText(fs, "text/kw/encap"),
+	}
+
 	KWMonitor = keywords.Keyword{
 		Attr:      "Monitor",
 		Converter: converters.Bool,
@@ -363,6 +370,7 @@ var (
 
 	genericKeywords = []Attr{
 		KWDisable,
+		KWEncap,
 		KWMonitor,
 		KWOptional,
 		KWShared,

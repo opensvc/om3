@@ -23,7 +23,20 @@ import (
 
 const (
 	delayExistAfterRemove = 100 * time.Millisecond
+	debounceDelay         = 200 * time.Millisecond
 )
+
+type Debouncer struct {
+	timer *time.Timer
+}
+
+func (d *Debouncer) Debounce(wait time.Duration, fn func()) {
+	if d.timer != nil {
+		d.timer.Stop()
+	}
+
+	d.timer = time.AfterFunc(wait, fn)
+}
 
 func dirCreated(event fsnotify.Event) bool {
 	if event.Op&fsnotify.Create == 0 {
@@ -50,6 +63,18 @@ func dirRemoved(event fsnotify.Event) bool {
 		return false
 	}
 	return true
+}
+
+func (t *Manager) PubDebounce(bus *pubsub.Bus, key string, v pubsub.Messager, labels ...pubsub.Label) {
+	debouncer, ok := t.debouncers[key]
+
+	if !ok {
+		debouncer = &Debouncer{}
+		t.debouncers[key] = debouncer
+	}
+	debouncer.Debounce(debounceDelay, func() {
+		bus.Pub(v, labels...)
+	})
 }
 
 func (t *Manager) fsWatcherStart() (func(), error) {
@@ -111,7 +136,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						}
 					*/
 					log.Debugf("publish msgbus.ConfigFileUpdated config file %s", filename)
-					bus.Pub(&msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
+					t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 				}
 				return nil
 			},
@@ -124,13 +149,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 		defer cleanup()
 		log.Infof("started")
 		defer log.Infof("stopped")
-		const createDeleteMask = fsnotify.Create | fsnotify.Remove
-		const needReAddMask = fsnotify.Remove | fsnotify.Rename
-		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+		const updateMask = fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+		const removeMask = fsnotify.Remove | fsnotify.Rename
 
 		// Add directory watches for:
-		//  etc/
-		//  var/node/
+		//  <etc>/
+		//  <var>/node/
 		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
 		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
 		for _, dir := range []string{rawconfig.Paths.Etc, varNodeDir} {
@@ -143,10 +167,10 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 
 		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Infof("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(&msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, pubsub.Label{"node", t.localhost})
+			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, pubsub.Label{"node", t.localhost})
 		} else {
 			log.Infof("detect %s initially absent", nodeFrozenFile)
-			bus.Pub(&msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, pubsub.Label{"node", t.localhost})
+			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, pubsub.Label{"node", t.localhost})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -173,25 +197,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debugf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", t.localhost})
+							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", t.localhost})
 						}
 					case event.Op&updateMask != 0:
-						if event.Op&needReAddMask != 0 {
-							time.Sleep(delayExistAfterRemove)
-							if !file.Exists(filename) {
-								log.Infof("file removed")
-								continue
-							} else {
-								if err := watcher.Add(filename); err != nil {
-									log.Errorf("re-add file watch %s: %s", filename, err)
-								} else {
-									log.Debugf("re-add file watch %s", filename)
-								}
-							}
-						}
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", t.localhost})
+							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", t.localhost})
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
@@ -206,25 +217,14 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						continue
 					}
 					switch {
-					case event.Op&fsnotify.Remove != 0:
-						log.Debugf("detect removed file %s (%s)", filename, event.Op)
-						bus.Pub(&msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"path", p.String()})
-					case event.Op&updateMask != 0:
-						if event.Op&needReAddMask != 0 {
-							time.Sleep(delayExistAfterRemove)
-							if !file.Exists(filename) {
-								log.Infof("file removed: %s", filename)
-								continue
-							} else {
-								if err := watcher.Add(filename); err != nil {
-									log.Errorf("re-add file watch %s: %s", filename, err)
-								} else {
-									log.Debugf("re-add file watch %s", filename)
-								}
-							}
+					case event.Op&removeMask != 0:
+						if !file.Exists(filename) {
+							log.Debugf("detect removed file %s (%s)", filename, event.Op)
+							t.PubDebounce(bus, filename, &msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 						}
+					case event.Op&updateMask != 0:
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
-						bus.Pub(&msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
+						t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
 					if event.Name == "." {

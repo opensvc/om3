@@ -239,6 +239,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 			log.Infof("cfg: icfg is done, but recent config file exists for %s: start new icfg", p)
 			if err := icfg.Start(t.ctx, p, filename, t.cfgCmdC); err != nil {
 				log.Warnf("cfg: start new icfg for %s failed: %s", p, err)
+				cleanup()
 				return
 			} else {
 				t.cfgMTime[s] = mtime
@@ -329,7 +330,8 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			// our version is more recent than remote one
 			return
 		}
-	} else if !remoteInstanceConfig.UpdatedAt.After(localUpdated) {
+	}
+	if !remoteInstanceConfig.UpdatedAt.After(localUpdated) {
 		// Not yet started icfg, but file exists
 		return
 	}
