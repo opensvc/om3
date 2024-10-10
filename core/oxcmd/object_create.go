@@ -14,6 +14,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -27,6 +28,7 @@ import (
 type (
 	CmdObjectCreate struct {
 		OptsGlobal
+		OptsAsync
 		OptsLock
 		Config      string
 		Keywords    []string
@@ -60,7 +62,30 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	} else {
 		t.path = p
 	}
-	return t.Do()
+	errC := make(chan error)
+	if t.Provision {
+		if err := cmd.WaitInstanceMonitor(context.Background(), t.client, t.path, t.Time, errC); err != nil {
+			return err
+		}
+	}
+	if err := t.do(); err != nil {
+		return err
+	}
+	if t.Provision {
+		err := <-errC
+		if err != nil {
+			return err
+		}
+		provisionOptions := CmdObjectProvision{
+			OptsGlobal: t.OptsGlobal,
+			OptsAsync:  t.OptsAsync,
+			OptsLock:   t.OptsLock,
+		}
+		if err := provisionOptions.Run(selector, kind); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, error) {
@@ -110,7 +135,7 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 	return paths
 }
 
-func (t *CmdObjectCreate) Do() error {
+func (t *CmdObjectCreate) do() error {
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
 	switch {
@@ -128,7 +153,14 @@ func (t *CmdObjectCreate) Do() error {
 }
 
 func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, error) {
-	o, err := object.New(p, object.WithVolatile(true))
+	f, err := os.CreateTemp("", ".create-*")
+	if err != nil {
+		return "", err
+	}
+	tempName := f.Name()
+	defer f.Close()
+
+	o, err := object.New(p, object.WithVolatile(true), object.WithConfigFile(tempName))
 	if err != nil {
 		return "", err
 	}

@@ -15,6 +15,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/cmd"
+	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -29,6 +31,7 @@ import (
 type (
 	CmdObjectCreate struct {
 		OptsGlobal
+		OptsAsync
 		OptsLock
 		Config      string
 		Keywords    []string
@@ -62,7 +65,30 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	} else {
 		t.client = c
 	}
-	return t.Do()
+	errC := make(chan error)
+	if t.Provision {
+		if err := cmd.WaitInstanceMonitor(context.Background(), t.client, t.path, t.Time, errC); err != nil {
+			return err
+		}
+	}
+	if err := t.do(); err != nil {
+		return err
+	}
+	if t.Provision {
+		err := <-errC
+		if err != nil {
+			return err
+		}
+		provisionOptions := CmdObjectProvision{
+			OptsGlobal: t.OptsGlobal,
+			OptsAsync:  t.OptsAsync,
+			OptsLock:   t.OptsLock,
+		}
+		if err := provisionOptions.Run(selector, kind); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, error) {
@@ -114,7 +140,7 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 	return paths
 }
 
-func (t *CmdObjectCreate) Do() error {
+func (t *CmdObjectCreate) do() error {
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
 	switch {
@@ -376,7 +402,6 @@ func (t CmdObjectCreate) localFromData(pivot Pivot) error {
 		if err = t.localFromRaw(p, c); err != nil {
 			return err
 		}
-		fmt.Println(opath, "commited")
 	}
 	return nil
 }
@@ -410,8 +435,8 @@ func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
 	// Freeze if orchestrate==ha and freeze capable, so the daemon
 	// doesn't decide to start the instance too soon.
 	orchestrate := oc.Config().GetString(key.Parse("orchestrate"))
-	if oa, ok := o.(object.Actor); ok && orchestrate == "ha" {
-		if err := oa.Freeze(context.Background()); err != nil {
+	if orchestrate == "ha" {
+		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 			return err
 		}
 	}
