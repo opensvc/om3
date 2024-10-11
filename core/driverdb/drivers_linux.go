@@ -11,6 +11,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/poolloop"
 	_ "github.com/opensvc/om3/drivers/poolvg"
 	_ "github.com/opensvc/om3/drivers/rescontainerdocker"
+	_ "github.com/opensvc/om3/drivers/rescontainerpodman"
 	_ "github.com/opensvc/om3/drivers/rescontainerkvm"
 	_ "github.com/opensvc/om3/drivers/rescontainerlxc"
 	_ "github.com/opensvc/om3/drivers/rescontainervbox"
