@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
@@ -27,7 +29,6 @@ import (
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/xsession"
-	"github.com/rs/zerolog/log"
 )
 
 type (
