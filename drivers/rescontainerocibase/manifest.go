@@ -61,6 +61,15 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 			Text:     keywords.NewText(fs, "text/kw/image"),
 		},
 		keywords.Keyword{
+			Option:   "image",
+			Attr:     "Image",
+			Aliases:  []string{"run_image"},
+			Scopable: true,
+			Required: true,
+			Example:  "google/pause",
+			Text:     keywords.NewText(fs, "text/kw/image"),
+		},
+		keywords.Keyword{
 			Option:     "image_pull_policy",
 			Attr:       "ImagePullPolicy",
 			Scopable:   true,
