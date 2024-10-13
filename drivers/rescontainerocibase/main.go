@@ -1,13 +1,24 @@
+// Package rescontainerocibase provides base settings for to implement resource
+// container oci drivers.
+//
+// It Defines BT that may help container oci composition for resource container
+// oci driver interface.
+//
+// It Defines Executor that implements Executer interface.
+//
+// It Defines ExecutorArg that implements ExecutorArgser interface.
 package rescontainerocibase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kballard/go-shellquote"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
@@ -15,7 +26,12 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/vpath"
+	"github.com/opensvc/om3/util/envprovider"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -63,67 +79,127 @@ type (
 		StartTimeout    *time.Duration `json:"start_timeout"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
 
-		CProvider Container
-		Inspect   Inspecter
+		executer   Executer
+		xContainer map[string]containerNamer
 	}
 
-	Arg struct {
-		Short     string
-		Long      string
-		Default   string
-		Obfuscate bool
-		Multi     bool
+	BindMount struct {
+		Source string
+		Target string
+		Option string
+	}
+)
+
+type (
+	// ExecuteContainer interface defines the functions used to manage container
+	// lifecycle.
+	ExecuteContainer interface {
+		Enter() error
+		Start(context.Context) error
+		Stop(context.Context) error
+		Remove(context.Context) error
+		Run(context.Context) error
 	}
 
-	Argser interface {
-		Args() []Arg
+	// ExecuteImager interface defines the functions used to manage container
+	// image lifecycle.
+	ExecuteImager interface {
+		HasImage(context.Context) (bool, string, error)
+		Pull(context.Context) error
 	}
 
-	ImagePullOptions struct {
-		Name string
+	// ExecuteInspecter interface defines the functions used to retrieve container
+	// inspecter.
+	ExecuteInspecter interface {
+		Inspect() Inspecter
+		InspectRefresh(context.Context) (Inspecter, error)
+		InspectRefreshed() bool
 	}
 
-	CreateOptions struct {
-		Name  string
-		Image string
+	// ExecuteWaiter interface defines the functions used to manage container
+	// wait functions.
+	ExecuteWaiter interface {
+		WaitNotRunning(context.Context) error
+		WaitRemoved(context.Context) error
 	}
 
+	// Executer defines interfaces for container operations. It must be
+	// implemented by container executors.
+	Executer interface {
+		ExecuteContainer
+		ExecuteImager
+		ExecuteInspecter
+		ExecuteWaiter
+	}
+
+	// ExecutorContainerArgser defines interfaces functions that provides
+	// args for container resource operations.
+	ExecutorContainerArgser interface {
+		EnterCmdArgs() []string
+		EnterCmdCheckArgs() []string
+		RemoveArgs() Args
+		RunArgs() (Args, error)
+		RunCmdEnv() (map[string]string, error)
+		StartArgs() Args
+		StopArgs() Args
+	}
+
+	// ExecutorInspectArgser defines interfaces functions that provides
+	// args for container resource inspect operations.
+	ExecutorInspectArgser interface {
+		HasImageArgs() Args
+		InspectArgs() Args
+		InspectParser([]byte) (Inspecter, error)
+	}
+
+	// ExecutorImageArgser defines interfaces functions that provides args for
+	// image operations.
+	ExecutorImageArgser interface {
+		PullArgs() Args
+	}
+
+	// ExecutorArgser defines interfaces for container executor args.
+	// The ExecutorArgser interface is meant to define the required arguments
+	// or methods that a container executor should have, focusing on resource
+	// information. These arguments are used by executors to manage containers.
+	ExecutorArgser interface {
+		ExecutorContainerArgser
+		ExecutorImageArgser
+		ExecutorInspectArgser
+		ExecuteWaiter
+	}
+
+	// Inspecter defines interfaces functions that a container inspector must
+	// provide.
+	Inspecter interface {
+		Config() *InspectDataConfig
+		Defined() bool
+		ID() string
+		ImageID() string
+		HostConfig() *InspectDataHostConfig
+		PID() int
+		Running() bool
+		SandboxKey() string
+		Status() string
+	}
+
+	Logger interface {
+		Log() *plog.Logger
+	}
+)
+
+// defines used internal interfaces
+type (
 	containerNamer interface {
 		ContainerName() string
 	}
 
-	Container interface {
-		Create(ctx context.Context, options CreateOptions) error
-		NewContainer(ctx context.Context, id string) (cs ContainerStarter, err error)
-		Running(ctx context.Context, name string) (bool, error)
-		Remove(ctx context.Context, name string) error
-		Start(ctx context.Context, opts ...string) error
-		Stop(ctx context.Context, name string) error
-		Inspect(ctx context.Context, name string) (is Inspecter, err error)
-		Wait(ctx context.Context, name string, opts ...WaitCondition) (int, error)
-		Pull(ctx context.Context, opts ...string) error
-		HasImage(ctx context.Context, id string) (exists bool, err error)
-		PullOptions(bt *BT) ([]string, error)
-		StartOptions(bt *BT) ([]string, error)
+	containerIDer interface {
+		ContainerID() string
 	}
 
-	ContainerStarter interface {
-		Start(ctx context.Context) error
-		Wait(ctx context.Context, opts ...WaitCondition) (int, error)
-	}
-
-	ExitStatus interface {
-		ExitCode() (int, error)
-	}
-
-	WaitCondition string
-
-	Inspecter interface {
-		HostConfigAutoRemove() bool
-		ID() string
-		Running() bool
-		SandboxKey() string
-		PID() int
+	containerInspectRefresher interface {
+		ContainerInspectRefresh(context.Context) (Inspecter, error)
 	}
 )
 
@@ -131,6 +207,24 @@ const (
 	imagePullPolicyAlways = "always"
 	imagePullPolicyOnce   = "once"
 )
+
+func (t *BT) Configure() error {
+	l := t.T.Log().Attr("container_name", t.ContainerName())
+	t.SetLoggerForTest(l)
+	return nil
+}
+
+func (t *BT) IsAlwaysImagePullPolicy() bool {
+	return t.ImagePullPolicy == imagePullPolicyAlways
+}
+
+func (t *BT) ContainerID() string {
+	if i := t.executer.Inspect(); i == nil {
+		return ""
+	} else {
+		return i.ID()
+	}
+}
 
 // ContainerName formats a docker container name
 func (t *BT) ContainerName() string {
@@ -148,146 +242,12 @@ func (t *BT) ContainerName() string {
 	return s
 }
 
-func (t *BT) CreateOptions() (CreateOptions, error) {
-	return CreateOptions{Name: t.Name}, nil
+func (t *BT) ContainerInspectRefresh(ctx context.Context) (Inspecter, error) {
+	return t.executer.InspectRefresh(ctx)
 }
 
-func (t *BT) StartOptions() []string {
-	return nil
-}
-
-func (t *BT) IsAlwaysImagePullPolicy() bool {
-	return t.ImagePullPolicy == imagePullPolicyAlways
-}
-
-func (t *BT) NeedPreStartRemove() bool {
-	return t.Remove || !t.Detach
-}
-
-var (
-	WaitConditionNotRunning = WaitCondition("not-running")
-	WaitConditionRemoved    = WaitCondition("removed")
-
-	ErrNotFound = errors.New("not found")
-)
-
-func (t *BT) Start(ctx context.Context) error {
-	name := t.ContainerName()
-
-	err := t.InspectRefresh(ctx)
-	if err == nil {
-		// has container
-		if t.Inspect.Running() {
-			t.Log().Infof("container is already running: %s", name)
-			return nil
-		} else {
-			t.Log().Debugf("container is not running: %s", name)
-			if t.NeedPreStartRemove() {
-				t.Log().Infof("remove leftover container %s", name)
-				if err := t.CProvider.Remove(ctx, name); err != nil {
-					return err
-				}
-				if t.IsAlwaysImagePullPolicy() {
-					if err := t.Pull(ctx); err != nil {
-						return err
-					}
-				}
-				return t.createAndStart(ctx)
-			} else {
-				id := t.Inspect.ID()
-				t.Log().Infof("reuse container: %s (%s)", name, id)
-				return t.findAndStart(ctx, id)
-			}
-		}
-	} else if errors.Is(err, ErrNotFound) {
-		t.Log().Debugf("container will be created: %s", name)
-		if t.IsAlwaysImagePullPolicy() {
-			t.Log().Debugf("pull image policy: always")
-			if err := t.Pull(ctx); err != nil {
-				return err
-			}
-		} else if ok, err := t.CProvider.HasImage(ctx, t.Image); err != nil {
-			t.Log().Errorf("can't detect image for container %s: %s", name, err)
-			return err
-		} else if !ok {
-			if err := t.Pull(ctx); err != nil {
-				return err
-			}
-		}
-		return t.createAndStart(ctx)
-	} else {
-		t.Log().Errorf("container inspect error for %s: %s", name, err)
-		return err
-	}
-}
-
-func (t *BT) Pull(ctx context.Context) error {
-	if opt, err := t.CProvider.PullOptions(t); err != nil {
-		t.Log().Errorf("can't detect pull options: %s", err)
-		return err
-	} else {
-		t.Log().Infof("call: %s", strings.Join(opt, " "))
-		if err := t.CProvider.Pull(ctx, opt...); err != nil {
-			t.Log().Errorf("image pull failed: %s", err)
-			return err
-		}
-		return nil
-	}
-}
-
-func (t *BT) findAndStart(ctx context.Context, id string) error {
-	if cs, err := t.CProvider.NewContainer(ctx, id); err != nil {
-		return err
-	} else {
-		return t.start(ctx, cs)
-	}
-}
-
-func (t *BT) Stop(ctx context.Context) error {
-	name := t.ContainerName()
-	err := t.InspectRefresh(ctx)
-	if errors.Is(err, ErrNotFound) {
-		return nil
-	}
-
-	if !t.Inspect.Running() {
-		t.Log().Infof("container %s is already stopped", name)
-	} else {
-		if t.StopTimeout != nil && *t.StopTimeout > 0 {
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, *t.StopTimeout)
-			defer cancel()
-			t.Log().Infof("stopping container %s with id %s (timeout %s)", name, t.Inspect.ID(), t.StopTimeout)
-		} else {
-			t.Log().Infof("stopping container %s with id %s", name, t.Inspect.ID())
-		}
-		err = t.CProvider.Stop(ctx, name)
-		switch {
-		case errors.Is(err, ErrNotFound):
-			t.Log().Infof("stopped while requesting container %s stop", name)
-		case err != nil:
-			return err
-		}
-		t.Log().Debugf("stopped container %s: %s", name, err)
-	}
-
-	if t.Remove {
-		if !t.Inspect.HostConfigAutoRemove() {
-			t.Log().Infof("remove container %s", name)
-			return t.CProvider.Remove(ctx, name)
-		}
-		t.Log().Debugf("wait removed condition")
-		xc, err := t.CProvider.Wait(ctx, name, WaitConditionRemoved)
-		switch {
-		case errors.Is(err, ErrNotFound):
-			t.Log().Infof("container %s not found while waiting removed", name)
-		case err != nil:
-			return err
-		default:
-			t.Log().Warnf("wait removed condition ended with exit code %d", xc)
-		}
-	}
-	return nil
+func (t *BT) Enter() error {
+	return t.executer.Enter()
 }
 
 func (t *BT) FormatNS(s string) (string, error) {
@@ -310,6 +270,47 @@ func (t *BT) FormatNS(s string) (string, error) {
 	return "", fmt.Errorf("resource %s has no ns", s)
 }
 
+// GenEnv returns the list of environment variables from the resource/object and
+// its ConfigsEnv: []string{"PUBLICVAR1=Value", ...}
+// secret var names from its SecretsEnv are added to the list: "SECRETVAR1", "SECRETVAR2",...
+// values for secrets are added to the returned envM: {"SECRETVAR1":"SECRETVALUE1", ...}
+// It may be used by executorArgser to prepare run args and run command environement.
+func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
+	envM = make(map[string]string)
+	envL = []string{
+		"OPENSVC_RID=" + t.RID(),
+		"OPENSVC_NAME=" + t.Path.String(),
+		"OPENSVC_KIND=" + t.Path.Kind.String(),
+		"OPENSVC_ID=" + t.ObjectID.String(),
+		"OPENSVC_NAMESPACE=" + t.Path.Namespace,
+	}
+	if len(t.Env) > 0 {
+		envL = append(envL, t.Env...)
+	}
+	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+		return nil, nil, err
+	} else {
+		for _, s := range tempEnv {
+			t.Log().Infof("env: %s", s)
+		}
+		envL = append(envL, tempEnv...)
+	}
+	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+		return nil, nil, err
+	} else {
+		for _, s := range tempEnv {
+			kv := strings.SplitN(s, "=", 2)
+			if len(kv) != 2 {
+				return nil, nil, fmt.Errorf("can't prepare env from secrets")
+			}
+			t.Log().Infof("sec %s: %s=%s", s, kv[0], kv[1])
+			envM[kv[0]] = kv[1]
+			envL = append(envL, kv[0])
+		}
+	}
+	return envL, envM, nil
+}
+
 func (t *BT) Label() string {
 	return t.Image
 }
@@ -325,62 +326,67 @@ func (t *BT) Labels() map[string]string {
 	return data
 }
 
-func (t *BT) Status(ctx context.Context) status.T {
-	if !t.Detach {
-		return status.NotApplicable
-	}
+func (t *BT) LinkNames() []string {
+	return []string{t.RID()}
+}
 
-	err := t.InspectRefresh(ctx)
-	if err == nil {
-		// has container
-		if t.Inspect.Running() {
-			return status.Up
+func (t *BT) Mounts() ([]BindMount, error) {
+	mounts := make([]BindMount, 0)
+	for _, s := range t.VolumeMounts {
+		var source, target, opt string
+		l := strings.Split(s, ":")
+		n := len(l)
+		switch n {
+		case 2:
+			source = l[0]
+			target = l[1]
+			opt = "rw"
+		case 3:
+			source = l[0]
+			target = l[1]
+			opt = l[2]
+		default:
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: 1-2 column-characters allowed", s)
+		}
+		if len(source) == 0 {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty source", s)
+		}
+		if len(target) == 0 {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
+		}
+		if strings.HasPrefix(source, "/") {
+			// pass
+		} else if srcRealpath, err := vpath.HostPath(source, t.Path.Namespace); err != nil {
+			return mounts, err
+		} else if file.IsProtected(srcRealpath) {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
 		} else {
-			return status.Down
+			source = srcRealpath
 		}
-	} else if errors.Is(err, ErrNotFound) {
-		return status.Down
-	} else {
-		return status.Warn
+
+		mounts = append(mounts, BindMount{Source: source, Target: target, Option: opt})
 	}
+	return mounts, nil
 }
 
-func (t *BT) InspectRefresh(ctx context.Context) error {
-	if ctx == nil {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-	}
-	inspect, err := t.CProvider.Inspect(ctx, t.ContainerName())
-	if err != nil {
-		return err
-	}
-	t.Inspect = inspect
-	return nil
+func (t *BT) NeedPreStartRemove() bool {
+	return t.Remove || !t.Detach
 }
 
-// NetNSPath implements the resource.NetNSPather optional interface.
-// Used by ip.netns and ip.route to configure network stuff in the container.
 func (t *BT) NetNSPath() (string, error) {
-	if t.Inspect == nil {
-		if err := t.InspectRefresh(nil); err != nil {
-			return "", err
-		}
+	if i := t.executer.Inspect(); i == nil {
+		return "", nil
+	} else {
+		return i.SandboxKey(), nil
 	}
-	return t.Inspect.SandboxKey(), nil
 }
 
 func (t *BT) PID() int {
-	if t.Inspect == nil {
-		if err := t.InspectRefresh(nil); err != nil {
-			return 0
-		}
+	if i := t.executer.Inspect(); i == nil {
+		return 0
+	} else {
+		return i.PID()
 	}
-	return t.Inspect.PID()
-}
-
-func (t *BT) LinkNames() []string {
-	return []string{t.RID()}
 }
 
 func (t *BT) Provision(_ context.Context) error {
@@ -391,62 +397,268 @@ func (t *BT) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
+func (t *BT) Signal(sig syscall.Signal) error {
+	name := t.ContainerName()
+	inspect, err := t.executer.InspectRefresh(nil)
+	if err != nil {
+		t.Log().Errorf("signal: inspect refresh container %s: %s", name, err)
+	} else if inspect == nil {
+		t.Log().Infof("skip signal: container %s not found: %s", name)
+		return nil
+	}
+	if !inspect.Running() {
+		t.Log().Infof("skip signal: container %s not running", name)
+		return nil
+	}
+	pid := inspect.PID()
+	if pid == 0 {
+		t.Log().Infof("skip signal: can't detect container %s pid", name)
+	}
+	t.Log().Infof("send %s signal to container %s (pid %d)", unix.SignalName(sig), name, pid)
+	return syscall.Kill(pid, sig)
+}
+
+func (t *BT) Start(ctx context.Context) error {
+	name := t.ContainerName()
+	log := t.Log()
+
+	logError := func(err error) error {
+		return t.logMainAction("start", err)
+	}
+
+	inspect := t.executer.Inspect()
+	if inspect == nil || !inspect.Defined() {
+		return logError(t.pullAndRun(ctx))
+	}
+	if inspect.Running() {
+		log.Infof("container start %s: already started", name)
+		return nil
+	} else {
+		// it is defined
+		status := inspect.Status()
+		log.Debugf("container start %s: defined with status %s", name, status)
+		if t.NeedPreStartRemove() {
+			log.Infof("container start %s: remove leftover container", name)
+			if err := t.executer.Remove(ctx); err != nil {
+				return logError(err)
+			}
+			return logError(t.pullAndRun(ctx))
+		} else if status == "initialized" {
+			log.Infof("container status %s, try fix with stop first", status)
+			if err := t.executer.Stop(ctx); err != nil {
+				return err
+			}
+			return logError(t.findAndStart(ctx))
+		} else {
+			log.Infof("container status %s", status)
+			return logError(t.findAndStart(ctx))
+		}
+	}
+}
+
+func (t *BT) Stop(ctx context.Context) error {
+	name := t.ContainerName()
+	log := t.Log()
+
+	logError := func(err error) error {
+		return t.logMainAction(fmt.Sprintf("container stop %s:", t.RID()), err)
+	}
+
+	inspect := t.executer.Inspect()
+	if inspect == nil {
+		log.Infof("already stopped")
+		return nil
+	}
+
+	if inspect.Running() {
+		if t.StopTimeout != nil && *t.StopTimeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, *t.StopTimeout)
+			defer cancel()
+			log.Debugf("stopping with timeout %s", *t.StopTimeout)
+		} else {
+			log.Debugf("stopping")
+		}
+		defer func() {
+			_, _ = t.executer.InspectRefresh(ctx)
+		}()
+		if err := t.executer.Stop(ctx); err != nil {
+			t.Log().Errorf("stop: %s", err)
+			return err
+		}
+		log.Debugf("container stopped")
+	}
+
+	if t.Remove {
+		if hostConfig := inspect.HostConfig(); hostConfig != nil && !hostConfig.AutoRemove {
+			t.Log().Debugf("remove container %s", name)
+			if err := t.executer.Remove(ctx); err != nil {
+				return logError(fmt.Errorf("can't remove container %s", name))
+			}
+		}
+		t.Log().Debugf("wait removed condition")
+		if err := t.executer.WaitRemoved(ctx); err != nil {
+			t.Log().Warnf("wait removed: %s", err)
+			return err
+		} else {
+			t.Log().Debugf("removed")
+			return nil
+		}
+	} else {
+		t.Log().Debugf("wait not running condition")
+		if err := t.executer.WaitNotRunning(ctx); err != nil {
+			t.Log().Warnf("wait not running: %s", err)
+			return err
+		}
+		t.Log().Debugf("wait not running: done")
+	}
+	return nil
+}
+
+func (t *BT) Status(ctx context.Context) status.T {
+	if !t.Detach {
+		t.Log().Debugf("status n/a on not dettach")
+		return status.NotApplicable
+	}
+
+	var inspect Inspecter
+	var err error
+	t.Log().Debugf("Status.enter")
+	defer t.Log().Debugf("Status.return")
+	if !t.executer.InspectRefreshed() {
+		inspect, err = t.executer.InspectRefresh(ctx)
+		if err != nil {
+			t.StatusLog().Error("inspect: %s", err)
+			t.Log().Debugf("status down on inspect refresh error: %s", err)
+			return status.Down
+		}
+	} else {
+		inspect = t.executer.Inspect()
+	}
+	if inspect == nil {
+		t.Log().Debugf("status down on inspect nil")
+		return status.Down
+	}
+	if inspectConfig := inspect.Config(); inspectConfig != nil {
+		if t.Hostname != "" && inspectConfig.Hostname != t.Hostname {
+			t.warnAttrDiff("hostname", inspectConfig.Hostname, t.Hostname)
+		}
+		if inspectConfig.OpenStdin != t.Interactive {
+			t.warnAttrDiff("interactive", fmt.Sprint(inspectConfig.OpenStdin), fmt.Sprint(t.Interactive))
+		}
+		if len(t.Entrypoint) > 0 && !stringslice.Equal(inspectConfig.Entrypoint, t.Entrypoint) {
+			t.warnAttrDiff("entrypoint", shellquote.Join(inspectConfig.Entrypoint...), shellquote.Join(t.Entrypoint...))
+		}
+		if inspectConfig.Tty != t.TTY {
+			t.warnAttrDiff("tty", fmt.Sprint(inspectConfig.Tty), fmt.Sprint(t.TTY))
+		}
+	}
+	if inspectHostConfig := inspect.HostConfig(); inspectHostConfig != nil {
+		if inspectHostConfig.Privileged != t.Privileged {
+			t.warnAttrDiff("privileged", fmt.Sprint(inspectHostConfig.Privileged), fmt.Sprint(t.Privileged))
+		}
+		t.statusInspectNS(ctx, "netns", inspectHostConfig.NetworkMode, t.NetNS)
+		t.statusInspectNS(ctx, "pidns", inspectHostConfig.PidMode, t.PIDNS)
+		t.statusInspectNS(ctx, "ipcns", inspectHostConfig.IpcMode, t.IPCNS)
+		t.statusInspectNS(ctx, "utsns", inspectHostConfig.UTSMode, t.UTSNS)
+		t.statusInspectNS(ctx, "userns", inspectHostConfig.UsernsMode, t.UserNS)
+	}
+
+	if _, imageID, err := t.executer.HasImage(ctx); err == nil {
+		containerImageID := inspect.ImageID()
+		if containerImageID != imageID {
+			t.warnAttrDiff("image "+t.Image, containerImageID, imageID)
+		}
+	}
+
+	if !inspect.Running() {
+		if t.Remove {
+			t.StatusLog().Warn("container is not running")
+			return status.Warn
+		}
+		return status.Down
+	}
+	return status.Up
+}
+
 func (t *BT) Unprovision(_ context.Context) error {
 	return nil
 }
 
+func (t *BT) WithExecuter(c Executer) *BT {
+	t.executer = c
+	return t
+}
+
+// NetNSPath implements the resource.NetNSPather optional interface.
+// Used by ip.netns and ip.route to configure network stuff in the container.
 func (t *BT) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
-func (t *BT) createAndStart(ctx context.Context) error {
-	if createOptions, err := t.CreateOptions(); err != nil {
-		t.Log().Errorf("can't detect create options: %s", err)
-		return err
-	} else if err := t.CProvider.Create(ctx, createOptions); err != nil {
-		t.Log().Errorf("Create with options %s: %s", createOptions, err)
-		return err
-	}
-	startOptions, err := t.CProvider.StartOptions(t)
-	if err != nil {
-		t.Log().Errorf("can't detect start options: %s", err)
-		return err
-	}
-	t.Log().Infof("call: %s", strings.Join(startOptions, " "))
-	return t.CProvider.Start(ctx, startOptions...)
-}
-
-func (t *BT) start(ctx context.Context, cs ContainerStarter) error {
+func (t *BT) findAndStart(ctx context.Context) error {
+	name := t.ContainerName()
+	i := t.executer.Inspect()
+	id := i.ID()
 	errs := make(chan error, 1)
 	go func() {
-		if t.StartTimeout != nil {
-			t.Log().Infof("start container (timeout %s)", t.StartTimeout)
+		if t.StartTimeout != nil && *t.StartTimeout > 0 {
+			t.Log().Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
 			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
 			defer cancel()
 		} else {
-			t.Log().Infof("start container (no timeout)")
+			t.Log().Infof("container start %s (%s) without timeout", name, id)
 		}
-		if err := cs.Start(ctx); err != nil {
+
+		inspectRefresh := func() {
+			_, err := t.executer.InspectRefresh(context.Background())
+			if err != nil {
+				t.Log().Warnf("findAndStart InspectRefresh: %s", err)
+			}
+		}
+
+		if err := t.executer.Start(ctx); err != nil {
+			errs <- err
+			defer inspectRefresh()
+			return
+		}
+		t.Log().Debugf("started")
+		if t.Detach {
+			// t.executer.Wait(ctx, WaitConditionRunning) return err not found
+			// use check running instead
+			t.Log().Infof("check running")
+			inspect, err := t.executer.InspectRefresh(context.Background())
+			if err != nil {
+				err = fmt.Errorf("check running: can't inspect: %s", err)
+			} else if inspect == nil {
+				err = fmt.Errorf("check running: inspect is nil")
+			} else if inspect.Running() {
+				t.Log().Debugf("check running: ok")
+			} else {
+				err = fmt.Errorf("check running: false")
+			}
+			if err != nil {
+				t.Log().Warnf("%s", err)
+			}
 			errs <- err
 			return
 		}
-		if t.Detach {
-			errs <- nil
-			return
-		}
-		if i, err := cs.Wait(ctx, WaitConditionNotRunning); err != nil {
+		defer inspectRefresh()
+		t.Log().Infof("wait not running")
+		if err := t.executer.WaitNotRunning(ctx); err != nil {
+			t.Log().Debugf("wait not running: %s", err)
 			errs <- nil
 			return
 		} else {
-			t.Log().Infof("foreground container exited with code %d)", i)
+			t.Log().Debugf("wait not running: done")
 			errs <- nil
 			return
 		}
 	}()
 
 	var timerC <-chan time.Time
-	if t.StartTimeout != nil {
+	if t.StartTimeout != nil && *t.StartTimeout > 0 {
 		timerC = time.After(*t.StartTimeout)
 	} else {
 		timerC = make(<-chan time.Time)
@@ -457,9 +669,114 @@ func (t *BT) start(ctx context.Context, cs ContainerStarter) error {
 			actionrollback.Register(ctx, func() error {
 				return t.Stop(ctx)
 			})
+			return nil
 		}
+		err = fmt.Errorf("container start %s (%s): %s", name, id, err)
+		t.Log().Errorf("%s", err)
 		return err
 	case <-timerC:
-		return fmt.Errorf("timeout")
+		err := fmt.Errorf("container start %s (%s): timeout", name, id)
+		t.Log().Errorf("%s", err)
+		return err
 	}
+}
+
+func (t *BT) logMainAction(s string, err error) error {
+	if err != nil {
+		err = fmt.Errorf("%s: %s", s, err)
+		t.Log().Errorf("%s", err)
+		return err
+	}
+	return nil
+}
+
+func (t *BT) pull(ctx context.Context) error {
+	if err := t.executer.Pull(ctx); err != nil {
+		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
+	}
+	return nil
+}
+
+func (t *BT) pullAndRun(ctx context.Context) error {
+	if t.IsAlwaysImagePullPolicy() {
+		t.Log().Debugf("container start: with image policy: always")
+		if err := t.pull(ctx); err != nil {
+			return err
+		}
+	} else if hasImage, _, err := t.executer.HasImage(ctx); err != nil {
+		return fmt.Errorf("unable to detect if image %s exists localy: %s", t.Image, err)
+	} else if !hasImage {
+		if err := t.pull(ctx); err != nil {
+			return err
+		}
+	}
+	defer func() {
+		_, _ = t.executer.InspectRefresh(ctx)
+	}()
+	return t.executer.Run(ctx)
+}
+
+func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) {
+	switch target {
+	case "":
+		return
+	case "none", "host":
+		if current != target {
+			t.warnAttrDiff(attr, current, target)
+		}
+		return
+	}
+	rid, err := resourceid.Parse(target)
+	if err != nil {
+		t.StatusLog().Warn("%s: invalid value %s (must be none, host or container#<n>)", attr, target)
+		return
+	}
+
+	if t.xContainer == nil {
+		t.xContainer = make(map[string]containerNamer)
+	}
+
+	tgt, ok := t.xContainer[rid.String()]
+	if !ok {
+		if r := t.GetObjectDriver().ResourceByID(rid.String()); r == nil {
+			t.StatusLog().Warn("%s: %s resource not found", attr, target)
+			return
+		} else if tgt, ok = r.(containerNamer); !ok {
+			t.StatusLog().Warn("%s resource %s is not a container namer", attr, target)
+			return
+		} else {
+			if r, ok := r.(containerInspectRefresher); ok {
+				if _, err := r.ContainerInspectRefresh(ctx); err != nil {
+					t.StatusLog().Warn("%s resource %s inspect error", attr, target)
+				}
+			}
+			t.xContainer[rid.String()] = tgt
+		}
+	}
+
+	var tgtName, tgtID string
+	if tgt == nil {
+		t.StatusLog().Warn("%s: %s resource not found", attr, target)
+		return
+	} else {
+		tgtName = "container:" + tgt.ContainerName()
+		if i, ok := tgt.(containerIDer); ok {
+			tgtID = "container:" + i.ContainerID()
+		}
+	}
+
+	switch {
+	case tgtName == current:
+		t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgtName, current)
+	case tgtID == current:
+		t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgtID, current)
+	default:
+		t.Log().Debugf("invalid %s cross-resource reference to %s: found %s instead of %s or %s",
+			attr, target, current, tgtName, tgtID)
+		t.warnAttrDiff(attr, current, tgtName)
+	}
+}
+
+func (t *BT) warnAttrDiff(attr, current, target string) {
+	t.StatusLog().Warn("%s is %s, should be %s", attr, current, target)
 }
