@@ -63,29 +63,7 @@ type (
 		StartTimeout    *time.Duration `json:"start_timeout"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
 
-		CProvider Container
-		Inspect   Inspecter
-	}
-
-	Arg struct {
-		Short     string
-		Long      string
-		Default   string
-		Obfuscate bool
-		Multi     bool
-	}
-
-	Argser interface {
-		Args() []Arg
-	}
-
-	ImagePullOptions struct {
-		Name string
-	}
-
-	CreateOptions struct {
-		Name  string
-		Image string
+		c Container
 	}
 
 	containerNamer interface {
@@ -93,23 +71,22 @@ type (
 	}
 
 	Container interface {
-		Create(ctx context.Context, options CreateOptions) error
-		NewContainer(ctx context.Context, id string) (cs ContainerStarter, err error)
-		Running(ctx context.Context, name string) (bool, error)
-		Remove(ctx context.Context, name string) error
-		Start(ctx context.Context, opts ...string) error
-		Stop(ctx context.Context, name string) error
-		Inspect(ctx context.Context, name string) (is Inspecter, err error)
-		Wait(ctx context.Context, name string, opts ...WaitCondition) (int, error)
-		Pull(ctx context.Context, opts ...string) error
-		HasImage(ctx context.Context, id string) (exists bool, err error)
-		PullOptions(bt *BT) ([]string, error)
-		StartOptions(bt *BT) ([]string, error)
-	}
+		Start(context.Context) error
+		Stop(context.Context) error
+		Run(context.Context) error
+		Remove(context.Context) error
+		Create(ctx context.Context) error
 
-	ContainerStarter interface {
-		Start(ctx context.Context) error
-		Wait(ctx context.Context, opts ...WaitCondition) (int, error)
+		Pull(context.Context) error
+		HasImage(context.Context) (bool, error)
+
+		Inspect() Inspecter
+		InspectRefresh(context.Context) (Inspecter, error)
+		InspectRefreshed() bool
+
+		IsNotFound(error) bool
+
+		Wait(context.Context, ...WaitCondition) (bool, error)
 	}
 
 	ExitStatus interface {
@@ -119,11 +96,12 @@ type (
 	WaitCondition string
 
 	Inspecter interface {
-		HostConfigAutoRemove() bool
+		Defined() bool
 		ID() string
+		HostConfigAutoRemove() bool
+		PID() int
 		Running() bool
 		SandboxKey() string
-		PID() int
 	}
 )
 
@@ -131,6 +109,18 @@ const (
 	imagePullPolicyAlways = "always"
 	imagePullPolicyOnce   = "once"
 )
+
+var (
+	WaitConditionNotRunning = WaitCondition("not-running")
+	WaitConditionRemoved    = WaitCondition("removed")
+
+	ErrNotFound = errors.New("not found")
+)
+
+func (t *BT) WithEngine(c Container) *BT {
+	t.c = c
+	return t
+}
 
 // ContainerName formats a docker container name
 func (t *BT) ContainerName() string {
@@ -148,14 +138,6 @@ func (t *BT) ContainerName() string {
 	return s
 }
 
-func (t *BT) CreateOptions() (CreateOptions, error) {
-	return CreateOptions{Name: t.Name}, nil
-}
-
-func (t *BT) StartOptions() []string {
-	return nil
-}
-
 func (t *BT) IsAlwaysImagePullPolicy() bool {
 	return t.ImagePullPolicy == imagePullPolicyAlways
 }
@@ -164,127 +146,123 @@ func (t *BT) NeedPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }
 
-var (
-	WaitConditionNotRunning = WaitCondition("not-running")
-	WaitConditionRemoved    = WaitCondition("removed")
-
-	ErrNotFound = errors.New("not found")
-)
+func (t *BT) logMainAction(s string, err error) error {
+	if err != nil {
+		err = fmt.Errorf("%s: %s", s, err)
+		t.Log().Errorf("%s", err)
+		return err
+	}
+	return nil
+}
 
 func (t *BT) Start(ctx context.Context) error {
 	name := t.ContainerName()
+	//log := t.Log().WithPrefix(fmt.Sprintf("%s%s: ", t.Log().Prefix(), "start"))
+	log := t.Log()
 
-	err := t.InspectRefresh(ctx)
-	if err == nil {
-		// has container
-		if t.Inspect.Running() {
-			t.Log().Infof("container is already running: %s", name)
-			return nil
-		} else {
-			t.Log().Debugf("container is not running: %s", name)
-			if t.NeedPreStartRemove() {
-				t.Log().Infof("remove leftover container %s", name)
-				if err := t.CProvider.Remove(ctx, name); err != nil {
-					return err
-				}
-				if t.IsAlwaysImagePullPolicy() {
-					if err := t.Pull(ctx); err != nil {
-						return err
-					}
-				}
-				return t.createAndStart(ctx)
-			} else {
-				id := t.Inspect.ID()
-				t.Log().Infof("reuse container: %s (%s)", name, id)
-				return t.findAndStart(ctx, id)
-			}
-		}
-	} else if errors.Is(err, ErrNotFound) {
-		t.Log().Debugf("container will be created: %s", name)
-		if t.IsAlwaysImagePullPolicy() {
-			t.Log().Debugf("pull image policy: always")
-			if err := t.Pull(ctx); err != nil {
-				return err
-			}
-		} else if ok, err := t.CProvider.HasImage(ctx, t.Image); err != nil {
-			t.Log().Errorf("can't detect image for container %s: %s", name, err)
-			return err
-		} else if !ok {
-			if err := t.Pull(ctx); err != nil {
-				return err
-			}
-		}
-		return t.createAndStart(ctx)
-	} else {
-		t.Log().Errorf("container inspect error for %s: %s", name, err)
-		return err
+	logError := func(err error) error {
+		return t.logMainAction("start", err)
 	}
-}
 
-func (t *BT) Pull(ctx context.Context) error {
-	if opt, err := t.CProvider.PullOptions(t); err != nil {
-		t.Log().Errorf("can't detect pull options: %s", err)
-		return err
-	} else {
-		t.Log().Infof("call: %s", strings.Join(opt, " "))
-		if err := t.CProvider.Pull(ctx, opt...); err != nil {
-			t.Log().Errorf("image pull failed: %s", err)
-			return err
-		}
+	inspect := t.c.Inspect()
+	if inspect == nil || !inspect.Defined() {
+		return logError(t.pullAndRun(ctx))
+	}
+	if inspect.Running() {
+		log.Infof("container start %s: already started", name)
 		return nil
-	}
-}
-
-func (t *BT) findAndStart(ctx context.Context, id string) error {
-	if cs, err := t.CProvider.NewContainer(ctx, id); err != nil {
-		return err
 	} else {
-		return t.start(ctx, cs)
+		// it is defined
+		log.Debugf("container start %s: defined, but not started", name)
+		if t.NeedPreStartRemove() {
+			log.Infof("container start %s: remove leftover container", name)
+			if err := t.c.Remove(ctx); err != nil {
+				return logError(err)
+			}
+			return logError(t.pullAndRun(ctx))
+		} else {
+			return logError(t.findAndStart(ctx))
+		}
 	}
 }
 
 func (t *BT) Stop(ctx context.Context) error {
 	name := t.ContainerName()
-	err := t.InspectRefresh(ctx)
-	if errors.Is(err, ErrNotFound) {
+	log := t.Log()
+	//log := t.Log().WithPrefix(fmt.Sprintf("%s%s: ", t.Log().Prefix(), "stop"))
+
+	logError := func(err error) error {
+		return t.logMainAction(fmt.Sprintf("container stop %s:", t.RID()), err)
+	}
+
+	inspect := t.c.Inspect()
+	if inspect == nil || !inspect.Running() {
+		log.Infof("already stopped")
 		return nil
 	}
 
-	if !t.Inspect.Running() {
-		t.Log().Infof("container %s is already stopped", name)
+	if t.StopTimeout != nil && *t.StopTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *t.StopTimeout)
+		defer cancel()
+		log.Debugf("stopping with timeout %s", *t.StopTimeout)
 	} else {
-		if t.StopTimeout != nil && *t.StopTimeout > 0 {
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, *t.StopTimeout)
-			defer cancel()
-			t.Log().Infof("stopping container %s with id %s (timeout %s)", name, t.Inspect.ID(), t.StopTimeout)
-		} else {
-			t.Log().Infof("stopping container %s with id %s", name, t.Inspect.ID())
-		}
-		err = t.CProvider.Stop(ctx, name)
-		switch {
-		case errors.Is(err, ErrNotFound):
-			t.Log().Infof("stopped while requesting container %s stop", name)
-		case err != nil:
-			return err
-		}
-		t.Log().Debugf("stopped container %s: %s", name, err)
+		log.Debugf("stopping")
 	}
+	defer func() {
+		_, _ = t.c.InspectRefresh(ctx)
+	}()
+	if err := t.c.Stop(ctx); err != nil {
+		if t.c.IsNotFound(err) {
+			log.Infof("container doesn't exist")
+			return nil
+		}
+		return logError(err)
+	}
+	log.Debugf("container stopped")
 
 	if t.Remove {
-		if !t.Inspect.HostConfigAutoRemove() {
-			t.Log().Infof("remove container %s", name)
-			return t.CProvider.Remove(ctx, name)
+		if !inspect.HostConfigAutoRemove() {
+			t.Log().Debugf("remove container %s", name)
+			if err := t.c.Remove(ctx); err != nil {
+				return logError(fmt.Errorf("can't remove container %s", name))
+			}
 		}
 		t.Log().Debugf("wait removed condition")
-		xc, err := t.CProvider.Wait(ctx, name, WaitConditionRemoved)
-		switch {
-		case errors.Is(err, ErrNotFound):
-			t.Log().Infof("container %s not found while waiting removed", name)
-		case err != nil:
-			return err
-		default:
-			t.Log().Warnf("wait removed condition ended with exit code %d", xc)
+		time.Sleep(200 * time.Millisecond)
+		removed, err := t.c.Wait(ctx, WaitConditionRemoved)
+		if err != nil {
+			if t.c.IsNotFound(err) {
+				t.Log().Debugf("removed")
+				return nil
+			} else {
+				t.Log().Warnf("wait removed: %s", err)
+				return err
+			}
+		}
+		if removed {
+			t.Log().Debugf("removed")
+			return nil
+		} else {
+			t.Log().Warnf("wait removed failed")
+			return fmt.Errorf("wait removed failed")
+		}
+	} else {
+		t.Log().Debugf("wait not running condition")
+		notRunning, err := t.c.Wait(ctx, WaitConditionNotRunning)
+		if err != nil {
+			if t.c.IsNotFound(err) {
+				t.Log().Infof("wait running on not found")
+				return nil
+			} else {
+				t.Log().Warnf("wait running: %s", err)
+				return err
+			}
+		}
+		if notRunning {
+			t.Log().Debugf("wait running: not anymore running")
+		} else {
+			t.Log().Warnf("wait running: still running")
 		}
 	}
 	return nil
@@ -326,57 +304,54 @@ func (t *BT) Labels() map[string]string {
 }
 
 func (t *BT) Status(ctx context.Context) status.T {
+	var inspect Inspecter
+	var err error
+	t.Log().Debugf("Status.enter")
+	defer t.Log().Debugf("Status.return")
+	if !t.c.InspectRefreshed() {
+		inspect, err = t.c.InspectRefresh(ctx)
+		if err != nil {
+			t.Log().Debugf("status warn on inspect refresh error: %s", err)
+			return status.Warn
+		}
+	} else {
+		inspect = t.c.Inspect()
+	}
 	if !t.Detach {
+		t.Log().Debugf("status n/a on not dettach")
 		return status.NotApplicable
 	}
-
-	err := t.InspectRefresh(ctx)
-	if err == nil {
-		// has container
-		if t.Inspect.Running() {
-			return status.Up
-		} else {
-			return status.Down
-		}
-	} else if errors.Is(err, ErrNotFound) {
+	if inspect == nil {
+		t.Log().Debugf("status down on inspect nil")
 		return status.Down
+	} else if !inspect.Defined() {
+		t.Log().Debugf("status down on inspect undefined")
+		return status.Down
+	} else if inspect.Running() {
+		t.Log().Debugf("status up on inspect running")
+		return status.Up
 	} else {
-		return status.Warn
+		t.Log().Debugf("status down on inspect not running")
+		return status.Down
 	}
-}
-
-func (t *BT) InspectRefresh(ctx context.Context) error {
-	if ctx == nil {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-	}
-	inspect, err := t.CProvider.Inspect(ctx, t.ContainerName())
-	if err != nil {
-		return err
-	}
-	t.Inspect = inspect
-	return nil
 }
 
 // NetNSPath implements the resource.NetNSPather optional interface.
 // Used by ip.netns and ip.route to configure network stuff in the container.
 func (t *BT) NetNSPath() (string, error) {
-	if t.Inspect == nil {
-		if err := t.InspectRefresh(nil); err != nil {
-			return "", err
-		}
+	if i := t.c.Inspect(); i == nil {
+		return "", nil
+	} else {
+		return i.SandboxKey(), nil
 	}
-	return t.Inspect.SandboxKey(), nil
 }
 
 func (t *BT) PID() int {
-	if t.Inspect == nil {
-		if err := t.InspectRefresh(nil); err != nil {
-			return 0
-		}
+	if i := t.c.Inspect(); i == nil {
+		return 0
+	} else {
+		return i.PID()
 	}
-	return t.Inspect.PID()
 }
 
 func (t *BT) LinkNames() []string {
@@ -399,54 +374,95 @@ func (t *BT) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
-func (t *BT) createAndStart(ctx context.Context) error {
-	if createOptions, err := t.CreateOptions(); err != nil {
-		t.Log().Errorf("can't detect create options: %s", err)
-		return err
-	} else if err := t.CProvider.Create(ctx, createOptions); err != nil {
-		t.Log().Errorf("Create with options %s: %s", createOptions, err)
-		return err
+func (t *BT) pullAndRun(ctx context.Context) error {
+	if t.IsAlwaysImagePullPolicy() {
+		t.Log().Debugf("container start: with image policy: always")
+		if err := t.pull(ctx); err != nil {
+			return err
+		}
+	} else if hasImage, err := t.c.HasImage(ctx); err != nil {
+		return fmt.Errorf("unable to detect if image %s exists localy: %s", t.Image, err)
+	} else if !hasImage {
+		if err := t.pull(ctx); err != nil {
+			return err
+		}
 	}
-	startOptions, err := t.CProvider.StartOptions(t)
-	if err != nil {
-		t.Log().Errorf("can't detect start options: %s", err)
-		return err
-	}
-	t.Log().Infof("call: %s", strings.Join(startOptions, " "))
-	return t.CProvider.Start(ctx, startOptions...)
+	defer func() {
+		_, _ = t.c.InspectRefresh(ctx)
+	}()
+	return t.c.Run(ctx)
 }
 
-func (t *BT) start(ctx context.Context, cs ContainerStarter) error {
+func (t *BT) pull(ctx context.Context) error {
+	if err := t.c.Pull(ctx); err != nil {
+		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
+	}
+	return nil
+}
+
+func (t *BT) findAndStart(ctx context.Context) error {
+	name := t.ContainerName()
+	i := t.c.Inspect()
+	id := i.ID()
 	errs := make(chan error, 1)
 	go func() {
-		if t.StartTimeout != nil {
-			t.Log().Infof("start container (timeout %s)", t.StartTimeout)
+		if t.StartTimeout != nil && *t.StartTimeout > 0 {
+			t.Log().Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
 			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
 			defer cancel()
 		} else {
-			t.Log().Infof("start container (no timeout)")
+			t.Log().Infof("container start %s (%s) without timeout", name, id)
 		}
-		if err := cs.Start(ctx); err != nil {
+
+		inspectRefresh := func() {
+			_, err := t.c.InspectRefresh(context.Background())
+			if err != nil {
+				t.Log().Warnf("findAndStart InspectRefresh: %s", err)
+			}
+		}
+
+		if err := t.c.Start(ctx); err != nil {
+			errs <- err
+			defer inspectRefresh()
+			return
+		}
+		t.Log().Debugf("started")
+		if t.Detach {
+			// t.c.Wait(ctx, WaitConditionRunning) return err not found
+			// use check running instead
+			t.Log().Infof("check running")
+			inspect, err := t.c.InspectRefresh(context.Background())
+			if err != nil {
+				err = fmt.Errorf("check running: can't inspect: %s", err)
+			} else if inspect == nil {
+				err = fmt.Errorf("check running: inspect is nil")
+			} else if inspect.Running() {
+				t.Log().Debugf("check running: ok")
+			} else {
+				err = fmt.Errorf("check running: false")
+			}
+			if err != nil {
+				t.Log().Warnf("%s", err)
+			}
 			errs <- err
 			return
 		}
-		if t.Detach {
-			errs <- nil
-			return
-		}
-		if i, err := cs.Wait(ctx, WaitConditionNotRunning); err != nil {
+		defer inspectRefresh()
+		t.Log().Infof("wait not running")
+		if ok, err := t.c.Wait(ctx, WaitConditionNotRunning); err != nil {
+			t.Log().Debugf("wait not running: %s", err)
 			errs <- nil
 			return
 		} else {
-			t.Log().Infof("foreground container exited with code %d)", i)
+			t.Log().Debugf("wait not running: %v", ok)
 			errs <- nil
 			return
 		}
 	}()
 
 	var timerC <-chan time.Time
-	if t.StartTimeout != nil {
+	if t.StartTimeout != nil && *t.StartTimeout > 0 {
 		timerC = time.After(*t.StartTimeout)
 	} else {
 		timerC = make(<-chan time.Time)
@@ -457,9 +473,14 @@ func (t *BT) start(ctx context.Context, cs ContainerStarter) error {
 			actionrollback.Register(ctx, func() error {
 				return t.Stop(ctx)
 			})
+			return nil
 		}
+		err = fmt.Errorf("container start %s (%s): %s", name, id, err)
+		t.Log().Errorf("%s", err)
 		return err
 	case <-timerC:
-		return fmt.Errorf("timeout")
+		err := fmt.Errorf("container start %s (%s): timeout", name, id)
+		t.Log().Errorf("%s", err)
+		return err
 	}
 }

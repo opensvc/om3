@@ -1,4 +1,4 @@
-package rescontainerpodman
+package rescontainerdockerbis
 
 import (
 	"errors"
@@ -17,17 +17,6 @@ type (
 		*rescontainerocibase.EngineHelp
 	}
 )
-
-func New() resource.Driver {
-	bt := &rescontainerocibase.BT{}
-	t := &T{BT: bt}
-	c := &C{
-		EngineHelp: &rescontainerocibase.EngineHelp{BT: bt},
-	}
-	engine := rescontainerocibase.NewEngine("podman", c)
-	t.BT = t.BT.WithEngine(engine)
-	return t
-}
 
 func (c *C) WaitArgs(condition ...rescontainerocibase.WaitCondition) rescontainerocibase.Args {
 	args := rescontainerocibase.Args{
@@ -56,6 +45,17 @@ func (c *C) WaitArgs(condition ...rescontainerocibase.WaitCondition) rescontaine
 	}
 	args = append(args, rescontainerocibase.Arg{Option: c.BT.ContainerName(), HasValue: true})
 	return args
+}
+
+func New() resource.Driver {
+	bt := &rescontainerocibase.BT{}
+	t := &T{BT: bt}
+	c := &C{
+		EngineHelp: &rescontainerocibase.EngineHelp{BT: bt},
+	}
+	engine := rescontainerocibase.NewEngine("docker", c)
+	t.BT = t.BT.WithEngine(engine)
+	return t
 }
 
 func (c *C) IsNotFound(err error) bool {
