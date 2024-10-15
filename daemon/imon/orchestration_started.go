@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
 )
 
 func (t *Manager) orchestrateStarted() {
@@ -74,9 +75,11 @@ func (t *Manager) startedFromThawed() {
 		t.log.Debugf("provisioned is false or undef")
 		return
 	}
-	if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
-		t.log.Debugf("peer %s imon state is %s", nodename, state)
-		return
+	if t.objStatus.Topology != topology.Flex {
+		if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+			t.log.Debugf("peer %s imon state is %s", nodename, state)
+			return
+		}
 	}
 	t.transitionTo(instance.MonitorStateReady)
 	t.createPendingWithDuration(t.readyDuration)
@@ -112,11 +115,13 @@ func (t *Manager) cancelReadyState() bool {
 		t.clearPending()
 		return true
 	}
-	if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
-		t.loggerWithState().Infof("peer %s imon state is %s, clear the ready state", nodename, state)
-		t.transitionTo(instance.MonitorStateIdle)
-		t.clearPending()
-		return true
+	if t.objStatus.Topology != topology.Flex {
+		if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+			t.loggerWithState().Infof("peer %s imon state is %s, clear the ready state", nodename, state)
+			t.transitionTo(instance.MonitorStateIdle)
+			t.clearPending()
+			return true
+		}
 	}
 	return false
 }
