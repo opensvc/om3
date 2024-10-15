@@ -97,6 +97,10 @@ func (t *Manager) clearStartFailed() {
 			return
 		}
 	}
+	if t.objStatus.Topology == topology.Flex && t.objStatus.FlexTarget > 0 && t.objStatus.UpInstancesCount < t.objStatus.FlexTarget {
+		// avoid flex instance start loop
+		return
+	}
 	t.log.Infof("clear instance start failed: the object is up")
 	t.transitionTo(instance.MonitorStateIdle)
 }

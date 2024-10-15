@@ -2121,6 +2121,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagCreateConfig(flags, &options.Config)
 	addFlagCreateForce(flags, &options.Force)
@@ -2153,6 +2154,30 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectDeploy(kind string) *cobra.Command {
+	var options commands.CmdObjectCreate
+	cmd := &cobra.Command{
+		Use:   "deploy",
+		Short: "create and provision a new object",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Provision = true
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagCreateConfig(flags, &options.Config)
+	addFlagCreateForce(flags, &options.Force)
+	addFlagCreateNamespace(flags, &options.Namespace)
+	addFlagCreateRestore(flags, &options.Restore)
+	addFlagKeywords(flags, &options.Keywords)
+	addFlagEnv(flags, &options.Env)
+	addFlagInteractive(flags, &options.Interactive)
 	return cmd
 }
 

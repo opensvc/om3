@@ -24,6 +24,8 @@ func NewData[T Dataer]() *DataT[T] {
 }
 
 func (c *DataT[T]) IsSet() bool {
+	c.RLock()
+	defer c.RUnlock()
 	return c.data != nil
 }
 

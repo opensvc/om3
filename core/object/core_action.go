@@ -385,7 +385,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
-	evaluated := make(map[string]bool)
+	var evaluated sync.Map
 	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
@@ -394,7 +394,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		for requiredRID := range r.Requires(action.Name).Requirements() {
-			if _, ok := evaluated[requiredRID]; ok {
+			if _, ok := evaluated.Load(requiredRID); ok {
 				continue
 			}
 			requiredResource := t.getConfiguredResourceByID(requiredRID)
@@ -402,11 +402,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				continue
 			}
 			resource.EvalStatus(ctx, requiredResource)
-			evaluated[requiredRID] = true
+			evaluated.Store(requiredRID, true)
 		}
 		rid := r.RID()
 		resource.EvalStatus(ctx, r)
-		evaluated[rid] = true
+		evaluated.Store(rid, true)
 		return nil
 	})
 
