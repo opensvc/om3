@@ -6,9 +6,9 @@ import "github.com/fatih/color"
 const (
 	DefaultPrimary   = "himagenta"
 	DefaultSecondary = "hiblack"
-	DefaultOptimal   = "green"
-	DefaultError     = "red"
-	DefaultWarning   = "yellow"
+	DefaultOptimal   = "higreen"
+	DefaultError     = "hired"
+	DefaultWarning   = "hiyellow"
 	DefaultFrozen    = "hiblue"
 )
 
