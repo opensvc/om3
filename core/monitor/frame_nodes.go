@@ -13,14 +13,14 @@ import (
 func (f Frame) sNodeScoreLine() string {
 	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("score"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeScore(n) + "\t"
+		s += f.StrNodeScore(n) + "\t"
 	}
 	return s
 }
 func (f Frame) sNodeLoadLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("load15m"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeLoad(n) + "\t"
+		s += f.StrNodeLoad(n) + "\t"
 	}
 	return s
 }
@@ -28,7 +28,7 @@ func (f Frame) sNodeLoadLine() string {
 func (f Frame) sNodeMemLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("mem"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeMem(n) + "\t"
+		s += f.StrNodeMem(n) + "\t"
 	}
 	return s
 }
@@ -36,18 +36,22 @@ func (f Frame) sNodeMemLine() string {
 func (f Frame) sNodeSwapLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("swap"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeSwap(n) + "\t"
+		s += f.StrNodeSwap(n) + "\t"
 	}
+	return s
+}
+
+func (f Frame) StrNodeStates(n string) string {
+	s := f.sNodeMonState(n)
+	s += f.sNodeFrozen(n)
+	s += f.sNodeMonTarget(n)
 	return s
 }
 
 func (f Frame) sNodeWarningsLine() string {
 	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("state"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeMonState(n)
-		s += f.sNodeFrozen(n)
-		s += f.sNodeMonTarget(n)
-		s += "\t"
+		s += f.StrNodeStates(n) + "\t"
 	}
 	return s
 }
@@ -78,21 +82,21 @@ func (f Frame) sNodeCompatLine() string {
 	return s + "\n"
 }
 
-func (f Frame) sNodeScore(n string) string {
+func (f Frame) StrNodeScore(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%d", val.Stats.Score)
 	}
 	return iconUndef
 }
 
-func (f Frame) sNodeLoad(n string) string {
+func (f Frame) StrNodeLoad(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%.1f", val.Stats.Load15M)
 	}
 	return iconUndef
 }
 
-func (f Frame) sNodeMem(n string) string {
+func (f Frame) StrNodeMem(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
 			return hiblue("-")
@@ -105,19 +109,19 @@ func (f Frame) sNodeMem(n string) string {
 		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
 		var s string
 		if limit > 0 {
-			s = fmt.Sprintf("%d/%d%%:%s", usage, limit, total)
+			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
 		} else {
-			s = fmt.Sprintf("%d%%:%s", usage, total)
+			s = fmt.Sprintf("%d%%%s", usage, total)
 		}
 		if usage > limit {
-			return red(s)
+			return hired(s)
 		}
 		return s
 	}
 	return iconUndef
 }
 
-func (f Frame) sNodeSwap(n string) string {
+func (f Frame) StrNodeSwap(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.SwapTotalMB == 0 {
 			return hiblue("-")
@@ -130,12 +134,12 @@ func (f Frame) sNodeSwap(n string) string {
 		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
 		var s string
 		if limit > 0 {
-			s = fmt.Sprintf("%d/%d%%:%s", usage, limit, total)
+			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
 		} else {
-			s = fmt.Sprintf("%d%%:%s", usage, total)
+			s = fmt.Sprintf("%d%%%s", usage, total)
 		}
 		if usage > limit {
-			return red(s)
+			return hired(s)
 		}
 		return s
 	}
@@ -220,7 +224,7 @@ func (f Frame) sNodeHbMode() string {
 			}
 		case "":
 			if nodeCount > 1 {
-				mode = red("?")
+				mode = hired("?")
 			} else {
 				mode = "?"
 			}

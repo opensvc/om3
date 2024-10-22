@@ -26,14 +26,15 @@ var (
 		"objects":     sectionObjects,
 		"services":    sectionObjects,
 	}
-	green, yellow, red, blue, hiblue, hiblack, bold                                                                                                                                                                        func(a ...interface{}) string
+	green, yellow, hired, red, blue, hiblue, hiblack, bold                                                                                                                                                                 func(a ...interface{}) string
 	iconUp, iconWarning, iconDownIssue, iconPlacementAlert, iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue, iconUndef, iconFrozen, iconDown, iconDRP, iconLeader, iconNotApplicable, iconPreserved, iconStandbyUp string
 )
 
-func initColor() {
+func InitColor() {
 	green = color.New(color.FgGreen).SprintFunc()
 	yellow = color.New(color.FgYellow).SprintFunc()
 	red = color.New(color.FgRed).SprintFunc()
+	hired = color.New(color.FgHiRed).SprintFunc()
 	blue = color.New(color.FgBlue).SprintFunc()
 	hiblue = color.New(color.FgHiBlue).SprintFunc()
 	hiblack = color.New(color.FgHiBlack).SprintFunc()
@@ -41,13 +42,13 @@ func initColor() {
 
 	iconUp = green("O")
 	iconWarning = yellow("!")
-	iconDownIssue = red("X")
-	iconPlacementAlert = red("^")
-	iconProvisionAlert = red("P")
-	iconStandbyDown = red("x")
-	iconStandbyUpIssue = red("o")
-	iconUndef = red("?")
-	iconFrozen = blue("*")
+	iconDownIssue = hired("X")
+	iconPlacementAlert = hired("^")
+	iconProvisionAlert = hired("P")
+	iconStandbyDown = hired("x")
+	iconStandbyUpIssue = hired("o")
+	iconUndef = hired("?")
+	iconFrozen = hiblue("*")
 	iconDown = hiblack("X")
 	iconDRP = hiblack("#")
 	iconLeader = hiblack("^")
@@ -103,11 +104,12 @@ func (f Frame) hasSection(section string) bool {
 // representation of Render.
 func (f *Frame) Render() string {
 	var builder strings.Builder
-	initColor()
+	InitColor()
 
 	green = color.New(color.FgGreen).SprintFunc()
 	yellow = color.New(color.FgYellow).SprintFunc()
 	red = color.New(color.FgRed).SprintFunc()
+	hired = color.New(color.FgHiRed).SprintFunc()
 	blue = color.New(color.FgBlue).SprintFunc()
 	hiblue = color.New(color.FgHiBlue).SprintFunc()
 	hiblack = color.New(color.FgHiBlack).SprintFunc()
