@@ -3,10 +3,9 @@
 package resdiskdrbd
 
 import (
+	"context"
 	// Necessary to use go:embed
 	_ "embed"
-
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -76,7 +75,7 @@ type (
 		Addr   string
 		Device string
 		Disk   string
-		NodeID int
+		NodeId int
 	}
 )
 
@@ -489,7 +488,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 			Addr:   fmt.Sprintf("%s %s:%d", ipVer, ip, port),
 			Disk:   disk,
 			Device: device,
-			NodeID: nodeID,
+			NodeId: nodeID,
 		}
 		res.Hosts = append(res.Hosts, host)
 	}
