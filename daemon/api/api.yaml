@@ -1390,6 +1390,44 @@ paths:
         - instance / svc
         - instance / vol
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/restart:
+    post:
+      description: Restart the object instance.
+      operationId: PostInstanceActionRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
       description: Start the object instance.
