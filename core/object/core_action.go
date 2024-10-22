@@ -285,11 +285,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("argv", os.Args).
 		Attr("cwd", wd).
 		Attr("action", action.Name).
-		Attr("origin", env.Origin())
-	logger.Infof("do %s (origin %s)", os.Args, env.Origin())
+		Attr("origin", env.Origin()).
+		Attr("crm", "true")
+	logger.Infof("do %s %s (origin %s)", action.Name, os.Args, env.Origin())
 	beginTime := time.Now()
 	defer func() {
-		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("done %s in %s", os.Args, time.Now().Sub(beginTime))
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("done %s %s in %s", action.Name, os.Args, time.Now().Sub(beginTime))
 	}()
 
 	// daemon instance monitor updates
