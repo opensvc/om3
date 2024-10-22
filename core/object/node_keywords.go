@@ -890,6 +890,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"vg"},
 	},
 	{
+		DefaultText: keywords.NewText(fs, "text/kw/node/pool.drbd.addr.default"),
+		Example:     "1.2.3.4",
+		Option:      "addr",
+		Scopable:    true,
+		Text:        keywords.NewText(fs, "text/kw/node/pool.drbd.addr"),
+	},
+	{
 		Option:  "vg",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.vg"),
