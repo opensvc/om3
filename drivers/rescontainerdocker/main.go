@@ -19,72 +19,23 @@ import (
 	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/cpuguy83/go-docker/image"
 	"github.com/cpuguy83/go-docker/image/imageapi"
-	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/vpath"
+	"github.com/opensvc/om3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/util/envprovider"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/stringslice"
-)
-
-const (
-	AlwaysPolicy = "always"
-	OncePolicy   = "once"
 )
 
 type (
 	T struct {
-		resource.T
-		resource.SCSIPersistentReservation
-		ObjectDomain    string         `json:"object_domain"`
-		PG              pg.Config      `json:"pg"`
-		Path            naming.Path    `json:"path"`
-		ObjectID        uuid.UUID      `json:"object_id"`
-		SCSIReserv      bool           `json:"scsireserv"`
-		PromoteRW       bool           `json:"promote_rw"`
-		NoPreemptAbort  bool           `json:"no_preempt_abort"`
-		OsvcRootPath    string         `json:"osvc_root_path"`
-		GuestOS         string         `json:"guest_os"`
-		Name            string         `json:"name"`
-		Hostname        string         `json:"hostname"`
-		Image           string         `json:"image"`
-		ImagePullPolicy string         `json:"image_pull_policy"`
-		CWD             string         `json:"cwd"`
-		User            string         `json:"user"`
-		Command         []string       `json:"command"`
-		DNS             []string       `json:"dns"`
-		DNSSearch       []string       `json:"dns_search"`
-		RunArgs         []string       `json:"run_args"`
-		Entrypoint      []string       `json:"entrypoint"`
-		Detach          bool           `json:"detach"`
-		Remove          bool           `json:"remove"`
-		Privileged      bool           `json:"privileged"`
-		Init            bool           `json:"init"`
-		Interactive     bool           `json:"interactive"`
-		TTY             bool           `json:"tty"`
-		VolumeMounts    []string       `json:"volume_mounts"`
-		Env             []string       `json:"environment"`
-		SecretsEnv      []string       `json:"secrets_environment"`
-		ConfigsEnv      []string       `json:"configs_environment"`
-		Devices         []string       `json:"devices"`
-		NetNS           string         `json:"netns"`
-		UserNS          string         `json:"userns"`
-		PIDNS           string         `json:"pidns"`
-		IPCNS           string         `json:"ipcns"`
-		UTSNS           string         `json:"utsns"`
-		RegistryCreds   string         `json:"registry_creds"`
-		PullTimeout     *time.Duration `json:"pull_timeout"`
-		StartTimeout    *time.Duration `json:"start_timeout"`
-		StopTimeout     *time.Duration `json:"stop_timeout"`
+		rescontainerocibase.BT
 	}
 
 	containerNamer interface {
@@ -174,17 +125,6 @@ func (t T) pull(ctx context.Context) error {
 	return err
 }
 
-func (t T) labels() (map[string]string, error) {
-	data := make(map[string]string)
-	data["com.opensvc.id"] = t.containerLabelID()
-	data["com.opensvc.path"] = t.Path.String()
-	data["com.opensvc.namespace"] = t.Path.Namespace
-	data["com.opensvc.kind"] = t.Path.Kind.String()
-	data["com.opensvc.name"] = t.Path.Name
-	data["com.opensvc.rid"] = t.ResourceID.String()
-	return data, nil
-}
-
 func (t T) mounts() ([]mount.Mount, error) {
 	mounts := make([]mount.Mount, 0)
 	for _, s := range t.VolumeMounts {
@@ -263,12 +203,12 @@ func (t T) Start(ctx context.Context) error {
 			t.Log().Infof("container %s is already running", name)
 			return nil
 		} else {
-			if t.needPreStartRemove() {
+			if t.NeedPreStartRemove() {
 				t.Log().Infof("remove leftover container %s", name)
 				if err := cs.Remove(ctx, name); err != nil {
 					return err
 				}
-				if t.ImagePullPolicy == AlwaysPolicy {
+				if t.IsAlwaysImagePullPolicy() {
 					if err := t.pull(ctx); err != nil {
 						return err
 					}
@@ -285,7 +225,7 @@ func (t T) Start(ctx context.Context) error {
 			}
 		}
 	} else {
-		if t.ImagePullPolicy == AlwaysPolicy {
+		if t.IsAlwaysImagePullPolicy() {
 			if err := t.pull(ctx); err != nil {
 				return err
 			}
@@ -353,15 +293,11 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 func (t T) create(ctx context.Context) (*container.Container, error) {
 	var (
 		env     []string
-		labels  map[string]string
 		devices []containerapi.DeviceMapping
 		mounts  []mount.Mount
 		err     error
 	)
 	if env, err = t.env(); err != nil {
-		return nil, err
-	}
-	if labels, err = t.labels(); err != nil {
 		return nil, err
 	}
 	if devices, err = t.devices(); err != nil {
@@ -379,7 +315,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Entrypoint:  t.entrypoint(),
 		Image:       t.Image,
 		WorkingDir:  t.CWD,
-		Labels:      labels,
+		Labels:      t.Labels(),
 		OpenStdin:   t.Interactive,
 		StopTimeout: t.stopTimeout(),
 		StopSignal:  "SIGKILL",
@@ -652,48 +588,12 @@ func (t T) isDockerdPinging(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Label() string {
-	return t.Image
-}
-
-func (t T) Provision(ctx context.Context) error {
-	return nil
-}
-
-func (t T) Unprovision(ctx context.Context) error {
-	return nil
-}
-
-func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
-}
-
 func containerID(ctx context.Context, name string) string {
 	inspect, err := cli().ContainerService().Inspect(ctx, name)
 	if err != nil {
 		return ""
 	}
 	return inspect.ID
-}
-
-// ContainerName formats a docker container name
-func (t T) ContainerName() string {
-	if t.Name != "" {
-		return t.Name
-	}
-	var s string
-	switch t.Path.Namespace {
-	case "root", "":
-		s = ""
-	default:
-		s = t.Path.Namespace + ".."
-	}
-	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
-	return s
-}
-
-func (t T) containerLabelID() string {
-	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
 func (t T) entrypoint() []string {
@@ -808,10 +708,6 @@ func (t T) Enter() error {
 	return cmd.Run()
 }
 
-func (t T) LinkNames() []string {
-	return []string{t.RID()}
-}
-
 func (t T) needDNS() bool {
 	switch t.NetNS {
 	case "", "none":
@@ -846,10 +742,6 @@ func (t T) dnsSearch() []string {
 	dom1 := strings.SplitN(dom0, ".", 2)[1]
 	dom2 := strings.SplitN(dom1, ".", 2)[1]
 	return []string{dom0, dom1, dom2}
-}
-
-func (t T) needPreStartRemove() bool {
-	return t.Remove || !t.Detach
 }
 
 func (t T) hostname() string {

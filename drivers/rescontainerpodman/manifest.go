@@ -1,4 +1,4 @@
-package rescontainerdocker
+package rescontainerpodman
 
 import (
 	"github.com/opensvc/om3/core/driver"
@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	drvID    = driver.NewID(driver.GroupContainer, "docker")
+	drvID = driver.NewID(driver.GroupContainer, "podman")
 	altDrvID = driver.NewID(driver.GroupContainer, "oci")
 )
 
