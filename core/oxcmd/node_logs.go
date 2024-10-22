@@ -22,7 +22,7 @@ type (
 )
 
 func (t *CmdNodeLogs) stream(node string) {
-	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
