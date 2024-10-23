@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/tui"
 	"github.com/opensvc/om3/util/version"
 )
 
@@ -35,6 +36,9 @@ var (
 		ValidArgsFunction:      validArgs,
 		BashCompletionFunction: bashCompletionFunction,
 		Version:                version.Version(),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return tui.Run(args)
+		},
 	}
 )
 

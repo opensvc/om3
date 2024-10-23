@@ -32,7 +32,7 @@ func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 		return err
 	}
 	for _, p := range paths {
-		if err := t.doRemote(p, c); err != nil {
+		if err := t.DoRemote(p, c); err != nil {
 			return err
 		}
 	}
@@ -72,7 +72,7 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 	return nil
 }
 
-func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {
+func (t *CmdObjectEditKey) DoRemote(p naming.Path, c *client.T) error {
 	var (
 		err    error
 		refSum []byte
