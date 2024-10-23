@@ -15,6 +15,7 @@ PREFIX ?= /usr
 
 DIST := dist
 OM := bin/om
+OT := bin/ot
 OX := bin/ox
 COMPOBJ := bin/compobj
 COMPOBJ_D := share/opensvc/compliance
@@ -25,7 +26,7 @@ VERSION := $(shell git describe --tags --abbrev)
 
 all: clean vet test race build dist
 
-build: version api om ox compobj
+build: version api om ot ox compobj
 
 deps:
 	$(GOINSTALL) github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
@@ -40,6 +41,9 @@ clean:
 
 om:
 	$(GOBUILD) -o $(OM) ./cmd/om/
+
+ot:
+	$(GOBUILD) -o $(OT) ./cmd/ot/
 
 ox:
 	$(GOBUILD) -o $(OX) ./cmd/ox/
