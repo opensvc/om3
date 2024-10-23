@@ -16,9 +16,6 @@ func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
 		buff []byte
 		f    *os.File
 	)
-	if c, err = remoteClient(p, c); err != nil {
-		return "", err
-	}
 	if buff, err = fetchConfig(p, c); err != nil {
 		return "", err
 	}
@@ -31,28 +28,6 @@ func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
 		return "", err
 	}
 	return filename, nil
-}
-
-func remoteClient(p naming.Path, c *client.T) (*client.T, error) {
-	resp, err := c.GetObjectWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("get object %s data from %s: %s", p, c.URL(), resp.Status())
-	}
-	var nodename string
-	for k := range resp.JSON200.Data.Instances {
-		nodename = k
-		break
-	}
-	if nodename == "" {
-		return nil, fmt.Errorf("%s has no instance", p)
-	}
-	if c, err = client.New(client.WithURL(nodename)); err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
