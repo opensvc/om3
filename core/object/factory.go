@@ -24,8 +24,13 @@ func WithConfigFile(s string) funcopt.O {
 // Useful for testing volatile services.
 func WithConfigData(b any) funcopt.O {
 	return funcopt.F(func(t any) error {
-		o := t.(*core)
-		o.configData = b
+		if o, ok := t.(*core); ok {
+			o.configData = b
+		} else if o, ok := t.(*Node); ok {
+			o.configData = b
+		} else {
+			return fmt.Errorf("WithConfigData() is not supported on %v", t)
+		}
 		return nil
 	})
 }

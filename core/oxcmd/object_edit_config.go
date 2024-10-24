@@ -42,7 +42,7 @@ func (t *CmdObjectEditConfig) DoRemote(p naming.Path, c *client.T) error {
 		refSum   []byte
 		filename string
 	)
-	if filename, err = createTempRemoteConfig(p, c); err != nil {
+	if filename, err = createTempRemoteObjectConfig(p, c); err != nil {
 		return err
 	}
 	defer os.Remove(filename)
@@ -56,7 +56,7 @@ func (t *CmdObjectEditConfig) DoRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = putConfig(p, filename, c); err != nil {
+	if err = putObjectConfig(p, filename, c); err != nil {
 		return err
 	}
 	return nil
