@@ -8,7 +8,6 @@ import (
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
-	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
@@ -62,7 +61,7 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 		if err := file.Copy(src, dst); err != nil {
 			return err
 		}
-		log.Debug().Str("dst", dst).Msg("new configuration temporary copy")
+		//log.Debug().Str("dst", dst).Msg("new configuration temporary copy")
 	}
 	var refSum []byte
 	if b, err := file.MD5(dst); err != nil {

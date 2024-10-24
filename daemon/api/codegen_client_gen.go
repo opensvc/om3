@@ -104,6 +104,12 @@ type ClientInterface interface {
 	// PostClusterActionUnfreeze request
 	PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetClusterConfigFile request
+	GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutClusterConfigFileWithBody request with any body
+	PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonJoin request
 	PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -509,6 +515,30 @@ func (c *Client) PostClusterActionFreeze(ctx context.Context, reqEditors ...Requ
 
 func (c *Client) PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterActionUnfreezeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterConfigFileRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutClusterConfigFileRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2140,6 +2170,62 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetClusterConfigFileRequest generates requests for GetClusterConfigFile
+func NewGetClusterConfigFileRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config/file")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutClusterConfigFileRequestWithBody generates requests for PutClusterConfigFile with any type of body
+func NewPutClusterConfigFileRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config/file")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9418,6 +9504,12 @@ type ClientWithResponsesInterface interface {
 	// PostClusterActionUnfreezeWithResponse request
 	PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error)
 
+	// GetClusterConfigFileWithResponse request
+	GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error)
+
+	// PutClusterConfigFileWithBodyWithResponse request with any body
+	PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error)
+
 	// PostDaemonJoinWithResponse request
 	PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
 
@@ -9901,6 +9993,58 @@ func (r PostClusterActionUnfreezeResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostClusterActionUnfreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterConfigFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterConfigFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterConfigFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutClusterConfigFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PutClusterConfigFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutClusterConfigFileResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12866,6 +13010,24 @@ func (c *ClientWithResponses) PostClusterActionUnfreezeWithResponse(ctx context.
 	return ParsePostClusterActionUnfreezeResponse(rsp)
 }
 
+// GetClusterConfigFileWithResponse request returning *GetClusterConfigFileResponse
+func (c *ClientWithResponses) GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error) {
+	rsp, err := c.GetClusterConfigFile(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterConfigFileResponse(rsp)
+}
+
+// PutClusterConfigFileWithBodyWithResponse request with arbitrary body returning *PutClusterConfigFileResponse
+func (c *ClientWithResponses) PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error) {
+	rsp, err := c.PutClusterConfigFileWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutClusterConfigFileResponse(rsp)
+}
+
 // PostDaemonJoinWithResponse request returning *PostDaemonJoinResponse
 func (c *ClientWithResponses) PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
 	rsp, err := c.PostDaemonJoin(ctx, params, reqEditors...)
@@ -14224,6 +14386,114 @@ func ParsePostClusterActionUnfreezeResponse(rsp *http.Response) (*PostClusterAct
 			return nil, err
 		}
 		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterConfigFileResponse parses an HTTP response from a GetClusterConfigFileWithResponse call
+func ParseGetClusterConfigFileResponse(rsp *http.Response) (*GetClusterConfigFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterConfigFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutClusterConfigFileResponse parses an HTTP response from a PutClusterConfigFileWithResponse call
+func ParsePutClusterConfigFileResponse(rsp *http.Response) (*PutClusterConfigFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutClusterConfigFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest N409
