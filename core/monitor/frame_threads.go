@@ -102,11 +102,11 @@ func (f Frame) wThreadHeartbeats() string {
 		case "running":
 			s += green("running") + sThreadAlerts(hbStatus.Alerts)
 		case "stopped":
-			s += red("stopped") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("stopped") + sThreadAlerts(hbStatus.Alerts)
 		case "failed":
-			s += red("failed") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("failed") + sThreadAlerts(hbStatus.Alerts)
 		default:
-			s += red("unknown") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("unknown") + sThreadAlerts(hbStatus.Alerts)
 		}
 		s += "\t" + hbStatus.Type + "\t"
 		s += f.info.separator + "\t"

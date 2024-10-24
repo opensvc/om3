@@ -31,15 +31,24 @@ func (t *Node) ClusterConfigFile() string {
 }
 
 func (t *Node) loadConfig() error {
+	var sources []any
 	nodeConfigFile := t.ConfigFile()
-	if config, err := xconfig.NewObject(nodeConfigFile, nodeConfigFile); err != nil {
+
+	if t.configData != nil {
+		sources = []any{t.configData}
+	} else {
+		sources = []any{nodeConfigFile}
+	}
+
+	if config, err := xconfig.NewObject(nodeConfigFile, sources...); err != nil {
 		return err
 	} else {
 		t.config = config
 		t.config.Referrer = t
 	}
 	clusterConfigFile := t.ClusterConfigFile()
-	if config, err := xconfig.NewObject(clusterConfigFile, clusterConfigFile, nodeConfigFile); err != nil {
+	sources = append([]any{clusterConfigFile}, sources...)
+	if config, err := xconfig.NewObject(clusterConfigFile, sources...); err != nil {
 		return err
 	} else {
 		t.mergedConfig = config

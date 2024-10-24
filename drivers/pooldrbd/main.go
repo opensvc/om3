@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -58,6 +59,17 @@ func (t T) maxPeers() string {
 
 func (t T) network() string {
 	return t.GetString("network")
+}
+
+func (t T) addrs() map[string]string {
+	m := make(map[string]string)
+	for _, nodename := range cluster.ConfigData.Get().Nodes {
+		s := t.GetStringAs("addr", nodename)
+		if s != "" {
+			m[nodename] = s
+		}
+	}
+	return m
 }
 
 func (t T) path() string {
@@ -227,6 +239,9 @@ func (t *T) commonDrbdKeywords(rid string) (l []string) {
 	network := t.network()
 	if network != "" {
 		l = append(l, rid+".network="+network)
+	}
+	for nodename, addr := range t.addrs() {
+		l = append(l, rid+".addr@"+nodename+"="+addr)
 	}
 	return
 }
