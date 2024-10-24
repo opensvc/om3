@@ -379,18 +379,6 @@ func (t *App) initApp() {
 		case tcell.KeyESC:
 			t.back()
 		case tcell.KeyTab:
-			v := t.focus()
-			v++
-			if v >= viewLast {
-				v = 0
-			}
-			if primitive := t.viewPrimitive(v); primitive != nil {
-				if primitive == nil {
-					t.infof("xx no primitive for %d", v)
-				}
-				//t.app.SetFocus(primitive)
-			}
-			return nil
 		}
 		if t.command != nil {
 			return event
@@ -1524,6 +1512,21 @@ func (t *App) skipIfConfigNotUpdated() bool {
 	}
 }
 
+func (t *App) skipIfNodeConfigNotUpdated() bool {
+	return false // TODO: Add a UpdatedAt field in node.Config
+	/*
+		if nodeData, ok := t.Current.Cluster.Node[t.viewNode]; !ok {
+			t.errorf("node config disappeared")
+			return true
+		} else if nodeData.Config.UpdatedAt.After(t.lastUpdatedAt) {
+			t.lastUpdatedAt = instanceData.Config.UpdatedAt
+			return false
+		}
+		// no change, skip
+		return true
+	*/
+}
+
 func (t *App) skipIfInstanceNotUpdated() bool {
 	if nodeData, ok := t.Current.Cluster.Node[t.viewNode]; !ok {
 		t.errorf("node config disappeared")
@@ -1588,21 +1591,32 @@ func (t *App) updateInstanceView() {
 
 func (t *App) onRuneE(event *tcell.EventKey) {
 	t.app.Suspend(func() {
-		if t.viewPath.IsZero() {
-			return
-		}
-		if t.viewKey == "" {
-			cmd := oxcmd.CmdObjectEditConfig{}
-			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
-				t.errorf("%s", err)
-			}
-		} else {
+		row, col := t.objects.GetSelection()
+		switch {
+		case !t.viewPath.IsZero() && t.viewKey != "":
 			cmd := oxcmd.CmdObjectEditKey{
 				Key: t.viewKey,
 			}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)
 			}
+		case !t.viewPath.IsZero():
+			cmd := oxcmd.CmdObjectEditConfig{}
+			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
+				t.errorf("%s", err)
+			}
+		case t.viewNode != "":
+			cmd := oxcmd.CmdNodeEditConfig{}
+			if err := cmd.DoRemote(t.viewNode, t.client); err != nil {
+				t.errorf("%s", err)
+			}
+		case row == 0 && col == 1:
+			/*
+				cmd := oxcmd.CmdClusterEditConfig{}
+				if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
+					t.errorf("%s", err)
+				}
+			*/
 		}
 	})
 }
@@ -1614,9 +1628,41 @@ func (t *App) onRuneC(event *tcell.EventKey) {
 }
 
 func (t *App) updateConfigView() {
-	if t.viewPath.IsZero() {
+	row, col := t.objects.GetSelection()
+	switch {
+	case !t.viewPath.IsZero():
+		t.updateObjectConfigView()
+	case t.viewNode != "":
+		t.updateNodeConfigView()
+	case row == 0 && col == 1:
+		t.updateClusterConfigView()
+	}
+}
+
+func (t *App) updateClusterConfigView() {
+}
+
+func (t *App) updateNodeConfigView() {
+	if t.skipIfNodeConfigNotUpdated() {
 		return
 	}
+	resp, err := t.client.GetNodeConfigFileWithResponse(context.Background(), t.viewNode)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return
+	}
+
+	text := tview.TranslateANSI(string(resp.Body))
+	title := fmt.Sprintf("%s configuration", t.viewPath)
+	t.textView.SetDynamicColors(false)
+	t.textView.SetTitle(title)
+	t.textView.Clear()
+	fmt.Fprint(t.textView, text)
+}
+
+func (t *App) updateObjectConfigView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}

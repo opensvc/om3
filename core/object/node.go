@@ -18,6 +18,7 @@ type (
 
 		// caches
 		id           uuid.UUID
+		configData   any
 		configFile   string
 		config       *xconfig.T
 		mergedConfig *xconfig.T

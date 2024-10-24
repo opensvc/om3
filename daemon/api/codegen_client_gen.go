@@ -190,6 +190,12 @@ type ClientInterface interface {
 	// GetNodeConfig request
 	GetNodeConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeConfigFile request
+	GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutNodeConfigFileWithBody request with any body
+	PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeConfigGet request
 	GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -863,6 +869,30 @@ func (c *Client) GetNodeCapabilities(ctx context.Context, nodename InPathNodeNam
 
 func (c *Client) GetNodeConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeConfigFileRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutNodeConfigFileRequestWithBody(c.Server, nodename, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3398,6 +3428,76 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetNodeConfigFileRequest generates requests for GetNodeConfigFile
+func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/config/file", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutNodeConfigFileRequestWithBody generates requests for PutNodeConfigFile with any type of body
+func NewPutNodeConfigFileRequestWithBody(server string, nodename InPathNodeName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/config/file", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9404,6 +9504,12 @@ type ClientWithResponsesInterface interface {
 	// GetNodeConfigWithResponse request
 	GetNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*GetNodeConfigResponse, error)
 
+	// GetNodeConfigFileWithResponse request
+	GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error)
+
+	// PutNodeConfigFileWithBodyWithResponse request with any body
+	PutNodeConfigFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutNodeConfigFileResponse, error)
+
 	// GetNodeConfigGetWithResponse request
 	GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error)
 
@@ -10458,6 +10564,58 @@ func (r GetNodeConfigResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeConfigFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeConfigFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeConfigFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutNodeConfigFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PutNodeConfigFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutNodeConfigFileResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12974,6 +13132,24 @@ func (c *ClientWithResponses) GetNodeConfigWithResponse(ctx context.Context, nod
 	return ParseGetNodeConfigResponse(rsp)
 }
 
+// GetNodeConfigFileWithResponse request returning *GetNodeConfigFileResponse
+func (c *ClientWithResponses) GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error) {
+	rsp, err := c.GetNodeConfigFile(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeConfigFileResponse(rsp)
+}
+
+// PutNodeConfigFileWithBodyWithResponse request with arbitrary body returning *PutNodeConfigFileResponse
+func (c *ClientWithResponses) PutNodeConfigFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutNodeConfigFileResponse, error) {
+	rsp, err := c.PutNodeConfigFileWithBody(ctx, nodename, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutNodeConfigFileResponse(rsp)
+}
+
 // GetNodeConfigGetWithResponse request returning *GetNodeConfigGetResponse
 func (c *ClientWithResponses) GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error) {
 	rsp, err := c.GetNodeConfigGet(ctx, nodename, params, reqEditors...)
@@ -15368,6 +15544,114 @@ func ParseGetNodeConfigResponse(rsp *http.Response) (*GetNodeConfigResponse, err
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeConfigFileResponse parses an HTTP response from a GetNodeConfigFileWithResponse call
+func ParseGetNodeConfigFileResponse(rsp *http.Response) (*GetNodeConfigFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeConfigFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutNodeConfigFileResponse parses an HTTP response from a PutNodeConfigFileWithResponse call
+func ParsePutNodeConfigFileResponse(rsp *http.Response) (*PutNodeConfigFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutNodeConfigFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
