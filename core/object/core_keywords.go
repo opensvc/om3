@@ -318,7 +318,7 @@ var keywordStore = keywords.Store{
 	{
 		Aliases:     []string{"flex_max_nodes"},
 		Converter:   converters.Int,
-		Default:     "{flex_target}",
+		Default:     "{#nodes}",
 		DefaultText: keywords.NewText(fs, "text/kw/core/flex_max.default"),
 		Depends:     keyop.ParseList("topology=flex"),
 		Inherit:     keywords.InheritHead,

@@ -43,7 +43,7 @@ const (
 	Toggle
 	// Insert adds an element at the position specified by Index
 	Insert
-	// Exist tests the existance of a key
+	// Exist tests the existence of a key
 	Exist
 	// Equal tests if the current value of the key is equal to the keyop.T value
 	Equal
@@ -92,7 +92,7 @@ var (
 
 	// ":" is a suffixer, not a spliter
 	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "="}
-	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
+	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)]`)
 )
 
 func (t Op) String() string {
@@ -108,11 +108,17 @@ func New(key key.T, op Op, value string, idx int) *T {
 	}
 }
 
+// ParseOps function processes a list of strings, parses them into operations,
+// filters out any invalid operations (based on the IsZero check),
+// and returns a list of valid operations.
 func ParseOps(kws []string) L {
-	l := make(L, len(kws))
-	for i, kw := range kws {
+	l := make(L, 0, len(kws))
+	for _, kw := range kws {
 		op := Parse(kw)
-		l[i] = *op
+		if op.IsZero() {
+			continue
+		}
+		l = append(l, *op)
 	}
 	return l
 }
@@ -138,7 +144,7 @@ func (t Op) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
+// UnmarshalJSON unmarshals a quoted json string to the enum value
 func (t *Op) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)

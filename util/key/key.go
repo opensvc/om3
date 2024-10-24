@@ -20,15 +20,27 @@ func New(section, option string) T {
 	}
 }
 
+// ParseStrings function processes a list of strings, parses them into keyword,
+// filters out any invalid keyword (based on the IsZero check),
+// and returns a list of valid keywords.
 func ParseStrings(l []string) L {
 	kws := make(L, 0)
 	for _, s := range l {
+		kw := Parse(s)
+		if kw.IsZero() {
+			continue
+		}
 		kws = append(kws, Parse(s))
 	}
 	return kws
 }
 
+// Parse function construct key T from the parsed string s.
+// On invalid string s the zero key is returned.
 func Parse(s string) T {
+	if s == "" || strings.ContainsAny(s, " \t") {
+		return T{}
+	}
 	l := strings.SplitN(s, ".", 2)
 	switch len(l) {
 	case 1:
@@ -66,4 +78,8 @@ func (t T) String() string {
 		return t.Section
 	}
 	return t.Section + "." + t.Option
+}
+
+func (t T) IsZero() bool {
+	return (t.Option + t.Section) == ""
 }
