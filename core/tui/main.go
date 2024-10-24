@@ -1512,21 +1512,6 @@ func (t *App) skipIfConfigNotUpdated() bool {
 	}
 }
 
-func (t *App) skipIfNodeConfigNotUpdated() bool {
-	return false // TODO: Add a UpdatedAt field in node.Config
-	/*
-		if nodeData, ok := t.Current.Cluster.Node[t.viewNode]; !ok {
-			t.errorf("node config disappeared")
-			return true
-		} else if nodeData.Config.UpdatedAt.After(t.lastUpdatedAt) {
-			t.lastUpdatedAt = instanceData.Config.UpdatedAt
-			return false
-		}
-		// no change, skip
-		return true
-	*/
-}
-
 func (t *App) skipIfInstanceNotUpdated() bool {
 	if nodeData, ok := t.Current.Cluster.Node[t.viewNode]; !ok {
 		t.errorf("node config disappeared")
@@ -1611,12 +1596,10 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 				t.errorf("%s", err)
 			}
 		case row == 0 && col == 1:
-			/*
-				cmd := oxcmd.CmdClusterEditConfig{}
-				if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
-					t.errorf("%s", err)
-				}
-			*/
+			cmd := oxcmd.CmdObjectEditConfig{}
+			if err := cmd.DoRemote(naming.Cluster, t.client); err != nil {
+				t.errorf("%s", err)
+			}
 		}
 	})
 }
@@ -1640,12 +1623,31 @@ func (t *App) updateConfigView() {
 }
 
 func (t *App) updateClusterConfigView() {
+	if !t.lastUpdatedAt.IsZero() {
+		return
+	}
+	t.lastUpdatedAt = time.Now()
+	resp, err := t.client.GetClusterConfigFileWithResponse(context.Background())
+	if err != nil {
+		return
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return
+	}
+
+	text := tview.TranslateANSI(string(resp.Body))
+	title := fmt.Sprintf("cluster configuration")
+	t.textView.SetDynamicColors(false)
+	t.textView.SetTitle(title)
+	t.textView.Clear()
+	fmt.Fprint(t.textView, text)
 }
 
 func (t *App) updateNodeConfigView() {
-	if t.skipIfNodeConfigNotUpdated() {
+	if !t.lastUpdatedAt.IsZero() {
 		return
 	}
+	t.lastUpdatedAt = time.Now()
 	resp, err := t.client.GetNodeConfigFileWithResponse(context.Background(), t.viewNode)
 	if err != nil {
 		return
