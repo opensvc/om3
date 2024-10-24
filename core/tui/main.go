@@ -885,6 +885,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	}
 	instanceAction := func(action string, keys map[[2]string]any) {
 		switch action {
+		case "clear":
+			t.actionInstanceClear(keys)
 		case "stop":
 			t.actionInstanceStop(keys)
 		case "start":
@@ -1099,6 +1101,19 @@ func (t *App) actionInstanceStart(keys map[[2]string]any) {
 			continue
 		}
 		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+	}
+}
+
+func (t *App) actionInstanceClear(keys map[[2]string]any) {
+	ctx := context.Background()
+	for key, _ := range keys {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		_, _ = t.client.PostInstanceClearWithResponse(ctx, node, p.Namespace, p.Kind, p.Name)
 	}
 }
 
@@ -1350,7 +1365,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
        unfreeze, unprovision  
 
      instance actions:
-       delete, freeze, provision, start, stop, switch, unfreeze, unprovision  
+       clear, delete, freeze, provision, start, stop, switch, unfreeze,
+       unprovision  
 
      node actions:
        drain freeze, unfreeze
