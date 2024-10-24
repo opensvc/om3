@@ -108,11 +108,17 @@ func New(key key.T, op Op, value string, idx int) *T {
 	}
 }
 
+// ParseOps function processes a list of strings, parses them into operations,
+// filters out any invalid operations (based on the IsZero check),
+// and returns a list of valid operations.
 func ParseOps(kws []string) L {
-	l := make(L, len(kws))
-	for i, kw := range kws {
+	l := make(L, 0, len(kws))
+	for _, kw := range kws {
 		op := Parse(kw)
-		l[i] = *op
+		if op.IsZero() {
+			continue
+		}
+		l = append(l, *op)
 	}
 	return l
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func TestKeyopsDrop(t *testing.T) {
+func TestDrop(t *testing.T) {
 	op1 := T{
 		Key:   key.Parse("topology"),
 		Op:    Set,
@@ -29,7 +29,7 @@ func TestKeyopsDrop(t *testing.T) {
 	assert.Len(t, ops, 1)
 }
 
-func TestKeyopParse(t *testing.T) {
+func TestParse(t *testing.T) {
 	tests := []struct {
 		expr  string
 		key   key.T
@@ -124,5 +124,47 @@ func TestKeyopParse(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestParseOps(t *testing.T) {
+	cases := []struct {
+		l        []string
+		expected L
+	}{
+		{
+			l: []string{"foo=bar"},
+			expected: L{
+				T{Key: key.T{Section: "DEFAULT", Option: "foo"}, Op: 1, Value: "bar", Index: 0},
+			},
+		},
+		{
+			l: []string{"foo1=bar1", "must_be_dropped", "foo2=bar2"},
+			expected: L{
+				T{Key: key.T{Section: "DEFAULT", Option: "foo1"}, Op: 1, Value: "bar1", Index: 0},
+				T{Key: key.T{Section: "DEFAULT", Option: "foo2"}, Op: 1, Value: "bar2", Index: 0},
+			},
+		},
+		{
+			l:        []string{"must_be_dropped"},
+			expected: L{},
+		},
+		{
+			l:        []string{""},
+			expected: L{},
+		},
+		{
+			l:        []string{},
+			expected: L{},
+		},
+		{
+			l:        nil,
+			expected: L{},
+		},
+	}
+	for _, tc := range cases {
+		t.Logf("ParseOps(%q)", tc.l)
+		ops := ParseOps(tc.l)
+		assert.Equal(t, tc.expected, ops)
 	}
 }

@@ -7,71 +7,103 @@ import (
 )
 
 func TestKey(t *testing.T) {
-	tests := []struct {
-		s       string
-		section string
-		option  string
-		render  string
-		scope   string
+	cases := []struct {
+		s      string
+		t      T
+		render string
+		scope  string
+		isZero bool
 	}{
 		{
-			s:       "topology",
-			section: "DEFAULT",
-			option:  "topology",
-			render:  "topology",
-			scope:   "",
+			s:      "topology",
+			t:      T{"DEFAULT", "topology"},
+			render: "topology",
 		},
 		{
-			s:       "DEFAULT.topology",
-			section: "DEFAULT",
-			option:  "topology",
-			render:  "topology",
-			scope:   "",
+			s:      "DEFAULT.topology",
+			t:      T{"DEFAULT", "topology"},
+			render: "topology",
 		},
 		{
-			s:       "topology@nodes",
-			section: "DEFAULT",
-			option:  "topology@nodes",
-			render:  "topology@nodes",
-			scope:   "nodes",
+			s:      "topology@nodes",
+			t:      T{"DEFAULT", "topology@nodes"},
+			render: "topology@nodes",
+			scope:  "nodes",
 		},
 		{
-			s:       "DEFAULT.topology@nodes",
-			section: "DEFAULT",
-			option:  "topology@nodes",
-			render:  "topology@nodes",
-			scope:   "nodes",
+			s:      "DEFAULT.topology@nodes",
+			t:      T{"DEFAULT", "topology@nodes"},
+			render: "topology@nodes",
+			scope:  "nodes",
 		},
 		{
-			s:       "fs#1.dev",
-			section: "fs#1",
-			option:  "dev",
-			render:  "fs#1.dev",
-			scope:   "",
+			s:      "fs#1.dev",
+			t:      T{"fs#1", "dev"},
+			render: "fs#1.dev",
 		},
 		{
-			s:       "data.a.b/C.D",
-			section: "data",
-			option:  "a.b/C.D",
-			render:  "data.a.b/C.D",
-			scope:   "",
+			s:      "data.a.b/C.D",
+			t:      T{"data", "a.b/C.D"},
+			render: "data.a.b/C.D",
 		},
 		{
-			s:       "container#1",
-			section: "container#1",
-			option:  "",
-			render:  "container#1",
-			scope:   "",
+			s:      "container#1",
+			t:      T{"container#1", ""},
+			render: "container#1",
+		},
+		{
+			s:      ".foo",
+			t:      T{Option: "foo"},
+			render: ".foo",
+		},
+		// test cases where Parse must return zero T
+		{
+			s:      "",
+			isZero: true,
+		},
+		{
+			s:      ".",
+			isZero: true,
+		},
+		{
+			s:      " ",
+			isZero: true,
+		},
+		{
+			s:      "a ",
+			isZero: true,
+		},
+		{
+			s:      " b",
+			isZero: true,
+		},
+		{
+			s:      " .foo",
+			isZero: true,
+		},
+		{
+			s:      " foo.bar",
+			isZero: true,
+		},
+		{
+			s:      "foo.bar ",
+			isZero: true,
+		},
+		{
+			s:      "\tfoo.bar",
+			isZero: true,
 		},
 	}
-	for _, test := range tests {
-		t.Logf("%s", test.s)
-		k := Parse(test.s)
+	for _, tc := range cases {
+		t.Logf("verify after k := Parse(%q) if k == %#v, k.String() == %q, k.Scope() == %q and k.IsZero() == %v",
+			tc.s, tc.t, tc.render, tc.scope, tc.isZero)
+		k := Parse(tc.s)
 		render := k.String()
-		assert.Equal(t, test.render, render)
-		assert.Equal(t, test.section, k.Section)
-		assert.Equal(t, test.option, k.Option)
-		assert.Equal(t, test.scope, k.Scope())
+		assert.Equal(t, tc.render, render, "k.String()")
+		assert.Equal(t, tc.t.Section, k.Section, "k.Section")
+		assert.Equal(t, tc.t.Option, k.Option, "k.Option")
+		assert.Equal(t, tc.scope, k.Scope(), "k.Scope()")
+		assert.Equal(t, tc.isZero, k.IsZero(), "k.IsZero()")
 	}
 
 }
