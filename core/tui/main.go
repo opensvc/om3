@@ -58,6 +58,8 @@ type (
 		viewNode string
 		viewKey  string
 
+		lastUpdatedAt time.Time
+
 		firstInstanceCol int
 		firstObjectRow   int
 
@@ -195,7 +197,13 @@ func (t *App) resetAllSelected() {
 }
 
 func (t *App) updateKeyTextView() {
+	if t.viewPath.IsZero() {
+		return
+	}
 	if t.viewKey == "" {
+		return
+	}
+	if t.skipIfConfigNotUpdated() {
 		return
 	}
 	resp, err := t.client.GetObjectKVStoreEntryWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectKVStoreEntryParams{
@@ -1478,8 +1486,51 @@ func (t *App) setFocus() {
 	}
 }
 
+func (t *App) getConfigUpdatedAt() time.Time {
+	path := t.viewPath.String()
+	for _, nodeData := range t.Current.Cluster.Node {
+		if instanceData, ok := nodeData.Instance[path]; ok {
+			return instanceData.Config.UpdatedAt
+		}
+	}
+	return time.Time{}
+}
+
+func (t *App) skipIfConfigNotUpdated() bool {
+	if updatedAt := t.getConfigUpdatedAt(); updatedAt.IsZero() {
+		t.errorf("instance config disappeared")
+		return true
+	} else if !updatedAt.After(t.lastUpdatedAt) {
+		return true
+	} else {
+		t.lastUpdatedAt = updatedAt
+		return false
+	}
+}
+
+func (t *App) skipIfInstanceNotUpdated() bool {
+	if nodeData, ok := t.Current.Cluster.Node[t.viewNode]; !ok {
+		t.errorf("node config disappeared")
+		return true
+	} else if instanceData, ok := nodeData.Instance[t.viewPath.String()]; !ok {
+		return true
+		t.errorf("instance config disappeared")
+	} else if instanceData.Config.UpdatedAt.After(t.lastUpdatedAt) {
+		t.lastUpdatedAt = instanceData.Config.UpdatedAt
+		return false
+	} else if instanceData.Status.UpdatedAt.After(t.lastUpdatedAt) {
+		t.lastUpdatedAt = instanceData.Status.UpdatedAt
+		return false
+	}
+	// no change, skip
+	return true
+}
+
 func (t *App) updateKeysView() {
 	if t.viewPath.IsZero() {
+		return
+	}
+	if t.skipIfConfigNotUpdated() {
 		return
 	}
 	resp, err := t.client.GetObjectKVStoreKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
@@ -1500,6 +1551,15 @@ func (t *App) updateKeysView() {
 }
 
 func (t *App) updateInstanceView() {
+	if t.viewPath.IsZero() {
+		return
+	}
+	if t.viewNode == "" {
+		return
+	}
+	if t.skipIfInstanceNotUpdated() {
+		return
+	}
 	digest := t.Frame.Current.GetObjectStatus(t.viewPath)
 	text := tview.TranslateANSI(digest.Render([]string{t.viewNode}))
 	t.initTextView()
@@ -1539,6 +1599,9 @@ func (t *App) onRuneC(event *tcell.EventKey) {
 
 func (t *App) updateConfigView() {
 	if t.viewPath.IsZero() {
+		return
+	}
+	if t.skipIfConfigNotUpdated() {
 		return
 	}
 	resp, err := t.client.GetObjectConfigFileWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
@@ -1600,6 +1663,7 @@ func (t *App) back() {
 func (t *App) navFromTo(from, to viewId) {
 	t.flex.Clear()
 	t.flex.AddItem(t.head, 1, 0, false)
+	t.lastUpdatedAt = time.Time{}
 	switch from {
 	case viewObject:
 	case viewLog:
