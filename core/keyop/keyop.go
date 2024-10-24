@@ -43,7 +43,7 @@ const (
 	Toggle
 	// Insert adds an element at the position specified by Index
 	Insert
-	// Exist tests the existance of a key
+	// Exist tests the existence of a key
 	Exist
 	// Equal tests if the current value of the key is equal to the keyop.T value
 	Equal
@@ -92,7 +92,7 @@ var (
 
 	// ":" is a suffixer, not a spliter
 	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "="}
-	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
+	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)]`)
 )
 
 func (t Op) String() string {
@@ -138,7 +138,7 @@ func (t Op) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
+// UnmarshalJSON unmarshals a quoted json string to the enum value
 func (t *Op) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)
