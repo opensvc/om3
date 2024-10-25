@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/waitfor"
 )
 
 type (
@@ -223,7 +225,7 @@ func (t T) StopStandby(ctx context.Context) error {
 		return nil
 	}
 	if err := t.StartConnection(ctx); err != nil {
-		return err
+		return fmt.Errorf("start connection: %s", err)
 	}
 	return t.GoSecondary(ctx)
 }
@@ -231,7 +233,7 @@ func (t T) StopStandby(ctx context.Context) error {
 func (t T) StartStandby(ctx context.Context) error {
 	dev := t.drbd()
 	if err := t.StartConnection(ctx); err != nil {
-		return err
+		return fmt.Errorf("start connection: %s", err)
 	}
 	role, err := dev.Role()
 	if err != nil {
@@ -250,7 +252,7 @@ func (t T) Start(ctx context.Context) error {
 	}
 	dev := t.drbd()
 	if err := t.StartConnection(ctx); err != nil {
-		return err
+		return fmt.Errorf("start connection: %s", err)
 	}
 	role, err := dev.Role()
 	if err != nil {
@@ -298,27 +300,91 @@ func (t T) Shutdown(ctx context.Context) error {
 	return t.DownForce(ctx)
 }
 
+// StartConnection ensures cstate is Connecting or Connected.
+//
+// on cstate StandAlone: try Down then Up
+//
+// transient ctates: https://github.com/LINBIT/drbd-headers/blob/master/linux/drbd.h
+//
+//	example: Unconnected, Timeout, ... wait for Connecting or Connected reached
+//	example: Disconnecting: wait for StandAlone reached before try Down, Up
 func (t T) StartConnection(ctx context.Context) error {
 	dev := t.drbd()
 	state, err := dev.ConnState()
 	if err != nil {
 		return err
 	}
-	switch state {
-	case "Connected":
-		t.Log().Infof("drbd resource %s is already connected", t.Res)
-	case "Connecting":
-		t.Log().Infof("drbd resource %s is already connecting", t.Res)
-	case "StandAlone":
-		t.Down(ctx)
-		t.Up(ctx)
-	case "WFConnection":
-		t.Log().Infof("drbd resource %s peer node is not listening", t.Res)
-	default:
-		t.Log().Infof("cstate before connect: %s", state)
-		t.Up(ctx)
+
+	doWait := func(candidates ...string) (bool, error) {
+		t.Log().Infof("wait %s for cstate in (%s)", t.Res, strings.Join(candidates, ","))
+		var state string
+		ok, err := waitfor.TrueNoErrorCtx(ctx, 5*time.Second, time.Second, func() (bool, error) {
+			var err error
+			if state, err = dev.ConnState(); err != nil {
+				return false, err
+			} else if slices.Contains(candidates, state) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		})
+		if err != nil {
+			t.Log().Warnf("wait for %s cstate in (%s): %s",
+				t.Res, strings.Join(candidates, ","), err)
+		} else if !ok {
+			t.Log().Warnf("wait for %s cstate in (%s): timeout, last state was: %s",
+				t.Res, strings.Join(candidates, ","), state)
+		}
+		return ok, err
 	}
-	return nil
+
+	doWaitConnected := func() error {
+		if ok, err := doWait("Connecting", "Connected"); err != nil {
+			return fmt.Errorf("wait for cstate in (Connecting, Connected): %s", err)
+		} else if !ok {
+			return fmt.Errorf("wait for cstate in (Connecting, Connected): timeout")
+		} else {
+			return nil
+		}
+	}
+
+	restartConnection := func(doDown bool) error {
+		t.Log().Infof("drbd %s restart connection", t.Res)
+		if doDown {
+			_ = t.Down(ctx)
+		}
+		if err := t.Up(ctx); err != nil {
+			return fmt.Errorf("drbd %s restart connection: Up: %s", t.Res, err)
+		}
+		return doWaitConnected()
+	}
+
+	t.Log().Infof("drbd resource %s cstate %s", t.Res, state)
+	switch state {
+	case "Connecting", "Connected":
+		// expected state is reached
+		return nil
+	case "Unconnected", "Timeout", "BrokenPipe", "NetworkFailure", "ProtocolError", "TearDown":
+		return doWaitConnected()
+	case "Disconnecting":
+		t.Log().Infof("drbd resource %s: wants cstate StandAlone before restart connection", t.Res)
+		if ok, err := doWait("StandAlone"); err != nil {
+			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %s", t.Res, err)
+		} else if !ok {
+			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: timeout", t.Res)
+		} else {
+			t.Log().Infof("drbd resource %s: cstate StandAlone: restart connection", t.Res)
+			return restartConnection(true)
+		}
+	case "StandAlone":
+		return restartConnection(true)
+	case "WFConnection":
+		t.Log().Warnf("drbd resource %s peer node is not listening", t.Res)
+		return nil
+	default:
+		// TODO: prefer instead restartConnection(true) ?
+		return restartConnection(false)
+	}
 }
 
 func (t T) removeHolders() error {
@@ -457,7 +523,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 			disk = s.(string)
 		}
 
-		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); err != nil || addr == "" {
+		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); err != nil {
 			if ip, err := t.getNodeIP(nodename); err != nil {
 				return res, err
 			} else {
