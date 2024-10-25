@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/lock"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/waitfor"
 )
 
 var (
@@ -46,9 +47,6 @@ type (
 		client    *client.T
 		node      string
 		daemonsys Manager
-	}
-	waiter interface {
-		Wait()
 	}
 
 	Manager interface {
@@ -132,7 +130,9 @@ func bootStrapCcfg() error {
 	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
-	object.SetClusterConfig()
+	if _, err := object.SetClusterConfig(); err != nil {
+		log.Errorf("bootstrap cluster config: set cluster config: %s", err)
+	}
 	return nil
 }
 
@@ -318,7 +318,12 @@ func (t *T) IsRunning() (bool, error) {
 //
 // It needs to be called from a cli lock protection
 func (t *T) WaitRunning() error {
-	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, t.isRunning)
+	if ok, err := waitfor.TrueNoError(WaitRunningTimeout, WaitRunningDelay, t.IsRunning); err != nil {
+		return fmt.Errorf("wait running: %s", err)
+	} else if !ok {
+		return fmt.Errorf("wait running: timeout")
+	}
+	return nil
 }
 
 // getLock() manage internal lock for functions that will stop/start/restart daemon
@@ -421,8 +426,11 @@ func (t *T) stop() error {
 		fn := func() (bool, error) {
 			return t.isNotRunning(pid)
 		}
-		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, fn); err != nil {
-			log.Debugf("daemon %d still running after stop: %s ... kill", pid, err)
+		if ok, err := waitfor.TrueNoError(WaitStoppedTimeout, WaitStoppedDelay, fn); err != nil {
+			log.Debugf("daemon pid %d wait not running: %s, try kill", pid, err)
+			return t.kill()
+		} else if !ok {
+			log.Debugf("daemon pid %d still running after stop: try kill", pid)
 			return t.kill()
 		}
 		log.Debugf("stopped")
@@ -604,29 +612,6 @@ func extractPidFromPidFile(pidFile string) (int, error) {
 
 func daemonPidFile() string {
 	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
-}
-
-func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() (bool, error)) error {
-	retryTicker := time.NewTicker(retryDelay)
-	defer retryTicker.Stop()
-
-	timeoutTicker := time.NewTicker(timeout)
-	defer timeoutTicker.Stop()
-
-	for {
-		select {
-		case <-timeoutTicker.C:
-			return fmt.Errorf("timeout reached")
-		case <-retryTicker.C:
-			v, err := f()
-			if err != nil {
-				return err
-			}
-			if v == expected {
-				return nil
-			}
-		}
-	}
 }
 
 func logger(s string) *plog.Logger {
