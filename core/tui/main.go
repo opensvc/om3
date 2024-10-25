@@ -96,7 +96,7 @@ var (
 	colorNone      = tcell.ColorNone
 	colorSelected  = tcell.ColorDarkSlateGray
 	colorTitle     = tcell.ColorGray
-	colorHead      = tcell.ColorYellow
+	colorHead      = tcell.ColorBlack
 	colorHighlight = tcell.ColorWhite
 
 	spin    = []rune{'⠁', '⠂', '⠄', '⡀', '⢀', '⠠', '⠐', '⠈'}
@@ -378,7 +378,12 @@ func (t *App) initApp() {
 		switch event.Key() {
 		case tcell.KeyESC:
 			t.back()
+		case tcell.KeyBacktab:
+			t.head.SetBackgroundColor(t.head.GetBackgroundColor() - 1)
+			t.head.SetText(fmt.Sprintf("set color %d", t.head.GetBackgroundColor()))
 		case tcell.KeyTab:
+			t.head.SetBackgroundColor(t.head.GetBackgroundColor() + 1)
+			t.head.SetText(fmt.Sprintf("set color %d", t.head.GetBackgroundColor()))
 		}
 		if t.command != nil {
 			return event
