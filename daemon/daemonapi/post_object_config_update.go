@@ -36,7 +36,14 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		unsets = key.ParseStrings(*params.Unset)
 	}
 	if params.Delete != nil {
-		deletes = *params.Delete
+		for _, section := range *params.Delete {
+			if section == "" {
+				// Prevents from accidental remove DEFAULT section. SectionsByName("")
+				// return "DEFAULT". Use explicit section="DEFAULT" to remove DEFAULT section.
+				continue
+			}
+			deletes = append(deletes, section)
+		}
 	}
 	if len(sets)+len(unsets)+len(deletes) == 0 {
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")

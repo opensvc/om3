@@ -326,9 +326,9 @@ func (t *Manager) configFileCheck() error {
 		cfg.Pool = &pool
 	}
 	if cfg.Topology == topology.Flex {
-		cfg.FlexMin = t.getFlexMin(cf)
-		cfg.FlexMax = t.getFlexMax(cf)
-		cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+		cfg.FlexTarget = t.getFlexTarget(cf)
+		cfg.FlexMin = t.getFlexMin(cf, cfg.FlexTarget)
+		cfg.FlexMax = t.getFlexMax(cf, cfg.FlexTarget)
 	}
 
 	t.lastMtime = mtime
@@ -427,37 +427,48 @@ func (t *Manager) getPriority(cf *xconfig.T) priority.T {
 	return priority.T(s)
 }
 
-func (t *Manager) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
+func (t *Manager) getFlexTarget(cf *xconfig.T) (target int) {
 	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
-		target = cf.GetInt(keyFlexTarget)
-	}
-	switch {
-	case target < min:
-		target = min
-	case target > max:
-		target = max
-	}
-	return
-}
-
-func (t *Manager) getFlexMin(cf *xconfig.T) int {
-	switch t.path.Kind {
-	case naming.KindSvc, naming.KindVol:
-		return cf.GetInt(keyFlexMin)
-	}
-	return 0
-}
-
-func (t *Manager) getFlexMax(cf *xconfig.T) int {
-	switch t.path.Kind {
-	case naming.KindSvc, naming.KindVol:
-		if i, err := cf.GetIntStrict(keyFlexMax); err == nil {
-			return i
-		} else if scope, err := t.getScope(cf); err == nil {
-			return len(scope)
+		if i, err := cf.GetIntStrict(keyFlexTarget); err != nil {
+			t.log.Warnf("can't get flex_target value: %s", err)
+			return 1
 		} else {
-			return 0
+			return i
+		}
+	default:
+		return 0
+	}
+}
+
+func (t *Manager) getFlexMin(cf *xconfig.T, target int) int {
+	switch t.path.Kind {
+	case naming.KindSvc, naming.KindVol:
+		if i, err := cf.GetIntStrict(keyFlexMin); err != nil {
+			t.log.Warnf("can't get flex_min value: %s", err)
+			return 1
+		} else if i > target {
+			t.log.Warnf("adjusts too big flex_min value %d to flex target value %d", i, target)
+			return target
+		} else {
+			return i
+		}
+	default:
+		return 0
+	}
+}
+
+func (t *Manager) getFlexMax(cf *xconfig.T, target int) int {
+	switch t.path.Kind {
+	case naming.KindSvc, naming.KindVol:
+		if i, err := cf.GetIntStrict(keyFlexMax); err != nil {
+			t.log.Warnf("can't get flex_max value: %s", err)
+			return len(clusternode.Get())
+		} else if i < target {
+			t.log.Warnf("adjusts too small flex_max value %d to flex target value %d", i, target)
+			return target
+		} else {
+			return i
 		}
 	default:
 		return 0

@@ -420,11 +420,15 @@ func (t *T) GetDurationStrict(k key.T) (*time.Duration, error) {
 	}
 }
 
+// GetInt returns the evaluated integer value associated with a key k.
+// On errors returns 0.
 func (t *T) GetInt(k key.T) int {
 	val, _ := t.GetIntStrict(k)
 	return val
 }
 
+// GetIntStrict returns the evaluated integer value associated with a key k.
+// On errors returns 0 and an appropriate error.
 func (t *T) GetIntStrict(k key.T) (int, error) {
 	if v, err := t.Eval(k); err != nil {
 		return 0, err
