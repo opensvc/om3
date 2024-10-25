@@ -42,7 +42,7 @@ type (
 
 		app      *tview.Application
 		top      *tview.TextView
-		head     *tview.TextView
+		head     *tview.Table
 		errs     *tview.TextView
 		textView *tview.TextView
 		keys     *tview.Table
@@ -96,11 +96,10 @@ var (
 	colorNone      = tcell.ColorNone
 	colorSelected  = tcell.ColorDarkSlateGray
 	colorTitle     = tcell.ColorGray
-	colorHead      = tcell.ColorBlack
+	colorHead      = tcell.ColorSteelBlue
+	colorHead2     = tcell.ColorOlive
+	colorInput     = tcell.ColorSteelBlue
 	colorHighlight = tcell.ColorWhite
-
-	spin    = []rune{'⠁', '⠂', '⠄', '⡀', '⢀', '⠠', '⠐', '⠈'}
-	spinLen = len(spin)
 )
 
 func Run(args []string) error {
@@ -122,13 +121,20 @@ func (t viewStack) String() string {
 }
 
 func (t *App) updateHead() {
-	s := t.stack.String()
-	if t.focus() == viewObject {
-		s += " : " + t.Frame.Selector
-	} else if more := t.selectedString(); more != "" {
-		s += " : " + more
+	type titler interface{ GetTitle() string }
+	if t.flex.GetItemCount() < 2 {
+		return
 	}
-	t.head.SetText(s)
+	primitive := t.flex.GetItem(1)
+	box, ok := primitive.(titler)
+	if !ok {
+		return
+	}
+	title := box.GetTitle()
+	t.head.SetCell(0, 0, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
+	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
+	t.head.SetCell(0, 2, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
+	t.head.SetCell(0, 3, tview.NewTableCell("").SetTextColor(colorHead2))
 }
 
 func (t viewId) String() string {
@@ -231,7 +237,6 @@ func (t *App) initKeysTable() {
 	table.SetBorder(false)
 
 	onEnter := func(event *tcell.EventKey) {
-		t.updateKeyTextView()
 		t.nav(viewKey)
 	}
 
@@ -261,6 +266,16 @@ func (t *App) initKeysTable() {
 func (t *App) initObjectsTable() {
 	table := tview.NewTable()
 	table.SetEvaluateAllRows(true)
+
+	onEnter := func(event *tcell.EventKey) {
+		switch {
+		case !t.viewPath.IsZero() && t.viewNode != "":
+			t.initTextView()
+			t.nav(viewInstance)
+		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
+			t.nav(viewKeys)
+		}
+	}
 
 	selectedFunc := func(row, col int) {
 		cell := table.GetCell(row, col)
@@ -328,7 +343,7 @@ func (t *App) initObjectsTable() {
 		case tcell.KeyCtrlA:
 			selectAll()
 		case tcell.KeyEnter:
-			t.onEnter(event)
+			onEnter(event)
 			return nil // prevents the default select behaviour
 		}
 		switch event.Rune() {
@@ -341,7 +356,7 @@ func (t *App) initObjectsTable() {
 }
 
 func (t *App) initHeadTextView() {
-	t.head = tview.NewTextView()
+	t.head = tview.NewTable()
 	t.head.SetBorder(false)
 }
 
@@ -369,7 +384,6 @@ func (t *App) initApp() {
 	t.app = tview.NewApplication()
 	t.flex = tview.NewFlex().SetDirection(tview.FlexRow)
 	t.flex.AddItem(t.head, 1, 0, false)
-	t.head.SetBackgroundColor(colorHead)
 	t.updateHead()
 	t.flex.AddItem(t.objects, 0, 1, true)
 	t.app.SetRoot(t.flex, true)
@@ -379,11 +393,11 @@ func (t *App) initApp() {
 		case tcell.KeyESC:
 			t.back()
 		case tcell.KeyBacktab:
-			t.head.SetBackgroundColor(t.head.GetBackgroundColor() - 1)
-			t.head.SetText(fmt.Sprintf("set color %d", t.head.GetBackgroundColor()))
+			colorHead2--
+			t.updateHead()
 		case tcell.KeyTab:
-			t.head.SetBackgroundColor(t.head.GetBackgroundColor() + 1)
-			t.head.SetText(fmt.Sprintf("set color %d", t.head.GetBackgroundColor()))
+			colorHead2++
+			t.updateHead()
 		}
 		if t.command != nil {
 			return event
@@ -502,6 +516,7 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		t.Current = *d
 		t.Nodename = data.Daemon.Nodename
 		t.app.QueueUpdateDraw(func() {
+			t.updateHead()
 			t.updateObjects()
 		})
 		// show data when new data published on dataC
@@ -511,6 +526,7 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 			t.eventCount++
 			t.app.QueueUpdateDraw(func() {
 				// TODO: detect if t.updateInstanceView and t.updateConfigView need to be called (config mtime change, ...)
+				t.updateHead()
 				switch t.focus() {
 				case viewInstance:
 					t.updateInstanceView()
@@ -623,6 +639,7 @@ func (t *App) updateObjects() {
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
+	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
 
 	row := 0
 	t.objects.SetCell(row, 0, tview.NewTableCell("CLUSTER").SetTextColor(colorTitle).SetSelectable(false))
@@ -832,7 +849,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	clean := func() {
 		t.flex.RemoveItem(t.command)
 		t.command = nil
-		t.setFocus()
+		t.app.SetFocus(t.flex.GetItem(1))
 	}
 	if t.command != nil {
 		clean()
@@ -919,6 +936,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	t.command = tview.NewInputField().
 		SetLabel(":").
 		SetFieldWidth(0).
+		SetFieldBackgroundColor(colorInput).
 		SetDoneFunc(func(key tcell.Key) {
 			text := strings.TrimSpace(t.command.GetText())
 			args := strings.Fields(text)
@@ -1017,7 +1035,6 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 
 func (t *App) setFilter(s string) {
 	t.Frame.Selector = s
-	t.updateHead()
 	t.restart()
 }
 
@@ -1409,14 +1426,13 @@ func (t *App) onRuneL(event *tcell.EventKey) {
 	}
 
 	t.initTextView()
-	t.nav(viewLog)
-	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(title())
+	t.textView.SetDynamicColors(true)
 	t.textView.SetChangedFunc(func() {
 		t.textView.ScrollToEnd()
 	})
-
 	t.textView.Clear()
+	t.nav(viewLog)
 
 	lines := 50
 	follow := true
@@ -1466,33 +1482,6 @@ func (t *App) onRuneL(event *tcell.EventKey) {
 			}
 		}
 	}()
-}
-
-func (t *App) onEnter(event *tcell.EventKey) {
-	switch {
-	case !t.viewPath.IsZero() && t.viewNode != "":
-		t.initTextView()
-		t.nav(viewInstance)
-	case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
-		t.nav(viewKeys)
-	}
-}
-
-func (t *App) setFocus() {
-	switch t.focus() {
-	case viewConfig:
-		t.app.SetFocus(t.textView)
-	case viewInstance:
-		t.app.SetFocus(t.textView)
-	case viewLog:
-		t.app.SetFocus(t.textView)
-	case viewKeys:
-		t.app.SetFocus(t.keys)
-	case viewKey:
-		t.app.SetFocus(t.textView)
-	default:
-		t.app.SetFocus(t.objects)
-	}
 }
 
 func (t *App) getConfigUpdatedAt() time.Time {
@@ -1550,6 +1539,7 @@ func (t *App) updateKeysView() {
 		return
 	}
 	t.keys.Clear()
+	t.keys.SetTitle(fmt.Sprintf("%s keys", t.viewPath))
 	t.keys.SetCell(0, 0, tview.NewTableCell("NAME").SetTextColor(colorTitle).SetSelectable(false))
 	t.keys.SetCell(0, 1, tview.NewTableCell("SIZE").SetTextColor(colorTitle).SetSelectable(false))
 	for i, key := range resp.JSON200.Items {
@@ -1641,10 +1631,9 @@ func (t *App) updateClusterConfigView() {
 	}
 
 	text := tview.TranslateANSI(string(resp.Body))
-	title := fmt.Sprintf("cluster configuration")
 	t.textView.SetDynamicColors(false)
-	t.textView.SetTitle(title)
 	t.textView.Clear()
+	t.textView.SetTitle("cluster configuration")
 	fmt.Fprint(t.textView, text)
 }
 
@@ -1662,9 +1651,8 @@ func (t *App) updateNodeConfigView() {
 	}
 
 	text := tview.TranslateANSI(string(resp.Body))
-	title := fmt.Sprintf("%s configuration", t.viewPath)
 	t.textView.SetDynamicColors(false)
-	t.textView.SetTitle(title)
+	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewNode))
 	t.textView.Clear()
 	fmt.Fprint(t.textView, text)
 }
@@ -1682,9 +1670,8 @@ func (t *App) updateObjectConfigView() {
 	}
 
 	text := tview.TranslateANSI(string(resp.Body))
-	title := fmt.Sprintf("%s configuration", t.viewPath)
 	t.textView.SetDynamicColors(false)
-	t.textView.SetTitle(title)
+	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewPath.String()))
 	t.textView.Clear()
 	fmt.Fprint(t.textView, text)
 }
@@ -1746,7 +1733,6 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewKeys:
 		t.keys = nil
 	}
-	t.updateHead()
 	switch to {
 	case viewLog:
 		t.initTextView()
@@ -1760,6 +1746,7 @@ func (t *App) navFromTo(from, to viewId) {
 		t.initTextView()
 		t.flex.AddItem(t.textView, 0, 1, true)
 		t.app.SetFocus(t.textView)
+		t.updateKeyTextView()
 	case viewInstance:
 		t.initTextView()
 		t.flex.AddItem(t.textView, 0, 1, true)
@@ -1775,6 +1762,7 @@ func (t *App) navFromTo(from, to viewId) {
 		t.app.SetFocus(t.objects)
 		t.updateObjects()
 	}
+	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
