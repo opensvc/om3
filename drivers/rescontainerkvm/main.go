@@ -34,6 +34,7 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/sshnode"
+	"github.com/opensvc/om3/util/waitfor"
 )
 
 const (
@@ -311,19 +312,19 @@ func (t *T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return t.Stop(ctx)
 	})
-	if err := t.waitForUp(); err != nil {
-		return err
+	if !t.waitForUp(ctx, *t.StartTimeout, 2*time.Second) {
+		return fmt.Errorf("waited too long for up")
 	}
 	if !t.hasEncap() {
 		// No need to wait for ping exec access if we don't need to
 		// execute anything in the vm.
 		return nil
 	}
-	if err := t.waitForPing(); err != nil {
-		return err
+	if !t.waitForPing(ctx, *t.StartTimeout, 2*time.Second) {
+		return fmt.Errorf("waited too long for ping")
 	}
-	if err := t.waitForOperational(); err != nil {
-		return err
+	if !t.waitForOperational(ctx, *t.StartTimeout, 2*time.Second) {
+		return fmt.Errorf("waited too long for operational")
 	}
 	return nil
 }
@@ -341,51 +342,51 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) waitForDown() error {
-	t.Log().Attr("timeout", *t.StopTimeout).Infof("wait for %s shutdown (timeout %s)", t.Name, *t.StopTimeout)
-	return WaitFor(func() bool {
+func (t *T) waitForDown(ctx context.Context, timeout, interval time.Duration) bool {
+	t.Log().Attr("timeout", timeout).Infof("wait for %s shutdown (timeout %s)", t.Name, timeout)
+	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isDown()
 		if err != nil {
 			return true
 		}
 		return v
-	}, time.Second*2, *t.StopTimeout)
+	})
 }
 
-func (t T) waitForUp() error {
-	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s up (timeout %s)", t.Name, *t.StartTimeout)
-	return WaitFor(func() bool {
+func (t *T) waitForUp(ctx context.Context, timeout, interval time.Duration) bool {
+	t.Log().Attr("timeout", timeout).Infof("wait for %s up (timeout %s)", t.Name, timeout)
+	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isUp()
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s up: %s", t.Name, err)
 			return true
 		}
 		return v
-	}, time.Second*2, *t.StopTimeout)
+	})
 }
 
-func (t T) waitForPing() error {
-	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s ping (timeout %s)", t.Name, *t.StartTimeout)
-	return WaitFor(func() bool {
+func (t *T) waitForPing(ctx context.Context, timeout, interval time.Duration) bool {
+	t.Log().Attr("timeout", timeout).Infof("wait for %s ping (timeout %s)", t.Name, timeout)
+	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isPinging()
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s ping: %s", t.Name, err)
 			return true
 		}
 		return v
-	}, time.Second*2, *t.StopTimeout)
+	})
 }
 
-func (t T) waitForOperational() error {
-	t.Log().Attr("timeout", *t.StartTimeout).Infof("wait for %s operational (timeout %s)", t.Name, *t.StartTimeout)
-	return WaitFor(func() bool {
+func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Duration) bool {
+	t.Log().Attr("timeout", timeout).Infof("wait for %s operational (timeout %s)", t.Name, timeout)
+	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isOperational()
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s operational: %s", t.Name, err)
 			return true
 		}
 		return v
-	}, time.Second*2, *t.StopTimeout)
+	})
 }
 
 func (t T) containerStop(ctx context.Context) error {
@@ -398,7 +399,7 @@ func (t T) containerStop(ctx context.Context) error {
 		if err := t.stop(); err != nil {
 			return err
 		}
-		if err := t.waitForDown(); err != nil {
+		if !t.waitForDown(ctx, *t.StopTimeout, 2*time.Second) {
 			t.Log().Warnf("waited too long for shutdown")
 			if err := t.destroy(); err != nil {
 				return err
@@ -832,9 +833,6 @@ func (t T) execViaInternalSSH(cmd string) error {
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
 	session.Stdin = os.Stdin
-	if err != nil {
-		return err
-	}
 	if err := session.Run(cmd); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
@@ -1041,17 +1039,4 @@ func (t T) upPeer() (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) error {
-	limit := time.Now().Add(timeout)
-	for {
-		if v := fn(); v {
-			return nil
-		}
-		if time.Now().After(limit) {
-			return fmt.Errorf("timeout")
-		}
-		time.Sleep(interval)
-	}
 }
