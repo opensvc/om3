@@ -9,8 +9,8 @@ Threads                    node3
 Nodes                      node3         
  score                   | 96            
   load15m                | 0.1           
-  mem                    | 26/100%:1.94g 
-  swap                   | 0/100%:1.92g  
+  mem                    | 26%1.94g<100% 
+  swap                   | 0%1.92g<100%  
   compat           warn  | 12            
  state                   | *             
                                          

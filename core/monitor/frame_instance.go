@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (f Frame) sObjectInstance(path string, node string, scope []string) string {
+func (f Frame) StrObjectInstance(path string, node string, scope []string) string {
 	s := ""
 	avail := f.Current.Cluster.Object[path].Avail
 	inst := f.Current.Cluster.Node[node].Instance[path]
@@ -37,7 +37,7 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 	} else if inst.Config != nil || slices.Contains(scope, node) {
 		s += iconUndef
 	}
-	return s + "\t"
+	return s
 }
 
 func sObjectInstanceAvail(objectAvail status.T, instance instance.Status, mon instance.Monitor) string {

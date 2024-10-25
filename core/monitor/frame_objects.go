@@ -55,7 +55,12 @@ func (f Frame) scalerInstancesUp(path string) int {
 	return actual
 }
 
-func (f Frame) sObjectRunning(path string) string {
+func (f Frame) sObjectOrchestrateAndRunning(path string) string {
+	s := f.Current.Cluster.Object[path]
+	return fmt.Sprintf("%-5s %s", s.Orchestrate, f.StrObjectRunning(path))
+}
+
+func (f Frame) StrObjectRunning(path string) string {
 	var (
 		actual, expected int
 	)
@@ -92,12 +97,16 @@ func (f Frame) sObjectRunning(path string) string {
 	case actual == 0 && expected == 0:
 		return ""
 	case expected == 0:
-		return fmt.Sprintf("%-5s %d", s.Orchestrate, actual)
+		return fmt.Sprintf("%d", actual)
 	case avail == status.NotApplicable:
-		return fmt.Sprintf("%-5s", s.Orchestrate)
+		return ""
 	default:
-		return fmt.Sprintf("%-5s %d/%d", s.Orchestrate, actual, expected)
+		return fmt.Sprintf("%d/%d", actual, expected)
 	}
+}
+
+func StrObjectStatus(d object.Status) string {
+	return sObjectAvail(d) + sObjectWarning(d) + sObjectPlacement(d)
 }
 
 func sObjectAvail(d object.Status) string {
@@ -107,13 +116,12 @@ func sObjectAvail(d object.Status) string {
 
 func (f Frame) sObject(path string) string {
 	d := f.Current.Cluster.Object[path]
-	c3 := sObjectAvail(d) + sObjectWarning(d) + sObjectPlacement(d)
 	s := fmt.Sprintf(" %s\t", bold(path))
-	s += fmt.Sprintf("%s\t", c3)
-	s += fmt.Sprintf("%s\t", f.sObjectRunning(path))
+	s += fmt.Sprintf("%s\t", StrObjectStatus(d))
+	s += fmt.Sprintf("%s\t", f.sObjectOrchestrateAndRunning(path))
 	s += fmt.Sprintf("%s\t", f.info.separator)
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.sObjectInstance(path, node, d.Scope)
+		s += f.StrObjectInstance(path, node, d.Scope) + "\t"
 	}
 	return s
 }
