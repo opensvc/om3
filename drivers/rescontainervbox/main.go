@@ -35,6 +35,7 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/sshnode"
+	"github.com/opensvc/om3/util/waitfor"
 )
 
 type (
@@ -130,19 +131,32 @@ func (t *T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return t.Stop(ctx)
 	})
-	if err := t.waitForExpectation(ctx, "up", true, t.isUp); err != nil {
-		return err
+	t.Log().Infof("wait for %s up", t.Name)
+	if ok, err := waitfor.TrueNoErrorCtx(ctx, 0, 2*time.Second, t.isUp); err != nil {
+		return fmt.Errorf("wait for %s up: %s", t.Name, err)
+	} else if !ok {
+		return fmt.Errorf("wait for %s up: timeout", t.Name)
 	}
 
 	if _, err := net.LookupIP(t.hostname()); err != nil {
 		t.Log().Debugf("can not do dns resolution for : %s", t.Name)
 		return nil
 	}
-	if err := t.waitForExpectation(ctx, "ping", true, t.isPinging); err != nil {
-		return err
+
+	t.Log().Infof("wait for %s ping", t.Name)
+	if ok, err := waitfor.TrueNoErrorCtx(ctx, 0, 2*time.Second, t.isPinging); err != nil {
+		// TODO: ensure we can continue here (best effort ?)
+		t.Log().Warnf("wait for %s ping: %s", t.Name, err)
+	} else if !ok {
+		return fmt.Errorf("wait for %s ping: timeout", t.Name)
 	}
-	if err := t.waitForExpectation(ctx, "operational", true, t.isOperational); err != nil {
-		return err
+
+	t.Log().Infof("wait for %s operational", t.Name)
+	if ok, err := waitfor.TrueNoErrorCtx(ctx, 0, 2*time.Second, t.isOperational); err != nil {
+		// TODO: ensure we can continue here (best effort ?)
+		t.Log().Warnf("wait for %s operational: %s", t.Name, err)
+	} else if !ok {
+		return fmt.Errorf("wait for %s operational: timeout", t.Name)
 	}
 	return nil
 }
@@ -384,8 +398,12 @@ func (t *T) containerStop(ctx context.Context) error {
 		if err := t.stop(); err != nil {
 			return err
 		}
-		if err := t.waitForExpectation(ctx, "shutdown", false, t.isDown); err != nil {
-			t.Log().Warnf("waited too long for shutdown")
+		t.Log().Infof("wait for %s down", t.Name)
+		if ok, err := waitfor.TrueNoErrorCtx(ctx, 0, 2*time.Second, t.isDown); err != nil {
+			// TODO: try a destroy instead of ignore t.isDown error ?
+			t.Log().Warnf("wait for %s down failed: %s", t.Name, err)
+		} else if !ok {
+			t.Log().Warnf("wait for %s down failed: timeout", t.Name)
 			return t.destroy()
 		}
 		return nil
@@ -412,27 +430,6 @@ func (t *T) registerVM() error {
 	t.Log().Infof("VBoxManage registervm %s", configFilePath)
 	_, err = t.vBoxManageCommand("registervm", configFilePath)
 	return err
-}
-
-func (t *T) waitForExpectation(ctx context.Context, s string, logError bool, fn func() (bool, error)) error {
-	t.Log().Infof("wait for %s %s", s, t.Name)
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			if ok, err := fn(); err != nil {
-				if logError {
-					t.Log().Errorf("abort waiting for %s %s: %s", t.Name, s, err)
-				}
-				return nil
-			} else if ok {
-				return nil
-			}
-		}
-	}
 }
 
 func (t *T) isUp() (bool, error) {
