@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/monitor"
@@ -49,6 +51,7 @@ type (
 		objects  *tview.Table
 		flex     *tview.Flex
 		command  *tview.InputField
+		contexts *tview.List
 
 		client *client.T
 
@@ -268,12 +271,15 @@ func (t *App) initObjectsTable() {
 	table.SetEvaluateAllRows(true)
 
 	onEnter := func(event *tcell.EventKey) {
+		row, col := table.GetSelection()
 		switch {
 		case !t.viewPath.IsZero() && t.viewNode != "":
 			t.initTextView()
 			t.nav(viewInstance)
 		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
 			t.nav(viewKeys)
+		case row == 0 && col == 1:
+			t.listContexts()
 		}
 	}
 
@@ -424,15 +430,77 @@ func (t *App) initApp() {
 func (t *App) init() error {
 	t.initApp()
 
-	if cli, err := client.New(client.WithTimeout(0)); err != nil {
-		return err
-	} else {
-		t.client = cli
-	}
-
 	monitor.InitColor()
 
 	return nil
+}
+
+func (t *App) listContexts() {
+	cfg, err := clientcontext.Load()
+	if err != nil {
+		t.errorf("%s", err)
+	}
+
+	v := tview.NewTable()
+	v.SetSelectable(true, false)
+	v.SetTitle("connect to")
+
+	v.SetCell(0, 0, tview.NewTableCell("CONTEXT").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 1, tview.NewTableCell("ENDPOINT").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 2, tview.NewTableCell("USER").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 3, tview.NewTableCell("NAMESPACE").SetTextColor(colorTitle).SetSelectable(false))
+	row := 0
+	for name, data := range cfg.Contexts {
+		row++
+		selectable := true
+		cluster, clusterOk := cfg.Clusters[data.ClusterRefName]
+		user, userOk := cfg.Users[data.UserRefName]
+		if clusterOk {
+			v.SetCell(row, 1, tview.NewTableCell(cluster.Server).SetSelectable(false))
+		} else {
+			v.SetCell(row, 1, tview.NewTableCell("-").SetSelectable(false))
+			selectable = false
+		}
+		if userOk {
+			v.SetCell(row, 2, tview.NewTableCell(user.Name).SetSelectable(false))
+		} else {
+			v.SetCell(row, 2, tview.NewTableCell("-").SetSelectable(false))
+			selectable = false
+		}
+		v.SetCell(row, 0, tview.NewTableCell(name).SetSelectable(selectable))
+		v.SetCell(row, 3, tview.NewTableCell(data.Namespace).SetSelectable(false))
+	}
+
+	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+		}
+		return event
+	})
+	v.SetSelectedFunc(func(row, col int) {
+		c := v.GetCell(row, col).Text
+		os.Setenv("OSVC_CONTEXT", c)
+		if t.client, err = client.New(); err != nil {
+			t.errorf("%s", err)
+		}
+		t.reconnect()
+		t.flex.Clear()
+		t.flex.AddItem(t.head, 1, 0, false)
+		t.flex.AddItem(t.objects, 0, 1, true)
+		t.app.SetFocus(t.objects)
+		t.updateHead()
+	})
+
+	t.flex.Clear()
+	t.flex.AddItem(t.head, 1, 0, false)
+	t.flex.AddItem(v, 0, 1, true)
+	t.app.SetFocus(v)
+	t.updateHead()
 }
 
 func (t *App) Run() error {
@@ -440,10 +508,22 @@ func (t *App) Run() error {
 		return err
 	}
 	go t.runEventReader()
+	if cli, err := client.New(client.WithTimeout(0)); err != nil {
+		t.errorf("%s", err)
+	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+		t.errorf("%s", err)
+		t.listContexts()
+	} else if resp.StatusCode() == http.StatusOK {
+		t.client = cli
+		t.reconnect()
+	} else {
+		t.listContexts()
+	}
 	return t.app.Run()
 }
 
 func (t *App) runEventReader() {
+	<-t.restartC
 	for {
 		evReader, err := t.client.NewGetEvents().SetSelector(t.Selector).GetReader()
 		if err != nil {
@@ -491,8 +571,6 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		for {
 			ev, err := evReader.Read()
 			if err != nil {
-				err = fmt.Errorf("event queue read error: %w", err)
-				t.errorf("%s", err)
 				t.errC <- err
 				return
 			}
@@ -919,10 +997,16 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.errorf("unknown command: %s", action)
 		}
 	}
-	nodeAction := func(action string, nodes map[string]any) {
-		switch action {
-		case "daemon restart":
-			t.actionNodeDaemonRestart(nodes)
+	nodeAction := func(args []string, nodes map[string]any) {
+		switch args[0] {
+		case "daemon":
+			if len(args) < 2 {
+				return
+			}
+			switch args[1] {
+			case "restart":
+				t.actionNodeDaemonRestart(nodes)
+			}
 		case "freeze":
 			t.actionNodeFreeze(nodes)
 		case "unfreeze", "thaw":
@@ -930,7 +1014,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "drain":
 			t.actionNodeDrain(nodes)
 		default:
-			t.errorf("unknown command: %s", action)
+			t.errorf("unknown command: %s", args[0])
 		}
 	}
 	t.command = tview.NewInputField().
@@ -951,6 +1035,9 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				switch action {
 				case "quit", "q":
 					t.stop()
+				case "connect":
+					t.listContexts()
+					clean()
 				case "filter":
 					if len(args) < 2 {
 						t.errorf("not enough arguments: filter <expression>")
@@ -998,7 +1085,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					case len(t.selectedInstances) > 0:
 						instanceAction(action, t.selectedInstances)
 					case len(t.selectedNodes) > 0:
-						nodeAction(action, t.selectedNodes)
+						nodeAction(args[1:], t.selectedNodes)
 					default:
 						row, col := t.objects.GetSelection()
 						switch {
@@ -1008,7 +1095,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							node := t.objects.GetCell(row, col).Text
 							selection := make(map[string]any)
 							selection[node] = nil
-							nodeAction(action, selection)
+							nodeAction(args[1:], selection)
 						case row >= t.firstObjectRow && col == 0:
 							path := t.objects.GetCell(row, 0).Text
 							selection := make(map[string]any)
@@ -1035,7 +1122,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 
 func (t *App) setFilter(s string) {
 	t.Frame.Selector = s
-	t.restart()
+	t.reconnect()
 }
 
 func (t *App) actionNodeDaemonRestart(nodes map[string]any) {
@@ -1364,6 +1451,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
    ESC                  Close popup
 
  Commands:
+
+   connect              Connect to another cluster
 
    do <action>
 
@@ -1793,7 +1882,7 @@ func (t *App) initTextView() {
 	return
 }
 
-func (t *App) restart() {
+func (t *App) reconnect() {
 	t.restartC <- nil
 }
 

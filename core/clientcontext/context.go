@@ -67,18 +67,12 @@ func IsSet() bool {
 	return env.Context() != ""
 }
 
-// New return a remote cluster connection context (endpoint and user)
-func New() (T, error) {
+func Load() (config, error) {
 	var cfg config
-	var c T
-	n := env.Context()
-	if n == "" {
-		return c, nil
-	}
 	cf, _ := homedir.Expand(ConfigFilename)
 	b, err := os.ReadFile(cf)
 	if err != nil {
-		return c, err
+		return cfg, err
 	}
 	decodeJSON := func() error {
 		if err := json.Unmarshal(b, &cfg); err != nil {
@@ -107,6 +101,20 @@ func New() (T, error) {
 		return fmt.Errorf("could not decode %s: %w", ConfigFilename, errs)
 	}
 	if err := decode(); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
+}
+
+// New return a remote cluster connection context (endpoint and user)
+func New() (T, error) {
+	var c T
+	n := env.Context()
+	if n == "" {
+		return c, nil
+	}
+	cfg, err := Load()
+	if err != nil {
 		return c, err
 	}
 	cr, ok := cfg.Contexts[n]
