@@ -29,7 +29,7 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
 			log.Infof("serve node config file to %s", userFromContext(ctx).GetUserName())
 			return ctx.File(filename)
 		}
-		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Config file not found for %s@%s", a.localhost)
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Node config file not found")
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		return c.GetNodeConfigFile(ctx.Request().Context(), nodename)
