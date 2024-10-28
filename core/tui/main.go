@@ -38,6 +38,7 @@ type (
 	App struct {
 		*monitor.Frame
 
+		user       string
 		eventCount uint64
 
 		stack viewStack
@@ -101,6 +102,7 @@ var (
 	colorTitle     = tcell.ColorGray
 	colorHead      = tcell.ColorSteelBlue
 	colorHead2     = tcell.ColorOlive
+	colorHead3     = tcell.ColorCrimson
 	colorInput     = tcell.ColorSteelBlue
 	colorHighlight = tcell.ColorWhite
 )
@@ -134,10 +136,12 @@ func (t *App) updateHead() {
 		return
 	}
 	title := box.GetTitle()
-	t.head.SetCell(0, 0, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
-	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
-	t.head.SetCell(0, 2, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
-	t.head.SetCell(0, 3, tview.NewTableCell("").SetTextColor(colorHead2))
+	t.head.SetCell(0, 0, tview.NewTableCell(t.user).SetBackgroundColor(colorHead3))
+	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
+	t.head.SetCell(0, 2, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
+	t.head.SetCell(0, 3, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
+	t.head.SetCell(0, 4, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
+	t.head.SetCell(0, 5, tview.NewTableCell("").SetTextColor(colorHead2))
 }
 
 func (t viewId) String() string {
@@ -449,7 +453,13 @@ func (t *App) listContexts() {
 	v.SetCell(0, 1, tview.NewTableCell("ENDPOINT").SetTextColor(colorTitle).SetSelectable(false))
 	v.SetCell(0, 2, tview.NewTableCell("USER").SetTextColor(colorTitle).SetSelectable(false))
 	v.SetCell(0, 3, tview.NewTableCell("NAMESPACE").SetTextColor(colorTitle).SetSelectable(false))
-	row := 0
+
+	row := 1
+	v.SetCell(row, 0, tview.NewTableCell("").SetSelectable(true))
+	v.SetCell(row, 1, tview.NewTableCell("localhost").SetSelectable(false))
+	v.SetCell(row, 2, tview.NewTableCell("root").SetSelectable(false))
+	v.SetCell(row, 3, tview.NewTableCell(os.Getenv("OSVC_NAMESPACE")).SetSelectable(false))
+
 	for name, data := range cfg.Contexts {
 		row++
 		selectable := true
@@ -485,15 +495,21 @@ func (t *App) listContexts() {
 	v.SetSelectedFunc(func(row, col int) {
 		c := v.GetCell(row, col).Text
 		os.Setenv("OSVC_CONTEXT", c)
-		if t.client, err = client.New(); err != nil {
+		if cli, err := client.New(); err != nil {
 			t.errorf("%s", err)
+		} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+			t.errorf("%s", err)
+			t.listContexts()
+		} else if resp.StatusCode() == http.StatusOK {
+			t.client = cli
+			t.user = resp.JSON200.Name
+			t.reconnect()
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
 		}
-		t.reconnect()
-		t.flex.Clear()
-		t.flex.AddItem(t.head, 1, 0, false)
-		t.flex.AddItem(t.objects, 0, 1, true)
-		t.app.SetFocus(t.objects)
-		t.updateHead()
 	})
 
 	t.flex.Clear()
@@ -515,6 +531,7 @@ func (t *App) Run() error {
 		t.listContexts()
 	} else if resp.StatusCode() == http.StatusOK {
 		t.client = cli
+		t.user = resp.JSON200.Name
 		t.reconnect()
 	} else {
 		t.listContexts()
