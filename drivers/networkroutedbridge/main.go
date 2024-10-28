@@ -271,10 +271,10 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 
 func (t T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if tunnel == "never" {
-		return true, nil
+		return false, nil
 	}
 	if tunnel == "always" {
-		return false, nil
+		return true, nil
 	}
 	if _, ipnet, err := network.IPReachableFrom(peerIP); err != nil {
 		return false, err
