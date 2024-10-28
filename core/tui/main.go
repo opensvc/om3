@@ -460,7 +460,15 @@ func (t *App) listContexts() {
 	v.SetCell(row, 2, tview.NewTableCell("root").SetSelectable(false))
 	v.SetCell(row, 3, tview.NewTableCell(os.Getenv("OSVC_NAMESPACE")).SetSelectable(false))
 
-	for name, data := range cfg.Contexts {
+	contexts := make([]string, len(cfg.Contexts))
+	i := 0
+	for context := range cfg.Contexts {
+		contexts[i] = context
+		i++
+	}
+	sort.Strings(contexts)
+	for _, name := range contexts {
+		data := cfg.Contexts[name]
 		row++
 		selectable := true
 		cluster, clusterOk := cfg.Clusters[data.ClusterRefName]
@@ -524,6 +532,11 @@ func (t *App) Run() error {
 		return err
 	}
 	go t.runEventReader()
+	go t.initContext()
+	return t.app.Run()
+}
+
+func (t *App) initContext() {
 	if cli, err := client.New(client.WithTimeout(0)); err != nil {
 		t.errorf("%s", err)
 	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
@@ -536,7 +549,6 @@ func (t *App) Run() error {
 	} else {
 		t.listContexts()
 	}
-	return t.app.Run()
 }
 
 func (t *App) runEventReader() {
