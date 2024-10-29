@@ -444,6 +444,8 @@ func (t *App) initApp() {
 			t.onRuneL(event)
 		case 'q':
 			t.stop()
+		case 'r':
+			t.onRuneR(event)
 		}
 		return event
 	})
@@ -1099,6 +1101,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.actionInstanceUnfreeze(keys)
 		case "restart":
 			t.actionInstanceRestart(keys)
+		case "refresh":
+			t.actionInstanceRefresh(keys)
 		case "switch":
 			t.actionInstanceSwitch(keys)
 		//	case "clear":
@@ -1282,6 +1286,19 @@ func (t *App) actionRestart(paths map[string]any) {
 			continue
 		}
 		_, _ = t.client.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostObjectActionRestart{})
+	}
+}
+
+func (t *App) actionInstanceRefresh(keys map[[2]string]any) {
+	ctx := context.Background()
+	for key := range keys {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		_, _ = t.client.PostInstanceActionStatusWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 
@@ -1557,7 +1574,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
    h                    Show this help
    l                    Show node, object or instance logs
    q                    Quit
-   Enter                Show instance status
+   r                    Refresh the instance status
+   Enter                Show the detailed instance status
    ESC                  Close popup
 
  Commands:
@@ -1574,8 +1592,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
        unfreeze, unprovision  
 
      instance actions:
-       clear, delete, freeze, provision, start, stop, switch, unfreeze,
-       unprovision  
+       clear, delete, freeze, provision, refresh, start, stop, switch,
+       unfreeze, unprovision  
 
      node actions:
        drain freeze, unfreeze
@@ -1795,6 +1813,22 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 				t.errorf("%s", err)
 			}
 		}
+	})
+}
+
+func (t *App) onRuneR(event *tcell.EventKey) {
+	switch {
+	case t.viewPath.IsZero():
+		return
+	case t.viewNode == "":
+		return
+	}
+	key := [2]string{
+		t.viewPath.String(),
+		t.viewNode,
+	}
+	t.actionInstanceRefresh(map[[2]string]any{
+		key: nil,
 	})
 }
 
