@@ -100,38 +100,44 @@ func (f Frame) wThreadHeartbeats() string {
 		s += bold("\n  "+name) + "\t"
 		switch hbStatus.State {
 		case "running":
-			s += green("running") + sThreadAlerts(hbStatus.Alerts)
+			s += green("running") + StrThreadAlerts(hbStatus.Alerts)
 		case "stopped":
-			s += hired("stopped") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("stopped") + StrThreadAlerts(hbStatus.Alerts)
 		case "failed":
-			s += hired("failed") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("failed") + StrThreadAlerts(hbStatus.Alerts)
 		default:
-			s += hired("unknown") + sThreadAlerts(hbStatus.Alerts)
+			s += hired("unknown") + StrThreadAlerts(hbStatus.Alerts)
 		}
 		s += "\t" + hbStatus.Type + "\t"
 		s += f.info.separator + "\t"
 		for _, peer := range f.Current.Cluster.Config.Nodes {
-			if peer == f.Nodename {
-				s += iconNotApplicable + "\t"
-				continue
-			}
-			peerData, ok := hbStatus.Peers[peer]
-			if !ok {
-				s += iconUndef + "\t"
-				continue
-			}
-			if peerData.IsBeating {
-				s += iconUp + "\t"
-			} else {
-				s += iconDownIssue + "\t"
-			}
+			s += f.StrNodeHbStatus(hbStatus, peer) + "\t"
 		}
 	}
 
 	return s
 }
 
-func sThreadAlerts(data []daemonsubsystem.Alert) string {
+func (f Frame) StrNodeHbStatus(hbStatus daemonsubsystem.HeartbeatStream, peer string) string {
+	s := ""
+	if peer == f.Nodename {
+		s += iconNotApplicable
+		return s
+	}
+	peerData, ok := hbStatus.Peers[peer]
+	if !ok {
+		s += iconUndef
+		return s
+	}
+	if peerData.IsBeating {
+		s += iconUp
+	} else {
+		s += iconDownIssue
+	}
+	return s
+}
+
+func StrThreadAlerts(data []daemonsubsystem.Alert) string {
 	if len(data) > 0 {
 		return yellow("!")
 	}

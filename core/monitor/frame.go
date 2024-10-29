@@ -48,7 +48,7 @@ func InitColor() {
 	iconStandbyDown = hired("x")
 	iconStandbyUpIssue = hired("o")
 	iconUndef = hired("?")
-	iconFrozen = hiblue("*")
+	iconFrozen = bold(hiblue("*"))
 	iconDown = hiblack("X")
 	iconDRP = hiblack("#")
 	iconLeader = hiblack("^")

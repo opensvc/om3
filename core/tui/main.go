@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sizeconv"
@@ -489,7 +490,7 @@ func (t *App) listContexts() {
 		row++
 		selectable := true
 		cluster, clusterOk := cfg.Clusters[data.ClusterRefName]
-		user, userOk := cfg.Users[data.UserRefName]
+		_, userOk := cfg.Users[data.UserRefName]
 		if clusterOk {
 			v.SetCell(row, 1, tview.NewTableCell(cluster.Server).SetSelectable(false))
 		} else {
@@ -497,7 +498,7 @@ func (t *App) listContexts() {
 			selectable = false
 		}
 		if userOk {
-			v.SetCell(row, 2, tview.NewTableCell(user.Name).SetSelectable(false))
+			v.SetCell(row, 2, tview.NewTableCell(data.UserRefName).SetSelectable(false))
 		} else {
 			v.SetCell(row, 2, tview.NewTableCell("-").SetSelectable(false))
 			selectable = false
@@ -577,7 +578,7 @@ func (t *App) runEventReader() {
 			if t.exitFlag.Load() {
 				return
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -760,14 +761,28 @@ func (t *App) updateObjects() {
 		}
 	}
 
+	nodesHbCells := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeHbMode(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesHb1Cells := func(row int, stream daemonsubsystem.HeartbeatStream) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeHbStatus(stream, nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
 	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
 
 	row := 0
-	t.objects.SetCell(row, 0, tview.NewTableCell("CLUSTER").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(t.Current.Cluster.Config.Name).SetSelectable(true))
+	t.objects.SetCell(row, 0, tview.NewTableCell("").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(true))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 3, tview.NewTableCell("NODE").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
@@ -785,7 +800,7 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".LOAD").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│LOAD").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesLoadCells(row)
 
@@ -793,7 +808,7 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".MEM").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│MEM").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesMemCells(row)
 
@@ -801,9 +816,30 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".SWAP").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│SWAP").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesSwapCells(row)
+
+	if len(t.Current.Cluster.Config.Nodes) > 1 {
+		row++
+		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+		nodesHbCells(row)
+
+		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
+			name := "│" + hbStatus.ID + monitor.StrThreadAlerts(hbStatus.Alerts)
+			row++
+			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
+			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+			nodesHb1Cells(row, hbStatus)
+		}
+	}
 
 	row++
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
