@@ -1998,6 +1998,10 @@ func (t *App) reconnect() {
 
 func (t *App) stop() {
 	t.exitFlag.Store(true)
-	t.errC <- nil
+	select {
+	case t.errC <- nil:
+	default:
+	}
+
 	t.app.Stop()
 }
