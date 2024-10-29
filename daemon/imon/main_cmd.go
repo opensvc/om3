@@ -718,25 +718,6 @@ func (t *Manager) AllInstanceMonitors() map[string]instance.Monitor {
 	return m
 }
 
-func (t *Manager) isExtraInstance() (bool, string) {
-	if t.state.IsHALeader {
-		return false, "object is not leader"
-	}
-	if v, reason := t.isHAOrchestrateable(); !v {
-		return false, reason
-	}
-	if t.objStatus.Avail != status.Up {
-		return false, "object is not up"
-	}
-	if t.objStatus.Topology != topology.Flex {
-		return false, "object is not flex"
-	}
-	if t.objStatus.UpInstancesCount <= t.objStatus.FlexTarget {
-		return false, fmt.Sprintf("%d/%d up instances", t.objStatus.UpInstancesCount, t.objStatus.FlexTarget)
-	}
-	return true, ""
-}
-
 func (t *Manager) isHAOrchestrateable() (bool, string) {
 	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"

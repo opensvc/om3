@@ -19,9 +19,19 @@ func (t *Manager) orchestrateHAStop() {
 	if t.objStatus.Topology != topology.Flex {
 		return
 	}
-	if v, _ := t.isExtraInstance(); !v {
+
+	if t.nodeStatus[t.localhost].IsFrozen() {
+		return
+	} else if t.objStatus.UpInstancesCount <= t.objStatus.FlexTarget {
+		return
+	} else if t.state.IsHALeader {
+		return
+	} else if v, _ := t.isHAOrchestrateable(); !v {
+		return
+	} else if t.objStatus.Avail != status.Up {
 		return
 	}
+
 	t.stop()
 }
 
