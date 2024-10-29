@@ -538,9 +538,11 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		c.Err <- nil
 	default:
 		confFile := c.Path.ConfigFile()
-		if err := freezeIfOrchestrateHA(confFile); err != nil {
-			c.Err <- err
-			return
+		if instance.ConfigData.Get(c.Path, t.localhost) == nil {
+			if err := freezeIfOrchestrateHA(confFile); err != nil {
+				c.Err <- err
+				return
+			}
 		}
 		if err := os.Rename(c.File, confFile); err != nil {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
