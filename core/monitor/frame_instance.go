@@ -126,6 +126,6 @@ func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string
 	case instance.MonitorGlobalExpectNone:
 		return ""
 	default:
-		return hiblack(" >" + instanceMonitor.GlobalExpect.String())
+		return hiblue(" >" + instanceMonitor.GlobalExpect.String())
 	}
 }

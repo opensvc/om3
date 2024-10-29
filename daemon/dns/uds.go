@@ -61,7 +61,7 @@ func (t *Manager) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
 
 func (t *Manager) getAllDomains(b []byte) getAllDomainsResponse {
 	return getAllDomainsResponse{
-		domain{Zone: t.cluster.Name},
+		domain{Zone: t.clusterConfig.Name},
 	}
 }
 
@@ -104,7 +104,7 @@ func (t *Manager) getRecords(recordType, recordName string) Zone {
 }
 
 func (t *Manager) sockGID() (int, error) {
-	s := t.cluster.Listener.DNSSockGID
+	s := t.clusterConfig.Listener.DNSSockGID
 	if s == "" {
 		return -1, nil
 	}
@@ -121,7 +121,7 @@ func (t *Manager) sockGID() (int, error) {
 }
 
 func (t *Manager) sockUID() (int, error) {
-	s := t.cluster.Listener.DNSSockUID
+	s := t.clusterConfig.Listener.DNSSockUID
 	if s == "" {
 		return -1, nil
 	}
@@ -139,9 +139,26 @@ func (t *Manager) sockUID() (int, error) {
 
 // sockChown chown dns uds file and return bool true on changes
 func (t *Manager) sockChown() (bool, error) {
-	var uid, gid int
+	sockDir := rawconfig.DNSUDSDir()
 	sockPath := rawconfig.DNSUDSFile()
-	if info, err := os.Stat(sockPath); os.IsNotExist(err) {
+	changed := false
+	if c, err := t.chown(sockDir); err != nil {
+		return changed, fmt.Errorf("%s chown error: %s", sockDir, err)
+	} else {
+		changed = changed || c
+	}
+	if c, err := t.chown(sockPath); err != nil {
+		return changed, fmt.Errorf("%s chown error: %s", sockPath, err)
+	} else {
+		changed = changed || c
+	}
+	return changed, nil
+}
+
+// chown file and return bool true on changes
+func (t *Manager) chown(filename string) (bool, error) {
+	var uid, gid int
+	if info, err := os.Stat(filename); os.IsNotExist(err) {
 		return false, err
 	} else if err != nil {
 		return false, err
@@ -156,10 +173,10 @@ func (t *Manager) sockChown() (bool, error) {
 	} else if (sockUID == uid) && (sockGID == gid) {
 		// no change
 		return false, nil
-	} else if err := os.Chown(sockPath, sockUID, sockGID); err != nil {
+	} else if err := os.Chown(filename, sockUID, sockGID); err != nil {
 		return false, err
 	} else {
-		t.log.Infof("chown %d:%d %s", sockUID, sockGID, sockPath)
+		t.log.Infof("chown %d:%d %s", sockUID, sockGID, filename)
 		return true, nil
 	}
 }
@@ -180,7 +197,7 @@ func (t *Manager) startUDSListener() error {
 	}
 
 	if changed, err := t.sockChown(); err != nil {
-		return fmt.Errorf("sock chown error: %s", err)
+		return err
 	} else if changed {
 		t.status.ConfiguredAt = time.Now()
 		t.publishSubsystemDnsUpdated()

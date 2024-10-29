@@ -23,16 +23,22 @@ func (f Frame) wArbitrators() {
 			if i == 0 {
 				s += bold(" "+name) + "\t\t\t" + f.info.separator + "\t"
 			}
-			aStatus := f.Current.Cluster.Node[node].Status.Arbitrators[name].Status
-			switch aStatus {
-			case status.Up:
-				s += iconUp + "\t"
-			default:
-				s += iconDown + "\t"
-			}
+			s += f.StrNodeArbitratorStatus(name, node) + "\t"
 		}
 		s += "\n"
 	}
 	fmt.Fprintf(f.w, s)
 	fmt.Fprintln(f.w, f.info.empty)
+}
+
+func (f Frame) StrNodeArbitratorStatus(name, node string) string {
+	s := ""
+	aStatus := f.Current.Cluster.Node[node].Status.Arbitrators[name].Status
+	switch aStatus {
+	case status.Up:
+		s += iconUp
+	default:
+		s += iconDown
+	}
+	return s
 }

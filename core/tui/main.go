@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/monitor"
@@ -23,7 +25,9 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
@@ -36,6 +40,7 @@ type (
 	App struct {
 		*monitor.Frame
 
+		user       string
 		eventCount uint64
 
 		stack viewStack
@@ -49,6 +54,7 @@ type (
 		objects  *tview.Table
 		flex     *tview.Flex
 		command  *tview.InputField
+		contexts *tview.List
 
 		client *client.T
 
@@ -98,6 +104,7 @@ var (
 	colorTitle     = tcell.ColorGray
 	colorHead      = tcell.ColorSteelBlue
 	colorHead2     = tcell.ColorOlive
+	colorHead3     = tcell.ColorCrimson
 	colorInput     = tcell.ColorSteelBlue
 	colorHighlight = tcell.ColorWhite
 )
@@ -130,11 +137,29 @@ func (t *App) updateHead() {
 	if !ok {
 		return
 	}
+	conn := func() string {
+		endpoint := ""
+		if t.client != nil {
+			endpoint = t.client.Hostname()
+		}
+		s := t.user + "@" + endpoint
+		switch {
+		case t.user == "" && endpoint == "":
+			return ""
+		case t.user != "" && endpoint == "":
+			return fmt.Sprintf("%s@%s (uds)", t.user, hostname.Hostname())
+		default:
+			return fmt.Sprintf("%s@%s", t.user, endpoint)
+		}
+		return s
+	}
 	title := box.GetTitle()
-	t.head.SetCell(0, 0, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
-	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
-	t.head.SetCell(0, 2, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
-	t.head.SetCell(0, 3, tview.NewTableCell("").SetTextColor(colorHead2))
+	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
+	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
+	t.head.SetCell(0, 2, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
+	t.head.SetCell(0, 3, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
+	t.head.SetCell(0, 4, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
+	t.head.SetCell(0, 5, tview.NewTableCell("").SetTextColor(colorHead2))
 }
 
 func (t viewId) String() string {
@@ -268,12 +293,15 @@ func (t *App) initObjectsTable() {
 	table.SetEvaluateAllRows(true)
 
 	onEnter := func(event *tcell.EventKey) {
+		row, col := table.GetSelection()
 		switch {
 		case !t.viewPath.IsZero() && t.viewNode != "":
 			t.initTextView()
 			t.nav(viewInstance)
 		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
 			t.nav(viewKeys)
+		case row == 0 && col == 1:
+			t.listContexts()
 		}
 	}
 
@@ -416,6 +444,8 @@ func (t *App) initApp() {
 			t.onRuneL(event)
 		case 'q':
 			t.stop()
+		case 'r':
+			t.onRuneR(event)
 		}
 		return event
 	})
@@ -424,15 +454,97 @@ func (t *App) initApp() {
 func (t *App) init() error {
 	t.initApp()
 
-	if cli, err := client.New(client.WithTimeout(0)); err != nil {
-		return err
-	} else {
-		t.client = cli
-	}
-
 	monitor.InitColor()
 
 	return nil
+}
+
+func (t *App) listContexts() {
+	cfg, err := clientcontext.Load()
+	if err != nil {
+		t.errorf("%s", err)
+	}
+
+	v := tview.NewTable()
+	v.SetSelectable(true, false)
+	v.SetTitle("connect to")
+
+	v.SetCell(0, 0, tview.NewTableCell("CONTEXT").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 1, tview.NewTableCell("ENDPOINT").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 2, tview.NewTableCell("USER").SetTextColor(colorTitle).SetSelectable(false))
+	v.SetCell(0, 3, tview.NewTableCell("NAMESPACE").SetTextColor(colorTitle).SetSelectable(false))
+
+	row := 1
+	v.SetCell(row, 0, tview.NewTableCell("").SetSelectable(true))
+	v.SetCell(row, 1, tview.NewTableCell("localhost").SetSelectable(false))
+	v.SetCell(row, 2, tview.NewTableCell("root").SetSelectable(false))
+	v.SetCell(row, 3, tview.NewTableCell(os.Getenv("OSVC_NAMESPACE")).SetSelectable(false))
+
+	contexts := make([]string, len(cfg.Contexts))
+	i := 0
+	for context := range cfg.Contexts {
+		contexts[i] = context
+		i++
+	}
+	sort.Strings(contexts)
+	for _, name := range contexts {
+		data := cfg.Contexts[name]
+		row++
+		selectable := true
+		cluster, clusterOk := cfg.Clusters[data.ClusterRefName]
+		_, userOk := cfg.Users[data.UserRefName]
+		if clusterOk {
+			v.SetCell(row, 1, tview.NewTableCell(cluster.Server).SetSelectable(false))
+		} else {
+			v.SetCell(row, 1, tview.NewTableCell("-").SetSelectable(false))
+			selectable = false
+		}
+		if userOk {
+			v.SetCell(row, 2, tview.NewTableCell(data.UserRefName).SetSelectable(false))
+		} else {
+			v.SetCell(row, 2, tview.NewTableCell("-").SetSelectable(false))
+			selectable = false
+		}
+		v.SetCell(row, 0, tview.NewTableCell(name).SetSelectable(selectable))
+		v.SetCell(row, 3, tview.NewTableCell(data.Namespace).SetSelectable(false))
+	}
+
+	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+		}
+		return event
+	})
+	v.SetSelectedFunc(func(row, col int) {
+		c := v.GetCell(row, col).Text
+		os.Setenv("OSVC_CONTEXT", c)
+		if cli, err := client.New(); err != nil {
+			t.errorf("%s", err)
+		} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+			t.errorf("%s", err)
+			t.listContexts()
+		} else if resp.StatusCode() == http.StatusOK {
+			t.client = cli
+			t.user = resp.JSON200.Name
+			t.reconnect()
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+		}
+	})
+
+	t.flex.Clear()
+	t.flex.AddItem(t.head, 1, 0, false)
+	t.flex.AddItem(v, 0, 1, true)
+	t.app.SetFocus(v)
+	t.updateHead()
 }
 
 func (t *App) Run() error {
@@ -440,10 +552,27 @@ func (t *App) Run() error {
 		return err
 	}
 	go t.runEventReader()
+	go t.initContext()
 	return t.app.Run()
 }
 
+func (t *App) initContext() {
+	if cli, err := client.New(client.WithTimeout(0)); err != nil {
+		t.errorf("%s", err)
+	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+		t.errorf("%s", err)
+		t.listContexts()
+	} else if resp.StatusCode() == http.StatusOK {
+		t.client = cli
+		t.user = resp.JSON200.Name
+		t.reconnect()
+	} else {
+		t.listContexts()
+	}
+}
+
 func (t *App) runEventReader() {
+	<-t.restartC
 	for {
 		evReader, err := t.client.NewGetEvents().SetSelector(t.Selector).GetReader()
 		if err != nil {
@@ -451,7 +580,7 @@ func (t *App) runEventReader() {
 			if t.exitFlag.Load() {
 				return
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -491,8 +620,6 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		for {
 			ev, err := evReader.Read()
 			if err != nil {
-				err = fmt.Errorf("event queue read error: %w", err)
-				t.errorf("%s", err)
 				t.errC <- err
 				return
 			}
@@ -636,6 +763,27 @@ func (t *App) updateObjects() {
 		}
 	}
 
+	nodesHbCells := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeHbMode(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesHb1Cells := func(row int, stream daemonsubsystem.HeartbeatStream) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeHbStatus(stream, nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesArbitratorCells := func(row int, arbitratorName string) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeArbitratorStatus(arbitratorName, nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
@@ -661,7 +809,7 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".LOAD").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│LOAD").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesLoadCells(row)
 
@@ -669,7 +817,7 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".MEM").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│MEM").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesMemCells(row)
 
@@ -677,9 +825,51 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell(".SWAP").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│SWAP").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesSwapCells(row)
+
+	if len(t.Current.Cluster.Config.Nodes) > 1 {
+		row++
+		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+		nodesHbCells(row)
+
+		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
+			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + monitor.StrThreadAlerts(hbStatus.Alerts)
+			row++
+			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
+			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+			nodesHb1Cells(row, hbStatus)
+		}
+	}
+
+	arbitratorNames := t.Current.ArbitratorNames()
+	if len(arbitratorNames) > 0 {
+		row++
+		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("ARBITRATORS").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+
+		for _, arbitratorName := range arbitratorNames {
+			name := "│" + arbitratorName
+			row++
+			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
+			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+			nodesArbitratorCells(row, arbitratorName)
+		}
+	}
 
 	row++
 	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
@@ -911,6 +1101,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.actionInstanceUnfreeze(keys)
 		case "restart":
 			t.actionInstanceRestart(keys)
+		case "refresh":
+			t.actionInstanceRefresh(keys)
 		case "switch":
 			t.actionInstanceSwitch(keys)
 		//	case "clear":
@@ -919,10 +1111,16 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.errorf("unknown command: %s", action)
 		}
 	}
-	nodeAction := func(action string, nodes map[string]any) {
-		switch action {
-		case "daemon restart":
-			t.actionNodeDaemonRestart(nodes)
+	nodeAction := func(args []string, nodes map[string]any) {
+		switch args[0] {
+		case "daemon":
+			if len(args) < 2 {
+				return
+			}
+			switch args[1] {
+			case "restart":
+				t.actionNodeDaemonRestart(nodes)
+			}
 		case "freeze":
 			t.actionNodeFreeze(nodes)
 		case "unfreeze", "thaw":
@@ -930,7 +1128,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "drain":
 			t.actionNodeDrain(nodes)
 		default:
-			t.errorf("unknown command: %s", action)
+			t.errorf("unknown command: %s", args[0])
 		}
 	}
 	t.command = tview.NewInputField().
@@ -951,6 +1149,9 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				switch action {
 				case "quit", "q":
 					t.stop()
+				case "connect":
+					t.listContexts()
+					clean()
 				case "filter":
 					if len(args) < 2 {
 						t.errorf("not enough arguments: filter <expression>")
@@ -998,7 +1199,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					case len(t.selectedInstances) > 0:
 						instanceAction(action, t.selectedInstances)
 					case len(t.selectedNodes) > 0:
-						nodeAction(action, t.selectedNodes)
+						nodeAction(args[1:], t.selectedNodes)
 					default:
 						row, col := t.objects.GetSelection()
 						switch {
@@ -1008,7 +1209,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							node := t.objects.GetCell(row, col).Text
 							selection := make(map[string]any)
 							selection[node] = nil
-							nodeAction(action, selection)
+							nodeAction(args[1:], selection)
 						case row >= t.firstObjectRow && col == 0:
 							path := t.objects.GetCell(row, 0).Text
 							selection := make(map[string]any)
@@ -1035,7 +1236,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 
 func (t *App) setFilter(s string) {
 	t.Frame.Selector = s
-	t.restart()
+	t.reconnect()
 }
 
 func (t *App) actionNodeDaemonRestart(nodes map[string]any) {
@@ -1085,6 +1286,19 @@ func (t *App) actionRestart(paths map[string]any) {
 			continue
 		}
 		_, _ = t.client.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostObjectActionRestart{})
+	}
+}
+
+func (t *App) actionInstanceRefresh(keys map[[2]string]any) {
+	ctx := context.Background()
+	for key := range keys {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		_, _ = t.client.PostInstanceActionStatusWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 
@@ -1360,10 +1574,13 @@ func (t *App) onRuneH(event *tcell.EventKey) {
    h                    Show this help
    l                    Show node, object or instance logs
    q                    Quit
-   Enter                Show instance status
+   r                    Refresh the instance status
+   Enter                Show the detailed instance status
    ESC                  Close popup
 
  Commands:
+
+   connect              Connect to another cluster
 
    do <action>
 
@@ -1375,8 +1592,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
        unfreeze, unprovision  
 
      instance actions:
-       clear, delete, freeze, provision, start, stop, switch, unfreeze,
-       unprovision  
+       clear, delete, freeze, provision, refresh, start, stop, switch,
+       unfreeze, unprovision  
 
      node actions:
        drain freeze, unfreeze
@@ -1599,6 +1816,22 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 	})
 }
 
+func (t *App) onRuneR(event *tcell.EventKey) {
+	switch {
+	case t.viewPath.IsZero():
+		return
+	case t.viewNode == "":
+		return
+	}
+	key := [2]string{
+		t.viewPath.String(),
+		t.viewNode,
+	}
+	t.actionInstanceRefresh(map[[2]string]any{
+		key: nil,
+	})
+}
+
 func (t *App) onRuneC(event *tcell.EventKey) {
 	t.initTextView()
 	t.updateConfigView()
@@ -1793,12 +2026,16 @@ func (t *App) initTextView() {
 	return
 }
 
-func (t *App) restart() {
+func (t *App) reconnect() {
 	t.restartC <- nil
 }
 
 func (t *App) stop() {
 	t.exitFlag.Store(true)
-	t.errC <- nil
+	select {
+	case t.errC <- nil:
+	default:
+	}
+
 	t.app.Stop()
 }

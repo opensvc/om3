@@ -171,13 +171,13 @@ func (f Frame) sNodeMonTarget(n string) string {
 		case node.MonitorGlobalExpectNone:
 		case node.MonitorGlobalExpectInit:
 		default:
-			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect.String())
+			s += rawconfig.Colorize.Frozen(" >" + val.Monitor.GlobalExpect.String())
 		}
 		switch val.Monitor.LocalExpect {
 		case node.MonitorLocalExpectNone:
 		case node.MonitorLocalExpectInit:
 		default:
-			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect.String())
+			s += rawconfig.Colorize.Frozen(" >" + val.Monitor.LocalExpect.String())
 		}
 		return s
 	}
@@ -205,34 +205,37 @@ func (f Frame) sNodeVersion(n string) string {
 
 func (f Frame) sNodeHbMode() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator+"\t")
-	nodeCount := len(f.Current.Cluster.Config.Nodes)
 	for _, peer := range f.Current.Cluster.Config.Nodes {
-		var mode string
-		lastMessage := f.Current.Cluster.Node[peer].Daemon.Heartbeat.LastMessage
-		switch lastMessage.Type {
-		case "patch":
-			mode = fmt.Sprintf("%d", lastMessage.PatchLength)
-		default:
-			mode = lastMessage.Type
-		}
-		switch mode {
-		case "full":
-			mode = yellow(mode)
-		case "ping":
-			if nodeCount > 1 {
-				mode = yellow(mode)
-			}
-		case "":
-			if nodeCount > 1 {
-				mode = hired("?")
-			} else {
-				mode = "?"
-			}
-		default:
-		}
-		s += mode + "\t"
+		s += f.StrNodeHbMode(peer) + "\t"
 	}
 	return s
+}
+
+func (f Frame) StrNodeHbMode(peer string) string {
+	var mode string
+	nodeCount := len(f.Current.Cluster.Config.Nodes)
+	lastMessage := f.Current.Cluster.Node[peer].Daemon.Heartbeat.LastMessage
+	switch lastMessage.Type {
+	case "patch":
+		mode = fmt.Sprintf("%d", lastMessage.PatchLength)
+	default:
+		mode = lastMessage.Type
+	}
+	switch mode {
+	case "full":
+		mode = yellow(mode)
+	case "ping":
+		if nodeCount > 1 {
+			mode = yellow(mode)
+		}
+	case "":
+		if nodeCount > 1 {
+			mode = hired("?")
+		} else {
+			mode = "?"
+		}
+	}
+	return mode
 }
 
 func (f Frame) wNodes() {

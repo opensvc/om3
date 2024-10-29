@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/opensvc/om3/core/env"
 	"sigs.k8s.io/yaml"
@@ -59,7 +60,7 @@ var (
 	Err = errors.New("context error")
 
 	// ConfigFilename is the file where the context information is stored
-	ConfigFilename = "~/.opensvc/config"
+	ConfigFilename = "~/.config/opensvc/contexts"
 )
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
@@ -67,46 +68,106 @@ func IsSet() bool {
 	return env.Context() != ""
 }
 
-// New return a remote cluster connection context (endpoint and user)
-func New() (T, error) {
+func Load() (config, error) {
+	var errs error
 	var cfg config
-	var c T
-	n := env.Context()
-	if n == "" {
-		return c, nil
+	filenames := []string{
+		ConfigFilename,
+		ConfigFilename + ".json",
+		ConfigFilename + ".yaml",
 	}
-	cf, _ := homedir.Expand(ConfigFilename)
-	b, err := os.ReadFile(cf)
-	if err != nil {
-		return c, err
+	for _, filename := range filenames {
+		filename, _ := homedir.Expand(filename)
+		if err := loadFile(filename, &cfg); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	return cfg, errs
+}
+
+func loadFile(name string, cfg *config) error {
+	var (
+		tryJSON, tryYAML bool
+		this             config
+	)
+	b, err := os.ReadFile(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
 	}
 	decodeJSON := func() error {
-		if err := json.Unmarshal(b, &cfg); err != nil {
+		if err := json.Unmarshal(b, &this); err != nil {
 			return fmt.Errorf("json: %w", err)
 		}
 		return nil
 	}
 	decodeYAML := func() error {
-		if err := yaml.Unmarshal(b, &cfg); err != nil {
+		if err := yaml.Unmarshal(b, &this); err != nil {
 			return fmt.Errorf("yaml: %w", err)
 		}
 		return nil
 	}
 	decode := func() error {
 		var errs error
-		if err := decodeJSON(); err == nil {
-			return nil
+		if strings.HasSuffix(name, ".json") {
+			tryJSON = true
+		} else if strings.HasSuffix(name, ".yaml") {
+			tryYAML = true
 		} else {
-			errs = errors.Join(errs, err)
+			tryJSON = true
+			tryYAML = true
 		}
-		if err := decodeYAML(); err == nil {
-			return nil
-		} else {
-			errs = errors.Join(errs, err)
+
+		if tryJSON {
+			if err := decodeJSON(); err == nil {
+				return nil
+			} else {
+				errs = errors.Join(errs, err)
+			}
 		}
-		return fmt.Errorf("could not decode %s: %w", ConfigFilename, errs)
+		if tryYAML {
+			if err := decodeYAML(); err == nil {
+				return nil
+			} else {
+				errs = errors.Join(errs, err)
+			}
+		}
+		return fmt.Errorf("could not decode %s: %w", name, errs)
 	}
 	if err := decode(); err != nil {
+		return err
+	}
+	if cfg.Clusters == nil {
+		cfg.Clusters = make(map[string]cluster)
+	}
+	if cfg.Users == nil {
+		cfg.Users = make(map[string]user)
+	}
+	if cfg.Contexts == nil {
+		cfg.Contexts = make(map[string]relation)
+	}
+	for k, v := range this.Clusters {
+		cfg.Clusters[k] = v
+	}
+	for k, v := range this.Users {
+		cfg.Users[k] = v
+	}
+	for k, v := range this.Contexts {
+		cfg.Contexts[k] = v
+	}
+	return nil
+}
+
+// New return a remote cluster connection context (endpoint and user)
+func New() (T, error) {
+	var c T
+	n := env.Context()
+	if n == "" {
+		return c, nil
+	}
+	cfg, err := Load()
+	if err != nil {
 		return c, err
 	}
 	cr, ok := cfg.Contexts[n]

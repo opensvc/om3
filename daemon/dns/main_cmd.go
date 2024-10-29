@@ -42,7 +42,7 @@ func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 }
 
 func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	t.cluster = c.Value
+	t.clusterConfig = c.Value
 	change, err := t.sockChown()
 	if err != nil {
 		// TODO: change status.state to warning ? for om mon -w
@@ -51,11 +51,11 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	if change {
 		t.status.ConfiguredAt = time.Now()
 	}
-	if len(t.cluster.DNS) != len(t.status.Nameservers) {
+	if len(t.clusterConfig.DNS) != len(t.status.Nameservers) {
 		change = true
 	} else {
 		for i := 0; i < len(t.status.Nameservers); i++ {
-			if t.cluster.DNS[i] != t.status.Nameservers[i] {
+			if t.clusterConfig.DNS[i] != t.status.Nameservers[i] {
 				change = true
 				break
 			}
@@ -100,8 +100,8 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 
 func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
-	name := naming.NewFQDN(c.Path, t.cluster.Name).String() + "."
-	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
+	name := naming.NewFQDN(c.Path, t.clusterConfig.Name).String() + "."
+	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.clusterConfig.Name)
 	records := make(Zone, 0)
 	updatedRecords := make(map[string]any)
 	existingRecords := t.getExistingRecords(key)
@@ -294,8 +294,8 @@ func (t *Manager) onCmdGetZone(c cmdGetZone) {
 
 func (t *Manager) zone() Zone {
 	zone := make(Zone, 0)
-	zoneName := t.cluster.Name + "."
-	for i, dns := range t.cluster.DNS {
+	zoneName := t.clusterConfig.Name + "."
+	for i, dns := range t.clusterConfig.DNS {
 		nsName := fmt.Sprintf("ns%d.%s", i+1, zoneName)
 		soaContent := fmt.Sprintf("dns.%s %s %d %d %d %d %d", zoneName, contact, serial, refresh, retry, expire, minimum)
 		zone = append(zone,

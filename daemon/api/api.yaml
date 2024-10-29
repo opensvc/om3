@@ -1630,6 +1630,38 @@ paths:
         - instance / svc
         - instance / vol
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/status:
+    post:
+      description: Refresh the object instance status.
+      operationId: PostInstanceActionStatus
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/shutdown:
     post:
       description: Shutdown the object instance.
