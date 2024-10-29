@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
@@ -39,7 +40,6 @@ type (
 		*monitor.Frame
 
 		user       string
-		endpoint   string
 		eventCount uint64
 
 		stack viewStack
@@ -136,8 +136,24 @@ func (t *App) updateHead() {
 	if !ok {
 		return
 	}
+	conn := func() string {
+		endpoint := ""
+		if t.client != nil {
+			endpoint = t.client.Hostname()
+		}
+		s := t.user + "@" + endpoint
+		switch {
+		case t.user == "" && endpoint == "":
+			return ""
+		case t.user != "" && endpoint == "":
+			return fmt.Sprintf("%s@%s (uds)", t.user, hostname.Hostname())
+		default:
+			return fmt.Sprintf("%s@%s", t.user, endpoint)
+		}
+		return s
+	}
 	title := box.GetTitle()
-	t.head.SetCell(0, 0, tview.NewTableCell(t.user).SetBackgroundColor(colorHead3))
+	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
 	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
 	t.head.SetCell(0, 2, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
 	t.head.SetCell(0, 3, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
