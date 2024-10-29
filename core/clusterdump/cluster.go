@@ -2,6 +2,8 @@ package clusterdump
 
 import (
 	"encoding/json"
+	"sort"
+
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -43,6 +45,23 @@ func (s *Data) DeepCopy() *Data {
 		panic(err)
 	}
 	return &newStatus
+}
+
+func (s *Data) ArbitratorNames() []string {
+	m := make(map[string]any)
+	for _, nodeData := range s.Cluster.Node {
+		for name, _ := range nodeData.Status.Arbitrators {
+			m[name] = nil
+		}
+	}
+	l := make([]string, len(m))
+	i := 0
+	for name := range m {
+		l[i] = name
+		i++
+	}
+	sort.Strings(l)
+	return l
 }
 
 func (s *Data) ObjectPaths() naming.Paths {

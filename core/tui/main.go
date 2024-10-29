@@ -775,14 +775,21 @@ func (t *App) updateObjects() {
 		}
 	}
 
+	nodesArbitratorCells := func(row int, arbitratorName string) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeArbitratorStatus(arbitratorName, nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
 	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
 
 	row := 0
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(true))
+	t.objects.SetCell(row, 0, tview.NewTableCell("CLUSTER").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell(t.Current.Cluster.Config.Name).SetSelectable(true))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 3, tview.NewTableCell("NODE").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
@@ -830,7 +837,7 @@ func (t *App) updateObjects() {
 		nodesHbCells(row)
 
 		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
-			name := "│" + hbStatus.ID + monitor.StrThreadAlerts(hbStatus.Alerts)
+			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + monitor.StrThreadAlerts(hbStatus.Alerts)
 			row++
 			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
@@ -838,6 +845,27 @@ func (t *App) updateObjects() {
 			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
 			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 			nodesHb1Cells(row, hbStatus)
+		}
+	}
+
+	arbitratorNames := t.Current.ArbitratorNames()
+	if len(arbitratorNames) > 0 {
+		row++
+		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("ARBITRATORS").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+
+		for _, arbitratorName := range arbitratorNames {
+			name := "│" + arbitratorName
+			row++
+			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
+			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+			nodesArbitratorCells(row, arbitratorName)
 		}
 	}
 
