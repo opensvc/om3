@@ -183,8 +183,15 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{ID: tx.ID(), Type: hb.Type()}
-	localDataC := make(chan []byte)
-	if err := tx.Start(t.ctrlC, localDataC); err != nil {
+
+	// start debounce msg goroutine to ensure non-blocking write to msgToSendQ:
+	// the msgToTxCtx goroutine multiplexes data messages to all hb tx drivers.
+	// It can't be stalled because of slow hb trasnmitter.
+	debouncedMsgQ := make(chan []byte)
+	msgToSendQ := make(chan []byte)
+	go debounceLatestMsgToTx(t.msgToTxCtx, msgToSendQ, debouncedMsgQ)
+
+	if err := tx.Start(t.ctrlC, debouncedMsgQ); err != nil {
 		t.log.Errorf("start %s failed: %s", tx.ID(), err)
 		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
 		return err
@@ -192,7 +199,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	select {
 	case <-t.msgToTxCtx.Done():
 		// don't hang up when context is done
-	case t.msgToTxRegister <- registerTxQueue{id: tx.ID(), msgToSendQueue: localDataC}:
+	case t.msgToTxRegister <- registerTxQueue{id: tx.ID(), msgToSendQueue: msgToSendQ}:
 		t.txs[hb.Name()] = tx
 	}
 	return nil
@@ -596,4 +603,24 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 	}
 	err = fmt.Errorf("not found rid")
 	return
+}
+
+// debounceLatestMsgToTx is used to relay dequeued messages from inQ
+// to outC, without blocking on outQ (lastest dequeued message from
+// inQ will replace the relay bloqued message to outQ).
+func debounceLatestMsgToTx(ctx context.Context, inQ <-chan []byte, outC chan<- []byte) {
+	var (
+		b []byte
+		o chan<- []byte
+	)
+	for {
+		select {
+		case b = <-inQ:
+			o = outC
+		case o <- b:
+			o = nil
+		case <-ctx.Done():
+			return
+		}
+	}
 }
