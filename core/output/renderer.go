@@ -12,11 +12,12 @@ import (
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
+	"k8s.io/client-go/util/jsonpath"
+	"sigs.k8s.io/yaml"
+
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/render/palette"
 	"github.com/opensvc/om3/util/unstructured"
-	"k8s.io/client-go/util/jsonpath"
-	"sigs.k8s.io/yaml"
 )
 
 type (
@@ -241,15 +242,19 @@ func (t Renderer) renderTab(options string) (string, error) {
 		return "", err
 	}
 	for _, line := range unstructuredData {
-		for _, jsonPath := range jsonPaths {
+		for i, jsonPath := range jsonPaths {
+			var sep string
+			if i > 0 {
+				sep = "\t"
+			}
 			values, err := jsonPath.FindResults(line)
 			if err != nil {
-				fmt.Fprintf(w, "<%s>\t", err)
+				fmt.Fprintf(w, "%s<%s>", sep, err)
 				continue
 			}
 			valueStrings := []string{}
 			if len(values) == 0 || len(values[0]) == 0 {
-				fmt.Fprintf(w, "<none>\t")
+				fmt.Fprintf(w, "%s<none>", sep)
 				continue
 			}
 			for arrIx := range values {
@@ -263,7 +268,7 @@ func (t Renderer) renderTab(options string) (string, error) {
 				}
 			}
 			value := strings.Join(valueStrings, ",")
-			fmt.Fprintf(w, value+"\t")
+			fmt.Fprintf(w, "%s%s", sep, value)
 		}
 		fmt.Fprintf(w, "\n")
 	}
