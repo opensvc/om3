@@ -61,7 +61,7 @@ func (t *Manager) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
 
 func (t *Manager) getAllDomains(b []byte) getAllDomainsResponse {
 	return getAllDomainsResponse{
-		domain{Zone: t.cluster.Name},
+		domain{Zone: t.clusterConfig.Name},
 	}
 }
 
@@ -104,7 +104,7 @@ func (t *Manager) getRecords(recordType, recordName string) Zone {
 }
 
 func (t *Manager) sockGID() (int, error) {
-	s := t.cluster.Listener.DNSSockGID
+	s := t.clusterConfig.Listener.DNSSockGID
 	if s == "" {
 		return -1, nil
 	}
@@ -121,7 +121,7 @@ func (t *Manager) sockGID() (int, error) {
 }
 
 func (t *Manager) sockUID() (int, error) {
-	s := t.cluster.Listener.DNSSockUID
+	s := t.clusterConfig.Listener.DNSSockUID
 	if s == "" {
 		return -1, nil
 	}

@@ -39,6 +39,7 @@ type (
 		*monitor.Frame
 
 		user       string
+		endpoint   string
 		eventCount uint64
 
 		stack viewStack

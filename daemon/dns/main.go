@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	cluster2 "github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/draincommand"
@@ -49,13 +49,13 @@ type (
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]uint64
 
-		cluster   cluster2.Config
-		ctx       context.Context
-		cancel    context.CancelFunc
-		cmdC      chan any
-		bus       *pubsub.Bus
-		log       *plog.Logger
-		startedAt time.Time
+		clusterConfig cluster.Config
+		ctx           context.Context
+		cancel        context.CancelFunc
+		cmdC          chan any
+		bus           *pubsub.Bus
+		log           *plog.Logger
+		startedAt     time.Time
 
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
@@ -123,7 +123,7 @@ func (t *Manager) Start(parent context.Context) error {
 	t.status.State = "running"
 
 	t.startSubscriptions()
-	t.cluster = *cluster2.ConfigData.Get()
+	t.clusterConfig = *cluster.ConfigData.Get()
 
 	if err := t.startUDSListener(); err != nil {
 		return err
@@ -206,7 +206,7 @@ func (t *Manager) worker() {
 
 func (t *Manager) publishSubsystemDnsUpdated() {
 	t.status.UpdatedAt = time.Now()
-	t.status.Nameservers = append([]string{}, t.cluster.DNS...)
+	t.status.Nameservers = append([]string{}, t.clusterConfig.DNS...)
 	daemonsubsystem.DataDns.Set(t.localhost, t.status.DeepCopy())
 	t.bus.Pub(&msgbus.DaemonDnsUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
