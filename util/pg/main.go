@@ -231,9 +231,9 @@ func (c Config) String() string {
 }
 
 // Convert converts, for a 100us period and 4 cpu threads,
-// * 100%@all => 400000 100000
+// * 100%@all => 100000 100000
 // * 50% => 50000 100000
-// * 50%@3 => 150000 100000
+// * 10%@2 => 5000 100000
 func (t CPUQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
 	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
@@ -244,7 +244,7 @@ func (t CPUQuota) Convert(period uint64) (int64, error) {
 		return strconv.Atoi(s)
 	}
 	parseCpus := func(s string) (int, error) {
-		if s == "all" {
+		if (s == "all") || (s == "") {
 			return maxCpus, nil
 		} else if cpus, err := strconv.Atoi(s); err != nil {
 			return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
@@ -277,7 +277,7 @@ func (t CPUQuota) Convert(period uint64) (int64, error) {
 	if pct, err = parsePct(l[0]); err != nil {
 		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 	}
-	return int64(pct) * int64(cpus) * int64(period) / 100, nil
+	return int64(pct) * int64(period) * int64(cpus) / int64(maxCpus) / 100, nil
 }
 
 // ApplyNoProc creates the cgroup, set caps, but does not add a process
