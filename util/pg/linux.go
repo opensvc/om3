@@ -65,7 +65,7 @@ func (c Config) ApplyProc(pid int) error {
 		r.BlockIO.Weight = &weight
 	}
 
-	control, err := cgroupsv2.NewManager(UnifiedPath, c.ID, cgroupsv2.ToResources(&r))
+	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, cgroupsv2.ToResources(&r))
 	if err == nil {
 		if pid == 0 {
 			return nil
@@ -104,7 +104,7 @@ func (c Config) Delete() (bool, error) {
 }
 
 func (c Config) deleteV2() (bool, error) {
-	control, err := cgroupsv2.LoadManager(UnifiedPath, c.ID)
+	control, err := cgroupsv2.LoadManager(UnifiedPath(), c.ID)
 	if err != nil {
 		// doesn't verify path existance
 		return false, nil

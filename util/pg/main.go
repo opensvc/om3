@@ -48,9 +48,17 @@ const (
 )
 
 var (
-	mgrKey      key    = 0
-	UnifiedPath string = "/sys/fs/cgroup/unified"
+	mgrKey key = 0
 )
+
+func UnifiedPath() string {
+	mnt := "/sys/fs/cgroup"
+	_, err := os.Stat(mnt + "/cgroup.procs")
+	if err == nil {
+		return mnt
+	}
+	return mnt + "/unified"
+}
 
 func (e entry) NewRun() *Run {
 	r := Run{Config: e.Config}
