@@ -148,6 +148,11 @@ func (e *entry) Run() *Run {
 		r.Changed = false
 		return r
 	}
+	if !e.Config.needApply() {
+		r.Err = fmt.Errorf("empty pg config ")
+		r.Changed = false
+		return r
+	}
 	switch e.State {
 	case Init, Deleted:
 		e.State = Applied
