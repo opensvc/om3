@@ -204,7 +204,8 @@ func (t T) toPG() pg.Config {
 
 func (t *T) LoadLimit(g ulimit.Config) {
 	if g.AS != nil {
-		*t.LimitAS = sizeconv.ExactDSizeCompact(float64(*g.AS))
+		v := sizeconv.ExactDSizeCompact(float64(*g.AS))
+		t.LimitAS = &v
 	}
 	if g.CPU != nil {
 		v := g.CPU.String()
