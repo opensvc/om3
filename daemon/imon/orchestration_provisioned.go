@@ -13,13 +13,23 @@ func (t *Manager) orchestrateProvisioned() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStopFailed,
+		instance.MonitorStateThawed,
 		instance.MonitorStateUnprovisionFailed:
 		t.provisionedFromIdle()
+	case instance.MonitorStateProvisioned:
+		t.provisionedFromProvisioned()
 	case instance.MonitorStateWaitLeader:
 		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailed:
 		t.provisionedFromProvisionFailed()
+	case instance.MonitorStateThawing:
+	case instance.MonitorStateThawedFailed:
+		// TODO: clear ?
 	}
+}
+
+func (t *Manager) provisionedFromProvisioned() {
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
@@ -33,7 +43,7 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
 		return
 	} else {
 		t.transitionTo(instance.MonitorStateWaitLeader)
@@ -48,7 +58,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
 	return
 }
 
