@@ -216,15 +216,17 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 	if err != nil || baseCommandSlice == nil {
 		return nil, err
 	}
-	wrapArgs := t.toCaps().Argv()
-	prog := ""
-	if prog, err = os.Executable(); err != nil {
-		return nil, fmt.Errorf("lookup prog: %w", err)
-	}
-	if len(wrapArgs) > 0 {
-		wrap := append([]string{prog, "exec"}, wrapArgs...)
-		wrap = append(wrap, "--")
-		return append(wrap, baseCommandSlice...), nil
+	if t.Limit.NeedApply() {
+		wrapArgs := t.toCaps().Argv()
+		prog := ""
+		if prog, err = os.Executable(); err != nil {
+			return nil, fmt.Errorf("lookup prog: %w", err)
+		}
+		if len(wrapArgs) > 0 {
+			wrap := append([]string{prog, "exec"}, wrapArgs...)
+			wrap = append(wrap, "--")
+			return append(wrap, baseCommandSlice...), nil
+		}
 	}
 	return baseCommandSlice, nil
 }

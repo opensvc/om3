@@ -20,6 +20,43 @@ type Config struct {
 	VMem    *int64
 }
 
+func (c Config) NeedApply() bool {
+	if c.CPU != nil {
+		return true
+	}
+	if c.FSize != nil {
+		return true
+	}
+	if c.Data != nil {
+		return true
+	}
+	if c.Stack != nil {
+		return true
+	}
+	if c.Core != nil {
+		return true
+	}
+	if c.NoFile != nil {
+		return true
+	}
+	if c.AS != nil {
+		return true
+	}
+	if c.MemLock != nil {
+		return true
+	}
+	if c.NProc != nil {
+		return true
+	}
+	if c.RSS != nil {
+		return true
+	}
+	if c.VMem != nil {
+		return true
+	}
+	return false
+}
+
 func (c Config) Apply() error {
 	if err := setDurationRlimit(c.CPU, syscall.RLIMIT_CPU); err != nil {
 		return fmt.Errorf("cpu: %w", err)
