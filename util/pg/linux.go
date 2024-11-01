@@ -3,6 +3,7 @@
 package pg
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -16,6 +17,7 @@ import (
 
 // ApplyProc creates the cgroup, set caps, and add the specified process
 func (c Config) ApplyProc(pid int) error {
+	var errs error
 	if !c.needApply() {
 		return nil
 	}
@@ -37,55 +39,70 @@ func (c Config) ApplyProc(pid int) error {
 	if c.Mems != "" {
 		r.CPU.Mems = c.Mems
 	}
-	period := uint64(100000)
-	if quota, err := CPUQuota(c.CPUQuota).Convert(period); err == nil {
-		r.CPU.Period = &period
-		r.CPU.Quota = &quota
+	if c.CPUQuota != "" {
+		period := uint64(100000)
+		if quota, err := CPUQuota(c.CPUQuota).Convert(period); err == nil {
+			r.CPU.Period = &period
+			r.CPU.Quota = &quota
+		}
 	}
-	var (
-		memLimit int64
-		memError error
-	)
-	if memLimit, memError = strconv.ParseInt(c.MemLimit, 10, 64); memError == nil {
-		r.Memory.Limit = &memLimit
+	if c.MemLimit != "" {
+		if n, err := sizeconv.FromSize(c.MemLimit); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_mem_limit: %w", err))
+		} else {
+			r.Memory.Limit = &n
+			if c.VMemLimit != "" {
+				if n, err := sizeconv.FromSize(c.VMemLimit); err != nil {
+					errs = errors.Join(errs, fmt.Errorf("pg_vmem_limit: %w", err))
+				} else {
+					n -= *r.Memory.Limit
+					r.Memory.Swap = &n
+				}
+			}
+		}
 	}
-	if n, err := strconv.ParseInt(c.VMemLimit, 10, 64); err == nil {
-		swap := n - memLimit
-		r.Memory.Swap = &swap
+	if c.MemSwappiness != "" {
+		if n, err := strconv.ParseUint(c.MemSwappiness, 10, 64); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_mem_swapiness: %w", err))
+		} else {
+			r.Memory.Swappiness = &n
+		}
 	}
-	if n, err := strconv.ParseUint(c.MemSwappiness, 10, 64); err == nil {
-		r.Memory.Swappiness = &n
+	if c.MemOOMControl != "" {
+		if n, err := converters.Bool.Convert(c.MemOOMControl); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_mem_oom_control: %w", err))
+		} else {
+			disable := n.(bool)
+			r.Memory.DisableOOMKiller = &disable
+		}
 	}
-	if n, err := converters.Bool.Convert(c.MemOOMControl); err == nil {
-		disable := n.(bool)
-		r.Memory.DisableOOMKiller = &disable
-	}
-	if n, err := strconv.ParseUint(c.BlockIOWeight, 10, 16); err == nil {
-		weight := uint16(n)
-		r.BlockIO.Weight = &weight
+	if c.BlockIOWeight != "" {
+		if n, err := strconv.ParseUint(c.BlockIOWeight, 10, 16); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_blkio_weight: %w", err))
+		} else {
+			weight := uint16(n)
+			r.BlockIO.Weight = &weight
+		}
 	}
 
 	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, cgroupsv2.ToResources(&r))
 	if err == nil {
 		if pid == 0 {
-			return nil
-		}
-		if err := control.AddProc(uint64(pid)); err != nil {
-			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
+			// pass
+		} else if err := control.AddProc(uint64(pid)); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 		}
 	} else {
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {
-			return fmt.Errorf("new pg %s: %w", c.ID, err)
-		}
-		if pid == 0 {
-			return nil
-		}
-		if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
-			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
+			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
+		} else if pid == 0 {
+			// pass
+		} else if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 		}
 	}
-	return nil
+	return errs
 }
 
 func (c Config) Delete() (bool, error) {
