@@ -11,6 +11,7 @@ package rescontainerocibase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
@@ -219,6 +220,10 @@ func (t *BT) IsAlwaysImagePullPolicy() bool {
 }
 
 func (t *BT) ContainerID() string {
+	if t.executer == nil {
+		t.Log().Debugf("can't get container id from undefined executer")
+		return ""
+	}
 	if i := t.executer.Inspect(); i == nil {
 		return ""
 	} else {
@@ -243,6 +248,9 @@ func (t *BT) ContainerName() string {
 }
 
 func (t *BT) ContainerInspectRefresh(ctx context.Context) (Inspecter, error) {
+	if t.executer == nil {
+		return nil, errors.New("can't get refresh inspect from undefined executer")
+	}
 	return t.executer.InspectRefresh(ctx)
 }
 
