@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
 )
 
 func (t *Manager) orchestrateProvisioned() {
@@ -97,10 +98,14 @@ func (t *Manager) provisioningLeader() string {
 }
 
 func (t *Manager) isProvisioningLeader() bool {
-	if t.provisioningLeader() == t.localhost {
-		return true
+	if t.objStatus.Topology == topology.Flex {
+		return t.state.IsLeader
+	} else {
+		if t.provisioningLeader() == t.localhost {
+			return true
+		}
+		return false
 	}
-	return false
 }
 
 func (t *Manager) hasLeaderProvisioned() bool {
