@@ -136,8 +136,12 @@ func (ea *ExecutorArg) RunArgs() (Args, error) {
 	if ea.BT.Remove {
 		a = append(a, Arg{Option: "--rm"})
 	}
-	// TODO: --devices
+
 	// TODO: merge run_args
+	for _, v := range bt.RunArgs {
+		a = append(a, Arg{Option: v})
+	}
+
 	a = append(a, Arg{Option: bt.Image})
 
 	a = append(a, ea.runArgsCommand()...)
