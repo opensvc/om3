@@ -1492,6 +1492,12 @@ type InPathNamespace = string
 // InPathNodeName defines model for inPathNodeName.
 type InPathNodeName = string
 
+// InQueryConfirm defines model for inQueryConfirm.
+type InQueryConfirm = bool
+
+// InQueryCron defines model for inQueryCron.
+type InQueryCron = bool
+
 // InQueryDeletes defines model for inQueryDeletes.
 type InQueryDeletes = []string
 
@@ -1783,6 +1789,18 @@ type PostInstanceActionRestartParams struct {
 	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// PostInstanceActionRunParams defines parameters for PostInstanceActionRun.
+type PostInstanceActionRunParams struct {
+	Confirm      *InQueryConfirm      `form:"confirm,omitempty" json:"confirm,omitempty"`
+	Cron         *InQueryCron         `form:"cron,omitempty" json:"cron,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionShutdownParams defines parameters for PostInstanceActionShutdown.
