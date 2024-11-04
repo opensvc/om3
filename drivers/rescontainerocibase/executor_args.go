@@ -129,6 +129,10 @@ func (ea *ExecutorArg) RunArgs() (Args, error) {
 	a = append(a, ea.runArgsDNSOption()...)
 	a = append(a, ea.runArgsCGroupParent()...)
 
+	for _, v := range bt.Devices {
+		a = append(a, Arg{Option: "--device", Value: v, Multi: true, HasValue: true})
+	}
+
 	if ea.BT.Remove {
 		a = append(a, Arg{Option: "--rm"})
 	}
