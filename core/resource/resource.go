@@ -475,7 +475,7 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		if !run.Changed {
 			continue
 		}
-		t.Log().Debugf("applied %s", run.Config)
+		t.Log().Infof("applied %s", run.Config)
 		if run.Err != nil {
 			errs = errors.Join(errs, run.Err)
 		}

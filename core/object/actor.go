@@ -120,7 +120,7 @@ func (t *actor) ResourceSets() resourceset.L {
 		if t.config.HasSectionString(s) {
 			return s
 		}
-		return "subset#" + s
+		return "subset#" + name
 	}
 	//
 	// configureResourceSet allocates and configures the resourceset, looking

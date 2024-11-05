@@ -235,7 +235,16 @@
     Match only objects with `foo` as a section basename (eg. `[foo#bar]`).
 
 * **New cgroup layout:**
-    The previous layout allowed conflicts between different object types (eg. `vol` and `svc`).
+
+    Previous layout:
+    <cgroupmnt>/opensvc.slice/<name>.slice/<rid>.slice
+    <cgroupmnt>/opensvc.slice/<name>.slice/<resourcesetname>/<rid>.slice
+
+    New layout:
+    <cgroupmnt>/opensvc.slice/<kind>.<name>.slice/<rid>.slice
+    <cgroupmnt>/opensvc.slice/<kind>.<name>.slice/subset.<name>/<rid>.slice
+
+    The previous layout allowed conflicts between different object types (eg. `vol` and `svc`), and conflicts between resourceset names and rid.
 
 * **The `raw` jsonrpc protocol socket is dropped.**
     For example, this v2.1 API call is no longer supported:

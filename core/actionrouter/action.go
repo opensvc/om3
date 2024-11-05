@@ -154,7 +154,7 @@ func Do(t Actioner) error {
 	switch {
 	case o.NodeSelector != "":
 		errs = t.DoRemote()
-	case o.Local, o.DefaultIsLocal, o.RID != "", o.Subset != "", o.Tag != "":
+	case t.HasLocal() && (o.Local || o.DefaultIsLocal || o.RID != "" || o.Subset != "" || o.Tag != ""):
 		errs = t.DoLocal()
 	case o.Target != "":
 		errs = t.DoAsync()

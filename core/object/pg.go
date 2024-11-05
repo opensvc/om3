@@ -43,13 +43,18 @@ func (t *core) pgConfig(section string) *pg.Config {
 	data.MemSwappiness, _ = t.config.EvalNoConv(key.New(section, "pg_mem_swappiness"))
 	data.BlockIOWeight, _ = t.config.EvalNoConv(key.New(section, "pg_blkio_weight"))
 	subsetName := func(s string) string {
+		if s == "" {
+			return ""
+		}
 		l := strings.SplitN(s, ":", 2)
 		n := len(l)
 		switch n {
-		case 0:
-			return ""
-		default:
+		case 2:
 			return pgNameSubset(l[n-1])
+		case 1:
+			return pgNameSubset(s)
+		default:
+			return ""
 		}
 	}
 	svcPGName := func() []string {
@@ -75,8 +80,8 @@ func (t *core) pgConfig(section string) *pg.Config {
 		switch {
 		case section == "":
 			l = svcPGName()
-		case strings.HasPrefix(section, "subset#"):
-			l = subsetPGName(s)
+		case strings.HasPrefix(s, "subset#"):
+			l = subsetPGName(s[7:])
 		default:
 			l = resPGName(s)
 		}

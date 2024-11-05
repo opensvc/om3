@@ -6,7 +6,7 @@ import (
 
 func (t T) toCaps() capexec.T {
 	xo := capexec.T{}
-	xo.LoadPG(*t.GetPG())
+	//xo.LoadPG(*t.GetPG())
 	xo.LoadLimit(t.Limit)
 	return xo
 }
