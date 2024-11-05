@@ -56,7 +56,8 @@ type (
 		command  *tview.InputField
 		contexts *tview.List
 
-		client *client.T
+		client       *client.T
+		streamClient *client.T
 
 		lastDraw time.Time
 
@@ -530,13 +531,19 @@ func (t *App) listContexts() {
 			t.listContexts()
 		} else if resp.StatusCode() == http.StatusOK {
 			t.client = cli
-			t.user = resp.JSON200.Name
-			t.reconnect()
-			t.flex.Clear()
-			t.flex.AddItem(t.head, 1, 0, false)
-			t.flex.AddItem(t.objects, 0, 1, true)
-			t.app.SetFocus(t.objects)
-			t.updateHead()
+			if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
+				t.errorf("new stream client: %s", err)
+				t.listContexts()
+			} else {
+				t.streamClient = streamClient
+				t.user = resp.JSON200.Name
+				t.reconnect()
+				t.flex.Clear()
+				t.flex.AddItem(t.head, 1, 0, false)
+				t.flex.AddItem(t.objects, 0, 1, true)
+				t.app.SetFocus(t.objects)
+				t.updateHead()
+			}
 		}
 	})
 
@@ -557,15 +564,21 @@ func (t *App) Run() error {
 }
 
 func (t *App) initContext() {
-	if cli, err := client.New(client.WithTimeout(0)); err != nil {
+	if cli, err := client.New(); err != nil {
 		t.errorf("%s", err)
 	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
 		t.errorf("%s", err)
 		t.listContexts()
 	} else if resp.StatusCode() == http.StatusOK {
 		t.client = cli
-		t.user = resp.JSON200.Name
-		t.reconnect()
+		if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
+			t.errorf("new stream client: %s", err)
+			t.listContexts()
+		} else {
+			t.streamClient = streamClient
+			t.user = resp.JSON200.Name
+			t.reconnect()
+		}
 	} else {
 		t.listContexts()
 	}
@@ -574,9 +587,9 @@ func (t *App) initContext() {
 func (t *App) runEventReader() {
 	<-t.restartC
 	for {
-		evReader, err := t.client.NewGetEvents().SetSelector(t.Selector).GetReader()
+		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader()
 		if err != nil {
-			t.errorf("%s", err)
+			t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {
 				return
 			}
@@ -591,6 +604,7 @@ func (t *App) runEventReader() {
 			return
 		}
 		if err != nil {
+			t.errorf("do with reader: %s", err)
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
@@ -1653,7 +1667,7 @@ func (t *App) onRuneL(event *tcell.EventKey) {
 
 	lines := 50
 	follow := true
-	log := t.client.NewGetLogs(t.viewNode).
+	log := t.streamClient.NewGetLogs(t.viewNode).
 		//SetFilters(nil).
 		SetLines(&lines).
 		SetFollow(&follow)
