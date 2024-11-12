@@ -86,7 +86,7 @@ func (t T) startVolume(ctx context.Context, volume object.Vol) error {
 }
 
 func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
-	ctx = actioncontext.WithForce(ctx, true)
+	ctx = actioncontext.WithForce(ctx, force)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
 		t.Log().Infof("skip volume %s stop: active users: %s", volume.Path(), holders)
