@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/naming"
@@ -1792,12 +1793,40 @@ func (t *App) updateInstanceView() {
 	}
 	digest := t.Frame.Current.GetObjectStatus(t.viewPath)
 	text := tview.TranslateANSI(digest.Render([]string{t.viewNode}))
-	t.initTextView()
+	_ = text
+	/*
+		t.initTextView()
+		title := fmt.Sprintf("%s@%s status", t.viewPath, t.viewNode)
+		t.textView.SetDynamicColors(true)
+		t.textView.SetTitle(title)
+		t.textView.Clear()
+		fmt.Fprint(t.textView, text)
+	*/
 	title := fmt.Sprintf("%s@%s status", t.viewPath, t.viewNode)
-	t.textView.SetDynamicColors(true)
-	t.textView.SetTitle(title)
-	t.textView.Clear()
-	fmt.Fprint(t.textView, text)
+	table := tview.NewTable()
+	table.SetTitle(title)
+	table.SetBorder(false)
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyLeft, tcell.KeyRight, tcell.KeyUp, tcell.KeyDown:
+			table.SetSelectable(true, true)
+		case tcell.KeyEnter:
+			//onEnter(event)
+			return nil // prevents the default select behaviour
+		}
+		return event
+	})
+
+	table.SetCell(0, 0, tview.NewTableCell(t.viewPath.String()).SetAttributes(tcell.AttrBold).SetSelectable(true))
+	table.SetCell(0, 1, tview.NewTableCell("").SetSelectable(false))
+	table.SetCell(0, 2, tview.NewTableCell(tview.TranslateANSI(colorstatus.Sprint(digest.Object.Avail, rawconfig.Colorize))).SetSelectable(false))
+	table.SetCell(0, 3, tview.NewTableCell(tview.TranslateANSI(digest.ObjectWarningsString())).SetSelectable(false))
+
+	t.flex.Clear()
+	t.flex.AddItem(t.head, 1, 0, false)
+	t.flex.AddItem(table, 0, 1, true)
+	t.app.SetFocus(table)
 }
 
 func (t *App) onRuneE(event *tcell.EventKey) {

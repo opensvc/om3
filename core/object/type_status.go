@@ -73,7 +73,7 @@ func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
-	head.AddColumn().AddText(t.descString())
+	head.AddColumn().AddText(t.ObjectWarningsString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
 	openMap := make(map[string]any)
@@ -106,9 +106,9 @@ func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	}
 }
 
-// descString returns a string presenting notable information at the object,
+// ObjectWarningsString returns a string presenting notable information at the object,
 // instances-aggregated, level.
-func (t Digest) descString() string {
+func (t Digest) ObjectWarningsString() string {
 	l := make([]string, 0)
 
 	// Overall if warn. Else no need to repeat an info we can guess from Avail.
