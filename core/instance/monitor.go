@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
@@ -441,7 +442,14 @@ func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.Status
 	if rmon := mon.Resources.Get(rid.Name); rmon != nil {
 		retries = rmon.Restart.Remaining
 	}
-	return r.Restart.FlagString(retries)
+	s := r.Restart.FlagString(retries)
+	if s == "." {
+		return s
+	}
+	if mon.LocalExpect != MonitorLocalExpectStarted {
+		s = rawconfig.Colorize.Secondary(s)
+	}
+	return s
 }
 
 func (mon Monitor) DeepCopy() *Monitor {
