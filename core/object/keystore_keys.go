@@ -56,7 +56,7 @@ func (t *keystore) AllKeys() ([]string, error) {
 
 func (t *keystore) MatchingKeys(pattern string) ([]string, error) {
 	data := make([]string, 0)
-	f := fnmatch.FNM_PATHNAME
+	f := fnmatch.FNM_PATHNAME | fnmatch.FNM_LEADING_DIR
 
 	for _, s := range t.config.Keys(dataSectionName) {
 		if pattern == "" || fnmatch.Match(pattern, s, f) {
