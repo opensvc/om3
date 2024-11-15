@@ -192,13 +192,6 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 			Text:     keywords.NewText(fs, "text/kw/user"),
 		},
 		keywords.Keyword{
-			Option:   "userns",
-			Attr:     "UserNS",
-			Scopable: true,
-			Example:  "container#0",
-			Text:     keywords.NewText(fs, "text/kw/userns"),
-		},
-		keywords.Keyword{
 			Option:   "pidns",
 			Attr:     "PIDNS",
 			Scopable: true,
