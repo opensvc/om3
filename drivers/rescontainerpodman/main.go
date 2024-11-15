@@ -21,18 +21,21 @@ type (
 )
 
 func New() resource.Driver {
-	bt := &rescontainerocibase.BT{}
-	t := &T{BT: bt}
+	t := &T{BT: &rescontainerocibase.BT{}}
+	t.SetupExecutor()
+	return t
+}
+
+func (t *T) SetupExecutor() {
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     bt,
+			BT:                     t.BT,
 			RunArgsDNSOptionOption: "--dns-opt",
 		},
 		exe: "podman",
 	}
 	executor := rescontainerocibase.NewExecutor("podman", executorArg, t)
 	_ = t.WithExecuter(executor)
-	return t
 }
 
 // RunArgsBase append extra args for podman
