@@ -152,12 +152,20 @@ func (e *Executor) Remove(ctx context.Context) error {
 }
 
 func (e *Executor) Run(ctx context.Context) error {
-	if a, err := e.args.RunArgs(); err != nil {
-		return fmt.Errorf("can't prepare args for run command: %s", err)
+	if a, err := e.args.RunArgsBase(); err != nil {
+		return fmt.Errorf("can't prepare base args for run command: %s", err)
 	} else if environ, err := e.args.RunCmdEnv(); err != nil {
 		return fmt.Errorf("can't prepare run command environ: %s", err)
 	} else {
-		return e.doExecRun(ctx, environ, a)
+		if imageArgs, err := e.args.RunArgsImage(); err != nil {
+			return fmt.Errorf("can't prepare image args for run command: %s", err)
+		} else if commandArgs, err := e.args.RunArgsCommand(); err != nil {
+			return fmt.Errorf("can't prepare command args for run command: %s", err)
+		} else {
+			a = append(a, imageArgs...)
+			a = append(a, commandArgs...)
+			return e.doExecRun(ctx, environ, a)
+		}
 	}
 }
 

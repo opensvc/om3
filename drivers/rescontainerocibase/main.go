@@ -139,7 +139,9 @@ type (
 		EnterCmdArgs() []string
 		EnterCmdCheckArgs() []string
 		RemoveArgs() Args
-		RunArgs() (Args, error)
+		RunArgsBase() (Args, error)
+		RunArgsImage() (Args, error)
+		RunArgsCommand() (Args, error)
 		RunCmdEnv() (map[string]string, error)
 		StartArgs() Args
 		StopArgs() Args
@@ -245,6 +247,16 @@ func (t *BT) ContainerName() string {
 	}
 	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
 	return s
+}
+
+func (t *BT) ContainerInspect(ctx context.Context) (Inspecter, error) {
+	if t.executer == nil {
+		return nil, errors.New("can't get inspect from undefined executer")
+	}
+	if t.executer.InspectRefreshed() {
+		return t.executer.Inspect(), nil
+	}
+	return t.executer.InspectRefresh(ctx)
 }
 
 func (t *BT) ContainerInspectRefresh(ctx context.Context) (Inspecter, error) {
@@ -569,7 +581,6 @@ func (t *BT) Status(ctx context.Context) status.T {
 		t.statusInspectNS(ctx, "pidns", inspectHostConfig.PidMode, t.PIDNS)
 		t.statusInspectNS(ctx, "ipcns", inspectHostConfig.IpcMode, t.IPCNS)
 		t.statusInspectNS(ctx, "utsns", inspectHostConfig.UTSMode, t.UTSNS)
-		t.statusInspectNS(ctx, "userns", inspectHostConfig.UsernsMode, t.UserNS)
 	}
 
 	if _, imageID, err := t.executer.HasImage(ctx); err == nil {
