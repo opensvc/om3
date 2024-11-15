@@ -105,6 +105,11 @@ func (ea *ExecutorArg) RunArgsBase() (Args, error) {
 	if bt.Privileged {
 		a = append(a, Arg{Option: "--privileged"})
 	}
+
+	if len(bt.User) > 0 {
+		a = append(a, Arg{Option: "--user", Value: bt.User, HasValue: true})
+	}
+
 	if bt.Interactive {
 		a = append(a, Arg{Option: "--interactive"})
 	}
