@@ -29,19 +29,21 @@ type (
 )
 
 func New() resource.Driver {
-	bt := &rescontainerocibase.BT{}
-	t := &T{BT: bt}
+	t := &T{BT: &rescontainerocibase.BT{}}
+	t.SetupExecutor()
+	return t
+}
+
+func (t *T) SetupExecutor() {
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     bt,
+			BT:                     t.BT,
 			RunArgsDNSOptionOption: "--dns-option",
 		},
 		exe: "docker",
 	}
 	executor := rescontainerocibase.NewExecutor("docker", executorArg, t)
-	executorArg.inspectRefresher = executor
 	_ = t.WithExecuter(executor)
-	return t
 }
 
 // Status improve BT.Status with userns checks
