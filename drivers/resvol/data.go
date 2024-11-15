@@ -20,23 +20,12 @@ type (
 	// This type exists to host the parsing functions.
 	Reference string
 
-	// Metadata is the result of a Reference parsing.
-	Metadata struct {
-		ToPath    string
-		FromKey   string
-		FromStore naming.Path
-	}
-
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
 	SigRoute struct {
 		Signum syscall.Signal
 		RID    string
 	}
 )
-
-func (t Metadata) IsEmpty() bool {
-	return t.ToPath == "" && t.FromKey == ""
-}
 
 func (t T) getRefs() []string {
 	refs := make([]string, 0)
@@ -56,23 +45,23 @@ func (t T) getRefsByKind(filter naming.Kind) []string {
 	return refs
 }
 
-func (t T) getMetadata() []Metadata {
-	l := make([]Metadata, 0)
+func (t T) getMetadata() []object.KVInstall {
+	l := make([]object.KVInstall, 0)
 	l = append(l, t.getMetadataByKind(naming.KindSec)...)
 	l = append(l, t.getMetadataByKind(naming.KindCfg)...)
 	return l
 }
 
-func (t T) getMetadataByKind(kind naming.Kind) []Metadata {
-	l := make([]Metadata, 0)
+func (t T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
+	l := make([]object.KVInstall, 0)
 	refs := t.getRefsByKind(kind)
 	if len(refs) == 0 {
 		// avoid the Head() call when possible
-		return []Metadata{}
+		return l
 	}
 	head := t.Head()
 	if head == "" {
-		return []Metadata{}
+		return l
 	}
 	for _, ref := range refs {
 		md := t.parseReference(ref, kind, head)
@@ -91,22 +80,22 @@ func (t T) HasMetadata(p naming.Path, k string) bool {
 		if md.FromStore.Name != p.Name {
 			continue
 		}
-		if k == "" || md.FromKey == k {
+		if k == "" || md.FromPattern == k {
 			return true
 		}
 	}
 	return false
 }
 
-func (t T) parseReference(s string, filter naming.Kind, head string) Metadata {
+func (t T) parseReference(s string, filter naming.Kind, head string) object.KVInstall {
 	if head == "" {
-		return Metadata{}
+		return object.KVInstall{}
 	}
 
 	// s = "sec/s1/k[12]:/here/"
 	l := strings.SplitN(s, ":", 2)
 	if len(l) != 2 {
-		return Metadata{}
+		return object.KVInstall{}
 	}
 	toPath := filepath.Join(head, l[1])
 	// toPath = "/here"
@@ -127,19 +116,19 @@ func (t T) parseReference(s string, filter naming.Kind, head string) Metadata {
 		kind = naming.KindUsr
 		from = from[4:]
 		if filter == naming.KindCfg {
-			return Metadata{}
+			return object.KVInstall{}
 		}
 	case strings.HasPrefix(from, "sec/"):
 		kind = naming.KindSec
 		from = from[4:]
 		if filter == naming.KindCfg {
-			return Metadata{}
+			return object.KVInstall{}
 		}
 	case strings.HasPrefix(from, "cfg/"):
 		kind = naming.KindCfg
 		from = from[4:]
 		if filter == naming.KindSec {
-			return Metadata{}
+			return object.KVInstall{}
 		}
 	}
 	// kind = path.KindSec
@@ -147,15 +136,22 @@ func (t T) parseReference(s string, filter naming.Kind, head string) Metadata {
 
 	l = strings.SplitN(from, "/", 2)
 	if len(l) != 2 {
-		return Metadata{}
+		return object.KVInstall{}
 	}
 	if p, err := naming.NewPath(t.Path.Namespace, kind, l[0]); err != nil {
-		return Metadata{}
+		return object.KVInstall{}
 	} else {
-		return Metadata{
-			ToPath:    toPath, // /here
-			FromKey:   l[1],   // k[12]
-			FromStore: p,      // <volns>/sec/s1
+		return object.KVInstall{
+			ToPath:      toPath, // /here
+			ToHead:      head,
+			FromPattern: l[1], // k[12]
+			FromStore:   p,    // <volns>/sec/s1
+			AccessControl: object.KVInstallAccessControl{
+				User:    t.User,
+				Group:   t.Group,
+				Perm:    t.Perm,
+				DirPerm: t.DirPerm,
+			},
 		}
 	}
 }
@@ -163,7 +159,7 @@ func (t T) parseReference(s string, filter naming.Kind, head string) Metadata {
 func (t *T) statusData() {
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
-			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
+			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
 		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
@@ -171,13 +167,13 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
 		}
-		matches, err := keystore.MatchingKeys(md.FromKey)
+		matches, err := keystore.MatchingKeys(md.FromPattern)
 		if err != nil {
-			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromKey, err)
+			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromPattern, err)
 			continue
 		}
 		if len(matches) == 0 {
-			t.StatusLog().Warn("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromKey)
+			t.StatusLog().Warn("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromPattern)
 		}
 	}
 }
@@ -242,29 +238,17 @@ func (t T) InstallDataByKind(filter naming.Kind) (bool, error) {
 
 	for _, md := range t.getMetadataByKind(filter) {
 		if !md.FromStore.Exists() {
-			t.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
+			t.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
 		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
-		var matches []string
-		matches, err = keystore.MatchingKeys(md.FromKey)
-		if err != nil {
-			t.Log().Warnf("store %s keymatch %s: %s", md.FromStore, md.FromKey, err)
-			continue
+		if err = keystore.InstallKeyTo(md); err != nil {
+			return changed, err
 		}
-		if len(matches) == 0 {
-			t.Log().Warnf("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromKey)
-			continue
-		}
-		for _, k := range matches {
-			if err = keystore.InstallKeyTo(k, md.ToPath, t.Perm, t.DirPerm, t.User, t.Group); err != nil {
-				return changed, err
-			}
-			changed = true
-		}
+		changed = true
 	}
 	return changed, nil
 }
