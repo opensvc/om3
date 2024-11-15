@@ -11,7 +11,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/poolloop"
 	_ "github.com/opensvc/om3/drivers/poolvg"
 	_ "github.com/opensvc/om3/drivers/rescontainerdocker"
-	_ "github.com/opensvc/om3/drivers/rescontainerdockercli"
+	_ "github.com/opensvc/om3/drivers/rescontainerdockerlib"
 	_ "github.com/opensvc/om3/drivers/rescontainerkvm"
 	_ "github.com/opensvc/om3/drivers/rescontainerlxc"
 	_ "github.com/opensvc/om3/drivers/rescontainerpodman"
@@ -22,4 +22,6 @@ import (
 	_ "github.com/opensvc/om3/drivers/resdiskzvol"
 	_ "github.com/opensvc/om3/drivers/resipcni"
 	_ "github.com/opensvc/om3/drivers/resipnetns"
+	_ "github.com/opensvc/om3/drivers/restaskdocker"
+	_ "github.com/opensvc/om3/drivers/restaskpodman"
 )

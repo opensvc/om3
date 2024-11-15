@@ -6,7 +6,7 @@ package restaskpodman
 
 import (
 	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/drivers/rescontainerdockercli"
+	"github.com/opensvc/om3/drivers/rescontainerdocker"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/drivers/restask"
 	"github.com/opensvc/om3/drivers/restaskocibase"
@@ -41,7 +41,7 @@ func New() resource.Driver {
 }
 
 func (t *T) GetContainer() restaskocibase.ContainerTasker {
-	ct := &rescontainerdockercli.T{
+	ct := &rescontainerdocker.T{
 		BT: &rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
 			Detach:                    false,
