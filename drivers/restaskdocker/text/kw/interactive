@@ -1,3 +1,0 @@
-Keep stdin open even if not attached.
-
-To use if the container entrypoint is a shell.

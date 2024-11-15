@@ -1,3 +1,0 @@
-The user that will run the command inside the container.
-
-Also support the `<user>:<group>` syntax.

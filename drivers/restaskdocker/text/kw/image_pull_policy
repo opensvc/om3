@@ -1,9 +1,0 @@
-The docker image pull policy.
-
-* `always`
-
-  Pull upon each container start.
-
-* `once`
-
-  Pull if not already pulled (default).

@@ -1,11 +1,20 @@
-package restaskdocker
+package restaskpodman
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/rescontainer"
 	"github.com/opensvc/om3/drivers/restask"
+	"github.com/opensvc/om3/drivers/restaskocibase"
+)
+
+var (
+	//go:embed text
+	fs embed.FS
 )
 
 var (
@@ -32,6 +41,15 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWGuestOS,
 	)
 	m.AddKeywords(restask.Keywords...)
-	m.AddKeywords(Keywords...)
+	m.AddKeywords(restaskocibase.Keywords...)
+	m.Add(
+		keywords.Keyword{
+			Option:   "userns",
+			Attr:     "UserNS",
+			Scopable: true,
+			Example:  "container#0",
+			Text:     keywords.NewText(fs, "text/kw/userns"),
+		},
+	)
 	return m
 }

@@ -1,4 +1,4 @@
-package restaskdocker
+package restaskpodman
 
 import (
 	"os/exec"

@@ -1,7 +1,0 @@
-* empty
-
-  The container has a private utsns.
-
-* `host`
-
-  The container shares the host's hostname.

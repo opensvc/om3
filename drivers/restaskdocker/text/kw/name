@@ -1,4 +1,0 @@
-The name to assign to the container on `docker run`.
-
-If not set, a `<namespace>..<name>.container.<rid idx>` name is automatically
-assigned.
