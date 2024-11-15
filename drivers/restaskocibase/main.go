@@ -1,0 +1,134 @@
+package restaskocibase
+
+// TODO
+// * snooze
+// * status.json rewrite after lock acquire
+
+import (
+	"context"
+	"fmt"
+	"syscall"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/drivers/restask"
+	"github.com/opensvc/om3/util/pg"
+)
+
+type (
+	// T is the driver structure.
+	T struct {
+		restask.BaseTask
+		resource.SCSIPersistentReservation
+		Detach          bool           `json:"detach"`
+		PG              pg.Config      `json:"pg"`
+		Path            naming.Path    `json:"path"`
+		ObjectID        uuid.UUID      `json:"object_id"`
+		SCSIReserv      bool           `json:"scsireserv"`
+		PromoteRW       bool           `json:"promote_rw"`
+		NoPreemptAbort  bool           `json:"no_preempt_abort"`
+		OsvcRootPath    string         `json:"osvc_root_path"`
+		GuestOS         string         `json:"guest_os"`
+		Name            string         `json:"name"`
+		Nodes           []string       `json:"nodes"`
+		Hostname        string         `json:"hostname"`
+		Image           string         `json:"image"`
+		ImagePullPolicy string         `json:"image_pull_policy"`
+		CWD             string         `json:"cwd"`
+		User            string         `json:"user"`
+		Command         []string       `json:"command"`
+		DNS             []string       `json:"dns"`
+		DNSSearch       []string       `json:"dns_search"`
+		RunArgs         []string       `json:"run_args"`
+		Entrypoint      []string       `json:"entrypoint"`
+		Remove          bool           `json:"remove"`
+		Privileged      bool           `json:"privileged"`
+		Init            bool           `json:"init"`
+		Interactive     bool           `json:"interactive"`
+		TTY             bool           `json:"tty"`
+		VolumeMounts    []string       `json:"volume_mounts"`
+		Env             []string       `json:"environment"`
+		SecretsEnv      []string       `json:"secrets_environment"`
+		ConfigsEnv      []string       `json:"configs_environment"`
+		Devices         []string       `json:"devices"`
+		NetNS           string         `json:"netns"`
+		UserNS          string         `json:"userns"`
+		PIDNS           string         `json:"pidns"`
+		IPCNS           string         `json:"ipcns"`
+		UTSNS           string         `json:"utsns"`
+		RegistryCreds   string         `json:"registry_creds"`
+		PullTimeout     *time.Duration `json:"pull_timeout"`
+		Timeout         *time.Duration `json:"timeout"`
+
+		containerGetter ContainerGetter
+	}
+
+	ContainerGetter interface {
+		GetContainer() ContainerTasker
+	}
+
+	ContainerTasker interface {
+		Start(context.Context) error
+		ContainerInspectRefresh(context.Context) (rescontainerocibase.Inspecter, error)
+		Signal(sig syscall.Signal) error
+	}
+)
+
+func (t *T) SetContainerGetter(c ContainerGetter) {
+	t.containerGetter = c
+}
+
+func (t *T) Run(ctx context.Context) error {
+	return t.RunIf(ctx, t.lockedRun)
+}
+
+func (t *T) lockedRun(ctx context.Context) (err error) {
+	// TODO: if t.LogOutputs {}
+	container := t.containerGetter.GetContainer()
+	if err := container.Start(ctx); err != nil {
+		t.Log().Errorf("%s", err)
+		return err
+	}
+
+	// TODO: handle rm = true, detach = true ?
+
+	inspect, err := container.ContainerInspectRefresh(ctx)
+	if err != nil {
+		return err
+	}
+	exitCode := inspect.ExitCode()
+	if err := t.WriteLastRun(exitCode); err != nil {
+		t.Log().Errorf("write last run: %s", err)
+		return err
+	}
+	if s, err := t.BaseTask.ExitCodeToStatus(exitCode); err != nil {
+		return err
+	} else if s != status.Up {
+		return fmt.Errorf("command exited with code %d", exitCode)
+	}
+	return nil
+}
+
+func (t *T) Kill(ctx context.Context) error {
+	container := t.containerGetter.GetContainer()
+	return container.Signal(syscall.SIGKILL)
+}
+
+func (t *T) running(ctx context.Context) bool {
+	c := t.containerGetter.GetContainer()
+	inspect, err := c.ContainerInspectRefresh(ctx)
+	if err != nil || inspect == nil {
+		return false
+	}
+	return inspect.Running()
+}
+
+// Label returns a formatted short description of the Resource
+func (t *T) Label() string {
+	return ""
+}

@@ -1,0 +1,15 @@
+* empty or `none`
+
+  The container has a private netns other `container`, `ip.netns` or
+  `ip.cni` resources can share.
+
+* `<rid>`
+
+  The id of the resource that has the network namespace this container joins.
+
+  For example, a container with `netns=container#0` will share the
+  `container#0` netns.
+
+* `host`
+
+  Share the host network namespace.
