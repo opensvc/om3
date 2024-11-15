@@ -423,6 +423,7 @@ func (t *BT) Signal(sig syscall.Signal) error {
 	inspect, err := t.executer.InspectRefresh(nil)
 	if err != nil {
 		t.Log().Errorf("signal: inspect refresh container %s: %s", name, err)
+		return err
 	} else if inspect == nil {
 		t.Log().Infof("skip signal: container %s not found: %s", name)
 		return nil
