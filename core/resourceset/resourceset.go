@@ -233,7 +233,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 			continue
 		default:
 			res.Resource.Log().Errorf("%s", res.Error)
-			errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 		}
 	}
 	return errs
