@@ -180,6 +180,7 @@ type (
 		ID() string
 		ImageID() string
 		HostConfig() *InspectDataHostConfig
+		ExitCode() int
 		PID() int
 		Running() bool
 		SandboxKey() string
