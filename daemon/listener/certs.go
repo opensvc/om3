@@ -95,20 +95,31 @@ func (t *T) installCaFiles(clusterName string) error {
 		return fmt.Errorf("install ca files can't get %s: %w", caPath, err)
 	}
 
-	// ca_certificates for jwt
-	dst := daemonenv.CAKeyFile()
-
-	if err := caSec.InstallKeyTo("private_key", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
-		return fmt.Errorf("install ca files can't dump ca private_key to %s: %w", dst, err)
-	} else {
-		t.log.Infof("install ca files dump ca private_key to %s", dst)
+	opt := object.KVInstall{
+		AccessControl: object.KVInstallAccessControl{
+			Perm:    &certFileMode,
+			DirPerm: &certDirMode,
+			User:    certUsr,
+			Group:   certGrp,
+		},
 	}
 
-	dst = daemonenv.CACertChainFile()
-	if err := caSec.InstallKeyTo("certificate_chain", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
-		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", dst, err)
+	// ca_certificates for jwt
+
+	opt.FromPattern = "private_key"
+	opt.ToPath = daemonenv.CAKeyFile()
+	if err := caSec.InstallKeyTo(opt); err != nil {
+		return fmt.Errorf("install ca files can't dump ca private_key to %s: %w", opt.ToPath, err)
 	} else {
-		t.log.Infof("install ca files dump ca certificate_chain to %s", dst)
+		t.log.Infof("install ca files dump ca private_key to %s", opt.ToPath)
+	}
+
+	opt.FromPattern = "certificate_chain"
+	opt.ToPath = daemonenv.CACertChainFile()
+	if err := caSec.InstallKeyTo(opt); err != nil {
+		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", opt.ToPath, err)
+	} else {
+		t.log.Infof("install ca files dump ca certificate_chain to %s", opt.ToPath)
 	}
 
 	// ca_certificates
@@ -165,17 +176,29 @@ func (t *T) installCertFiles(clusterName string) error {
 		return fmt.Errorf("install cert files can't get %s: %w", certPath, err)
 	}
 
-	dst := daemonenv.KeyFile()
-	if err := certSec.InstallKeyTo("private_key", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
-		return fmt.Errorf("install cert files can't dump cert private_key to %s: %w", dst, err)
-	} else {
-		t.log.Infof("install cert files dump cert private_key to %s", dst)
+	opt := object.KVInstall{
+		AccessControl: object.KVInstallAccessControl{
+			Perm:    &certFileMode,
+			DirPerm: &certDirMode,
+			User:    certUsr,
+			Group:   certGrp,
+		},
 	}
-	dst = daemonenv.CertChainFile()
-	if err := certSec.InstallKeyTo("certificate_chain", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
-		return fmt.Errorf("install cert files can't dump cert certificate_chain to %s: %w", dst, err)
+
+	opt.FromPattern = "private_key"
+	opt.ToPath = daemonenv.KeyFile()
+	if err := certSec.InstallKeyTo(opt); err != nil {
+		return fmt.Errorf("install cert files can't dump cert private_key to %s: %w", opt.ToPath, err)
 	} else {
-		t.log.Infof("install cert files dump cert certificate_chain to %s", dst)
+		t.log.Infof("install cert files dump cert private_key to %s", opt.ToPath)
+	}
+
+	opt.FromPattern = "certificate_chain"
+	opt.ToPath = daemonenv.CertChainFile()
+	if err := certSec.InstallKeyTo(opt); err != nil {
+		return fmt.Errorf("install cert files can't dump cert certificate_chain to %s: %w", opt.ToPath, err)
+	} else {
+		t.log.Infof("install cert files dump cert certificate_chain to %s", opt.ToPath)
 	}
 
 	return nil

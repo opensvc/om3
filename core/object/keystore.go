@@ -31,7 +31,7 @@ type (
 		DecodeKey(name string) ([]byte, error)
 		EditKey(name string) error
 		InstallKey(name string) error
-		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, string, string) error
+		InstallKeyTo(KVInstall) error
 		RemoveKey(name string) error
 		RenameKey(name, to string) error
 

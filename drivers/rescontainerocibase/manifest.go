@@ -56,17 +56,7 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 			Attr:     "Image",
 			Aliases:  []string{"run_image"},
 			Scopable: true,
-			Required: true,
-			Example:  "google/pause",
-			Text:     keywords.NewText(fs, "text/kw/image"),
-		},
-		keywords.Keyword{
-			Option:   "image",
-			Attr:     "Image",
-			Aliases:  []string{"run_image"},
-			Scopable: true,
-			Required: true,
-			Example:  "google/pause",
+			Default:  "ghcr.io/opensvc/pause",
 			Text:     keywords.NewText(fs, "text/kw/image"),
 		},
 		keywords.Keyword{

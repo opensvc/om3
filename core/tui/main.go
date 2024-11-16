@@ -25,10 +25,8 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 )
@@ -56,13 +54,15 @@ type (
 		command  *tview.InputField
 		contexts *tview.List
 
-		client *client.T
+		client       *client.T
+		streamClient *client.T
 
 		lastDraw time.Time
 
 		viewPath naming.Path
 		viewNode string
 		viewKey  string
+		viewRID  string
 
 		lastUpdatedAt time.Time
 
@@ -75,6 +75,7 @@ type (
 		selectedNodes     map[string]any
 		selectedPaths     map[string]any
 		selectedInstances map[[2]string]any
+		selectedRIDs      map[[3]string]any
 
 		errC     chan error
 		restartC chan error
@@ -216,8 +217,20 @@ func NewApp() *App {
 		selectedNodes:     make(map[string]any),
 		selectedPaths:     make(map[string]any),
 		selectedInstances: make(map[[2]string]any),
+		selectedRIDs:      make(map[[3]string]any),
 		errC:              make(chan error),
 		restartC:          make(chan error),
+	}
+}
+
+func (t *App) resetSelected() int {
+	switch t.focus() {
+	case viewInstance:
+		n := len(t.selectedRIDs)
+		t.resetSelectedRIDs()
+		return n
+	default:
+		return 0
 	}
 }
 
@@ -225,6 +238,7 @@ func (t *App) resetAllSelected() {
 	t.resetSelectedNodes()
 	t.resetSelectedPaths()
 	t.resetSelectedInstances()
+	t.resetSelectedRIDs()
 }
 
 func (t *App) updateKeyTextView() {
@@ -255,132 +269,6 @@ func (t *App) updateKeyTextView() {
 	t.textView.SetTitle(title)
 	t.textView.Clear()
 	fmt.Fprint(t.textView, text)
-}
-
-func (t *App) initKeysTable() {
-	table := tview.NewTable()
-	table.SetBorder(false)
-
-	onEnter := func(event *tcell.EventKey) {
-		t.nav(viewKey)
-	}
-
-	table.SetSelectionChangedFunc(func(row, col int) {
-		t.viewKey = ""
-		if row == 0 {
-			return
-		}
-		if col == 0 {
-			t.viewKey = table.GetCell(row, col).Text
-		}
-
-	})
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyLeft, tcell.KeyRight, tcell.KeyUp, tcell.KeyDown:
-			table.SetSelectable(true, false)
-		case tcell.KeyEnter:
-			onEnter(event)
-			return nil // prevents the default select behaviour
-		}
-		return event
-	})
-	t.keys = table
-}
-
-func (t *App) initObjectsTable() {
-	table := tview.NewTable()
-	table.SetEvaluateAllRows(true)
-
-	onEnter := func(event *tcell.EventKey) {
-		row, col := table.GetSelection()
-		switch {
-		case !t.viewPath.IsZero() && t.viewNode != "":
-			t.initTextView()
-			t.nav(viewInstance)
-		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
-			t.nav(viewKeys)
-		case row == 0 && col == 1:
-			t.listContexts()
-		}
-	}
-
-	selectedFunc := func(row, col int) {
-		cell := table.GetCell(row, col)
-		path := table.GetCell(row, 0).Text
-		node := table.GetCell(0, col).Text
-		var selected *bool
-		switch {
-		case row == 0 && col >= t.firstInstanceCol:
-			v := t.toggleNode(node)
-			selected = &v
-		case row < t.firstObjectRow:
-		case col == 0:
-			v := t.togglePath(path)
-			selected = &v
-		case col >= t.firstInstanceCol:
-			v := t.toggleInstance(path, node)
-			selected = &v
-		}
-		if selected != nil && *selected {
-			cell.SetBackgroundColor(colorSelected)
-		} else {
-			cell.SetBackgroundColor(colorNone)
-		}
-	}
-
-	table.SetSelectedFunc(selectedFunc)
-
-	setSelection := func(table *tview.Table) {
-		row, col := table.GetSelection()
-		cell := table.GetCell(row, col)
-		cell.SetBackgroundColor(colorSelected)
-		table.SetCell(row, col, cell)
-		selectedFunc(row, col)
-	}
-
-	selectAll := func() {
-		for i := t.firstObjectRow; i < table.GetRowCount(); i++ {
-			selectedFunc(i, 0)
-		}
-	}
-
-	table.SetSelectionChangedFunc(func(row, col int) {
-		t.viewNode = ""
-		t.viewPath = naming.Path{}
-		if row >= t.firstObjectRow {
-			path := t.objects.GetCell(row, 0).Text
-			p, err := naming.ParsePath(path)
-			if err != nil {
-				return
-			}
-			t.viewPath = p
-		}
-		if col >= t.firstInstanceCol {
-			t.viewNode = t.objects.GetCell(0, col).Text
-		}
-	})
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyLeft, tcell.KeyRight, tcell.KeyUp, tcell.KeyDown:
-			table.SetSelectable(true, true)
-		case tcell.KeyESC:
-			t.resetSelectedNodes()
-			t.resetSelectedPaths()
-			t.resetSelectedInstances()
-		case tcell.KeyCtrlA:
-			selectAll()
-		case tcell.KeyEnter:
-			onEnter(event)
-			return nil // prevents the default select behaviour
-		}
-		switch event.Rune() {
-		case ' ':
-			setSelection(table)
-		}
-		return event
-	})
-	t.objects = table
 }
 
 func (t *App) initHeadTextView() {
@@ -419,6 +307,9 @@ func (t *App) initApp() {
 	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyESC:
+			if n := t.resetSelected(); n > 0 {
+				return nil
+			}
 			t.back()
 		case tcell.KeyBacktab:
 			colorHead2--
@@ -441,7 +332,7 @@ func (t *App) initApp() {
 		case 'h':
 			t.onRuneH(event)
 		case 'l':
-			t.onRuneL(event)
+			t.nav(viewLog)
 		case 'q':
 			t.stop()
 		case 'r':
@@ -530,13 +421,19 @@ func (t *App) listContexts() {
 			t.listContexts()
 		} else if resp.StatusCode() == http.StatusOK {
 			t.client = cli
-			t.user = resp.JSON200.Name
-			t.reconnect()
-			t.flex.Clear()
-			t.flex.AddItem(t.head, 1, 0, false)
-			t.flex.AddItem(t.objects, 0, 1, true)
-			t.app.SetFocus(t.objects)
-			t.updateHead()
+			if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
+				t.errorf("new stream client: %s", err)
+				t.listContexts()
+			} else {
+				t.streamClient = streamClient
+				t.user = resp.JSON200.Name
+				t.reconnect()
+				t.flex.Clear()
+				t.flex.AddItem(t.head, 1, 0, false)
+				t.flex.AddItem(t.objects, 0, 1, true)
+				t.app.SetFocus(t.objects)
+				t.updateHead()
+			}
 		}
 	})
 
@@ -557,15 +454,21 @@ func (t *App) Run() error {
 }
 
 func (t *App) initContext() {
-	if cli, err := client.New(client.WithTimeout(0)); err != nil {
+	if cli, err := client.New(); err != nil {
 		t.errorf("%s", err)
 	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
 		t.errorf("%s", err)
 		t.listContexts()
 	} else if resp.StatusCode() == http.StatusOK {
 		t.client = cli
-		t.user = resp.JSON200.Name
-		t.reconnect()
+		if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
+			t.errorf("new stream client: %s", err)
+			t.listContexts()
+		} else {
+			t.streamClient = streamClient
+			t.user = resp.JSON200.Name
+			t.reconnect()
+		}
 	} else {
 		t.listContexts()
 	}
@@ -574,9 +477,9 @@ func (t *App) initContext() {
 func (t *App) runEventReader() {
 	<-t.restartC
 	for {
-		evReader, err := t.client.NewGetEvents().SetSelector(t.Selector).GetReader()
+		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader()
 		if err != nil {
-			t.errorf("%s", err)
+			t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {
 				return
 			}
@@ -591,6 +494,7 @@ func (t *App) runEventReader() {
 			return
 		}
 		if err != nil {
+			t.errorf("do with reader: %s", err)
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
@@ -721,234 +625,18 @@ func (t *App) paths() []string {
 
 }
 
-func (t *App) updateObjects() {
-	nodesCells := func(row int, selectable bool) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			t.objects.SetCell(row, t.firstInstanceCol+i, t.cellNode(nodename, selectable))
-		}
+func (t *App) toggleRID(path, node, rid string) bool {
+	key := [3]string{path, node, rid}
+	if _, ok := t.selectedRIDs[key]; ok {
+		delete(t.selectedRIDs, key)
+		return false
+	} else {
+		t.selectedRIDs[key] = nil
+		t.resetSelectedPaths()
+		t.resetSelectedNodes()
+		t.resetSelectedInstances()
+		return true
 	}
-
-	nodesScoreCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeScore(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesLoadCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeLoad(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesMemCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeMem(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesSwapCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeSwap(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesStateCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeStates(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesHbCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeHbMode(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesHb1Cells := func(row int, stream daemonsubsystem.HeartbeatStream) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeHbStatus(stream, nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesArbitratorCells := func(row int, arbitratorName string) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeArbitratorStatus(arbitratorName, nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	t.lastDraw = time.Now()
-
-	t.objects.Clear()
-	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
-
-	row := 0
-	t.objects.SetCell(row, 0, tview.NewTableCell("CLUSTER").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(t.Current.Cluster.Config.Name).SetSelectable(true))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("NODE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesCells(row, true)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("EVENT").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", t.eventCount)).SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("SCORE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesScoreCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│LOAD").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesLoadCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│MEM").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesMemCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│SWAP").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesSwapCells(row)
-
-	if len(t.Current.Cluster.Config.Nodes) > 1 {
-		row++
-		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(false))
-		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-		nodesHbCells(row)
-
-		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
-			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + monitor.StrThreadAlerts(hbStatus.Alerts)
-			row++
-			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
-			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-			nodesHb1Cells(row, hbStatus)
-		}
-	}
-
-	arbitratorNames := t.Current.ArbitratorNames()
-	if len(arbitratorNames) > 0 {
-		row++
-		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("ARBITRATORS").SetTextColor(colorTitle).SetSelectable(false))
-		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-
-		for _, arbitratorName := range arbitratorNames {
-			name := "│" + arbitratorName
-			row++
-			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
-			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-			nodesArbitratorCells(row, arbitratorName)
-		}
-	}
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("STATE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesStateCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("┼").SetTextColor(colorTitle).SetSelectable(false))
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("PATH").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("AVAIL").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("ORCHESTRATE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("UP").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesCells(row, false)
-
-	t.firstObjectRow = row + 1
-
-	t.objects.SetFixed(t.firstObjectRow, 2)
-
-	for _, path := range t.paths() {
-		row++
-		t.objects.SetCell(row, 0, t.cellObjectPath(path))
-		t.objects.SetCell(row, 1, t.cellObjectStatus(path))
-		t.objects.SetCell(row, 2, t.cellObjectOrchestrate(path))
-		t.objects.SetCell(row, 3, t.cellObjectRunning(path))
-		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-		for j, nodename := range t.Current.Cluster.Config.Nodes {
-			t.objects.SetCell(row, 5+j, t.cellInstanceStatus(path, nodename))
-		}
-	}
-}
-
-func (t *App) cellObjectOrchestrate(path string) *tview.TableCell {
-	s := t.Current.Cluster.Object[path].Orchestrate
-	return tview.NewTableCell(s).SetSelectable(false)
-}
-
-func (t *App) cellObjectRunning(path string) *tview.TableCell {
-	s := tview.TranslateANSI(t.StrObjectRunning(path))
-	return tview.NewTableCell(s).SetSelectable(false)
-}
-
-func (t *App) cellObjectStatus(path string) *tview.TableCell {
-	s := tview.TranslateANSI(monitor.StrObjectStatus(t.Current.Cluster.Object[path]))
-	return tview.NewTableCell(s).SetSelectable(false)
-}
-
-func (t *App) cellInstanceStatus(path, node string) *tview.TableCell {
-	s := tview.TranslateANSI(t.StrObjectInstance(path, node, t.Current.Cluster.Object[path].Scope))
-	cell := tview.NewTableCell(s)
-	if t.isInstanceSelected(path, node) {
-		cell.SetBackgroundColor(colorSelected)
-	}
-	return cell
-}
-
-func (t *App) cellNode(node string, selectable bool) *tview.TableCell {
-	cell := tview.NewTableCell(node).SetAttributes(tcell.AttrBold).SetSelectable(selectable)
-	if selectable && t.isNodeSelected(node) {
-		cell.SetBackgroundColor(colorSelected)
-	}
-	return cell
-}
-
-func (t *App) cellObjectPath(path string) *tview.TableCell {
-	cell := tview.NewTableCell(path).SetAttributes(tcell.AttrBold)
-	if t.isPathSelected(path) {
-		cell.SetBackgroundColor(colorSelected)
-	}
-	return cell
 }
 
 func (t *App) toggleInstance(path, node string) bool {
@@ -960,6 +648,7 @@ func (t *App) toggleInstance(path, node string) bool {
 		t.selectedInstances[key] = nil
 		t.resetSelectedPaths()
 		t.resetSelectedNodes()
+		t.resetSelectedRIDs()
 		return true
 	}
 }
@@ -972,6 +661,7 @@ func (t *App) togglePath(key string) bool {
 		t.selectedPaths[key] = nil
 		t.resetSelectedInstances()
 		t.resetSelectedNodes()
+		t.resetSelectedRIDs()
 		return true
 	}
 }
@@ -984,7 +674,29 @@ func (t *App) toggleNode(key string) bool {
 		t.selectedNodes[key] = nil
 		t.resetSelectedInstances()
 		t.resetSelectedPaths()
+		t.resetSelectedRIDs()
 		return true
+	}
+}
+
+func (t *App) resetSelectedRIDs() {
+	if len(t.selectedRIDs) == 0 {
+		return
+	}
+	t.selectedRIDs = make(map[[3]string]any)
+	if t.flex.GetItemCount() < 2 {
+		return
+	}
+	primitive := t.flex.GetItem(1)
+	table, ok := primitive.(*tview.Table)
+	if !ok {
+		return
+	}
+	if table.GetCell(0, 0).Text != "RID" {
+		return
+	}
+	for i := 1; i < table.GetRowCount(); i += 1 {
+		table.GetCell(i, 0).SetBackgroundColor(colorNone)
 	}
 }
 
@@ -1018,6 +730,11 @@ func (t *App) resetSelectedPaths() {
 	for i := 1; i < t.objects.GetRowCount(); i += 1 {
 		t.objects.GetCell(i, 0).SetBackgroundColor(colorNone)
 	}
+}
+
+func (t *App) isResourceSelected(path, node, rid string) bool {
+	_, ok := t.selectedRIDs[[3]string{path, node, rid}]
+	return ok
 }
 
 func (t *App) isInstanceSelected(path, node string) bool {
@@ -1080,7 +797,29 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "restart":
 			t.actionRestart(paths)
 		default:
-			t.errorf("unknown command: %s", action)
+			t.errorf("unknown object action: %s", action)
+		}
+	}
+	resourceAction := func(args []string, keys map[[3]string]any) {
+		switch args[0] {
+		case "stop":
+			t.actionResourceStop(keys)
+		case "start":
+			t.actionResourceStart(keys)
+		case "provision":
+			t.actionResourceProvision(keys)
+		case "unprovision":
+			t.actionResourceUnprovision(keys)
+		case "restart":
+			t.actionResourceRestart(keys)
+		case "run":
+			t.actionResourceRun(keys)
+		case "enable":
+			t.actionResourceEnable(keys)
+		case "disable":
+			t.actionResourceDisable(keys)
+		default:
+			t.errorf("unknown resource action: %s", args[0])
 		}
 	}
 	instanceAction := func(action string, keys map[[2]string]any) {
@@ -1108,7 +847,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		//	case "clear":
 		//		t.actionInstanceClear(keys)
 		default:
-			t.errorf("unknown command: %s", action)
+			t.errorf("unknown instance action: %s", action)
 		}
 	}
 	nodeAction := func(args []string, nodes map[string]any) {
@@ -1128,7 +867,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "drain":
 			t.actionNodeDrain(nodes)
 		default:
-			t.errorf("unknown command: %s", args[0])
+			t.errorf("unknown node action: %s", args[0])
 		}
 	}
 	t.command = tview.NewInputField().
@@ -1194,6 +933,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					}
 					action = args[1]
 					switch {
+					case len(t.selectedRIDs) > 0:
+						resourceAction(args[1:], t.selectedRIDs)
 					case len(t.selectedPaths) > 0:
 						objectAction(action, t.selectedPaths)
 					case len(t.selectedInstances) > 0:
@@ -1203,6 +944,14 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					default:
 						row, col := t.objects.GetSelection()
 						switch {
+						case t.focus() == viewInstance && row > 1:
+							if table, ok := t.flex.GetItem(1).(*tview.Table); ok {
+								row, col := table.GetSelection()
+								rid := table.GetCell(row, col).Text
+								selection := make(map[[3]string]any)
+								selection[[3]string{t.viewPath.String(), t.viewNode, rid}] = nil
+								resourceAction(args[1:], selection)
+							}
 						case row == 0 && col == 1:
 							clusterAction(action)
 						case row == 0 && col >= t.firstInstanceCol:
@@ -1432,6 +1181,148 @@ func (t *App) actionInstanceSwitch(keys map[[2]string]any) {
 	}
 }
 
+func groupByInstance(in map[[3]string]any) map[[2]string][]string {
+	out := make(map[[2]string][]string)
+	for key := range in {
+		k := [2]string{key[0], key[1]}
+		rid := key[2]
+		if l, ok := out[k]; ok {
+			l = append(l, rid)
+			out[k] = l
+		} else {
+			l := []string{rid}
+			out[k] = l
+		}
+	}
+	return out
+}
+
+func (t *App) actionResourceRestart(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		rid := strings.Join(rids, ",")
+		params := api.PostInstanceActionRestartParams{Rid: &rid}
+		_, _ = t.client.PostInstanceActionRestartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceEnable(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		unset := make(api.InQueryUnsets, len(rids))
+		for i, rid := range rids {
+			unset[i] = rid + ".disable"
+		}
+		params := api.PostObjectConfigUpdateParams{Unset: &unset}
+		_, _ = t.client.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceDisable(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		set := make(api.InQuerySets, len(rids))
+		for i, rid := range rids {
+			set[i] = rid + ".disable=true"
+		}
+		params := api.PostObjectConfigUpdateParams{Set: &set}
+		_, _ = t.client.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceRun(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		rid := strings.Join(rids, ",")
+		confirm := true
+		params := api.PostInstanceActionRunParams{Rid: &rid, Confirm: &confirm}
+		_, _ = t.client.PostInstanceActionRunWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceProvision(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		rid := strings.Join(rids, ",")
+		params := api.PostInstanceActionProvisionParams{Rid: &rid}
+		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceUnprovision(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+
+		rid := strings.Join(rids, ",")
+		params := api.PostInstanceActionUnprovisionParams{Rid: &rid}
+		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceStart(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		rid := strings.Join(rids, ",")
+		params := api.PostInstanceActionStartParams{Rid: &rid}
+		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
+func (t *App) actionResourceStop(keys map[[3]string]any) {
+	ctx := context.Background()
+	for key, rids := range groupByInstance(keys) {
+		path := key[0]
+		node := key[1]
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		rid := strings.Join(rids, ",")
+		params := api.PostInstanceActionStopParams{Rid: &rid}
+		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+	}
+}
+
 func (t *App) actionStop(paths map[string]any) {
 	ctx := context.Background()
 	for path, _ := range paths {
@@ -1595,6 +1486,9 @@ func (t *App) onRuneH(event *tcell.EventKey) {
        clear, delete, freeze, provision, refresh, start, stop, switch,
        unfreeze, unprovision  
 
+     resource actions:
+       disable, enable, provision, run, start, stop, unprovision  
+
      node actions:
        drain freeze, unfreeze
 
@@ -1628,7 +1522,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 	t.app.SetFocus(v)
 }
 
-func (t *App) onRuneL(event *tcell.EventKey) {
+func (t *App) updateLogTextView() {
 	title := func() string {
 		switch {
 		case !t.viewPath.IsZero() && t.viewNode != "":
@@ -1642,18 +1536,16 @@ func (t *App) onRuneL(event *tcell.EventKey) {
 		}
 	}
 
-	t.initTextView()
 	t.textView.SetTitle(title())
 	t.textView.SetDynamicColors(true)
 	t.textView.SetChangedFunc(func() {
 		t.textView.ScrollToEnd()
 	})
 	t.textView.Clear()
-	t.nav(viewLog)
 
 	lines := 50
 	follow := true
-	log := t.client.NewGetLogs(t.viewNode).
+	log := t.streamClient.NewGetLogs(t.viewNode).
 		//SetFilters(nil).
 		SetLines(&lines).
 		SetFollow(&follow)
@@ -1739,51 +1631,6 @@ func (t *App) skipIfInstanceNotUpdated() bool {
 	}
 	// no change, skip
 	return true
-}
-
-func (t *App) updateKeysView() {
-	if t.viewPath.IsZero() {
-		return
-	}
-	if t.skipIfConfigNotUpdated() {
-		return
-	}
-	resp, err := t.client.GetObjectKVStoreKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return
-	}
-	t.keys.Clear()
-	t.keys.SetTitle(fmt.Sprintf("%s keys", t.viewPath))
-	t.keys.SetCell(0, 0, tview.NewTableCell("NAME").SetTextColor(colorTitle).SetSelectable(false))
-	t.keys.SetCell(0, 1, tview.NewTableCell("SIZE").SetTextColor(colorTitle).SetSelectable(false))
-	for i, key := range resp.JSON200.Items {
-		row := 1 + i
-		t.keys.SetCell(row, 0, tview.NewTableCell(key.Key).SetSelectable(true))
-		t.keys.SetCell(row, 1, tview.NewTableCell(sizeconv.BSizeCompact(float64(key.Size))).SetSelectable(false))
-	}
-}
-
-func (t *App) updateInstanceView() {
-	if t.viewPath.IsZero() {
-		return
-	}
-	if t.viewNode == "" {
-		return
-	}
-	if t.skipIfInstanceNotUpdated() {
-		return
-	}
-	digest := t.Frame.Current.GetObjectStatus(t.viewPath)
-	text := tview.TranslateANSI(digest.Render([]string{t.viewNode}))
-	t.initTextView()
-	title := fmt.Sprintf("%s@%s status", t.viewPath, t.viewNode)
-	t.textView.SetDynamicColors(true)
-	t.textView.SetTitle(title)
-	t.textView.Clear()
-	fmt.Fprint(t.textView, text)
 }
 
 func (t *App) onRuneE(event *tcell.EventKey) {
@@ -1971,6 +1818,7 @@ func (t *App) navFromTo(from, to viewId) {
 		t.initTextView()
 		t.flex.AddItem(t.textView, 0, 1, true)
 		t.app.SetFocus(t.textView)
+		t.updateLogTextView()
 	case viewConfig:
 		t.initTextView()
 		t.flex.AddItem(t.textView, 0, 1, true)

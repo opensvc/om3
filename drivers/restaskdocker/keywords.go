@@ -40,7 +40,7 @@ var (
 		{
 			Aliases:  []string{"run_image"},
 			Attr:     "Image",
-			Example:  "google/pause",
+			Example:  "ghcr.io/opensvc/pause",
 			Option:   "image",
 			Required: true,
 			Scopable: true,

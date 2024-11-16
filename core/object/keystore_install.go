@@ -24,8 +24,21 @@ type (
 	vKey struct {
 		Key  string
 		Type vKeyType
-		Path string
 		Keys []vKey
+	}
+
+	KVInstall struct {
+		ToHead        string
+		ToPath        string
+		FromPattern   string
+		FromStore     naming.Path
+		AccessControl KVInstallAccessControl
+	}
+	KVInstallAccessControl struct {
+		User    string
+		Group   string
+		Perm    *os.FileMode
+		DirPerm *os.FileMode
 	}
 )
 
@@ -34,10 +47,15 @@ const (
 	vKeyDir
 )
 
+func (t KVInstall) IsEmpty() bool {
+	return t.ToPath == "" && t.FromPattern == ""
+}
+
 func (t *keystore) resolveKey(k string) ([]vKey, error) {
 	var (
 		dirs, keys []string
 		err        error
+		recurse    func(string) []vKey
 	)
 	if dirs, err = t.AllDirs(); err != nil {
 		return []vKey{}, err
@@ -45,8 +63,38 @@ func (t *keystore) resolveKey(k string) ([]vKey, error) {
 	if keys, err = t.AllKeys(); err != nil {
 		return []vKey{}, err
 	}
-	data, _ := resolveKeyRecurse(k, make(map[string]interface{}), dirs, keys)
-	return data, nil
+	done := make(map[string]any)
+
+	recurse = func(k string) []vKey {
+		data := make([]vKey, 0)
+		for _, p := range dirs {
+			if p != k && !fnmatch.Match(k, p, fnmatch.FNM_PATHNAME) {
+				continue
+			}
+			vks := recurse(p + "/*")
+			data = append(data, vKey{
+				Key:  p,
+				Type: vKeyDir,
+				Keys: vks,
+			})
+		}
+		for _, p := range keys {
+			if p != k && !fnmatch.Match(k, p, fnmatch.FNM_PATHNAME) {
+				continue
+			}
+			if _, ok := done[p]; ok {
+				continue
+			}
+			done[p] = nil
+			data = append(data, vKey{
+				Key:  p,
+				Type: vKeyFile,
+			})
+		}
+		return data
+	}
+
+	return recurse(k), nil
 }
 
 func mergeMapsets(m1 map[string]interface{}, m2 map[string]interface{}) map[string]interface{} {
@@ -54,38 +102,6 @@ func mergeMapsets(m1 map[string]interface{}, m2 map[string]interface{}) map[stri
 		m2[k] = nil
 	}
 	return m2
-}
-
-func resolveKeyRecurse(k string, done map[string]interface{}, dirs, keys []string) ([]vKey, map[string]interface{}) {
-	data := make([]vKey, 0)
-	for _, p := range dirs {
-		if p != k && !fnmatch.Match(p, k, fnmatch.FNM_PATHNAME|fnmatch.FNM_LEADING_DIR) {
-			continue
-		}
-		vks, rdone := resolveKeyRecurse(p+"/*", done, dirs, keys)
-		done = mergeMapsets(done, rdone)
-		data = append(data, vKey{
-			Key:  k,
-			Type: vKeyDir,
-			Path: p,
-			Keys: vks,
-		})
-	}
-	for _, p := range keys {
-		if p != k && !fnmatch.Match(p, k, fnmatch.FNM_PATHNAME|fnmatch.FNM_LEADING_DIR) {
-			continue
-		}
-		if _, ok := done[p]; ok {
-			continue
-		}
-		done[p] = nil
-		data = append(data, vKey{
-			Key:  k,
-			Type: vKeyFile,
-			Path: p,
-		})
-	}
-	return data, done
 }
 
 func (t *keystore) _install(k string, dst string) error {
@@ -97,7 +113,10 @@ func (t *keystore) _install(k string, dst string) error {
 		return fmt.Errorf("%s key=%s not found", t.path, k)
 	}
 	for _, vk := range keys {
-		if _, err := t.installKey(vk, dst, nil, nil, "", ""); err != nil {
+		opt := KVInstall{
+			ToPath: dst,
+		}
+		if _, err := t.installKey(vk, opt); err != nil {
 			return err
 		}
 	}
@@ -107,48 +126,48 @@ func (t *keystore) _install(k string, dst string) error {
 // keyPath returns the full path to host's file containing the key decoded data.
 func (t *keystore) keyPath(vk vKey, dst string) string {
 	if strings.HasSuffix(dst, "/") {
-		name := filepath.Base(strings.TrimRight(vk.Path, "/"))
+		name := filepath.Base(strings.TrimRight(vk.Key, "/"))
 		return filepath.Join(dst, name)
 	}
 	return dst
 }
 
-func (t *keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
+func (t *keystore) installKey(vk vKey, opt KVInstall) (bool, error) {
 	switch vk.Type {
 	case vKeyFile:
-		vpath := t.keyPath(vk, dst)
-		return t.installFileKey(vk, vpath, mode, dirmode, usr, grp)
+		opt.ToPath = t.keyPath(vk, opt.ToPath)
+		return t.installFileKey(vk, opt)
 	case vKeyDir:
-		return t.installDirKey(vk, dst, mode, dirmode, usr, grp)
+		return t.installDirKey(vk, opt)
 	default:
 		return false, nil
 	}
 }
 
 // installFileKey installs a key content in the host storage
-func (t *keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
-	if strings.Contains(dst, "..") {
+func (t *keystore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
+	if strings.Contains(opt.ToPath, "..") {
 		// paranoid checks before RemoveAll() and Remove()
-		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", dst)
+		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", opt.ToPath)
 	}
 	b, err := t.decode(vk.Key)
 	if err != nil {
 		return false, err
 	}
-	if v, err := file.ExistsAndDir(dst); err != nil {
-		t.Log().Errorf("install %s key=%s directory at location %s: %s", t.path, vk.Key, dst, err)
+	if v, err := file.ExistsAndDir(opt.ToPath); err != nil {
+		t.Log().Errorf("install %s key=%s directory at location %s: %s", t.path, vk.Key, opt.ToPath, err)
 	} else if v {
-		t.Log().Infof("remove %s key=%s directory at location %s", t.path, vk.Key, dst)
-		if err := os.RemoveAll(dst); err != nil {
+		t.Log().Infof("remove %s key=%s directory at location %s", t.path, vk.Key, opt.ToPath)
+		if err := os.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
 	}
-	vdir := filepath.Dir(dst)
+	vdir := filepath.Dir(opt.ToPath)
 	info, err := os.Stat(vdir)
 	switch {
 	case os.IsNotExist(err):
 		t.Log().Infof("create directory %s to host %s key=%s", vdir, t.path, vk.Key)
-		if err := os.MkdirAll(vdir, *dirmode); err != nil {
+		if err := t.makedir(vdir, opt.AccessControl); err != nil {
 			return false, err
 		}
 	case file.IsNotDir(err):
@@ -160,21 +179,21 @@ func (t *keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmod
 			return false, err
 		}
 	}
-	return t.writeKey(vk, dst, b, mode, usr, grp)
+	return t.writeKey(vk, opt.ToPath, b, opt.AccessControl.DirPerm, opt.AccessControl.User, opt.AccessControl.Group)
 }
 
 // installDirKey creates a directory to host projected keys
-func (t *keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
-	if strings.HasSuffix(dst, "/") {
-		dirname := filepath.Base(vk.Path)
-		dst = filepath.Join(dst, dirname, "")
+func (t *keystore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
+	if strings.HasSuffix(opt.ToPath, "/") {
+		dirname := filepath.Base(vk.Key)
+		opt.ToPath = filepath.Join(opt.ToPath, dirname) + "/"
 	}
-	if err := os.MkdirAll(dst, *dirmode); err != nil {
+	if err := t.makedir(opt.ToPath, opt.AccessControl); err != nil {
 		return false, err
 	}
 	changed := false
 	for _, k := range vk.Keys {
-		v, err := t.installKey(k, dst, mode, dirmode, usr, grp)
+		v, err := t.installKey(k, opt)
 		if err != nil {
 			return changed, err
 		}
@@ -256,17 +275,46 @@ func (t *keystore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t *keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
-	t.log.Debugf("install %s key %s to %s", t.path, keyName, dst)
-	keys, err := t.resolveKey(keyName)
+func (t *keystore) makedir(path string, opt KVInstallAccessControl) error {
+	if err := os.MkdirAll(path, *opt.DirPerm); err != nil {
+		return err
+	}
+	if err := t.chmod(path, opt.DirPerm); err != nil {
+		return err
+	}
+	if err := t.chown(path, opt.User, opt.Group); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *keystore) makedirs(opt KVInstall) error {
+	if opt.ToHead == "" || !strings.HasSuffix(opt.ToPath, "/") {
+		return nil
+	}
+	relPath := strings.TrimPrefix(opt.ToPath, opt.ToHead)
+	for _, dir := range pathChain(relPath) {
+		if err := t.makedir(filepath.Join(opt.ToHead, dir), opt.AccessControl); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *keystore) InstallKeyTo(opt KVInstall) error {
+	t.log.Debugf("install %s key %s to %s", t.path, opt.FromPattern, opt.ToPath)
+	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
-		return fmt.Errorf("resolve %s key %s: %w", t.path, keyName, err)
+		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("resolve %s key %s: no key found", t.path, keyName)
+		return fmt.Errorf("resolve %s key %s: no key found", t.path, opt.FromPattern)
+	}
+	if err := t.makedirs(opt); err != nil {
+		return err
 	}
 	for _, vk := range keys {
-		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
+		if _, err := t.installKey(vk, opt); err != nil {
 			return fmt.Errorf("install key %s at path %s: %w", vk.Key, t.path, err)
 		}
 	}
