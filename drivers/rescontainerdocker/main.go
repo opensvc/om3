@@ -43,6 +43,7 @@ func (t *T) SetupExecutor() {
 		exe: "docker",
 	}
 	executor := rescontainerocibase.NewExecutor("docker", executorArg, t)
+	executorArg.inspectRefresher = executor
 	_ = t.WithExecuter(executor)
 }
 
