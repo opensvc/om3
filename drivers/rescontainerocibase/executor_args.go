@@ -85,7 +85,7 @@ func (ea *ExecutorArg) RemoveArgs() Args {
 	}
 }
 
-func (ea *ExecutorArg) RunArgs() (Args, error) {
+func (ea *ExecutorArg) RunArgsBase() (Args, error) {
 	bt := ea.BT
 	ea.runArgsEnvM = make(map[string]string)
 	a := Args{
@@ -105,6 +105,11 @@ func (ea *ExecutorArg) RunArgs() (Args, error) {
 	if bt.Privileged {
 		a = append(a, Arg{Option: "--privileged"})
 	}
+
+	if len(bt.User) > 0 {
+		a = append(a, Arg{Option: "--user", Value: bt.User, HasValue: true})
+	}
+
 	if bt.Interactive {
 		a = append(a, Arg{Option: "--interactive"})
 	}
@@ -129,16 +134,32 @@ func (ea *ExecutorArg) RunArgs() (Args, error) {
 	a = append(a, ea.runArgsDNSOption()...)
 	a = append(a, ea.runArgsCGroupParent()...)
 
+	for _, v := range bt.Devices {
+		a = append(a, Arg{Option: "--device", Value: v, Multi: true, HasValue: true})
+	}
+
 	if ea.BT.Remove {
 		a = append(a, Arg{Option: "--rm"})
 	}
-	// TODO: --devices
-	// TODO: merge run_args
-	a = append(a, Arg{Option: bt.Image})
 
-	a = append(a, ea.runArgsCommand()...)
+	// TODO: merge run_args
+	for _, v := range bt.RunArgs {
+		a = append(a, Arg{Option: v})
+	}
 
 	return a, nil
+}
+
+func (ea *ExecutorArg) RunArgsCommand() (Args, error) {
+	a := make(Args, 0, len(ea.BT.Command))
+	for _, s := range ea.BT.Command {
+		a = append(a, Arg{Option: s})
+	}
+	return a, nil
+}
+
+func (ea *ExecutorArg) RunArgsImage() (Args, error) {
+	return Args{Arg{Option: ea.BT.Image}}, nil
 }
 
 func (ea *ExecutorArg) RunCmdEnv() (map[string]string, error) {
@@ -186,14 +207,6 @@ func (ea *ExecutorArg) runArgsCGroupParent() Args {
 	return Args{
 		{Option: "--cgroup-parent", Value: ea.BT.PG.ID, HasValue: true},
 	}
-}
-
-func (ea *ExecutorArg) runArgsCommand() Args {
-	a := make(Args, 0, len(ea.BT.Command))
-	for _, s := range ea.BT.Command {
-		a = append(a, Arg{Option: s})
-	}
-	return a
 }
 
 func (ea *ExecutorArg) runArgsDNS() Args {
@@ -248,7 +261,6 @@ func (ea *ExecutorArg) runArgsForNS() (Args, error) {
 		{kw: "pidns", opt: "--pid", ns: bt.PIDNS},
 		{kw: "ipcns", opt: "--ipc", ns: bt.IPCNS},
 		{kw: "utsns", opt: "--uts", ns: bt.UTSNS},
-		{kw: "userns", opt: "--userns", ns: bt.UserNS},
 	}
 	var a Args
 	for _, c := range nsCandidates {

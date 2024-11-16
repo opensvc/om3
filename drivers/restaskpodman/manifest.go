@@ -18,7 +18,7 @@ var (
 )
 
 var (
-	drvID    = driver.NewID(driver.GroupTask, "docker")
+	drvID    = driver.NewID(driver.GroupTask, "podman")
 	altDrvID = driver.NewID(driver.GroupTask, "oci")
 )
 

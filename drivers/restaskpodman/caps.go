@@ -1,4 +1,4 @@
-package rescontainerdockercli
+package restaskpodman
 
 import (
 	"os/exec"
@@ -13,12 +13,10 @@ func init() {
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
 	drvCap := drvID.Cap()
-	if _, err := exec.LookPath("docker"); err != nil {
+	if _, err := exec.LookPath("podman"); err != nil {
 		return l, nil
 	}
 	l = append(l, drvCap)
-	l = append(l, drvCap+".registry_creds")
-	l = append(l, drvCap+".signal")
 	l = append(l, altDrvID.Cap())
 	return l, nil
 }

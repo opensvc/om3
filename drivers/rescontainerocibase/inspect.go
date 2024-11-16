@@ -38,9 +38,10 @@ type (
 	}
 
 	InspectDataState struct {
-		Pid     int
-		Running bool
-		Status  string
+		ExitCode int
+		Pid      int
+		Running  bool
+		Status   string
 	}
 )
 
@@ -77,6 +78,13 @@ func (i *InspectData) ImageID() string {
 		return ""
 	}
 	return i.Image
+}
+
+func (i *InspectData) ExitCode() int {
+	if i == nil {
+		return 0
+	}
+	return i.State.ExitCode
 }
 
 func (i *InspectData) PID() int {

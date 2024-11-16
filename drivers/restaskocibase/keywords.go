@@ -1,4 +1,4 @@
-package restaskdocker
+package restaskocibase
 
 import (
 	"embed"
@@ -177,13 +177,6 @@ var (
 			Option:   "user",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/user"),
-		},
-		{
-			Attr:     "UserNS",
-			Example:  "container#0",
-			Option:   "userns",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/userns"),
 		},
 		{
 			Attr:     "PIDNS",

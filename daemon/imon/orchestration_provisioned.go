@@ -6,19 +6,30 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
 )
 
 func (t *Manager) orchestrateProvisioned() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStopFailed,
+		instance.MonitorStateThawed,
 		instance.MonitorStateUnprovisionFailed:
 		t.provisionedFromIdle()
+	case instance.MonitorStateProvisioned:
+		t.provisionedFromProvisioned()
 	case instance.MonitorStateWaitLeader:
 		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailed:
 		t.provisionedFromProvisionFailed()
+	case instance.MonitorStateThawing:
+	case instance.MonitorStateThawedFailed:
+		// TODO: clear ?
 	}
+}
+
+func (t *Manager) provisionedFromProvisioned() {
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
@@ -32,7 +43,7 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
 		return
 	} else {
 		t.transitionTo(instance.MonitorStateWaitLeader)
@@ -47,7 +58,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
+	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
 	return
 }
 
@@ -97,10 +108,14 @@ func (t *Manager) provisioningLeader() string {
 }
 
 func (t *Manager) isProvisioningLeader() bool {
-	if t.provisioningLeader() == t.localhost {
-		return true
+	if t.objStatus.Topology == topology.Flex {
+		return t.state.IsLeader
+	} else {
+		if t.provisioningLeader() == t.localhost {
+			return true
+		}
+		return false
 	}
-	return false
 }
 
 func (t *Manager) hasLeaderProvisioned() bool {
