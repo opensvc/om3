@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/devans10/pugo/pure1"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/array"

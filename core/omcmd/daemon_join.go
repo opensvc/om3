@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
@@ -150,7 +150,7 @@ func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
 	type (
 		joinClaim struct {
 			Ca string `json:"ca"`
-			*jwt.StandardClaims
+			*jwt.RegisteredClaims
 		}
 	)
 	var (

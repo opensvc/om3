@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
@@ -22,7 +22,7 @@ type (
 	// apiClaims defines api claims
 	apiClaims struct {
 		Grant []string `json:"grant"`
-		*jwt.StandardClaims
+		*jwt.RegisteredClaims
 	}
 
 	// JWTFiler is the interface that groups SignKeyFile and VerifyKeyFile methods
@@ -61,7 +61,7 @@ func initJWT(i interface{}) (string, auth.Strategy, error) {
 			return
 		}
 		claims := tk.Claims.(*apiClaims)
-		exp = time.Unix(claims.ExpiresAt, 0)
+		exp = claims.ExpiresAt.Time
 
 		extensions := authenticatedExtensions("jwt", claims.Grant...)
 		info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, *extensions)
