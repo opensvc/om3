@@ -2,6 +2,7 @@ package restaskpodman
 
 import (
 	"embed"
+	"os/exec"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
@@ -24,7 +25,9 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
-	driver.Register(altDrvID, New)
+	if _, err := exec.LookPath("docker"); err != nil {
+		driver.Register(altDrvID, New)
+	}
 }
 
 // Manifest ...
