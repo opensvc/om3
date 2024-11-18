@@ -17,6 +17,8 @@ func capabilitiesScanner() ([]string, error) {
 		return l, nil
 	}
 	l = append(l, drvCap)
-	l = append(l, altDrvID.Cap())
+	if _, err := exec.LookPath("docker"); err != nil {
+		l = append(l, altDrvID.Cap())
+	}
 	return l, nil
 }

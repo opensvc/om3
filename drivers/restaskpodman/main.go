@@ -40,11 +40,13 @@ func New() resource.Driver {
 	return t
 }
 
-func (t *T) GetContainer() restaskocibase.ContainerTasker {
+// GetContainerDetached returns a ContainerTasker where the base container has
+// the Detach value set to false (task are never detached).
+func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	ct := &rescontainerpodman.T{
 		BT: &rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
-			Detach:                    false,
+			Detach:                    false, // don't hide the detach value
 			SCSIPersistentReservation: t.SCSIPersistentReservation,
 			PG:                        t.PG,
 			Path:                      t.Path,
@@ -65,7 +67,7 @@ func (t *T) GetContainer() restaskocibase.ContainerTasker {
 			DNSSearch:                 t.DNSSearch,
 			RunArgs:                   t.RunArgs,
 			Entrypoint:                t.Entrypoint,
-			Remove:                    t.Remove,
+			Remove:                    true,
 			Privileged:                t.Privileged,
 			Init:                      t.Init,
 			Interactive:               t.Interactive,
@@ -84,6 +86,9 @@ func (t *T) GetContainer() restaskocibase.ContainerTasker {
 			PullTimeout:               t.PullTimeout,
 			StartTimeout:              t.Timeout,
 		},
+	}
+	if err := ct.Configure(); err != nil {
+		t.Log().Errorf("unable to configure podman task container")
 	}
 	ct.SetupExecutor()
 	return ct

@@ -1,2 +1,2 @@
-If set to `true`, add `--rm` to the docker run args and make sure the
-instance is removed on resource `stop`.
+If rm=true, the container instance is removed when the resource is stopped.
+If detach=false, the driver automatically behaves as if rm=true.

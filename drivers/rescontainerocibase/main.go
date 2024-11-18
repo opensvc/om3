@@ -215,6 +215,9 @@ const (
 func (t *BT) Configure() error {
 	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
+	if !t.Detach {
+		t.Remove = true
+	}
 	return nil
 }
 
@@ -393,6 +396,8 @@ func (t *BT) Mounts() ([]BindMount, error) {
 	return mounts, nil
 }
 
+// NeedPreStartRemove return true when container has Remove or not Detach.
+// During Start existing container (with Remove true or Detach false) must be removed,
 func (t *BT) NeedPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }

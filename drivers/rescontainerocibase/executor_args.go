@@ -138,10 +138,6 @@ func (ea *ExecutorArg) RunArgsBase() (Args, error) {
 		a = append(a, Arg{Option: "--device", Value: v, Multi: true, HasValue: true})
 	}
 
-	if ea.BT.Remove {
-		a = append(a, Arg{Option: "--rm"})
-	}
-
 	// TODO: merge run_args
 	for _, v := range bt.RunArgs {
 		a = append(a, Arg{Option: v})
