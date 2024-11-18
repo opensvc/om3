@@ -103,9 +103,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 h1:YLtO71vCjJRCBcrPMtQ9nqBsqpA1
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1/go.mod h1:hyedUtir6IdtD/7lIxGeCxkaw7y45JueMRL4DIyJDKs=
 github.com/deepmap/oapi-codegen v1.16.2 h1:xGHx0dNqYfy9gE8a7AVgVM8Sd5oF9SEgePzP+UPAUXI=
 github.com/deepmap/oapi-codegen v1.16.2/go.mod h1:rdYoEA2GE+riuZ91DvpmBX9hJbQpuY9wchXpfQ3n+ho=
-github.com/devans10/pugo/pure1 v0.0.0-20230602184138-1a5d930c950e h1:mOZklVzOTmcrkP4VWM46WFwNJwzdThcQ9mzj7bxtyXw=
-github.com/devans10/pugo/pure1 v0.0.0-20230602184138-1a5d930c950e/go.mod h1:uBsttO8Xh1yRlyvv9zrBU33t8EvWnE3ashmKcJ5liDI=
-github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
+github.com/devans10/pugo/pure1 v0.0.0-20241116160615-6bb8c469c9a0 h1:U6cRt+2OHwDc1Y8jV+oYOmYtDmEeG7vt21W7QYPi/Rk=
+github.com/devans10/pugo/pure1 v0.0.0-20241116160615-6bb8c469c9a0/go.mod h1:F9Q3/qP2+FfXNR/2V2vjquc2vXXHEPlW+YffwHatVXM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e h1:vUmf0yezR0y7jJ5pceLHthLaYf4bA5T14B6q39S4q2Q=
