@@ -87,6 +87,9 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			StartTimeout:              t.Timeout,
 		},
 	}
+	if err := ct.Configure(); err != nil {
+		t.Log().Errorf("unable to configure docker task container")
+	}
 	ct.SetupExecutor()
 	return ct
 }

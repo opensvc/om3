@@ -215,6 +215,9 @@ const (
 func (t *BT) Configure() error {
 	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
+	if !t.Detach {
+		t.Remove = true
+	}
 	return nil
 }
 
