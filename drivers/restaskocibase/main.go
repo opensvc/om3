@@ -65,11 +65,11 @@ type (
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		Timeout         *time.Duration `json:"timeout"`
 
-		containerGetter ContainerGetter
+		containerDetachedGetter ContainerDetachedGetter
 	}
 
-	ContainerGetter interface {
-		GetContainer() ContainerTasker
+	ContainerDetachedGetter interface {
+		GetContainerDetached() ContainerTasker
 	}
 
 	ContainerTasker interface {
@@ -79,8 +79,8 @@ type (
 	}
 )
 
-func (t *T) SetContainerGetter(c ContainerGetter) {
-	t.containerGetter = c
+func (t *T) SetContainerGetter(c ContainerDetachedGetter) {
+	t.containerDetachedGetter = c
 }
 
 func (t *T) Run(ctx context.Context) error {
@@ -89,7 +89,7 @@ func (t *T) Run(ctx context.Context) error {
 
 func (t *T) lockedRun(ctx context.Context) (err error) {
 	// TODO: if t.LogOutputs {}
-	container := t.containerGetter.GetContainer()
+	container := t.containerDetachedGetter.GetContainerDetached()
 	if err := container.Start(ctx); err != nil {
 		t.Log().Errorf("%s", err)
 		return err
@@ -115,12 +115,12 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 }
 
 func (t *T) Kill(ctx context.Context) error {
-	container := t.containerGetter.GetContainer()
+	container := t.containerDetachedGetter.GetContainerDetached()
 	return container.Signal(syscall.SIGKILL)
 }
 
 func (t *T) running(ctx context.Context) bool {
-	c := t.containerGetter.GetContainer()
+	c := t.containerDetachedGetter.GetContainerDetached()
 	inspect, err := c.ContainerInspectRefresh(ctx)
 	if err != nil || inspect == nil {
 		return false

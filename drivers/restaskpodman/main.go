@@ -40,11 +40,13 @@ func New() resource.Driver {
 	return t
 }
 
-func (t *T) GetContainer() restaskocibase.ContainerTasker {
+// GetContainerDetached returns a ContainerTasker where the base container has
+// the Detach value set to false (task are never detached).
+func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	ct := &rescontainerpodman.T{
 		BT: &rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
-			Detach:                    false,
+			Detach:                    false, // don't hide the detach value
 			SCSIPersistentReservation: t.SCSIPersistentReservation,
 			PG:                        t.PG,
 			Path:                      t.Path,

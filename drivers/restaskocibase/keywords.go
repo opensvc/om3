@@ -87,14 +87,6 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/entrypoint"),
 		},
 		{
-			Attr:      "Detach",
-			Converter: converters.Bool,
-			Default:   "true",
-			Option:    "detach",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/detach"),
-		},
-		{
 			Attr:      "Remove",
 			Converter: converters.Bool,
 			Example:   "false",
