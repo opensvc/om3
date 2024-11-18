@@ -87,14 +87,6 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/entrypoint"),
 		},
 		{
-			Attr:      "Remove",
-			Converter: converters.Bool,
-			Example:   "false",
-			Option:    "rm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/rm"),
-		},
-		{
 			Attr:      "Privileged",
 			Converter: converters.Bool,
 			Option:    "privileged",
