@@ -90,6 +90,11 @@ func (t *T) Run(ctx context.Context) error {
 func (t *T) lockedRun(ctx context.Context) (err error) {
 	// TODO: if t.LogOutputs {}
 	container := t.containerDetachedGetter.GetContainerDetached()
+
+	if container == nil {
+		return fmt.Errorf("unable to get task container")
+	}
+
 	if err := container.Start(ctx); err != nil {
 		t.Log().Errorf("%s", err)
 		return err
@@ -99,6 +104,11 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 
 	inspect, err := container.ContainerInspectRefresh(ctx)
 	if err != nil {
+		return err
+	}
+
+	if inspect == nil {
+		err := fmt.Errorf("unable to inspect task container to retrieve its exit code")
 		return err
 	}
 	exitCode := inspect.ExitCode()
