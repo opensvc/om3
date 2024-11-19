@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/render/tree"
 )
@@ -53,13 +54,13 @@ var (
 		alertLevelWarnStr:  alertLevelWarn,
 		alertLevelErrorStr: alertLevelError,
 	}
-	alertKindUnknownDriverStr = "driver does not exist"
-	alertKindScopingStr       = "keyword does not support scoping"
-	alertKindUnknownStr       = "keyword does not exist"
-	alertKindEvalStr          = "keyword does not evaluate"
-	alertKindCandidatesStr    = "keyword value is not in allowed candidates"
-	alertKindDeprecatedStr    = "keyword is deprecated"
-	alertKindCapabilitiesStr  = "driver is not in node capabilities"
+	alertKindUnknownDriverStr = "unknown driver"
+	alertKindScopingStr       = "unscopable keyword"
+	alertKindUnknownStr       = "unknown keyword"
+	alertKindEvalStr          = "evaluation error"
+	alertKindCandidatesStr    = "unsupported value"
+	alertKindDeprecatedStr    = "deprecated keyword"
+	alertKindCapabilitiesStr  = "unusable driver on this node"
 	alertKindNames            = map[AlertKind]string{
 		alertKindScoping:       alertKindScopingStr,
 		alertKindUnknown:       alertKindUnknownStr,
@@ -110,13 +111,14 @@ func (t T) NewAlertUnknown(k key.T, did driver.ID) Alert {
 	}
 }
 
-func (t T) NewAlertCandidates(k key.T, did driver.ID) Alert {
+func (t T) NewAlertCandidates(k key.T, did driver.ID, comment string) Alert {
 	return Alert{
-		Path:   t.Path,
-		Kind:   alertKindCandidates,
-		Level:  alertLevelError,
-		Key:    k,
-		Driver: did,
+		Path:    t.Path,
+		Kind:    alertKindCandidates,
+		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
 	}
 }
 
@@ -208,6 +210,10 @@ func (t *AlertKind) UnmarshalJSON(b []byte) error {
 	}
 	*t, _ = alertKindFromNames[j]
 	return nil
+}
+
+func (t Alerts) Error() string {
+	return t.String()
 }
 
 func (t Alerts) String() string {
@@ -334,8 +340,20 @@ func (t T) Validate() (Alerts, error) {
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
 			}
-			if (len(kw.Candidates) > 0) && !slices.Contains(kw.Candidates, v) {
-				alerts = append(alerts, t.NewAlertCandidates(k, did))
+			if len(kw.Candidates) > 0 {
+				switch kw.Converter {
+				case nil:
+					if !slices.Contains(kw.Candidates, v) {
+
+						alerts = append(alerts, t.NewAlertCandidates(k, did, v))
+					}
+				case converters.List:
+					for _, e := range strings.Fields(v) {
+						if !slices.Contains(kw.Candidates, v) {
+							alerts = append(alerts, t.NewAlertCandidates(k, did, e))
+						}
+					}
+				}
 			}
 		}
 	}
@@ -352,13 +370,13 @@ func ValidateFile(p string, ref Referrer) (Alerts, error) {
 }
 
 func (t Alert) String() string {
-	return fmt.Sprintf("%s config validation %s: %s", t.Path, t.Level, t.StringWithoutMeta())
+	return fmt.Sprintf("%s: %s: %s", t.Path, t.Level, t.StringWithoutMeta())
 }
 
 func (t Alert) StringWithoutMeta() string {
 	buff := fmt.Sprintf("key %s: %s", t.Key, t.Kind)
 	if t.Comment != "" {
-		buff += ", " + t.Comment
+		buff += ": " + t.Comment
 	}
 	return buff
 }
