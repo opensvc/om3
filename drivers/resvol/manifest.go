@@ -138,11 +138,12 @@ func (t T) Manifest() *manifest.T {
 		keywords.Keyword{
 			Attr:      "DirPerm",
 			Converter: converters.FileMode,
-			Default:   "700",
-			Example:   "750",
-			Option:    "dirperm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/dirperm"),
+			// Default value is fmt.Sprintf("%o", defaultDirPerm)
+			Default:  "700",
+			Example:  "750",
+			Option:   "dirperm",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dirperm"),
 		},
 		keywords.Keyword{
 			Attr:     "Signal",
