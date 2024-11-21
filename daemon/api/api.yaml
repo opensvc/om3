@@ -4488,7 +4488,9 @@ components:
         flex_target:
           type: integer
         monitor_action:
-          type: string
+          type: array
+          items:
+            type: string
         pre_monitor_action:
           type: string
         nodename:

@@ -349,7 +349,7 @@ func (t T) Validate() (Alerts, error) {
 					}
 				case converters.List:
 					for _, e := range strings.Fields(v) {
-						if !slices.Contains(kw.Candidates, v) {
+						if !slices.Contains(kw.Candidates, e) {
 							alerts = append(alerts, t.NewAlertCandidates(k, did, e))
 						}
 					}
@@ -370,7 +370,11 @@ func ValidateFile(p string, ref Referrer) (Alerts, error) {
 }
 
 func (t Alert) String() string {
-	return fmt.Sprintf("%s: %s: %s", t.Path, t.Level, t.StringWithoutMeta())
+	if t.Path.IsZero() {
+		return fmt.Sprintf("%s: %s", t.Level, t.StringWithoutMeta())
+	} else {
+		return fmt.Sprintf("%s: %s: %s", t.Path, t.Level, t.StringWithoutMeta())
+	}
 }
 
 func (t Alert) StringWithoutMeta() string {

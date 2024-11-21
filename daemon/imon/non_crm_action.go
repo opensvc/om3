@@ -19,7 +19,7 @@ func (t *Manager) getFrozen() time.Time {
 func (t *Manager) freeze() error {
 	frozen := t.getFrozen()
 
-	t.log.Infof("daemon action freeze")
+	t.log.Debugf("daemon action freeze")
 	p := filepath.Join(t.path.VarDir(), "frozen")
 
 	if !file.Exists(p) {
@@ -57,7 +57,7 @@ func (t *Manager) freeze() error {
 // freeze removes instance frozen flag file, and publish InstanceFrozenFileUpdated
 // local instance status cache frozen value is updated with value read from file system
 func (t *Manager) unfreeze() error {
-	t.log.Infof("daemon action unfreeze")
+	t.log.Debugf("daemon action unfreeze")
 	p := filepath.Join(t.path.VarDir(), "frozen")
 	if !file.Exists(p) {
 		t.log.Infof("already thawed")

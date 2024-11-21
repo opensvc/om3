@@ -26,9 +26,8 @@ func (t *Manager) frozenFromIdle() {
 
 func (t *Manager) frozenClearIfReached() bool {
 	if t.instStatus[t.localhost].IsFrozen() {
-		t.log.Infof("instance state is frozen -> set reached, clear local expect")
+		t.log.Infof("instance state is frozen -> set reached")
 		t.doneAndIdle()
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
 		t.clearPending()
 		return true
 	}

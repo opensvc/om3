@@ -357,9 +357,12 @@ func (t *Manager) getScope(cf *xconfig.T) (scope []string, err error) {
 	return
 }
 
-func (t *Manager) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
-	s := cf.GetString(keyMonitorAction)
-	return instance.MonitorAction(s)
+func (t *Manager) getMonitorAction(cf *xconfig.T) []instance.MonitorAction {
+	l := make([]instance.MonitorAction, 0)
+	for _, s := range cf.GetStrings(keyMonitorAction) {
+		l = append(l, instance.MonitorAction(s))
+	}
+	return l
 }
 
 func (t *Manager) getChildren(cf *xconfig.T) naming.Relations {

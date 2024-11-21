@@ -2,6 +2,7 @@ package imon
 
 import (
 	"context"
+	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
@@ -207,6 +208,7 @@ func (t *Manager) startedClearIfReached() bool {
 			t.loggerWithState().Infof("instance is started, set local expect started")
 			t.change = true
 			t.state.LocalExpect = instance.MonitorLocalExpectStarted
+			t.state.MonitorActionExecutedAt = time.Time{}
 		}
 		t.clearPending()
 		return true

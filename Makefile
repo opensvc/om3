@@ -28,7 +28,7 @@ all: clean vet test race build dist
 build: version api om ox compobj
 
 deps:
-	$(GOINSTALL) github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
+	$(GOINSTALL) github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
 api:
 	$(GOGEN) ./daemon/api

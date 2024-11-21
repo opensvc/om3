@@ -23,7 +23,7 @@ type (
 		FlexMax          int              `json:"flex_max,omitempty"`
 		FlexMin          int              `json:"flex_min,omitempty"`
 		FlexTarget       int              `json:"flex_target,omitempty"`
-		MonitorAction    MonitorAction    `json:"monitor_action,omitempty"`
+		MonitorAction    []MonitorAction  `json:"monitor_action,omitempty"`
 		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
 		Orchestrate      string           `json:"orchestrate"`
 		Path             naming.Path      `json:"-"`
