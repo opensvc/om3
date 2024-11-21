@@ -485,6 +485,34 @@ paths:
       tags:
         - node
 
+  /node/name/{nodename}/ssh/keys:
+    get:
+      description: |
+        Return ssh public keys from the node.
+      operationId: GetNodeSSHKeys
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /dns/dump:
     get:
       description: |
