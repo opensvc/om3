@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/util/args"
 )
 
 type (
@@ -68,7 +69,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 // RunArgsBase append extra args for docker
-func (ea *ExecutorArg) RunArgsBase() (rescontainerocibase.Args, error) {
+func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 	a, err := ea.ExecutorArg.RunArgsBase()
 	if err != nil {
 		return nil, err
@@ -77,35 +78,27 @@ func (ea *ExecutorArg) RunArgsBase() (rescontainerocibase.Args, error) {
 		if ea.BT.UserNS != "host" {
 			return nil, fmt.Errorf("unexpected userns value '%s': the only valid value is 'hosts'", ea.BT.UserNS)
 		}
-		a = append(a, rescontainerocibase.Arg{
-			Option:   "--userns",
-			Value:    ea.BT.UserNS,
-			HasValue: true,
-		})
+		a.Append("--userns", ea.BT.UserNS)
 	}
 	return a, nil
 }
 
 func (ea *ExecutorArg) WaitNotRunning(ctx context.Context) error {
 	var cmd *exec.Cmd
-	a := rescontainerocibase.Args{
-		{Option: "container"},
-		{Option: "wait"},
-		{Option: ea.BT.ContainerName()},
-	}
+	a := []string{"container", "wait", ea.BT.ContainerName()}
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, ea.exe, a.AsStrings()...)
+			cmd = exec.CommandContext(ctx, ea.exe, a...)
 		}
 	} else {
-		cmd = exec.Command(ea.exe, a.AsStrings()...)
+		cmd = exec.Command(ea.exe, a...)
 	}
-	ea.Log().Infof("%s %s", ea.exe, strings.Join(a.Obfuscate(), " "))
+	ea.Log().Infof("%s %s", ea.exe, strings.Join(a, " "))
 	if err := cmd.Run(); err != nil {
-		ea.Log().Infof("%s %s: %s", ea.exe, strings.Join(a.Obfuscate(), " "), err)
+		ea.Log().Infof("%s %s: %s", ea.exe, strings.Join(a, " "), err)
 		return err
 	}
 	return nil

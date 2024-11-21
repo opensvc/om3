@@ -68,20 +68,20 @@ func (e *Executor) Enter() error {
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 	var cmd *exec.Cmd
-	a := e.args.HasImageArgs()
+	a := e.args.HasImageArgs().Get()
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return false, "", ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a.AsStrings()...)
+			cmd = exec.CommandContext(ctx, e.bin, a...)
 		}
 	} else {
-		cmd = exec.Command(e.bin, a.AsStrings()...)
+		cmd = exec.Command(e.bin, a...)
 	}
-	e.log().Debugf("call %s %s", e.bin, a.Obfuscate())
+	e.log().Debugf("call %s %s", e.bin, a)
 	if b, err := cmd.Output(); err != nil {
-		e.log().Debugf("call %s %s failed: %s", e.bin, a.Obfuscate(), err)
+		e.log().Debugf("call %s %s failed: %s", e.bin, a, err)
 		return false, "", nil
 	} else {
 		imageID := strings.TrimSuffix(string(b), "\n")
@@ -103,20 +103,20 @@ func (e *Executor) Inspect() Inspecter {
 
 func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	var cmd *exec.Cmd
-	a := e.args.InspectArgs()
+	a := e.args.InspectArgs().Get()
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			e.log().Errorf("inspect context done: %s", ctx.Err())
 			return nil, ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a.AsStrings()...)
+			cmd = exec.CommandContext(ctx, e.bin, a...)
 		}
 	} else {
-		cmd = exec.Command(e.bin, a.AsStrings()...)
+		cmd = exec.Command(e.bin, a...)
 	}
 	e.inspected = true
-	e.log().Debugf("engine inspect: %s %s", e.bin, strings.Join(a.Obfuscate(), " "))
+	e.log().Debugf("engine inspect: %s %s", e.bin, strings.Join(a, " "))
 	if b, err := cmd.Output(); err != nil {
 		e.inspecter = nil
 		e.log().Debugf("inspect: %s", err)
@@ -137,11 +137,11 @@ func (e *Executor) InspectRefreshed() bool {
 }
 
 func (e *Executor) Pull(ctx context.Context) error {
-	return e.doExecRun(ctx, nil, e.args.PullArgs())
+	return e.doExecRun(ctx, nil, e.args.PullArgs().Get()...)
 }
 
 func (e *Executor) Remove(ctx context.Context) error {
-	if err := e.doExecRun(ctx, nil, e.args.RemoveArgs()); err != nil {
+	if err := e.doExecRun(ctx, nil, e.args.RemoveArgs().Get()...); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
 			e.log().Debugf("remove: container removed")
 			return nil
@@ -162,19 +162,23 @@ func (e *Executor) Run(ctx context.Context) error {
 		} else if commandArgs, err := e.args.RunArgsCommand(); err != nil {
 			return fmt.Errorf("can't prepare command args for run command: %s", err)
 		} else {
-			a = append(a, imageArgs...)
-			a = append(a, commandArgs...)
-			return e.doExecRun(ctx, environ, a)
+			a.Append(imageArgs.Get()...)
+			a.Append(commandArgs.Get()...)
+			return e.doExecRun(ctx, environ, a.Get()...)
 		}
 	}
 }
 
 func (e *Executor) Start(ctx context.Context) error {
-	return e.doExecRun(ctx, nil, e.args.StartArgs())
+	a, err := e.args.StartArgs()
+	if err != nil {
+		return err
+	}
+	return e.doExecRun(ctx, nil, a.Get()...)
 }
 
 func (e *Executor) Stop(ctx context.Context) error {
-	if err := e.doExecRun(ctx, nil, e.args.StopArgs()); err != nil {
+	if err := e.doExecRun(ctx, nil, e.args.StopArgs().Get()...); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
 			e.log().Debugf("stop: container removed")
 			return nil
@@ -207,17 +211,17 @@ func (e *Executor) WaitRemoved(ctx context.Context) error {
 }
 
 // doExecRun runs e.bin a.AsStrings(). Depending on ctx value, exec.Command or exec.CommandContext is used.
-func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a Args) error {
+func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a ...string) error {
 	var cmd *exec.Cmd
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a.AsStrings()...)
+			cmd = exec.CommandContext(ctx, e.bin, a...)
 		}
 	} else {
-		cmd = exec.Command(e.bin, a.AsStrings()...)
+		cmd = exec.Command(e.bin, a...)
 	}
 	if len(environ) > 0 {
 		envL := os.Environ()
@@ -228,7 +232,7 @@ func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a A
 		cmd.Env = envL
 	}
 
-	e.log().Infof("%s %s", e.bin, strings.Join(a.Obfuscate(), " "))
+	e.log().Infof("%s %s", e.bin, strings.Join(a, " "))
 	return cmd.Run()
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/util/args"
 )
 
 type (
@@ -39,10 +40,13 @@ func (t *T) SetupExecutor() {
 }
 
 // RunArgsBase append extra args for podman
-func (ea *ExecutorArg) RunArgsBase() (rescontainerocibase.Args, error) {
-	a, err := ea.ExecutorArg.RunArgsBase()
-	if err != nil {
+func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
+	a := args.New()
+
+	if base, err := ea.ExecutorArg.RunArgsBase(); err != nil {
 		return nil, err
+	} else {
+		a.Append(base.Get()...)
 	}
 	if len(ea.BT.UserNS) > 0 {
 		isRawValue := func(s string) bool {
@@ -54,63 +58,40 @@ func (ea *ExecutorArg) RunArgsBase() (rescontainerocibase.Args, error) {
 		}
 
 		if isRawValue(ea.BT.UserNS) {
-			v := rescontainerocibase.Arg{
-				Option:   "--userns",
-				Value:    ea.BT.UserNS,
-				HasValue: true,
-			}
-			a = append(a, v)
+			a.Append("--userns", ea.BT.UserNS)
 		} else if s, err := ea.BT.FormatNS(ea.BT.UserNS); err != nil {
 			return nil, err
 		} else {
-			v := rescontainerocibase.Arg{
-				Option:   "--userns",
-				Value:    s,
-				HasValue: true,
-			}
-			a = append(a, v)
+			a.Append("--userns", s)
 		}
 	}
 	return a, nil
 }
 
 func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {
-	a := rescontainerocibase.Args{
-		{Option: "container"},
-		{Option: "wait"},
-		{Option: "--ignore"},
-		{Option: "--condition", Value: "removing", HasValue: true},
-		{Option: ea.BT.ContainerName()},
-	}
-	return ea.wait(ctx, a)
+	return ea.wait(ctx, "container", "wait", "--ignore", "--condition", "removing", ea.BT.ContainerName())
 }
 
 func (ea *ExecutorArg) WaitNotRunning(ctx context.Context) error {
-	a := rescontainerocibase.Args{
-		{Option: "container"},
-		{Option: "wait"},
-		{Option: "--ignore"},
-		{Option: "--condition", Value: "stopped", HasValue: true},
-		{Option: ea.BT.ContainerName()},
-	}
-	return ea.wait(ctx, a)
+	return ea.wait(ctx, "container", "wait", "--ignore", "--condition", "stopped", ea.BT.ContainerName())
 }
 
-func (ea *ExecutorArg) wait(ctx context.Context, a rescontainerocibase.Args) error {
+func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 	var cmd *exec.Cmd
+
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, ea.exe, a.AsStrings()...)
+			cmd = exec.CommandContext(ctx, ea.exe, a...)
 		}
 	} else {
-		cmd = exec.Command(ea.exe, a.AsStrings()...)
+		cmd = exec.Command(ea.exe, a...)
 	}
-	ea.BT.Log().Infof("%s %s", ea.exe, strings.Join(a.Obfuscate(), " "))
+	ea.BT.Log().Infof("%s %s", ea.exe, strings.Join(a, " "))
 	if err := cmd.Run(); err != nil {
-		ea.BT.Log().Debugf("%s %s: %s", ea.exe, strings.Join(a.Obfuscate(), " "), err)
+		ea.BT.Log().Debugf("%s %s: %s", ea.exe, strings.Join(a, " "), err)
 		return err
 	}
 	return nil
