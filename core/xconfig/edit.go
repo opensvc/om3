@@ -25,7 +25,7 @@ const (
 
 var (
 	ErrEditPending  = errors.New(`the configuration is already being edited (--discard to edit from the installed configuration or --recover to edit the unapplied config)`)
-	ErrEditValidate = errors.New("validation error")
+	ErrEditValidate = errors.New("configuration validation error")
 )
 
 func Diff(a, b string) (string, error) {
@@ -77,7 +77,7 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 	} else if alerts, err := ValidateFile(dst, ref); err != nil {
 		return err
 	} else if alerts.HasError() {
-		return ErrEditValidate
+		return fmt.Errorf("%w:\n%s", ErrEditValidate, alerts)
 	} else if err := file.Copy(dst, src); err != nil {
 		return err
 	}

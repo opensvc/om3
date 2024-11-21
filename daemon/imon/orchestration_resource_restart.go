@@ -35,87 +35,91 @@ func newTodoMap() todoMap {
 	m := make(todoMap)
 	return m
 }
+func (t *Manager) doMonitorAction(rid string, stage int) {
+	monitorActionCount := len(t.instConfig.MonitorAction)
+	if monitorActionCount < stage+1 {
+		t.log.Errorf("skip monitor action: stage %d action no longer configured", stage+1)
+		return
+	}
+
+	monitorAction := t.instConfig.MonitorAction[stage]
+
+	switch monitorAction {
+	case instance.MonitorActionCrash:
+	case instance.MonitorActionFreezeStop:
+	case instance.MonitorActionReboot:
+	case instance.MonitorActionSwitch:
+	default:
+		t.log.Errorf("skip monitor action: not supported: %s", monitorAction)
+		return
+	}
+
+	if err := t.doPreMonitorAction(); err != nil {
+		t.log.Errorf("pre monitor action: %s", err)
+	}
+
+	t.log.Infof("do monitor action %d/%d: %s", stage+1, len(t.instConfig.MonitorAction), monitorAction)
+	t.pubMonitorAction(rid, monitorAction)
+
+	switch monitorAction {
+	case instance.MonitorActionCrash:
+		if err := toc.Crash(); err != nil {
+			t.log.Errorf("monitor action: %s", err)
+		}
+	case instance.MonitorActionFreezeStop:
+		t.doFreezeStop()
+		t.doStop()
+	case instance.MonitorActionReboot:
+		if err := toc.Reboot(); err != nil {
+			t.log.Errorf("monitor action: %s", err)
+		}
+	case instance.MonitorActionSwitch:
+		t.createPendingWithDuration(stopDuration)
+		t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
+	}
+}
+
+// doPreMonitorAction executes a user-defined command before imon runs the
+// MonitorAction. This command can detect a situation where the MonitorAction
+// can not succeed, and decide to do another action.
+func (t *Manager) doPreMonitorAction() error {
+	if t.instConfig.PreMonitorAction == "" {
+		return nil
+	}
+	t.log.Infof("execute pre monitor action: %s", t.instConfig.PreMonitorAction)
+	cmdArgs, err := command.CmdArgsFromString(t.instConfig.PreMonitorAction)
+	if err != nil {
+		return err
+	}
+	if len(cmdArgs) == 0 {
+		return nil
+	}
+	cmd := command.New(
+		command.WithName(cmdArgs[0]),
+		command.WithVarArgs(cmdArgs[1:]...),
+		command.WithLogger(t.log),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithTimeout(60*time.Second),
+	)
+	return cmd.Run()
+}
+
+func (t *Manager) pubMonitorAction(rid string, action instance.MonitorAction) {
+	t.pubsubBus.Pub(
+		&msgbus.InstanceMonitorAction{
+			Path:   t.path,
+			Node:   t.localhost,
+			Action: action,
+			RID:    rid,
+		},
+		t.labelPath,
+		t.labelLocalhost)
+}
 
 func (t *Manager) orchestrateResourceRestart() {
 	todoRestart := newTodoMap()
 	todoStandby := newTodoMap()
-
-	pubMonitorAction := func(rid string) {
-		t.pubsubBus.Pub(
-			&msgbus.InstanceMonitorAction{
-				Path:   t.path,
-				Node:   t.localhost,
-				Action: t.instConfig.MonitorAction,
-				RID:    rid,
-			},
-			t.labelPath,
-			t.labelLocalhost)
-	}
-
-	// doPreMonitorAction executes a user-defined command before imon
-	// runs the MonitorAction. This command can detect a situation where
-	// the MonitorAction can not succeed, and decide to do another action.
-	doPreMonitorAction := func() error {
-		if t.instConfig.PreMonitorAction == "" {
-			return nil
-		}
-		t.log.Infof("execute pre monitor action: %s", t.instConfig.PreMonitorAction)
-		cmdArgs, err := command.CmdArgsFromString(t.instConfig.PreMonitorAction)
-		if err != nil {
-			return err
-		}
-		if len(cmdArgs) == 0 {
-			return nil
-		}
-		cmd := command.New(
-			command.WithName(cmdArgs[0]),
-			command.WithVarArgs(cmdArgs[1:]...),
-			command.WithLogger(t.log),
-			command.WithStdoutLogLevel(zerolog.InfoLevel),
-			command.WithStderrLogLevel(zerolog.ErrorLevel),
-			command.WithTimeout(60*time.Second),
-		)
-		return cmd.Run()
-	}
-
-	doMonitorAction := func(rid string) {
-		switch t.instConfig.MonitorAction {
-		case instance.MonitorActionCrash:
-		case instance.MonitorActionFreezeStop:
-		case instance.MonitorActionReboot:
-		case instance.MonitorActionSwitch:
-		case instance.MonitorActionNone:
-			t.log.Errorf("skip monitor action: not configured")
-			return
-		default:
-			t.log.Errorf("skip monitor action: not supported: %s", t.instConfig.MonitorAction)
-			return
-		}
-
-		if err := doPreMonitorAction(); err != nil {
-			t.log.Errorf("pre monitor action: %s", err)
-		}
-
-		t.log.Infof("do %s monitor action", t.instConfig.MonitorAction)
-		pubMonitorAction(rid)
-
-		switch t.instConfig.MonitorAction {
-		case instance.MonitorActionCrash:
-			if err := toc.Crash(); err != nil {
-				t.log.Errorf("monitor action: %s", err)
-			}
-		case instance.MonitorActionFreezeStop:
-			t.doFreezeStop()
-			t.doStop()
-		case instance.MonitorActionReboot:
-			if err := toc.Reboot(); err != nil {
-				t.log.Errorf("monitor action: %s", err)
-			}
-		case instance.MonitorActionSwitch:
-			t.createPendingWithDuration(stopDuration)
-			t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
-		}
-	}
 
 	resetTimer := func(rid string, rmon *instance.ResourceMonitor) {
 		todoRestart.Del(rid)
@@ -173,8 +177,9 @@ func (t *Manager) orchestrateResourceRestart() {
 			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
 				t.state.MonitorActionExecutedAt = time.Now()
+				t.state.LocalExpect = instance.MonitorLocalExpectEvicted
 				t.change = true
-				doMonitorAction(rid)
+				t.doMonitorAction(rid, 0)
 			} else {
 				todoRestart.Add(rid)
 			}
@@ -312,6 +317,13 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
+	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
+		t.state.MonitorActionExecutedAt = time.Now()
+		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.change = true
+		t.doMonitorAction("", 1)
+	}
+
 	// don't run on frozen instances
 	if t.instStatus[t.localhost].IsFrozen() {
 		resetTimers()
@@ -335,7 +347,7 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// discard if the instance is not idle nor start failed
 	switch instMonitor.State {
-	case instance.MonitorStateIdle, instance.MonitorStateStartFailed:
+	case instance.MonitorStateIdle, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed:
 		// pass
 	default:
 		t.log.Debugf("skip restart: state=%s", instMonitor.State)

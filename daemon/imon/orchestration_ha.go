@@ -1,6 +1,8 @@
 package imon
 
 import (
+	"time"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -46,8 +48,9 @@ func (t *Manager) orchestrateHAStart() {
 		// to transition state: started -> idle
 		// It prevents unexpected transition state -> ready
 		if t.isLocalStarted() {
-			t.log.Infof("instance is now started, enable resource restart")
+			t.log.Infof("instance is now started, enable resource restart and monitor action")
 			t.state.LocalExpect = instance.MonitorLocalExpectStarted
+			t.state.MonitorActionExecutedAt = time.Time{}
 			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return

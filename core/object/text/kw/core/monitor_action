@@ -1,9 +1,14 @@
-The action to trigger when a monitored resource is no longer up or standby up,
-and the resource restart trials have failed.
+The action to trigger when a monitored resource is no longer in the "up" or
+"standby up" state, and all restart attempts for the resource have failed.
 
-The reboot and crash monitor actions do not try to cleanly stop any process. On
-Linux they use the sysrq triggers.
+The reboot and crash monitor actions do not attempt to cleanly stop any
+processes. On Linux, they utilize system-level sysrq triggers.
 
-This behaviour is meant to ensure the host stops writing to the shared disks
-as soon as possible, because a failover node is probably about to start
-writing too.
+This behavior is designed to ensure that the host stops writing to shared
+disks as quickly as possible, minimizing the risk of data corruption. This
+is critical because a failover node is likely preparing to write to the same
+shared disks.
+
+You can append a fallback monitor action to this keyword. A common example
+is "freezestop reboot". In this case, the reboot action will be executed
+if the stop fails or times out.

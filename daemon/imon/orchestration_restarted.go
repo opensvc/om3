@@ -50,6 +50,8 @@ package imon
 */
 
 import (
+	"time"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/stringslice"
@@ -135,6 +137,7 @@ func (t *Manager) orchestrateRestartedOnReady() {
 		case status.Warn, status.Up, status.StandbyUp:
 			t.log.Infof("all prior instances are restarted, ready to restart")
 			t.state.LocalExpect = instance.MonitorLocalExpectStarted
+			t.state.MonitorActionExecutedAt = time.Time{}
 			t.change = true
 			t.createPendingWithDuration(stopDuration)
 			if t.restartedOptions().Force {
@@ -196,5 +199,6 @@ func (t *Manager) orchestrateRestartedOnRestarted() {
 	t.loggerWithState().Infof("all instances are restarted, failed or done -> set done and local expect")
 	t.doneAndIdle()
 	t.state.LocalExpect = instance.MonitorLocalExpectStarted
+	t.state.MonitorActionExecutedAt = time.Time{}
 	t.clearPending()
 }

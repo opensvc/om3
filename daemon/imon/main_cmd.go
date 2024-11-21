@@ -408,57 +408,43 @@ func (t *Manager) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 // if state goes from stopping/shutting to idle and local expect is started, reset the
 // local expect, so the resource restart is disabled.
 func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
-	prevState := t.state.State
-	doLocalExpect := func() {
-		if !t.change {
-			return
-		}
-		if c.IsPartial {
-			return
-		}
-		if c.State != instance.MonitorStateIdle {
-			return
-		}
-		if t.state.LocalExpect != instance.MonitorLocalExpectStarted {
-			return
-		}
-		switch prevState {
-		case instance.MonitorStateStopping, instance.MonitorStateShutting:
-			// pass
-		default:
-			return
-		}
-		t.log.Infof("this instance is no longer considered started, resource restart and monitoring are disabled")
-		t.change = true
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
+	if t.state.State == c.State {
+		return
 	}
-	doState := func() {
-		if prevState == c.State {
-			return
-		}
-		switch t.state.SessionID {
-		case uuid.Nil:
-		case c.SessionID:
-			// pass
-		default:
-			t.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", t.state.State, t.state.SessionID, c.State, c.SessionID)
-		}
-		t.log.Infof("set instance monitor state %s -> %s", t.state.State, c.State)
-		t.change = true
-		t.state.State = c.State
-		if c.State == instance.MonitorStateIdle {
-			t.state.SessionID = uuid.Nil
-		} else {
-			t.state.SessionID = c.SessionID
+
+	// state change
+	switch t.state.SessionID {
+	case uuid.Nil:
+	case c.SessionID:
+		// pass
+	default:
+		t.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", t.state.State, t.state.SessionID, c.State, c.SessionID)
+	}
+	t.log.Infof("set instance monitor state %s -> %s", t.state.State, c.State)
+	t.change = true
+	t.state.State = c.State
+	if c.State == instance.MonitorStateIdle {
+		t.state.SessionID = uuid.Nil
+	} else {
+		t.state.SessionID = c.SessionID
+	}
+
+	// local expect change ?
+	switch c.State {
+	case instance.MonitorStateStopping, instance.MonitorStateUnprovisioning, instance.MonitorStateShutting:
+		switch t.state.LocalExpect {
+		case instance.MonitorLocalExpectStarted:
+			if c.IsPartial {
+				t.log.Infof("user is stopping some instance resources, disable resource restart and monitoring")
+			} else {
+				t.log.Infof("user is stopping the instance, disable resource restart and monitoring")
+			}
+			t.change = true
+			t.state.LocalExpect = instance.MonitorLocalExpectNone
 		}
 	}
 
-	doState()
-	doLocalExpect()
-
-	if t.change {
-		t.onChange()
-	}
+	t.onChange()
 }
 
 func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
@@ -590,6 +576,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 		switch *c.Value.LocalExpect {
 		case instance.MonitorLocalExpectNone:
+		case instance.MonitorLocalExpectEvicted:
 		case instance.MonitorLocalExpectStarted:
 		case instance.MonitorLocalExpectShutdown:
 		default:

@@ -295,8 +295,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	// daemon instance monitor updates
 	progress := actioncontext.Props(ctx).Progress
+	failure := fmt.Sprintf("%s failed", action.Name)
 	t.announceProgress(ctx, progress)
-	defer t.announceProgress(ctx, "idle") // TODO: failed cases ?
 
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
@@ -304,6 +304,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
+		t.announceProgress(ctx, failure)
 		return err
 	}
 	ctx, stop := statusbus.WithContext(ctx, t.path)
@@ -413,6 +414,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	if err := t.abortStart(ctx, l); err != nil {
 		_, _ = t.statusEval(ctx)
+		t.announceProgress(ctx, "idle")
 		return err
 	}
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
@@ -426,7 +428,13 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if action.Order.IsDesc() {
 		t.CleanPG(ctx)
 	}
-	return t.postStartStopStatusEval(ctx)
+	err := t.postStartStopStatusEval(ctx)
+	if err == nil {
+		t.announceProgress(ctx, "idle")
+	} else {
+		t.announceProgress(ctx, failure)
+	}
+	return err
 }
 
 func (t *actor) postStartStopStatusEval(ctx context.Context) error {

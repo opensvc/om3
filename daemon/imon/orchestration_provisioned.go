@@ -66,12 +66,11 @@ func (t *Manager) provisionedClearIfReached() bool {
 	reached := func(msg string) bool {
 		t.log.Infof(msg)
 		t.doneAndIdle()
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
 		t.updateIfChange()
 		return true
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		return reached("provisioned orchestration: instance is provisioned -> set reached, clear local expect")
+		return reached("provisioned orchestration: instance is provisioned -> set reached")
 	}
 	if t.instStatus[t.localhost].Avail == status.NotApplicable {
 		return reached("provisioned orchestration: instance availability is n/a -> set reached, clear local expect")

@@ -220,6 +220,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Candidates: []string{"crash", "freezestop", "none", "reboot", "switch"},
+		Converter:  converters.List,
 		Default:    "none",
 		Kind:       naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Example:    "reboot",

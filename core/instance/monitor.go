@@ -141,6 +141,7 @@ const (
 	MonitorLocalExpectNone
 	MonitorLocalExpectStarted
 	MonitorLocalExpectShutdown
+	MonitorLocalExpectEvicted
 )
 
 const (
@@ -243,6 +244,7 @@ var (
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
+		MonitorLocalExpectEvicted:  "evicted",
 		MonitorLocalExpectStarted:  "started",
 		MonitorLocalExpectShutdown: "shutdown",
 		MonitorLocalExpectNone:     "none",
@@ -250,6 +252,7 @@ var (
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
+		"evicted":  MonitorLocalExpectEvicted,
 		"shutdown": MonitorLocalExpectShutdown,
 		"started":  MonitorLocalExpectStarted,
 		"none":     MonitorLocalExpectNone,
@@ -299,7 +302,7 @@ var (
 
 	MonitorActionNone       MonitorAction = "none"
 	MonitorActionCrash      MonitorAction = "crash"
-	MonitorActionFreezeStop MonitorAction = "freeze_stop"
+	MonitorActionFreezeStop MonitorAction = "freezestop"
 	MonitorActionReboot     MonitorAction = "reboot"
 	MonitorActionSwitch     MonitorAction = "switch"
 )
