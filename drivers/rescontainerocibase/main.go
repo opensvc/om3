@@ -283,6 +283,11 @@ func (t *BT) FormatNS(s string) (string, error) {
 	case "", "none", "host":
 		return s, nil
 	}
+	if !strings.HasPrefix(s, "container#") {
+		// "", "none", "container:..."
+		return s, nil
+	}
+
 	rid, err := resourceid.Parse(s)
 	if err != nil {
 		return "", fmt.Errorf("invalid value %s (must be none, host or container#<n>)", s)
