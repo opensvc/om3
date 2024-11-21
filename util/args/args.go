@@ -36,9 +36,9 @@ const (
 )
 
 // New allocates a new T and returns its address
-func New() *T {
+func New(s ...string) *T {
 	t := &T{}
-	t.args = make([]string, 0)
+	t.args = append([]string{}, s...)
 	return t
 }
 
