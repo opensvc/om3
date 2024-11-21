@@ -42,7 +42,7 @@ func (t *T) SetupExecutor() {
 // RunArgsBase append extra args for podman
 func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 	a := args.New()
-
+	// TODO: "--cgroup-manager", "cgroupfs", "cni-config-dir", ..., for other Args ?
 	if base, err := ea.ExecutorArg.RunArgsBase(); err != nil {
 		return nil, err
 	} else {
