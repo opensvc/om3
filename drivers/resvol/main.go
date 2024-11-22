@@ -76,6 +76,19 @@ const (
 	NoUsage
 )
 
+var (
+	// defaultSecPerm is the default KVInstall.AccessControl.Perm for
+	// secrets parseReference when driver perm is undefined.
+	defaultSecPerm = os.FileMode(0600)
+
+	// defaultCfgPerm is the default KVInstall.AccessControl.Perm for
+	// configs parseReference when driver perm is undefined.
+	defaultCfgPerm = os.FileMode(0644)
+
+	// defaultDirPerm
+	defaultDirPerm = os.FileMode(0700)
+)
+
 func New() resource.Driver {
 	t := &T{}
 	return t
@@ -478,4 +491,13 @@ func (t T) ExposedDevices() device.L {
 		return device.L{}
 	}
 	return device.L{*dev}
+}
+
+// getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw
+// has no default value or unexpected value) the defaultDirPerm is returned.
+func (t *T) getDirPerm() *os.FileMode {
+	if t.DirPerm == nil {
+		return &defaultDirPerm
+	}
+	return t.DirPerm
 }

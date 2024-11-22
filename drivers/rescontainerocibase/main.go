@@ -28,6 +28,7 @@ import (
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/vpath"
+	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/envprovider"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
@@ -138,27 +139,27 @@ type (
 	ExecutorContainerArgser interface {
 		EnterCmdArgs() []string
 		EnterCmdCheckArgs() []string
-		RemoveArgs() Args
-		RunArgsBase() (Args, error)
-		RunArgsImage() (Args, error)
-		RunArgsCommand() (Args, error)
+		RemoveArgs() *args.T
+		RunArgsBase() (*args.T, error)
+		RunArgsImage() (*args.T, error)
+		RunArgsCommand() (*args.T, error)
 		RunCmdEnv() (map[string]string, error)
-		StartArgs() Args
-		StopArgs() Args
+		StartArgs() (*args.T, error)
+		StopArgs() *args.T
 	}
 
 	// ExecutorInspectArgser defines interfaces functions that provides
 	// args for container resource inspect operations.
 	ExecutorInspectArgser interface {
-		HasImageArgs() Args
-		InspectArgs() Args
+		HasImageArgs() *args.T
+		InspectArgs() *args.T
 		InspectParser([]byte) (Inspecter, error)
 	}
 
 	// ExecutorImageArgser defines interfaces functions that provides args for
 	// image operations.
 	ExecutorImageArgser interface {
-		PullArgs() Args
+		PullArgs() *args.T
 	}
 
 	// ExecutorArgser defines interfaces for container executor args.
@@ -282,6 +283,11 @@ func (t *BT) FormatNS(s string) (string, error) {
 	case "", "none", "host":
 		return s, nil
 	}
+	if !strings.HasPrefix(s, "container#") {
+		// "", "none", "container:..."
+		return s, nil
+	}
+
 	rid, err := resourceid.Parse(s)
 	if err != nil {
 		return "", fmt.Errorf("invalid value %s (must be none, host or container#<n>)", s)

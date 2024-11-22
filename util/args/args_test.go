@@ -7,13 +7,14 @@ import (
 )
 
 func Test(t *testing.T) {
-	s := "-o a=b -o b=c --comment 'bad trip' --comment 'good trap' -d /tmp/foo -f"
-	l1 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo", "-f"}
-	l2 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo"}
-	l3 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap"}
-	l4 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip"}
-	l5 := []string{"-o", "a=b", "--comment", "bad trip"}
-	l6 := []string{"-o", "a=b", "--comment", "bad trip", "-o", "b=d"}
+	s := "--init -o a=b -o b=c --comment 'bad trip' --comment 'good trap' -d /tmp/foo -f"
+	l1 := []string{"--init", "-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo", "-f"}
+	l2 := []string{"--init", "-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo"}
+	l3 := []string{"--init", "-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap"}
+	l4 := []string{"--init", "-o", "a=b", "-o", "b=c", "--comment", "bad trip"}
+	l5 := []string{"--init", "-o", "a=b", "--comment", "bad trip"}
+	l6 := []string{"--init", "-o", "a=b", "--comment", "bad trip", "-o", "b=d"}
+	l7 := []string{"-o", "a=b", "--comment", "bad trip", "-o", "b=d"}
 	args, err := Parse(s)
 	t.Run("Parse", func(t *testing.T) {
 		assert.NoError(t, err, "")
@@ -50,5 +51,9 @@ func Test(t *testing.T) {
 	t.Run("HasOptionAndMatchingValue", func(t *testing.T) {
 		v := args.HasOptionAndMatchingValue("-o", "^a=c")
 		assert.False(t, v, "")
+	})
+	t.Run("DropFirstOption", func(t *testing.T) {
+		args.DropOption("--init")
+		assert.Equal(t, l7, args.Get(), "")
 	})
 }

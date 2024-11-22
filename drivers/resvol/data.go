@@ -9,10 +9,11 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/volsignal"
-	"golang.org/x/sys/unix"
 )
 
 type (
@@ -141,6 +142,18 @@ func (t T) parseReference(s string, filter naming.Kind, head string) object.KVIn
 	if p, err := naming.NewPath(t.Path.Namespace, kind, l[0]); err != nil {
 		return object.KVInstall{}
 	} else {
+		var perm *os.FileMode
+		if t.Perm == nil {
+			switch kind {
+			case naming.KindSec:
+				perm = &defaultSecPerm
+			case naming.KindCfg:
+				perm = &defaultCfgPerm
+			}
+		} else {
+			perm = t.Perm
+		}
+		t.Log().Infof("install %s to %s with perm %v", toPath, head, perm)
 		return object.KVInstall{
 			ToPath:      toPath, // /here
 			ToHead:      head,
@@ -149,8 +162,8 @@ func (t T) parseReference(s string, filter naming.Kind, head string) object.KVIn
 			AccessControl: object.KVInstallAccessControl{
 				User:    t.User,
 				Group:   t.Group,
-				Perm:    t.Perm,
-				DirPerm: t.DirPerm,
+				Perm:    perm,
+				DirPerm: t.getDirPerm(),
 			},
 		}
 	}
@@ -284,17 +297,11 @@ func (t T) chown(p string, usr, grp string) error {
 	return os.Chown(p, uid, gid)
 }
 
-func (t T) installDir(dir string, head string, mode *os.FileMode) error {
+func (t T) installDir(dir string, head string, perm os.FileMode) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", dir)
 	}
 	p := filepath.Join(head, dir)
-	var perm os.FileMode
-	if mode == nil {
-		perm = os.ModePerm
-	} else {
-		perm = *t.DirPerm
-	}
 	info, err := os.Stat(p)
 	switch {
 	case os.IsNotExist(err):
@@ -328,8 +335,9 @@ func (t T) installDirs() error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dirs in empty (ie /) head")
 	}
+	dirPerm := t.getDirPerm()
 	for _, dir := range t.Directories {
-		if err := t.installDir(dir, head, t.DirPerm); err != nil {
+		if err := t.installDir(dir, head, *dirPerm); err != nil {
 			return err
 		}
 	}

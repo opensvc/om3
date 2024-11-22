@@ -36,9 +36,9 @@ const (
 )
 
 // New allocates a new T and returns its address
-func New() *T {
+func New(s ...string) *T {
 	t := &T{}
-	t.args = make([]string, 0)
+	t.args = append([]string{}, s...)
 	return t
 }
 
@@ -176,8 +176,10 @@ func (t *T) dropOption(opt matchOpt) {
 			}
 			undecidedArg = ""
 		} else if arg == opt.Option {
-			// arm to be able to drop depending on the value during the next loop iteration
-			undecidedArg = arg
+			if opt.Type != matchNone {
+				// arm to be able to drop depending on the value during the next loop iteration
+				undecidedArg = arg
+			}
 		} else {
 			l = append(l, arg)
 		}

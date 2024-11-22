@@ -179,7 +179,7 @@ func (t *keystore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 			return false, err
 		}
 	}
-	return t.writeKey(vk, opt.ToPath, b, opt.AccessControl.DirPerm, opt.AccessControl.User, opt.AccessControl.Group)
+	return t.writeKey(vk, opt.ToPath, b, opt.AccessControl.Perm, opt.AccessControl.User, opt.AccessControl.Group)
 }
 
 // installDirKey creates a directory to host projected keys
@@ -257,11 +257,11 @@ func (t *keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, us
 			return false, os.Chtimes(dst, mtime, mtime)
 		}
 	}
-	t.log.Infof("install %s/%s in %s", t.path.Name, vk.Key, dst)
 	perm := os.ModePerm
 	if mode != nil {
 		perm = *mode
 	}
+	t.log.Infof("install %s/%s in %s with perm %v", t.path.Name, vk.Key, dst, perm)
 	if err := os.WriteFile(dst, b, perm); err != nil {
 		return true, err
 	}
