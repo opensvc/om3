@@ -68,7 +68,7 @@ func (e *Executor) Enter() error {
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 	var cmd *exec.Cmd
-	a := e.args.HasImageArgs().Get()
+	a := e.getArgs(e.args.HasImageArgs().Get()...)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
@@ -103,7 +103,7 @@ func (e *Executor) Inspect() Inspecter {
 
 func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	var cmd *exec.Cmd
-	a := e.args.InspectArgs().Get()
+	a := e.getArgs(e.args.InspectArgs().Get()...)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
@@ -210,18 +210,21 @@ func (e *Executor) WaitRemoved(ctx context.Context) error {
 	return nil
 }
 
-// doExecRun runs e.bin a.AsStrings(). Depending on ctx value, exec.Command or exec.CommandContext is used.
+// doExecRun exec e.bin a where a may be prefixed by baseArgs when e.args
+// implements ExecutorBaseArgser.
+// Depending on ctx value, exec.Command or exec.CommandContext is used.
 func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a ...string) error {
 	var cmd *exec.Cmd
+	cmdArgs := e.getArgs(a...)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a...)
+			cmd = exec.CommandContext(ctx, e.bin, cmdArgs...)
 		}
 	} else {
-		cmd = exec.Command(e.bin, a...)
+		cmd = exec.Command(e.bin, cmdArgs...)
 	}
 	if len(environ) > 0 {
 		envL := os.Environ()
@@ -232,10 +235,21 @@ func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a .
 		cmd.Env = envL
 	}
 
-	e.log().Infof("%s %s", e.bin, strings.Join(a, " "))
+	e.log().Infof("%s %s", e.bin, strings.Join(cmdArgs, " "))
 	return cmd.Run()
 }
 
 func (e *Executor) log() *plog.Logger {
 	return e.logger.Log()
+}
+
+// getArgs returns a that may be prefixed by baseArgs when e.args implements
+// ExecutorBaseArgser.
+func (e *Executor) getArgs(a ...string) []string {
+	var cmdArgs []string
+	if i, ok := e.args.(ExecutorBaseArgser); ok {
+		cmdArgs = append(cmdArgs, i.ExecBaseArgs()...)
+	}
+	cmdArgs = append(cmdArgs, a...)
+	return cmdArgs
 }

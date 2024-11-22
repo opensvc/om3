@@ -134,6 +134,12 @@ type (
 		ExecuteWaiter
 	}
 
+	// ExecutorBaseArgser is an optional interface executor may implement to
+	// add base args to all doExecRun commands.
+	ExecutorBaseArgser interface {
+		ExecBaseArgs() []string
+	}
+
 	// ExecutorContainerArgser defines interfaces functions that provides
 	// args for container resource operations.
 	ExecutorContainerArgser interface {
