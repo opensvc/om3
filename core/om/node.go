@@ -62,6 +62,10 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
+	cmdNodeSSH = &cobra.Command{
+		Use:   "ssh",
+		Short: "ssh subsystem commands",
+	}
 	cmdNodeEdit     = newCmdNodeEdit()
 	cmdNodeValidate = newCmdNodeValidate()
 )
@@ -119,6 +123,7 @@ func init() {
 		cmdNodePrint,
 		cmdNodePush,
 		cmdNodeRelay,
+		cmdNodeSSH,
 		cmdNodeValidate,
 		newCmdNodeAbort(),
 		newCmdNodeChecks(),
@@ -155,11 +160,14 @@ func init() {
 		newCmdNodePushPatch(),
 		newCmdNodePushPkg(),
 	)
-	cmdNodeValidate.AddCommand(
-		newCmdNodeValidateConfig(),
-	)
 	cmdNodeRelay.AddCommand(
 		newCmdNodeRelayStatus(),
+	)
+	cmdNodeSSH.AddCommand(
+		newCmdNodeSSHTrust(),
+	)
+	cmdNodeValidate.AddCommand(
+		newCmdNodeValidateConfig(),
 	)
 
 }

@@ -6,6 +6,7 @@ func init() {
 	cmdObject := newCmdCcfg()
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectSSH := newCmdObjectSSH(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
@@ -16,6 +17,7 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectEdit,
 		cmdObjectSet,
+		cmdObjectSSH,
 		cmdObjectPrint,
 		cmdObjectValidate,
 		newCmdClusterAbort(),
@@ -43,6 +45,9 @@ func init() {
 	)
 	cmdObjectPrintConfig.AddCommand(
 		newCmdObjectPrintConfigMtime(kind),
+	)
+	cmdObjectSSH.AddCommand(
+		newCmdClusterSSHTrust(),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
