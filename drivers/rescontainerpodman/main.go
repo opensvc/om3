@@ -13,11 +13,14 @@ import (
 type (
 	T struct {
 		*rescontainerocibase.BT
+
+		CNIConfig string
 	}
 
 	ExecutorArg struct {
 		*rescontainerocibase.ExecutorArg
-		exe string
+		exe      string
+		baseArgs []string
 	}
 )
 
@@ -32,7 +35,13 @@ func (t *T) Configure() error {
 			BT:                     t.BT,
 			RunArgsDNSOptionOption: "--dns-opt",
 		},
+
 		exe: "podman",
+
+		baseArgs: []string{
+			"--cgroup-manager", "cgroupfs",
+			"--cni-config-dir", t.CNIConfig,
+		},
 	}
 	executor := rescontainerocibase.NewExecutor("podman", executorArg, t)
 	_ = t.WithExecuter(executor)
@@ -95,4 +104,8 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 		return err
 	}
 	return nil
+}
+
+func (ea *ExecutorArg) ExecBaseArgs() []string {
+	return ea.baseArgs
 }
