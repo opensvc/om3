@@ -12,31 +12,44 @@ import (
 
 type (
 	T struct {
-		*rescontainerocibase.BT
+		rescontainerocibase.BT
+
+		CNIConfig string
 	}
 
 	ExecutorArg struct {
 		*rescontainerocibase.ExecutorArg
-		exe string
+		exe      string
+		baseArgs []string
 	}
 )
 
 func New() resource.Driver {
-	t := &T{BT: &rescontainerocibase.BT{}}
-	t.SetupExecutor()
-	return t
+	return &T{}
 }
 
-func (t *T) SetupExecutor() {
+func (t *T) Configure() error {
+	baseArgs := []string{
+		"--cgroup-manager", "cgroupfs",
+	}
+	if t.CNIConfig != "" {
+		baseArgs = append(baseArgs, "--cni-config-dir", t.CNIConfig)
+	}
+
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     t.BT,
+			BT: &t.BT,
+
 			RunArgsDNSOptionOption: "--dns-opt",
 		},
+
 		exe: "podman",
+
+		baseArgs: baseArgs,
 	}
 	executor := rescontainerocibase.NewExecutor("podman", executorArg, t)
 	_ = t.WithExecuter(executor)
+	return nil
 }
 
 // RunArgsBase append extra args for podman
@@ -95,4 +108,8 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 		return err
 	}
 	return nil
+}
+
+func (ea *ExecutorArg) ExecBaseArgs() []string {
+	return ea.baseArgs
 }

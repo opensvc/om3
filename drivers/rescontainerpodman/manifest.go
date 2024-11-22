@@ -30,6 +30,7 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := t.BT.ManifestWithID(drvID)
 	m.Add(
+		manifest.ContextCNIConfig,
 		keywords.Keyword{
 			Option:   "userns",
 			Attr:     "UserNS",

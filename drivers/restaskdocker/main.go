@@ -44,7 +44,7 @@ func New() resource.Driver {
 // the Detach value set to false (task are never detached)
 func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	ct := &rescontainerdocker.T{
-		BT: &rescontainerocibase.BT{
+		BT: rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
 			Detach:                    false, // don't hide the detach value
 			SCSIPersistentReservation: t.SCSIPersistentReservation,
@@ -90,6 +90,5 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	if err := ct.Configure(); err != nil {
 		t.Log().Errorf("unable to configure docker task container")
 	}
-	ct.SetupExecutor()
 	return ct
 }

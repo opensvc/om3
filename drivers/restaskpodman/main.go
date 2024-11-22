@@ -16,6 +16,8 @@ type (
 	// T is the driver structure.
 	T struct {
 		restaskocibase.T
+
+		CNIConfig string
 	}
 )
 
@@ -44,7 +46,7 @@ func New() resource.Driver {
 // the Detach value set to false (task are never detached).
 func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	ct := &rescontainerpodman.T{
-		BT: &rescontainerocibase.BT{
+		BT: rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
 			Detach:                    false, // don't hide the detach value
 			SCSIPersistentReservation: t.SCSIPersistentReservation,
@@ -86,10 +88,10 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			PullTimeout:               t.PullTimeout,
 			StartTimeout:              t.Timeout,
 		},
+		CNIConfig: t.CNIConfig,
 	}
 	if err := ct.Configure(); err != nil {
 		t.Log().Errorf("unable to configure podman task container")
 	}
-	ct.SetupExecutor()
 	return ct
 }

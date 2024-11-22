@@ -15,7 +15,7 @@ import (
 
 type (
 	T struct {
-		*rescontainerocibase.BT
+		rescontainerocibase.BT
 	}
 
 	ExecutorArg struct {
@@ -30,15 +30,14 @@ type (
 )
 
 func New() resource.Driver {
-	t := &T{BT: &rescontainerocibase.BT{}}
-	t.SetupExecutor()
-	return t
+	return &T{}
 }
 
-func (t *T) SetupExecutor() {
+func (t *T) Configure() error {
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     t.BT,
+			BT: &t.BT,
+
 			RunArgsDNSOptionOption: "--dns-option",
 		},
 		exe: "docker",
@@ -46,6 +45,7 @@ func (t *T) SetupExecutor() {
 	executor := rescontainerocibase.NewExecutor("docker", executorArg, t)
 	executorArg.inspectRefresher = executor
 	_ = t.WithExecuter(executor)
+	return nil
 }
 
 // Status improve BT.Status with userns checks

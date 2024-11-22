@@ -40,6 +40,7 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextObjectID,
 		manifest.ContextObjectID,
 		manifest.ContextDNS,
+		manifest.ContextCNIConfig,
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 	)
