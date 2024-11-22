@@ -199,6 +199,16 @@ type (
 	}
 )
 
+type (
+	ExecuterGetter interface {
+		Executer() Executer
+	}
+
+	ExecutorArgserGetter interface {
+		ExecutorArgser() ExecutorArgser
+	}
+)
+
 // defines used internal interfaces
 type (
 	containerNamer interface {
@@ -651,6 +661,11 @@ func (t *BT) Unprovision(_ context.Context) error {
 func (t *BT) WithExecuter(c Executer) *BT {
 	t.executer = c
 	return t
+}
+
+// Executer implements ExecuterGetter for external tests
+func (t *BT) Executer() Executer {
+	return t.executer
 }
 
 // NetNSPath implements the resource.NetNSPather optional interface.

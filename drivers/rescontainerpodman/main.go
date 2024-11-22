@@ -12,7 +12,7 @@ import (
 
 type (
 	T struct {
-		*rescontainerocibase.BT
+		rescontainerocibase.BT
 
 		CNIConfig string
 	}
@@ -25,8 +25,7 @@ type (
 )
 
 func New() resource.Driver {
-	t := &T{BT: &rescontainerocibase.BT{}}
-	return t
+	return &T{}
 }
 
 func (t *T) Configure() error {
@@ -36,9 +35,11 @@ func (t *T) Configure() error {
 	if t.CNIConfig != "" {
 		baseArgs = append(baseArgs, "--cni-config-dir", t.CNIConfig)
 	}
+
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     t.BT,
+			BT: &t.BT,
+
 			RunArgsDNSOptionOption: "--dns-opt",
 		},
 

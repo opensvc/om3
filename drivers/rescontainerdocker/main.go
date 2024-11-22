@@ -15,7 +15,7 @@ import (
 
 type (
 	T struct {
-		*rescontainerocibase.BT
+		rescontainerocibase.BT
 	}
 
 	ExecutorArg struct {
@@ -30,14 +30,14 @@ type (
 )
 
 func New() resource.Driver {
-	t := &T{BT: &rescontainerocibase.BT{}}
-	return t
+	return &T{}
 }
 
 func (t *T) Configure() error {
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
-			BT:                     t.BT,
+			BT: &t.BT,
+
 			RunArgsDNSOptionOption: "--dns-option",
 		},
 		exe: "docker",

@@ -210,6 +210,11 @@ func (e *Executor) WaitRemoved(ctx context.Context) error {
 	return nil
 }
 
+// ExecutorArgser implements ExecutorArgserGetter for external tests
+func (e *Executor) ExecutorArgser() ExecutorArgser {
+	return e.args
+}
+
 // doExecRun exec e.bin a where a may be prefixed by baseArgs when e.args
 // implements ExecutorBaseArgser.
 // Depending on ctx value, exec.Command or exec.CommandContext is used.
