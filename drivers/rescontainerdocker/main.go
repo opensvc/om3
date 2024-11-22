@@ -31,11 +31,10 @@ type (
 
 func New() resource.Driver {
 	t := &T{BT: &rescontainerocibase.BT{}}
-	t.SetupExecutor()
 	return t
 }
 
-func (t *T) SetupExecutor() {
+func (t *T) Configure() error {
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
 			BT:                     t.BT,
@@ -46,6 +45,7 @@ func (t *T) SetupExecutor() {
 	executor := rescontainerocibase.NewExecutor("docker", executorArg, t)
 	executorArg.inspectRefresher = executor
 	_ = t.WithExecuter(executor)
+	return nil
 }
 
 // Status improve BT.Status with userns checks

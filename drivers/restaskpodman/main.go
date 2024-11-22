@@ -90,6 +90,5 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 	if err := ct.Configure(); err != nil {
 		t.Log().Errorf("unable to configure podman task container")
 	}
-	ct.SetupExecutor()
 	return ct
 }
