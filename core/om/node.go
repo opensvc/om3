@@ -66,7 +66,12 @@ var (
 		Use:   "ssh",
 		Short: "ssh subsystem commands",
 	}
+	cmdNodeUpdateSSH = &cobra.Command{
+		Use:    "ssh",
+		Hidden: true,
+	}
 	cmdNodeEdit     = newCmdNodeEdit()
+	cmdNodeUpdate   = newCmdNodeUpdate()
 	cmdNodeValidate = newCmdNodeValidate()
 )
 
@@ -124,6 +129,7 @@ func init() {
 		cmdNodePush,
 		cmdNodeRelay,
 		cmdNodeSSH,
+		cmdNodeUpdate,
 		cmdNodeValidate,
 		newCmdNodeAbort(),
 		newCmdNodeChecks(),
@@ -165,6 +171,12 @@ func init() {
 	)
 	cmdNodeSSH.AddCommand(
 		newCmdNodeSSHTrust(),
+	)
+	cmdNodeUpdateSSH.AddCommand(
+		newCmdNodeUpdateSSHKeys(),
+	)
+	cmdNodeUpdate.AddCommand(
+		cmdNodeUpdateSSH,
 	)
 	cmdNodeValidate.AddCommand(
 		newCmdNodeValidateConfig(),

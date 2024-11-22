@@ -3,6 +3,8 @@ package om
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"fmt"
+	"os"
 
 	"time"
 
@@ -1643,6 +1645,24 @@ func newCmdNodeSSHTrust() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdNodeUpdateSSHKeys() *cobra.Command {
+	var options commands.CmdNodeSSHTrust
+	program := os.Args[0]
+	cmd := &cobra.Command{
+		Use:        "keys",
+		Short:      "ssh-trust peer nodes",
+		Deprecated: fmt.Sprintf("use the \"%s node ssh trust\" or \"%s cluster ssh trust\" command instead.", program, program),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagNodeSelector(flags, &options.NodeSelector)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
