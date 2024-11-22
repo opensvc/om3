@@ -34,13 +34,13 @@ func (a *DaemonAPI) getLocalSSHKeys(ctx echo.Context) error {
 	for _, file := range files {
 		data, err := os.ReadFile(file)
 		if err != nil {
-			log.Warnf("Failed to open file %s: %s", file, err)
+			log.Warnf("failed to open file %s: %s", file, err)
 			continue
 		}
 
 		_, _, _, _, err = ssh.ParseAuthorizedKey(bytes.TrimSpace(data))
 		if err != nil {
-			log.Warnf("Skipping invalid key in file %s: %s", file, err)
+			log.Warnf("skipping invalid key in file %s: %s", file, err)
 			continue
 		}
 		b.Write(data)

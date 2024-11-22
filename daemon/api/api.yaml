@@ -513,6 +513,28 @@ paths:
       tags:
         - node
 
+  /node/name/{nodename}/ssh/trust:
+    put:
+      description: |
+        Trust the ssh public keys of peer nodes.
+      operationId: PutNodeSSHTrust
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /dns/dump:
     get:
       description: |
