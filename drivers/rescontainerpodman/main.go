@@ -30,6 +30,12 @@ func New() resource.Driver {
 }
 
 func (t *T) Configure() error {
+	baseArgs := []string{
+		"--cgroup-manager", "cgroupfs",
+	}
+	if t.CNIConfig != "" {
+		baseArgs = append(baseArgs, "--cni-config-dir", t.CNIConfig)
+	}
 	executorArg := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
 			BT:                     t.BT,
@@ -38,10 +44,7 @@ func (t *T) Configure() error {
 
 		exe: "podman",
 
-		baseArgs: []string{
-			"--cgroup-manager", "cgroupfs",
-			"--cni-config-dir", t.CNIConfig,
-		},
+		baseArgs: baseArgs,
 	}
 	executor := rescontainerocibase.NewExecutor("podman", executorArg, t)
 	_ = t.WithExecuter(executor)
