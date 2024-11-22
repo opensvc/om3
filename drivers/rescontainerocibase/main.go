@@ -455,7 +455,7 @@ func (t *BT) Signal(sig syscall.Signal) error {
 		t.Log().Errorf("signal: inspect refresh container %s: %s", name, err)
 		return err
 	} else if inspect == nil {
-		t.Log().Infof("skip signal: container %s not found: %s", name)
+		t.Log().Infof("skip signal: container %s not found", name)
 		return nil
 	}
 	if !inspect.Running() {
@@ -491,22 +491,22 @@ func (t *BT) Start(ctx context.Context) error {
 		return nil
 	} else {
 		// it is defined
-		status := inspect.Status()
-		log.Debugf("container start %s: defined with status %s", name, status)
+		inspectStatus := inspect.Status()
+		log.Debugf("container start %s: defined with inspectStatus %s", name, inspectStatus)
 		if t.NeedPreStartRemove() {
 			log.Infof("container start %s: remove leftover container", name)
 			if err := t.executer.Remove(ctx); err != nil {
 				return logError(err)
 			}
 			return logError(t.pullAndRun(ctx))
-		} else if status == "initialized" {
-			log.Infof("container status %s, try fix with stop first", status)
+		} else if inspectStatus == "initialized" {
+			log.Infof("container inspectStatus %s, try fix with stop first", inspectStatus)
 			if err := t.executer.Stop(ctx); err != nil {
 				return err
 			}
 			return logError(t.findAndStart(ctx))
 		} else {
-			log.Infof("container status %s", status)
+			log.Infof("container inspectStatus %s", inspectStatus)
 			return logError(t.findAndStart(ctx))
 		}
 	}
