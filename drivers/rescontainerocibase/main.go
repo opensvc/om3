@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/core/vpath"
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/envprovider"
@@ -405,12 +407,18 @@ func (t *BT) Mounts() ([]BindMount, error) {
 		}
 		if strings.HasPrefix(source, "/") {
 			// pass
-		} else if srcRealpath, err := vpath.HostPath(source, t.Path.Namespace); err != nil {
+		} else if srcRealpath, vol, err := vpath.HostPathAndVol(source, t.Path.Namespace); err != nil {
 			return mounts, err
 		} else if file.IsProtected(srcRealpath) {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
 		} else {
 			source = srcRealpath
+
+			if newOpt, err := mangleVolMountOptions(opt, vol); err != nil {
+				return mounts, fmt.Errorf("can't prepare volume options for volume mount '%s': %w", s, err)
+			} else {
+				opt = newOpt
+			}
 		}
 
 		mounts = append(mounts, BindMount{Source: source, Target: target, Option: opt})
@@ -866,4 +874,48 @@ func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) 
 
 func (t *BT) warnAttrDiff(attr, current, target string) {
 	t.StatusLog().Warn("%s is %s, should be %s", attr, current, target)
+}
+
+// mangleVolMountOptions mangles volume initialOptions to return options
+// with "rw" or "ro" option.
+//
+//		  if volume access is read only or initial options contains "ro"
+//	   then options will contain "ro"
+//	   else options will contain "rw"if volume access is read only or initial options contains "ro":
+func mangleVolMountOptions(initialOptions string, i any) (string, error) {
+	opts := strings.Split(initialOptions, ",")
+
+	// wantsRo rule: opts contains "ro" or volume access is read only
+	wantsRo := slices.Contains(opts, "ro")
+
+	type volAccesser interface {
+		Access() (volaccess.T, error)
+	}
+
+	if !wantsRo {
+		if getter, ok := i.(volAccesser); ok {
+			if volAccess, err := getter.Access(); err != nil {
+				return "", err
+			} else {
+				wantsRo = volAccess.IsReadOnly()
+			}
+		}
+	}
+
+	var newOpts []string
+	if wantsRo {
+		newOpts = append(newOpts, "ro")
+	} else {
+		newOpts = append(newOpts, "rw")
+	}
+	for _, o := range opts {
+		switch o {
+		case "ro", "rw":
+		case "": // from strings.Split when initial opt is ""
+		default:
+			newOpts = append(newOpts, o)
+		}
+	}
+
+	return strings.Join(newOpts, ","), nil
 }

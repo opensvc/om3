@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -169,4 +170,14 @@ func (t *vol) Children() naming.Relations {
 		return naming.Relations{}
 	}
 	return naming.ParseRelations(l)
+}
+
+// Access returns the volaccess.Parse result of volume kw 'access'.
+func (t *vol) Access() (volaccess.T, error) {
+	k := key.Parse("access")
+	if s, err := t.config.GetStringStrict(k); err != nil {
+		return volaccess.T{}, err
+	} else {
+		return volaccess.Parse(s)
+	}
 }
