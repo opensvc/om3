@@ -1648,6 +1648,35 @@ func newCmdObjectBoot(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeSSHTrust() *cobra.Command {
+	var options commands.CmdNodeSSHTrust
+	cmd := &cobra.Command{
+		Use:   "trust",
+		Short: "ssh-trust peer nodes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdClusterSSHTrust() *cobra.Command {
+	var options commands.CmdClusterSSHTrust
+	cmd := &cobra.Command{
+		Use:   "trust",
+		Short: "setup the ssh access trust mesh",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdObjectClear(kind string) *cobra.Command {
 	var options commands.CmdObjectClear
 	cmd := &cobra.Command{
@@ -1692,6 +1721,13 @@ func newCmdObjectValidate(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
 	return cmd
+}
+
+func newCmdObjectSSH(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "ssh",
+		Short: "ssh command group",
+	}
 }
 
 func newCmdObjectSync(kind string) *cobra.Command {

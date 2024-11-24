@@ -1,6 +1,8 @@
 package sshnode
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -108,4 +110,62 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) (err error) {
 	knownHost := knownhosts.Normalize(remote.String())
 	_, err = f.WriteString(knownhosts.Line([]string{knownHost}, key) + "\n")
 	return err
+}
+
+type AuthorizedKeysMap map[string]any
+
+func AppendAuthorizedKeys(line []byte) error {
+	if len(line) == 0 {
+		return nil
+	}
+	filename := os.ExpandEnv("$HOME/.ssh/authorized_keys")
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	file.Write(line)
+	if string(line[len(line)-1]) != "\n" {
+		fmt.Fprintln(file, "")
+	}
+	return nil
+}
+
+func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
+	filename := os.ExpandEnv("$HOME/.ssh/authorized_keys")
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	m := make(AuthorizedKeysMap)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		data := scanner.Bytes()
+		k, _, _, _, err := ssh.ParseAuthorizedKey(bytes.TrimSpace(data))
+		if err != nil {
+			//fmt.Fprintf(os.Stderr, "skipping invalid key in file %s: %s\n", file.Name(), err)
+			continue
+		}
+		m[ssh.FingerprintSHA256(k)] = nil
+	}
+
+	// Check for errors
+	if err := scanner.Err(); err != nil {
+		return m, err
+	}
+
+	return m, nil
+}
+
+func (m AuthorizedKeysMap) Has(data []byte) (bool, error) {
+	k, _, _, _, err := ssh.ParseAuthorizedKey(data)
+	if err != nil {
+		return false, err
+	}
+	if _, ok := m[ssh.FingerprintSHA256(k)]; ok {
+		return true, nil
+	}
+	return false, nil
 }
