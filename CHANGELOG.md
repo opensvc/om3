@@ -410,6 +410,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * New fields in print schedule json format: node, path
 
+* The `monitor_action` now accepts a secondary action, allowing the very useful `freezestop reboot` configuration.
+
+* The `om node update ssh keys --node=...` command is deprecated in favor of `o[mx] cluster ssh trust` (configure the trust mesh on all cluster nodes) and `o[mx] node ssh trust` (trust the node's peers)
+
 ### Daemon
 
 * Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
