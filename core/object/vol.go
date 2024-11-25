@@ -33,6 +33,7 @@ type (
 		Head() string
 		Device() *device.T
 		HoldersExcept(ctx context.Context, p naming.Path) naming.Paths
+		Access() (volaccess.T, error)
 	}
 )
 

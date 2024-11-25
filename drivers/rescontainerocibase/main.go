@@ -24,11 +24,11 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/core/vpath"
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/envprovider"
@@ -881,24 +881,18 @@ func (t *BT) warnAttrDiff(attr, current, target string) {
 //
 //		  if volume access is read only or initial options contains "ro"
 //	   then options will contain "ro"
-//	   else options will contain "rw"if volume access is read only or initial options contains "ro":
-func mangleVolMountOptions(initialOptions string, i any) (string, error) {
+//	   else options will contain "rw" if volume access is read only or initial options contains "ro":
+func mangleVolMountOptions(initialOptions string, vol object.Vol) (string, error) {
 	opts := strings.Split(initialOptions, ",")
 
 	// wantsRo rule: opts contains "ro" or volume access is read only
 	wantsRo := slices.Contains(opts, "ro")
 
-	type volAccesser interface {
-		Access() (volaccess.T, error)
-	}
-
-	if !wantsRo {
-		if getter, ok := i.(volAccesser); ok {
-			if volAccess, err := getter.Access(); err != nil {
-				return "", err
-			} else {
-				wantsRo = volAccess.IsReadOnly()
-			}
+	if !wantsRo && vol != nil {
+		if volAccess, err := vol.Access(); err != nil {
+			return "", err
+		} else {
+			wantsRo = volAccess.IsReadOnly()
 		}
 	}
 
