@@ -292,8 +292,14 @@ func (ea *ExecutorArg) runArgsMounts() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	TargetToSource := make(map[string]string)
 	a := make([]string, 0, 2*len(mounts))
 	for _, m := range mounts {
+		if source, ok := TargetToSource[m.Target]; ok {
+			return nil, fmt.Errorf("found at least two different volume mounts sources %s and %s that use the same destination %s",
+				source, m.Source, m.Target)
+		}
+		TargetToSource[m.Target] = m.Source
 		if !file.Exists(m.Source) {
 			ea.Log().Infof("create missing mount source %s", m.Source)
 			if err := os.MkdirAll(m.Source, os.ModePerm); err != nil {

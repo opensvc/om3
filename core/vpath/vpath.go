@@ -20,18 +20,20 @@ var (
 	ErrAccess = errors.New("vol is not accessible")
 )
 
-// HostPath expand a volume-relative path to a host full path.
+// HostPathAndVol expand a volume-relative path to a host full path. It returns
+// the host full path and the associated object volume if defined.
 //
 // Example:
 //
-// INPUT        VOL     OUPUT            COMMENT
-// /path                /path            host full path
-// myvol/path   myvol   /srv/myvol/path  vol head relative path
-func HostPath(s string, namespace string) (string, error) {
+// INPUT        VOL     host path            COMMENT
+// /path        nil     /path                host full path
+// myvol/path   myvol   /srv/myvol/path      vol head relative path
+func HostPathAndVol(s string, namespace string) (hostPath string, vol object.Vol, err error) {
 	var volRelativeSourcePath string
 	l := strings.SplitN(s, "/", 2)
 	if len(l[0]) == 0 {
-		return s, nil
+		hostPath = s
+		return
 	}
 	if len(l) == 2 {
 		volRelativeSourcePath = l[1]
@@ -41,23 +43,40 @@ func HostPath(s string, namespace string) (string, error) {
 		Namespace: namespace,
 		Kind:      naming.KindVol,
 	}
-	vol, err := object.NewVol(volPath)
+	vol, err = object.NewVol(volPath)
 	if err != nil {
-		return s, err
+		return
 	}
 	if !vol.Path().Exists() {
-		return s, fmt.Errorf("%s does not exist", vol.Path())
+		err = fmt.Errorf("%s does not exist", vol.Path())
+		return
 	}
-	st, err := vol.Status(context.Background())
-	if err != nil {
-		return s, err
+
+	volStatus, err1 := vol.Status(context.Background())
+	if err1 != nil {
+		err = err1
+		return
 	}
-	switch st.Avail {
+	switch volStatus.Avail {
 	case status.Up, status.NotApplicable, status.StandbyUp:
 	default:
-		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
+		err = fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, volStatus.Avail)
+		return
 	}
-	return vol.Head() + "/" + volRelativeSourcePath, nil
+	hostPath = vol.Head() + "/" + volRelativeSourcePath
+	return
+}
+
+// HostPath expand a volume-relative path to a host full path.
+//
+// Example:
+//
+// INPUT        VOL     OUPUT            COMMENT
+// /path                /path            host full path
+// myvol/path   myvol   /srv/myvol/path  vol head relative path
+func HostPath(s string, namespace string) (string, error) {
+	hostPath, _, err := HostPathAndVol(s, namespace)
+	return hostPath, err
 }
 
 // HostPaths applies the HostPath function to each path of the input list
