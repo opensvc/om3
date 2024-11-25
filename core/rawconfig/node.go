@@ -9,9 +9,10 @@ import (
 	"strings"
 
 	"github.com/msoap/byline"
+	"github.com/subosito/gotenv"
+
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/render/palette"
-	"github.com/subosito/gotenv"
 )
 
 const (
@@ -130,6 +131,7 @@ func setPaths(root string) {
 			Log:          filepath.FromSlash(fmt.Sprintf("/var/log/%s", Program)),
 			Etc:          filepath.FromSlash(fmt.Sprintf("/etc/%s", Program)),
 			EtcNs:        filepath.FromSlash(fmt.Sprintf("/etc/%s/namespaces", Program)),
+			Backup:       filepath.FromSlash(fmt.Sprintf("/var/lib/%s/backup", Program)),
 			Tmp:          filepath.FromSlash(fmt.Sprintf("/var/tmp/%s", Program)),
 			Doc:          filepath.FromSlash(fmt.Sprintf("/usr/share/doc/%s", Program)),
 			HTML:         filepath.FromSlash(fmt.Sprintf("/usr/share/%s/html", Program)),
@@ -148,6 +150,7 @@ func setPaths(root string) {
 			Cache:        filepath.Join(root, "var", "cache"),
 			Certs:        filepath.Join(root, "var", "certs"),
 			CACRL:        filepath.Join(root, "var", "certs", "ca_crl"),
+			Backup:       filepath.Join(root, "var", "backup"),
 			Log:          filepath.Join(root, "log"),
 			Etc:          filepath.Join(root, "etc"),
 			EtcNs:        filepath.Join(root, "etc", "namespaces"),

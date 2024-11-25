@@ -45,11 +45,11 @@ func (t *CmdDaemonCommon) nodeDrain() (err error) {
 }
 
 func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
-	pathEtc := rawconfig.Paths.Etc
-	if v, err := file.ExistsAndDir(pathEtc); err != nil {
+	backupDir := rawconfig.Paths.Backup
+	if v, err := file.ExistsAndDir(backupDir); err != nil {
 		return err
 	} else if !v {
-		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", pathEtc)
+		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", backupDir)
 		return nil
 	}
 	cmd := command.New(
@@ -64,7 +64,7 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 		return fmt.Errorf("%s: %w", cmd, err)
 	}
 
-	backup := path.Join(pathEtc, time.Now().Format(name+"-2006-01-02T15:04:05.json"))
+	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05.json"))
 	_, _ = fmt.Fprintf(os.Stdout, "Save configs to %s\n", backup)
 	if err := os.WriteFile(backup, cmd.Stdout(), 0o400); err != nil {
 		return err
