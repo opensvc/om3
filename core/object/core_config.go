@@ -388,11 +388,16 @@ func (t *core) Dereference(ref string) (string, error) {
 				return "", err
 			} else {
 				for _, name := range names {
+					name = strings.TrimSuffix(name, ".")
 					if slices.Contains(nodes, name) {
 						l = append(l, name)
+						break
 					}
 				}
 			}
+		}
+		if len(l) == 0 {
+			return hostname.Hostname(), nil
 		}
 		return strings.Join(l, " "), nil
 	case "dnsuxsock":
