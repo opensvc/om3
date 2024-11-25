@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/icfg"
@@ -317,7 +319,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		t.cancelFetcher(pathS)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) && len(t.retainForeignConfigFor[p]) == 0 {
-			log.Infof("cfg: remove foreign config file for %s", pathS)
+			log.Infof("cfg: removing foreign config file for %s", pathS)
 			t.removeConfigFileAndDisableRecover(p, remoteInstanceConfig.UpdatedAt)
 			delete(t.cfgMTime, pathS)
 			delete(t.retainForeignConfigFor, p)
@@ -358,8 +360,11 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 	cfgFile := p.ConfigFile()
 	pathS := p.String()
 	log := t.objectLogger(p)
-	if err := os.Remove(cfgFile); err != nil {
-		log.Debugf("cfg: remove %s: %s", cfgFile, err)
+	bckName := fmt.Sprintf("%s.%s.%s_%s.bck", p.Namespace, p.Kind, p.Name, time.Now().Format(time.RFC3339))
+	bckCfgFile := path.Join(rawconfig.Paths.Backup, bckName)
+	log.Infof("cfg: archive removed file %s to %s", cfgFile, bckCfgFile)
+	if err := os.Rename(cfgFile, bckCfgFile); err != nil {
+		log.Debugf("cfg: archive removed file %s: %s", cfgFile, err)
 	}
 	if _, ok := t.cfgMTime[pathS]; ok {
 		// the running icfg will die soon, onInstanceConfigManagerDone will be called
@@ -453,7 +458,7 @@ func (t *Manager) onInstanceConfigForFromLocalhost(c *msgbus.InstanceConfigFor) 
 			log.Infof("cfg: ignore obsolete foreign config file %s with scopes %s", c.Path, c.Scope)
 			t.abortRetainForeignConfig(c.Path)
 		} else if len(c.Scope) == 0 {
-			log.Infof("cfg: remove foreign config file %s that has no scopes", c.Path)
+			log.Infof("cfg: removing foreign config file %s that has no scopes", c.Path)
 			t.removeConfigFileAndDisableRecover(c.Path, c.UpdatedAt)
 			t.abortRetainForeignConfig(c.Path)
 		} else {
@@ -483,7 +488,7 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 	if !inList(t.localhost, c.Scope) {
 		// peer node has an extra config file that is not for us
 		if hasLocalConfigFile {
-			log.Infof("cfg: remove foreign config file for %s from %s", c.Path, c.Node)
+			log.Infof("cfg: removing foreign config file for %s from %s", c.Path, c.Node)
 			t.removeConfigFileAndDisableRecover(c.Path, c.UpdatedAt)
 			t.abortRetainForeignConfig(c.Path)
 		}

@@ -28,6 +28,7 @@ type (
 		HTML         string `mapstructure:"html"`
 		Drivers      string `mapstructure:"drivers"`
 		Compliance   string `mapstructure:"compliance"`
+		Backup       string `mapstructure:"varbck"`
 	}
 )
 
@@ -62,9 +63,10 @@ func CreateMandatoryDirectories() error {
 		DNSUDSDir(),
 		Paths.Certs,
 		Paths.Etc,
-		filepath.Join(Paths.Etc, "namespaces"),
+		Paths.EtcNs,
 		Paths.Lsnr,
 		Paths.Tmp,
+		Paths.Backup,
 	}
 	for _, d := range mandatoryDirs {
 		info, err := os.Stat(d)
