@@ -330,7 +330,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Converter:   converters.Int,
-		Default:     "1",
+		Default:     "{flex_min}",
 		DefaultText: keywords.NewText(fs, "text/kw/core/flex_target.default"),
 		Depends:     keyop.ParseList("topology=flex"),
 		Inherit:     keywords.InheritHead,
