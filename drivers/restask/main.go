@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/resource"
@@ -37,7 +38,7 @@ type BaseTask struct {
 	Snooze       *time.Duration
 }
 
-func (t BaseTask) ScheduleOptions() resource.ScheduleOptions {
+func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action:              "run",
 		Option:              "schedule",
@@ -50,11 +51,11 @@ func (t BaseTask) ScheduleOptions() resource.ScheduleOptions {
 
 // notifyRunDone is a noop here as for now the daemon api has no support for
 // POST /run_done, and may not need one.
-func (t BaseTask) notifyRunDone() error {
+func (t *BaseTask) notifyRunDone() error {
 	return nil
 }
 
-func (t BaseTask) handleConfirmation(ctx context.Context) error {
+func (t *BaseTask) handleConfirmation(ctx context.Context) error {
 	if !t.Confirmation {
 		return nil
 	}
@@ -83,7 +84,7 @@ Enter "yes" if you really want to run.`, t.RID())
 	return fmt.Errorf("run aborted")
 }
 
-func (t BaseTask) lastRunFile() string {
+func (t *BaseTask) lastRunFile() string {
 	return filepath.Join(t.VarDir(), "last_run_retcode")
 }
 
@@ -107,7 +108,7 @@ func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
 	}
 }
 
-func (t BaseTask) readLastRun() (int, error) {
+func (t *BaseTask) readLastRun() (int, error) {
 	p := t.lastRunFile()
 	if b, err := os.ReadFile(p); err != nil {
 		return 0, err
@@ -116,7 +117,7 @@ func (t BaseTask) readLastRun() (int, error) {
 	}
 }
 
-func (t BaseTask) WriteLastRun(retcode int) error {
+func (t *BaseTask) WriteLastRun(retcode int) error {
 	p := t.lastRunFile()
 	f, err := os.Create(p)
 	if err != nil {
@@ -127,7 +128,7 @@ func (t BaseTask) WriteLastRun(retcode int) error {
 	return nil
 }
 
-func (t BaseTask) IsRunning() bool {
+func (t *BaseTask) IsRunning() bool {
 	hasRunning, err := t.RunDir().HasRunning()
 	if err != nil {
 		return false
@@ -135,14 +136,14 @@ func (t BaseTask) IsRunning() bool {
 	return hasRunning
 }
 
-func (t BaseTask) RunDir() runfiles.Dir {
+func (t *BaseTask) RunDir() runfiles.Dir {
 	return runfiles.Dir{
 		Path: filepath.Join(t.VarDir(), "run"),
 		Log:  t.Log(),
 	}
 }
 
-func (t BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) error {
+func (t *BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) error {
 	runDir := t.RunDir()
 	canRun := func() error {
 		disable := actioncontext.IsLockDisabled(ctx)
@@ -182,7 +183,7 @@ func (t BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) err
 	return fn(ctx)
 }
 
-func (t BaseTask) ExitCodeToStatus(exitCode int) (status.T, error) {
+func (t *BaseTask) ExitCodeToStatus(exitCode int) (status.T, error) {
 	m, err := retcodes.Parse(t.RetCodes)
 	if err != nil {
 		return status.Warn, err
