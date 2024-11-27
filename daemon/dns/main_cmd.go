@@ -126,11 +126,10 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			updatedRecords[record.Name] = nil
 		}
 	}
-	stageSRV := func(s string) {
+	stageSRV := func(s string) error {
 		expose, err := ParseExpose(s)
 		if err != nil {
-			t.log.Errorf("parse expose %s: %s", s, err)
-			return
+			return err
 		}
 		var weight int
 		if i, ok := t.score[c.Node]; ok {
@@ -145,9 +144,9 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			TTL:      60,
 			Content:  fmt.Sprintf("%d %d %d %s", defaultPrio, weight, expose.BackendPort, nameOnNode),
 		})
-
+		return nil
 	}
-	stageSRVs := func(r resource.Status) {
+	stageSRVs := func(rid string, r resource.Status) {
 		i, ok := r.Info[exposeInfoKey]
 		if !ok {
 			return
@@ -156,7 +155,9 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		case []any:
 			for _, expose := range exposes {
 				if s, ok := expose.(string); ok {
-					stageSRV(s)
+					if err := stageSRV(s); err != nil {
+						t.log.Warnf("%s: %s: parse %s=%s: %s", c.Path, rid, exposeInfoKey, s, err)
+					}
 				}
 			}
 		}
@@ -257,7 +258,7 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 				Content:  nameOnNodeWithResourceName,
 			})
 		}
-		stageSRVs(rstat)
+		stageSRVs(rid, rstat)
 	}
 
 	for key, record := range existingRecords {

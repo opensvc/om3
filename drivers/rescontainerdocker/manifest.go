@@ -24,7 +24,7 @@ func init() {
 }
 
 // Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
+func (t *T) Manifest() *manifest.T {
 	m := t.BT.ManifestWithID(drvID)
 	m.Add(
 		keywords.Keyword{

@@ -36,6 +36,15 @@ type (
 
 	getDomainMetadataResponse []string
 
+	list struct {
+		Method     string         `json:"method"`
+		Parameters listParameters `json:"parameters"`
+	}
+
+	listParameters struct {
+		Zonename string `json:"zonename"`
+	}
+
 	lookup struct {
 		Method     string           `json:"method"`
 		Parameters lookupParameters `json:"parameters"`
@@ -45,8 +54,6 @@ type (
 		Type string `json:"qtype"`
 		Name string `json:"qname"`
 	}
-
-	lookupResponse any
 
 	request struct {
 		Method string `json:"method"`
@@ -79,7 +86,32 @@ func (t *Manager) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	}
 }
 
-func (t *Manager) lookup(b []byte) lookupResponse {
+func (t *Manager) list(b []byte) Zone {
+	var req list
+	if err := json.Unmarshal(b, &req); err != nil {
+		t.log.Errorf("request parse: %s", err)
+		return nil
+	}
+	return t.getList(req.Parameters.Zonename)
+}
+
+func (t *Manager) getList(zonename string) Zone {
+	if zonename != t.clusterConfig.Name+"." {
+		return Zone{}
+	}
+	err := make(chan error, 1)
+	c := cmdGetZone{
+		errC: err,
+		resp: make(chan Zone),
+	}
+	t.cmdC <- c
+	if <-err != nil {
+		return Zone{}
+	}
+	return <-c.resp
+}
+
+func (t *Manager) lookup(b []byte) Zone {
 	var req lookup
 	if err := json.Unmarshal(b, &req); err != nil {
 		t.log.Errorf("request parse: %s", err)
@@ -208,16 +240,16 @@ func (t *Manager) startUDSListener() error {
 		Error  string `json:"error,omitempty"`
 	}
 
-	sendBytes := func(conn net.Conn, b []byte) error {
+	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
-		t.log.Debugf("response: %s", string(b))
+		t.log.Debugf("%d: >>> %s", id, string(b))
 		if err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
-			t.log.Warnf("can't set response write deadline: %s", err)
+			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
 		for {
 			n, err := conn.Write(b)
 			if err != nil {
-				t.log.Errorf("response write: %s", err)
+				t.log.Errorf("%d: %s", id, err)
 				return err
 			}
 			if n == 0 {
@@ -228,36 +260,38 @@ func (t *Manager) startUDSListener() error {
 		return err
 	}
 
-	sendError := func(conn net.Conn, err error) error {
+	sendError := func(id uint64, conn net.Conn, err error) error {
 		response := PDNSResponse{
 			Error:  fmt.Sprint(err),
 			Result: false,
 		}
 		b, _ := json.Marshal(response)
-		return sendBytes(conn, b)
+		t.log.Debugf("%d: >>> %s", id, string(b))
+		return sendBytes(id, conn, b)
 	}
 
-	send := func(conn net.Conn, data any) error {
+	send := func(id uint64, conn net.Conn, data any) error {
 		response := PDNSResponse{
 			Result: data,
 		}
 		b, err := json.Marshal(response)
 		if err != nil {
-			return sendError(conn, err)
+			return sendError(id, conn, err)
 		}
-		return sendBytes(conn, b)
+		return sendBytes(id, conn, b)
 	}
 
-	serve := func(conn net.Conn) {
+	serve := func(id uint64, conn net.Conn) {
 		var (
-			message []byte
-			req     request
+			message  []byte
+			req      request
+			reqCount uint64
 		)
 		defer conn.Close()
-		t.log.Debugf("client connected")
+		t.log.Infof("%d: new connection", id)
 		for {
-			if err := conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
-				t.log.Warnf("can't set client read deadline: %s", err)
+			if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+				t.log.Infof("%d: can't set client read deadline: %s", id, err)
 			}
 			buffer := make([]byte, 1024)
 
@@ -265,60 +299,71 @@ func (t *Manager) startUDSListener() error {
 			message = buffer[:n]
 
 			if os.IsTimeout(err) {
-				return
+				t.log.Debugf("%d: alive", id)
+				continue
 			} else if errors.Is(err, io.EOF) {
-				// pass
+				t.log.Infof("%d: close connection (%s), served %d requests", id, err, reqCount)
+				return
 			} else if err != nil {
-				t.log.Errorf("request read: %s", err)
+				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
 				return
 			}
 
 			if n <= 0 {
 				// empty message
-				return
+				continue
 			}
 
-			t.log.Debugf("request: %s", string(message))
+			reqCount++
+			t.log.Debugf("%d: <<< %s", id, string(message))
 
 			if err := json.Unmarshal(message, &req); err != nil {
-				t.log.Errorf("request parse: %s", err)
+				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
 				return
 			}
 			switch req.Method {
 			case "getAllDomainMetadata":
-				_ = send(conn, t.getAllDomainMetadata(message))
+				_ = send(id, conn, t.getAllDomainMetadata(message))
 			case "getAllDomains":
-				_ = send(conn, t.getAllDomains(message))
+				_ = send(id, conn, t.getAllDomains(message))
 			case "getDomainMetadata":
-				_ = send(conn, t.getDomainMetadata(message))
+				_ = send(id, conn, t.getDomainMetadata(message))
+			case "list":
+				_ = send(id, conn, t.list(message))
 			case "lookup":
-				_ = send(conn, t.lookup(message))
+				_ = send(id, conn, t.lookup(message))
 			case "initialize":
-				_ = send(conn, true)
+				_ = send(id, conn, true)
 			}
 		}
 	}
 	listen := func() {
 		go func() {
-			defer l.Close()
 			select {
 			case <-t.ctx.Done():
+				t.log.Debugf("stop listening (abort)")
+				_ = l.Close()
 				return
 			}
 		}()
 
+		var i uint64
 		for {
 			conn, err := l.Accept()
 			if err != nil {
-				if !errors.Is(err, net.ErrClosed) {
-					t.log.Warnf("UDS accept: %s", err)
+				if errors.Is(err, net.ErrClosed) {
+					t.log.Debugf("stop listening (%s)", err)
+					return
 				}
-				return
+				t.log.Warnf("accept connection error: %s", err)
+				continue
 			}
+			// TODO: limit number conn routines ?
 			t.wg.Add(1)
+			i += 1
 			go func() {
 				defer t.wg.Done()
-				serve(conn)
+				serve(i, conn)
 			}()
 		}
 	}
@@ -326,6 +371,7 @@ func (t *Manager) startUDSListener() error {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
+		t.log.Debugf("start listening")
 		listen()
 	}()
 
