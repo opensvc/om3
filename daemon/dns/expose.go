@@ -17,7 +17,7 @@ func ParseExpose(s string) (Expose, error) {
 	var expose Expose
 	l := strings.Split(s, "/")
 	if n := len(l); n != 2 {
-		return expose, fmt.Errorf("invalid expose syntax: expect one slash, got %d", n)
+		return expose, fmt.Errorf("invalid syntax: expect one slash, got %d", n-1)
 	}
 	proto := l[1]
 	if i := strings.Index(proto, ":"); i >= 0 {
@@ -34,7 +34,7 @@ func ParseExpose(s string) (Expose, error) {
 	switch expose.Network {
 	case "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6":
 	default:
-		return expose, fmt.Errorf("invalid expose syntax: expect network in tcp, tcp4, tcp6, udp, udp4, udp6. got %s", expose.Network)
+		return expose, fmt.Errorf("invalid syntax: expect network in tcp, tcp4, tcp6, udp, udp4, udp6. got %s", expose.Network)
 	}
 	if bePort, err := strconv.Atoi(l[0]); err != nil {
 		return expose, err
