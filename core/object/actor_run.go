@@ -26,7 +26,7 @@ func (t *actor) Run(ctx context.Context) error {
 
 func (t *actor) masterRun(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("run resource")
+		t.log.Attr("rid", r.RID()).Debugf("%s: run resource", r.RID())
 		err := resource.Run(ctx, r)
 		if errors.Is(err, resource.ErrActionReqNotMet) && actioncontext.IsCron(ctx) {
 			return nil
