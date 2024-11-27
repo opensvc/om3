@@ -36,6 +36,15 @@ type (
 
 	getDomainMetadataResponse []string
 
+	list struct {
+		Method     string         `json:"method"`
+		Parameters listParameters `json:"parameters"`
+	}
+
+	listParameters struct {
+		Zonename string `json:"zonename"`
+	}
+
 	lookup struct {
 		Method     string           `json:"method"`
 		Parameters lookupParameters `json:"parameters"`
@@ -45,8 +54,6 @@ type (
 		Type string `json:"qtype"`
 		Name string `json:"qname"`
 	}
-
-	lookupResponse any
 
 	request struct {
 		Method string `json:"method"`
@@ -79,7 +86,32 @@ func (t *Manager) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	}
 }
 
-func (t *Manager) lookup(b []byte) lookupResponse {
+func (t *Manager) list(b []byte) Zone {
+	var req list
+	if err := json.Unmarshal(b, &req); err != nil {
+		t.log.Errorf("request parse: %s", err)
+		return nil
+	}
+	return t.getList(req.Parameters.Zonename)
+}
+
+func (t *Manager) getList(zonename string) Zone {
+	if zonename != t.clusterConfig.Name+"." {
+		return Zone{}
+	}
+	err := make(chan error, 1)
+	c := cmdGetZone{
+		errC: err,
+		resp: make(chan Zone),
+	}
+	t.cmdC <- c
+	if <-err != nil {
+		return Zone{}
+	}
+	return <-c.resp
+}
+
+func (t *Manager) lookup(b []byte) Zone {
 	var req lookup
 	if err := json.Unmarshal(b, &req); err != nil {
 		t.log.Errorf("request parse: %s", err)
@@ -291,6 +323,8 @@ func (t *Manager) startUDSListener() error {
 				_ = send(conn, t.getAllDomains(message))
 			case "getDomainMetadata":
 				_ = send(conn, t.getDomainMetadata(message))
+			case "list":
+				_ = send(conn, t.list(message))
 			case "lookup":
 				_ = send(conn, t.lookup(message))
 			case "initialize":
