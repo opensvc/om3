@@ -64,9 +64,17 @@ func (t *Manager) provisionedFromWaitLeader() {
 
 func (t *Manager) provisionedClearIfReached() bool {
 	reached := func(msg string) bool {
+		if t.instStatus[t.localhost].IsFrozen() {
+			t.doUnfreeze()
+		}
 		t.log.Infof(msg)
 		t.doneAndIdle()
 		t.updateIfChange()
+		return true
+	}
+	if t.isAllState(instance.MonitorStateProvisionFailed) {
+		t.loggerWithState().Infof("all instances provision failed -> set done")
+		t.done()
 		return true
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {

@@ -1626,10 +1626,10 @@ func (t *App) skipIfInstanceNotUpdated() bool {
 	} else if instanceData, ok := nodeData.Instance[t.viewPath.String()]; !ok {
 		t.errorf("instance config disappeared")
 		return true
-	} else if instanceData.Config.UpdatedAt.After(t.lastUpdatedAt) {
+	} else if instanceData.Config != nil && instanceData.Config.UpdatedAt.After(t.lastUpdatedAt) {
 		t.lastUpdatedAt = instanceData.Config.UpdatedAt
 		return false
-	} else if instanceData.Status.UpdatedAt.After(t.lastUpdatedAt) {
+	} else if instanceData.Status != nil && instanceData.Status.UpdatedAt.After(t.lastUpdatedAt) {
 		t.lastUpdatedAt = instanceData.Status.UpdatedAt
 		return false
 	}

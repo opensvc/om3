@@ -168,7 +168,7 @@ func (t *Manager) startedFromStartFailed() {
 	if t.state.OrchestrationIsDone {
 		return
 	}
-	if t.isAllStartFailed() {
+	if t.isAllState(instance.MonitorStateStartFailed) {
 		t.loggerWithState().Infof("all instances start failed -> set done")
 		t.done()
 		return
@@ -189,9 +189,9 @@ func (t *Manager) isAnyPeerState(states ...instance.MonitorState) (string, insta
 	return "", instance.MonitorStateInit
 }
 
-func (t *Manager) isAllStartFailed() bool {
+func (t *Manager) isAllState(state instance.MonitorState) bool {
 	for _, instMon := range t.AllInstanceMonitors() {
-		if instMon.State != instance.MonitorStateStartFailed {
+		if instMon.State != state {
 			return false
 		}
 	}
