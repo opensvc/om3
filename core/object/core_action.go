@@ -84,21 +84,21 @@ func (t *actor) preAction(ctx context.Context) error {
 
 func (t *actor) needRollback(ctx context.Context) bool {
 	if actionrollback.Len(ctx) == 0 {
-		t.Log().Debugf("skip rollback: Empty stack")
+		t.Log().Debugf("skip rollback: empty stack")
 		return false
 	}
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
-		t.Log().Debugf("skip rollback: Not demanded by the %s action", action.Name)
+		t.Log().Debugf("skip rollback: not demanded by the %s action", action.Name)
 		return false
 	}
 	if actioncontext.IsRollbackDisabled(ctx) {
-		t.Log().Debugf("skip rollback: Disabled via the command flag")
+		t.Log().Debugf("skip rollback: disabled via the command flag")
 		return false
 	}
 	k := key.Parse("rollback")
 	if !t.Config().GetBool(k) {
-		t.Log().Debugf("skip rollback: Disabled via configuration keyword")
+		t.Log().Debugf("skip rollback: disabled via configuration keyword")
 		return false
 	}
 	return true
@@ -170,7 +170,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	})
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		t.log.Debugf("skip announce progress: The daemon is not running")
+		t.log.Debugf("skip announce progress: the daemon is not running")
 		return nil
 	case err != nil:
 		t.log.Errorf("announce %s state: %s", progress, err)
@@ -470,15 +470,15 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		return nil
 	}
 	if !resourceselector.FromContext(ctx, nil).IsZero() {
-		t.log.Debugf("skip freeze: Resource selection")
+		t.log.Debugf("skip freeze: resource selection")
 		return nil
 	}
 	if !t.orchestrateWantsFreeze() {
-		t.log.Debugf("skip freeze: Orchestrate value")
+		t.log.Debugf("skip freeze: orchestrate value")
 		return nil
 	}
 	if env.HasDaemonMonitorOrigin() {
-		t.log.Debugf("skip freeze: Action has daemon origin")
+		t.log.Debugf("skip freeze: action has daemon origin")
 		return nil
 	}
 	return t.Freeze(ctx)

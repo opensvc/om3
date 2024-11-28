@@ -40,6 +40,7 @@ func init() {
 		newCmdObjectUpdate(kind),
 		newCmdSecGenCert(kind),
 		newCmdSecPKCS(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

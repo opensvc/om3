@@ -60,6 +60,7 @@ func init() {
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectCollector.AddCommand(
 		cmdObjectCollectorTag,

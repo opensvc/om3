@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/core/monitor"
 	commands "github.com/opensvc/om3/core/oxcmd"
+	"github.com/opensvc/om3/core/tui"
 )
 
 var (
@@ -3069,5 +3070,18 @@ func newCmdSecPKCS(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdTUI(kind string) *cobra.Command {
+	var options tui.Options
+	cmd := &cobra.Command{
+		Use:   "tui",
+		Short: "interactive terminal user interface.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Selector = mergeSelector("", kind, "")
+			return tui.Run(&options)
+		},
+	}
 	return cmd
 }

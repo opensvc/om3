@@ -52,7 +52,9 @@ func addFlagsGlobalServer(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 }
 
 func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
+	flagSet.StringVarP(&p.ObjectSelector, "service", "", "", "Execute on a list of objects.")
+	flagSet.StringVarP(&p.ObjectSelector, "selector", "s", "", "Execute on a list of objects.")
+	flagSet.MarkHidden("service")
 }
 
 func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
@@ -238,11 +240,16 @@ func addFlagNoLock(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagObject(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "service", "s", "", "Execute on a list of objects.")
+	flagSet.StringVarP(p, "service", "", "", "Execute on a list of objects.")
+	flagSet.StringVarP(p, "selector", "s", "", "Execute on a list of objects.")
+	flagSet.MarkHidden("service")
+
 }
 
 func addFlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "service", "s", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
+	flagSet.StringVarP(p, "service", "", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
+	flagSet.StringVarP(p, "selector", "s", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
+	flagSet.MarkHidden("service")
 }
 
 func addFlagPoolName(flagSet *pflag.FlagSet, p *string) {
