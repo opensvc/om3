@@ -69,6 +69,7 @@ func init() {
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

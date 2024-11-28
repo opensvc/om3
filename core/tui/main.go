@@ -110,12 +110,18 @@ var (
 	colorHighlight = tcell.ColorWhite
 )
 
-func Run(args []string) error {
+type Options struct {
+	Selector string
+}
+
+func Run(options *Options) error {
 	app := NewApp()
-	if len(args) > 0 {
-		app.Frame.Selector = args[1]
+	if options != nil {
+		if options.Selector != "" {
+			app.Frame.Selector = options.Selector
+		}
 	}
-	return NewApp().Run()
+	return app.Run()
 }
 
 func (t viewStack) String() string {
@@ -143,7 +149,6 @@ func (t *App) updateHead() {
 		if t.client != nil {
 			endpoint = t.client.Hostname()
 		}
-		s := t.user + "@" + endpoint
 		switch {
 		case t.user == "" && endpoint == "":
 			return ""
@@ -152,7 +157,6 @@ func (t *App) updateHead() {
 		default:
 			return fmt.Sprintf("%s@%s", t.user, endpoint)
 		}
-		return s
 	}
 	title := box.GetTitle()
 	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
@@ -1620,8 +1624,8 @@ func (t *App) skipIfInstanceNotUpdated() bool {
 		t.errorf("node config disappeared")
 		return true
 	} else if instanceData, ok := nodeData.Instance[t.viewPath.String()]; !ok {
-		return true
 		t.errorf("instance config disappeared")
+		return true
 	} else if instanceData.Config.UpdatedAt.After(t.lastUpdatedAt) {
 		t.lastUpdatedAt = instanceData.Config.UpdatedAt
 		return false

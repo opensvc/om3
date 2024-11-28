@@ -71,6 +71,7 @@ func init() {
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceLs(kind),

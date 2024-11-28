@@ -14,7 +14,6 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/tui"
 	"github.com/opensvc/om3/util/version"
 )
 
@@ -36,9 +35,6 @@ var (
 		ValidArgsFunction:      validArgs,
 		BashCompletionFunction: bashCompletionFunction,
 		Version:                version.Version(),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return tui.Run(args)
-		},
 	}
 )
 
@@ -80,6 +76,11 @@ func setExecuteArgs(args []string) {
 	// Note:
 	//   Cobra uses __complete and __completeNoDesc hidden actions
 	//
+	if len(args) == 0 {
+		args = []string{"tui"}
+		root.SetArgs(args)
+	}
+
 	if len(args) > 0 && strings.HasPrefix(args[0], "__complete") {
 		//
 		// Example:
@@ -108,7 +109,11 @@ func setExecuteArgs(args []string) {
 			subsystem := guessSubsystem(selectorFlag)
 			args := append([]string{}, cobraArgs...)
 			args = append(args, subsystem)
-			args = append(args, lookupArgs[1:]...)
+			if len(lookupArgs[1:]) == 0 {
+				args = append(args, "tui")
+			} else {
+				args = append(args, lookupArgs[1:]...)
+			}
 			root.SetArgs(args)
 			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
 		}
@@ -129,6 +134,7 @@ func ExecuteArgs(args []string) {
 func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
+	root.AddCommand(newCmdTUI("svc"))
 }
 
 func guessSubsystem(s string) string {
@@ -146,6 +152,9 @@ func mergeSelector(subsysSelector string, kind string, deft string) string {
 		return selectorFlag
 	case subsysSelector != "":
 		return fmt.Sprintf("%s+*/%s/*", subsysSelector, kind)
+	case deft != "":
+		return fmt.Sprintf("%s+*/%s/*", deft, kind)
+	default:
+		return fmt.Sprintf("*/%s/*", kind)
 	}
-	return fmt.Sprintf("%s+*/%s/*", deft, kind)
 }

@@ -29,7 +29,7 @@ func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto.")
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "Output format json|flat|auto|tab=<header>:<jsonpath>,...")
 	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server.")
-	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
+	flagSet.StringVarP(&p.ObjectSelector, "selector", "s", "", "Execute on a list of objects.")
 
 }
 
@@ -198,11 +198,11 @@ func addFlagNoLock(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagObject(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "service", "s", "", "Execute on a list of objects.")
+	flagSet.StringVarP(p, "selector", "s", "", "Execute on a list of objects.")
 }
 
 func addFlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "service", "s", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
+	flagSet.StringVarP(p, "selector", "s", "", "An object selector expression. `**/s[12]+!*/vol/*`.")
 }
 
 func addFlagPoolName(flagSet *pflag.FlagSet, p *string) {
