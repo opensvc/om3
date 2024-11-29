@@ -20,8 +20,10 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resip"
+	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
+	"github.com/rs/zerolog"
 
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -204,6 +206,17 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 		if err != nil {
 			return err
 		}
+		t.Log().Infof("nsenter --net=%s sysctl -w net.ipv6.conf.%s.disable_ipv6=0", netns.Path(), guestDev)
+		cmd := command.New(
+			command.WithName("sysctl"),
+			command.WithArgs([]string{"-w", fmt.Sprintf("net.ipv6.conf.%s.disable_ipv6=0", guestDev)}),
+			command.WithLogger(t.Log()),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.WarnLevel),
+		)
+		if err := cmd.Run(); err != nil {
+			return err
+		}
 		if iface, err := net.InterfaceByName(guestDev); err != nil {
 			return err
 		} else if addrs, err := iface.Addrs(); err != nil {
@@ -212,7 +225,7 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 			t.Log().Infof("%s is already up (on %s)", ipnet, guestDev)
 			return nil
 		}
-		t.Log().Infof("add %s to netns %s", ipnet, guestDev)
+		t.Log().Infof("add %s to %s", ipnet, guestDev)
 		if err := netif.AddAddr(guestDev, ipnet); err != nil {
 			return fmt.Errorf("in netns %s: %w", guestDev, err)
 		}
