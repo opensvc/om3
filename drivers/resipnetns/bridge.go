@@ -4,6 +4,7 @@ package resipnetns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/vishvananda/netlink"
@@ -44,30 +45,32 @@ func (t *T) startBridge(ctx context.Context) error {
 	netns, err := t.getNS()
 	if err != nil {
 		return err
-	} else if netns != nil {
+	}
+	if netns != nil {
 		defer func() {
 			if err := netns.Close(); err != nil {
 				t.Log().Warnf("netns close: %s", err)
 			}
 		}()
 	}
-
 	guestDev, err := t.guestDev(netns)
 	if err != nil {
 		return err
 	}
-	hostDev := formatHostDevName(guestDev, pid)
+	if !t.hasNSDev(netns) {
+		hostDev := formatHostDevName(guestDev, pid)
 
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
+		mtu, err := t.devMTU()
+		if err != nil {
+			return err
+		}
 
-	if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
-		return err
-	}
-	if err := t.startBridgePort(ctx, hostDev); err != nil {
-		return err
+		if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
+			return err
+		}
+		if err := t.startBridgePort(ctx, hostDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -114,6 +117,12 @@ func (t *T) stopBridge(ctx context.Context) error {
 		return err
 	}
 	if err := t.stopLink(netns, guestDev); err != nil {
+		if _, ok := err.(netlink.LinkNotFoundError); ok {
+			return nil
+		}
+		if errors.Is(err, ErrLinkInUse) {
+			return nil
+		}
 		return err
 	}
 	if err := t.stopBridgePort(hostDev); err != nil {

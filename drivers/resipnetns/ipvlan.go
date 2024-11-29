@@ -4,6 +4,7 @@ package resipnetns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 
@@ -39,7 +40,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	if err != nil {
 		return err
 	}
-	t.Log().Infof("ip link add link %s dev %s mode %s mtu %d", t.IPDev, tmpDev, t.Mode, mtu)
+	t.Log().Infof("ip link add link %s dev %s mtu %d mode %s mtu %d", t.IPDev, tmpDev, mtu, t.Mode, mtu)
 	link := &netlink.IPVlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        tmpDev,
@@ -59,11 +60,13 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 		netlink.LinkDel(link)
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
+		t.Log().Infof("nsenter --net=%s ip link set %s name %s", netns.Path(), tmpDev, dev)
 		if err := netlink.LinkSetName(link, dev); err != nil {
-			return fmt.Errorf("ip link set %s name %s: %w", tmpDev, dev, err)
+			return err
 		}
+		t.Log().Infof("nsenter --net=%s ip link set %s up", netns.Path(), dev)
 		if err := netlink.LinkSetUp(link); err != nil {
-			return fmt.Errorf("ip link set %s up: %w", dev, err)
+			return err
 		}
 		return nil
 	}); err != nil {
@@ -82,7 +85,7 @@ func (t *T) stopIPVLANDev(netns ns.NetNS, dev string) error {
 			t.Log().Infof("container dev %s already deleted", dev)
 			return nil
 		}
-		t.Log().Infof("ip link del dev %s", dev)
+		t.Log().Infof("nsenter --net=%s ip link del dev %s", netns.Path(), dev)
 		return netlink.LinkDel(link)
 	}); err != nil {
 		return err
@@ -106,13 +109,15 @@ func (t *T) startIPVLAN(ctx context.Context) error {
 		return err
 	}
 
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
+	if !t.hasNSDev(netns) {
+		mtu, err := t.devMTU()
+		if err != nil {
+			return err
+		}
 
-	if err := t.startIPVLANDev(ctx, netns, pid, guestDev, mtu); err != nil {
-		return err
+		if err := t.startIPVLANDev(ctx, netns, pid, guestDev, mtu); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -147,6 +152,12 @@ func (t *T) stopIPVLAN(ctx context.Context) error {
 		return err
 	}
 	if err := t.stopLink(netns, guestDev); err != nil {
+		if _, ok := err.(netlink.LinkNotFoundError); ok {
+			return nil
+		}
+		if errors.Is(err, ErrLinkInUse) {
+			return nil
+		}
 		return err
 	}
 	if err := t.stopIPVLANDev(netns, guestDev); err != nil {

@@ -4,9 +4,11 @@ package resipnetns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog"
+	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/util/command"
@@ -75,18 +77,21 @@ func (t *T) startOVS(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	hostDev := formatHostDevName(guestDev, pid)
 
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
+	if !t.hasNSDev(netns) {
+		hostDev := formatHostDevName(guestDev, pid)
 
-	if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
-		return err
-	}
-	if err := t.startOVSPort(ctx, hostDev); err != nil {
-		return err
+		mtu, err := t.devMTU()
+		if err != nil {
+			return err
+		}
+
+		if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
+			return err
+		}
+		if err := t.startOVSPort(ctx, hostDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -133,6 +138,12 @@ func (t *T) stopOVS(ctx context.Context) error {
 		return err
 	}
 	if err := t.stopLink(netns, guestDev); err != nil {
+		if _, ok := err.(netlink.LinkNotFoundError); ok {
+			return nil
+		}
+		if errors.Is(err, ErrLinkInUse) {
+			return nil
+		}
 		return err
 	}
 	if err := t.stopOVSPort(hostDev); err != nil {

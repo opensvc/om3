@@ -341,9 +341,9 @@ func (t T) Label() string {
 	var s string
 	if ip, ipnet, _ := t.ipNet(); ipnet != nil {
 		ones, _ := ipnet.Mask.Size()
-		s = fmt.Sprintf("%s %s/%d", t.Network, ip, ones)
+		s = fmt.Sprintf("%s %s/%d in %s", t.Network, ip, ones, t.NetNS)
 	} else {
-		s = fmt.Sprintf("%s", t.Network)
+		s = fmt.Sprintf("%s in %s", t.Network, t.NetNS)
 	}
 	return s
 }
