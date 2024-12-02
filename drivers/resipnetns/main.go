@@ -21,10 +21,8 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resip"
-	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
-	"github.com/rs/zerolog"
 
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -206,20 +204,12 @@ func (t *T) startVEthPair(ctx context.Context, netns ns.NetNS, hostDev, guestDev
 }
 
 func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error {
+	if err := t.sysctlEnableIPV6In(guestDev, netns.Path()); err != nil {
+		return err
+	}
 	if err := netns.Do(func(_ ns.NetNS) error {
 		ipnet, err := t.ipnetStrict()
 		if err != nil {
-			return err
-		}
-		t.Log().Infof("nsenter --net=%s sysctl -w net.ipv6.conf.%s.disable_ipv6=0", netns.Path(), guestDev)
-		cmd := command.New(
-			command.WithName("sysctl"),
-			command.WithArgs([]string{"-w", fmt.Sprintf("net.ipv6.conf.%s.disable_ipv6=0", guestDev)}),
-			command.WithLogger(t.Log()),
-			command.WithStdoutLogLevel(zerolog.InfoLevel),
-			command.WithStderrLogLevel(zerolog.WarnLevel),
-		)
-		if err := cmd.Run(); err != nil {
 			return err
 		}
 		if iface, err := net.InterfaceByName(guestDev); err != nil {
