@@ -184,14 +184,14 @@ func (t *T) devIDFromDevPath(devPath string) (string, error) {
 	t.Log().Debugf("exec: %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %w", devPath, err)
 	}
 	head, err := parseInq(b)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %w", devPath, err)
 	}
 	if n := len(head.Inquiry.Devices); n != 1 {
-		return "", fmt.Errorf("expected 1 symdev from %s inq, got %d", devPath, n)
+		return "", fmt.Errorf("%s: expected 1 symdev from inq, got %d", devPath, n)
 	}
 	return head.Inquiry.Devices[0].DevName, nil
 }
@@ -297,6 +297,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	mergedDevs, _ := t.mergeDevs()
 	m := resource.InfoKeys{
 		{Key: "devs", Value: strings.Join(t.Devices, " ")},
 		{Key: "name", Value: t.Name},
@@ -304,6 +305,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		{Key: "secure", Value: fmt.Sprintf("%v", t.Secure)},
 		{Key: "max_delay", Value: fmt.Sprintf("%s", t.MaxDelay)},
 		{Key: "schedule", Value: t.Schedule},
+		{Key: "devids", Value: strings.Join(mergedDevs, ",")},
 	}
 	if t.Absolute != "" {
 		m = append(m, resource.InfoKey{Key: "absolute", Value: t.Absolute})
