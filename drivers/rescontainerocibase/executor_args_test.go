@@ -26,6 +26,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			"--newOpt1", "newOpt1Value",
 			"-h", "nodeX", "--hostname", "nodeY", "--net", "netValue1",
 			"--network", "netValue2",
+			"-v", "/etc/localtime:/etc/localtime:ro",
 			"newOpt2",
 		},
 	}
@@ -49,7 +50,9 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 		"--hostname", "node1",
 		"--privileged",
 		"--net", "host",
+		"--detach",
 		"--newOpt1", "newOpt1Value",
+		"-v", "/etc/localtime:/etc/localtime:ro",
 		"newOpt2",
 	}
 
