@@ -1,0 +1,3 @@
+Log the container run commands stdout and stderr
+
+Set to `true` to enable logging of container run commands.
