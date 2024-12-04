@@ -80,44 +80,44 @@ func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 	runArgs.DropOptionAndAnyValue("-n")
 	a := args.New("container", "run", "--name", bt.ContainerName())
 
-	runArgs.DropOptionAndAnyValue("-h")
-	runArgs.DropOptionAndAnyValue("--hostname")
 	if bt.Hostname != "" {
+		runArgs.DropOptionAndAnyValue("-h")
+		runArgs.DropOptionAndAnyValue("--hostname")
 		a.Append("--hostname", bt.Hostname)
 		// TODO: confirm ignore b2.1: if bt.NetNS != "host" && !strings.HasPrefix(bt.NetNS, "container#")
 	}
 
-	runArgs.DropOption("--tty")
-	runArgs.DropOption("--t")
 	if bt.TTY {
+		runArgs.DropOption("--tty")
+		runArgs.DropOption("--t")
 		a.Append("--tty")
 	}
 
-	runArgs.DropOption("--detach")
-	runArgs.DropOption("-d")
 	if bt.Detach {
+		runArgs.DropOption("--detach")
+		runArgs.DropOption("-d")
 		a.Append("--detach")
 	}
 
-	runArgs.DropOption("--privileged")
 	if bt.Privileged {
+		runArgs.DropOption("--privileged")
 		a.Append("--privileged")
 	}
 
-	runArgs.DropOptionAndAnyValue("--user")
-	runArgs.DropOptionAndAnyValue("-u")
 	if len(bt.User) > 0 {
+		runArgs.DropOptionAndAnyValue("--user")
+		runArgs.DropOptionAndAnyValue("-u")
 		a.Append("--user", bt.User)
 	}
 
-	runArgs.DropOption("--interactive")
-	runArgs.DropOption("-i")
 	if bt.Interactive {
+		runArgs.DropOption("--interactive")
+		runArgs.DropOption("-i")
 		a.Append("--interactive")
 	}
 
-	runArgs.DropOptionAndAnyValue("--entrypoint")
 	if len(bt.Entrypoint) > 0 {
+		runArgs.DropOptionAndAnyValue("--entrypoint")
 		a.Append("--entrypoint", bt.Entrypoint[0])
 	}
 
@@ -132,12 +132,12 @@ func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 		{optionName: "--ipc", kwName: "ipcns", kwValue: bt.IPCNS, dropOptions: []string{"--ipc"}},
 		{optionName: "--uts", kwName: "utsns", kwValue: bt.UTSNS, dropOptions: []string{"--uts"}},
 	} {
-		for _, dropOption := range ns.dropOptions {
-			runArgs.DropOptionAndAnyValue(dropOption)
-		}
 		if s, err := ea.BT.FormatNS(ns.kwValue); err != nil {
 			return nil, fmt.Errorf("unable to prepare option '%s' from kw setting '%s=%s': %s", ns.optionName, ns.kwName, ns.kwValue, err)
 		} else if s != "" {
+			for _, dropOption := range ns.dropOptions {
+				runArgs.DropOptionAndAnyValue(dropOption)
+			}
 			a.Append(ns.optionName, s)
 		}
 	}
@@ -146,21 +146,30 @@ func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 	a.Append(ea.runArgsDNSSearch()...)
 	a.Append(ea.runArgsDNSOption()...)
 	a.Append(ea.runArgsCGroupParent()...)
+
 	for _, v := range bt.Devices {
+		runArgs.DropOptionAndExactValue("--device", v)
 		a.Append("--device", v)
 	}
-	runArgs.DropOption("--volume")
-	runArgs.DropOption("-v")
-	for _, f := range []func() ([]string, error){
-		ea.runArgsMounts,
-		ea.runArgsEnv,
-	} {
-		if v, err := f(); err != nil {
-			return a, err
-		} else {
-			a.Append(v...)
+
+	if mounts, err := ea.runArgsMounts(); err != nil {
+		return a, err
+	} else {
+		for _, v := range mounts {
+			runArgs.DropOptionAndExactValue("-v", v)
+			runArgs.DropOptionAndExactValue("--volume", v)
+			a.Append("--volume", v)
 		}
 	}
+	if mounts, err := ea.runArgsEnv(); err != nil {
+		return a, err
+	} else {
+		for _, v := range mounts {
+			runArgs.DropOptionAndExactValue("-e", v)
+			a.Append("-e", v)
+		}
+	}
+
 	a.Append(ea.runArgsLabels()...)
 
 	a.Append(runArgs.Get()...)
@@ -270,11 +279,7 @@ func (ea *ExecutorArg) runArgsEnv() ([]string, error) {
 		return nil, err
 	} else {
 		ea.runArgsEnvM = m
-		a := make([]string, 0, 2*len(l))
-		for _, v := range l {
-			a = append(a, "-e", v)
-		}
-		return a, nil
+		return l, err
 	}
 }
 
@@ -293,7 +298,7 @@ func (ea *ExecutorArg) runArgsMounts() ([]string, error) {
 		return nil, err
 	}
 	TargetToSource := make(map[string]string)
-	a := make([]string, 0, 2*len(mounts))
+	a := make([]string, 0, len(mounts))
 	for _, m := range mounts {
 		if source, ok := TargetToSource[m.Target]; ok {
 			return nil, fmt.Errorf("found at least two different volume mounts sources %s and %s that use the same destination %s",
@@ -307,7 +312,7 @@ func (ea *ExecutorArg) runArgsMounts() ([]string, error) {
 			}
 		}
 		// TODO: add b2.1 rule option: ro or rw
-		a = append(a, "--volume", fmt.Sprintf("%s:%s:%s", m.Source, m.Target, m.Option))
+		a = append(a, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, m.Option))
 	}
 	return a, nil
 }
