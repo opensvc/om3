@@ -538,6 +538,9 @@ func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	if br == nil {
 		return nil
 	}
+	if t.IsIP6() {
+		return nil
+	}
 	if mac, err = network.MACFromIP4(brIP); err != nil {
 		return err
 	}
