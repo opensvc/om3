@@ -5,10 +5,11 @@ package restaskpodman
 // * status.json rewrite after lock acquire
 
 import (
+	"time"
+
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/drivers/rescontainerdocker"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
-	"github.com/opensvc/om3/drivers/restask"
 	"github.com/opensvc/om3/drivers/restaskocibase"
 )
 
@@ -20,22 +21,7 @@ type (
 )
 
 func New() resource.Driver {
-	t := &T{
-		T: restaskocibase.T{
-			BaseTask: restask.BaseTask{
-				T:            resource.T{},
-				Check:        "",
-				Confirmation: false,
-				LogOutputs:   false,
-				MaxParallel:  0,
-				OnErrorCmd:   "",
-				RetCodes:     "",
-				RunTimeout:   nil,
-				Schedule:     "",
-				Snooze:       nil,
-			},
-		},
-	}
+	t := &T{}
 	t.SetContainerGetter(t)
 	return t
 }
@@ -43,6 +29,15 @@ func New() resource.Driver {
 // GetContainerDetached returns a ContainerTasker where the base container has
 // the Detach value set to false (task are never detached)
 func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
+	var startTimeout *time.Duration
+
+	// TODO: verify followoing rule
+	if t.RunTimeout != nil {
+		startTimeout = t.RunTimeout
+	} else if t.Timeout != nil {
+		startTimeout = t.Timeout
+	}
+
 	ct := &rescontainerdocker.T{
 		BT: rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
@@ -84,7 +79,8 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			UTSNS:                     t.UTSNS,
 			RegistryCreds:             t.RegistryCreds,
 			PullTimeout:               t.PullTimeout,
-			StartTimeout:              t.Timeout,
+			StartTimeout:              startTimeout,
+			LogOutputs:                t.LogOutputs,
 		},
 	}
 	if err := ct.Configure(); err != nil {

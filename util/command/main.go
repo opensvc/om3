@@ -187,7 +187,13 @@ func (t *T) Start() (err error) {
 		})
 	}
 	if t.timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), t.timeout)
+		var ctx context.Context
+		if t.ctx != nil {
+			ctx = t.ctx
+		} else {
+			ctx = context.Background()
+		}
+		ctx, cancel := context.WithTimeout(ctx, t.timeout)
 		t.ctx = ctx
 		t.cancel = cancel
 		if t.log != nil {
@@ -258,7 +264,11 @@ func (t *T) Start() (err error) {
 
 func (t *T) Cmd() *exec.Cmd {
 	if t.cmd == nil {
-		t.cmd = exec.Command(t.name, t.args...)
+		if t.ctx == nil {
+			t.cmd = exec.Command(t.name, t.args...)
+		} else {
+			t.cmd = exec.CommandContext(t.ctx, t.name, t.args...)
+		}
 	}
 	return t.cmd
 }

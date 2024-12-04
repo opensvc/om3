@@ -2,6 +2,7 @@ package command
 
 import (
 	"bufio"
+	"context"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,6 +25,15 @@ func WithArgs(args []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.args = args
+		return nil
+	})
+}
+
+// WithContext sets the command context
+func WithContext(ctx context.Context) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.ctx = ctx
 		return nil
 	})
 }

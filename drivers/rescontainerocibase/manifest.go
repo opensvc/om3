@@ -265,6 +265,14 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 		},
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
+		keywords.Keyword{
+			Option:    "log_outputs",
+			Attr:      "LogOutputs",
+			Scopable:  true,
+			Converter: converters.Bool,
+			Default:   "false",
+			Text:      keywords.NewText(fs, "text/kw/log_outputs"),
+		},
 	)
 	return m
 }

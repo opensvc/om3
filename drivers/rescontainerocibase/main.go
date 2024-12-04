@@ -82,6 +82,7 @@ type (
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		StartTimeout    *time.Duration `json:"start_timeout"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
+		LogOutputs      bool           `json:"log_outputs"`
 
 		executer   Executer
 		xContainer map[string]containerNamer
@@ -783,6 +784,11 @@ func (t *BT) pull(ctx context.Context) error {
 	if t.executer == nil {
 		return fmt.Errorf("pull: undefined executer")
 	}
+	if t.PullTimeout != nil && *t.PullTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *t.PullTimeout)
+		defer cancel()
+	}
 	if err := t.executer.Pull(ctx); err != nil {
 		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
 	}
@@ -805,9 +811,18 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 			return err
 		}
 	}
+	refreshCtx := ctx
+
+	if t.StartTimeout != nil && *t.StartTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
+		defer cancel()
+	}
+
 	defer func() {
-		_, _ = t.executer.InspectRefresh(ctx)
+		_, _ = t.executer.InspectRefresh(refreshCtx)
 	}()
+
 	return t.executer.Run(ctx)
 }
 

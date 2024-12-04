@@ -8,6 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -219,26 +223,47 @@ func (e *Executor) ExecutorArgser() ExecutorArgser {
 // implements ExecutorBaseArgser.
 // Depending on ctx value, exec.Command or exec.CommandContext is used.
 func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a ...string) error {
-	var cmd *exec.Cmd
+	return e.doExecRunLog(ctx, false, environ, a...)
+}
+
+// doExecRunLog exec e.bin a where a may be prefixed by baseArgs when e.args
+// implements ExecutorBaseArgser.
+// Depending on ctx value, exec.Command or exec.CommandContext is used.
+// When logOutput is true it adds command options: WithLogger,
+// WithStdoutLogLevel and WithStderrLogLevel
+func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map[string]string, a ...string) error {
 	cmdArgs := e.getArgs(a...)
-	if ctx != nil {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			cmd = exec.CommandContext(ctx, e.bin, cmdArgs...)
-		}
-	} else {
-		cmd = exec.Command(e.bin, cmdArgs...)
+	opts := []funcopt.O{
+		command.WithName(e.bin),
+		command.WithArgs(cmdArgs),
 	}
+	if true {
+		opts = append(opts,
+			command.WithLogger(e.log()),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.WarnLevel),
+		)
+	}
+
 	if len(environ) > 0 {
 		envL := os.Environ()
 		for k, v := range environ {
 			e.log().Debugf("exec with env %s=xxx", k)
 			envL = append(envL, fmt.Sprintf("%s=%s", k, v))
 		}
-		cmd.Env = envL
+		opts = append(opts, command.WithEnv(envL))
 	}
+
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			opts = append(opts, command.WithContext(ctx))
+		}
+	}
+
+	cmd := command.New(opts...)
 
 	e.log().Infof("%s %s", e.bin, strings.Join(cmdArgs, " "))
 	return cmd.Run()
