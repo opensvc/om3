@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/drivers/rescontainerpodman"
-	"github.com/opensvc/om3/drivers/restask"
 	"github.com/opensvc/om3/drivers/restaskocibase"
 )
 
@@ -24,22 +23,7 @@ type (
 )
 
 func New() resource.Driver {
-	t := &T{
-		T: restaskocibase.T{
-			BaseTask: restask.BaseTask{
-				T:            resource.T{},
-				Check:        "",
-				Confirmation: false,
-				LogOutputs:   false,
-				MaxParallel:  0,
-				OnErrorCmd:   "",
-				RetCodes:     "",
-				RunTimeout:   nil,
-				Schedule:     "",
-				Snooze:       nil,
-			},
-		},
-	}
+	t := &T{}
 	t.SetContainerGetter(t)
 	return t
 }
