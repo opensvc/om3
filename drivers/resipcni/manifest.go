@@ -55,7 +55,6 @@ func (t T) Manifest() *manifest.T {
 		keywords.Keyword{
 			Aliases:  []string{"ipdev"},
 			Attr:     "NSDev",
-			Default:  "eth12",
 			Example:  "front",
 			Option:   "nsdev",
 			Scopable: true,

@@ -64,3 +64,23 @@ func InterfaceNameByIP(ref *net.IPNet) (string, error) {
 	}
 	return "", nil
 }
+
+func InterfaceNameByNet(ref *net.IPNet) (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrs {
+			ip := net.ParseIP(strings.Split(addr.String(), "/")[0])
+			if ref.Contains(ip) {
+				return iface.Name, nil
+			}
+		}
+	}
+	return "", nil
+}

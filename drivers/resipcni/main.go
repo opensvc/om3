@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -24,8 +26,8 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/netif"
 
-	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/uuid"
 	"github.com/vishvananda/netns"
@@ -313,8 +315,10 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if _, err := t.netConf(); err != nil {
+	netConf, err := t.netConf()
+	if err != nil {
 		t.StatusLog().Warn(fmt.Sprint(err))
+		return status.Undef
 	}
 	netns, err := t.getNS()
 	if err != nil {
@@ -323,13 +327,12 @@ func (t *T) Status(ctx context.Context) status.T {
 	if netns == nil {
 		return status.Down
 	}
-	if netip, ipnet, err := t.nsIPNet(netns); err != nil {
+	dev, err := t.currentGuestDev(netConf.IPAM.Subnet, netns)
+	if err != nil {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
-	} else if ipnet == nil {
-		return status.Down
-	} else if len(netip) == 0 {
-		t.StatusLog().Info("ip not found")
+	}
+	if dev == "" {
 		return status.Down
 	} else {
 		return status.Up
@@ -423,8 +426,18 @@ func (t T) netConfBytes() ([]byte, error) {
 	return os.ReadFile(s)
 }
 
-func (t T) netConf() (types.NetConf, error) {
-	data := types.NetConf{}
+type (
+	NetConf struct {
+		Type string
+		IPAM IPAM
+	}
+	IPAM struct {
+		Subnet string
+	}
+)
+
+func (t T) netConf() (NetConf, error) {
+	data := NetConf{}
 	b, err := t.netConfBytes()
 	if err != nil {
 		return data, err
@@ -447,7 +460,7 @@ func (t T) stop() error {
 	}
 	bin := t.pluginFile(netConf.Type)
 
-	cniNetNS, err := t.getCNINetNS()
+	netns, err := t.getNS()
 	if err != nil {
 		return err
 	}
@@ -457,11 +470,15 @@ func (t T) stop() error {
 		return err
 	}
 
+	dev, err := t.currentGuestDev(netConf.IPAM.Subnet, netns)
+	if err != nil {
+		return err
+	}
 	env := []string{
 		"CNI_COMMAND=DEL",
 		fmt.Sprintf("CNI_CONTAINERID=%s", containerID),
-		fmt.Sprintf("CNI_NETNS=%s", cniNetNS),
-		fmt.Sprintf("CNI_IFNAME=%s", t.NSDev),
+		fmt.Sprintf("CNI_NETNS=%s", netns.Path()),
+		fmt.Sprintf("CNI_IFNAME=%s", dev),
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
@@ -483,7 +500,7 @@ func (t T) stop() error {
 		Attr("cmd", cmd.Cmd().String()).
 		Attr("input", string(stdinData)).
 		Attr("env", env).
-		Infof("del cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
+		Infof("del cni network %s ip from container %s interface %s", t.Network, containerID, dev)
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
 		var resp response
@@ -523,6 +540,11 @@ func (t T) start() error {
 		return err
 	}
 
+	dev, err := t.newGuestDev(cniNetNS)
+	if err != nil {
+		return err
+	}
+
 	containerID, err := t.getCNIContainerID()
 	if err != nil {
 		return err
@@ -532,7 +554,7 @@ func (t T) start() error {
 		"CNI_COMMAND=ADD",
 		fmt.Sprintf("CNI_CONTAINERID=%s", containerID),
 		fmt.Sprintf("CNI_NETNS=%s", cniNetNS),
-		fmt.Sprintf("CNI_IFNAME=%s", t.NSDev),
+		fmt.Sprintf("CNI_IFNAME=%s", dev),
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
@@ -554,7 +576,7 @@ func (t T) start() error {
 			Attr("cmd", cmd.Cmd().String()).
 			Attr("input", string(stdinData)).
 			Attr("env", env).
-			Infof("add cni network %s ip from container %s interface %s", t.Network, containerID, t.NSDev)
+			Infof("add cni network %s ip from container %s interface %s", t.Network, containerID, dev)
 
 		cmd.Cmd().Stdin = bytes.NewReader(stdinData)
 		err := cmd.Run()
@@ -596,4 +618,79 @@ func (t T) start() error {
 		t.Log().Errorf("%s", err)
 	}
 	return err
+}
+
+func (t T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
+	if netns == nil {
+		return "", fmt.Errorf("can't get current guest dev from nil netns")
+	}
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return "", err
+	}
+	var s string
+	if err := netns.Do(func(_ ns.NetNS) error {
+		s, err = netif.InterfaceNameByNet(ipNet)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	return s, nil
+}
+
+func (t T) newGuestDev(path string) (string, error) {
+	if t.NSDev != "" {
+		return t.NSDev, nil
+	}
+	devs, err := getLinkStringsIn(path)
+	if err != nil {
+		return "", err
+	}
+	i := 0
+	for {
+		name := fmt.Sprintf("eth%d", i)
+		if !slices.Contains(devs, name) {
+			return name, nil
+		}
+		i = i + 1
+		if i > math.MaxUint16 {
+			break
+		}
+	}
+	return "", fmt.Errorf("can't find a free link name")
+}
+
+func getLinkStringsIn(path string) ([]string, error) {
+	l := make([]string, 0)
+	buff, err := linkListIn(path)
+	if err != nil {
+		return l, err
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		words := strings.Fields(line)
+		if len(words) < 2 {
+			continue
+		}
+		if !strings.HasSuffix(words[1], ":") {
+			continue
+		}
+		dev := strings.TrimRight(words[1], ":")
+		dev = strings.Split(dev, "@")[0]
+		l = append(l, dev)
+	}
+	return l, nil
+}
+
+func linkListIn(path string) (string, error) {
+	args := []string{"nsenter", "--net=" + path, "ip", "link", "list"}
+	cmd := command.New(
+		command.WithName(args[0]),
+		command.WithArgs(args[1:]),
+		command.WithBufferedStdout(),
+	)
+	err := cmd.Run()
+	return string(cmd.Stdout()), err
 }
