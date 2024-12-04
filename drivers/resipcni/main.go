@@ -327,7 +327,6 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
 	} else if ipnet == nil {
-		t.StatusLog().Warn("%s not found", t.NSDev)
 		return status.Down
 	} else if len(netip) == 0 {
 		t.StatusLog().Info("ip not found")
