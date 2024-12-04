@@ -5,6 +5,8 @@ package restaskpodman
 // * status.json rewrite after lock acquire
 
 import (
+	"time"
+
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/drivers/rescontainerpodman"
@@ -45,6 +47,15 @@ func New() resource.Driver {
 // GetContainerDetached returns a ContainerTasker where the base container has
 // the Detach value set to false (task are never detached).
 func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
+	var startTimeout *time.Duration
+
+	// TODO: verify followoing rule
+	if t.RunTimeout != nil {
+		startTimeout = t.RunTimeout
+	} else if t.Timeout != nil {
+		startTimeout = t.Timeout
+	}
+
 	ct := &rescontainerpodman.T{
 		BT: rescontainerocibase.BT{
 			T:                         t.BaseTask.T,
@@ -86,7 +97,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			UTSNS:                     t.UTSNS,
 			RegistryCreds:             t.RegistryCreds,
 			PullTimeout:               t.PullTimeout,
-			StartTimeout:              t.Timeout,
+			StartTimeout:              startTimeout,
 		},
 		CNIConfig: t.CNIConfig,
 	}
