@@ -7,35 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vishvananda/netlink"
-
 	"github.com/opensvc/om3/core/actionrollback"
 )
-
-func (t *T) startBridgePort(ctx context.Context, dev string) error {
-	masterLink, err := netlink.LinkByName(t.IPDev)
-	if err != nil {
-		return fmt.Errorf("%s: %w", t.IPDev, err)
-	}
-	link, err := netlink.LinkByName(dev)
-	if err != nil {
-		return fmt.Errorf("%s: %w", dev, err)
-	}
-	actionrollback.Register(ctx, func() error {
-		return t.stopBridgePort(dev)
-	})
-	t.Log().Infof("set %s master %s", dev, t.IPDev)
-	return netlink.LinkSetMaster(link, masterLink)
-}
-
-func (t *T) stopBridgePort(dev string) error {
-	link, err := netlink.LinkByName(dev)
-	if err != nil {
-		return nil
-	}
-	t.Log().Infof("unset %s master %s", dev, t.IPDev)
-	return netlink.LinkSetMaster(link, nil)
-}
 
 func (t *T) startBridge(ctx context.Context) error {
 	pid, err := t.getNSPID()
@@ -64,11 +37,48 @@ func (t *T) startBridge(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
-		if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
+		tmpGuestDev := fmt.Sprintf("v%spg%d", guestDev, pid)
+		if err := t.makeVethPair(hostDev, tmpGuestDev, mtu); err != nil {
 			return err
 		}
-		if err := t.startBridgePort(ctx, hostDev); err != nil {
+		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
+			return err
+		}
+		if err := t.linkSetMaster(hostDev, t.IPDev); err != nil {
+			t.linkDel(guestDev)
+			return err
+		}
+		if err := t.linkSetNsPid(tmpGuestDev, pid); err != nil {
+			t.linkDel(guestDev)
+			return err
+		}
+		if err := t.linkSetUp(hostDev); err != nil {
+			return err
+		}
+		if err := t.linkSetNameIn(tmpGuestDev, guestDev, netns.Path()); err != nil {
+			var errs error
+			if err := t.linkDel(hostDev); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			if err := t.linkDelIn(tmpGuestDev, netns.Path()); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			return errs
+		}
+		actionrollback.Register(ctx, func() error {
+			var errs error
+			if err := t.linkDel(hostDev); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			if err := t.linkDelIn(guestDev, netns.Path()); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			return errs
+		})
+		if err := t.linkSetUpIn(guestDev, netns.Path()); err != nil {
+			return err
+		}
+		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
 			return err
 		}
 	}
@@ -88,8 +98,6 @@ func (t *T) startBridge(ctx context.Context) error {
 }
 
 func (t *T) stopBridge(ctx context.Context) error {
-	var hostDev string
-
 	pid, err := t.getNSPID()
 	if err != nil {
 		return err
@@ -98,37 +106,45 @@ func (t *T) stopBridge(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if netns == nil {
-		return nil
+	if netns != nil {
+		defer netns.Close()
 	}
-	defer netns.Close()
 
-	guestDev, err := t.curGuestDev(netns)
-	if err != nil {
-		return err
+	guestDev := ""
+	if netns != nil {
+		if guestDev, err = t.curGuestDev(netns); err != nil {
+			return err
+		}
 	}
+	var hostDev string
 	if guestDev != "" {
 		hostDev = fmt.Sprintf("v%spl%d", guestDev, pid)
 	} else if t.NSDev != "" {
 		hostDev = fmt.Sprintf("v%spl%d", t.NSDev, pid)
+	} else {
+		return nil
 	}
 
-	if err := t.stopIP(netns, guestDev); err != nil {
-		return err
+	if netns != nil {
+		if err := t.stopIP(netns, guestDev); err != nil {
+			return err
+		}
+		if err := t.stopLinkIn(netns, guestDev); err != nil {
+			switch {
+			case errors.Is(err, ErrLinkNotFound):
+				// ignore, let del host dev be tried
+			case errors.Is(err, ErrLinkInUse):
+				return nil
+			default:
+				return err
+			}
+		}
 	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		if _, ok := err.(netlink.LinkNotFoundError); ok {
+	if err := t.stopLink(hostDev); err != nil {
+		if errors.Is(err, ErrLinkNotFound) {
+			t.Log().Infof("link %s is already deleted", hostDev)
 			return nil
 		}
-		if errors.Is(err, ErrLinkInUse) {
-			return nil
-		}
-		return err
-	}
-	if err := t.stopBridgePort(hostDev); err != nil {
-		return err
-	}
-	if err := t.stopVEthPair(hostDev); err != nil {
 		return err
 	}
 	return nil

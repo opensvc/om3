@@ -9,9 +9,6 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/util/command"
-	"github.com/rs/zerolog"
-	"github.com/vishvananda/netlink"
 )
 
 func (t *T) startMACVLAN(ctx context.Context) error {
@@ -30,14 +27,8 @@ func (t *T) startMACVLAN(ctx context.Context) error {
 		return err
 	}
 
-	if !t.hasNSDev(netns) {
-		mtu, err := t.devMTU()
-		if err != nil {
-			return err
-		}
-		if err := t.startMACVLANDev(ctx, netns, pid, guestDev, mtu); err != nil {
-			return err
-		}
+	if err := t.startMACVLANDev(ctx, netns, pid, guestDev); err != nil {
+		return err
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -54,21 +45,28 @@ func (t *T) startMACVLAN(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) startMACVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev string, mtu int) error {
-	tmpDev := fmt.Sprintf("ph%d%s", pid, dev)
-	if _, err := netlink.LinkByName(tmpDev); err == nil {
-		return fmt.Errorf("%s exists, should not", tmpDev)
+func (t *T) startMACVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev string) error {
+	if t.hasNSDev(netns) {
+		return nil
 	}
-	args := []string{"ip", "link", "add", "link", t.IPDev, "dev", tmpDev, "mtu", fmt.Sprint(mtu), "type", "macvlan", "mode", "bridge"}
-	cmd := command.New(
-		command.WithName(args[0]),
-		command.WithArgs(args[1:]),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	if err := cmd.Run(); err != nil {
+	mtu, err := t.devMTU()
+	if err != nil {
+		return err
+	}
+	tmpDev := fmt.Sprintf("ph%d%s", pid, dev)
+	if v, err := t.hasLink(tmpDev); err != nil {
+		return err
+	} else if v {
+		if err := t.linkDel(tmpDev); err != nil {
+			return err
+		}
+	}
+	if v, err := t.hasLinkIn(dev, netns.Path()); err != nil {
+		return err
+	} else if v {
+		return nil
+	}
+	if t.makeMACVLANDev(t.IPDev, tmpDev, mtu); err != nil {
 		return err
 	}
 	if err := t.linkSetNsPid(tmpDev, pid); err != nil {
@@ -105,14 +103,15 @@ func (t *T) stopMACVLAN(ctx context.Context) error {
 	if err := t.stopIP(netns, guestDev); err != nil {
 		return err
 	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		if _, ok := err.(netlink.LinkNotFoundError); ok {
+	if err := t.stopLinkIn(netns, guestDev); err != nil {
+		switch {
+		case errors.Is(err, ErrLinkNotFound):
+			// ignore, let del host dev be tried
+		case errors.Is(err, ErrLinkInUse):
 			return nil
+		default:
+			return err
 		}
-		if errors.Is(err, ErrLinkInUse) {
-			return nil
-		}
-		return err
 	}
 	return nil
 }

@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
@@ -24,10 +23,8 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
 
-	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/go-ping/ping"
-	"github.com/vishvananda/netlink"
 )
 
 const (
@@ -71,7 +68,8 @@ type (
 )
 
 var (
-	ErrLinkInUse = errors.New("")
+	ErrLinkInUse    = errors.New("link in use")
+	ErrLinkNotFound = errors.New("link not found")
 )
 
 func New() resource.Driver {
@@ -164,51 +162,14 @@ func formatHostDevName(guestDev string, pid int) string {
 	return fmt.Sprintf("v%spl%d", guestDev, pid)
 }
 
-func (t *T) stopVEthPair(hostDev string) error {
-	if hostDev == "" {
-		return nil
-	}
-	link, err := netlink.LinkByName(hostDev)
-	if err != nil {
-		t.Log().Debugf("host-side veth dev '%s' already deleted", hostDev)
-		return nil
-	}
-	t.Log().Infof("ip link del dev %s", hostDev)
-	return netlink.LinkDel(link)
-}
-
-func (t *T) startVEthPair(ctx context.Context, netns ns.NetNS, hostDev, guestDev string, mtu int) error {
-	hostNS, err := ns.GetCurrentNS()
-	if err != nil {
-		return err
-	}
-	if _, err := netlink.LinkByName(hostDev); err == nil {
-		t.Log().Infof("host-side veth dev '%s' already exists", hostDev)
-		return nil
-	}
-	if err := netns.Do(func(_ ns.NetNS) error {
-		t.Log().
-			Attr("dev", hostDev).
-			Attr("peer", guestDev).
-			Attr("mtu", mtu).
-			Infof("ip link add name %s mtu %d type veth peer name %s mtu %d", hostDev, mtu, guestDev, mtu)
-		_, _, err := ip.SetupVethWithName(guestDev, hostDev, mtu, hostNS)
-		return err
-	}); err != nil {
-		return err
-	}
-	actionrollback.Register(ctx, func() error {
-		return t.stopVEthPair(hostDev)
-	})
-	return nil
-}
-
 func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error {
-	if err := t.sysctlEnableIPV6In(guestDev, netns.Path()); err != nil {
-		return err
-	}
+	var (
+		ipnet *net.IPNet
+		err   error
+		isUp  bool
+	)
 	if err := netns.Do(func(_ ns.NetNS) error {
-		ipnet, err := t.ipnetStrict()
+		ipnet, err = t.ipnetStrict()
 		if err != nil {
 			return err
 		}
@@ -218,96 +179,50 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 			return err
 		} else if Addrs(addrs).Has(ipnet.IP) {
 			t.Log().Infof("%s is already up (on %s)", ipnet, guestDev)
-			return nil
+			isUp = true
 		}
-		t.Log().Infof("nsenter --net=%s ip addr add %s dev %s", netns.Path(), ipnet, guestDev)
-		if err := netif.AddAddr(guestDev, ipnet); err != nil {
-			return fmt.Errorf("in netns %s: %w", guestDev, err)
-		}
-		actionrollback.Register(ctx, func() error {
-			return t.stopIP(netns, guestDev)
-		})
 		return nil
 	}); err != nil {
 		return err
 	}
+	if isUp {
+		return nil
+	}
+	if err := t.sysctlEnableIPV6In(guestDev, netns.Path()); err != nil {
+		return err
+	}
+	if err := t.addrAddIn(ipnet.String(), guestDev, netns.Path()); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.stopIP(netns, guestDev)
+	})
 	return nil
 }
 
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
-	if err := netns.Do(func(_ ns.NetNS) error {
-		_, defNet, _ := net.ParseCIDR("0.0.0.0/0")
-		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, &netlink.Route{Dst: nil}, netlink.RT_FILTER_DST)
-		if err != nil {
-			return fmt.Errorf("ip route list default: %w", err)
-		}
-		if len(routes) == 0 {
-			if t.Gateway == "" {
-				dev, err := netlink.LinkByName(guestDev)
-				if err != nil {
-					return fmt.Errorf("route add default dev %s: %w", guestDev, err)
-				}
-				t.Log().Infof("nsenter --net=%s ip route add default dev %s", netns.Path(), guestDev)
-				err = netlink.RouteAdd(&netlink.Route{
-					LinkIndex: dev.Attrs().Index,
-					Scope:     netlink.SCOPE_UNIVERSE,
-					Dst:       defNet,
-					Gw:        nil,
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			} else {
-				t.Log().Infof("nsenter --net=%s ip route add default via %s", netns.Path(), t.Gateway)
-				err = netlink.RouteAdd(&netlink.Route{
-					LinkIndex: 0,
-					Scope:     netlink.SCOPE_UNIVERSE,
-					Dst:       defNet,
-					Gw:        net.ParseIP(t.Gateway),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			}
-		}
-		curRoute := routes[0]
-		if t.Gateway == "" {
-			dev, err := netlink.LinkByName(guestDev)
-			if err != nil {
-				return err
-			}
-			if curRoute.LinkIndex == dev.Attrs().Index {
-				t.Log().Infof("route already added: default dev %s", guestDev)
-				return nil
-			}
-			t.Log().Infof("nsenter --net=%s ip route replace default dev %s", netns.Path(), guestDev)
-			curRoute.Dst = defNet
-			curRoute.Gw = nil
-			curRoute.LinkIndex = dev.Attrs().Index
-			err = netlink.RouteReplace(&curRoute)
-			if err != nil {
-				return err
-			}
-			return nil
-		} else {
-			if net.ParseIP(t.Gateway).Equal(curRoute.Gw) {
-				t.Log().Infof("route already added: default via %s", t.Gateway)
-				return nil
-			}
-			t.Log().Infof("nsenter --net=%s ip route replace default via %s", netns.Path(), t.Gateway)
-			curRoute.Dst = defNet
-			curRoute.Gw = net.ParseIP(t.Gateway)
-			curRoute.LinkIndex = 0
-			err = netlink.RouteReplace(&curRoute)
-			if err != nil {
-				return err
-			}
+	if t.Gateway == "" {
+		if v, err := t.hasRouteDevIn("default", guestDev, netns.Path()); err != nil {
+			return err
+		} else if v {
+			t.Log().Infof("route already added: default dev %s", guestDev)
 			return nil
 		}
-	}); err != nil {
-		return err
+		if err := t.routeAddDevIn("default", guestDev, netns.Path()); err != nil {
+			return err
+		}
+		return nil
+	} else {
+		if v, err := t.hasRouteViaIn("default", t.Gateway, netns.Path()); err != nil {
+			return err
+		} else if v {
+			t.Log().Infof("route already added: default via %s", t.Gateway)
+			return nil
+		}
+		if err := t.routeAddViaIn("default", t.Gateway, netns.Path()); err != nil {
+			return err
+		}
+		return nil
 	}
 	return nil
 }
@@ -316,44 +231,17 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 	if !t.DelNetRoute {
 		return nil
 	}
-	mask := t.ipnet().Mask
-	n := &net.IPNet{
-		IP:   t.ipaddr().Mask(mask),
-		Mask: mask,
-	}
-	if err := netns.Do(func(_ ns.NetNS) error {
-		dev, err := netlink.LinkByName(guestDev)
-		if err != nil {
-			return err
-		}
-		route := &netlink.Route{
-			LinkIndex: dev.Attrs().Index,
-			Scope:     netlink.SCOPE_UNIVERSE,
-			Dst:       n,
-			Gw:        nil,
-		}
-		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, route, netlink.RT_FILTER_DST|netlink.RT_FILTER_IIF)
-		if err != nil {
-			return err
-		}
-		if len(routes) > 0 {
-			for _, r := range routes {
-				t.Log().Infof("nsenter --net=%s ip route del %s dev %s", netns.Path(), r.Dst, guestDev)
-				err := netlink.RouteDel(&r)
-				if err != nil {
-					return err
-				}
-				actionrollback.Register(ctx, func() error {
-					return netns.Do(func(_ ns.NetNS) error {
-						return netlink.RouteAdd(&r)
-					})
-				})
-			}
-		} else {
-			t.Log().Infof("route already deleted: %s dev %s", n, guestDev)
-		}
+	if t.Network == "" {
 		return nil
-	}); err != nil {
+	}
+	if v, err := t.hasLinkIn(guestDev, netns.Path()); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+	ones, _ := t.ipmask().Size()
+	dest := fmt.Sprintf("%s/%d", t.Network, ones)
+	if err := t.routeDelDevIn(dest, guestDev, netns.Path()); err != nil {
 		return err
 	}
 	return nil
@@ -679,31 +567,55 @@ func (t T) LinkTo() string {
 	return t.NetNS
 }
 
-func (t *T) getAddrStrings(guestDev string) ([]string, error) {
+func (t *T) getLinkStringsIn(netns ns.NetNS) ([]string, error) {
 	l := make([]string, 0)
-	if link, err := netlink.LinkByName(guestDev); err != nil {
+	buff, err := t.linkListIn(netns.Path())
+	if err != nil {
 		return l, err
-	} else if addrs, err := netlink.AddrList(link, 0); err != nil {
-		return l, err
-	} else {
-		flagManageTempAddr := 0x100
-		for _, addr := range addrs {
-			// Discard addrs having the flag "mngtmpaddr" as they are autoconfigured.
-			// See Privacy Extensions for SLAAC (RFC 4941)
-			if addr.Flags&flagManageTempAddr != 0 {
-				continue
-			}
-			addrS := addr.String()
-			if strings.HasPrefix(addrS, "fe80") {
-				continue
-			}
-			l = append(l, addrS)
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		words := strings.Fields(line)
+		if len(words) < 2 {
+			continue
 		}
+		if !strings.HasSuffix(words[1], ":") {
+			continue
+		}
+		dev := strings.TrimRight(words[1], ":")
+		dev = strings.Split(dev, "@")[0]
+		l = append(l, dev)
 	}
 	return l, nil
 }
 
-func (t *T) stopLink(netns ns.NetNS, guestDev string) error {
+func (t *T) getAddrStringsIn(dev string, netns ns.NetNS) ([]string, error) {
+	l := make([]string, 0)
+	buff, err := t.addrListIn(dev, netns.Path())
+	if err != nil {
+		return l, err
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		words := strings.Fields(line)
+		if len(words) < 2 {
+			continue
+		}
+		if (words[0] != "inet") && (words[0] != "inet6") {
+			continue
+		}
+		if slices.Contains(words, "mngtmpaddr") {
+			// Discard addrs having the flag "mngtmpaddr" as they are autoconfigured.
+			// See Privacy Extensions for SLAAC (RFC 4941)
+			continue
+		}
+		if strings.HasPrefix(words[1], "fe80") {
+			continue
+		}
+		l = append(l, words[1])
+	}
+	return l, nil
+}
+
+func (t *T) stopLinkIn(netns ns.NetNS, guestDev string) error {
 	if guestDev == "" {
 		// ip not found on any netns dev
 		if t.NSDev != "" {
@@ -712,41 +624,39 @@ func (t *T) stopLink(netns ns.NetNS, guestDev string) error {
 			return nil
 		}
 	}
-	if err := netns.Do(func(_ ns.NetNS) error {
-		link, err := netlink.LinkByName(guestDev)
-		if err != nil {
-			return err
-		}
-		if addrs, err := t.getAddrStrings(guestDev); err != nil {
-			return err
-		} else if len(addrs) > 0 {
-			t.Log().Infof("preserve nsdev %s, in use by %s", guestDev, strings.Join(addrs, " "))
-			return ErrLinkInUse
-		}
-		t.Log().Infof("nsenter --net=%s ip link del %s", netns.Path(), guestDev)
-		return netlink.LinkDel(link)
-	}); err != nil {
+	if v, err := t.hasLinkIn(guestDev, netns.Path()); err != nil {
 		return err
+	} else if !v {
+		return ErrLinkNotFound
 	}
-	return nil
+	if addrs, err := t.getAddrStringsIn(guestDev, netns); err != nil {
+		return err
+	} else if len(addrs) > 0 {
+		t.Log().Infof("preserve nsdev %s, in use by %s", guestDev, strings.Join(addrs, " "))
+		return ErrLinkInUse
+	}
+	return t.linkDelIn(guestDev, netns.Path())
+}
+
+func (t *T) stopLink(dev string) error {
+	if v, err := t.hasLink(dev); err != nil {
+		return err
+	} else if !v {
+		return ErrLinkNotFound
+	}
+	return t.linkDel(dev)
 }
 
 func (t *T) stopIP(netns ns.NetNS, guestDev string) error {
-	if err := netns.Do(func(_ ns.NetNS) error {
-		ipnet, err := t.ipnetStrict()
-		if err != nil {
-			return err
-		}
-		if guestDev == "" {
-			t.Log().Infof("%s is already down (not found on any netns dev)", ipnet)
-			return nil
-		}
-		t.Log().Infof("nsenter --net=%s ip addr del %s dev %s", netns.Path(), ipnet, guestDev)
-		return netif.DelAddr(guestDev, ipnet)
-	}); err != nil {
+	ipnet, err := t.ipnetStrict()
+	if err != nil {
 		return err
 	}
-	return nil
+	if guestDev == "" {
+		t.Log().Infof("%s is already down (not found on any netns dev)", ipnet)
+		return nil
+	}
+	return t.addrDelIn(ipnet.String(), guestDev, netns.Path())
 }
 
 func (t *T) ipnetStrict() (*net.IPNet, error) {
@@ -777,40 +687,36 @@ func (t T) curGuestDev(netns ns.NetNS) (string, error) {
 }
 
 func (t T) newGuestDev(netns ns.NetNS) (string, error) {
-	var (
-		name string
-		i    int
-	)
 	if t.NSDev != "" {
 		return t.NSDev, nil
 	}
-	err := netns.Do(func(_ ns.NetNS) error {
-		for {
-			name = fmt.Sprintf("eth%d", i)
-			_, err := netlink.LinkByName(name)
-			if err != nil {
-				return nil
-			}
-			i = i + 1
-			if i > math.MaxUint16 {
-				return fmt.Errorf("can't find available link at %s", name)
-			}
+	devs, err := t.getLinkStringsIn(netns)
+	if err != nil {
+		return "", err
+	}
+	i := 0
+	for {
+		name := fmt.Sprintf("eth%d", i)
+		if !slices.Contains(devs, name) {
+			return name, nil
 		}
-	})
-	return name, err
+		i = i + 1
+		if i > math.MaxUint16 {
+			break
+		}
+	}
+	return "", fmt.Errorf("can't find a free link name")
 }
 
-func (t T) hasNSDev(netns ns.NetNS) (v bool) {
+func (t T) hasNSDev(netns ns.NetNS) bool {
 	if t.NSDev == "" {
-		return
+		return false
 	}
-	_ = netns.Do(func(_ ns.NetNS) error {
-		if _, err := netlink.LinkByName(t.NSDev); err == nil {
-			v = true
-		}
-		return nil
-	})
-	return
+	if v, err := t.hasLinkIn(t.NSDev, netns.Path()); err != nil {
+		return false
+	} else {
+		return v
+	}
 }
 
 func (t T) guestDev(netns ns.NetNS) (string, error) {
