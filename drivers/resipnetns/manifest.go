@@ -78,7 +78,7 @@ func (t T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:       "Mode",
-			Candidates: []string{"bridge", "dedicated", "macvlan", "ipvlan-l2", "ipvlan-l3", "ovs"},
+			Candidates: []string{"bridge", "dedicated", "macvlan", "ipvlan-l2", "ipvlan-l3", "ipvlan-l3s", "ovs"},
 			Default:    "bridge",
 			Example:    "access",
 			Option:     "mode",

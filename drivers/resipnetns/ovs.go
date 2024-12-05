@@ -4,6 +4,7 @@ package resipnetns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog"
@@ -41,23 +42,14 @@ func (t *T) stopOVSPort(dev string) error {
 	if dev == "" {
 		return nil
 	}
-	args := []string{
-		"--if-exist",
-		"del-port", t.IPDev, dev,
-	}
-	cmd := command.New(
+	return command.New(
 		command.WithName("ovs-vsctl"),
-		command.WithArgs(args),
+		command.WithArgs([]string{"--if-exist", "del-port", t.IPDev, dev}),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	cmd.Run()
-	if cmd.ExitCode() != 0 {
-		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
-	}
-	return nil
+	).Run()
 }
 
 func (t *T) startOVS(ctx context.Context) error {
@@ -75,18 +67,54 @@ func (t *T) startOVS(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	hostDev := formatHostDevName(guestDev, pid)
 
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
+	if !t.hasNSDev(netns) {
+		hostDev := formatHostDevName(guestDev, pid)
 
-	if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
-		return err
-	}
-	if err := t.startOVSPort(ctx, hostDev); err != nil {
-		return err
+		mtu, err := t.devMTU()
+		if err != nil {
+			return err
+		}
+		tmpGuestDev := fmt.Sprintf("v%spg%d", guestDev, pid)
+		if err := t.makeVethPair(hostDev, tmpGuestDev, mtu); err != nil {
+			return err
+		}
+		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
+			return err
+		}
+		if err := t.linkSetNsPid(tmpGuestDev, pid); err != nil {
+			t.linkDel(guestDev)
+			return err
+		}
+		if err := t.linkSetNameIn(tmpGuestDev, guestDev, netns.Path()); err != nil {
+			var errs error
+			if err := t.linkDel(hostDev); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			if err := t.linkDelIn(tmpGuestDev, netns.Path()); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			return errs
+		}
+		actionrollback.Register(ctx, func() error {
+			var errs error
+			if err := t.linkDel(hostDev); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			if err := t.linkDelIn(guestDev, netns.Path()); err != nil {
+				errs = errors.Join(errs, err)
+			}
+			return errs
+		})
+		if err := t.linkSetUpIn(guestDev, netns.Path()); err != nil {
+			return err
+		}
+		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
+			return err
+		}
+		if err := t.startOVSPort(ctx, hostDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -132,13 +160,23 @@ func (t *T) stopOVS(ctx context.Context) error {
 	if err := t.stopIP(netns, guestDev); err != nil {
 		return err
 	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		return err
+	if err := t.stopLinkIn(netns, guestDev); err != nil {
+		switch {
+		case errors.Is(err, ErrLinkNotFound):
+			// ignore, let del host dev be tried
+		case errors.Is(err, ErrLinkInUse):
+			return nil
+		default:
+			return err
+		}
 	}
 	if err := t.stopOVSPort(hostDev); err != nil {
 		return err
 	}
-	if err := t.stopVEthPair(hostDev); err != nil {
+	if err := t.stopLink(hostDev); err != nil {
+		if errors.Is(err, ErrLinkNotFound) {
+			return nil
+		}
 		return err
 	}
 	return nil

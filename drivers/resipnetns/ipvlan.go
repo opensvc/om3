@@ -4,87 +4,64 @@ package resipnetns
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net"
 
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/actionrollback"
 )
 
-func (t T) IPVLANMode() (netlink.IPVlanMode, error) {
+func (t T) IPVLANMode() (string, error) {
 	switch t.Mode {
 	case "ipvlan-l2":
-		return netlink.IPVLAN_MODE_L2, nil
+		return "l2", nil
 	case "ipvlan-l3":
-		return netlink.IPVLAN_MODE_L3, nil
+		return "l3", nil
 	case "ipvlan-l3s":
-		return netlink.IPVLAN_MODE_L3S, nil
+		return "l3s", nil
 	default:
-		return 0, fmt.Errorf("unsupported mode: %s", t.Mode)
+		return "", fmt.Errorf("unsupported mode: %s", t.Mode)
 	}
 }
 
-func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev string, mtu int) error {
+func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev string) error {
 	tmpDev := fmt.Sprintf("ph%d%s", pid, dev)
-	parentLink, err := netlink.LinkByName(t.IPDev)
-	if err != nil {
-		return fmt.Errorf("%s: %w", t.IPDev, err)
-	}
-	if _, err := netlink.LinkByName(tmpDev); err == nil {
-		return fmt.Errorf("%s exists, should not", tmpDev)
-	}
 	mode, err := t.IPVLANMode()
 	if err != nil {
 		return err
 	}
-	t.Log().Infof("ip link add link %s dev %s mode %s mtu %d", t.IPDev, tmpDev, t.Mode, mtu)
-	link := &netlink.IPVlan{
-		LinkAttrs: netlink.LinkAttrs{
-			Name:        tmpDev,
-			Flags:       net.FlagUp,
-			MTU:         mtu,
-			ParentIndex: parentLink.Attrs().Index,
-		},
-		Mode: mode,
-	}
-	if err := netlink.LinkAdd(link); err != nil {
+	mtu, err := t.devMTU()
+	if err != nil {
 		return err
 	}
-	t.Log().Infof("ip link %s set netns %d", tmpDev, pid)
-	if err := netlink.LinkSetNsPid(link, pid); err != nil {
+	if v, err := t.hasLink(tmpDev); err != nil {
 		return err
-	} else {
-		netlink.LinkDel(link)
+	} else if v {
+		if err := t.linkDel(tmpDev); err != nil {
+			return err
+		}
 	}
-	if err := netns.Do(func(_ ns.NetNS) error {
-		if err := netlink.LinkSetName(link, dev); err != nil {
-			return fmt.Errorf("ip link set %s name %s: %w", tmpDev, dev, err)
-		}
-		if err := netlink.LinkSetUp(link); err != nil {
-			return fmt.Errorf("ip link set %s up: %w", dev, err)
-		}
+	if v, err := t.hasLinkIn(dev, netns.Path()); err != nil {
+		return err
+	} else if v {
 		return nil
-	}); err != nil {
+	}
+	if err := t.makeIPVLANDev(t.IPDev, tmpDev, mtu, mode); err != nil {
+		return err
+	}
+	if err := t.linkSetNsPid(tmpDev, pid); err != nil {
+		t.linkDel(tmpDev)
+		return err
+	}
+	if err := t.linkSetNameIn(tmpDev, dev, netns.Path()); err != nil {
+		t.linkDelIn(tmpDev, netns.Path())
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		return t.stopIPVLANDev(netns, dev)
+		return t.linkDelIn(dev, netns.Path())
 	})
-	return nil
-}
-
-func (t *T) stopIPVLANDev(netns ns.NetNS, dev string) error {
-	if err := netns.Do(func(_ ns.NetNS) error {
-		link, err := netlink.LinkByName(dev)
-		if err != nil {
-			t.Log().Infof("container dev %s already deleted", dev)
-			return nil
-		}
-		t.Log().Infof("ip link del dev %s", dev)
-		return netlink.LinkDel(link)
-	}); err != nil {
+	if err := t.linkSetUpIn(dev, netns.Path()); err != nil {
 		return err
 	}
 	return nil
@@ -106,13 +83,10 @@ func (t *T) startIPVLAN(ctx context.Context) error {
 		return err
 	}
 
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
-
-	if err := t.startIPVLANDev(ctx, netns, pid, guestDev, mtu); err != nil {
-		return err
+	if !t.hasNSDev(netns) {
+		if err := t.startIPVLANDev(ctx, netns, pid, guestDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
@@ -146,11 +120,15 @@ func (t *T) stopIPVLAN(ctx context.Context) error {
 	if err := t.stopIP(netns, guestDev); err != nil {
 		return err
 	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.stopIPVLANDev(netns, guestDev); err != nil {
-		return err
+	if err := t.stopLinkIn(netns, guestDev); err != nil {
+		switch {
+		case errors.Is(err, ErrLinkNotFound):
+			// ignore, let del host dev be tried
+		case errors.Is(err, ErrLinkInUse):
+			return nil
+		default:
+			return err
+		}
 	}
 	return nil
 }
