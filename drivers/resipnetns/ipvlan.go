@@ -50,20 +50,13 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	if err := t.makeIPVLANDev(t.IPDev, tmpDev, mtu, mode); err != nil {
 		return err
 	}
-	if err := t.linkSetNsPid(tmpDev, pid); err != nil {
+	if err := t.linkSetNsPidAndNameAndUp(tmpDev, pid, dev); err != nil {
 		t.linkDel(tmpDev)
-		return err
-	}
-	if err := t.linkSetNameIn(tmpDev, dev, netns.Path()); err != nil {
-		t.linkDelIn(tmpDev, netns.Path())
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
 		return t.linkDelIn(dev, netns.Path())
 	})
-	if err := t.linkSetUpIn(dev, netns.Path()); err != nil {
-		return err
-	}
 	return nil
 }
 

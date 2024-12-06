@@ -268,6 +268,9 @@
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
+* **The ip.netns driver mode no longer can be set by tags**
+    The `mode` keyword must be used for mode setting.
+
 ### Driver: fs
 
 * **Removed keywords:**

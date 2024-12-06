@@ -41,43 +41,23 @@ func (t *T) startBridge(ctx context.Context) error {
 		if err := t.makeVethPair(hostDev, tmpGuestDev, mtu); err != nil {
 			return err
 		}
+		actionrollback.Register(ctx, func() error {
+			return t.linkDel(hostDev)
+		})
 		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
 			return err
 		}
 		if err := t.linkSetMaster(hostDev, t.IPDev); err != nil {
-			t.linkDel(guestDev)
+			t.linkDel(tmpGuestDev)
 			return err
 		}
-		if err := t.linkSetNsPid(tmpGuestDev, pid); err != nil {
-			t.linkDel(guestDev)
+		if err := t.linkSetNsPidAndNameAndUp(tmpGuestDev, pid, guestDev); err != nil {
+			t.linkDel(tmpGuestDev)
 			return err
-		}
-		if err := t.linkSetUp(hostDev); err != nil {
-			return err
-		}
-		if err := t.linkSetNameIn(tmpGuestDev, guestDev, netns.Path()); err != nil {
-			var errs error
-			if err := t.linkDel(hostDev); err != nil {
-				errs = errors.Join(errs, err)
-			}
-			if err := t.linkDelIn(tmpGuestDev, netns.Path()); err != nil {
-				errs = errors.Join(errs, err)
-			}
-			return errs
 		}
 		actionrollback.Register(ctx, func() error {
-			var errs error
-			if err := t.linkDel(hostDev); err != nil {
-				errs = errors.Join(errs, err)
-			}
-			if err := t.linkDelIn(guestDev, netns.Path()); err != nil {
-				errs = errors.Join(errs, err)
-			}
-			return errs
+			return t.linkDelIn(guestDev, netns.Path())
 		})
-		if err := t.linkSetUpIn(guestDev, netns.Path()); err != nil {
-			return err
-		}
 		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
 			return err
 		}

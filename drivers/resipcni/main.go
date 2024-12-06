@@ -26,7 +26,6 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/netif"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/uuid"
@@ -381,40 +380,53 @@ func (t T) ipNet() (net.IP, *net.IPNet, error) {
 func (t T) nsIPNet(netns ns.NetNS) (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
-		netip net.IP
+		ip    net.IP
 	)
 	if netns == nil {
-		return netip, ipnet, nil
+		return ip, ipnet, nil
+	}
+	netConf, err := t.netConf()
+	if err != nil {
+		return ip, ipnet, err
+	}
+	_, ref, err := net.ParseCIDR(netConf.IPAM.Subnet)
+	if err != nil {
+		return ip, ipnet, err
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
-		var iface *net.Interface
 		ifaces, err := net.Interfaces()
 		if err != nil {
 			return err
 		}
-		for _, i := range ifaces {
-			if i.Name == t.NSDev {
-				// found
-				iface = &i
-				break
+		for _, iface := range ifaces {
+			if t.NSDev != "" && iface.Name == t.NSDev {
+				continue
 			}
-		}
-		if iface == nil {
-			// not found. not an error, because we want a clean Down state
-			return nil
-		}
-		if addrs, err := iface.Addrs(); err != nil {
-			return err
-		} else if len(addrs) == 0 {
-			return nil
-		} else if netip, ipnet, err = net.ParseCIDR(addrs[0].String()); err != nil {
-			return err
+			addrs, err := iface.Addrs()
+			if err != nil {
+				return err
+			}
+			if len(addrs) == 0 {
+				continue
+			}
+			for _, addr := range addrs {
+				candidateIP, candidateIPNet, err := net.ParseCIDR(addr.String())
+				if err != nil {
+					return err
+				}
+				if ref.Contains(candidateIP) {
+					ip = candidateIP
+					ipnet = candidateIPNet
+					return nil
+				}
+			}
+
 		}
 		return nil
 	}); err != nil {
-		return netip, ipnet, err
+		return ip, ipnet, err
 	}
-	return netip, ipnet, nil
+	return ip, ipnet, nil
 }
 
 func (t T) netConfFile() string {
@@ -620,6 +632,26 @@ func (t T) start() error {
 	return err
 }
 
+func getInterfaceAndAddr(ref *net.IPNet) (net.Interface, net.Addr, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return net.Interface{}, nil, err
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return net.Interface{}, nil, err
+		}
+		for _, addr := range addrs {
+			ip := net.ParseIP(strings.Split(addr.String(), "/")[0])
+			if ref.Contains(ip) {
+				return iface, addr, nil
+			}
+		}
+	}
+	return net.Interface{}, nil, nil
+}
+
 func (t T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
 	if netns == nil {
 		return "", fmt.Errorf("can't get current guest dev from nil netns")
@@ -630,9 +662,10 @@ func (t T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
 	}
 	var s string
 	if err := netns.Do(func(_ ns.NetNS) error {
-		s, err = netif.InterfaceNameByNet(ipNet)
-		if err != nil {
+		if iface, _, err := getInterfaceAndAddr(ipNet); err != nil {
 			return err
+		} else {
+			s = iface.Name
 		}
 		return nil
 	}); err != nil {
