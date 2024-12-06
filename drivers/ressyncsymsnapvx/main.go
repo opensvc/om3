@@ -154,26 +154,29 @@ func (t *T) mergeDevs() ([]string, error) {
 			continue
 		}
 		for _, dev := range i.SubDevices() {
-			devID, err := t.devIDFromDevPath(dev.Path())
+			dev, err := t.devFromDevPath(dev.Path())
 			if err != nil {
 				return nil, err
 			}
-			m[devID] = nil
+			if dev.SymID != t.SymID {
+				continue
+			}
+			m[dev.DevName] = nil
 		}
 	}
 	return xmap.Keys(m), nil
 }
 
-// devIDFromDevPath uses syminq to resolve a device path into a symmetrix device id.
-func (t *T) devIDFromDevPath(devPath string) (string, error) {
+// devFromDevPath uses syminq to resolve a device path into a symmetrix device id.
+func (t *T) devFromDevPath(devPath string) (XInqDevice, error) {
 	info, err := os.Lstat(devPath)
 	if err != nil {
-		return "", err
+		return XInqDevice{}, err
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		target, err := os.Readlink(devPath)
 		if err != nil {
-			return "", err
+			return XInqDevice{}, err
 		}
 		if !strings.HasPrefix(devPath, "/") {
 			devPath = filepath.Join(filepath.Dir(devPath), target)
@@ -184,16 +187,16 @@ func (t *T) devIDFromDevPath(devPath string) (string, error) {
 	t.Log().Debugf("exec: %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", devPath, err)
+		return XInqDevice{}, fmt.Errorf("%s: %w", devPath, err)
 	}
 	head, err := parseInq(b)
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", devPath, err)
+		return XInqDevice{}, fmt.Errorf("%s: %w", devPath, err)
 	}
 	if n := len(head.Inquiry.Devices); n != 1 {
-		return "", fmt.Errorf("%s: expected 1 symdev from inq, got %d", devPath, n)
+		return XInqDevice{}, fmt.Errorf("%s: expected 1 symdev from inq, got %d", devPath, n)
 	}
-	return head.Inquiry.Devices[0].DevName, nil
+	return head.Inquiry.Devices[0], nil
 }
 
 func parseInq(b []byte) (*XInqPdevfile, error) {
