@@ -1163,9 +1163,9 @@ func SCSIPersistentReservationStatus(r Driver) status.T {
 // GetStatus returns the resource Status for embedding into the instance.Status.
 func GetStatus(ctx context.Context, r Driver) Status {
 	return Status{
+		Status:      EvalStatus(ctx, r),
 		Label:       formatResourceLabel(r),
 		Type:        r.Manifest().DriverID.String(),
-		Status:      EvalStatus(ctx, r),
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
