@@ -74,6 +74,7 @@ type (
 
 	ContainerTasker interface {
 		Start(context.Context) error
+		Stop(context.Context) error
 		ContainerInspectRefresh(context.Context) (rescontainerocibase.Inspecter, error)
 		Signal(sig syscall.Signal) error
 	}
@@ -87,8 +88,23 @@ func (t *T) Run(ctx context.Context) error {
 	return t.RunIf(ctx, t.lockedRun)
 }
 
+func (t *T) Stop(ctx context.Context) (err error) {
+	container := t.containerDetachedGetter.GetContainerDetached()
+
+	if container == nil {
+		t.Log().Debugf("stop container skipped: container is absent")
+		return nil
+	}
+
+	if err := container.Stop(ctx); err != nil {
+		t.Log().Errorf("stop: %s", err)
+		return err
+	}
+
+	return nil
+}
+
 func (t *T) lockedRun(ctx context.Context) (err error) {
-	// TODO: if t.LogOutputs {}
 	container := t.containerDetachedGetter.GetContainerDetached()
 
 	if container == nil {
