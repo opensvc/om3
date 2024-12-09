@@ -91,7 +91,31 @@ func (t *T) linkDelIn(dev, path string) error {
 }
 
 func (t *T) linkSetMaster(dev, master string) error {
-	args := []string{"ip", "link", "set", dev, "master", master}
+	args := []string{"ip", "link", "set", dev, "master", master, "up"}
+	return command.New(
+		command.WithName(args[0]),
+		command.WithArgs(args[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	).Run()
+}
+
+func (t *T) linkSetNsPidAndNameAndUp(dev string, pid int, name string) error {
+	args := []string{"ip", "link", "set", dev, "netns", fmt.Sprint(pid), "name", name, "up"}
+	return command.New(
+		command.WithName(args[0]),
+		command.WithArgs(args[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	).Run()
+}
+
+func (t *T) linkSetNsPidAndNameIn(dev string, pid int, name, path string) error {
+	args := []string{"nsenter", "--net=" + path, "ip", "link", "set", dev, "netns", fmt.Sprint(pid), "name", name}
 	return command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),

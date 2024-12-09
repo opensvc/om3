@@ -300,8 +300,14 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	if _, err := t.netInterface(); err != nil {
-		t.StatusLog().Error("%s", err)
-		return status.Down
+		if t.Mode != "dedicated" {
+			t.StatusLog().Error("%s", err)
+			return status.Down
+		}
+	} else {
+		if t.Mode == "dedicated" {
+			return status.Down
+		}
 	}
 	if t.CheckCarrier {
 		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
