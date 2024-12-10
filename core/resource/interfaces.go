@@ -76,6 +76,10 @@ type (
 		NetNSPath() (string, error)
 	}
 
+	NetNSPathCtxer interface {
+		NetNSPathCtx(ctx context.Context) (string, error)
+	}
+
 	// PIDer exposes a PID method a resource can call to
 	// get the head pid of the head process started by the resource.
 	// Typically a container resource PID() returns the pid of the

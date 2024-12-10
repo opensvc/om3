@@ -1162,10 +1162,13 @@ func SCSIPersistentReservationStatus(r Driver) status.T {
 
 // GetStatus returns the resource Status for embedding into the instance.Status.
 func GetStatus(ctx context.Context, r Driver) Status {
+	// EvalStatus must be called before formatResourceLabel (it uses context,
+	// on containers it will set the initial inspect.
+	resStatus := EvalStatus(ctx, r)
 	return Status{
 		Label:       formatResourceLabel(r),
 		Type:        r.Manifest().DriverID.String(),
-		Status:      EvalStatus(ctx, r),
+		Status:      resStatus,
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),

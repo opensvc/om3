@@ -10,11 +10,12 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/vishvananda/netlink"
+
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
-	"github.com/vishvananda/netlink"
 )
 
 func (t T) ActionResourceDeps() []actionresdeps.Dep {
@@ -31,7 +32,7 @@ func (t T) LinkTo() string {
 
 // Start the Resource
 func (t T) Start(ctx context.Context) error {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func (t T) Start(ctx context.Context) error {
 
 // Stop the Resource
 func (t T) Stop(ctx context.Context) error {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,16 +74,22 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) getNS() (ns.NetNS, error) {
+func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
 	r := t.GetObjectDriver().ResourceByID(t.NetNS)
 	if r == nil {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	}
-	i, ok := r.(resource.NetNSPather)
-	if !ok {
+	var (
+		path string
+		err  error
+	)
+	if i, ok := r.(resource.NetNSPathCtxer); ok {
+		path, err = i.NetNSPathCtx(ctx)
+	} else if i, ok := r.(resource.NetNSPather); ok {
+		path, err = i.NetNSPath()
+	} else {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
 	}
-	path, err := i.NetNSPath()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +98,7 @@ func (t T) getNS() (ns.NetNS, error) {
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status(ctx context.Context) status.T {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return status.Down
 	}

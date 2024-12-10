@@ -222,6 +222,10 @@ type (
 		ContainerID() string
 	}
 
+	containerIDCtxer interface {
+		ContainerIDCtx(ctx context.Context) string
+	}
+
 	containerInspectRefresher interface {
 		ContainerInspectRefresh(context.Context) (Inspecter, error)
 	}
@@ -249,6 +253,23 @@ func (t *BT) ContainerID() string {
 	if t.executer == nil {
 		t.Log().Debugf("can't get container id from undefined executer")
 		return ""
+	}
+	if i := t.executer.Inspect(); i == nil {
+		return ""
+	} else {
+		return i.ID()
+	}
+}
+
+func (t *BT) ContainerIDCtx(ctx context.Context) string {
+	if t.executer == nil {
+		t.Log().Debugf("can't get container id from undefined executer")
+		return ""
+	}
+	if !t.executer.InspectRefreshed() {
+		if _, err := t.executer.InspectRefresh(ctx); err != nil {
+			return ""
+		}
 	}
 	if i := t.executer.Inspect(); i == nil {
 		return ""
@@ -444,6 +465,22 @@ func (t *BT) NetNSPath() (string, error) {
 	}
 }
 
+func (t *BT) NetNSPathCtx(ctx context.Context) (string, error) {
+	if t.executer == nil {
+		return "", fmt.Errorf("NetNSPath: undefined executer")
+	}
+	if !t.executer.InspectRefreshed() {
+		if _, err := t.executer.InspectRefresh(ctx); err != nil {
+			return "", err
+		}
+	}
+	if i := t.executer.Inspect(); i == nil {
+		return "", nil
+	} else {
+		return i.SandboxKey(), nil
+	}
+}
+
 func (t *BT) PID() int {
 	if t.executer == nil {
 		t.Log().Debugf("PID called with undefined executer")
@@ -501,6 +538,11 @@ func (t *BT) Start(ctx context.Context) error {
 		return t.logMainAction("start", errors.New("undefined executer"))
 	}
 
+	if !t.executer.InspectRefreshed() {
+		if _, err := t.executer.InspectRefresh(ctx); err != nil {
+			return t.logMainAction("start", fmt.Errorf("inspect refresh: %s", err))
+		}
+	}
 	inspect := t.executer.Inspect()
 	if inspect == nil || !inspect.Defined() {
 		return logError(t.pullAndRun(ctx))
@@ -543,7 +585,10 @@ func (t *BT) Stop(ctx context.Context) error {
 		return t.logMainAction("stop", errors.New("undefined executer"))
 	}
 
-	inspect := t.executer.Inspect()
+	inspect, err := t.executer.InspectRefresh(ctx)
+	if err != nil {
+		return t.logMainAction("stop", fmt.Errorf("can't refresh inspect: %s", err))
+	}
 	if inspect == nil {
 		log.Infof("already stopped")
 		return nil
@@ -870,7 +915,9 @@ func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) 
 		return
 	} else {
 		tgtName = "container:" + tgt.ContainerName()
-		if i, ok := tgt.(containerIDer); ok {
+		if i, ok := tgt.(containerIDCtxer); ok {
+			tgtID = "container:" + i.ContainerIDCtx(ctx)
+		} else if i, ok := tgt.(containerIDer); ok {
 			tgtID = "container:" + i.ContainerID()
 		}
 	}
