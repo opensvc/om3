@@ -93,6 +93,14 @@ func (t T) getCNINetNS() (string, error) {
 	}
 }
 
+func (t T) getCNINetNSCtx(ctx context.Context) (string, error) {
+	if t.NetNS != "" {
+		return t.getResourceNSPathCtx(ctx)
+	} else {
+		return t.getObjectNSPIDFile()
+	}
+}
+
 // getCNIContainerID returns the value of the CNI_CONTAINERID env var of cni commands
 func (t T) getCNIContainerID() (string, error) {
 	if t.NetNS != "" {
@@ -130,6 +138,19 @@ func (t T) getResourceNSPID() (string, error) {
 	return fmt.Sprint(i.PID()), nil
 }
 
+func (t T) getResourceNSPathCtx(ctx context.Context) (string, error) {
+	r := t.GetObjectDriver().ResourceByID(t.NetNS)
+	if r == nil {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	}
+	if o, ok := r.(resource.NetNSPathCtxer); ok {
+		return o.NetNSPathCtx(ctx)
+	} else if o, ok := r.(resource.NetNSPather); ok {
+		return o.NetNSPath()
+	}
+	return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
+}
+
 func (t T) getResourceNSPath() (string, error) {
 	r := t.GetObjectDriver().ResourceByID(t.NetNS)
 	if r == nil {
@@ -144,6 +165,16 @@ func (t T) getResourceNSPath() (string, error) {
 
 func (t T) getNS() (ns.NetNS, error) {
 	if path, err := t.getCNINetNS(); err != nil {
+		return nil, err
+	} else if path == "" {
+		return nil, nil
+	} else {
+		return ns.GetNS(path)
+	}
+}
+
+func (t T) getNSCtx(ctx context.Context) (ns.NetNS, error) {
+	if path, err := t.getCNINetNSCtx(ctx); err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, nil
@@ -319,7 +350,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn(fmt.Sprint(err))
 		return status.Undef
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNSCtx(ctx)
 	if err != nil {
 		return status.Down
 	}
@@ -371,6 +402,18 @@ func (t T) ipNet() (net.IP, *net.IPNet, error) {
 		netip net.IP
 	)
 	netns, err := t.getNS()
+	if err != nil {
+		return netip, ipnet, err
+	}
+	return t.nsIPNet(netns)
+}
+
+func (t T) ipNetCtx(ctx context.Context) (net.IP, *net.IPNet, error) {
+	var (
+		ipnet *net.IPNet
+		netip net.IP
+	)
+	netns, err := t.getNSCtx(ctx)
 	if err != nil {
 		return netip, ipnet, err
 	}
