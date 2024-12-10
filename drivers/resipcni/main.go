@@ -380,17 +380,6 @@ func (t T) Label() string {
 	return s
 }
 
-func (t T) LabelCtx(ctx context.Context) string {
-	var s string
-	if ip, ipnet, _ := t.ipNetCtx(ctx); ipnet != nil {
-		ones, _ := ipnet.Mask.Size()
-		s = fmt.Sprintf("%s %s/%d in %s", t.Network, ip, ones, t.NetNS)
-	} else {
-		s = fmt.Sprintf("%s in %s", t.Network, t.NetNS)
-	}
-	return s
-}
-
 func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
