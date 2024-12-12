@@ -1,0 +1,24 @@
+<SymCLI_ML>
+  <DG>
+    <DG_Info>
+      <name>DG1</name>
+      <type>RDF1</type>
+      <symid>000000000193</symid>
+    </DG_Info>
+    <Device>
+      <Dev_Info>
+        <dev_name>003AD</dev_name>
+        <configuration>RDF1+TDEV</configuration>
+        <ld_name>DEV001</ld_name>
+        <status>Ready</status>
+      </Dev_Info>
+      <Front_End>
+        <Port>
+          <pd_name>/dev/sdq</pd_name>
+          <director>07E</director>
+          <port>1</port>
+        </Port>
+      </Front_End>
+    </Device>
+  </DG>
+</SymCLI_ML>

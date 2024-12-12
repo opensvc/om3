@@ -1825,6 +1825,41 @@ paths:
         - instance / svc
         - instance / vol
 
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/ingest:
+    post:
+      description: Ingest resource var files received by the active instance sync update action.
+      operationId: PostInstanceActionSyncIngest
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - instance / svc
+        - instance / vol
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
       description: Unfreeze the object instance.

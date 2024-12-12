@@ -933,6 +933,25 @@ func Update(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// Ingest execute the resource Ingest function, if implemented by the driver.
+func Ingest(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(ingester)
+	if !ok {
+		return ErrActionNotSupported
+	}
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	r.Progress(ctx, "▶ ingest")
+	Setenv(r)
+	if err := s.Ingest(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Shutdown deactivates a resource even if standby is true
 func Shutdown(ctx context.Context, r Driver) error {
 	defer EvalStatus(ctx, r)

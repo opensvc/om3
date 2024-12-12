@@ -95,6 +95,7 @@ func init() {
 		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
+		newCmdObjectSyncIngest(kind),
 		newCmdObjectSyncFull(kind),
 		newCmdObjectSyncResync(kind),
 		newCmdObjectSyncUpdate(kind),

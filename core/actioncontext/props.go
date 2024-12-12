@@ -300,6 +300,13 @@ var (
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
+	SyncIngest = Properties{
+		Name:     "sync_ingest",
+		Local:    true,
+		MustLock: true,
+		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
+		PG:       true,
+	}
 	SyncUpdate = Properties{
 		Name:     "sync_update",
 		Local:    true,

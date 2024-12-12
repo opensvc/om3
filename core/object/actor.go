@@ -75,6 +75,7 @@ type (
 		SyncFull(context.Context) error
 		SyncResync(context.Context) error
 		SyncUpdate(context.Context) error
+		SyncIngest(context.Context) error
 		Enter(context.Context, string) error
 
 		PrintSchedule() schedule.Table

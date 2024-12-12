@@ -1850,6 +1850,14 @@ type PostInstanceActionStopParams struct {
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionSyncIngestParams defines parameters for PostInstanceActionSyncIngest.
+type PostInstanceActionSyncIngestParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
 // PostInstanceActionUnfreezeParams defines parameters for PostInstanceActionUnfreeze.
 type PostInstanceActionUnfreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`

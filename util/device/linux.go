@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
@@ -84,6 +85,15 @@ func (t T) setRO(v bool) error {
 		return fmt.Errorf("%s returned %d", cmd, exitCode)
 	}
 	return nil
+}
+
+func (t T) Rescan() error {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return err
+	}
+	p = p + "/device/rescan"
+	return os.WriteFile(p, []byte("1"), os.ModePerm)
 }
 
 func (t T) Delete() error {
@@ -319,6 +329,22 @@ func (t T) ConfigureMultipath(verbosity int) error {
 	return nil
 }
 
+func (t T) RefreshMultipath() error {
+	cmd := command.New(
+		command.WithName("multipath"),
+		command.WithVarArgs("-r", t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
 func (t T) RemoveMultipath() error {
 	cmd := command.New(
 		command.WithName("multipath"),
@@ -337,4 +363,93 @@ func (t T) RemoveMultipath() error {
 
 func (t T) WWID() (string, error) {
 	return "", nil
+}
+
+func (t T) IsReady() (bool, error) {
+	cmd := command.New(
+		command.WithName("sg_turs"),
+		command.WithVarArgs(t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithIgnoredExitCodes(0, 2),
+	)
+	err := cmd.Run()
+	if cmd.ExitCode() == 2 {
+		return false, err
+	}
+	return true, err
+}
+
+func (t T) WaitReady() error {
+	delay := time.Second
+	retries := 5
+	for i := 0; i < retries; i++ {
+		if v, err := t.IsReady(); err != nil {
+			return err
+		} else if v {
+			if i == 0 {
+				t.log.Infof("waiting for device %s to become ready (max %s)", t.path, time.Duration(retries)*delay)
+			}
+			time.Sleep(delay)
+			continue
+		} else {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out waiting for device %s to become ready (max %s)", t.path, time.Duration(retries)*delay)
+}
+
+func (t T) PromoteRW() error {
+	count := 0
+	paths, err := t.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		isChanged := false
+		isRO, err := path.IsReadOnly()
+		if err != nil {
+			return err
+		}
+		if isRO {
+			if err := path.SetReadWrite(); err != nil {
+				return err
+			}
+			isChanged = true
+		}
+		_, err = path.Stat()
+		switch {
+		case err == nil:
+		case errors.Is(err, os.ErrNotExist):
+			if err := t.Rescan(); err != nil {
+				return err
+			}
+			isChanged = true
+		default:
+			return err
+		}
+		if isChanged {
+			count += 1
+			if err := t.WaitReady(); err != nil {
+				return err
+			}
+		}
+	}
+	isRO, err := t.IsReadOnly()
+	if err != nil {
+		return err
+	}
+	if isRO {
+		if err := t.SetReadWrite(); err != nil {
+			return err
+		}
+	}
+	if count > 0 {
+		if err := t.RefreshMultipath(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
