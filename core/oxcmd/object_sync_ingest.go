@@ -12,7 +12,7 @@ import (
 )
 
 type (
-	CmdObjectSyncUpdate struct {
+	CmdObjectSyncIngest struct {
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectSyncUpdate) Run(selector, kind string) error {
+func (t *CmdObjectSyncIngest) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

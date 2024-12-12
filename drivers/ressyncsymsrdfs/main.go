@@ -620,13 +620,13 @@ func (t *T) postIngest(ctx context.Context) error {
 		case 200:
 			t.Log().Infof("%s: state files ingested", nodename)
 		case 400:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, resp.JSON400))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", nodename, resp.JSON400))
 		case 401:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, resp.JSON401))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", nodename, resp.JSON401))
 		case 403:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, resp.JSON403))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", nodename, resp.JSON403))
 		case 500:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, resp.JSON500))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", nodename, resp.JSON500))
 		}
 	}
 	return errs
