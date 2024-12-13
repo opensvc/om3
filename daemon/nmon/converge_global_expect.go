@@ -35,6 +35,11 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			strVal = "unset"
 		}
 		t.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
+
+		if t.isStateFailed() {
+			t.log.Debugf("reset failed state")
+			t.state.State = node.MonitorStateIdle
+		}
 	}
 }
 

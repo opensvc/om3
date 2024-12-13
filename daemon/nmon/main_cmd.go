@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/clusternode"
@@ -115,7 +116,18 @@ func (t *Manager) checkRejoinTicker() {
 	}
 }
 
+func (t *Manager) isStateFailed() bool {
+	return strings.HasSuffix(t.state.State.String(), "failed")
+}
+
 func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
+	resetFailedState := func() {
+		if c.Value.State == nil && t.isStateFailed() {
+			t.log.Debugf("reset failed state")
+			t.state.State = node.MonitorStateIdle
+		}
+	}
+
 	doState := func() error {
 		if c.Value.State == nil {
 			return nil
@@ -159,6 +171,8 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		t.log.Infof("set local expect %s -> %s", t.state.LocalExpect, *c.Value.LocalExpect)
 		t.change = true
 		t.state.LocalExpect = *c.Value.LocalExpect
+		resetFailedState()
+
 		return nil
 	}
 
@@ -195,6 +209,7 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
 			t.state.GlobalExpectUpdatedAt = time.Now()
+			resetFailedState()
 		}
 		return nil
 	}
