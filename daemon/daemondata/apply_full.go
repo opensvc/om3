@@ -40,11 +40,7 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 		instStatusUpdated: make(map[string]time.Time),
 	}
 
-	nmonUpdated := c.Monitor.StateUpdatedAt
-	if c.Monitor.GlobalExpectUpdatedAt.After(nmonUpdated) {
-		nmonUpdated = c.Monitor.GlobalExpectUpdatedAt
-	}
-	result.nmonUpdated = nmonUpdated
+	result.nmonUpdated = c.Monitor.UpdatedAt
 
 	result.collectorUpdated = c.Daemon.Collector.UpdatedAt
 	result.daemondataUpdated = c.Daemon.Daemondata.UpdatedAt

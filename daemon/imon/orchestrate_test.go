@@ -555,7 +555,8 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 
 	for _, nmonState := range c.nodeMonitorStates {
 		t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
-		nodeMonitor := node.Monitor{State: nmonState, StateUpdatedAt: time.Now(), GlobalExpectUpdatedAt: now, LocalExpectUpdatedAt: now}
+		pubTime := time.Now()
+		nodeMonitor := node.Monitor{State: nmonState, StateUpdatedAt: pubTime, UpdatedAt: pubTime, GlobalExpectUpdatedAt: now, LocalExpectUpdatedAt: now}
 		node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
 		bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
 			pubsub.Label{"node", hostname.Hostname()})

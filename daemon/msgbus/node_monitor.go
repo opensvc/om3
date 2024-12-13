@@ -10,10 +10,12 @@ import (
 // and IsPreserved true
 func (data *ClusterData) onNodeMonitorDeleted(m *NodeMonitorDeleted) {
 	if v, ok := data.Cluster.Node[m.Node]; ok {
+		now := time.Now()
 		v.Monitor = node.Monitor{
 			State:          node.MonitorStateShutting,
 			IsPreserved:    true,
-			StateUpdatedAt: time.Now(),
+			UpdatedAt:      now,
+			StateUpdatedAt: now,
 		}
 		data.Cluster.Node[m.Node] = v
 	}
