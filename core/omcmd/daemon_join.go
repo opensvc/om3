@@ -129,7 +129,7 @@ func (t *CmdDaemonJoin) run() error {
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
 		return fmt.Errorf("wait join result: %w", err)
 	}
-	err = t.onJoined(cli)
+	err = t.onJoined(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("on joined: %w", err)
 	}
@@ -195,7 +195,7 @@ func (t *CmdDaemonJoin) createTmpCertFile(b []byte) (certFile string, err error)
 	return
 }
 
-func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
+func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error) {
 	filePaths := make(map[string]naming.Path)
 	toFetch := []naming.Path{
 		naming.Cluster,
@@ -221,7 +221,7 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 	}
 
 	if t.isRunning() {
-		if err := t.nodeDrain(); err != nil {
+		if err := t.nodeDrain(ctx); err != nil {
 			return err
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
