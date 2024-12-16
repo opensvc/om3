@@ -2,6 +2,7 @@ package command
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -45,18 +46,17 @@ type (
 		stdoutLogLevel        zerolog.Level
 		stderrLogLevel        zerolog.Level
 
-		pid             int
-		commandString   string
-		done            chan string
-		goroutine       []func()
-		cancel          func()
-		ctx             context.Context
-		closeAfterStart []io.Closer
-		stdout          []byte
-		stderr          []byte
-		started         bool // Prevent relaunch
-		waited          bool // Prevent relaunch
-		promptReader    *bufio.Reader
+		pid           int
+		commandString string
+		done          chan string
+		goroutine     []func()
+		cancel        func()
+		ctx           context.Context
+		stdout        []byte
+		stderr        []byte
+		started       bool // Prevent relaunch
+		waited        bool // Prevent relaunch
+		promptReader  *bufio.Reader
 	}
 
 	ErrExitCode struct {
@@ -106,20 +106,20 @@ func (t T) Output() ([]byte, error) {
 	if err := t.Run(); err != nil {
 		return []byte{}, err
 	}
-	return stripFistByte(t.stdout), nil
+	return t.stdout, nil
 }
 
 // Stdout returns stdout results of command (meaningful after Wait() or Run()),
 // command created without funcopt WithBufferedStdout() return nil
 // valid results
 func (t T) Stdout() []byte {
-	return stripFistByte(t.stdout)
+	return t.stdout
 }
 
 // Stderr returns stderr results of command (meaningful after Wait() or Run())
 // command created without funcopt WithBufferedStderr() return nil
 func (t T) Stderr() []byte {
-	return stripFistByte(t.stderr)
+	return t.stderr
 }
 
 // Start prepare command, then call underlying cmd.Start()
@@ -128,7 +128,7 @@ func (t *T) Start() (err error) {
 	if t.started {
 		return fmt.Errorf("%w", ErrAlreadyStarted)
 	}
-	t.started = true
+	var toCloseOnEarlyReturn []io.Closer
 	if !t.prompt() {
 		return ErrPromptAbort
 	}
@@ -136,6 +136,40 @@ func (t *T) Start() (err error) {
 	if err = t.update(); err != nil {
 		return err
 	}
+
+	defer func() {
+		// close readers when cmd is not started
+		if !t.started {
+			for _, r := range toCloseOnEarlyReturn {
+				_ = r.Close()
+			}
+		}
+	}()
+
+	parseLines := func(r io.Reader, onLine func(s string), b *[]byte) error {
+		reader := bufio.NewReader(r)
+
+		for {
+			// Read until newline or EOF
+			line, err := reader.ReadBytes('\n')
+			if len(line) > 0 {
+				if b != nil {
+					*b = append(*b, line...)
+				}
+				if onLine != nil {
+					onLine(string(bytes.TrimSuffix(line, []byte("\n"))))
+				}
+			}
+
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil
+				}
+				return fmt.Errorf("read bytes: %v", err)
+			}
+		}
+	}
+
 	if t.stdoutLogLevel != zerolog.Disabled || t.bufferStdout || t.onStdoutLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StdoutPipe(); err != nil {
@@ -144,23 +178,29 @@ func (t *T) Start() (err error) {
 			}
 			return fmt.Errorf("%w", err)
 		}
-		t.closeAfterStart = append(t.closeAfterStart, r)
+		toCloseOnEarlyReturn = append(toCloseOnEarlyReturn, r)
+
+		onLine := func(s string) {
+			if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
+				t.log.Attr("out", s).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: "+s)
+			}
+			if t.onStdoutLine != nil {
+				t.onStdoutLine(s)
+			}
+		}
+
 		t.goroutine = append(t.goroutine, func() {
-			s := bufio.NewScanner(r)
-			for s.Scan() {
-				if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-					t.log.Attr("out", s.Text()).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: "+s.Text())
-				}
-				if t.onStdoutLine != nil {
-					t.onStdoutLine(s.Text())
-				}
-				if t.bufferStdout {
-					t.stdout = append(t.stdout, append([]byte("\n"), s.Bytes()...)...)
+			if err := parseLines(r, onLine, &t.stdout); err != nil {
+				if t.log != nil {
+					t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command parse stdout lines: %s", err)
 				}
 			}
+			// explicit close call for situation where cmd.Wait() is not called
+			_ = r.Close()
 			t.done <- "stdout"
 		})
 	}
+
 	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StderrPipe(); err != nil {
@@ -169,23 +209,32 @@ func (t *T) Start() (err error) {
 			}
 			return fmt.Errorf("%w", err)
 		}
-		t.closeAfterStart = append(t.closeAfterStart, r)
-		t.goroutine = append(t.goroutine, func() {
-			s := bufio.NewScanner(r)
-			for s.Scan() {
-				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-					t.log.Attr("err", s.Text()).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: "+s.Text())
-				}
-				if t.onStderrLine != nil {
-					t.onStderrLine(s.Text())
-				}
-				if t.bufferStderr {
-					t.stderr = append(t.stderr, append([]byte("\n"), s.Bytes()...)...)
+		toCloseOnEarlyReturn = append(toCloseOnEarlyReturn, r)
+
+		onLine := func(s string) {
+			if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
+				if t.log != nil {
+					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: "+s)
 				}
 			}
+			if t.onStdoutLine != nil {
+				t.onStdoutLine(s)
+			}
+		}
+
+		t.goroutine = append(t.goroutine, func() {
+			if err := parseLines(r, onLine, &t.stderr); err != nil {
+				if t.log != nil {
+					t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command parse stderr lines: %s", err)
+				}
+			}
+
+			// explicit close call for situation where cmd.Wait() is not called
+			_ = r.Close()
 			t.done <- "stderr"
 		})
 	}
+
 	if t.timeout > 0 {
 		var ctx context.Context
 		if t.ctx != nil {
@@ -244,6 +293,7 @@ func (t *T) Start() (err error) {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s", t.cmd)
 		}
 	}
+	t.started = true
 	if err = cmd.Start(); err != nil {
 		if t.log != nil {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s: %s", t.cmd, err)
@@ -284,6 +334,7 @@ func (t *T) Wait() (err error) {
 	t.waited = true
 	waitCount := len(t.goroutine)
 	if t.cancel != nil {
+		// we have started a wait for done goroutine, no need to wait for it
 		waitCount = waitCount - 1
 		defer t.cancel()
 	}
@@ -418,13 +469,6 @@ func (t *T) toString() string {
 	fp, _ = filepath.Abs(fp)
 	argv := append([]string{fp}, t.args...)
 	return shellquote.Join(argv...)
-}
-
-func stripFistByte(b []byte) []byte {
-	if len(b) > 1 {
-		return b[1:]
-	}
-	return b
 }
 
 func (t *T) prompt() bool {
