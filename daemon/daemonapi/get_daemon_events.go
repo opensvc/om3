@@ -121,7 +121,7 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 // getLocalDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
 func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
-	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); err != nil {
+	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); err != nil {
 		return err
 	} else if !v {
 		return nil
