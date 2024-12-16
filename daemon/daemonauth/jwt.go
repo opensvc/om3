@@ -62,8 +62,9 @@ func initJWT(i interface{}) (string, auth.Strategy, error) {
 		}
 		claims := tk.Claims.(*apiClaims)
 		exp = claims.ExpiresAt.Time
+		iss := claims.Issuer
 
-		extensions := authenticatedExtensions("jwt", claims.Grant...)
+		extensions := authenticatedExtensions("jwt", iss, claims.Grant...)
 		info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, *extensions)
 		return
 	}
