@@ -3,10 +3,9 @@ package resappsimple
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"syscall"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/resource"
@@ -16,6 +15,7 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
+	"github.com/rs/zerolog"
 )
 
 // T is the driver structure.
@@ -60,11 +60,24 @@ func (t T) Start(ctx context.Context) (err error) {
 	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	if err := cmd.Start(); err != nil {
 		return err
-	} else {
-		actionrollback.Register(ctx, func() error {
-			return t.Stop(ctx)
-		})
 	}
+	done := make(chan error)
+	go func() {
+		done <- cmd.Cmd().Wait()
+	}()
+	select {
+	case <-time.After(20 * time.Millisecond):
+		// the process is still running
+	case err := <-done:
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return fmt.Errorf("the command exited immediately: %s", exitError.ProcessState)
+		} else {
+			return err
+		}
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.Stop(ctx)
+	})
 	return nil
 }
 
