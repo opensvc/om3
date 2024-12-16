@@ -65,8 +65,11 @@ func NewClient(n string) (*ssh.Client, error) {
 		HostKeyCallback: AddingKnownHostCallback,
 		Timeout:         time.Second * 10,
 	}
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), config)
-	return client, err
+	if ip.To4() == nil {
+		return ssh.Dial("tcp", fmt.Sprintf("[%s]:22", ip), config)
+	} else {
+		return ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), config)
+	}
 }
 
 func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) error {
