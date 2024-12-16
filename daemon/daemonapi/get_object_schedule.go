@@ -19,7 +19,7 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 	}
 	items := make(api.ScheduleItems, 0)
 	for nodename, _ := range instance.MonitorData.GetByPath(path) {
-		c, err := newProxyClient(ctx, nodename)
+		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		} else if !clusternode.Has(nodename) {

@@ -34,7 +34,7 @@ func (a *DaemonAPI) getPeerNodeLogs(ctx echo.Context, nodename string, params ap
 	evCtx := ctx.Request().Context()
 	request := ctx.Request()
 
-	c, err := newProxyClient(ctx, nodename, client.WithTimeout(0))
+	c, err := a.newProxyClient(ctx, nodename, client.WithTimeout(0))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

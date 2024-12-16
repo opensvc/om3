@@ -25,7 +25,7 @@ func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	c, err := newProxyClient(ctx, nodename)
+	c, err := a.newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

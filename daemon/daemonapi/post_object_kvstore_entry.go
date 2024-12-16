@@ -57,7 +57,7 @@ func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, k
 	}
 
 	for nodename := range instanceConfigData {
-		c, err := newProxyClient(ctx, nodename)
+		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}

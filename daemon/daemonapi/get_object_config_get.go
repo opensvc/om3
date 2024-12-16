@@ -86,7 +86,7 @@ func (a *DaemonAPI) GetObjectConfigGet(ctx echo.Context, namespace string, kind 
 	}
 
 	for nodename := range instanceConfigData {
-		c, err := newProxyClient(ctx, nodename)
+		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
