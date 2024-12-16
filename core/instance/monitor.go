@@ -123,6 +123,7 @@ const (
 	MonitorStateStopFailed
 	MonitorStateStopped
 	MonitorStateStopping
+	MonitorStateSyncing
 	MonitorStateThawed
 	MonitorStateThawedFailed
 	MonitorStateThawing
@@ -189,6 +190,7 @@ var (
 		MonitorStateStopFailed:        "stop failed",
 		MonitorStateStopped:           "stopped",
 		MonitorStateStopping:          "stopping",
+		MonitorStateSyncing:           "syncing",
 		MonitorStateThawed:            "thawed",
 		MonitorStateThawedFailed:      "unfreeze failed",
 		MonitorStateThawing:           "thawing",
@@ -230,6 +232,7 @@ var (
 		"stop failed":        MonitorStateStopFailed,
 		"stopped":            MonitorStateStopped,
 		"stopping":           MonitorStateStopping,
+		"syncing":            MonitorStateSyncing,
 		"thawed":             MonitorStateThawed,
 		"unfreeze failed":    MonitorStateThawedFailed,
 		"thawing":            MonitorStateThawing,

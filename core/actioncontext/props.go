@@ -76,6 +76,7 @@ var (
 	SyncFull = Properties{
 		Name:     "sync_full",
 		Local:    true,
+		Progress: "syncing",
 		MustLock: true,
 		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
@@ -262,6 +263,7 @@ var (
 	SyncResync = Properties{
 		Name:     "sync_resync",
 		Local:    true,
+		Progress: "syncing",
 		MustLock: true,
 		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
@@ -303,12 +305,14 @@ var (
 	SyncIngest = Properties{
 		Name:     "sync_ingest",
 		Local:    true,
+		Progress: "syncing",
 		MustLock: true,
 		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
 	}
 	SyncUpdate = Properties{
 		Name:     "sync_update",
+		Progress: "syncing",
 		Local:    true,
 		MustLock: true,
 		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
