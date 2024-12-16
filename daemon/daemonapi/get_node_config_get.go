@@ -76,7 +76,7 @@ func (a *DaemonAPI) GetNodeConfigGet(ctx echo.Context, nodename string, params a
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s is not a cluster node", nodename)
 	} else {
-		c, err := newProxyClient(ctx, nodename)
+		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}

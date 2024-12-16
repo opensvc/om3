@@ -69,7 +69,7 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	if params.Limit != nil {
 		limit = uint64(*params.Limit)
 	}
-	c, err := newProxyClient(ctx, nodename, clientOptions...)
+	c, err := a.newProxyClient(ctx, nodename, clientOptions...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}

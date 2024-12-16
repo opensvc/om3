@@ -22,7 +22,7 @@ func (a *DaemonAPI) PostInstanceActionStop(ctx echo.Context, nodename, namespace
 }
 
 func (a *DaemonAPI) postPeerInstanceActionStop(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
-	c, err := newProxyClient(ctx, nodename)
+	c, err := a.newProxyClient(ctx, nodename)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}
