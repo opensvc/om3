@@ -217,8 +217,8 @@ func (t *T) Start() (err error) {
 					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: "+s)
 				}
 			}
-			if t.onStdoutLine != nil {
-				t.onStdoutLine(s)
+			if t.onStderrLine != nil {
+				t.onStderrLine(s)
 			}
 		}
 
