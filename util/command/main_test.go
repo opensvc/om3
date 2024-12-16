@@ -100,7 +100,7 @@ func TestT_StdoutStderr(t *testing.T) {
 		"withOnlyStdout": {
 			name:   "bash",
 			args:   []string{"-c", "echo foo; echo bar"},
-			stdout: []byte("foo\nbar"),
+			stdout: []byte("foo\nbar\n"),
 			stderr: nil,
 		},
 		"withWithEmptyLine": {
@@ -113,13 +113,13 @@ func TestT_StdoutStderr(t *testing.T) {
 			name:   "bash",
 			args:   []string{"-c", "echo foo >&2; echo bar >&2"},
 			stdout: nil,
-			stderr: []byte("foo\nbar"),
+			stderr: []byte("foo\nbar\n"),
 		},
 		"withStdoutAndStderr": {
 			name:   "bash",
 			args:   []string{"-c", "echo foo >&2; echo bar"},
-			stdout: []byte("bar"),
-			stderr: []byte("foo"),
+			stdout: []byte("bar\n"),
+			stderr: []byte("foo\n"),
 		},
 		"withNoStdoutAndStderr": {
 			name:   "bash",
