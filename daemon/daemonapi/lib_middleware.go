@@ -3,7 +3,6 @@ package daemonapi
 import (
 	"context"
 	"fmt"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"net/http"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/plog"
@@ -115,8 +115,12 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				return JSONProblem(c, code, http.StatusText(code), err.Error())
 			}
 			log.Debugf("user %s authenticated", user.GetUserName())
+			extensions := user.GetExtensions()
 			c.Set("user", user)
-			c.Set("grants", rbac.NewGrants(user.GetExtensions()["grant"]...))
+			c.Set("grants", rbac.NewGrants(extensions.Values("grant")...))
+			if iss := extensions.Get("iss"); iss != "" {
+				c.Set("iss", iss)
+			}
 			return next(c)
 		}
 	}
@@ -131,6 +135,9 @@ func LogUserMiddleware(parent context.Context) echo.MiddlewareFunc {
 				Attr("auth_user", authUser.GetUserName()).
 				Attr("auth_grant", extensions.Values("grant")).
 				Attr("auth_strategy", extensions.Get("strategy"))
+			if iss := extensions.Get("iss"); iss != "" {
+				log = log.Attr("auth_iss", iss)
+			}
 
 			c.Set("logger", log)
 			return next(c)
@@ -146,13 +153,17 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 				level = l
 			}
 			if level != zerolog.NoLevel {
+				userDesc := userFromContext(c).GetUserName()
+				if iss, ok := c.Get("iss").(string); ok && iss != "" {
+					userDesc += " iss " + iss
+				}
 				GetLogger(c).Levelf(
 					level,
 					"new request %s: %s %s from user %s address %s",
 					c.Get("uuid"),
 					c.Request().Method,
 					c.Path(),
-					userFromContext(c).GetUserName(),
+					userDesc,
 					c.Request().RemoteAddr)
 			}
 			return next(c)
