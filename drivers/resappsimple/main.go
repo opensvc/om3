@@ -71,7 +71,7 @@ func (t T) Start(ctx context.Context) (err error) {
 	case err := <-done:
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return fmt.Errorf("the command exited immediately: %s", exitError.ProcessState)
-		} else {
+		} else if err != nil {
 			return err
 		}
 	}
