@@ -274,12 +274,12 @@ func (t Path) Match(pattern string) bool {
 	switch len(l) {
 	case 1:
 		s := t.FQN()
-		if fnmatch.Match("*/svc/"+pattern, s, f) {
+		if fnmatch.Match("root/svc/"+pattern, s, f) {
 			return true
 		}
 	case 2:
 		s := t.FQN()
-		if fnmatch.Match("root/"+pattern, s, f) {
+		if fnmatch.Match("*/"+pattern, s, f) {
 			return true
 		}
 	case 3:
