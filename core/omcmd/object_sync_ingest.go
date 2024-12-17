@@ -10,37 +10,31 @@ import (
 )
 
 type (
-	CmdObjectRun struct {
+	CmdObjectSyncIngest struct {
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		NodeSelector string
-		Cron         bool
-		Confirm      bool
 	}
 )
 
-func (t *CmdObjectRun) Run(selector, kind string) error {
+func (t *CmdObjectSyncIngest) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
+		objectaction.WithLocal(true),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithCron(ctx, t.Cron)
-			ctx = actioncontext.WithConfirm(ctx, t.Confirm)
-			return nil, o.Run(ctx)
+			return nil, o.SyncIngest(ctx)
 		}),
 	).Do()
 }

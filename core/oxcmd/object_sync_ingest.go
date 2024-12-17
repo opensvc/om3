@@ -1,55 +1,41 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
-	CmdObjectStop struct {
+	CmdObjectSyncIngest struct {
 		OptsGlobal
-		OptsAsync
 		OptsLock
 		OptsResourceSelector
-		OptTo
-		Force        bool
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectStop) Run(selector, kind string) error {
+func (t *CmdObjectSyncIngest) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("stopped"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionStopParams{}
-			if t.Force {
-				v := true
-				params.Force = &v
-			}
+			params := api.PostInstanceActionSyncIngestParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -59,14 +45,11 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
 			}
-			if t.OptTo.To != "" {
-				params.To = &t.OptTo.To
-			}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionStopWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -82,17 +65,6 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 			default:
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
-		}),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p)
-			if err != nil {
-				return nil, err
-			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithTo(ctx, t.To)
-			ctx = actioncontext.WithForce(ctx, t.Force)
-			return nil, o.Stop(ctx)
 		}),
 	).Do()
 }

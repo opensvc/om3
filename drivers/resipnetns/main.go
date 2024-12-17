@@ -211,7 +211,6 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 		if err := t.routeAddDevIn("default", guestDev, netns.Path()); err != nil {
 			return err
 		}
-		return nil
 	} else {
 		if v, err := t.hasRouteViaIn("default", t.Gateway, netns.Path()); err != nil {
 			return err
@@ -222,7 +221,6 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 		if err := t.routeAddViaIn("default", t.Gateway, netns.Path()); err != nil {
 			return err
 		}
-		return nil
 	}
 	return nil
 }

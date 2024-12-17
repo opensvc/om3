@@ -40,7 +40,6 @@ func (t *CmdObjectStart) Run(selector, kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
-		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New(client.WithURL(t.Server))

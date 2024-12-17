@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes" ?>
+<SymCLI_ML>
+  <Inquiry>
+    <Dev_Info>
+      <pd_name>/dev/sdb</pd_name>
+      <dev_name>003AD</dev_name>
+      <symid>000000000193</symid>
+      <dev_ident_name>TOOLS</dev_ident_name>
+    </Dev_Info>
+    <Product>
+      <vendor>EMC</vendor>
+    </Product>
+  </Inquiry>
+</SymCLI_ML>

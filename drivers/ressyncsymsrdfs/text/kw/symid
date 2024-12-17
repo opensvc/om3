@@ -1,0 +1,1 @@
+The symid of the local Symmetrix array hosting the symdg. This parameter must be scoped to specify which array each node can access.

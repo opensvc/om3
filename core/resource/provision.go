@@ -85,7 +85,6 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Provision); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	r.Progress(ctx, "▶ provision")
 	if err := provision(ctx, r, leader); err != nil {
 		return fmt.Errorf("provision: %w", err)
 	}
@@ -121,7 +120,6 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Unprovision); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	r.Progress(ctx, "▶ unprovision")
 	if err := unprovision(ctx, r, leader); err != nil {
 		return fmt.Errorf("unprovision: %w", err)
 	}

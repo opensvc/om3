@@ -94,6 +94,7 @@ func init() {
 	)
 	cmdObjectSync.AddCommand(
 		newCmdObjectSyncFull(kind),
+		newCmdObjectSyncIngest(kind),
 		newCmdObjectSyncResync(kind),
 		newCmdObjectSyncUpdate(kind),
 	)

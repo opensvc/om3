@@ -55,13 +55,6 @@ const (
 var (
 	// WithCaller adds the file:line information of the logger caller
 	WithCaller bool
-
-	consoleWriter = zerolog.ConsoleWriter{
-		Out:              os.Stderr,
-		TimeFormat:       TimeFormat,
-		FormatFieldName:  func(i any) string { return "" },
-		FormatFieldValue: func(i any) string { return "" },
-	}
 )
 
 func init() {
@@ -89,11 +82,6 @@ func marshalStack(err error) interface{} {
 	return f
 }
 
-// SetDefaultConsoleWriter set the default console writer
-func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
-	consoleWriter = w
-}
-
 // Configure sets up the logging framework
 func Configure(config Config) error {
 	var writers []io.Writer
@@ -114,7 +102,20 @@ func Configure(config Config) error {
 		writers = append(writers, writer)
 	}
 	if config.WithConsoleLog {
-		consoleWriter.NoColor = !config.WithColor
+		consoleWriter := zerolog.ConsoleWriter{
+			Out:              os.Stderr,
+			TimeFormat:       TimeFormat,
+			NoColor:          !config.WithColor,
+			FormatFieldName:  func(i any) string { return "" },
+			FormatFieldValue: func(i any) string { return "" },
+			FormatMessage: func(i any) string {
+				if s, ok := i.(string); ok {
+					return strings.TrimPrefix(s, "instance: ")
+				} else {
+					return ""
+				}
+			},
+		}
 		writers = append(writers, consoleWriter)
 	}
 	if config.SessionLogFile != "" {

@@ -20,6 +20,5 @@ func (t *CmdObjectAbort) Run(selector, kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
-		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 	).Do()
 }

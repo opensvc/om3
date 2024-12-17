@@ -116,6 +116,9 @@ type (
 	updater interface {
 		Update(context.Context) error
 	}
+	ingester interface {
+		Ingest(context.Context) error
+	}
 	SubDeviceser interface {
 		SubDevices() device.L
 	}

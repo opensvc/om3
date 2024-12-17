@@ -17,12 +17,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/resourcereqs"
 	"github.com/opensvc/om3/core/status"
@@ -32,7 +29,6 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/scsi"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -86,8 +82,6 @@ type (
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
-		Progress(context.Context, ...any)
-		ProgressKey() []string
 		Requires(string) *resourcereqs.T
 		RestartCount() int
 		RID() string
@@ -630,7 +624,6 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 		return nil
 	}
 	t.Log().Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
-	t.Progress(ctx, "▶ "+hookID)
 	return t.trigger(ctx, cmd)
 }
 
@@ -748,7 +741,6 @@ func Run(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	r.Progress(ctx, "▶ run")
 	if err := runner.Run(ctx); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
@@ -826,7 +818,6 @@ func StartStandby(ctx context.Context, r Driver) error {
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
 	}
-	r.Progress(ctx, "▶ start standby")
 	if err := fn(ctx); err != nil {
 		return fmt.Errorf("start standby: %w", err)
 	}
@@ -863,7 +854,6 @@ func Start(ctx context.Context, r Driver) error {
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
 	}
-	r.Progress(ctx, "▶ start")
 	if err := s.Start(ctx); err != nil {
 		return fmt.Errorf("start: %w", err)
 	}
@@ -888,7 +878,6 @@ func Resync(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	r.Progress(ctx, "▶ resync")
 	if err := s.Resync(ctx); err != nil {
 		return err
 	}
@@ -907,7 +896,6 @@ func Full(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	r.Progress(ctx, "▶ full")
 	if err := s.Full(ctx); err != nil {
 		return err
 	}
@@ -925,9 +913,26 @@ func Update(ctx context.Context, r Driver) error {
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
-	r.Progress(ctx, "▶ update")
 	Setenv(r)
 	if err := s.Update(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Ingest execute the resource Ingest function, if implemented by the driver.
+func Ingest(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(ingester)
+	if !ok {
+		return ErrActionNotSupported
+	}
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	if err := s.Ingest(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -948,13 +953,11 @@ func Stop(ctx context.Context, r Driver) error {
 // boot turns the resource to a state ready for a start after node reboot.
 func boot(ctx context.Context, r Driver) error {
 	var (
-		progressAction string
-		i              any = r
-		fn             func(context.Context) error
+		i  any = r
+		fn func(context.Context) error
 	)
 	if s, ok := i.(booter); ok {
 		fn = s.Boot
-		progressAction = "boot"
 	} else {
 		return ErrActionNotSupported
 	}
@@ -962,7 +965,6 @@ func boot(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	r.Progress(ctx, "▶ "+progressAction)
 	if err := fn(ctx); err != nil {
 		return err
 	}
@@ -998,7 +1000,6 @@ func shutdown(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	r.Progress(ctx, "▶ shutdown")
 	if err := fn(ctx); err != nil {
 		return err
 	}
@@ -1020,14 +1021,12 @@ func shutdown(ctx context.Context, r Driver) error {
 //	standby=true  => call StopStandby if implemented, or do nothing
 func stop(ctx context.Context, r Driver) error {
 	var (
-		progressAction string
-		i              any = r
-		fn             func(context.Context) error
+		i  any = r
+		fn func(context.Context) error
 	)
 	if r.IsStandby() && !actioncontext.IsForce(ctx) {
 		if s, ok := i.(stopstandbyer); ok {
 			fn = s.StopStandby
-			progressAction = "standby"
 		} else {
 			r.Log().Infof("skip 'stop' on standby resource (--force to override)")
 			return ErrActionNotSupported
@@ -1035,7 +1034,6 @@ func stop(ctx context.Context, r Driver) error {
 	} else {
 		if s, ok := i.(stopper); ok {
 			fn = s.Stop
-			progressAction = "stop"
 		} else {
 			return ErrActionNotSupported
 		}
@@ -1053,7 +1051,6 @@ func stop(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	r.Progress(ctx, "▶ "+progressAction)
 	if err := fn(ctx); err != nil {
 		return err
 	}
@@ -1121,7 +1118,6 @@ func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
-		r.Progress(ctx, "▶ prstop")
 		return hdl.Stop()
 	}
 }
@@ -1147,7 +1143,6 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
-		r.Progress(ctx, "▶ prstart")
 		return hdl.Start()
 	}
 }
@@ -1275,27 +1270,6 @@ func (t SCSIPersistentReservation) IsSCSIPersistentReservationEnabled() bool {
 
 func (t SCSIPersistentReservation) PersistentReservationKey() string {
 	return t.Key
-}
-
-func (t *T) ProgressKey() []string {
-	p := rawconfig.Colorize.Bold(naming.PathOf(t.object).String())
-	return []string{p, t.RID()}
-}
-
-// progressMsg prepends the last known colored status or the resource
-func (t *T) progressMsg(ctx context.Context, msg *string) []any {
-	sb := statusbus.FromContext(ctx)
-	rid := t.RID()
-	first := colorstatus.Sprint(sb.First(rid), rawconfig.Colorize)
-	last := colorstatus.Sprint(sb.Get(rid), rawconfig.Colorize)
-	return []any{first, last, msg}
-}
-
-func (t *T) Progress(ctx context.Context, cols ...any) {
-	if view := progress.ViewFromContext(ctx); view != nil {
-		key := t.ProgressKey()
-		view.Info(key, cols)
-	}
 }
 
 func (t Status) DeepCopy() *Status {

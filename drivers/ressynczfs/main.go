@@ -14,7 +14,6 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -155,7 +154,6 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 			}
 			continue
 		}
-		t.ProgressNode(ctx, nodename, nil, nil)
 		if mode == modeFull {
 			if err := t.zfs(t.dstSnapSent).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
 				return err
@@ -503,14 +501,6 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 			return t.sendInitial(ctx, nodename)
 		}
 	}()
-
-	var icon string
-	if err != nil {
-		icon = rawconfig.Colorize.Error("✓")
-	} else {
-		icon = rawconfig.Colorize.Optimal("✓")
-	}
-	t.ProgressNode(ctx, nodename, icon, nil, nil)
 	return err
 }
 

@@ -32,7 +32,6 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/xsession"
@@ -169,15 +168,6 @@ func WithAsyncWait(v bool) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Wait = v
-		return nil
-	})
-}
-
-// WithProgress decides if the action progress renderer is used.
-func WithProgress(v bool) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.WithProgress = v
 		return nil
 	})
 }
@@ -361,16 +351,14 @@ func (t T) DoLocal() error {
 	ctx = actioncontext.WithRID(ctx, t.RID)
 	ctx = actioncontext.WithTag(ctx, t.Tag)
 	ctx = actioncontext.WithSubset(ctx, t.Subset)
-	if t.WithProgress {
-		progressView := progress.NewView()
-		progressView.Start()
-		defer progressView.Stop()
-		ctx = progress.ContextWithView(ctx, progressView)
-	}
 
 	for _, path := range paths {
 		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, func(ctx context.Context, n string, p naming.Path) (any, error) {
-			return t.LocalFunc(ctx, p)
+			v, err := t.LocalFunc(ctx, p)
+			if err != nil {
+				return v, fmt.Errorf("%s: %w", p, err)
+			}
+			return v, nil
 		})
 	}
 	for {

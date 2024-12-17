@@ -2615,6 +2615,23 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectSyncIngest(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncIngest
+	cmd := &cobra.Command{
+		Use:   "Ingest",
+		Short: "ingest files received from the active instance",
+		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	return cmd
+}
+
 func newCmdObjectSyncFull(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncFull
 	cmd := &cobra.Command{
