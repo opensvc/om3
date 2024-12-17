@@ -59,6 +59,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		}
 	}
 
+	xClaims["iss"] = a.localhost
 	tk, expireAt, err := a.JWTcreator.CreateUserToken(user, duration, xClaims)
 	if err != nil {
 		log.Errorf("%s: can't create token: %s", name, err)

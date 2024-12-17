@@ -501,16 +501,19 @@ func (t *Manager) updateIfChange() {
 		return
 	}
 	t.change = false
-	t.state.StateUpdatedAt = time.Now()
+	now := time.Now()
+	t.state.UpdatedAt = now
 	previousVal := t.previousState
 	newVal := t.state
 	if newVal.State != previousVal.State {
+		t.state.StateUpdatedAt = now
 		t.log.Infof("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		t.log.Infof("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
+		t.state.LocalExpectUpdatedAt = now
 		t.log.Infof("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	t.previousState = t.state

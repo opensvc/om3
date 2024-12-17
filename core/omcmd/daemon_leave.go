@@ -32,25 +32,49 @@ type (
 )
 
 func (t *CmdDaemonLeave) Run() (err error) {
+	var (
+		tk    string
+
+		tkCli *client.T
+	)
+	leaveDeadLine := time.Now().Add(t.Timeout)
+	t.localhost = hostname.Hostname()
+	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
+	defer cancel()
+
 	if err = t.checkParams(); err != nil {
 		return err
 	}
-	t.cli, err = client.New(
-		client.WithURL(t.APINode),
-	)
-	if err != nil {
-		return
+
+	// Create token using local cli
+	if tkCli, err = client.New(client.WithTimeout(t.Timeout)); err != nil {
+		return fmt.Errorf("can't create client to get new token: %w", err)
+	} else {
+		duration := fmt.Sprintf("%ds", int(leaveDeadLine.Sub(time.Now()).Seconds()))
+		params := api.PostAuthTokenParams{Duration: &duration, Role: &api.Roles{api.Leave}}
+		resp, err := tkCli.PostAuthTokenWithResponse(ctx, &params)
+		if err != nil {
+			return fmt.Errorf("can't get leave token: %w", err)
+		} else if resp.StatusCode() != http.StatusOK {
+			return fmt.Errorf("can't get leave token: got %d wanted %d", resp.StatusCode(), http.StatusOK)
+		} else {
+			tk = resp.JSON200.Token
+		}
 	}
 
 	if t.isRunning() {
-		if err := t.nodeDrain(); err != nil {
+		if err := t.nodeDrain(ctx); err != nil {
 			return err
 		}
 	}
 
-	t.localhost = hostname.Hostname()
-	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
-	defer cancel()
+	t.cli, err = client.New(
+		client.WithURL(t.APINode),
+		client.WithBearer(tk),
+	)
+	if err != nil {
+		return
+	}
 
 	if err := t.setEvReader(); err != nil {
 		return err
@@ -59,7 +83,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		_ = t.evReader.Close()
 	}()
 
-	if err := t.leave(); err != nil {
+	if err := t.leave(ctx, t.cli); err != nil {
 		return err
 	}
 	if err := t.waitResult(ctx); err != nil {
@@ -131,12 +155,12 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 	}
 }
 
-func (t *CmdDaemonLeave) leave() error {
+func (t *CmdDaemonLeave) leave(ctx context.Context, c *client.T) error {
 	_, _ = fmt.Fprintf(os.Stdout, "Daemon leave\n")
 	params := api.PostDaemonLeaveParams{
 		Node: t.localhost,
 	}
-	if resp, err := t.cli.PostDaemonLeave(context.Background(), &params); err != nil {
+	if resp, err := c.PostDaemonLeave(ctx, &params); err != nil {
 		return fmt.Errorf("daemon leave error: %w", err)
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("daemon leave unexpected status code %s", resp.Status)

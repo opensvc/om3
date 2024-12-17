@@ -7,6 +7,8 @@ import (
 
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/basic"
+
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -32,7 +34,7 @@ func initBasicUser(i any) (string, auth.Strategy, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid user %s: %w", userName, err)
 		}
-		return auth.NewUserInfo(userName, "", nil, *authenticatedExtensions("user", grants...)), nil
+		return auth.NewUserInfo(userName, "", nil, *authenticatedExtensions("user", hostname.Hostname(), grants...)), nil
 	}
 	return name, basic.NewCached(validateUser, cache), nil
 }
@@ -47,7 +49,7 @@ func initBasicNode(i interface{}) (string, auth.Strategy, error) {
 		if err := n.AuthenticateNode(userName, password); err != nil {
 			return nil, fmt.Errorf("invalid nodename %s: %w", userName, err)
 		}
-		extensions := authenticatedExtensions("node", "root")
+		extensions := authenticatedExtensions("node", "", "root")
 		info := auth.NewUserInfo("node-"+userName, "", nil, *extensions)
 		return info, nil
 	}

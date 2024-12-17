@@ -34,8 +34,12 @@ var (
 )
 
 // authenticatedExtensions returns extensions with grants and used strategy
-func authenticatedExtensions(strategy string, grants ...string) *auth.Extensions {
-	return &auth.Extensions{"strategy": []string{strategy}, "grant": grants}
+func authenticatedExtensions(strategy string, iss string, grants ...string) *auth.Extensions {
+	extensions := auth.Extensions{"strategy": []string{strategy}, "grant": grants}
+	if iss != "" {
+		extensions.Set("iss", iss)
+	}
+	return &extensions
 }
 
 func initCache() error {

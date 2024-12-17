@@ -139,9 +139,11 @@ func TestDaemonData(t *testing.T) {
 	t.Run("Ensure node.MonitorData.Get result is a deep copy", func(t *testing.T) {
 		initial := *node.MonitorData.Get(localNode)
 		require.Equal(t, node.MonitorGlobalExpectNone, initial.GlobalExpect, "GlobalExpect changed !")
-		initialUpdated := initial.StateUpdatedAt
+		initialUpdated := initial.UpdatedAt
+		initialStateUpdated := initial.StateUpdatedAt
 		initialGlobalExpectUpdated := initial.GlobalExpectUpdatedAt
 		initial.State = node.MonitorStateIdle
+		initial.UpdatedAt = time.Now()
 		initial.StateUpdatedAt = time.Now()
 		initial.GlobalExpect = node.MonitorGlobalExpectAborted
 		initial.GlobalExpectUpdatedAt = time.Now()
@@ -149,6 +151,7 @@ func TestDaemonData(t *testing.T) {
 		refreshed := *node.MonitorData.Get(localNode)
 		require.Equal(t, node.MonitorStateInit, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
+		require.Equal(t, initialStateUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
 		require.Equal(t, node.MonitorGlobalExpectNone, refreshed.GlobalExpect, "GlobalExpect changed !")
 		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdatedAt, "GlobalExpectUpdated changed !")
 	})

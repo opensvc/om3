@@ -32,10 +32,11 @@ func (t *CmdDaemonCommon) isRunning() bool {
 	return true
 }
 
-func (t *CmdDaemonCommon) nodeDrain() (err error) {
+func (t *CmdDaemonCommon) nodeDrain(ctx context.Context) (err error) {
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs([]string{"node", "drain", "--wait"}),
+		command.WithContext(ctx),
 	)
 	_, _ = fmt.Fprintf(os.Stdout, "Draining node\n")
 	if err := cmd.Run(); err != nil {

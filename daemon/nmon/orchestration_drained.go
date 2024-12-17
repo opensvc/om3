@@ -19,6 +19,9 @@ func (t *Manager) orchestrateDrained() {
 		t.change = true
 		t.state.State = node.MonitorStateIdle
 		t.state.LocalExpect = node.MonitorLocalExpectNone
+	case node.MonitorStateDrainFailed:
+		t.change = true
+		t.state.LocalExpect = node.MonitorLocalExpectNone
 	default:
 		t.log.Warnf("orchestrate drained no solution from state %s", t.state.State)
 		time.Sleep(unexpectedDelay)
