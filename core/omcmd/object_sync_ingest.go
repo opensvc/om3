@@ -27,7 +27,6 @@ func (t *CmdObjectSyncIngest) Run(selector, kind string) error {
 		objectaction.WithLocal(true),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

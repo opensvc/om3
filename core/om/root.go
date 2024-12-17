@@ -25,13 +25,15 @@ import (
 )
 
 var (
-	colorFlag      string
-	logFlag        string
-	selectorFlag   string
-	serverFlag     string
-	nodeFlag       string
-	foregroundFlag bool
+	colorFlag    string
+	nodeFlag     string
+	selectorFlag string
+	serverFlag   string
+
 	callerFlag     bool
+	debugFlag      bool
+	foregroundFlag bool
+	quietFlag      bool
 	versionFlag    bool
 
 	//go:embed bash_completion.sh
@@ -69,11 +71,15 @@ func listNodes() []string {
 
 func configureLogger() error {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
+	level := "info"
+	if debugFlag {
+		level = "debug"
+	}
 	err := logging.Configure(logging.Config{
-		WithConsoleLog: logFlag != "" || foregroundFlag,
+		WithConsoleLog: !quietFlag || debugFlag || foregroundFlag,
 		WithColor:      colorFlag != "no",
 		WithCaller:     callerFlag,
-		Level:          logFlag,
+		Level:          level,
 	})
 	if err != nil {
 		return err
@@ -90,9 +96,10 @@ func configureLogger() error {
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
-	if flag := cmd.Flags().Lookup("log"); flag != nil {
-		s := flag.Value.String()
-		logFlag = s
+	if flag := cmd.Flags().Lookup("quiet"); flag != nil && flag.Value.String() == "true" {
+		quietFlag = true
+	} else {
+		cmd.SilenceErrors = true
 	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
@@ -186,8 +193,8 @@ func guessSubsystem(s string) string {
 func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
-	root.PersistentFlags().StringVar(&logFlag, "log", "info", "Display logs on the console with one of the specified level: "+
-		"trace, debug, info, warn, error, fatal, panic, none")
+	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Display logs on stderr.")
+	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Display logs in debug level.")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
 }
 

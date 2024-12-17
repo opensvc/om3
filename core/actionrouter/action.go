@@ -108,9 +108,6 @@ type (
 		// tls   => http/2 with TLS
 		//
 		Server string
-
-		// WithProgress false disables the action progress rendering.
-		WithProgress bool
 	}
 
 	// Actioner is the interface implemented by nodeaction.T and objectaction.T

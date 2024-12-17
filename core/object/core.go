@@ -11,12 +11,10 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/progress"
 )
 
 type (
@@ -156,16 +154,4 @@ func (t *core) Cluster() (*Ccfg, error) {
 
 func (t *core) Log() *plog.Logger {
 	return t.log
-}
-
-func (t *core) ProgressKey() []string {
-	p := rawconfig.Colorize.Bold(t.path.String())
-	return []string{p}
-}
-
-func (t *core) Progress(ctx context.Context, cols ...any) {
-	if view := progress.ViewFromContext(ctx); view != nil {
-		key := t.ProgressKey()
-		view.Info(key, cols)
-	}
 }

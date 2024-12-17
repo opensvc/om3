@@ -31,7 +31,6 @@ func (t *CmdObjectPRStart) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

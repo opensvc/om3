@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceselector"
 	"github.com/opensvc/om3/core/resourceset"
@@ -137,14 +136,11 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 		q <- false
 		return
 	}
-	r.Progress(ctx, "▶ run abort tests")
 	if a.Abort(ctx) {
 		t.log.Attr("rid", r.RID()).Errorf("resource %s denied start", r.RID())
-		r.Progress(ctx, rawconfig.Colorize.Error("deny start"))
 		q <- true
 		return
 	}
-	r.Progress(ctx, rawconfig.Colorize.Optimal("✓")+" allow start")
 	q <- false
 }
 
@@ -163,7 +159,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	}
 	isPartial := !resourceselector.FromContext(ctx, nil).IsZero()
 	p := t.Path()
-	resp, err := c.PostInstanceProgress(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
+	resp, err := c.PostInstanceProgressWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
 		State:     progress,
 		SessionID: xsession.ID,
 		IsPartial: &isPartial,
@@ -173,14 +169,21 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Debugf("skip announce progress: the daemon is not running")
 		return nil
 	case err != nil:
-		t.log.Errorf("announce %s state: %s", progress, err)
+		t.log.Errorf("announced %s state: %s", progress, err)
 		return err
-	case resp.StatusCode != http.StatusOK:
-		err := fmt.Errorf("unexpected post instance progress request status: %s", resp.Status)
-		t.log.Errorf("announce %s state: %s", progress, err)
+	case resp.StatusCode() == http.StatusBadRequest:
+		err := fmt.Errorf("announcing state %s: post instance progress request status: %s: %s", progress, resp.JSON400.Title, resp.JSON400.Detail)
+		t.log.Errorf("%s", err)
+		return err
+	case resp.StatusCode() == http.StatusInternalServerError:
+		err := fmt.Errorf("announcing state %s: post instance progress request status: %s: %s", progress, resp.JSON500.Title, resp.JSON500.Detail)
+		t.log.Errorf("%s", err)
+		return err
+	case resp.StatusCode() != http.StatusOK:
+		err := fmt.Errorf("announcing state %s: unexpected post instance progress request status: %s", progress, resp.Status)
+		t.log.Errorf("%s", err)
 		return err
 	}
-	t.Log().Debugf("announce %s state", progress)
 	return nil
 }
 
@@ -275,6 +278,26 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 	return nil
 }
 
+func instanceStatusIcon(avail, overall status.T) string {
+	switch avail {
+	case status.Undef, status.NotApplicable:
+		return "⚪"
+	case status.Up, status.StandbyUp:
+		switch overall {
+		case status.Warn:
+			return "🟢⚠️"
+		default:
+			return "🟢"
+		}
+	case status.Down, status.StandbyDown:
+		return "🔴"
+	case status.Warn:
+		return "🟠"
+	default:
+		return ""
+	}
+}
+
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if t.IsDisabled() {
 		return ErrDisabled
@@ -287,10 +310,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("action", action.Name).
 		Attr("origin", env.Origin()).
 		Attr("crm", "true")
-	logger.Infof("do %s %s (origin %s)", action.Name, os.Args, env.Origin())
+	logger.Infof("do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.ID)
 	beginTime := time.Now()
+	ctx, stop := statusbus.WithContext(ctx, t.path)
+	defer stop()
 	defer func() {
-		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("done %s %s in %s", action.Name, os.Args, time.Now().Sub(beginTime))
+		sb := statusbus.FromContext(ctx)
+		statusIcon := instanceStatusIcon(sb.Get("avail"), sb.Get("overall"))
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("%s done %s %s in %s", statusIcon, action.Name, os.Args, time.Now().Sub(beginTime))
 	}()
 
 	// daemon instance monitor updates
@@ -304,11 +331,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
+		_, _ = t.statusEval(ctx)
 		t.announceProgress(ctx, failure)
 		return err
 	}
-	ctx, stop := statusbus.WithContext(ctx, t.path)
-	defer stop()
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
 
@@ -329,12 +355,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				err = nil
 			case errors.Is(err, resource.ErrActionPostponedToLinker):
 				err = nil
-			case err == nil:
-				r.Progress(ctx, rawconfig.Colorize.Optimal("✓"))
-			case r.IsOptional():
-				r.Progress(ctx, rawconfig.Colorize.Warning(err))
-			default:
-				r.Progress(ctx, rawconfig.Colorize.Error(err))
 			}
 			return err
 		}
@@ -423,6 +443,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				t.Log().Errorf("rollback: %s", err)
 			}
 		}
+		_, _ = t.statusEval(ctx)
 		return err
 	}
 	if action.Order.IsDesc() {
@@ -432,6 +453,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if err == nil {
 		t.announceProgress(ctx, "idle")
 	} else {
+		t.log.Errorf("%s", err)
 		t.announceProgress(ctx, failure)
 	}
 	return err
