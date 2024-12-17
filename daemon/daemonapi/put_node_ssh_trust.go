@@ -30,7 +30,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context, nodename string) erro
 	}
 
 	doNode := func(node string) error {
-		c, err := newProxyClient(ctx, node)
+		c, err := a.newProxyClient(ctx, node)
 		if err != nil {
 			return err
 		}
