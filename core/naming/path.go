@@ -262,6 +262,9 @@ func (t Path) Match(pattern string) bool {
 	if pattern == "**" {
 		return true
 	}
+	if pattern == "*" {
+		return (t.Kind == KindSvc) && (t.Namespace == "root")
+	}
 	l := strings.Split(pattern, "/")
 	f := 0
 	if strings.Contains(pattern, "**") {
@@ -279,7 +282,7 @@ func (t Path) Match(pattern string) bool {
 		}
 	case 2:
 		s := t.FQN()
-		if fnmatch.Match("*/"+pattern, s, f) {
+		if fnmatch.Match("root/"+pattern, s, f) {
 			return true
 		}
 	case 3:

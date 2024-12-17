@@ -111,7 +111,6 @@ func TestNewPath(t *testing.T) {
 		},
 	}
 	for testName, test := range tests {
-		t.Logf("%s", testName)
 		path, err := NewPathFromStrings(test.namespace, test.kind, test.name)
 		if test.ok {
 			if ok := assert.Nil(t, err); !ok {
@@ -123,7 +122,7 @@ func TestNewPath(t *testing.T) {
 			}
 		}
 		output := path.String()
-		assert.Equal(t, test.output, output)
+		assert.Equalf(t, test.output, output, "%s", testName)
 	}
 }
 
@@ -327,7 +326,7 @@ func TestPathMatch(t *testing.T) {
 			namespace: "ns1",
 			kind:      "svc",
 			pattern:   "*",
-			match:     true,
+			match:     false,
 		},
 		"svc1 matches *": {
 			name:      "svc1",
@@ -338,9 +337,8 @@ func TestPathMatch(t *testing.T) {
 		},
 	}
 	for testName, test := range tests {
-		t.Logf("%s", testName)
 		path, _ := NewPathFromStrings(test.namespace, test.kind, test.name)
-		assert.Equal(t, test.match, path.Match(test.pattern))
+		assert.Equalf(t, test.match, path.Match(test.pattern), "%s", testName)
 	}
 }
 
@@ -381,11 +379,42 @@ func TestPathsFilter(t *testing.T) {
 		expected Paths
 	}{
 		{
-			"s*",
+			"ns1/*/[vs]1",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
+				Path{"v1", "ns1", KindVol},
+			},
+		},
+		{
+			"ns1/**",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
+				Path{"v1", "ns1", KindVol},
+			},
+		},
+		{
+			"ns1/svc/*",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
+			},
+		},
+		{
+			"ns*/svc/s*",
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"s2", "ns2", KindSvc},
 			},
+		},
+		{
+			"**/s*",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
+				Path{"s2", "ns2", KindSvc},
+			},
+		},
+		{
+			"s*",
+			Paths{},
 		},
 		{
 			"*/vol/*",
@@ -396,7 +425,7 @@ func TestPathsFilter(t *testing.T) {
 	}
 	for _, test := range tests {
 		filtered := l.Filter(test.pattern)
-		assert.Equal(t, filtered.String(), test.expected.String())
+		assert.Equalf(t, test.expected.String(), filtered.String(), "match %s in %s", test.pattern, l)
 	}
 }
 
