@@ -189,11 +189,11 @@ func (ea *ExecutorArg) RunCmdEnv() (map[string]string, error) {
 	return ea.runArgsEnvM, nil
 }
 
-func (ea *ExecutorArg) StartArgs() (*args.T, error) {
+func (ea *ExecutorArg) StartArgs(ctx context.Context) (*args.T, error) {
 	var id string
 	if ea.BT == nil {
 		return nil, fmt.Errorf("can't get start args from nil base container")
-	} else if inspect := ea.BT.executer.Inspect(); inspect == nil {
+	} else if inspect := ea.BT.executer.Inspect(ctx); inspect == nil {
 		return nil, fmt.Errorf("can't get start args from nil base container")
 	} else if id = inspect.ID(); len(id) == 0 {
 		return nil, fmt.Errorf("can't get start args from nil base container")

@@ -61,11 +61,11 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 }
 
 func (t *T) startIPVLAN(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (t *T) startIPVLAN(ctx context.Context) error {
 }
 
 func (t *T) stopIPVLAN(ctx context.Context) error {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}

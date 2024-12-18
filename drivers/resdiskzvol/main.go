@@ -41,7 +41,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Infof("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label(ctx))
 		return nil
 	}
 	if err := t.setStartedProp("false"); err != nil {
@@ -54,7 +54,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s is already up", t.Label())
+		t.Log().Infof("%s is already up", t.Label(ctx))
 		return nil
 	}
 	if err := t.setStartedProp("true"); err != nil {
@@ -120,7 +120,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return t.Name
 }
 

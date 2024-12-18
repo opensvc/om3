@@ -76,7 +76,10 @@ type (
 		IsShared() bool
 		IsStandby() bool
 		IsStatusDisabled() bool
-		Label() string
+
+		// Label returns a formatted short description of the Resource
+		Label(context.Context) string
+
 		Log() *plog.Logger
 		Manifest() *manifest.T
 		MatchRID(string) bool
@@ -543,12 +546,12 @@ func (t T) TagSet() TagSet {
 	return s
 }
 
-func formatResourceLabel(r Driver) string {
+func formatResourceLabel(ctx context.Context, r Driver) string {
 	name := r.Manifest().DriverID.Name
 	if name == "" {
-		return r.Label()
+		return r.Label(ctx)
 	} else {
-		return strings.Join([]string{name, r.Label()}, " ")
+		return strings.Join([]string{name, r.Label(ctx)}, " ")
 	}
 }
 
@@ -1161,14 +1164,14 @@ func GetStatus(ctx context.Context, r Driver) Status {
 	// on containers it will set the initial inspect.
 	resStatus := EvalStatus(ctx, r)
 	return Status{
-		Label:       formatResourceLabel(r),
+		Label:       formatResourceLabel(ctx, r),
 		Type:        r.Manifest().DriverID.String(),
 		Status:      resStatus,
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
-		Info:        getStatusInfo(r),
+		Info:        getStatusInfo(ctx, r),
 		Restart:     RestartFlag(r.RestartCount()),
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
@@ -1237,9 +1240,9 @@ func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), er
 	return func() { _ = lock.UnLock() }, nil
 }
 
-func getStatusInfo(t Driver) (data map[string]any) {
+func getStatusInfo(ctx context.Context, t Driver) (data map[string]any) {
 	if i, ok := t.(StatusInfoer); ok {
-		data = i.StatusInfo()
+		data = i.StatusInfo(ctx)
 	} else {
 		data = make(map[string]any)
 	}

@@ -632,8 +632,9 @@ func (t *T) postIngest(ctx context.Context) error {
 	return errs
 }
 
-// Label returns a formatted short description of the Resource
-func (t *T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t *T) Label(_ context.Context) string {
 	return fmt.Sprintf("srdf/s symid:%s dg:%s rdfg:%d", t.SymDG, t.SymID, t.RDFG)
 }
 

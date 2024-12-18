@@ -34,7 +34,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	var s string
 	if len(t.Domains) > 0 {
 		s = strings.Join(t.Domains, " ")
@@ -61,7 +63,8 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) StatusInfo() map[string]interface{} {
+// StatusInfo implements resource.StatusInfoer
+func (t T) StatusInfo(_ context.Context) map[string]interface{} {
 	data := make(map[string]interface{})
 	data["domains"] = t.Domains
 	data["routes"] = t.Routes

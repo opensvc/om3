@@ -33,7 +33,7 @@ type (
 
 func (t *CmdDaemonLeave) Run() (err error) {
 	var (
-		tk    string
+		tk string
 
 		tkCli *client.T
 	)

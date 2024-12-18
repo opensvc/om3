@@ -53,11 +53,11 @@ func (t *T) stopOVSPort(dev string) error {
 }
 
 func (t *T) startOVS(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -134,11 +134,11 @@ func (t *T) startOVS(ctx context.Context) error {
 func (t *T) stopOVS(ctx context.Context) error {
 	var hostDev string
 
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}

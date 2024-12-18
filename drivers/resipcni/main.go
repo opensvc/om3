@@ -85,14 +85,15 @@ func (t T) pluginFile(plugin string) string {
 }
 
 // getCNINetNS returns the value of the CNI_NETNS env var of cni commands
-func (t T) getCNINetNS() (string, error) {
+func (t T) getCNINetNS(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
-		return t.getResourceNSPath()
+		return t.getResourceNSPathCtx(ctx)
 	} else {
 		return t.getObjectNSPIDFile()
 	}
 }
 
+// getCNINetNS returns the value of the CNI_NETNS env var of cni commands
 func (t T) getCNINetNSCtx(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
 		return t.getResourceNSPathCtx(ctx)
@@ -102,9 +103,9 @@ func (t T) getCNINetNSCtx(ctx context.Context) (string, error) {
 }
 
 // getCNIContainerID returns the value of the CNI_CONTAINERID env var of cni commands
-func (t T) getCNIContainerID() (string, error) {
+func (t T) getCNIContainerID(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
-		return t.getResourceNSPID()
+		return t.getResourceNSPID(ctx)
 	} else {
 		return t.getObjectNSPID()
 	}
@@ -126,45 +127,37 @@ func (t T) getObjectNSPIDFile() (string, error) {
 	return t.objectNSPIDFile(), nil
 }
 
-func (t T) getResourceNSPID() (string, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
+func (t T) getResourceNSPID(ctx context.Context) (string, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	i, ok := r.(resource.PIDer)
-	if !ok {
+	} else if i, ok := r.(resource.PIDer); !ok {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a pid", t.NetNS)
+	} else {
+		return fmt.Sprint(i.PID(ctx)), nil
 	}
-	return fmt.Sprint(i.PID()), nil
 }
 
 func (t T) getResourceNSPathCtx(ctx context.Context) (string, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	if o, ok := r.(resource.NetNSPathCtxer); ok {
-		return o.NetNSPathCtx(ctx)
 	} else if o, ok := r.(resource.NetNSPather); ok {
-		return o.NetNSPath()
-	}
-	return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
-}
-
-func (t T) getResourceNSPath() (string, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
-		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	i, ok := r.(resource.NetNSPather)
-	if !ok {
+		return o.NetNSPath(ctx)
+	} else {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
 	}
-	return i.NetNSPath()
 }
 
-func (t T) getNS() (ns.NetNS, error) {
-	if path, err := t.getCNINetNS(); err != nil {
+func (t T) getResourceNSPath(ctx context.Context) (string, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	} else if i, ok := r.(resource.NetNSPather); !ok {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
+	} else {
+		return i.NetNSPath(ctx)
+	}
+}
+func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
+	if path, err := t.getCNINetNS(ctx); err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, nil
@@ -281,9 +274,10 @@ func (t T) purgeCNIVarFileWithIP(ip net.IP) error {
 	}
 }
 
-func (t *T) StatusInfo() map[string]interface{} {
+// StatusInfo implements resource.StatusInfoer
+func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	data := make(map[string]interface{})
-	if ip, _, err := t.ipNet(); (err == nil) && (len(ip) > 0) {
+	if ip, _, err := t.ipNet(ctx); (err == nil) && (len(ip) > 0) {
 		data["ipaddr"] = ip.String()
 	}
 	data["expose"] = t.Expose
@@ -318,14 +312,15 @@ func (t *T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return t.delObjectNetNS()
 	})
-	if err := t.start(); err != nil {
+	if err := t.start(ctx); err != nil {
 		return err
 	}
 	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		return t.stop()
+		// Don't use start context to stop (it may be already deadlined)
+		return t.stop(nil)
 	})
 	return nil
 }
@@ -335,7 +330,7 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("already down")
 		return nil
 	}
-	if err := t.stop(); err != nil {
+	if err := t.stop(ctx); err != nil {
 		return err
 	}
 	if err := t.delObjectNetNS(); err != nil {
@@ -369,9 +364,11 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(ctx context.Context) string {
 	var s string
-	if ip, ipnet, _ := t.ipNet(); ipnet != nil {
+	if ip, ipnet, _ := t.ipNet(ctx); ipnet != nil {
 		ones, _ := ipnet.Mask.Size()
 		s = fmt.Sprintf("%s %s/%d in %s", t.Network, ip, ones, t.NetNS)
 	} else {
@@ -396,12 +393,12 @@ func (t T) LinkTo() string {
 	return t.NetNS
 }
 
-func (t T) ipNet() (net.IP, *net.IPNet, error) {
+func (t T) ipNet(ctx context.Context) (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
 		netip net.IP
 	)
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return netip, ipnet, err
 	}
@@ -503,8 +500,12 @@ func (t T) netConf() (NetConf, error) {
 	return data, nil
 }
 
-func (t T) stop() error {
-	ip, _, _ := t.ipNet()
+func (t T) stop(ctx context.Context) error {
+	if ctx == nil {
+		// TODO: introduce t.StopTimeout and use context.WithTimeout ?
+		ctx = context.Background()
+	}
+	ip, _, _ := t.ipNet(ctx)
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -515,12 +516,12 @@ func (t T) stop() error {
 	}
 	bin := t.pluginFile(netConf.Type)
 
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
 
-	containerID, err := t.getCNIContainerID()
+	containerID, err := t.getCNIContainerID(ctx)
 	if err != nil {
 		return err
 	}
@@ -579,7 +580,7 @@ func (t T) stop() error {
 	return nil
 }
 
-func (t T) start() error {
+func (t T) start(ctx context.Context) error {
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -590,7 +591,7 @@ func (t T) start() error {
 	}
 	bin := t.pluginFile(netConf.Type)
 
-	cniNetNS, err := t.getCNINetNS()
+	cniNetNS, err := t.getCNINetNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -600,7 +601,7 @@ func (t T) start() error {
 		return err
 	}
 
-	containerID, err := t.getCNIContainerID()
+	containerID, err := t.getCNIContainerID(ctx)
 	if err != nil {
 		return err
 	}
@@ -667,7 +668,10 @@ func (t T) start() error {
 	case errors.Is(err, ErrNoIPAddrAvail), errors.Is(err, ErrDupIPAlloc):
 		t.Log().Infof("clean allocations and retry: %s", err)
 		t.purgeCNIVarDir()
-		t.stop() // clean run leftovers (container veth name provided (eth12) already exists)
+
+		// clean run leftovers (container veth name provided (eth12) already exists)
+		// use nil context, start context may be deadlined
+		t.stop(nil) // clean run leftovers (container veth name provided (eth12) already exists)
 		err = run()
 	default:
 		t.Log().Errorf("%s", err)

@@ -93,12 +93,8 @@ func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 	}
 }
 
-func (e *Executor) Inspect() Inspecter {
+func (e *Executor) Inspect(ctx context.Context) Inspecter {
 	if !e.inspected {
-		// TODO: find callers, InspectRefresh should have been called first.
-		e.log().Infof("inspect called before Inspect refreshed, use dedicated context")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
 		i, _ := e.InspectRefresh(ctx)
 		return i
 	}
@@ -174,7 +170,7 @@ func (e *Executor) Run(ctx context.Context) error {
 }
 
 func (e *Executor) Start(ctx context.Context) error {
-	a, err := e.args.StartArgs()
+	a, err := e.args.StartArgs(ctx)
 	if err != nil {
 		return err
 	}

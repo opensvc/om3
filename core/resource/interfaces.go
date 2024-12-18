@@ -64,7 +64,7 @@ type (
 	// "pushinfo" action.
 	//
 	StatusInfoer interface {
-		StatusInfo() map[string]interface{}
+		StatusInfo(context.Context) map[string]interface{}
 	}
 
 	// NetNSPather exposes a NetNSPath method a resource can call to
@@ -73,11 +73,7 @@ type (
 	// For example, the container.docker driver's NetNSPath() would return
 	// the SandboxKey
 	NetNSPather interface {
-		NetNSPath() (string, error)
-	}
-
-	NetNSPathCtxer interface {
-		NetNSPathCtx(ctx context.Context) (string, error)
+		NetNSPath(context.Context) (string, error)
 	}
 
 	// PIDer exposes a PID method a resource can call to
@@ -86,7 +82,7 @@ type (
 	// first process of the container.
 	// PID() must return 0 when no process is running.
 	PIDer interface {
-		PID() int
+		PID(context.Context) int
 	}
 
 	shutdowner interface {

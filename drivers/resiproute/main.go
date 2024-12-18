@@ -1,6 +1,7 @@
 package resiproute
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/core/resource"
@@ -20,7 +21,8 @@ func New() resource.Driver {
 	return &T{}
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return fmt.Sprintf("%s via %s", t.To, t.Gateway)
 }

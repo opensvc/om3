@@ -269,8 +269,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	devsCount := len(t.Devices)
 	devsFromCount := len(t.DevicesFrom)
 	switch {

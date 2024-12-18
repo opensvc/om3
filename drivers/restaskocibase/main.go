@@ -155,6 +155,6 @@ func (t *T) running(ctx context.Context) bool {
 }
 
 // Label returns a formatted short description of the Resource
-func (t *T) Label() string {
+func (t *T) Label(_ context.Context) string {
 	return ""
 }

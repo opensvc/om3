@@ -60,7 +60,8 @@ func New() resource.Driver {
 	return t
 }
 
-func (t *T) StatusInfo() map[string]interface{} {
+// StatusInfo implements resource.StatusInfoer
+func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
@@ -142,7 +143,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return fmt.Sprintf("%s %s", t.ipnet(), t.IPDev)
 }
 

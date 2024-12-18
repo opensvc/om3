@@ -11,11 +11,11 @@ import (
 )
 
 func (t *T) startBridge(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,11 +78,11 @@ func (t *T) startBridge(ctx context.Context) error {
 }
 
 func (t *T) stopBridge(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}

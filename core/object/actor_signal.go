@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 	"syscall"
 
@@ -9,11 +10,11 @@ import (
 
 type (
 	signaler interface {
-		Signal(syscall.Signal) error
+		Signal(context.Context, syscall.Signal) error
 	}
 )
 
-func (t *actor) SignalResource(rid string, sig syscall.Signal) error {
+func (t *actor) SignalResource(ctx context.Context, rid string, sig syscall.Signal) error {
 	t.Resources()
 	r := t.ResourceByID(rid)
 	if r == nil {
@@ -27,7 +28,7 @@ func (t *actor) SignalResource(rid string, sig syscall.Signal) error {
 	if s, ok = i.(signaler); !ok {
 		return fmt.Errorf("resource %s to send %s to does not support signaling", rid, unix.SignalName(sig))
 	}
-	if err := s.Signal(sig); err != nil {
+	if err := s.Signal(ctx, sig); err != nil {
 		return err
 	}
 	return nil

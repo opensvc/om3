@@ -56,7 +56,9 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(t.DiskID != ""), nil
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return t.DiskID
 }
 

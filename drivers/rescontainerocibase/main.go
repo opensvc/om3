@@ -116,7 +116,7 @@ type (
 	// ExecuteInspecter interface defines the functions used to retrieve container
 	// inspecter.
 	ExecuteInspecter interface {
-		Inspect() Inspecter
+		Inspect(context.Context) Inspecter
 		InspectRefresh(context.Context) (Inspecter, error)
 		InspectRefreshed() bool
 	}
@@ -153,7 +153,7 @@ type (
 		RunArgsImage() (*args.T, error)
 		RunArgsCommand() (*args.T, error)
 		RunCmdEnv() (map[string]string, error)
-		StartArgs() (*args.T, error)
+		StartArgs(ctx context.Context) (*args.T, error)
 		StopArgs() *args.T
 	}
 
@@ -219,11 +219,7 @@ type (
 	}
 
 	containerIDer interface {
-		ContainerID() string
-	}
-
-	containerIDCtxer interface {
-		ContainerIDCtx(ctx context.Context) string
+		ContainerID(ctx context.Context) string
 	}
 
 	containerInspectRefresher interface {
@@ -249,19 +245,7 @@ func (t *BT) IsAlwaysImagePullPolicy() bool {
 	return t.ImagePullPolicy == imagePullPolicyAlways
 }
 
-func (t *BT) ContainerID() string {
-	if t.executer == nil {
-		t.Log().Debugf("can't get container id from undefined executer")
-		return ""
-	}
-	if i := t.executer.Inspect(); i == nil {
-		return ""
-	} else {
-		return i.ID()
-	}
-}
-
-func (t *BT) ContainerIDCtx(ctx context.Context) string {
+func (t *BT) ContainerID(ctx context.Context) string {
 	if t.executer == nil {
 		t.Log().Debugf("can't get container id from undefined executer")
 		return ""
@@ -271,7 +255,7 @@ func (t *BT) ContainerIDCtx(ctx context.Context) string {
 			return ""
 		}
 	}
-	if i := t.executer.Inspect(); i == nil {
+	if i := t.executer.Inspect(ctx); i == nil {
 		return ""
 	} else {
 		return i.ID()
@@ -299,7 +283,7 @@ func (t *BT) ContainerInspect(ctx context.Context) (Inspecter, error) {
 		return nil, errors.New("can't get inspect from undefined executer")
 	}
 	if t.executer.InspectRefreshed() {
-		return t.executer.Inspect(), nil
+		return t.executer.Inspect(ctx), nil
 	}
 	return t.executer.InspectRefresh(ctx)
 }
@@ -384,7 +368,9 @@ func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
 	return envL, envM, nil
 }
 
-func (t *BT) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t *BT) Label(_ context.Context) string {
 	return t.Image
 }
 
@@ -454,18 +440,7 @@ func (t *BT) NeedPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }
 
-func (t *BT) NetNSPath() (string, error) {
-	if t.executer == nil {
-		return "", fmt.Errorf("NetNSPath: undefined executer")
-	}
-	if i := t.executer.Inspect(); i == nil {
-		return "", nil
-	} else {
-		return i.SandboxKey(), nil
-	}
-}
-
-func (t *BT) NetNSPathCtx(ctx context.Context) (string, error) {
+func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 	if t.executer == nil {
 		return "", fmt.Errorf("NetNSPath: undefined executer")
 	}
@@ -474,19 +449,25 @@ func (t *BT) NetNSPathCtx(ctx context.Context) (string, error) {
 			return "", err
 		}
 	}
-	if i := t.executer.Inspect(); i == nil {
+	if i := t.executer.Inspect(ctx); i == nil {
 		return "", nil
 	} else {
 		return i.SandboxKey(), nil
 	}
 }
 
-func (t *BT) PID() int {
+func (t *BT) PID(ctx context.Context) int {
 	if t.executer == nil {
 		t.Log().Debugf("PID called with undefined executer")
 		return 0
 	}
-	if i := t.executer.Inspect(); i == nil {
+	if !t.executer.InspectRefreshed() {
+		if _, err := t.executer.InspectRefresh(ctx); err != nil {
+			t.Log().Debugf("PID can't refresh inspect: %s", err)
+			return 0
+		}
+	}
+	if i := t.executer.Inspect(ctx); i == nil {
 		return 0
 	} else {
 		return i.PID()
@@ -543,7 +524,7 @@ func (t *BT) Start(ctx context.Context) error {
 			return t.logMainAction("start", fmt.Errorf("inspect refresh: %s", err))
 		}
 	}
-	inspect := t.executer.Inspect()
+	inspect := t.executer.Inspect(ctx)
 	if inspect == nil || !inspect.Defined() {
 		return logError(t.pullAndRun(ctx))
 	}
@@ -661,7 +642,7 @@ func (t *BT) Status(ctx context.Context) status.T {
 			return status.Down
 		}
 	} else {
-		inspect = t.executer.Inspect()
+		inspect = t.executer.Inspect(ctx)
 	}
 	if inspect == nil {
 		t.Log().Debugf("status down on inspect nil")
@@ -722,8 +703,6 @@ func (t *BT) Executer() Executer {
 	return t.executer
 }
 
-// NetNSPath implements the resource.NetNSPather optional interface.
-// Used by ip.netns and ip.route to configure network stuff in the container.
 func (t *BT) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
@@ -733,7 +712,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	if t.executer == nil {
 		return fmt.Errorf("findAndStart: undefined executer")
 	}
-	i := t.executer.Inspect()
+	i := t.executer.Inspect(ctx)
 	id := i.ID()
 	errs := make(chan error, 1)
 	go func() {
@@ -915,10 +894,8 @@ func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) 
 		return
 	} else {
 		tgtName = "container:" + tgt.ContainerName()
-		if i, ok := tgt.(containerIDCtxer); ok {
-			tgtID = "container:" + i.ContainerIDCtx(ctx)
-		} else if i, ok := tgt.(containerIDer); ok {
-			tgtID = "container:" + i.ContainerID()
+		if i, ok := tgt.(containerIDer); ok {
+			tgtID = "container:" + i.ContainerID(ctx)
 		}
 	}
 

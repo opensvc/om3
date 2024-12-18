@@ -8,15 +8,16 @@ import (
 	"fmt"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+
 	"github.com/opensvc/om3/core/actionrollback"
 )
 
 func (t *T) startMACVLAN(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func (t *T) startMACVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev st
 }
 
 func (t *T) stopMACVLAN(ctx context.Context) error {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}

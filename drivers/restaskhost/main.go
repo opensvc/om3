@@ -197,8 +197,9 @@ func (t *T) stop(ctx context.Context) error {
 	return fmt.Errorf("waited too long for process %s to disappear", procs)
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return ""
 }
 
