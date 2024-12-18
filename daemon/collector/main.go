@@ -149,7 +149,7 @@ type (
 	//   "obj_path":"foo014",
 	//   "node":"dev2n1",
 	//   "sid":"cb373a76-991a-48e1-af18-2003b29d5b2e",
-	//   "argv":["./om3","foo01*","start","--local","--log=info","--caller"],
+	//   "argv":["./om3","foo01*","start","--local","--caller"],
 	//   "cwd":"/root/dev/om3",
 	//   "action":"start",
 	//   "origin":"user",

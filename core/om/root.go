@@ -99,6 +99,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if flag := cmd.Flags().Lookup("quiet"); flag != nil && flag.Value.String() == "true" {
 		quietFlag = true
 	} else {
+		// TODO: only for actions
 		cmd.SilenceErrors = true
 	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {

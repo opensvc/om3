@@ -125,10 +125,12 @@
         Replaced by `om cluster abort` to abort the pending cluster action orchestration.
         
 
- * **Flags Removed:**
+ * **Flags Added:**
 
-    * `--debug`
-        Replaced by `--log debug|info|warn|error|fatal|panic`.
+    * `om <selector> <action> --local -q|--quiet`
+        Don't print the logs on the console.
+
+ * **Flags Removed:**
 
     * `om get --eval`
         Replaced by `om eval`
