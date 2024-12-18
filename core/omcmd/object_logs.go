@@ -141,10 +141,11 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	for {
 		select {
 		case err := <-stream.Errors():
-			fmt.Fprintln(os.Stderr, err)
 			if err == nil {
 				// The sender has stopped sending
 				return nil
+			} else {
+				fmt.Fprintln(os.Stderr, err)
 			}
 		case ev := <-stream.Events():
 			ev.Render(t.Output)
