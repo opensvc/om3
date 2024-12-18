@@ -308,6 +308,7 @@ func (t *T) hasRouteDevIn(dest, dev, path string) (bool, error) {
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 1),
 	)
 	if err := cmd.Run(); err != nil {
 		return false, err
@@ -325,6 +326,7 @@ func (t *T) hasRouteViaIn(dest, gw, path string) (bool, error) {
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 1),
 	)
 	if err := cmd.Run(); err != nil {
 		return false, err
