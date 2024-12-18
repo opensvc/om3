@@ -263,7 +263,7 @@ func (t Path) Match(pattern string) bool {
 		return true
 	}
 	if pattern == "*" {
-		return (t.Kind == KindSvc) && (t.Namespace == "root")
+		return t.Kind == KindSvc
 	}
 	l := strings.Split(pattern, "/")
 	f := 0

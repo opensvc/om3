@@ -326,7 +326,7 @@ func TestPathMatch(t *testing.T) {
 			namespace: "ns1",
 			kind:      "svc",
 			pattern:   "*",
-			match:     false,
+			match:     true,
 		},
 		"svc1 matches *": {
 			name:      "svc1",
@@ -372,6 +372,7 @@ func TestPathsFilter(t *testing.T) {
 	l := Paths{
 		Path{"s1", "ns1", KindSvc},
 		Path{"s2", "ns2", KindSvc},
+		Path{"s3", "root", KindSvc},
 		Path{"v1", "ns1", KindVol},
 	}
 	tests := []struct {
@@ -379,9 +380,19 @@ func TestPathsFilter(t *testing.T) {
 		expected Paths
 	}{
 		{
-			"ns1/*/[vs]1",
+			"*",
 			Paths{
 				Path{"s1", "ns1", KindSvc},
+				Path{"s2", "ns2", KindSvc},
+				Path{"s3", "root", KindSvc},
+			},
+		},
+		{
+			"**",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
+				Path{"s2", "ns2", KindSvc},
+				Path{"s3", "root", KindSvc},
 				Path{"v1", "ns1", KindVol},
 			},
 		},
@@ -390,6 +401,12 @@ func TestPathsFilter(t *testing.T) {
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"v1", "ns1", KindVol},
+			},
+		},
+		{
+			"root/svc/*",
+			Paths{
+				Path{"s3", "root", KindSvc},
 			},
 		},
 		{
@@ -410,15 +427,25 @@ func TestPathsFilter(t *testing.T) {
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"s2", "ns2", KindSvc},
+				Path{"s3", "root", KindSvc},
 			},
 		},
 		{
 			"s*",
-			Paths{},
+			Paths{
+				Path{"s3", "root", KindSvc},
+			},
 		},
 		{
 			"*/vol/*",
 			Paths{
+				Path{"v1", "ns1", KindVol},
+			},
+		},
+		{
+			"ns1/*/[vs]1",
+			Paths{
+				Path{"s1", "ns1", KindSvc},
 				Path{"v1", "ns1", KindVol},
 			},
 		},
