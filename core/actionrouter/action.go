@@ -98,16 +98,6 @@ type (
 		// no
 		//
 		Color string
-
-		//
-		// Server bypasses the agent api requester automatic selection. It
-		// Accepts a uri where the scheme can be:
-		// raw   => jsonrpc
-		// http  => http/2 cleartext (over unix domain socket only)
-		// https => http/2 with TLS
-		// tls   => http/2 with TLS
-		//
-		Server string
 	}
 
 	// Actioner is the interface implemented by nodeaction.T and objectaction.T
@@ -166,7 +156,7 @@ func Do(t Actioner) error {
 		m.SetColor(o.Color)
 		m.SetFormat(o.Output)
 		m.SetSelector(o.ObjectSelector)
-		cli, e := client.New(client.WithURL(o.Server), client.WithTimeout(0))
+		cli, e := client.New(client.WithTimeout(0))
 		if e != nil {
 			_, _ = fmt.Fprintln(os.Stderr, e)
 			return e

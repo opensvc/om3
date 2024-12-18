@@ -10,7 +10,6 @@ type (
 		Color          string
 		Output         string
 		ObjectSelector string
-		Server         string
 	}
 
 	// OptsLogs contains options used by all log commands:

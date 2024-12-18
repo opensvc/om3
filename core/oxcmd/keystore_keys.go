@@ -23,7 +23,7 @@ type (
 
 func (t *CmdKeystoreKeys) Run(selector, kind string) error {
 	ctx := context.Background()
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

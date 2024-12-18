@@ -31,7 +31,7 @@ func (t *CmdDaemonShutdown) Run() error {
 }
 
 func (t *CmdDaemonShutdown) doNodes() error {
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(t.Timeout))
+	c, err := client.New(client.WithTimeout(t.Timeout))
 	if err != nil {
 		return err
 	}

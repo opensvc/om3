@@ -28,7 +28,7 @@ type result map[string]rawconfig.T
 
 func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 	data := make(result)
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return data, err
 	}

@@ -33,7 +33,7 @@ func (t *CmdNodePrintConfig) Run() error {
 		nodenames []string
 	)
 
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

@@ -16,6 +16,5 @@ func (t *CmdObjectComplianceListModules) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithServer(t.Server),
 	).Do()
 }

@@ -21,10 +21,9 @@ func (t *CmdNodeCapabilitiesScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(t.Server))
+			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}

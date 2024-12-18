@@ -21,7 +21,7 @@ func (t *CmdDaemonStats) Run() error {
 			data cluster.Stats
 			c    *client.T
 		)
-		c, err = client.New(client.WithURL(t.Server))
+		c, err = client.New()
 		if err != nil {
 			return err
 		}

@@ -28,9 +28,7 @@ func (t *CmdDaemonAuth) Run() error {
 	if err := t.checkParams(); err != nil {
 		return fmt.Errorf("%w: %w", ErrCmdDaemonAuth, err)
 	}
-	c, err := client.New(
-		client.WithURL(t.Server),
-	)
+	c, err := client.New()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrCmdDaemonAuth, err)
 	}

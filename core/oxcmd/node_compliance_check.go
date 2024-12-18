@@ -20,6 +20,5 @@ func (t *CmdNodeComplianceCheck) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 	).Do()
 }

@@ -31,7 +31,7 @@ func (t *CmdNodeUnfreeze) Run() error {
 }
 
 func (t *CmdNodeUnfreeze) doRemote() error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}
