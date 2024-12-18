@@ -262,6 +262,9 @@ func (t Path) Match(pattern string) bool {
 	if pattern == "**" {
 		return true
 	}
+	if pattern == "*" {
+		return t.Kind == KindSvc
+	}
 	l := strings.Split(pattern, "/")
 	f := 0
 	if strings.Contains(pattern, "**") {
@@ -274,7 +277,7 @@ func (t Path) Match(pattern string) bool {
 	switch len(l) {
 	case 1:
 		s := t.FQN()
-		if fnmatch.Match("*/svc/"+pattern, s, f) {
+		if fnmatch.Match("root/svc/"+pattern, s, f) {
 			return true
 		}
 	case 2:

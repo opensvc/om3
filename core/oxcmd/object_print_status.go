@@ -81,7 +81,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		return fmt.Errorf("todo: honor --refresh")
 	}
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

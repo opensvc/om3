@@ -19,7 +19,6 @@ func (t *CmdNodeValidateConfig) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

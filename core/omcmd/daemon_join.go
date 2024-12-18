@@ -25,9 +25,8 @@ type (
 	CmdDaemonJoin struct {
 		CmdDaemonCommon
 
-		Node   string
-		Server string
-		Token  string
+		Node  string
+		Token string
 
 		// Timeout is the maximum duration for leave
 		Timeout time.Duration
@@ -66,12 +65,7 @@ func (t *CmdDaemonJoin) run() error {
 		_ = os.Remove(name)
 	}(certFile)
 
-	var url string
-	if t.Server == "" {
-		url = daemonenv.HTTPNodeURL(t.Node)
-	} else {
-		url = t.Server
-	}
+	url := daemonenv.HTTPNodeURL(t.Node)
 	cli, err = client.New(
 		client.WithURL(url),
 		client.WithRootCa(certFile),

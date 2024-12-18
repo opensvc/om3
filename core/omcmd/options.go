@@ -10,10 +10,9 @@ type (
 		Color          string
 		Output         string
 		Local          bool
-		Log            string
 		ObjectSelector string
 		Quiet          bool
-		Server         string
+		Debug          bool
 	}
 
 	// OptsLogs contains options used by all log commands:

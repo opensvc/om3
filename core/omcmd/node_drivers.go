@@ -15,7 +15,6 @@ func (t *CmdNodeDrivers) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()

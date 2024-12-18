@@ -15,7 +15,7 @@ type (
 )
 
 func (t *CmdDaemonRunning) Run() error {
-	cli, err := client.New(client.WithURL(t.Server))
+	cli, err := client.New()
 	if err != nil {
 		return err
 	}

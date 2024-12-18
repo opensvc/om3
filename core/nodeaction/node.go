@@ -174,15 +174,6 @@ func WithColor(s string) funcopt.O {
 	})
 }
 
-// WithServer sets the api url.
-func WithServer(s string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.Server = s
-		return nil
-	})
-}
-
 // WithLocalFunc sets a function to run if the action is local
 func WithLocalFunc(f func() (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
@@ -254,7 +245,7 @@ func (t T) DoAsync() error {
 		waitC       = make(chan error)
 		b           []byte
 	)
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
@@ -381,7 +372,7 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

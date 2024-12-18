@@ -24,7 +24,6 @@ func (t *CmdNodePushDisks) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
@@ -33,7 +32,7 @@ func (t *CmdNodePushDisks) Run() error {
 			return n.PushDisks()
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(t.Server))
+			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}

@@ -36,7 +36,7 @@ func (t *CmdNetworkSetup) doDaemon() error {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
+	if c, err = client.New(); err != nil {
 		return err
 	}
 	return fmt.Errorf("todo %v", c)

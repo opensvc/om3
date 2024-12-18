@@ -33,7 +33,7 @@ func (t *CmdNodeAbort) Run() error {
 }
 
 func (t *CmdNodeAbort) doRemote() error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (t *CmdNodeAbort) doRemote() error {
 			m.SetColor(t.Color)
 			m.SetFormat(t.Output)
 			m.SetSelector(t.ObjectSelector)
-			cli, e := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+			cli, e := client.New(client.WithTimeout(0))
 			if e != nil {
 				_, _ = fmt.Fprintln(os.Stderr, e)
 				return

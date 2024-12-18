@@ -261,7 +261,6 @@ func newCmdDaemonJoin() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
-	flags.StringVar(&options.Server, "server", "", "URI of the opensvc api server when custom port is used.")
 
 	if err := cmd.MarkFlagRequired("node"); err != nil {
 		panic(err)

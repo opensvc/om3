@@ -20,7 +20,7 @@ type (
 )
 
 func (t *CmdNodeRelayStatus) Run() error {
-	cli, err := client.New(client.WithURL(t.Server))
+	cli, err := client.New()
 	if err != nil {
 		return err
 	}

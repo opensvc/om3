@@ -58,7 +58,7 @@ func (t *CmdNodeEditConfig) Run() error {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
+	if c, err = client.New(); err != nil {
 		return err
 	}
 	return t.DoRemote(nodename, c)

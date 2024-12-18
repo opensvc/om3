@@ -49,7 +49,7 @@ func (t *CmdDaemonRestart) doLocal() error {
 }
 
 func (t *CmdDaemonRestart) doNodes() error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

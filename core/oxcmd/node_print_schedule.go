@@ -21,7 +21,7 @@ type (
 )
 
 func (t *CmdNodePrintSchedule) Run() error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

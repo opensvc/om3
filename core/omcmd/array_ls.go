@@ -55,7 +55,7 @@ func (t *CmdArrayLs) extractDaemon() ([]string, error) {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
+	if c, err = client.New(); err != nil {
 		return []string{}, err
 	}
 	return []string{}, fmt.Errorf("todo %v", c)

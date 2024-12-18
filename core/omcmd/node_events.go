@@ -181,7 +181,7 @@ func (t *CmdNodeEvents) doNodes() error {
 			return err
 		}
 	}
-	t.cli, err = client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	t.cli, err = client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

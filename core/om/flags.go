@@ -30,7 +30,11 @@ func addFlagsGlobalLocal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 }
 
 func addFlagsGlobalQuiet(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Display no logs and no progress.")
+	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Don't print the logs on the console.")
+}
+
+func addFlagsGlobalDebug(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.BoolVar(&p.Debug, "debug", false, "Show debug log entries.")
 }
 
 func addFlagsGlobalColor(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
@@ -43,14 +47,6 @@ func addFlagsGlobalOutput(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.MarkHidden("format")
 }
 
-func addFlagsGlobalLog(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVar(&p.Log, "log", "", "Display the logs on the console at the specified level.")
-}
-
-func addFlagsGlobalServer(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server.")
-}
-
 func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.StringVarP(&p.ObjectSelector, "service", "", "", "Execute on a list of objects.")
 	flagSet.StringVarP(&p.ObjectSelector, "selector", "s", "", "Execute on a list of objects.")
@@ -60,10 +56,9 @@ func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal
 func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	addFlagsGlobalLocal(flagSet, p)
 	addFlagsGlobalQuiet(flagSet, p)
+	addFlagsGlobalDebug(flagSet, p)
 	addFlagsGlobalColor(flagSet, p)
 	addFlagsGlobalOutput(flagSet, p)
-	addFlagsGlobalLog(flagSet, p)
-	addFlagsGlobalServer(flagSet, p)
 	addFlagsGlobalObjectSelector(flagSet, p)
 }
 

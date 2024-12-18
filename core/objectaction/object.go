@@ -216,15 +216,6 @@ func WithColor(s string) funcopt.O {
 	})
 }
 
-// WithServer sets the api url.
-func WithServer(s string) funcopt.O {
-	return funcopt.F(func(i any) error {
-		t := i.(*T)
-		t.Server = s
-		return nil
-	})
-}
-
 // WithLocalFunc sets a function to run if the action is local
 func WithLocalFunc(f func(context.Context, naming.Path) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
@@ -390,7 +381,7 @@ func (t T) DoAsync() error {
 	if !ok {
 		return fmt.Errorf("unexpected action: %s", t.Target)
 	}
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
@@ -775,7 +766,7 @@ func (t T) DoRemote() error {
 		return fmt.Errorf("no remote function defined")
 	}
 
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 type (
 	CmdDaemonStart struct {
 		OptsGlobal
-		Debug      bool
 		Foreground bool
 		CPUProfile string
 	}
@@ -18,17 +17,17 @@ type (
 
 func (t *CmdDaemonStart) cmdArgs() []string {
 	var args []string
-	if t.Log != "" {
-		args = append(args, "--log", t.Log)
+	if t.Quiet {
+		args = append(args, "--quiet")
 	}
-	if t.Server != "" {
-		args = append(args, "--server", t.Server)
+	if t.Debug {
+		args = append(args, "--debug")
 	}
 	return args
 }
 
 func (t *CmdDaemonStart) Run() error {
-	cli, err := client.New(client.WithURL(t.Server))
+	cli, err := client.New()
 	if err != nil {
 		return err
 	}

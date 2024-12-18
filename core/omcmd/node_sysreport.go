@@ -25,9 +25,8 @@ func (t *CmdNodeSysreport) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(t.Server))
+			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}

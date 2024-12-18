@@ -24,7 +24,6 @@ func (t *CmdObjectComplianceShowRuleset) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithServer(t.Server),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err

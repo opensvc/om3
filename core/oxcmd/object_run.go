@@ -35,7 +35,7 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(t.Server))
+			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}

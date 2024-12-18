@@ -19,7 +19,7 @@ type (
 )
 
 func (t *CmdObjectClear) Run(selector, kind string) error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

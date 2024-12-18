@@ -28,109 +28,109 @@ func TestAppStop(t *testing.T) {
 		expectedResults []string
 	}{
 		"logInfo": {
-			[]string{"--rid", "app#1", "--log=debug"},
+			[]string{"--rid", "app#1", "--debug"},
 			[]string{"app#1: stdout: line2"},
 		},
 		"logError": {
-			[]string{"--rid", "app#2", "--log=debug"},
+			[]string{"--rid", "app#2", "--debug"},
 			[]string{"unrecognized option"},
 		},
 		"env": {
-			[]string{"--rid", "app#env", "--log=debug"},
+			[]string{"--rid", "app#env", "--debug"},
 			[]string{"FOO=foo", "acceptMixedCase=value1"},
 		},
 		"cwd": {
-			[]string{"--rid", "app#cwd", "--log=debug"},
+			[]string{"--rid", "app#cwd", "--debug"},
 			[]string{"/usr"},
 		},
 		"cwdWithDefaultType": {
-			[]string{"--rid", "app#cwdWithDefaultType", "--log=debug"},
+			[]string{"--rid", "app#cwdWithDefaultType", "--debug"},
 			[]string{"/usr"},
 		},
 		"badUser": {
-			[]string{"--rid", "app#badUser", "--log=debug"},
+			[]string{"--rid", "app#badUser", "--debug"},
 			[]string{"unable to find user info for 'badUser'"},
 		},
 		"badGroup": {
-			[]string{"--rid", "app#badGroup", "--log=debug"},
+			[]string{"--rid", "app#badGroup", "--debug"},
 			[]string{"unable to find group info for 'badGroup'"},
 		},
 		"badUserGroup": {
-			[]string{"--rid", "app#badUserGroup", "--log=debug"},
+			[]string{"--rid", "app#badUserGroup", "--debug"},
 			[]string{"unable to find user info for 'badUser'"},
 		},
 		"root": {
-			[]string{"--rid", "app#root", "--log=debug"},
+			[]string{"--rid", "app#root", "--debug"},
 			[]string{"uid=0(root) gid=1"}, // daemon may be 12 on solaris
 		},
 		"nonRoot": {
-			[]string{"--rid", "app#root", "--log=debug"},
+			[]string{"--rid", "app#root", "--debug"},
 			[]string{operationNotPermittedMsg},
 		},
 		"stopTrueScript": {
-			[]string{"--rid", "app#stopTrueScript", "--log=debug"},
+			[]string{"--rid", "app#stopTrueScript", "--debug"},
 			[]string{"noSuchFile.opensvc.test"},
 		},
 		"stoptrue": {
-			[]string{"--rid", "app#stoptrue", "--log=debug"},
+			[]string{"--rid", "app#stoptrue", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopTrue": {
-			[]string{"--rid", "app#stopTrue", "--log=debug"},
+			[]string{"--rid", "app#stopTrue", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopT": {
-			[]string{"--rid", "app#stopT", "--log=debug"},
+			[]string{"--rid", "app#stopT", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stop0": {
-			[]string{"--rid", "app#stop0", "--log=debug"},
+			[]string{"--rid", "app#stop0", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopf": {
-			[]string{"--rid", "app#stopf", "--log=debug"},
+			[]string{"--rid", "app#stopf", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopF": {
-			[]string{"--rid", "app#stopF", "--log=debug"},
+			[]string{"--rid", "app#stopF", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopfalse": {
-			[]string{"--rid", "app#stopfalse", "--log=debug"},
+			[]string{"--rid", "app#stopfalse", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopFALSE": {
-			[]string{"--rid", "app#stopFALSE", "--log=debug"},
+			[]string{"--rid", "app#stopFALSE", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopFalse": {
-			[]string{"--rid", "app#stopFalse", "--log=debug"},
+			[]string{"--rid", "app#stopFalse", "--debug"},
 			[]string{"stdout: stop"},
 		},
 		"stopEmpty": {
-			extraArgs: []string{"--rid", "app#stopEmpty", "--log=debug"},
+			extraArgs: []string{"--rid", "app#stopEmpty", "--debug"},
 		},
 		"stopUndef": {
-			extraArgs: []string{"--rid", "app#stopUndef", "--log=debug"},
+			extraArgs: []string{"--rid", "app#stopUndef", "--debug"},
 		},
 		"stopScriptUndef": {
-			[]string{"--rid", "app#stopScriptUndef", "--log=debug"},
+			[]string{"--rid", "app#stopScriptUndef", "--debug"},
 			[]string{"action 'stop' as true value but 'script' keyword is empty"},
 		},
 		"configEnv": {
-			[]string{"--rid", "app#configEnv", "--log=debug"},
+			[]string{"--rid", "app#configEnv", "--debug"},
 			[]string{"FOOCFG1=fooValue1", "FooCFG2=fooValue2"},
 		},
 		"secretEnv": {
-			[]string{"--rid", "app#secretEnv", "--log=debug"},
+			[]string{"--rid", "app#secretEnv", "--debug"},
 			[]string{"FOOSEC1=fooSec1", "FooSEC2=fooSec2"},
 		},
 		"secretEnvMatchers": {
-			[]string{"--rid", "app#secretEnvMatchers", "--log=debug"},
+			[]string{"--rid", "app#secretEnvMatchers", "--debug"},
 			[]string{"foo.foo1=fooSec1", "foo.Foo2=fooSec2"},
 		},
 		"configEnvMatchers": {
-			[]string{"--rid", "app#configEnvMatchers", "--log=debug"},
+			[]string{"--rid", "app#configEnvMatchers", "--debug"},
 			[]string{"FOOKEY1=FOOKEYValue1", "FOOkey2=FOOkeyValue2"},
 		},
 	}
@@ -494,7 +494,7 @@ func TestAppStopStartSequence(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", cases[name].Action, "--log=info", "--color", "no", "--local"}
+		args := []string{"svcapp", cases[name].Action, "--color=no", "--local"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -541,7 +541,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local", "--log=debug", "--color=no"}
+		args := []string{"svcapp", "stop", "--local", "--debug", "--color=no"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -587,7 +587,7 @@ func TestAppStopLimit(t *testing.T) {
 		"solaris": {"limit_memlock", "limit_nproc"},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local", "--color=no", "--log=debug", "--rid", "app#" + name}
+		args := []string{"svcapp", "stop", "--local", "--color=no", "--debug", "--rid", "app#" + name}
 		return args
 	}
 
@@ -725,7 +725,7 @@ func TestAppStartRollback(t *testing.T) {
 			env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 			env.InstallFile("../../testdata/svcapp-rollback.conf", "etc/svcapp.conf")
 			args := getCmd(name)
-			args = append(args, "--log", "debug")
+			args = append(args, "--debug")
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)
 			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)

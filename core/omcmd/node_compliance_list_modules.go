@@ -17,7 +17,6 @@ func (t *CmdNodeComplianceListModules) Run() error {
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

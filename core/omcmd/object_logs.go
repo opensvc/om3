@@ -81,7 +81,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 		nodes []string
 		err   error
 	)
-	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
+	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
@@ -141,10 +141,11 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	for {
 		select {
 		case err := <-stream.Errors():
-			fmt.Fprintln(os.Stderr, err)
 			if err == nil {
 				// The sender has stopped sending
 				return nil
+			} else {
+				fmt.Fprintln(os.Stderr, err)
 			}
 		case ev := <-stream.Events():
 			ev.Render(t.Output)
