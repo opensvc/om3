@@ -46,7 +46,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(lo); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s is already up", t.Label())
+		t.Log().Infof("%s is already up", t.Label(ctx))
 		return nil
 	}
 	if err := t.autoProvision(ctx); err != nil {
@@ -66,7 +66,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(lo); err != nil {
 		return err
 	} else if !v {
-		t.Log().Infof("%s is already down", t.Label())
+		t.Log().Infof("%s is already down", t.Label(ctx))
 	} else if err := lo.FileDelete(t.File); err != nil {
 		return err
 	}
@@ -96,7 +96,9 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return t.File
 }
 

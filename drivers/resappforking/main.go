@@ -77,7 +77,8 @@ func (t *T) Status(ctx context.Context) status.T {
 	return t.CommonStatus(ctx)
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return drvID.String()
 }

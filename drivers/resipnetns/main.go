@@ -77,38 +77,32 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) getNSPID() (int, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
+func (t T) getNSPID(ctx context.Context) (int, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return 0, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	i, ok := r.(resource.PIDer)
-	if !ok {
+	} else if i, ok := r.(resource.PIDer); !ok {
 		return 0, fmt.Errorf("resource %s pointed by the netns keyword does not expose a pid", t.NetNS)
+	} else {
+		return i.PID(ctx), nil
 	}
-	return i.PID(), nil
 }
 
-func (t T) getNS() (ns.NetNS, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
+func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	i, ok := r.(resource.NetNSPather)
-	if !ok {
+	} else if i, ok := r.(resource.NetNSPather); !ok {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
-	}
-	path, err := i.NetNSPath()
-	if err != nil {
+	} else if path, err := i.NetNSPath(ctx); err != nil {
 		return nil, err
-	}
-	if path == "" {
+	} else if path == "" {
 		return nil, nil
+	} else {
+		return ns.GetNS(path)
 	}
-	return ns.GetNS(path)
 }
 
-func (t *T) StatusInfo() map[string]interface{} {
+// StatusInfo implements resource.StatusInfoer
+func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
@@ -313,7 +307,7 @@ func (t *T) Status(ctx context.Context) status.T {
 			return status.Down
 		}
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		t.StatusLog().Error("netns: %s", err)
 		return status.Down
@@ -334,7 +328,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	var dev string
 	if t.NSDev != "" {
 		dev = "@" + t.NSDev

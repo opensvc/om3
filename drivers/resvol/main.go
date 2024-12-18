@@ -130,7 +130,7 @@ func (t T) Start(ctx context.Context) error {
 	if err = t.startFlag(ctx); err != nil {
 		return err
 	}
-	if err = t.installData(); err != nil {
+	if err = t.installData(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -364,7 +364,9 @@ func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 	return l.ConfigureVolume(v, obj)
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return t.Name
 }
 

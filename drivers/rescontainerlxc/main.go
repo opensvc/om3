@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/envprovider"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sshnode"
 )
@@ -166,8 +167,8 @@ func (t T) Stop(ctx context.Context) error {
 
 // NetNSPath implements the resource.NetNSPather optional interface.
 // Used by ip.netns and ip.route to configure network stuff in the container.
-func (t *T) NetNSPath() (string, error) {
-	if pid, err := t.getPID(); err != nil {
+func (t *T) NetNSPath(ctx context.Context) (string, error) {
+	if pid, err := t.getPID(ctx); err != nil {
 		return "", err
 	} else if pid == 0 {
 		return "", fmt.Errorf("container %s is not running", t.Name)
@@ -178,8 +179,8 @@ func (t *T) NetNSPath() (string, error) {
 
 // PID implements the resource.PIDer optional interface.
 // Used by ip.netns to name the veth pair devices.
-func (t *T) PID() int {
-	pid, _ := t.getPID()
+func (t *T) PID(ctx context.Context) int {
+	pid, _ := t.getPID(ctx)
 	return pid
 }
 
@@ -198,7 +199,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	return t.Name
 }
 
@@ -365,8 +368,8 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Signal(sig syscall.Signal) error {
-	pid := t.PID()
+func (t T) Signal(ctx context.Context, sig syscall.Signal) error {
+	pid := t.PID(ctx)
 	if pid == 0 {
 		return nil
 	}
@@ -1016,14 +1019,18 @@ func (t *T) cleanupLinks(links []string) error {
 	return nil
 }
 
-func (t *T) getPID() (int, error) {
+func (t *T) getPID(ctx context.Context) (int, error) {
 	args := []string{"--name", t.Name}
 	args = append(args, t.dataDirArgs()...)
-	cmd := command.New(
+	opts := []funcopt.O{
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
-	)
+	}
+	if ctx != nil {
+		opts = append(opts, command.WithContext(ctx))
+	}
+	cmd := command.New(opts...)
 	b, err := cmd.Output()
 	if err != nil {
 		return 0, err

@@ -75,25 +75,15 @@ func (t T) Stop(ctx context.Context) error {
 }
 
 func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
-	r := t.GetObjectDriver().ResourceByID(t.NetNS)
-	if r == nil {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
-	}
-	var (
-		path string
-		err  error
-	)
-	if i, ok := r.(resource.NetNSPathCtxer); ok {
-		path, err = i.NetNSPathCtx(ctx)
-	} else if i, ok := r.(resource.NetNSPather); ok {
-		path, err = i.NetNSPath()
-	} else {
+	} else if i, ok := r.(resource.NetNSPather); !ok {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
-	}
-	if err != nil {
+	} else if path, err := i.NetNSPath(ctx); err != nil {
 		return nil, err
+	} else {
+		return ns.GetNS(path)
 	}
-	return ns.GetNS(path)
 }
 
 // Status evaluates and display the Resource status and logs

@@ -8,11 +8,11 @@ import (
 )
 
 func (t *T) startDedicated(ctx context.Context) error {
-	pid, err := t.getNSPID()
+	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
 	}
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (t *T) startDedicated(ctx context.Context) error {
 }
 
 func (t *T) stopDedicated(ctx context.Context) error {
-	netns, err := t.getNS()
+	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
 	}

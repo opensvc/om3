@@ -178,8 +178,9 @@ func (t *T) running(ctx context.Context) bool {
 	return false
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
+// Label implements Label from resource.Driver interface,
+// it returns a formatted short description of the Resource
+func (t T) Label(_ context.Context) string {
 	switch {
 	case t.Src != "" && len(t.Target) > 0:
 		return t.Src + " to " + strings.Join(t.Target, " ")

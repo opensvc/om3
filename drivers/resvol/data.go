@@ -1,6 +1,7 @@
 package resvol
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/user"
@@ -191,7 +192,7 @@ func (t *T) statusData() {
 	}
 }
 
-func (t T) installData() error {
+func (t T) installData(ctx context.Context) error {
 	changed := false
 	if err := t.installDirs(); err != nil {
 		return err
@@ -207,7 +208,7 @@ func (t T) installData() error {
 		changed = v || changed
 	}
 	if changed {
-		return t.SendSignals()
+		return t.SendSignals(ctx)
 	}
 	return nil
 }
@@ -225,9 +226,9 @@ func (t T) signalData() []SigRoute {
 	return routes
 }
 
-func (t T) SendSignals() error {
+func (t T) SendSignals(ctx context.Context) error {
 	type signaler interface {
-		SignalResource(string, syscall.Signal) error
+		SignalResource(context.Context, string, syscall.Signal) error
 	}
 	i, err := object.New(t.Path)
 	if err != nil {
@@ -238,7 +239,7 @@ func (t T) SendSignals() error {
 		return fmt.Errorf("%s does not implement SignalResource()", t.Path)
 	}
 	for _, sd := range t.signalData() {
-		if err := o.SignalResource(sd.RID, sd.Signum); err != nil {
+		if err := o.SignalResource(ctx, sd.RID, sd.Signum); err != nil {
 			return err
 		}
 		t.Log().Debugf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
