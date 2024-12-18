@@ -21,7 +21,7 @@ func (t *CmdDaemonStatus) Run() error {
 	m.SetFormat(t.Output)
 	m.SetSectionsFromExpression(t.Sections)
 
-	cli, err := client.New(client.WithURL(t.Server))
+	cli, err := client.New()
 	if err != nil {
 		return err
 	}

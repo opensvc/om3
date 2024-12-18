@@ -131,7 +131,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemon(nodename string, path naming.
 
 func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

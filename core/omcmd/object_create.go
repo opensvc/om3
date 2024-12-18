@@ -60,7 +60,7 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	} else {
 		t.path = p
 	}
-	if c, err := client.New(client.WithURL(t.Server)); err != nil {
+	if c, err := client.New(); err != nil {
 		return err
 	} else {
 		t.client = c

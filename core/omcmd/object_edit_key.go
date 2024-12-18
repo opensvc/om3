@@ -134,7 +134,7 @@ func (t *CmdObjectEditKey) Run(selector, kind string) error {
 		err error
 	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	if c, err = client.New(client.WithURL(t.Server)); err != nil {
+	if c, err = client.New(); err != nil {
 		return err
 	}
 	if err = t.do(mergedSelector, c); err != nil {

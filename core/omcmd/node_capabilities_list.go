@@ -40,7 +40,7 @@ func (t *CmdNodeCapabilitiesList) extract(c *client.T, nodename string) (api.Cap
 
 func (t *CmdNodeCapabilitiesList) remote() error {
 	var errs error
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}

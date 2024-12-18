@@ -22,7 +22,6 @@ func (t *CmdObjectComplianceListModules) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithServer(t.Server),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err

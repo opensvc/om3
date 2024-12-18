@@ -47,7 +47,7 @@ func (t *CmdObjectShutdown) Run(selector, kind string) error {
 			return nil, o.Shutdown(ctx)
 		}),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
-			c, err := client.New(client.WithURL(t.Server))
+			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}
