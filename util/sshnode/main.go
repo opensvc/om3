@@ -17,9 +17,13 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-var (
-	knownHostFile = os.ExpandEnv("$HOME/.ssh/known_hosts")
-)
+func expandUserSSH(basename string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, ".ssh", basename), nil
+}
 
 func NewClient(n string) (*ssh.Client, error) {
 	if n == "" {
@@ -36,11 +40,11 @@ func NewClient(n string) (*ssh.Client, error) {
 		}
 	}
 	signers := make([]ssh.Signer, 0)
-	home, err := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
-	privKeyFiles, err := filepath.Glob(filepath.Join(home, ".ssh/id_*"))
+	privKeyFiles, err := filepath.Glob(filepath.Join(homeDir, ".ssh/id_*"))
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +79,10 @@ func NewClient(n string) (*ssh.Client, error) {
 func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) error {
 	var keyErr *knownhosts.KeyError
 
+	knownHostFile, err := expandUserSSH("known_hosts")
+	if err != nil {
+		return err
+	}
 	callback, err := knownhosts.New(knownHostFile)
 
 	if os.IsNotExist(err) {
@@ -104,7 +112,11 @@ func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) er
 	return nil
 }
 
-func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) (err error) {
+func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
+	knownHostFile, err := expandUserSSH("known_hosts")
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(knownHostFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return err
@@ -121,7 +133,11 @@ func AppendAuthorizedKeys(line []byte) error {
 	if len(line) == 0 {
 		return nil
 	}
-	filename := os.ExpandEnv("$HOME/.ssh/authorized_keys")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	filename := filepath.Join(homeDir, ".ssh", "authorized_keys")
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -135,7 +151,11 @@ func AppendAuthorizedKeys(line []byte) error {
 }
 
 func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
-	filename := os.ExpandEnv("$HOME/.ssh/authorized_keys")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	filename := filepath.Join(homeDir, ".ssh", "authorized_keys")
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err

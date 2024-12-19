@@ -25,8 +25,11 @@ func (a *DaemonAPI) GetNodeSSHKeys(ctx echo.Context, nodename string) error {
 func (a *DaemonAPI) getLocalSSHKeys(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodeSSHKeys")
 	b := bytes.NewBuffer(nil)
-	dir := os.ExpandEnv("$HOME/.ssh/")
-	files, err := filepath.Glob(dir + "id_*.pub")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	files, err := filepath.Glob(homeDir + "/.ssh/id_*.pub")
 	if err != nil {
 		return fmt.Errorf("failed to read directory: %w", err)
 	}
