@@ -485,11 +485,11 @@ paths:
       tags:
         - node
 
-  /node/name/{nodename}/ssh/keys:
+  /node/name/{nodename}/ssh/key:
     get:
       description: |
-        Return ssh public keys from the node.
-      operationId: GetNodeSSHKeys
+        Return the ssh public key defined by node.sshkey.
+      operationId: GetNodeSSHKey
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
       responses:

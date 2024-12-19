@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -32,13 +31,21 @@ func (t *CmdNodeSSHTrust) Run() error {
 	ctx := context.Background()
 	var errs error
 	for _, node := range nodes {
-		resp, err := c.PutNodeSSHTrust(ctx, node)
+		resp, err := c.PutNodeSSHTrustWithResponse(ctx, node)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", node, err))
 			continue
 		}
-		if resp.StatusCode != http.StatusNoContent {
-			errs = errors.Join(errs, fmt.Errorf("%s: unexpected status code: %s", node, resp.Status))
+		switch resp.StatusCode() {
+		case 204:
+		case 401:
+			errs = errors.Join(errs, fmt.Errorf("%s: %s: %s", node, resp.JSON401.Title, resp.JSON401.Detail))
+		case 403:
+			errs = errors.Join(errs, fmt.Errorf("%s: %s: %s", node, resp.JSON403.Title, resp.JSON403.Detail))
+		case 500:
+			errs = errors.Join(errs, fmt.Errorf("%s: %s: %s", node, resp.JSON500.Title, resp.JSON500.Detail))
+		default:
+			errs = errors.Join(errs, fmt.Errorf("%s: unexpected status: %s", node, resp.Status()))
 		}
 	}
 	return errs

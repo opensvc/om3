@@ -2241,8 +2241,9 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 func newCmdObjectDeploy(kind string) *cobra.Command {
 	var options commands.CmdObjectCreate
 	cmd := &cobra.Command{
-		Use:   "deploy",
-		Short: "create and provision a new object",
+		Use:     "deploy",
+		Short:   "create and provision a new object",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Provision = true
 			return options.Run(selectorFlag, kind)
@@ -2563,6 +2564,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 		Short:   "allocate system resources for object resources",
 		Long:    "For example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
 		Aliases: []string{"prov"},
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2583,9 +2585,10 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 func newCmdObjectSyncIngest(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncIngest
 	cmd := &cobra.Command{
-		Use:   "ingest",
-		Short: "ingest files received from the active instance",
-		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
+		Use:     "ingest",
+		Short:   "ingest files received from the active instance",
+		Long:    "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2600,8 +2603,9 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 func newCmdObjectPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStart
 	cmd := &cobra.Command{
-		Use:   "prstart",
-		Short: "preempt devices exclusive write access reservation",
+		Use:     "prstart",
+		Short:   "preempt devices exclusive write access reservation",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2619,8 +2623,9 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 func newCmdObjectPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStop
 	cmd := &cobra.Command{
-		Use:   "prstop",
-		Short: "release devices exclusive write access reservation",
+		Use:     "prstop",
+		Short:   "release devices exclusive write access reservation",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2638,8 +2643,9 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 func newCmdObjectPurge(kind string) *cobra.Command {
 	var options commands.CmdObjectPurge
 	cmd := &cobra.Command{
-		Use:   "purge",
-		Short: "unprovision and delete",
+		Use:     "purge",
+		Short:   "unprovision and delete",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2662,6 +2668,7 @@ func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
 		Use:     "resinfo",
 		Short:   "push resource info key/val pairs",
 		Aliases: []string{"res"},
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2676,8 +2683,9 @@ func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
-		Use:   "restart",
-		Short: "restart the selected objects, instances or resources",
+		Use:     "restart",
+		Short:   "restart the selected objects, instances or resources",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2697,9 +2705,10 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 func newCmdObjectSyncFull(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncFull
 	cmd := &cobra.Command{
-		Use:   "full",
-		Short: "full copy of the local dataset on peers",
-		Long:  "This update can use only full copy.",
+		Use:     "full",
+		Short:   "full copy of the local dataset on peers",
+		Long:    "This update can use only full copy.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2716,9 +2725,10 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 func newCmdObjectSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncResync
 	cmd := &cobra.Command{
-		Use:   "resync",
-		Short: "restore optimal synchronization",
-		Long:  "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
+		Use:     "resync",
+		Short:   "restore optimal synchronization",
+		Long:    "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2734,9 +2744,10 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncUpdate
 	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "synchronize the copy of the local dataset on peers",
-		Long:  "This update can use either full or incremental copy, depending on the resource drivers and host capabilities. This is the action executed by the scheduler.",
+		Use:     "update",
+		Short:   "synchronize the copy of the local dataset on peers",
+		Long:    "This update can use either full or incremental copy, depending on the resource drivers and host capabilities. This is the action executed by the scheduler.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2777,9 +2788,10 @@ func newCmdObjectResourceLs(kind string) *cobra.Command {
 func newCmdObjectRun(kind string) *cobra.Command {
 	var options commands.CmdObjectRun
 	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "run tasks now",
-		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
+		Use:     "run",
+		Short:   "run tasks now",
+		Long:    "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2818,6 +2830,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 		Short:   "set the resources provisioned property",
 		Long:    "This action does not provision the resources (fs are not formatted, disk not allocated, ...). This is just a resources provisioned flag create. Necessary to allow the unprovision action, which is bypassed if the provisioned flag is not set.",
 		Aliases: []string{"provision", "prov"},
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2837,6 +2850,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 		Short:   "unset the resources provisioned property",
 		Long:    "This action does not unprovision the resources (fs are not wiped, disk not removed, ...). This is just a resources provisioned flag remove. Necessary to allow the provision action, which is bypassed if the provisioned flag is set.",
 		Aliases: []string{"unprovision", "unprov"},
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2852,8 +2866,9 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 func newCmdObjectShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown",
-		Short: "shutdown the object or instance",
+		Use:     "shutdown",
+		Short:   "shutdown the object or instance",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2871,8 +2886,9 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "start objects or instances",
+		Use:     "start",
+		Short:   "start objects or instances",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2892,8 +2908,9 @@ func newCmdObjectStart(kind string) *cobra.Command {
 func newCmdObjectStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby",
-		Short: "activate resources for standby",
+		Use:     "startstandby",
+		Short:   "activate resources for standby",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2933,8 +2950,9 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "stop objects or instances",
+		Use:     "stop",
+		Short:   "stop objects or instances",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2953,9 +2971,10 @@ func newCmdObjectStop(kind string) *cobra.Command {
 func newCmdObjectSwitch(kind string) *cobra.Command {
 	var options commands.CmdObjectSwitch
 	cmd := &cobra.Command{
-		Use:   "switch",
-		Short: "orchestrate a running instance move-out",
-		Long:  "Stop the running object instance and start on the next preferred node.",
+		Use:     "switch",
+		Short:   "orchestrate a running instance move-out",
+		Long:    "Stop the running object instance and start on the next preferred node.",
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3024,6 +3043,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 		Use:     "unprovision",
 		Short:   "free system resources (data-loss danger).",
 		Aliases: []string{"unprov"},
+		PreRunE: actionsPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},

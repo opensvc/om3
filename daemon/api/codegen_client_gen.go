@@ -315,8 +315,8 @@ type ClientInterface interface {
 	// GetNodeSchedule request
 	GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNodeSSHKeys request
-	GetNodeSSHKeys(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetNodeSSHKey request
+	GetNodeSSHKey(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutNodeSSHTrust request
 	PutNodeSSHTrust(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1404,8 +1404,8 @@ func (c *Client) GetNodeSchedule(ctx context.Context, nodename InPathNodeName, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeSSHKeys(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeSSHKeysRequest(c.Server, nodename)
+func (c *Client) GetNodeSSHKey(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeSSHKeyRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -7246,8 +7246,8 @@ func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Re
 	return req, nil
 }
 
-// NewGetNodeSSHKeysRequest generates requests for GetNodeSSHKeys
-func NewGetNodeSSHKeysRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+// NewGetNodeSSHKeyRequest generates requests for GetNodeSSHKey
+func NewGetNodeSSHKeyRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7262,7 +7262,7 @@ func NewGetNodeSSHKeysRequest(server string, nodename InPathNodeName) (*http.Req
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/ssh/keys", pathParam0)
+	operationPath := fmt.Sprintf("/node/name/%s/ssh/key", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10249,8 +10249,8 @@ type ClientWithResponsesInterface interface {
 	// GetNodeScheduleWithResponse request
 	GetNodeScheduleWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeScheduleResponse, error)
 
-	// GetNodeSSHKeysWithResponse request
-	GetNodeSSHKeysWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHKeysResponse, error)
+	// GetNodeSSHKeyWithResponse request
+	GetNodeSSHKeyWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHKeyResponse, error)
 
 	// PutNodeSSHTrustWithResponse request
 	PutNodeSSHTrustWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PutNodeSSHTrustResponse, error)
@@ -12268,7 +12268,7 @@ func (r GetNodeScheduleResponse) StatusCode() int {
 	return 0
 }
 
-type GetNodeSSHKeysResponse struct {
+type GetNodeSSHKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -12278,7 +12278,7 @@ type GetNodeSSHKeysResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetNodeSSHKeysResponse) Status() string {
+func (r GetNodeSSHKeyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12286,7 +12286,7 @@ func (r GetNodeSSHKeysResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeSSHKeysResponse) StatusCode() int {
+func (r GetNodeSSHKeyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14329,13 +14329,13 @@ func (c *ClientWithResponses) GetNodeScheduleWithResponse(ctx context.Context, n
 	return ParseGetNodeScheduleResponse(rsp)
 }
 
-// GetNodeSSHKeysWithResponse request returning *GetNodeSSHKeysResponse
-func (c *ClientWithResponses) GetNodeSSHKeysWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHKeysResponse, error) {
-	rsp, err := c.GetNodeSSHKeys(ctx, nodename, reqEditors...)
+// GetNodeSSHKeyWithResponse request returning *GetNodeSSHKeyResponse
+func (c *ClientWithResponses) GetNodeSSHKeyWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHKeyResponse, error) {
+	rsp, err := c.GetNodeSSHKey(ctx, nodename, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetNodeSSHKeysResponse(rsp)
+	return ParseGetNodeSSHKeyResponse(rsp)
 }
 
 // PutNodeSSHTrustWithResponse request returning *PutNodeSSHTrustResponse
@@ -18591,15 +18591,15 @@ func ParseGetNodeScheduleResponse(rsp *http.Response) (*GetNodeScheduleResponse,
 	return response, nil
 }
 
-// ParseGetNodeSSHKeysResponse parses an HTTP response from a GetNodeSSHKeysWithResponse call
-func ParseGetNodeSSHKeysResponse(rsp *http.Response) (*GetNodeSSHKeysResponse, error) {
+// ParseGetNodeSSHKeyResponse parses an HTTP response from a GetNodeSSHKeyWithResponse call
+func ParseGetNodeSSHKeyResponse(rsp *http.Response) (*GetNodeSSHKeyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetNodeSSHKeysResponse{
+	response := &GetNodeSSHKeyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

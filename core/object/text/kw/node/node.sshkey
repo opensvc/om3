@@ -1,0 +1,2 @@
+The basename of the ssh public key served by the GET /node/name/:nodename/ssh/key.
+For example, the `opensvc` default value serves ~/.ssh/opensvc.pub.
