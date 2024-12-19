@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -23,6 +24,10 @@ func (a *DaemonAPI) PutNodeSSHTrust(ctx echo.Context, nodename string) error {
 
 func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context, nodename string) error {
 	log := LogHandler(ctx, "PutNodeSSHTrust")
+	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
+		return err
+	}
+
 	clusterConfigData := cluster.ConfigData.Get()
 	authorizedKeys, err := sshnode.GetAuthorizedKeysMap()
 	if err != nil {
