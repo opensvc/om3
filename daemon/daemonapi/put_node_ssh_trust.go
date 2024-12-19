@@ -39,7 +39,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context, nodename string) erro
 		if err != nil {
 			return err
 		}
-		resp, err := c.GetNodeSSHKeys(ctx.Request().Context(), node)
+		resp, err := c.GetNodeSSHKey(ctx.Request().Context(), node)
 		if err != nil {
 			return err
 		}

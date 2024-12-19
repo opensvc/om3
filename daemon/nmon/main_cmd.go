@@ -77,6 +77,7 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
 		keyEnv                    = key.New("node", "env")
 		keySplitAction            = key.New("node", "split_action")
+		keySSHKey                 = key.New("node", "sshkey")
 	)
 	cfg := node.Config{}
 	if d := t.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
@@ -91,6 +92,7 @@ func (t *Manager) getNodeConfig() node.Config {
 	cfg.MaxParallel = t.config.GetInt(keyMaxParallel)
 	cfg.Env = t.config.GetString(keyEnv)
 	cfg.SplitAction = t.config.GetString(keySplitAction)
+	cfg.SSHKey = t.config.GetString(keySSHKey)
 
 	if cfg.MaxParallel == 0 {
 		cfg.MaxParallel = runtime.NumCPU()
