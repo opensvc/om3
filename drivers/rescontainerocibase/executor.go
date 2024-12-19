@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -33,11 +34,13 @@ type (
 
 		// logger provides a resource logger for executor
 		logger Logger
+
+		mutex *sync.RWMutex
 	}
 )
 
 func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
-	return &Executor{bin: exe, args: args, logger: log}
+	return &Executor{bin: exe, args: args, logger: log, mutex: &sync.RWMutex{}}
 }
 
 func (e *Executor) Enter() error {
@@ -93,14 +96,17 @@ func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 	}
 }
 
-func (e *Executor) Inspect(ctx context.Context) Inspecter {
-	if !e.inspected {
-		i, _ := e.InspectRefresh(ctx)
-		return i
+// Inspect returns Inspecter from cache. On cache miss a new Inspecter is
+// created from InspectRefresh(ctx).
+func (e *Executor) Inspect(ctx context.Context) (Inspecter, error) {
+	if i, ok := e.inspectFromCache(); ok {
+		return i, nil
 	}
-	return e.inspecter
+	return e.InspectRefresh(ctx)
 }
 
+// InspectRefresh creates new Inspecter (from inspect command line). It updates
+// e Inspecter cache that may be used Inspect(ctx).
 func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	var cmd *exec.Cmd
 	a := e.getArgs(e.args.InspectArgs().Get()...)
@@ -115,6 +121,8 @@ func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	} else {
 		cmd = exec.Command(e.bin, a...)
 	}
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 	e.inspected = true
 	e.log().Debugf("engine inspect: %s %s", e.bin, strings.Join(a, " "))
 	if b, err := cmd.Output(); err != nil {
@@ -130,10 +138,6 @@ func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 		e.log().Debugf("inspect success")
 		return i, nil
 	}
-}
-
-func (e *Executor) InspectRefreshed() bool {
-	return e.inspected
 }
 
 func (e *Executor) Pull(ctx context.Context) error {
@@ -278,4 +282,13 @@ func (e *Executor) getArgs(a ...string) []string {
 	}
 	cmdArgs = append(cmdArgs, a...)
 	return cmdArgs
+}
+
+func (e *Executor) inspectFromCache() (Inspecter, bool) {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	if e.inspected {
+		return e.inspecter, true
+	}
+	return nil, false
 }

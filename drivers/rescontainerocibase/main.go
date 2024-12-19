@@ -116,9 +116,8 @@ type (
 	// ExecuteInspecter interface defines the functions used to retrieve container
 	// inspecter.
 	ExecuteInspecter interface {
-		Inspect(context.Context) Inspecter
+		Inspect(context.Context) (Inspecter, error)
 		InspectRefresh(context.Context) (Inspecter, error)
-		InspectRefreshed() bool
 	}
 
 	// ExecuteWaiter interface defines the functions used to manage container
@@ -245,17 +244,15 @@ func (t *BT) IsAlwaysImagePullPolicy() bool {
 	return t.ImagePullPolicy == imagePullPolicyAlways
 }
 
+// ContainerID returns the container inspect ID, or ""
 func (t *BT) ContainerID(ctx context.Context) string {
 	if t.executer == nil {
 		t.Log().Debugf("can't get container id from undefined executer")
 		return ""
 	}
-	if !t.executer.InspectRefreshed() {
-		if _, err := t.executer.InspectRefresh(ctx); err != nil {
-			return ""
-		}
-	}
-	if i := t.executer.Inspect(ctx); i == nil {
+	if i, err := t.executer.Inspect(ctx); err != nil {
+		return ""
+	} else if i == nil {
 		return ""
 	} else {
 		return i.ID()
@@ -282,10 +279,7 @@ func (t *BT) ContainerInspect(ctx context.Context) (Inspecter, error) {
 	if t.executer == nil {
 		return nil, errors.New("can't get inspect from undefined executer")
 	}
-	if t.executer.InspectRefreshed() {
-		return t.executer.Inspect(ctx), nil
-	}
-	return t.executer.InspectRefresh(ctx)
+	return t.executer.Inspect(ctx)
 }
 
 func (t *BT) ContainerInspectRefresh(ctx context.Context) (Inspecter, error) {
@@ -440,34 +434,30 @@ func (t *BT) NeedPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }
 
+// NetNSPath returns the container inspect SandboxKey or ""
 func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 	if t.executer == nil {
 		return "", fmt.Errorf("NetNSPath: undefined executer")
 	}
-	if !t.executer.InspectRefreshed() {
-		if _, err := t.executer.InspectRefresh(ctx); err != nil {
-			return "", err
-		}
-	}
-	if i := t.executer.Inspect(ctx); i == nil {
+	if i, err := t.executer.Inspect(ctx); err != nil {
+		return "", nil
+	} else if i == nil {
 		return "", nil
 	} else {
 		return i.SandboxKey(), nil
 	}
 }
 
+// PID returns the container inspect PID or 0
 func (t *BT) PID(ctx context.Context) int {
 	if t.executer == nil {
 		t.Log().Debugf("PID called with undefined executer")
 		return 0
 	}
-	if !t.executer.InspectRefreshed() {
-		if _, err := t.executer.InspectRefresh(ctx); err != nil {
-			t.Log().Debugf("PID can't refresh inspect: %s", err)
-			return 0
-		}
-	}
-	if i := t.executer.Inspect(ctx); i == nil {
+	if i, err := t.executer.Inspect(ctx); err != nil {
+		t.Log().Debugf("PID inspect: %s", err)
+		return 0
+	} else if i == nil {
 		return 0
 	} else {
 		return i.PID()
@@ -482,12 +472,13 @@ func (t *BT) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t *BT) Signal(sig syscall.Signal) error {
+// Signal implements object.Signaler
+func (t *BT) Signal(ctx context.Context, sig syscall.Signal) error {
 	name := t.ContainerName()
 	if t.executer == nil {
 		return fmt.Errorf("signal: undefined executer")
 	}
-	inspect, err := t.executer.InspectRefresh(nil)
+	inspect, err := t.executer.InspectRefresh(ctx)
 	if err != nil {
 		t.Log().Errorf("signal: inspect refresh container %s: %s", name, err)
 		return err
@@ -519,16 +510,12 @@ func (t *BT) Start(ctx context.Context) error {
 		return t.logMainAction("start", errors.New("undefined executer"))
 	}
 
-	if !t.executer.InspectRefreshed() {
-		if _, err := t.executer.InspectRefresh(ctx); err != nil {
-			return t.logMainAction("start", fmt.Errorf("inspect refresh: %s", err))
-		}
-	}
-	inspect := t.executer.Inspect(ctx)
-	if inspect == nil || !inspect.Defined() {
+	inspect, err := t.executer.Inspect(ctx)
+	if err != nil {
+		return t.logMainAction("start", fmt.Errorf("inspect: %s", err))
+	} else if inspect == nil || !inspect.Defined() {
 		return logError(t.pullAndRun(ctx))
-	}
-	if inspect.Running() {
+	} else if inspect.Running() {
 		log.Infof("container start %s: already started", name)
 		return nil
 	} else {
@@ -626,25 +613,17 @@ func (t *BT) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 
-	var inspect Inspecter
-	var err error
 	t.Log().Debugf("Status.enter")
 	defer t.Log().Debugf("Status.return")
 	if t.executer == nil {
 		t.Log().Debugf("status n/a on undefined executer")
 		return status.NotApplicable
 	}
-	if !t.executer.InspectRefreshed() {
-		inspect, err = t.executer.InspectRefresh(ctx)
-		if err != nil {
-			t.StatusLog().Error("inspect: %s", err)
-			t.Log().Debugf("status down on inspect refresh error: %s", err)
-			return status.Down
-		}
-	} else {
-		inspect = t.executer.Inspect(ctx)
-	}
-	if inspect == nil {
+	inspect, err := t.executer.Inspect(ctx)
+	if err != nil {
+		t.Log().Debugf("status down on inspect: %s", err)
+		return status.Down
+	} else if inspect == nil {
 		t.Log().Debugf("status down on inspect nil")
 		return status.Down
 	}
@@ -708,12 +687,16 @@ func (t *BT) containerLabelID() string {
 }
 
 func (t *BT) findAndStart(ctx context.Context) error {
+	var id string
 	name := t.ContainerName()
 	if t.executer == nil {
 		return fmt.Errorf("findAndStart: undefined executer")
 	}
-	i := t.executer.Inspect(ctx)
-	id := i.ID()
+	if i, err := t.executer.Inspect(ctx); err != nil {
+		id = ""
+	} else {
+		id = i.ID()
+	}
 	errs := make(chan error, 1)
 	go func() {
 		if t.StartTimeout != nil && *t.StartTimeout > 0 {

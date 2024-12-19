@@ -193,7 +193,9 @@ func (ea *ExecutorArg) StartArgs(ctx context.Context) (*args.T, error) {
 	var id string
 	if ea.BT == nil {
 		return nil, fmt.Errorf("can't get start args from nil base container")
-	} else if inspect := ea.BT.executer.Inspect(ctx); inspect == nil {
+	} else if inspect, err := ea.BT.executer.Inspect(ctx); err != nil {
+		return nil, fmt.Errorf("can't get start args: inspect: %w", err)
+	} else if inspect == nil {
 		return nil, fmt.Errorf("can't get start args from nil base container")
 	} else if id = inspect.ID(); len(id) == 0 {
 		return nil, fmt.Errorf("can't get start args from nil base container")

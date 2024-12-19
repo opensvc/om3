@@ -55,6 +55,8 @@ func (t *T) Status(ctx context.Context) status.T {
 		if t.BT.UserNS == "host" {
 			expectedValue := "host"
 			if inspect, err := t.ContainerInspect(ctx); err != nil {
+				t.StatusLog().Warn("userns: can't verify value on inspect failure: %s", err)
+			} else if inspect == nil {
 				t.StatusLog().Warn("userns: can't verify value on nil inspect result")
 			} else if inspectHostConfig := inspect.HostConfig(); inspectHostConfig == nil {
 				t.StatusLog().Warn("userns: can't verify value on nil inspect HostConfig")
