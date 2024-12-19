@@ -482,12 +482,13 @@ func (t *BT) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t *BT) Signal(sig syscall.Signal) error {
+// Signal implements object.Signaler
+func (t *BT) Signal(ctx context.Context, sig syscall.Signal) error {
 	name := t.ContainerName()
 	if t.executer == nil {
 		return fmt.Errorf("signal: undefined executer")
 	}
-	inspect, err := t.executer.InspectRefresh(nil)
+	inspect, err := t.executer.InspectRefresh(ctx)
 	if err != nil {
 		t.Log().Errorf("signal: inspect refresh container %s: %s", name, err)
 		return err
