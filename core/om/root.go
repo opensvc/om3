@@ -95,15 +95,22 @@ func configureLogger() error {
 	return nil
 }
 
+func actionsPreRunE(cmd *cobra.Command, _ []string) error {
+	if !quietFlag || debugFlag {
+		cmd.SilenceErrors = true
+	}
+	return nil
+}
+
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if flag := cmd.Flags().Lookup("quiet"); flag != nil && flag.Value.String() == "true" {
 		quietFlag = true
-	} else {
-		// TODO: only for actions
-		cmd.SilenceErrors = true
 	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
+	}
+	if flag := cmd.Flags().Lookup("debug"); flag != nil {
+		debugFlag = true
 	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
