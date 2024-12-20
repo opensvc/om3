@@ -46,7 +46,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context, nodename string) erro
 		switch resp.StatusCode {
 		case http.StatusOK:
 		default:
-			return fmt.Errorf("get ssh keys from %s: %s", node, resp.Status)
+			return fmt.Errorf("get ssh key from %s: %s", node, resp.Status)
 		}
 		defer resp.Body.Close()
 
