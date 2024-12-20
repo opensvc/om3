@@ -368,6 +368,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
+// Signal implements object.signaler
 func (t T) Signal(ctx context.Context, sig syscall.Signal) error {
 	pid := t.PID(ctx)
 	if pid == 0 {

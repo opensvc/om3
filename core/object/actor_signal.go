@@ -16,19 +16,11 @@ type (
 
 func (t *actor) SignalResource(ctx context.Context, rid string, sig syscall.Signal) error {
 	t.Resources()
-	r := t.ResourceByID(rid)
-	if r == nil {
+	if r := t.ResourceByID(rid); r == nil {
 		return fmt.Errorf("can not find resource %s to send %s to", rid, unix.SignalName(sig))
-	}
-	var (
-		i  interface{} = r
-		s  signaler
-		ok bool
-	)
-	if s, ok = i.(signaler); !ok {
+	} else if s, ok := r.(signaler); !ok {
 		return fmt.Errorf("resource %s to send %s to does not support signaling", rid, unix.SignalName(sig))
-	}
-	if err := s.Signal(ctx, sig); err != nil {
+	} else if err := s.Signal(ctx, sig); err != nil {
 		return err
 	}
 	return nil

@@ -76,7 +76,7 @@ type (
 		Start(context.Context) error
 		Stop(context.Context) error
 		ContainerInspectRefresh(context.Context) (rescontainerocibase.Inspecter, error)
-		Signal(sig syscall.Signal) error
+		Signal(context.Context, syscall.Signal) error
 	}
 )
 
@@ -142,7 +142,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 
 func (t *T) Kill(ctx context.Context) error {
 	container := t.containerDetachedGetter.GetContainerDetached()
-	return container.Signal(syscall.SIGKILL)
+	return container.Signal(ctx, syscall.SIGKILL)
 }
 
 func (t *T) running(ctx context.Context) bool {
