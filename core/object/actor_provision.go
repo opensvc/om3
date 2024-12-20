@@ -9,24 +9,25 @@ import (
 
 // Provision allocates and starts the local instance of the object
 func (t *actor) Provision(ctx context.Context) error {
-	ctx = actioncontext.WithProps(ctx, actioncontext.Provision)
+	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
-	t.setenv("provision", actioncontext.IsLeader(ctx))
-	unlock, err := t.lockAction(ctx)
+	t.setenv("provision", actioncontext.IsLeader(ctx2))
+	unlock, err := t.lockAction(ctx2)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	if err := t.lockedProvision(ctx); err != nil {
+	if err := t.lockedProvision(ctx2); err != nil {
 		return err
 	}
-	if actioncontext.IsRollbackDisabled(ctx) {
+	if actioncontext.IsRollbackDisabled(ctx2) {
 		// --disable-rollback handling
 		return nil
 	}
-	return t.lockedStop(ctx)
+	ctx2 = actioncontext.WithProps(ctx, actioncontext.Stop)
+	return t.lockedStop(ctx2)
 }
 
 func (t *actor) lockedProvision(ctx context.Context) error {

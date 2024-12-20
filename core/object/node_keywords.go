@@ -570,6 +570,12 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.quorum"),
 	},
 	{
+		Default: "opensvc",
+		Option:  "sshkey",
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.sshkey"),
+	},
+	{
 		Candidates: []string{"crash", "reboot", "disabled"},
 		Default:    "crash",
 		Option:     "split_action",
