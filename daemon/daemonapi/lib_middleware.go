@@ -121,6 +121,9 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			if iss := extensions.Get("iss"); iss != "" {
 				c.Set("iss", iss)
 			}
+			if strategy := extensions.Get("strategy"); strategy != "" {
+				c.Set("strategy", strategy)
+			}
 			return next(c)
 		}
 	}
@@ -189,6 +192,15 @@ func GetLogger(c echo.Context) *plog.Logger {
 // userFromContext returns the logged-in userFromContext information stored in the request context.
 func userFromContext(ctx echo.Context) auth.Info {
 	return ctx.Get("user").(auth.Info)
+}
+
+// strategyFromContext returns the strategy used to authenticate request stored
+// in the request context.
+func strategyFromContext(ctx echo.Context) string {
+	if s, ok := ctx.Get("strategy").(string); ok {
+		return s
+	}
+	return ""
 }
 
 func grantsFromContext(ctx echo.Context) rbac.Grants {
