@@ -5053,7 +5053,6 @@ components:
           type2: number
           type3: boolean
 
-
     NetworkIPNetwork:
       type: object
       required:
@@ -5846,10 +5845,10 @@ components:
       type: string
       description: service, instance or resource provisioned state
       enum:
-        - false
-        - mixed
-        - n/a
-        - true
+        - "false"
+        - "mixed"
+        - "n/a"
+        - "true"
 
     RelayStatusItem:
       type: object
