@@ -25,7 +25,7 @@ func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Inf
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, fmt.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
 	}
-	info := auth.NewUserInfo("root", "", nil, *authenticatedExtensions("ux", "", "root"))
+	info := auth.NewUserInfo("root", "", nil, *authenticatedExtensions(StrategyUX, "", "root"))
 	return info, nil
 }
 

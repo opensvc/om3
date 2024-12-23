@@ -79,6 +79,10 @@ func JSONForbiddenMissingRole(ctx echo.Context, missing ...rbac.Role) error {
 	return JSONProblemf(ctx, http.StatusForbidden, "Missing grants", "not allowed, need one of %v role", missing)
 }
 
+func JSONForbiddenStrategy(ctx echo.Context, strategy string, expected ...string) error {
+	return JSONProblemf(ctx, http.StatusForbidden, "Unexpected strategy", "not allowed strategy %s, need one of %v strategy", strategy, expected)
+}
+
 func setStreamHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-control", "no-store")

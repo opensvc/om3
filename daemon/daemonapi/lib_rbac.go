@@ -5,9 +5,17 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/daemon/rbac"
 )
+
+func assertStrategy(ctx echo.Context, expected string) (bool, error) {
+	if strategy := strategyFromContext(ctx); strategy != expected {
+		return false, JSONForbiddenStrategy(ctx, strategy, expected)
+	}
+	return true, nil
+}
 
 func assertGrant(ctx echo.Context, grants ...rbac.Grant) (bool, error) {
 	if !grantsFromContext(ctx).HasGrant(grants...) {

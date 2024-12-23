@@ -7,11 +7,15 @@ import (
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonAPI) PostInstanceStatus(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	if ok, err := assertStrategy(ctx, daemonauth.StrategyUX); !ok {
+		return err
+	}
 	var payload api.InstanceStatus
 	log := LogHandler(ctx, "PostInstanceStatus")
 	log.Debugf("starting")
