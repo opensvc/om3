@@ -55,7 +55,7 @@ func (t T) Start(ctx context.Context) error {
 	if err := lo.Add(t.File); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return lo.FileDelete(t.File)
 	})
 	return nil
@@ -170,7 +170,7 @@ func (t T) provisionDir(ctx context.Context) error {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("unlink dir %s", dir)
 		return os.Remove(dir)
 	})
@@ -191,7 +191,7 @@ func (t T) provision(ctx context.Context) error {
 		return err
 	}
 	defer f.Close()
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("unlink file %s", t.File)
 		return os.Remove(t.File)
 	})

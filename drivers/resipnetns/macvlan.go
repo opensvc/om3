@@ -74,7 +74,7 @@ func (t *T) startMACVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev st
 		t.linkDel(tmpDev)
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.linkDelIn(dev, netns.Path())
 	})
 	return nil

@@ -79,7 +79,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stop()
 	})
 	if err := t.arpAnnounce(); err != nil {

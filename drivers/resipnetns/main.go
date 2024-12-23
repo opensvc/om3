@@ -188,7 +188,7 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 	if err := t.addrAddIn(ipnet.String(), guestDev, netns.Path()); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stopIP(netns, guestDev)
 	})
 	return nil

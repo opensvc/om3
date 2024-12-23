@@ -309,7 +309,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.addObjectNetNS(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.delObjectNetNS()
 	})
 	if err := t.start(ctx); err != nil {
@@ -318,7 +318,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		// Don't use start context to stop (it may be already deadlined)
 		return t.stop(nil)
 	})

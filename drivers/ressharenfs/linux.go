@@ -123,7 +123,7 @@ func (t *T) start(ctx context.Context) error {
 		if err := t.addExport(e); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.delExport(e)
 		})
 	}

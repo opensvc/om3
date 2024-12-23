@@ -101,7 +101,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.Nil(t, app.Start(ctx), startReturnMsg)
-		assert.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		assert.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		assert.True(t, file.Exists(filename), "missing rollback stop cmd !")
 	})
 
@@ -118,7 +120,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.NotNil(t, app.Start(ctx), startReturnMsg)
-		assert.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		assert.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		assert.False(t, file.Exists(filename), "rollback cmd called !")
 	})
 
@@ -139,7 +143,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.Nil(t, app.Start(ctx), startReturnMsg)
-		assert.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		assert.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		assert.False(t, file.Exists(filename), "rollback cmd called !")
 	})
 }

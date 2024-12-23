@@ -167,7 +167,7 @@ func (t *T) mount(ctx context.Context) error {
 	} else if err := t.mountWithLegacy(legacy); err != nil {
 		return err
 	} else {
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.umountWithLegacy(legacy)
 		})
 	}

@@ -32,7 +32,7 @@ func (t *T) startOVSPort(ctx context.Context, dev string) error {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
 
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stopOVSPort(dev)
 	})
 	return nil
@@ -96,7 +96,7 @@ func (t *T) startOVS(ctx context.Context) error {
 			}
 			return errs
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			var errs error
 			if err := t.linkDel(hostDev); err != nil {
 				errs = errors.Join(errs, err)

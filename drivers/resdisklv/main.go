@@ -58,7 +58,7 @@ func (t T) Start(ctx context.Context) error {
 	if err := t.lv().Activate(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.lv().Deactivate()
 	})
 	return nil
@@ -135,7 +135,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if lvi.Create(t.Size, t.CreateOptions); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		if lvi, ok := lv.(LVDriverUnprovisioner); ok {
 			return lvi.Remove([]string{"-f"})
 		} else {

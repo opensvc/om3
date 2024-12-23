@@ -58,7 +58,7 @@ func (t T) Start(ctx context.Context) (err error) {
 	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	err = cmd.Run()
 	if err == nil {
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.Stop(ctx)
 		})
 	}

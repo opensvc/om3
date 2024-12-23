@@ -97,7 +97,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
-		require.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		require.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		require.True(t, file.Exists(filename), "missing rollback stop cmd !")
 	})
 
@@ -114,7 +116,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.NotNil(t, app.Start(ctx), startReturnMsg)
-		require.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		require.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		require.False(t, file.Exists(filename), "rollback stop cmd called !")
 	})
 
@@ -135,7 +139,9 @@ func TestStart(t *testing.T) {
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
-		require.Nil(t, actionrollback.Rollback(ctx))
+		rbCtx, rbCancel := context.WithCancel(ctx)
+		defer rbCancel()
+		require.Nil(t, actionrollback.FromContext(ctx).Rollback(rbCtx))
 		require.False(t, file.Exists(filename), "rollback stop cmd called !")
 	})
 }
