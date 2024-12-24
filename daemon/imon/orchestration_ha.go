@@ -54,6 +54,15 @@ func (t *Manager) orchestrateHAStart() {
 			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return
+	case instance.MonitorStateStopped:
+		// stopped means the action stop has been done. This state is a
+		// waiter step to take time to disable the local expect started.
+		if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
+			t.log.Infof("instance is now stopped, disable resource restart and monitor action")
+			t.state.LocalExpect = instance.MonitorLocalExpectNone
+		}
+		t.transitionTo(instance.MonitorStateIdle)
+		return
 	}
 	if v, reason := t.isStartable(); !v {
 		if t.pendingCancel != nil && t.state.State == instance.MonitorStateReady {
