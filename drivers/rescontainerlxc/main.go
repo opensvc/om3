@@ -139,7 +139,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(ctx); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.Stop(ctx)
 	})
 	return nil

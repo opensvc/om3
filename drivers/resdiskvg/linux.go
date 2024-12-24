@@ -32,7 +32,7 @@ func (t T) startTag(ctx context.Context) error {
 	if err := t.addTag(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.delTag()
 	})
 	return nil
@@ -71,7 +71,7 @@ func (t T) cleanTags(ctx context.Context) error {
 		if err := vg.DelTag(tag); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return vg.AddTag(tag)
 		})
 	}

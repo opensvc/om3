@@ -41,7 +41,7 @@ func (t *T) startBridge(ctx context.Context) error {
 		if err := t.makeVethPair(hostDev, tmpGuestDev, mtu); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDel(hostDev)
 		})
 		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
@@ -55,7 +55,7 @@ func (t *T) startBridge(ctx context.Context) error {
 			t.linkDel(tmpGuestDev)
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDelIn(guestDev, netns.Path())
 		})
 		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {

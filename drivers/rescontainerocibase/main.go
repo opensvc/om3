@@ -763,7 +763,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	select {
 	case err := <-errs:
 		if err == nil {
-			actionrollback.Register(ctx, func() error {
+			actionrollback.Register(ctx, func(ctx context.Context) error {
 				return t.Stop(ctx)
 			})
 			return nil

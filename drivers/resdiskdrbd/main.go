@@ -201,7 +201,7 @@ func (t T) GoSecondary(ctx context.Context) error {
 	if err := dev.Secondary(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return dev.Primary()
 	})
 	return nil
@@ -264,7 +264,7 @@ func (t T) Start(ctx context.Context) error {
 	if err := dev.Primary(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return dev.Secondary()
 	})
 	return nil
@@ -745,7 +745,7 @@ func (t T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) e
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnprovisionLeaded(ctx)
 	})
 	if err := t.fetchConfig(); err != nil {
@@ -764,7 +764,7 @@ func (t *T) ProvisionLeaded(ctx context.Context) error {
 }
 
 func (t *T) ProvisionLeader(ctx context.Context) error {
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnprovisionLeader(ctx)
 	})
 	if err := t.writeConfig(ctx); err != nil {

@@ -73,7 +73,7 @@ func (t T) Start(ctx context.Context) error {
 	if err := t.vg().Activate(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.vg().Deactivate()
 	})
 	return nil

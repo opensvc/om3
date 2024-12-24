@@ -206,7 +206,7 @@ func (t T) setOwnership(ctx context.Context, p string) error {
 		if err := os.Chown(p, newUID, newGID); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			t.Log().Infof("set %s group back to %d", p, gid)
 			t.Log().Infof("set %s user back to %d", p, uid)
 			return os.Chown(p, uid, gid)
@@ -305,7 +305,7 @@ func (t T) setMode(ctx context.Context, p string) error {
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("set %s mode back to %s", p, mode)
 		return os.Chmod(p, currentMode&os.ModeType)
 	})
@@ -347,7 +347,7 @@ func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 		return err
 	}
 	t.Log().Infof("create block device %s %d:%d", p, major, minor)
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("remove block device %s %d:%d", p, major, minor)
 		return os.Remove(p)
 	})
@@ -389,7 +389,7 @@ func (t T) startCharDevices(ctx context.Context) error {
 		case err != nil:
 			return err
 		default:
-			actionrollback.Register(ctx, func() error {
+			actionrollback.Register(ctx, func(ctx context.Context) error {
 				return ra.UnbindMinor(minor)
 			})
 		}

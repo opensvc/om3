@@ -111,7 +111,7 @@ func (t T) create(ctx context.Context) error {
 	if err := os.MkdirAll(p, perm); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("remove directory %s", p)
 		return os.RemoveAll(p)
 	})
@@ -163,7 +163,7 @@ func (t T) setOwnership(ctx context.Context) error {
 		if err := os.Chown(p, newUID, newGID); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			t.Log().Infof("set %s group back to %s", p, gid)
 			t.Log().Infof("set %s user back to %s", p, uid)
 			return os.Chown(p, uid, gid)
@@ -225,7 +225,7 @@ func (t T) setMode(ctx context.Context) error {
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		t.Log().Infof("set %s mode back to %s", p, mode)
 		return os.Chmod(p, currentMode)
 	})

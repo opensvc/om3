@@ -228,7 +228,7 @@ func (t *T) mount(ctx context.Context) error {
 	if err := t.fs().Mount(t.devpath(), t.mountPoint(), t.mountOptions()); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.fs().Umount(t.mountPoint())
 	})
 	return nil
@@ -338,7 +338,7 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 		if err := dev.SetReadWrite(); err != nil {
 			return err
 		}
-		actionrollback.Register(ctx, func() error {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return dev.SetReadOnly()
 		})
 	}

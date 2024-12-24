@@ -96,7 +96,7 @@ func (t T) Start(ctx context.Context) error {
 	if err := dev.Activate(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return dev.Deactivate()
 	})
 	// drop the create_static_name(devpath) py code ??
@@ -182,14 +182,14 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return devIntf.Remove()
 	})
 	t.Log().Infof("md uuid is %s", dev.UUID())
 	if err := t.SetUUID(ctx, dev.UUID()); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnsetUUID(ctx)
 	})
 	return nil

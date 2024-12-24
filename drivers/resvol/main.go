@@ -124,7 +124,7 @@ func (t T) Start(ctx context.Context) error {
 	if err = t.startVolume(ctx, volume); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stopVolume(ctx, volume, false)
 	})
 	if err = t.startFlag(ctx); err != nil {
@@ -153,7 +153,7 @@ func (t T) startFlag(ctx context.Context) error {
 	if err := t.installFlag(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.uninstallFlag()
 	})
 	return nil

@@ -103,11 +103,6 @@ func (t *actor) needRollback(ctx context.Context) bool {
 	return true
 }
 
-func (t *actor) rollback(ctx context.Context) error {
-	t.Log().Infof("rollback")
-	return actionrollback.Rollback(ctx)
-}
-
 func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
 	props := actioncontext.Props(ctx)
 	timeout, source := t.actionTimeout(props.TimeoutKeywords)
@@ -328,6 +323,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
 	}
+
+	// Prepare alternate context without timeout, that can be used on situations
+	// where initial context is DeadlineExceeded.
+	// TODO: clarify timeouts: does start_timeout includes the eventual rollback,
+	//       statusEval, postStartStopStatusEval, announceProgress "idle" and "failed"
+	ctxWithoutTimeout, cancel1 := context.WithCancel(ctx)
+	defer cancel1()
+
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
@@ -439,8 +442,13 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctx) {
-			if errRollback := t.rollback(ctx); errRollback != nil {
-				t.Log().Errorf("rollback: %s", err)
+			if rb := actionrollback.FromContext(ctx); rb != nil {
+				t.Log().Infof("rollback")
+				ctx2, cancel2 := t.withTimeout(ctxWithoutTimeout)
+				defer cancel2()
+				if errRollback := rb.Rollback(ctx2); errRollback != nil {
+					t.Log().Errorf("rollback: %s", err)
+				}
 			}
 		}
 		_, _ = t.statusEval(ctx)

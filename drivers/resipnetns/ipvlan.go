@@ -54,7 +54,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 		t.linkDel(tmpDev)
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
+	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.linkDelIn(dev, netns.Path())
 	})
 	return nil
