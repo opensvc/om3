@@ -49,6 +49,9 @@ func (t *Manager) doMonitorAction(rid string, stage int) {
 	case instance.MonitorActionFreezeStop:
 	case instance.MonitorActionReboot:
 	case instance.MonitorActionSwitch:
+	case instance.MonitorActionNone:
+		t.log.Infof("skip monitor action: not configured")
+		return
 	default:
 		t.log.Errorf("skip monitor action: not supported: %s", monitorAction)
 		return
