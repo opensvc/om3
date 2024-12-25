@@ -177,9 +177,15 @@ func (t *Manager) doneAndIdle() {
 // done() sets marks the orchestration as done on the local instance.
 // It can be used instead of doneAndIdle() when we want a state to linger
 // after the orchestration is ended.
+// OrchestrationIsDone is set to true when orchestrationID is set.
 func (t *Manager) done() {
 	t.change = true
-	t.state.OrchestrationIsDone = true
+	if t.state.OrchestrationID != uuid.Nil && !t.state.OrchestrationIsDone {
+		t.log.Debugf("set OrchestrationIsDone -> true for OrchestrationID %s", t.state.OrchestrationID)
+		t.state.OrchestrationIsDone = true
+	} else if !t.state.OrchestrationIsDone {
+		t.log.Debugf("skip change OrchestrationIsDone (OrchestrationID is nil)")
+	}
 }
 
 func (t *Manager) orchestrationIsAllDone() bool {

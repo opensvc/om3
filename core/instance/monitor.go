@@ -41,7 +41,8 @@ type (
 		OrchestrationID uuid.UUID `json:"orchestration_id"`
 
 		// OrchestrationIsDone is set by the orchestration when it decides the instance state has reached its target.
-		// A orchestration is cleaned up when all instance monitors have OrchestrationIsDone set.
+		// It is used to clear orchestration and orchestration id up when all instance monitors have
+		// OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done"`
 
 		SessionID               uuid.UUID        `json:"session_id"`
