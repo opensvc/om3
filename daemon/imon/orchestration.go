@@ -171,7 +171,10 @@ func (t *Manager) endOrchestration() {
 // sets the state to idle.
 func (t *Manager) doneAndIdle() {
 	t.done()
-	t.state.State = instance.MonitorStateIdle
+	if t.state.State != instance.MonitorStateIdle {
+		t.change = true
+		t.state.State = instance.MonitorStateIdle
+	}
 }
 
 // done() sets marks the orchestration as done on the local instance.
@@ -179,9 +182,9 @@ func (t *Manager) doneAndIdle() {
 // after the orchestration is ended.
 // OrchestrationIsDone is set to true when orchestrationID is set.
 func (t *Manager) done() {
-	t.change = true
 	if t.state.OrchestrationID != uuid.Nil && !t.state.OrchestrationIsDone {
 		t.log.Debugf("set OrchestrationIsDone -> true for OrchestrationID %s", t.state.OrchestrationID)
+		t.change = true
 		t.state.OrchestrationIsDone = true
 	} else if !t.state.OrchestrationIsDone {
 		t.log.Debugf("skip change OrchestrationIsDone (OrchestrationID is nil)")
