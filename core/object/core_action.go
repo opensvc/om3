@@ -139,6 +139,20 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 	q <- false
 }
 
+func (t *actor) announceIdle(ctx context.Context) error {
+	return t.announceProgress(ctx, "idle")
+}
+
+func (t *actor) announceFailure(ctx context.Context) error {
+	s := actioncontext.Props(ctx).Failure
+	return t.announceProgress(ctx, s)
+}
+
+func (t *actor) announceProgressing(ctx context.Context) error {
+	s := actioncontext.Props(ctx).Progress
+	return t.announceProgress(ctx, s)
+}
+
 // announceProgress signals the daemon that an action is in progress, using the
 // POST /object/progress. This handler manages local expect:
 // * set to "started" via InstanceMonitorUpdated event handler
@@ -146,6 +160,9 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	if env.HasDaemonMonitorOrigin() {
 		// no need to announce if the daemon started this action
+		return nil
+	}
+	if progress == "" {
 		return nil
 	}
 	c, err := client.New()
@@ -316,9 +333,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}()
 
 	// daemon instance monitor updates
-	progress := actioncontext.Props(ctx).Progress
-	failure := fmt.Sprintf("%s failed", action.Name)
-	t.announceProgress(ctx, progress)
+	t.announceProgressing(ctx)
 
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
@@ -335,7 +350,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
 		_, _ = t.statusEval(ctx)
-		t.announceProgress(ctx, failure)
+		t.announceFailure(ctx)
 		return err
 	}
 	l := resourceselector.FromContext(ctx, t)
@@ -437,7 +452,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	if err := t.abortStart(ctx, l); err != nil {
 		_, _ = t.statusEval(ctx)
-		t.announceProgress(ctx, "idle")
+		t.announceIdle(ctx)
 		return err
 	}
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
@@ -452,6 +467,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 		}
 		_, _ = t.statusEval(ctx)
+		if err == nil {
+			t.announceIdle(ctx)
+		} else {
+			t.announceFailure(ctx)
+		}
 		return err
 	}
 	if action.Order.IsDesc() {
@@ -459,10 +479,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	err := t.postStartStopStatusEval(ctx)
 	if err == nil {
-		t.announceProgress(ctx, "idle")
+		t.announceIdle(ctx)
 	} else {
 		t.log.Errorf("%s", err)
-		t.announceProgress(ctx, failure)
+		t.announceFailure(ctx)
 	}
 	return err
 }
