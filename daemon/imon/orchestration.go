@@ -147,6 +147,10 @@ func (t *Manager) setWaitChildren() bool {
 // endOrchestration is called when orchestration has been reached on all nodes
 func (t *Manager) endOrchestration() {
 	t.change = true
+	globalExpect := t.state.GlobalExpect
+	globalExpectUpdatedAt := t.state.GlobalExpectUpdatedAt
+	globalExpectOptions := t.state.GlobalExpectOptions
+
 	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	t.state.GlobalExpectOptions = nil
 	t.state.OrchestrationIsDone = false
@@ -155,9 +159,12 @@ func (t *Manager) endOrchestration() {
 	t.updateIfChange()
 	if t.acceptedOrchestrationID != uuid.Nil {
 		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
-			Node: t.localhost,
-			Path: t.path,
-			ID:   t.acceptedOrchestrationID.String(),
+			Node:                  t.localhost,
+			Path:                  t.path,
+			ID:                    t.acceptedOrchestrationID.String(),
+			GlobalExpect:          globalExpect,
+			GlobalExpectUpdatedAt: globalExpectUpdatedAt,
+			GlobalExpectOptions:   globalExpectOptions,
 		},
 			t.labelPath,
 			t.labelLocalhost,
