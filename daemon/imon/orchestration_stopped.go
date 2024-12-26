@@ -26,6 +26,8 @@ func (t *Manager) freezeStop() {
 	case instance.MonitorStateFreezing:
 		// wait for the freeze exec to end
 	case instance.MonitorStateRunning:
+	case instance.MonitorStateStopped:
+		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStopping:
 		// avoid multiple concurrent stop execs
 	case instance.MonitorStateStopFailed:
@@ -48,6 +50,8 @@ func (t *Manager) stop() {
 		t.doStop()
 	case instance.MonitorStateReady:
 		t.stoppedFromReady()
+	case instance.MonitorStateStopped:
+		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateFrozen:
 		// honor the frozen state
 	case instance.MonitorStateFreezing:
@@ -95,7 +99,7 @@ func (t *Manager) doStop() {
 		return
 	}
 	t.createPendingWithDuration(stopDuration)
-	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateIdle, instance.MonitorStateStopFailed)
+	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
 func (t *Manager) stoppedFromReady() {

@@ -712,18 +712,23 @@ type (
 	}
 
 	ObjectOrchestrationEnd struct {
-		pubsub.Msg `yaml:",inline"`
-		ID         string      `json:"id" yaml:"id"`
-		Node       string      `json:"node" yaml:"node"`
-		Path       naming.Path `json:"path" yaml:"path"`
+		pubsub.Msg            `yaml:",inline"`
+		ID                    string                       `json:"id" yaml:"id"`
+		Node                  string                       `json:"node" yaml:"node"`
+		Path                  naming.Path                  `json:"path" yaml:"path"`
+		GlobalExpect          instance.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectUpdatedAt time.Time                    `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		GlobalExpectOptions   any                          `json:"global_expect_options" yaml:"global_expect_options"`
 	}
 
 	ObjectOrchestrationRefused struct {
-		pubsub.Msg `yaml:",inline"`
-		ID         string      `json:"id" yaml:"id"`
-		Node       string      `json:"node" yaml:"node"`
-		Path       naming.Path `json:"path" yaml:"path"`
-		Reason     string      `json:"reason" yaml:"reason"`
+		pubsub.Msg          `yaml:",inline"`
+		ID                  string                        `json:"id" yaml:"id"`
+		Node                string                        `json:"node" yaml:"node"`
+		Path                naming.Path                   `json:"path" yaml:"path"`
+		Reason              string                        `json:"reason" yaml:"reason"`
+		GlobalExpect        *instance.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectOptions any                           `json:"global_expect_options" yaml:"global_expect_options"`
 	}
 
 	ObjectStatusDeleted struct {

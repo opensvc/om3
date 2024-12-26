@@ -612,10 +612,12 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		t.onChange()
 	} else {
 		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
-			Node:   t.localhost,
-			Path:   t.path,
-			ID:     c.Value.CandidateOrchestrationID.String(),
-			Reason: fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			Node:                t.localhost,
+			Path:                t.path,
+			ID:                  c.Value.CandidateOrchestrationID.String(),
+			Reason:              fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			GlobalExpect:        c.Value.GlobalExpect,
+			GlobalExpectOptions: c.Value.GlobalExpectOptions,
 		},
 			t.labelPath,
 			t.labelLocalhost,

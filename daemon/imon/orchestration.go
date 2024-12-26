@@ -147,6 +147,10 @@ func (t *Manager) setWaitChildren() bool {
 // endOrchestration is called when orchestration has been reached on all nodes
 func (t *Manager) endOrchestration() {
 	t.change = true
+	globalExpect := t.state.GlobalExpect
+	globalExpectUpdatedAt := t.state.GlobalExpectUpdatedAt
+	globalExpectOptions := t.state.GlobalExpectOptions
+
 	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	t.state.GlobalExpectOptions = nil
 	t.state.OrchestrationIsDone = false
@@ -155,9 +159,12 @@ func (t *Manager) endOrchestration() {
 	t.updateIfChange()
 	if t.acceptedOrchestrationID != uuid.Nil {
 		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
-			Node: t.localhost,
-			Path: t.path,
-			ID:   t.acceptedOrchestrationID.String(),
+			Node:                  t.localhost,
+			Path:                  t.path,
+			ID:                    t.acceptedOrchestrationID.String(),
+			GlobalExpect:          globalExpect,
+			GlobalExpectUpdatedAt: globalExpectUpdatedAt,
+			GlobalExpectOptions:   globalExpectOptions,
 		},
 			t.labelPath,
 			t.labelLocalhost,
@@ -171,15 +178,24 @@ func (t *Manager) endOrchestration() {
 // sets the state to idle.
 func (t *Manager) doneAndIdle() {
 	t.done()
-	t.state.State = instance.MonitorStateIdle
+	if t.state.State != instance.MonitorStateIdle {
+		t.change = true
+		t.state.State = instance.MonitorStateIdle
+	}
 }
 
 // done() sets marks the orchestration as done on the local instance.
 // It can be used instead of doneAndIdle() when we want a state to linger
 // after the orchestration is ended.
+// OrchestrationIsDone is set to true when orchestrationID is set.
 func (t *Manager) done() {
-	t.change = true
-	t.state.OrchestrationIsDone = true
+	if t.state.OrchestrationID != uuid.Nil && !t.state.OrchestrationIsDone {
+		t.log.Debugf("set OrchestrationIsDone -> true for OrchestrationID %s", t.state.OrchestrationID)
+		t.change = true
+		t.state.OrchestrationIsDone = true
+	} else if !t.state.OrchestrationIsDone {
+		t.log.Debugf("skip change OrchestrationIsDone (OrchestrationID is nil)")
+	}
 }
 
 func (t *Manager) orchestrationIsAllDone() bool {
