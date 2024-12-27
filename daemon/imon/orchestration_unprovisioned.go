@@ -7,6 +7,7 @@ import (
 )
 
 func (t *Manager) orchestrateUnprovisioned() {
+	t.disableLocalExpect("orchestrate unprovisioned")
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateProvisionFailed,
@@ -68,17 +69,17 @@ func (t *Manager) hasNonLeaderProvisioned() bool {
 
 func (t *Manager) unprovisionedClearIfReached() bool {
 	reached := func(msg string) bool {
-		t.log.Infof(msg)
+		t.log.Infof("%s -> set reached", msg)
 		t.doneAndIdle()
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
+		t.disableLocalExpect(msg)
 		t.updateIfChange()
 		return true
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
-		return reached("unprovisioned orchestration: instance is not provisioned -> set reached, clear local expect")
+		return reached("unprovisioned orchestration: instance is not provisioned")
 	}
 	if t.instStatus[t.localhost].Avail == status.NotApplicable {
-		return reached("unprovisioned orchestration: instance availability is n/a -> set reached, clear local expect")
+		return reached("unprovisioned orchestration: instance availability is n/a")
 	}
 	return false
 }

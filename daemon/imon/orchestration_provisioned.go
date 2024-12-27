@@ -69,6 +69,9 @@ func (t *Manager) provisionedClearIfReached() bool {
 		}
 		t.log.Infof(msg)
 		t.doneAndIdle()
+		if t.isLocalStarted() {
+			t.enableLocalExpect("instance is now started")
+		}
 		t.updateIfChange()
 		return true
 	}

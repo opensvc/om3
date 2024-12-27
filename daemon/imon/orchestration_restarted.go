@@ -50,8 +50,6 @@ package imon
 */
 
 import (
-	"time"
-
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/stringslice"
@@ -106,12 +104,13 @@ func (t *Manager) orchestrateRestartedOnIdle() {
 		case status.Warn, status.Up:
 		case status.StandbyUp:
 			if !t.restartedOptions().Force {
-				t.log.Infof("local instance initial avail is %s and restart is not forced -> set done")
+				t.log.Infof("local instance initial avail is %s and restart is not forced -> set done",
+					instanceStatus.Avail)
 				t.done()
 				return
 			}
 		default:
-			t.log.Infof("local instance initial avail is %s -> set done")
+			t.log.Infof("local instance initial avail is %s -> set done", instanceStatus.Avail)
 			t.done()
 			return
 		}
@@ -135,10 +134,7 @@ func (t *Manager) orchestrateRestartedOnReady() {
 	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
 		switch instanceStatus.Avail {
 		case status.Warn, status.Up, status.StandbyUp:
-			t.log.Infof("all prior instances are restarted, ready to restart")
-			t.state.LocalExpect = instance.MonitorLocalExpectStarted
-			t.state.MonitorActionExecutedAt = time.Time{}
-			t.change = true
+			t.enableLocalExpect("all prior instances are restarted, ready to restart")
 			t.createPendingWithDuration(stopDuration)
 			if t.restartedOptions().Force {
 				t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
@@ -146,7 +142,7 @@ func (t *Manager) orchestrateRestartedOnReady() {
 				t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 			}
 		default:
-			t.log.Infof("all prior instances are restarted, local instance avail is %s -> done")
+			t.log.Infof("all prior instances are restarted, local instance avail is %s -> done", instanceStatus.Avail)
 			t.doneAndIdle()
 		}
 	}
@@ -196,9 +192,7 @@ func (t *Manager) orchestrateRestartedOnRestarted() {
 		t.loggerWithState().Infof("instance on %s state is %s -> wait", nodename, instanceMonitor.State)
 		return
 	}
-	t.loggerWithState().Infof("all instances are restarted, failed or done -> set done and local expect")
+	t.enableLocalExpect("all instances are restarted, failed or orchestrate done")
 	t.doneAndIdle()
-	t.state.LocalExpect = instance.MonitorLocalExpectStarted
-	t.state.MonitorActionExecutedAt = time.Time{}
 	t.clearPending()
 }

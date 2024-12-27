@@ -35,7 +35,13 @@ func newTodoMap() todoMap {
 	m := make(todoMap)
 	return m
 }
+
+func (t *Manager) monitorActionCalled() bool {
+	return !t.state.MonitorActionExecutedAt.IsZero()
+}
+
 func (t *Manager) doMonitorAction(rid string, stage int) {
+	t.state.MonitorActionExecutedAt = time.Now()
 	monitorActionCount := len(t.instConfig.MonitorAction)
 	if monitorActionCount < stage+1 {
 		t.log.Errorf("skip monitor action: stage %d action no longer configured", stage+1)
@@ -78,6 +84,7 @@ func (t *Manager) doMonitorAction(rid string, stage int) {
 		}
 	case instance.MonitorActionSwitch:
 		t.createPendingWithDuration(stopDuration)
+		t.disableLocalExpect("monitor action switch stopping")
 		t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 	}
 }
@@ -137,8 +144,9 @@ func (t *Manager) orchestrateResourceRestart() {
 	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
 		if rmon.Restart.Remaining != rcfg.Restart {
 			t.log.Infof("resource %s is up, reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
-			t.state.MonitorActionExecutedAt = time.Time{}
 			rmon.Restart.Remaining = rcfg.Restart
+			// reset the last monitor action execution time, to rearm the next monitor action
+			t.state.MonitorActionExecutedAt = time.Time{}
 			t.state.Resources.Set(rid, *rmon)
 			t.change = true
 		}
@@ -174,14 +182,12 @@ func (t *Manager) orchestrateResourceRestart() {
 			resetRemainingAndTimer(rid, rcfg, rmon)
 		case rmon.Restart.Timer != nil:
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
-		case !t.state.MonitorActionExecutedAt.IsZero():
+		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
 		case started:
 			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
-				t.state.MonitorActionExecutedAt = time.Now()
-				t.state.LocalExpect = instance.MonitorLocalExpectEvicted
-				t.change = true
+				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action: %s", disableLocalExpectMsg)
 				t.doMonitorAction(rid, 0)
 			} else {
 				todoRestart.Add(rid)
@@ -321,9 +327,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 
 	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
-		t.state.MonitorActionExecutedAt = time.Now()
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
-		t.change = true
+		t.disableLocalExpect("orchestrate resource restart recover from evicted and stop failed")
 		t.doMonitorAction("", 1)
 	}
 

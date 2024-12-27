@@ -69,6 +69,7 @@ func (t *Manager) purgedFromUnprovisioned() {
 }
 
 func (t *Manager) purgedFromIdleUp() {
+	t.disableLocalExpect("orchestrate purged stopping")
 	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 

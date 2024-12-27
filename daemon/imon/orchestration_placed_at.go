@@ -154,6 +154,7 @@ func (t *Manager) placedStop() {
 
 func (t *Manager) doPlacedStop() {
 	t.createPendingWithDuration(stopDuration)
+	t.disableLocalExpect("orchestrate placed stopping")
 	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
@@ -184,7 +185,6 @@ func (t *Manager) clearStopFailedIfDown() {
 
 func (t *Manager) clearStopped() {
 	t.doneAndIdle()
-	t.state.LocalExpect = instance.MonitorLocalExpectNone
 	t.clearPending()
 }
 
