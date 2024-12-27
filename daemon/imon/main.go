@@ -332,10 +332,9 @@ func (t *Manager) worker(initialNodes []string) {
 		case <-t.ctx.Done():
 			return
 		case i := <-t.sub.C:
-			select {
-			case <-t.ctx.Done():
+			if t.ctx.Err() != nil {
+				t.log.Debugf("skipping event due to canceled context")
 				return
-			default:
 			}
 			switch c := i.(type) {
 			case *msgbus.InstanceStatusDeleted:
@@ -362,10 +361,9 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onNodeStatsUpdated(c)
 			}
 		case i := <-t.cmdC:
-			select {
-			case <-t.ctx.Done():
+			if t.ctx.Err() != nil {
+				t.log.Debugf("skipping cmd due to canceled context")
 				return
-			default:
 			}
 			switch c := i.(type) {
 			case cmdOrchestrate:
