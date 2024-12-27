@@ -1,0 +1,12 @@
+The maximum duration of the instance status evaluation.
+
+For example, the total start action duration is constrained by different timeouts:
+
+* the `start_timeout`
+  Limiting the start action duration.
+
+* the `stop_timeout`
+  Limiting the start rollback duration triggered by start errors.
+
+* the `status_timeout`
+  Limiting the post-start instance status evaluation duration.

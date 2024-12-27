@@ -103,9 +103,8 @@ func (t *actor) needRollback(ctx context.Context) bool {
 	return true
 }
 
-func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
-	props := actioncontext.Props(ctx)
-	timeout, source := t.actionTimeout(props.TimeoutKeywords)
+func (t *actor) withTimeoutFromKeywords(ctx context.Context, kwNames []string) (context.Context, func()) {
+	timeout, source := t.actionTimeout(kwNames)
 	t.log.Debugf("action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
@@ -122,6 +121,27 @@ func (t *actor) actionTimeout(kwNames []string) (time.Duration, string) {
 		}
 	}
 	return 0, ""
+}
+
+func (t *actor) withRollbackTimeout(ctx context.Context) (context.Context, func()) {
+	props := actioncontext.Props(ctx)
+	switch props.Name {
+	case "provision":
+		return t.withTimeoutFromKeywords(ctx, []string{"unprovision_timeout", "timeout"})
+	case "start":
+		return t.withTimeoutFromKeywords(ctx, []string{"stop_timeout", "timeout"})
+	default:
+		return ctx, func() {}
+	}
+}
+
+func (t *actor) withStatusTimeout(ctx context.Context) (context.Context, func()) {
+	return t.withTimeoutFromKeywords(ctx, []string{"status_timeout", "timeout"})
+}
+
+func (t *actor) withActionTimeout(ctx context.Context) (context.Context, func()) {
+	props := actioncontext.Props(ctx)
+	return t.withTimeoutFromKeywords(ctx, props.TimeoutKeywords)
 }
 
 func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
@@ -344,7 +364,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ctxWithTimeout, cancelCtxWithTimeout := t.withTimeout(ctx)
+	ctxWithTimeout, cancelCtxWithTimeout := t.withActionTimeout(ctx)
 	defer cancelCtxWithTimeout()
 
 	if err := t.preAction(ctxWithTimeout); err != nil {
@@ -458,13 +478,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if t.needRollback(ctxWithTimeout) {
 			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
-				ctxWithTimeout, cancelCtxWithTimeout := t.withTimeout(ctx)
+				ctxWithTimeout, cancelCtxWithTimeout := t.withRollbackTimeout(ctx)
 				defer cancelCtxWithTimeout()
 				if errRollback := rb.Rollback(ctxWithTimeout); errRollback != nil {
 					t.Log().Errorf("rollback: %s", err)
 				}
 			}
 		}
+		ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+		defer cancelCtxWithTimeout()
 		_, _ = t.statusEval(ctxWithTimeout)
 		if err == nil {
 			t.announceIdle(ctxWithTimeout)
@@ -473,6 +495,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		return err
 	}
+
+	// the action is done without error ... start a new timeout for status eval
+	ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+	defer cancelCtxWithTimeout()
+
 	if action.Order.IsDesc() {
 		t.CleanPG(ctxWithTimeout)
 	}
