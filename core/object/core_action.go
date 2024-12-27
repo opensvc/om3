@@ -339,22 +339,21 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		mgr.Register(t.pg)
 	}
 
-	// Prepare alternate context without timeout, that can be used on situations
-	// where initial context is DeadlineExceeded.
 	// TODO: clarify timeouts: does start_timeout includes the eventual rollback,
 	//       statusEval, postStartStopStatusEval, announceProgress "idle" and "failed"
-	ctxWithoutTimeout, cancel1 := context.WithCancel(ctx)
-	defer cancel1()
-
-	ctx, cancel := t.withTimeout(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if err := t.preAction(ctx); err != nil {
-		_, _ = t.statusEval(ctx)
-		t.announceFailure(ctx)
+
+	ctxWithTimeout, cancelCtxWithTimeout := t.withTimeout(ctx)
+	defer cancelCtxWithTimeout()
+
+	if err := t.preAction(ctxWithTimeout); err != nil {
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceFailure(ctxWithTimeout)
 		return err
 	}
-	l := resourceselector.FromContext(ctx, t)
-	b := actioncontext.To(ctx)
+	l := resourceselector.FromContext(ctxWithTimeout, t)
+	b := actioncontext.To(ctxWithTimeout)
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
@@ -426,7 +425,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
 	var evaluated sync.Map
-	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctxWithTimeout, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
@@ -450,39 +449,39 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return nil
 	})
 
-	if err := t.abortStart(ctx, l); err != nil {
-		_, _ = t.statusEval(ctx)
-		t.announceIdle(ctx)
+	if err := t.abortStart(ctxWithTimeout, l); err != nil {
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
-		if t.needRollback(ctx) {
-			if rb := actionrollback.FromContext(ctx); rb != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
+		if t.needRollback(ctxWithTimeout) {
+			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
-				ctx2, cancel2 := t.withTimeout(ctxWithoutTimeout)
-				defer cancel2()
-				if errRollback := rb.Rollback(ctx2); errRollback != nil {
+				ctxWithTimeout, cancelCtxWithTimeout := t.withTimeout(ctx)
+				defer cancelCtxWithTimeout()
+				if errRollback := rb.Rollback(ctxWithTimeout); errRollback != nil {
 					t.Log().Errorf("rollback: %s", err)
 				}
 			}
 		}
-		_, _ = t.statusEval(ctx)
+		_, _ = t.statusEval(ctxWithTimeout)
 		if err == nil {
-			t.announceIdle(ctx)
+			t.announceIdle(ctxWithTimeout)
 		} else {
-			t.announceFailure(ctx)
+			t.announceFailure(ctxWithTimeout)
 		}
 		return err
 	}
 	if action.Order.IsDesc() {
-		t.CleanPG(ctx)
+		t.CleanPG(ctxWithTimeout)
 	}
-	err := t.postStartStopStatusEval(ctx)
+	err := t.postStartStopStatusEval(ctxWithTimeout)
 	if err == nil {
-		t.announceIdle(ctx)
+		t.announceIdle(ctxWithTimeout)
 	} else {
 		t.log.Errorf("%s", err)
-		t.announceFailure(ctx)
+		t.announceFailure(ctxWithTimeout)
 	}
 	return err
 }
