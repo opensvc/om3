@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -110,6 +109,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				continue
 			}
 			for _, addr := range addrs {
+				t.log.Infof("add expected %s address: %s", node, addr)
 				otherNodeIPM[addr] = struct{}{}
 				otherNodeIPL = append(otherNodeIPL, addr)
 			}
@@ -138,11 +138,15 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 					continue
 				}
 			}
-			connAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
+			connAddr, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+			if err != nil {
+				t.log.Warnf("%s", err)
+				continue
+			}
 			if _, ok := otherNodeIPM[connAddr]; !ok {
-				t.log.Warnf("drop message from unexpected connection from %s", connAddr)
+				t.log.Warnf("unexpected connection from %s", connAddr)
 				if err := conn.Close(); err != nil {
-					t.log.Warnf("close unexpected connection from %s: %s", connAddr, err)
+					t.log.Warnf("failed to close unexpected connection from %s: %s", connAddr, err)
 				}
 				continue
 			}

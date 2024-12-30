@@ -2,12 +2,14 @@ package hbucast
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -15,13 +17,16 @@ type (
 	// tx holds a hb unicast transmitter
 	tx struct {
 		sync.WaitGroup
-		ctx      context.Context
-		id       string
-		nodes    map[string]string
-		port     string
-		intf     string
-		interval time.Duration
-		timeout  time.Duration
+		ctx         context.Context
+		id          string
+		nodes       map[string]string
+		addr        string
+		port        string
+		intf        string
+		interval    time.Duration
+		timeout     time.Duration
+		localIP     net.IP
+		lastNodeErr map[string]string
 
 		name   string
 		log    *plog.Logger
@@ -58,6 +63,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.cancel = cancel
 	t.cmdC = cmdC
 	t.Add(1)
+
 	go func() {
 		defer t.Done()
 		t.log.Infof("starting: timeout %s, interval: %s", t.timeout, t.interval)
@@ -71,8 +77,31 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		}
 		started <- true
 		var b []byte
-		ticker := time.NewTicker(t.interval)
-		defer ticker.Stop()
+
+		sendTicker := time.NewTicker(t.interval)
+		defer sendTicker.Stop()
+
+		localIPTicker := time.NewTicker(30 * time.Second)
+		defer localIPTicker.Stop()
+
+		updateLocalIP := func() {
+			if localIP, err := t.defaultLocalIP(); err != nil {
+				t.log.Errorf("%s", err)
+			} else if !t.localIP.Equal(localIP) {
+				t.log.Infof("set local ip to %s", localIP)
+				t.localIP = localIP
+			}
+		}
+
+		if localIP, err := t.defaultLocalIP(); err != nil {
+			t.log.Errorf("%s", err)
+		} else if localIP != nil {
+			t.log.Infof("set local ip to %s", localIP)
+			t.localIP = localIP
+		} else {
+			t.log.Infof("undetermined local ip")
+		}
+
 		var reason string
 		for {
 			select {
@@ -81,9 +110,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				return
 			case b = <-msgC:
 				reason = "send msg"
-				ticker.Reset(t.interval)
-			case <-ticker.C:
+				sendTicker.Reset(t.interval)
+			case <-sendTicker.C:
 				reason = "send msg (interval)"
+			case <-localIPTicker.C:
+				updateLocalIP()
 			}
 			if len(b) == 0 {
 				continue
@@ -100,25 +131,55 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-func (t *tx) send(node, addr string, b []byte) {
-	conn, err := net.DialTimeout("tcp", addr+":"+t.port, t.timeout)
+// defaultLocalIP returns the ip address of the local nodename, so rx on peer
+// nodes see messages coming from a known cluster member.
+func (t *tx) defaultLocalIP() (net.IP, error) {
+	if t.addr != "" {
+		return net.ParseIP(t.addr), nil
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(t.ctx, hostname.Hostname())
 	if err != nil {
-		t.log.Debugf("dial timeout %s %s:%s: %s", node, addr, t.port, err)
-		return
+		return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
-	if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-		t.log.Errorf("set deadline %s %s:%s: %s", node, addr, t.port, err)
-		return
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("lookup sender addr: %s: no address found ", t.addr)
 	}
-	if n, err := conn.Write(b); err != nil {
-		t.log.Debugf("write %s %s: %s", node, addr, err)
-		return
-	} else if n != len(b) {
-		t.log.Debugf("write %s %s: %d instead of %d", node, addr, n, len(b))
-		return
+	return addrs[0].IP, nil
+}
+
+func (t *tx) send(node, addr string, b []byte) {
+	localAddr := net.TCPAddr{
+		IP:   t.localIP,
+		Port: 0,
+	}
+	dialer := net.Dialer{
+		Timeout:   t.timeout,
+		LocalAddr: &localAddr,
+	}
+	send := func() error {
+		conn, err := dialer.Dial("tcp", addr+":"+t.port)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+		if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+			return err
+		}
+		if n, err := conn.Write(b); err != nil {
+			return err
+		} else if n != len(b) {
+			return err
+		}
+		return nil
+	}
+	if err := send(); err != nil {
+		lastErr, _ := t.lastNodeErr[node]
+		if newErr := err.Error(); newErr != lastErr {
+			t.lastNodeErr[node] = newErr
+			t.log.Errorf("from %s to %s (%s): %s", localAddr, addr, node, newErr)
+		}
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: node,
@@ -127,16 +188,18 @@ func (t *tx) send(node, addr string, b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes map[string]string, port, intf string, timeout, interval time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes map[string]string, addr, port, intf string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
 	return &tx{
-		ctx:      ctx,
-		id:       id,
-		nodes:    nodes,
-		port:     port,
-		intf:     intf,
-		interval: interval,
-		timeout:  timeout,
+		ctx:         ctx,
+		id:          id,
+		nodes:       nodes,
+		lastNodeErr: make(map[string]string),
+		addr:        addr,
+		port:        port,
+		intf:        intf,
+		interval:    interval,
+		timeout:     timeout,
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbucast").
 			Attr("hb_func", "tx").
 			Attr("hb_name", name).
