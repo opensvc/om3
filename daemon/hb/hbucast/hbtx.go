@@ -174,13 +174,34 @@ func (t *tx) send(node, addr string, b []byte) {
 		}
 		return nil
 	}
-	if err := send(); err != nil {
+
+	clearDedupLog := func() {
+		if _, ok := t.lastNodeErr[node]; !ok {
+			return
+		}
+		t.log.Infof("end a send error period: %s", t.lastNodeErr[node])
+		delete(t.lastNodeErr, node)
+	}
+	setDedupLog := func(err error) {
 		lastErr, _ := t.lastNodeErr[node]
-		if newErr := err.Error(); newErr != lastErr {
+		newErr := err.Error()
+		if newErr != lastErr {
+			if lastErr != "" {
+				t.log.Infof("end a send error period: %s", lastErr)
+			} else {
+				t.log.Warnf("begin a send error period: %s", newErr)
+			}
 			t.lastNodeErr[node] = newErr
-			t.log.Errorf("from %s to %s (%s): %s", localAddr, addr, node, newErr)
 		}
 	}
+
+	if err := send(); err != nil {
+		setDedupLog(err)
+		return
+	}
+
+	clearDedupLog()
+
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: node,
 		HbID:     t.id,
