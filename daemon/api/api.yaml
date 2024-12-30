@@ -485,10 +485,38 @@ paths:
       tags:
         - node
 
+  /node/name/{nodename}/ssh/hostkeys:
+    get:
+      description: |
+        Return the ssh public host keys so the peer can trust them in its known_hosts file.
+      operationId: GetNodeSSHHostkeys
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /node/name/{nodename}/ssh/key:
     get:
       description: |
-        Return the ssh public key defined by node.sshkey.
+        Return the ssh public key defined by node.sshkey so the peer can trust it in its authorized_keys file.
       operationId: GetNodeSSHKey
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
