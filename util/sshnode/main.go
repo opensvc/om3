@@ -15,6 +15,11 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
+type (
+	AuthorizedKeysMap map[string]any
+	KnownHostsMap     map[string]any
+)
+
 func expandUserSSH(basename string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -73,8 +78,6 @@ func getHostKeyCallback() (ssh.HostKeyCallback, error) {
 	}
 	return knownhosts.New(knownHostsPath)
 }
-
-type AuthorizedKeysMap map[string]any
 
 func AppendAuthorizedKeys(line []byte) error {
 	if len(line) == 0 {
@@ -165,6 +168,50 @@ func (m AuthorizedKeysMap) Has(data []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if _, ok := m[ssh.FingerprintSHA256(k)]; ok {
+		return true, nil
+	}
+	return false, nil
+}
+
+func GetKnownHostsMap() (KnownHostsMap, error) {
+	filename := os.ExpandEnv("$HOME/.ssh/known_hosts")
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	m := make(KnownHostsMap)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		data := scanner.Bytes()
+		_, _, k, _, _, err := ssh.ParseKnownHosts(bytes.TrimSpace(data))
+		if err != nil {
+			//fmt.Fprintf(os.Stderr, "skipping invalid key in file %s: %s\n", file.Name(), err)
+			continue
+		}
+		m[ssh.FingerprintSHA256(k)] = nil
+	}
+
+	// Check for errors
+	if err := scanner.Err(); err != nil {
+		return m, err
+	}
+
+	return m, nil
+}
+
+func (m KnownHostsMap) Add(host string, k ssh.PublicKey) error {
+	if v, err := m.Has(k); err != nil {
+		return err
+	} else if v {
+		return nil
+	}
+	return AddKnownHost(host, k)
+}
+
+func (m KnownHostsMap) Has(k ssh.PublicKey) (bool, error) {
 	if _, ok := m[ssh.FingerprintSHA256(k)]; ok {
 		return true, nil
 	}
