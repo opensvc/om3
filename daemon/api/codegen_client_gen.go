@@ -315,6 +315,9 @@ type ClientInterface interface {
 	// GetNodeSchedule request
 	GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeSSHHostkeys request
+	GetNodeSSHHostkeys(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeSSHKey request
 	GetNodeSSHKey(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1394,6 +1397,18 @@ func (c *Client) GetNodePing(ctx context.Context, nodename InPathNodeName, reqEd
 
 func (c *Client) GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeScheduleRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeSSHHostkeys(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeSSHHostkeysRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -7246,6 +7261,40 @@ func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Re
 	return req, nil
 }
 
+// NewGetNodeSSHHostkeysRequest generates requests for GetNodeSSHHostkeys
+func NewGetNodeSSHHostkeysRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/ssh/hostkeys", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeSSHKeyRequest generates requests for GetNodeSSHKey
 func NewGetNodeSSHKeyRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -10249,6 +10298,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeScheduleWithResponse request
 	GetNodeScheduleWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeScheduleResponse, error)
 
+	// GetNodeSSHHostkeysWithResponse request
+	GetNodeSSHHostkeysWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHHostkeysResponse, error)
+
 	// GetNodeSSHKeyWithResponse request
 	GetNodeSSHKeyWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHKeyResponse, error)
 
@@ -12262,6 +12314,31 @@ func (r GetNodeScheduleResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeScheduleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeSSHHostkeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeSSHHostkeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeSSHHostkeysResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14327,6 +14404,15 @@ func (c *ClientWithResponses) GetNodeScheduleWithResponse(ctx context.Context, n
 		return nil, err
 	}
 	return ParseGetNodeScheduleResponse(rsp)
+}
+
+// GetNodeSSHHostkeysWithResponse request returning *GetNodeSSHHostkeysResponse
+func (c *ClientWithResponses) GetNodeSSHHostkeysWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHHostkeysResponse, error) {
+	rsp, err := c.GetNodeSSHHostkeys(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeSSHHostkeysResponse(rsp)
 }
 
 // GetNodeSSHKeyWithResponse request returning *GetNodeSSHKeyResponse
@@ -18558,6 +18644,53 @@ func ParseGetNodeScheduleResponse(rsp *http.Response) (*GetNodeScheduleResponse,
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeSSHHostkeysResponse parses an HTTP response from a GetNodeSSHHostkeysWithResponse call
+func ParseGetNodeSSHHostkeysResponse(rsp *http.Response) (*GetNodeSSHHostkeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeSSHHostkeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
