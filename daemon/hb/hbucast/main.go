@@ -85,7 +85,7 @@ func (t *T) Configure(ctx context.Context) {
 		port, nodes, timeout, interval, intf)
 	t.SetSignature(signature)
 	name := t.Name()
-	tx := newTx(ctx, name, peerMap, port, intf, timeout, interval)
+	tx := newTx(ctx, name, peerMap, addr, port, intf, timeout, interval)
 	t.SetTx(tx)
 	rx := newRx(ctx, name, peerMap, addr, port, intf, timeout)
 	t.SetRx(rx)
