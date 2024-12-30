@@ -82,6 +82,11 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 		}
 		defer resp.Body.Close()
 
+		knownHosts, err := sshnode.GetKnownHostsMap()
+		if err != nil {
+			return err
+		}
+
 		scanner := bufio.NewScanner(resp.Body)
 
 		for scanner.Scan() {
@@ -91,7 +96,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 				return fmt.Errorf("failed to parse node %s host key: %w", node, err)
 			}
 			fingerprint := ssh.FingerprintLegacyMD5(key)
-			if err := sshnode.AddKnownHost(node, key); err != nil {
+			if err := knownHosts.Add(node, key); err != nil {
 				return fmt.Errorf("node %s key couldn't be added to the known_hosts file: %s", node, err)
 			} else {
 				log.Infof("node %s key added to the known_hosts file: %s", node, fingerprint)
