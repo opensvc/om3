@@ -2,7 +2,6 @@ package imon
 
 import (
 	"context"
-	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
@@ -101,6 +100,12 @@ func (t *Manager) doUnfreeze() {
 	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
+// cancelReadyState transitions the monitor to an Idle state if certain
+// conditions are met, clearing pending states as needed.
+// conditions to return idle:
+// - if locally started (startedClearIfReached)
+// - leadership is lost
+// - topology is flex and found peer instance that is starting or ready
 func (t *Manager) cancelReadyState() bool {
 	if t.pendingCancel == nil {
 		t.loggerWithState().Errorf("startedFromReady without pending")
@@ -204,12 +209,7 @@ func (t *Manager) startedClearIfReached() bool {
 			t.loggerWithState().Infof("instance is started -> set done and idle")
 			t.doneAndIdle()
 		}
-		if t.state.LocalExpect != instance.MonitorLocalExpectStarted {
-			t.loggerWithState().Infof("instance is started, set local expect started")
-			t.change = true
-			t.state.LocalExpect = instance.MonitorLocalExpectStarted
-			t.state.MonitorActionExecutedAt = time.Time{}
-		}
+		t.enableMonitor("local instance is started")
 		t.clearPending()
 		return true
 	}

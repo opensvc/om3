@@ -245,13 +245,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
 			return
 		}
-		t.log.Infof("this instance is now considered started, resource restart and monitoring are enabled")
-		t.state.LocalExpect = instance.MonitorLocalExpectStarted
-
-		// reset the last monitor action execution time, to rearm the next monitor action
-		t.state.MonitorActionExecutedAt = time.Time{}
-		t.change = true
-
+		t.enableMonitor("this instance is now considered started")
 	}
 
 	updateInstStatusMap()
@@ -432,15 +426,14 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	// local expect change ?
 	switch c.State {
 	case instance.MonitorStateStopping, instance.MonitorStateUnprovisioning, instance.MonitorStateShutting:
+
 		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectStarted:
 			if c.IsPartial {
-				t.log.Infof("user is stopping some instance resources, disable resource restart and monitoring")
+				t.disableMonitor("user is stopping some instance resources")
 			} else {
-				t.log.Infof("user is stopping the instance, disable resource restart and monitoring")
+				t.disableMonitor("user is stopping the instance")
 			}
-			t.change = true
-			t.state.LocalExpect = instance.MonitorLocalExpectNone
 		}
 	}
 
@@ -590,9 +583,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			t.log.Infof("set instance monitor: %s", err)
 			return err
 		}
-		t.log.Infof("set instance monitor: set local expect %s -> %s", t.state.LocalExpect, target)
-		t.change = true
-		t.state.LocalExpect = target
+		t.setLocalExpect(target, "set instance monitor: update local expect to %s", target)
 		return nil
 	}
 
