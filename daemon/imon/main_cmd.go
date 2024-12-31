@@ -245,7 +245,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
 			return
 		}
-		t.enableLocalExpect("this instance is now considered started")
+		t.enableMonitor("this instance is now considered started")
 	}
 
 	updateInstStatusMap()
@@ -430,9 +430,9 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectStarted:
 			if c.IsPartial {
-				t.disableLocalExpect("user is stopping some instance resources")
+				t.disableMonitor("user is stopping some instance resources")
 			} else {
-				t.disableLocalExpect("user is stopping the instance")
+				t.disableMonitor("user is stopping the instance")
 			}
 		}
 	}

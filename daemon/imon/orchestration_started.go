@@ -209,7 +209,7 @@ func (t *Manager) startedClearIfReached() bool {
 			t.loggerWithState().Infof("instance is started -> set done and idle")
 			t.doneAndIdle()
 		}
-		t.enableLocalExpect("local instance is started")
+		t.enableMonitor("local instance is started")
 		t.clearPending()
 		return true
 	}

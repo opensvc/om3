@@ -7,7 +7,7 @@ import (
 )
 
 func (t *Manager) orchestrateUnprovisioned() {
-	t.disableLocalExpect("orchestrate unprovisioned")
+	t.disableMonitor("orchestrate unprovisioned")
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateProvisionFailed,
@@ -71,7 +71,7 @@ func (t *Manager) unprovisionedClearIfReached() bool {
 	reached := func(msg string) bool {
 		t.log.Infof("%s -> set reached", msg)
 		t.doneAndIdle()
-		t.disableLocalExpect(msg)
+		t.disableMonitor(msg)
 		t.updateIfChange()
 		return true
 	}

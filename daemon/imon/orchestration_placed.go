@@ -22,7 +22,7 @@ func (t *Manager) orchestratePlacedStart() {
 }
 
 func (t *Manager) orchestratePlacedStop() {
-	t.disableLocalExpect("orchestrate placed stop")
+	t.disableMonitor("orchestrate placed stop")
 	switch t.objStatus.Topology {
 	case topology.Failover:
 		t.orchestrateFailoverPlacedStop()

@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,6 +19,56 @@ import (
 type (
 	todoMap map[string]bool
 )
+
+const (
+	enableMonitorMsg  = "enable resource restart and monitoring"
+	disableMonitorMsg = "disable resource restart and monitoring"
+)
+
+// disableMonitor disables the resource restart and monitoring by setting
+// the local expectation to "none".
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) disableMonitor(format string, a ...any) bool {
+	if format != "" {
+		format = format + ": %s"
+		a = append(a, disableMonitorMsg)
+	}
+	return t.setLocalExpect(instance.MonitorLocalExpectNone, format, a...)
+}
+
+// enableMonitor resets the monitor action execution time and sets the
+// local expected state to "Started" with a message.
+// It resets the MonitorActionExecutedAt on each call to always rearm the
+// next monitor action.
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) enableMonitor(format string, a ...any) bool {
+	if format != "" {
+		format = format + ": %s"
+		a = append(a, enableMonitorMsg)
+	}
+	// reset the last monitor action execution time, to rearm the next monitor action
+	t.state.MonitorActionExecutedAt = time.Time{}
+	return t.setLocalExpect(instance.MonitorLocalExpectStarted, format, a...)
+}
+
+// setLocalExpect sets the local expect value for monitoring.
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) setLocalExpect(localExpect instance.MonitorLocalExpect, format string, a ...any) bool {
+	if t.state.LocalExpect != localExpect {
+		t.change = true
+		if format != "" {
+			t.loggerWithState().Infof(format, a...)
+		}
+		t.state.LocalExpect = localExpect
+		return true
+	} else {
+		if format != "" {
+			msg := fmt.Sprintf(format, a...)
+			t.loggerWithState().Debugf("%s: local expect is already %s", msg, localExpect)
+		}
+		return false
+	}
+}
 
 func (t todoMap) Add(rid string) {
 	t[rid] = true
@@ -84,7 +135,7 @@ func (t *Manager) doMonitorAction(rid string, stage int) {
 		}
 	case instance.MonitorActionSwitch:
 		t.createPendingWithDuration(stopDuration)
-		t.disableLocalExpect("monitor action switch stopping")
+		t.disableMonitor("monitor action switch stopping")
 		t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 	}
 }
@@ -187,7 +238,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		case started:
 			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
-				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action: %s", disableLocalExpectMsg)
+				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action: %s", disableMonitorMsg)
 				t.doMonitorAction(rid, 0)
 			} else {
 				todoRestart.Add(rid)
@@ -301,7 +352,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard all execpt svc and vol
+	// discard all except svc and vol
 	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
 	default:
@@ -327,7 +378,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 
 	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
-		t.disableLocalExpect("orchestrate resource restart recover from evicted and stop failed")
+		t.disableMonitor("orchestrate resource restart recover from evicted and stop failed")
 		t.doMonitorAction("", 1)
 	}
 
@@ -352,7 +403,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard if the instance is not idle nor start failed
+	// discard if the instance is not idle, start failed or stop failed.
 	switch instMonitor.State {
 	case instance.MonitorStateIdle, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed:
 		// pass

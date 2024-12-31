@@ -134,7 +134,7 @@ func (t *Manager) orchestrateRestartedOnReady() {
 	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
 		switch instanceStatus.Avail {
 		case status.Warn, status.Up, status.StandbyUp:
-			t.enableLocalExpect("all prior instances are restarted, ready to restart")
+			t.enableMonitor("all prior instances are restarted, ready to restart")
 			t.createPendingWithDuration(stopDuration)
 			if t.restartedOptions().Force {
 				t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
@@ -192,7 +192,7 @@ func (t *Manager) orchestrateRestartedOnRestarted() {
 		t.loggerWithState().Infof("instance on %s state is %s -> wait", nodename, instanceMonitor.State)
 		return
 	}
-	t.enableLocalExpect("all instances are restarted, failed or orchestrate done")
+	t.enableMonitor("all instances are restarted, failed or orchestrate done")
 	t.doneAndIdle()
 	t.clearPending()
 }

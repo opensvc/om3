@@ -46,14 +46,14 @@ func (t *Manager) orchestrateHAStart() {
 		// to transition state: started -> idle
 		// It prevents unexpected transition state -> ready
 		if t.isLocalStarted() {
-			t.enableLocalExpect("instance is now started")
+			t.enableMonitor("instance is now started")
 			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return
 	case instance.MonitorStateStopped:
 		// stopped means the action stop has been done. This state is a
 		// waiter step to take time to disable the local expect started.
-		t.disableLocalExpect("instance is now stopped")
+		t.disableMonitor("instance is now stopped")
 		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
