@@ -556,6 +556,16 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/timeout"),
 	},
 	{
+		Attr:      "StatusTimeout",
+		Converter: converters.Duration,
+		Default:   "1m",
+		Example:   "10s",
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Option:    "status_timeout",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/core/status_timeout"),
+	},
+	{
 		Attr:      "StartTimeout",
 		Converter: converters.Duration,
 		Example:   "1m30s",

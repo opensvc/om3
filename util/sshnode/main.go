@@ -3,7 +3,7 @@ package sshnode
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -13,8 +13,11 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+)
 
-	"github.com/opensvc/om3/util/file"
+type (
+	AuthorizedKeysMap map[string]any
+	KnownHostsMap     map[string]any
 )
 
 func expandUserSSH(basename string) (string, error) {
@@ -29,16 +32,6 @@ func NewClient(n string) (*ssh.Client, error) {
 	if n == "" {
 		panic("empty hostname is not allowed")
 	}
-	ip := net.ParseIP(n)
-	if ip == nil {
-		if ips, err := net.LookupIP(n); err != nil {
-			return nil, err
-		} else if len(ips) == 0 {
-			return nil, fmt.Errorf("no ip address found for host %s", n)
-		} else {
-			ip = ips[0]
-		}
-	}
 	signers := make([]ssh.Signer, 0)
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -51,6 +44,7 @@ func NewClient(n string) (*ssh.Client, error) {
 	if len(privKeyFiles) == 0 {
 		return nil, fmt.Errorf("no private key found in ~/.ssh/id_*")
 	}
+
 	for _, privKeyFile := range privKeyFiles {
 		if strings.Contains(filepath.Base(privKeyFile), ".") {
 			continue
@@ -61,73 +55,29 @@ func NewClient(n string) (*ssh.Client, error) {
 			}
 		}
 	}
+	hostKeyCallback, err := getHostKeyCallback()
+	if err != nil {
+		return nil, err
+	}
+
 	config := &ssh.ClientConfig{
 		User: "root",
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signers...),
 		},
-		HostKeyCallback: AddingKnownHostCallback,
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         time.Second * 10,
 	}
-	if ip.To4() == nil {
-		return ssh.Dial("tcp", fmt.Sprintf("[%s]:22", ip), config)
-	} else {
-		return ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), config)
-	}
+	return ssh.Dial("tcp", n+":22", config)
 }
 
-func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) error {
-	var keyErr *knownhosts.KeyError
-
-	knownHostFile, err := expandUserSSH("known_hosts")
+func getHostKeyCallback() (ssh.HostKeyCallback, error) {
+	knownHostsPath, err := expandUserSSH("known_hosts")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	callback, err := knownhosts.New(knownHostFile)
-
-	if os.IsNotExist(err) {
-		if err := file.Touch(knownHostFile, time.Now()); err != nil {
-			return err
-		}
-		callback, err = knownhosts.New(knownHostFile)
-	}
-
-	if err != nil {
-		return err
-	}
-	err = callback(host, remote, key)
-	if err == nil {
-		return nil
-	}
-	v := errors.As(err, &keyErr)
-	if v && len(keyErr.Want) > 0 {
-		return fmt.Errorf("%s: conflicting %s +%d", keyErr, keyErr.Want[0].Filename, keyErr.Want[0].Line)
-	}
-	if v && len(keyErr.Want) == 0 {
-		return AddKnownHost(host, remote, key)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return knownhosts.New(knownHostsPath)
 }
-
-func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
-	knownHostFile, err := expandUserSSH("known_hosts")
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(knownHostFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	knownHost := knownhosts.Normalize(remote.String())
-	_, err = f.WriteString(knownhosts.Line([]string{knownHost}, key) + "\n")
-	return err
-}
-
-type AuthorizedKeysMap map[string]any
 
 func AppendAuthorizedKeys(line []byte) error {
 	if len(line) == 0 {
@@ -150,12 +100,43 @@ func AppendAuthorizedKeys(line []byte) error {
 	return nil
 }
 
-func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
-	homeDir, err := os.UserHomeDir()
+func AddKnownHostLine(host string, encodedKey []byte) error {
+	key, _, _, _, err := ssh.ParseAuthorizedKey(encodedKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	filename := filepath.Join(homeDir, ".ssh", "authorized_keys")
+	return AddKnownHost(host, key)
+}
+
+// AddKnownHost callers must care for thread safety
+func AddKnownHost(host string, key ssh.PublicKey) error {
+	knownHostFile, err := expandUserSSH("known_hosts")
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(knownHostFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if hostname, _, err := net.SplitHostPort(host); err == nil {
+		host = hostname
+	}
+
+	// Non-hashed:
+	//   _, err = f.WriteString(knownhosts.Line([]string{encodedHost}, key) + "\n")
+
+	// Hashed
+	_, err = fmt.Fprintf(f, "%s %s %s\n",
+		knownhosts.HashHostname(host),
+		key.Type(),
+		base64.StdEncoding.EncodeToString(key.Marshal()),
+	)
+	return err
+}
+
+func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
+	filename := os.ExpandEnv("$HOME/.ssh/authorized_keys")
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -187,6 +168,50 @@ func (m AuthorizedKeysMap) Has(data []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if _, ok := m[ssh.FingerprintSHA256(k)]; ok {
+		return true, nil
+	}
+	return false, nil
+}
+
+func GetKnownHostsMap() (KnownHostsMap, error) {
+	filename := os.ExpandEnv("$HOME/.ssh/known_hosts")
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	m := make(KnownHostsMap)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		data := scanner.Bytes()
+		_, _, k, _, _, err := ssh.ParseKnownHosts(bytes.TrimSpace(data))
+		if err != nil {
+			//fmt.Fprintf(os.Stderr, "skipping invalid key in file %s: %s\n", file.Name(), err)
+			continue
+		}
+		m[ssh.FingerprintSHA256(k)] = nil
+	}
+
+	// Check for errors
+	if err := scanner.Err(); err != nil {
+		return m, err
+	}
+
+	return m, nil
+}
+
+func (m KnownHostsMap) Add(host string, k ssh.PublicKey) error {
+	if v, err := m.Has(k); err != nil {
+		return err
+	} else if v {
+		return nil
+	}
+	return AddKnownHost(host, k)
+}
+
+func (m KnownHostsMap) Has(k ssh.PublicKey) (bool, error) {
 	if _, ok := m[ssh.FingerprintSHA256(k)]; ok {
 		return true, nil
 	}

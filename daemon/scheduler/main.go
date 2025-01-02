@@ -34,6 +34,7 @@ type (
 		jobs        Jobs
 		enabled     bool
 		provisioned map[naming.Path]bool
+		schedules   Schedules
 
 		wg sync.WaitGroup
 
@@ -43,6 +44,8 @@ type (
 
 		maxRunning int
 	}
+
+	Schedules map[string]map[string]schedule.Entry
 
 	Jobs map[string]Job
 	Job  struct {
@@ -67,12 +70,35 @@ var (
 	}
 )
 
+func (t Schedules) DelByPath(path naming.Path) {
+	delete(t, path.String())
+}
+
+func (t Schedules) Add(path naming.Path, e schedule.Entry) {
+	pathStr := path.String()
+	if _, ok := t[pathStr]; !ok {
+		t[pathStr] = make(map[string]schedule.Entry)
+	}
+	t[pathStr][e.Key] = e
+}
+
+func (t Schedules) Get(path naming.Path, k string) (schedule.Entry, bool) {
+	if m, ok := t[path.String()]; !ok {
+		return schedule.Entry{}, false
+	} else if e, ok := m[k]; !ok {
+		return schedule.Entry{}, false
+	} else {
+		return e, true
+	}
+}
+
 func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
 		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
 		localhost:   hostname.Hostname(),
 		events:      make(chan any),
 		jobs:        make(Jobs),
+		schedules:   make(Schedules),
 		provisioned: make(map[naming.Path]bool),
 		subQS:       subQS,
 
@@ -137,10 +163,16 @@ func (t Jobs) Purge() {
 	}
 }
 
-func (t *T) createJob(e schedule.Entry) {
-	// clean up the existing job
-	t.jobs.Del(e)
+func (t Jobs) Has(e schedule.Entry) bool {
+	k := entryKey(e)
+	_, ok := t[k]
+	return ok
+}
 
+func (t *T) createJob(e schedule.Entry) {
+	if t.jobs.Has(e) {
+		return
+	}
 	if !t.enabled {
 		return
 	}
@@ -294,10 +326,14 @@ func (t *T) loop() {
 		case ev := <-t.events:
 			switch c := ev.(type) {
 			case eventJobDone:
-				// remember last run
-				c.schedule.LastRunAt = c.begin
-				// reschedule
-				t.createJob(c.schedule)
+				t.jobs.Del(c.schedule)
+				e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
+				if ok {
+					// remember last run
+					e.LastRunAt = c.begin
+					// reschedule
+					t.createJob(e)
+				}
 			default:
 				t.log.Errorf("received an unsupported event: %#v", c)
 			}
@@ -415,6 +451,7 @@ func (t *T) scheduleNode() {
 	defer schedule.TableData.Set(naming.Path{}, &table)
 
 	for _, e := range table {
+		t.schedules.Add(naming.Path{}, e)
 		t.createJob(e)
 	}
 	table = table.Merge(t.jobs.Table(naming.Path{}))
@@ -444,12 +481,14 @@ func (t *T) scheduleObject(p naming.Path) {
 	}
 
 	for _, e := range table {
+		t.schedules.Add(p, e)
 		t.createJob(e)
 	}
 	table = table.Merge(t.jobs.Table(p))
 }
 
 func (t *T) unschedule(p naming.Path) {
+	t.schedules.DelByPath(p)
 	t.jobs.DelPath(p)
 }
 
