@@ -525,7 +525,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 			disk = s.(string)
 		}
 
-		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); err != nil {
+		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); (err != nil) || (s == "") {
 			if ip, err := t.getNodeIP(nodename); err != nil {
 				return res, err
 			} else {
