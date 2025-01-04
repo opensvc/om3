@@ -41,11 +41,13 @@ type BaseTask struct {
 func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action:              "run",
+		MaxParallel:         t.MaxParallel,
 		Option:              "schedule",
 		Base:                "",
 		RequireConfirmation: t.Confirmation,
 		RequireProvisioned:  true,
 		RequireCollector:    false,
+		RunDir:              filepath.Join(t.VarDir(), "run"),
 	}
 }
 

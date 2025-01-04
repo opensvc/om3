@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/runfiles"
 )
 
 type (
@@ -49,15 +50,21 @@ type (
 
 	Jobs map[string]Job
 	Job  struct {
-		Queued   time.Time
+		CreatedAt time.Time
+		LastRunAt time.Time
+		schedule  schedule.Entry
+		cancel    []func()
+	}
+	eventJobAlarm struct {
 		schedule schedule.Entry
-		cancel   func()
 	}
 	eventJobDone struct {
 		schedule schedule.Entry
-		begin    time.Time
 		end      time.Time
-		err      error
+	}
+	eventJobRun struct {
+		schedule schedule.Entry
+		begin    time.Time
 	}
 )
 
@@ -114,7 +121,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	return t
 }
 
-func entryKey(e schedule.Entry) string {
+func newJobId(e schedule.Entry) string {
 	return fmt.Sprintf("%s:%s", e.Path, e.Key)
 }
 
@@ -128,23 +135,49 @@ func (t Jobs) Table(path naming.Path) schedule.Table {
 	return table
 }
 
-func (t Jobs) Add(e schedule.Entry, cancel func()) {
-	k := entryKey(e)
-	t[k] = Job{
-		Queued:   time.Now(),
-		schedule: e,
-		cancel:   cancel,
+func (t Jobs) Add(e schedule.Entry, delay time.Duration, bus chan any) {
+	tmr := time.AfterFunc(delay, func() {
+		bus <- eventJobAlarm{
+			schedule: e,
+		}
+	})
+	cancel := func() {
+		if tmr == nil {
+			return
+		}
+		tmr.Stop()
 	}
+	jobId := newJobId(e)
+	job, ok := t[jobId]
+	if !ok {
+		job = Job{
+			CreatedAt: time.Now(),
+			schedule:  e,
+		}
+	}
+	job.cancel = append(job.cancel, cancel)
+	t[jobId] = job
+}
+
+func (t Jobs) Done(e schedule.Entry) Job {
+	jobId := newJobId(e)
+	job, ok := t[jobId]
+	if !ok {
+		return Job{}
+	}
+	job.Cancel()
+	t[jobId] = job
+	return job
 }
 
 func (t Jobs) Del(e schedule.Entry) {
-	k := entryKey(e)
-	job, ok := t[k]
+	jobId := newJobId(e)
+	job, ok := t[jobId]
 	if !ok {
 		return
 	}
-	job.cancel()
-	delete(t, k)
+	job.Cancel()
+	delete(t, jobId)
 }
 
 func (t Jobs) DelPath(p naming.Path) {
@@ -158,88 +191,139 @@ func (t Jobs) DelPath(p naming.Path) {
 
 func (t Jobs) Purge() {
 	for k, e := range t {
-		e.cancel()
+		e.Cancel()
 		delete(t, k)
 	}
 }
 
 func (t Jobs) Has(e schedule.Entry) bool {
-	k := entryKey(e)
-	_, ok := t[k]
+	jobId := newJobId(e)
+	_, ok := t[jobId]
 	return ok
 }
 
-func (t *T) createJob(e schedule.Entry) {
-	if t.jobs.Has(e) {
-		return
+func (t Jobs) Get(e schedule.Entry) (Job, bool) {
+	jobId := newJobId(e)
+	job, ok := t[jobId]
+	return job, ok
+}
+
+func (t Job) Cancel() {
+	for _, cancel := range t.cancel {
+		cancel()
 	}
+	t.cancel = nil
+}
+
+func (t *T) createJob(e schedule.Entry) {
 	if !t.enabled {
 		return
 	}
 
-	logger := naming.LogWithPath(t.log, e.Path).Attr("action", e.Action).Attr("key", e.Key)
+	logger := t.jobLogger(e)
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
-		logger.Attr("definition", e.Schedule).Errorf("%s: get next %s %s schedule: %s", e.Path, e.Key, e.Action, err)
+		logger.Attr("definition", e.Schedule).Warnf("failed to find a next date: %s", err)
+		t.jobs.Del(e)
+		return
+	}
+	if next.IsZero() {
 		t.jobs.Del(e)
 		return
 	}
 	if next.Before(now) {
+		logger.Warnf("last %s, next %s is in the past", e.LastRunAt, next)
 		t.jobs.Del(e)
 		return
 	}
 	e.NextRunAt = next
 	delay := next.Sub(now)
+	if delay >= time.Second {
+		logger.Infof("next at %s (in %s)", next, delay)
+	}
+	t.jobs.Add(e, delay, t.events)
+	return
+}
+
+func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
+	logger := naming.LogWithPath(t.log, e.Path).Attr("action", e.Action).Attr("key", e.Key)
 	var obj string
 	if e.Path.IsZero() {
 		obj = "node"
 	} else {
 		obj = e.Path.String()
 	}
-	logger.Infof("%s: next %s at %s (in %s)", obj, e.Key, next, delay)
-	tmr := time.AfterFunc(delay, func() {
-		begin := time.Now()
-		if begin.Sub(next) < 500*time.Millisecond {
-			// prevent drift if the gap is small
-			begin = next
-		}
-		if e.RequireCollector && !collector.Alive.Load() {
-			logger.Debugf("the collector is not alive")
-		} else if err := t.action(e); err != nil {
-			logger.Errorf("%s: on exec %s: %s", obj, e.Key, err)
-		}
+	var prefix string
+	if rid := e.RID(); rid != "DEFAULT" {
+		prefix = fmt.Sprintf("%s: %s: %s: ", obj, rid, e.Action)
+	} else {
+		prefix = fmt.Sprintf("%s: %s: ", obj, e.Action)
+	}
+	return logger.WithPrefix(prefix)
+}
 
-		// remember last run, to not run the job too soon after a daemon restart
-		if err := e.SetLastRun(begin); err != nil {
-			logger.Errorf("%s: on update last run %s: %s", obj, e.Key, err)
-		}
-
-		// remember last success, for users benefit
-		if err == nil {
-			if err := e.SetLastSuccess(begin); err != nil {
-				logger.Errorf("%s: on update last success %s: %s", obj, e.Key, err)
-			}
-		}
-
-		// store end time, for duration sampling
-		end := time.Now()
-
-		t.events <- eventJobDone{
-			schedule: e,
-			begin:    begin,
-			end:      end,
-			err:      err,
-		}
-	})
-	cancel := func() {
-		if tmr == nil {
+func (t *T) onJobAlarm(c eventJobAlarm) {
+	go func() {
+		logger := t.jobLogger(c.schedule)
+		e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
+		if !ok {
+			logger.Infof("aborted, schedule is gone")
 			return
 		}
-		tmr.Stop()
+		// plan the next run before exec, so another exec can be done
+		// even if another is running
+		e.LastRunAt = c.schedule.LastRunAt
+		e.NextRunAt = c.schedule.NextRunAt
+		t.rescheduleFrom(e, c.schedule.NextRunAt)
+
+		if n, err := t.runningCount(e); err != nil {
+			logger.Warnf("%s", err)
+		} else if n >= e.MaxParallel {
+			logger.Infof("aborted, %d/%d jobs already running", n, e.MaxParallel)
+		} else if e.RequireCollector && !collector.Alive.Load() {
+			logger.Debugf("the collector is not alive")
+		} else {
+			t.events <- eventJobRun{
+				schedule: e,
+				begin:    c.schedule.NextRunAt,
+			}
+			if err := t.action(e); err != nil {
+				logger.Errorf("on exec %s: %s", e.Key, err)
+			} else {
+				// remember last success, for users benefit
+				if err := e.SetLastSuccess(c.schedule.NextRunAt); err != nil {
+					logger.Errorf("on update last success %s: %s", e.Key, err)
+				}
+			}
+
+			// remember last run, to not run the job too soon after a daemon restart
+			if err := e.SetLastRun(c.schedule.NextRunAt); err != nil {
+				logger.Errorf("on update last run %s: %s", e.Key, err)
+			}
+
+			t.events <- eventJobDone{
+				schedule: e,
+				end:      time.Now(),
+			}
+		}
+	}()
+}
+
+func (t *T) runningCount(e schedule.Entry) (int, error) {
+	if e.RunDir == "" {
+		return -1, nil
 	}
-	t.jobs.Add(e, cancel)
-	return
+	logger := t.jobLogger(e)
+	dir := runfiles.Dir{
+		Path: e.RunDir,
+		Log:  logger,
+	}
+	n, err := dir.Count()
+	if err != nil {
+		return -1, err
+	}
+	return n, nil
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -325,15 +409,12 @@ func (t *T) loop() {
 			}
 		case ev := <-t.events:
 			switch c := ev.(type) {
+			case eventJobAlarm:
+				t.onJobAlarm(c)
 			case eventJobDone:
-				t.jobs.Del(c.schedule)
-				e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
-				if ok {
-					// remember last run
-					e.LastRunAt = c.begin
-					// reschedule
-					t.createJob(e)
-				}
+				t.onJobDone(c)
+			case eventJobRun:
+				t.onJobRun(c)
 			default:
 				t.log.Errorf("received an unsupported event: %#v", c)
 			}
@@ -342,6 +423,31 @@ func (t *T) loop() {
 			return
 		}
 	}
+}
+
+func (t *T) onJobRun(c eventJobRun) {
+	jobId := newJobId(c.schedule)
+	job, ok := t.jobs[jobId]
+	if !ok {
+		return
+	}
+	job.LastRunAt = c.begin
+	t.jobs[jobId] = job
+}
+
+func (t *T) onJobDone(c eventJobDone) {
+	job := t.jobs.Done(c.schedule)
+	t.rescheduleFrom(c.schedule, job.LastRunAt)
+}
+
+func (t *T) rescheduleFrom(prev schedule.Entry, lastRunAt time.Time) {
+	e, ok := t.schedules.Get(prev.Path, prev.Key)
+	if !ok {
+		// no longer scheduled
+		return
+	}
+	e.LastRunAt = lastRunAt
+	t.createJob(e)
 }
 
 func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {

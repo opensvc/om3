@@ -19,11 +19,13 @@ type (
 		LastRunAt          time.Time   `json:"last_run_at"`
 		LastRunFile        string      `json:"last_run_file"`
 		LastSuccessFile    string      `json:"last_success_file"`
+		MaxParallel        int         `json:"max_parallel"`
 		NextRunAt          time.Time   `json:"next_run_at"`
 		Node               string      `json:"node"`
 		Path               naming.Path `json:"path"`
 		RequireCollector   bool        `json:"require_collector"`
 		RequireProvisioned bool        `json:"require_provisioned"`
+		RunDir             string      `json:"run_dir"`
 	}
 )
 
