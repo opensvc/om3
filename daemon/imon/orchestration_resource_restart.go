@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -19,6 +20,56 @@ type (
 	todoMap map[string]bool
 )
 
+const (
+	enableMonitorMsg  = "enable resource restart and monitoring"
+	disableMonitorMsg = "disable resource restart and monitoring"
+)
+
+// disableMonitor disables the resource restart and monitoring by setting
+// the local expectation to "none".
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) disableMonitor(format string, a ...any) bool {
+	if format != "" {
+		format = format + ": %s"
+		a = append(a, disableMonitorMsg)
+	}
+	return t.setLocalExpect(instance.MonitorLocalExpectNone, format, a...)
+}
+
+// enableMonitor resets the monitor action execution time and sets the
+// local expected state to "Started" with a message.
+// It resets the MonitorActionExecutedAt on each call to always rearm the
+// next monitor action.
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) enableMonitor(format string, a ...any) bool {
+	if format != "" {
+		format = format + ": %s"
+		a = append(a, enableMonitorMsg)
+	}
+	// reset the last monitor action execution time, to rearm the next monitor action
+	t.state.MonitorActionExecutedAt = time.Time{}
+	return t.setLocalExpect(instance.MonitorLocalExpectStarted, format, a...)
+}
+
+// setLocalExpect sets the local expect value for monitoring.
+// format is used to log changing reason, format == "" => no logging.
+func (t *Manager) setLocalExpect(localExpect instance.MonitorLocalExpect, format string, a ...any) bool {
+	if t.state.LocalExpect != localExpect {
+		t.change = true
+		if format != "" {
+			t.loggerWithState().Infof(format, a...)
+		}
+		t.state.LocalExpect = localExpect
+		return true
+	} else {
+		if format != "" {
+			msg := fmt.Sprintf(format, a...)
+			t.loggerWithState().Debugf("%s: local expect is already %s", msg, localExpect)
+		}
+		return false
+	}
+}
+
 func (t todoMap) Add(rid string) {
 	t[rid] = true
 }
@@ -35,7 +86,13 @@ func newTodoMap() todoMap {
 	m := make(todoMap)
 	return m
 }
+
+func (t *Manager) monitorActionCalled() bool {
+	return !t.state.MonitorActionExecutedAt.IsZero()
+}
+
 func (t *Manager) doMonitorAction(rid string, stage int) {
+	t.state.MonitorActionExecutedAt = time.Now()
 	monitorActionCount := len(t.instConfig.MonitorAction)
 	if monitorActionCount < stage+1 {
 		t.log.Errorf("skip monitor action: stage %d action no longer configured", stage+1)
@@ -78,6 +135,7 @@ func (t *Manager) doMonitorAction(rid string, stage int) {
 		}
 	case instance.MonitorActionSwitch:
 		t.createPendingWithDuration(stopDuration)
+		t.disableMonitor("monitor action switch stopping")
 		t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 	}
 }
@@ -137,8 +195,9 @@ func (t *Manager) orchestrateResourceRestart() {
 	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
 		if rmon.Restart.Remaining != rcfg.Restart {
 			t.log.Infof("resource %s is up, reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
-			t.state.MonitorActionExecutedAt = time.Time{}
 			rmon.Restart.Remaining = rcfg.Restart
+			// reset the last monitor action execution time, to rearm the next monitor action
+			t.state.MonitorActionExecutedAt = time.Time{}
 			t.state.Resources.Set(rid, *rmon)
 			t.change = true
 		}
@@ -174,14 +233,12 @@ func (t *Manager) orchestrateResourceRestart() {
 			resetRemainingAndTimer(rid, rcfg, rmon)
 		case rmon.Restart.Timer != nil:
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
-		case !t.state.MonitorActionExecutedAt.IsZero():
+		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
 		case started:
 			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
-				t.state.MonitorActionExecutedAt = time.Now()
-				t.state.LocalExpect = instance.MonitorLocalExpectEvicted
-				t.change = true
+				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action: %s", disableMonitorMsg)
 				t.doMonitorAction(rid, 0)
 			} else {
 				todoRestart.Add(rid)
@@ -295,7 +352,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard all execpt svc and vol
+	// discard all except svc and vol
 	switch t.path.Kind {
 	case naming.KindSvc, naming.KindVol:
 	default:
@@ -321,9 +378,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 
 	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
-		t.state.MonitorActionExecutedAt = time.Now()
-		t.state.LocalExpect = instance.MonitorLocalExpectNone
-		t.change = true
+		t.disableMonitor("orchestrate resource restart recover from evicted and stop failed")
 		t.doMonitorAction("", 1)
 	}
 
@@ -348,7 +403,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard if the instance is not idle nor start failed
+	// discard if the instance is not idle, start failed or stop failed.
 	switch instMonitor.State {
 	case instance.MonitorStateIdle, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed:
 		// pass

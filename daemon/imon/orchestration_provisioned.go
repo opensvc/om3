@@ -69,6 +69,9 @@ func (t *Manager) provisionedClearIfReached() bool {
 		}
 		t.log.Infof(msg)
 		t.doneAndIdle()
+		if t.isLocalStarted() {
+			t.enableMonitor("instance is now started")
+		}
 		t.updateIfChange()
 		return true
 	}

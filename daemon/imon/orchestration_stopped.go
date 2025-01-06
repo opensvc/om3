@@ -99,6 +99,7 @@ func (t *Manager) doStop() {
 		return
 	}
 	t.createPendingWithDuration(stopDuration)
+	t.disableMonitor("orchestrate stop")
 	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
 }
 
@@ -127,9 +128,9 @@ func (t *Manager) stoppedFromAny() {
 func (t *Manager) stoppedClearIfReached() bool {
 	if t.isLocalStopped() {
 		if !t.state.OrchestrationIsDone {
-			t.loggerWithState().Infof("instance state is stopped -> set done and idle, clear local expect")
+			t.loggerWithState().Infof("instance state is stopped -> set done and idle")
 			t.doneAndIdle()
-			t.state.LocalExpect = instance.MonitorLocalExpectNone
+			t.disableMonitor("orchestrate stop from instance stopped")
 			t.clearPending()
 		}
 		return true
