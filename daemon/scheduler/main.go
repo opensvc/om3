@@ -264,19 +264,19 @@ func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
 }
 
 func (t *T) onJobAlarm(c eventJobAlarm) {
-	go func() {
-		logger := t.jobLogger(c.schedule)
-		e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
-		if !ok {
-			logger.Infof("aborted, schedule is gone")
-			return
-		}
-		// plan the next run before exec, so another exec can be done
-		// even if another is running
-		e.LastRunAt = c.schedule.LastRunAt
-		e.NextRunAt = c.schedule.NextRunAt
-		t.rescheduleFrom(e, c.schedule.NextRunAt)
+	logger := t.jobLogger(c.schedule)
+	e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
+	if !ok {
+		logger.Infof("aborted, schedule is gone")
+		return
+	}
+	// plan the next run before exec, so another exec can be done
+	// even if another is running
+	e.LastRunAt = c.schedule.LastRunAt
+	e.NextRunAt = c.schedule.NextRunAt
+	t.rescheduleFrom(e, c.schedule.NextRunAt)
 
+	go func() {
 		if n, err := t.runningCount(e); err != nil {
 			logger.Warnf("%s", err)
 		} else if n >= e.MaxParallel {
@@ -505,14 +505,19 @@ func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.toggleEnabled(c.Value.State)
 }
 
+func (t *T) isNodeStateCompatible(state node.MonitorState) bool {
+	_, ok := incompatibleNodeMonitorStatus[state]
+	return !ok
+}
+
 func (t *T) toggleEnabled(state node.MonitorState) {
-	_, incompatible := incompatibleNodeMonitorStatus[state]
+	isNodeStateCompatible := t.isNodeStateCompatible(state)
 	switch {
-	case incompatible && t.enabled:
+	case !isNodeStateCompatible && t.enabled:
 		t.log.Infof("disable scheduling (node monitor status is now %s)", state)
 		t.jobs.Purge()
 		t.enabled = false
-	case !incompatible && !t.enabled:
+	case isNodeStateCompatible && !t.enabled:
 		t.log.Infof("enable scheduling (node monitor status is now %s)", state)
 		t.enabled = true
 		t.scheduleAll()
