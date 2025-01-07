@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/fcache"
@@ -17,10 +18,12 @@ import (
 
 var (
 	maxLockDuration = 30 * time.Second
+	isUsed          atomic.Bool
 )
 
 // Output manage output session function cache
 func Output(o fcache.Outputter, sig string) (out []byte, err error) {
+	isUsed.Store(true)
 	return fcache.Output(o, sig, cacheDir(), maxLockDuration, outputLockP)
 }
 
@@ -31,6 +34,10 @@ func Clear(sig string) error {
 
 // PurgeCache purges session cache
 func PurgeCache() error {
+	if !isUsed.Load() {
+		return nil
+	}
+	isUsed.Store(false)
 	cacheDir := cacheDir()
 	if !strings.Contains(cacheDir, "/cache/") {
 		return fmt.Errorf("unexpected cachedir %s", cacheDir)
