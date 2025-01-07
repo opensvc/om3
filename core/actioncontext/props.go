@@ -47,13 +47,6 @@ var (
 		Failure:  "freeze failed",
 		PG:       true,
 	}
-	SyncFull = Properties{
-		Name:     "sync_full",
-		Progress: "syncing",
-		Failure:  "idle",
-		MustLock: true,
-		PG:       true,
-	}
 	Set = Properties{
 		Name:     "set",
 		MustLock: true,
@@ -104,8 +97,6 @@ var (
 	}
 	Run = Properties{
 		Name:            "run",
-		Progress:        "running",
-		Failure:         "idle",
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
 		PG:              true,
 	}
@@ -146,10 +137,23 @@ var (
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
+	SyncFull = Properties{
+		Name:     "sync_full",
+		MustLock: true,
+		PG:       true,
+	}
+	SyncIngest = Properties{
+		Name:     "sync_ingest",
+		MustLock: true,
+		PG:       true,
+	}
 	SyncResync = Properties{
 		Name:     "sync_resync",
-		Progress: "syncing",
-		Failure:  "idle",
+		MustLock: true,
+		PG:       true,
+	}
+	SyncUpdate = Properties{
+		Name:     "sync_update",
 		MustLock: true,
 		PG:       true,
 	}
@@ -169,19 +173,5 @@ var (
 		Order:           ordering.Desc,
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
-	}
-	SyncIngest = Properties{
-		Name:     "sync_ingest",
-		Progress: "syncing",
-		Failure:  "idle",
-		MustLock: true,
-		PG:       true,
-	}
-	SyncUpdate = Properties{
-		Name:     "sync_update",
-		Progress: "syncing",
-		Failure:  "idle",
-		MustLock: true,
-		PG:       true,
 	}
 )
