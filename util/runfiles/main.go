@@ -71,6 +71,9 @@ func (t Dir) HasRunning() (bool, error) {
 		if err != nil {
 			return err
 		}
+		if path == t.Path {
+			return nil
+		}
 		if e.IsDir() {
 			return filepath.SkipDir
 		}

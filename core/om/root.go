@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/osagentservice"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/version"
@@ -137,6 +138,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 // This is called by main.main(). It only needs to happen once to the root command.
 func Execute() {
 	ExecuteArgs(os.Args[1:])
+	fcache.PurgeCache()
 }
 
 func setExecuteArgs(args []string) {
