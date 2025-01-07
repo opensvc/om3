@@ -122,11 +122,14 @@ func GetISCSIPaths() (Paths, error) {
 	return l, nil
 }
 
+// iscsiadmSession return the output of the iscsiadm session listing command.
+// The 21 exitcode is ignored because it means "no record found".
 func iscsiadmSession() (string, error) {
 	cmd := command.New(
 		command.WithName("iscsiadm"),
 		command.WithVarArgs("-m", "session"),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 21),
 	)
 	b, err := cmd.Output()
 	return string(b), err

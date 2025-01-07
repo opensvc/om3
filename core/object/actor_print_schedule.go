@@ -86,6 +86,8 @@ func (t *actor) Schedules() schedule.Table {
 		}
 		rid := r.RID()
 		e := t.newScheduleEntry(opts.Action, key.T{Section: rid, Option: opts.Option}.String(), rid, opts.Base, opts.RequireCollector, opts.RequireProvisioned)
+		e.RunDir = opts.RunDir
+		e.MaxParallel = opts.MaxParallel
 		table = table.Add(e)
 	}
 	if needResMon {

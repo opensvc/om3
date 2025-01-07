@@ -1,107 +1,69 @@
 package actioncontext
 
 import (
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/ordering"
 )
 
 type (
 	Properties struct {
-		Name                  string
-		Target                string
-		Progress              string
-		Order                 ordering.T
-		LocalExpect           string
-		Local                 bool
-		MustLock              bool
-		LockGroup             string
-		Freeze                bool
-		Kinds                 naming.Kinds
-		DisableNodeValidation bool
-		RelayToAny            bool
-		Rollback              bool
-		PG                    bool
-		TimeoutKeywords       []string
+		Name            string
+		Target          string
+		Progress        string
+		Failure         string
+		Order           ordering.T
+		MustLock        bool
+		LockGroup       string
+		Freeze          bool
+		Rollback        bool
+		PG              bool
+		TimeoutKeywords []string
 	}
 )
 
 var (
-	Abort = Properties{
-		Name:        "abort",
-		Target:      "aborted",
-		Progress:    "aborting",
-		LocalExpect: "unset",
-	}
 	Boot = Properties{
 		Name:            "boot",
 		Target:          "booted",
 		Progress:        "booting",
-		Local:           true,
+		Failure:         "boot failed",
 		MustLock:        true,
 		Order:           ordering.Desc,
-		LocalExpect:     "",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Freeze:          true,
 		TimeoutKeywords: []string{"timeout"},
 		PG:              true,
 	}
-	Decode = Properties{
-		Name:       "decode",
-		RelayToAny: true,
-		Kinds:      naming.NewKinds(naming.KindCfg, naming.KindSec, naming.KindUsr),
-	}
 	Delete = Properties{
-		Name:       "delete",
-		Target:     "deleted",
-		Progress:   "deleting",
-		Order:      ordering.Desc,
-		Local:      true,
-		MustLock:   true,
-		RelayToAny: true,
-		Kinds:      naming.NewKinds(naming.KindSvc, naming.KindVol, naming.KindCfg, naming.KindSec, naming.KindUsr),
-	}
-	Eval = Properties{
-		Name:       "eval",
-		RelayToAny: true,
+		Name:     "delete",
+		Target:   "deleted",
+		Progress: "deleting",
+		Failure:  "delete failed",
+		Order:    ordering.Desc,
+		MustLock: true,
 	}
 	Freeze = Properties{
-		Name:        "freeze",
-		Target:      "frozen",
-		Progress:    "freezing",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       naming.NewKinds(naming.KindSvc, naming.KindVol),
-		PG:          true,
+		Name:     "freeze",
+		Target:   "frozen",
+		Progress: "freezing",
+		Failure:  "freeze failed",
+		PG:       true,
 	}
 	SyncFull = Properties{
 		Name:     "sync_full",
-		Local:    true,
 		Progress: "syncing",
+		Failure:  "idle",
 		MustLock: true,
-		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
 	}
-	GenCert = Properties{
-		Name:       "gen_cert",
-		RelayToAny: true,
-	}
-	Get = Properties{
-		Name:       "get",
-		RelayToAny: true,
-	}
 	Set = Properties{
-		Name:       "set",
-		RelayToAny: true,
-		MustLock:   true,
+		Name:     "set",
+		MustLock: true,
 	}
 	SetProvisioned = Properties{
 		Name:     "set provisioned",
-		Local:    true,
 		MustLock: true,
 	}
 	SetUnprovisioned = Properties{
 		Name:     "set unprovisioned",
-		Local:    true,
 		MustLock: true,
 	}
 	Status = Properties{
@@ -111,100 +73,39 @@ var (
 		LockGroup: "status",
 	}
 	Enable = Properties{
-		Name:       "enable",
-		MustLock:   true,
-		RelayToAny: true,
+		Name:     "enable",
+		MustLock: true,
 	}
 	Disable = Properties{
-		Name:       "disable",
-		MustLock:   true,
-		RelayToAny: true,
+		Name:     "disable",
+		MustLock: true,
 	}
 	Unset = Properties{
-		Name:       "unset",
-		MustLock:   true,
-		RelayToAny: true,
-	}
-	Giveback = Properties{
-		Name:            "giveback",
-		Target:          "placed",
-		Progress:        "placing",
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc),
-		TimeoutKeywords: []string{"start_timeout", "timeout"},
-	}
-	Keys = Properties{
-		Name:       "keys",
-		RelayToAny: true,
+		Name:     "unset",
+		MustLock: true,
 	}
 	ValidateConfig = Properties{
-		Name:       "validate_config",
-		RelayToAny: true,
-		MustLock:   true,
-	}
-	Move = Properties{
-		Name:            "move",
-		Target:          "placed@",
-		Progress:        "placing@",
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc),
-		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		Name:     "validate_config",
+		MustLock: true,
 	}
 	Provision = Properties{
 		Name:            "provision",
 		Target:          "provisioned",
 		Progress:        "provisioning",
-		Local:           true,
+		Failure:         "provision failed",
 		MustLock:        true,
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Rollback:        true,
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
-	PRStart = Properties{
-		Name:     "prstart",
-		Local:    true,
-		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Rollback: true,
-		PG:       true,
-	}
-	PRStop = Properties{
-		Name:  "prstop",
-		Local: true,
-		Kinds: naming.NewKinds(naming.KindSvc, naming.KindVol),
-		PG:    true,
-	}
 	PushResInfo = Properties{
-		Name:  "push resinfo",
-		Local: true,
-		Kinds: naming.NewKinds(naming.KindSvc, naming.KindVol),
-		PG:    true,
-	}
-	Purge = Properties{
-		Name:            "purge",
-		Target:          "purged",
-		Progress:        "purging",
-		Order:           ordering.Desc,
-		Local:           true,
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol, naming.KindCfg, naming.KindSec, naming.KindUsr),
-		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
-	}
-	Restart = Properties{
-		Name:            "restart",
-		Target:          "restarted",
-		Progress:        "restarting",
-		Local:           true,
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
-		TimeoutKeywords: []string{"start_timeout", "timeout"},
-		PG:              true,
+		Name: "push resinfo",
+		PG:   true,
 	}
 	Run = Properties{
 		Name:            "run",
 		Progress:        "running",
-		Local:           true,
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Failure:         "idle",
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
 		PG:              true,
 	}
@@ -212,9 +113,8 @@ var (
 		Name:            "shutdown",
 		Target:          "shutdown",
 		Progress:        "shutting",
-		Local:           true,
+		Failure:         "shutdown failed",
 		Order:           ordering.Desc,
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
@@ -222,9 +122,7 @@ var (
 		Name:            "start",
 		Target:          "started",
 		Progress:        "starting",
-		Local:           true,
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Failure:         "start failed",
 		Rollback:        true,
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
@@ -232,9 +130,7 @@ var (
 	StartStandby = Properties{
 		Name:            "startstandby",
 		Progress:        "starting",
-		Local:           true,
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Failure:         "start failed",
 		Rollback:        true,
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
@@ -243,79 +139,49 @@ var (
 		Name:            "stop",
 		Target:          "stopped",
 		Progress:        "stopping",
-		Local:           true,
+		Failure:         "stop failed",
 		MustLock:        true,
 		Order:           ordering.Desc,
-		LocalExpect:     "",
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Freeze:          true,
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
-	Switch = Properties{
-		Name:            "switch",
-		Target:          "placed@",
-		Progress:        "placing@",
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc),
-		TimeoutKeywords: []string{"start_timeout", "timeout"},
-	}
 	SyncResync = Properties{
 		Name:     "sync_resync",
-		Local:    true,
 		Progress: "syncing",
+		Failure:  "idle",
 		MustLock: true,
-		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
 	}
-	Takeover = Properties{
-		Name:            "takeover",
-		Target:          "placed@",
-		Progress:        "placing@",
-		LocalExpect:     "unset",
-		Kinds:           naming.NewKinds(naming.KindSvc),
-		TimeoutKeywords: []string{"start_timeout", "timeout"},
-	}
-	TOC = Properties{
-		Name:        "toc",
-		Progress:    "tocing",
-		Order:       ordering.Desc,
-		LocalExpect: "",
-	}
 	Unfreeze = Properties{
-		Name:        "unfreeze",
-		Target:      "thawed",
-		Progress:    "thawing",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       naming.NewKinds(naming.KindSvc, naming.KindVol),
-		PG:          true,
+		Name:     "unfreeze",
+		Target:   "thawed",
+		Progress: "thawing",
+		Failure:  "unfreeze failed",
+		PG:       true,
 	}
 	Unprovision = Properties{
 		Name:            "unprovision",
 		Target:          "unprovisioned",
 		Progress:        "unprovisioning",
-		Local:           true,
+		Failure:         "unprovision failed",
 		MustLock:        true,
 		Order:           ordering.Desc,
-		Kinds:           naming.NewKinds(naming.KindSvc, naming.KindVol),
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
 	SyncIngest = Properties{
 		Name:     "sync_ingest",
-		Local:    true,
 		Progress: "syncing",
+		Failure:  "idle",
 		MustLock: true,
-		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
 	}
 	SyncUpdate = Properties{
 		Name:     "sync_update",
 		Progress: "syncing",
-		Local:    true,
+		Failure:  "idle",
 		MustLock: true,
-		Kinds:    naming.NewKinds(naming.KindSvc, naming.KindVol),
 		PG:       true,
 	}
 )

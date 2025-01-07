@@ -103,9 +103,8 @@ func (t *actor) needRollback(ctx context.Context) bool {
 	return true
 }
 
-func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
-	props := actioncontext.Props(ctx)
-	timeout, source := t.actionTimeout(props.TimeoutKeywords)
+func (t *actor) withTimeoutFromKeywords(ctx context.Context, kwNames []string) (context.Context, func()) {
+	timeout, source := t.actionTimeout(kwNames)
 	t.log.Debugf("action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
@@ -124,6 +123,27 @@ func (t *actor) actionTimeout(kwNames []string) (time.Duration, string) {
 	return 0, ""
 }
 
+func (t *actor) withRollbackTimeout(ctx context.Context) (context.Context, func()) {
+	props := actioncontext.Props(ctx)
+	switch props.Name {
+	case "provision":
+		return t.withTimeoutFromKeywords(ctx, []string{"unprovision_timeout", "timeout"})
+	case "start":
+		return t.withTimeoutFromKeywords(ctx, []string{"stop_timeout", "timeout"})
+	default:
+		return ctx, func() {}
+	}
+}
+
+func (t *actor) withStatusTimeout(ctx context.Context) (context.Context, func()) {
+	return t.withTimeoutFromKeywords(ctx, []string{"status_timeout", "timeout"})
+}
+
+func (t *actor) withActionTimeout(ctx context.Context) (context.Context, func()) {
+	props := actioncontext.Props(ctx)
+	return t.withTimeoutFromKeywords(ctx, props.TimeoutKeywords)
+}
+
 func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a, ok := r.(resource.Aborter)
@@ -139,6 +159,20 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 	q <- false
 }
 
+func (t *actor) announceIdle(ctx context.Context) error {
+	return t.announceProgress(ctx, "idle")
+}
+
+func (t *actor) announceFailure(ctx context.Context) error {
+	s := actioncontext.Props(ctx).Failure
+	return t.announceProgress(ctx, s)
+}
+
+func (t *actor) announceProgressing(ctx context.Context) error {
+	s := actioncontext.Props(ctx).Progress
+	return t.announceProgress(ctx, s)
+}
+
 // announceProgress signals the daemon that an action is in progress, using the
 // POST /object/progress. This handler manages local expect:
 // * set to "started" via InstanceMonitorUpdated event handler
@@ -146,6 +180,9 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	if env.HasDaemonMonitorOrigin() {
 		// no need to announce if the daemon started this action
+		return nil
+	}
+	if progress == "" {
 		return nil
 	}
 	c, err := client.New()
@@ -316,30 +353,27 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}()
 
 	// daemon instance monitor updates
-	progress := actioncontext.Props(ctx).Progress
-	failure := fmt.Sprintf("%s failed", action.Name)
-	t.announceProgress(ctx, progress)
+	t.announceProgressing(ctx)
 
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
 	}
 
-	// Prepare alternate context without timeout, that can be used on situations
-	// where initial context is DeadlineExceeded.
 	// TODO: clarify timeouts: does start_timeout includes the eventual rollback,
 	//       statusEval, postStartStopStatusEval, announceProgress "idle" and "failed"
-	ctxWithoutTimeout, cancel1 := context.WithCancel(ctx)
-	defer cancel1()
-
-	ctx, cancel := t.withTimeout(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if err := t.preAction(ctx); err != nil {
-		_, _ = t.statusEval(ctx)
-		t.announceProgress(ctx, failure)
+
+	ctxWithTimeout, cancelCtxWithTimeout := t.withActionTimeout(ctx)
+	defer cancelCtxWithTimeout()
+
+	if err := t.preAction(ctxWithTimeout); err != nil {
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceFailure(ctxWithTimeout)
 		return err
 	}
-	l := resourceselector.FromContext(ctx, t)
-	b := actioncontext.To(ctx)
+	l := resourceselector.FromContext(ctxWithTimeout, t)
+	b := actioncontext.To(ctxWithTimeout)
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
@@ -411,7 +445,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
 	var evaluated sync.Map
-	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctxWithTimeout, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
@@ -435,34 +469,46 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return nil
 	})
 
-	if err := t.abortStart(ctx, l); err != nil {
-		_, _ = t.statusEval(ctx)
-		t.announceProgress(ctx, "idle")
+	if err := t.abortStart(ctxWithTimeout, l); err != nil {
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
-		if t.needRollback(ctx) {
-			if rb := actionrollback.FromContext(ctx); rb != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
+		if t.needRollback(ctxWithTimeout) {
+			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
-				ctx2, cancel2 := t.withTimeout(ctxWithoutTimeout)
-				defer cancel2()
-				if errRollback := rb.Rollback(ctx2); errRollback != nil {
+				ctxWithTimeout, cancelCtxWithTimeout := t.withRollbackTimeout(ctx)
+				defer cancelCtxWithTimeout()
+				if errRollback := rb.Rollback(ctxWithTimeout); errRollback != nil {
 					t.Log().Errorf("rollback: %s", err)
 				}
 			}
 		}
-		_, _ = t.statusEval(ctx)
+		ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+		defer cancelCtxWithTimeout()
+		_, _ = t.statusEval(ctxWithTimeout)
+		if err == nil {
+			t.announceIdle(ctxWithTimeout)
+		} else {
+			t.announceFailure(ctxWithTimeout)
+		}
 		return err
 	}
+
+	// the action is done without error ... start a new timeout for status eval
+	ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+	defer cancelCtxWithTimeout()
+
 	if action.Order.IsDesc() {
-		t.CleanPG(ctx)
+		t.CleanPG(ctxWithTimeout)
 	}
-	err := t.postStartStopStatusEval(ctx)
+	err := t.postStartStopStatusEval(ctxWithTimeout)
 	if err == nil {
-		t.announceProgress(ctx, "idle")
+		t.announceIdle(ctxWithTimeout)
 	} else {
 		t.log.Errorf("%s", err)
-		t.announceProgress(ctx, failure)
+		t.announceFailure(ctxWithTimeout)
 	}
 	return err
 }

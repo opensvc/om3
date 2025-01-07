@@ -247,11 +247,13 @@ type (
 	// schedule.Entry to append to the object's schedule.Table.
 	ScheduleOptions struct {
 		Action              string
+		MaxParallel         int
 		Option              string
 		Base                string
 		RequireCollector    bool
 		RequireProvisioned  bool
 		RequireConfirmation bool
+		RunDir              string
 	}
 )
 
