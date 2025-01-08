@@ -237,6 +237,9 @@ func (t *Manager) orchestrateResourceRestart() {
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
 		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
+		case rcfg.IsStandby:
+			t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+			todoStandby.Add(rid)
 		case started:
 			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if rmon.Restart.Remaining == 0 {
@@ -245,9 +248,6 @@ func (t *Manager) orchestrateResourceRestart() {
 			} else {
 				todoRestart.Add(rid)
 			}
-		case rcfg.IsStandby:
-			t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-			todoStandby.Add(rid)
 		default:
 			t.log.Debugf("resource %s restart skip: instance not started", rid)
 			resetTimer(rid, rmon)
