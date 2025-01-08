@@ -196,7 +196,7 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
 		if rmon.Restart.Remaining != rcfg.Restart {
-			t.log.Infof("resource %s is up, reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
+			t.log.Infof("resource %s: reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
 			rmon.Restart.Remaining = rcfg.Restart
 			// reset the last monitor action execution time, to rearm the next monitor action
 			t.state.MonitorActionExecutedAt = time.Time{}
@@ -241,11 +241,12 @@ func (t *Manager) orchestrateResourceRestart() {
 			t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			todoStandby.Add(rid)
 		case started:
-			t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-			if rmon.Restart.Remaining == 0 {
-				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action: %s", disableMonitorMsg)
+			if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
+				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action evicting: %s", disableMonitorMsg)
 				t.doMonitorAction(rid, 0)
 			} else {
+				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				todoRestart.Add(rid)
 			}
 		default:
