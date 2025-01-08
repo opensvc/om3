@@ -325,8 +325,14 @@ func (t *Manager) orchestrateResourceRestart() {
 	for rid, rstat := range t.instStatus[t.localhost].Resources {
 		planFor(rid, rstat.Status, started)
 	}
-	t.resourceRestartSchedule(todoStandby, true)
-	t.resourceRestartSchedule(todoRestart, false)
+
+	// Prepare scheduled resource restart
+	if len(todoStandby) > 0 {
+		t.resourceRestartSchedule(todoStandby, true)
+	}
+	if len(todoRestart) > 0 {
+		t.resourceRestartSchedule(todoRestart, false)
+	}
 }
 
 // resourceRestartSchedule schedules a restart for resources based on the provided resource map and standby mode.
