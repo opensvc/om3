@@ -1174,6 +1174,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
 		Info:        getStatusInfo(ctx, r),
+		Monitor:     MonitorFlag(r.IsMonitored()),
 		Restart:     RestartFlag(r.RestartCount()),
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
