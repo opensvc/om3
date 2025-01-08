@@ -138,6 +138,16 @@ type (
 		newState instance.MonitorState
 	}
 
+	// cmdResourceRestart is a structure representing a command to restart resources.
+	// It can be used from imon goroutines to schedule a future resource restart
+	// handled during imon main loop.
+	// rids is a slice of resource IDs to restart.
+	// standby indicates whether the resources should restart in standby mode.
+	cmdResourceRestart struct {
+		rids    []string
+		standby bool
+	}
+
 	Factory struct {
 		DrainDuration time.Duration
 		SubQS         pubsub.QueueSizer
@@ -368,6 +378,8 @@ func (t *Manager) worker(initialNodes []string) {
 			switch c := i.(type) {
 			case cmdOrchestrate:
 				t.needOrchestrate(c)
+			case cmdResourceRestart:
+				t.resourceRestart(c.rids, c.standby)
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()
