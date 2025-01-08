@@ -245,7 +245,7 @@ func (t *Manager) orchestrateResourceRestart() {
 				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action evicting: %s", disableMonitorMsg)
 				t.doMonitorAction(rid, 0)
-			} else {
+			} else if rmon.Restart.Remaining > 0 {
 				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				todoRestart.Add(rid)
 			}
