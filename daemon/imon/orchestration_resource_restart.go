@@ -178,6 +178,8 @@ func (t *Manager) pubMonitorAction(rid string, action instance.MonitorAction) {
 		t.labelLocalhost)
 }
 
+// orchestrateResourceRestart manages the restart orchestration process for resources,
+// handling delays, timers, and retries.
 func (t *Manager) orchestrateResourceRestart() {
 	todoRestart := newTodoMap()
 	todoStandby := newTodoMap()
@@ -252,101 +254,6 @@ func (t *Manager) orchestrateResourceRestart() {
 		}
 	}
 
-	getRidsAndDelay := func(todo todoMap) ([]string, time.Duration) {
-		var maxDelay time.Duration
-		rids := make([]string, 0)
-		now := time.Now()
-		for rid := range todo {
-			rcfg := t.instConfig.Resources.Get(rid)
-			if rcfg == nil {
-				continue
-			}
-			rmon := t.state.Resources.Get(rid)
-			if rmon == nil {
-				continue
-			}
-			if rcfg.RestartDelay != nil {
-				notBefore := rmon.Restart.LastAt.Add(*rcfg.RestartDelay)
-				if now.Before(notBefore) {
-					delay := notBefore.Sub(now)
-					if delay > maxDelay {
-						maxDelay = delay
-					}
-				}
-			}
-			rids = append(rids, rid)
-		}
-		return rids, maxDelay
-	}
-
-	doRestart := func() {
-		rids, delay := getRidsAndDelay(todoRestart)
-		if len(rids) == 0 {
-			return
-		}
-		timer := time.AfterFunc(delay, func() {
-			now := time.Now()
-			for _, rid := range rids {
-				rmon := t.state.Resources.Get(rid)
-				if rmon == nil {
-					continue
-				}
-				rmon.Restart.LastAt = now
-				rmon.Restart.Timer = nil
-				t.state.Resources.Set(rid, *rmon)
-				t.change = true
-			}
-			action := func() error {
-				return t.queueResourceStart(rids)
-			}
-			t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
-		})
-		for _, rid := range rids {
-			rmon := t.state.Resources.Get(rid)
-			if rmon == nil {
-				continue
-			}
-			rmon.DecRestartRemaining()
-			rmon.Restart.Timer = timer
-			t.state.Resources.Set(rid, *rmon)
-			t.change = true
-		}
-	}
-
-	doStandby := func() {
-		rids, delay := getRidsAndDelay(todoStandby)
-		if len(rids) == 0 {
-			return
-		}
-		timer := time.AfterFunc(delay, func() {
-			now := time.Now()
-			for _, rid := range rids {
-				rmon := t.state.Resources.Get(rid)
-				if rmon == nil {
-					continue
-				}
-				rmon.Restart.LastAt = now
-				rmon.Restart.Timer = nil
-				t.state.Resources.Set(rid, *rmon)
-				t.change = true
-			}
-			action := func() error {
-				return t.queueResourceStartStandby(rids)
-			}
-			t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
-		})
-		for _, rid := range rids {
-			rmon := t.state.Resources.Get(rid)
-			if rmon == nil {
-				continue
-			}
-			rmon.DecRestartRemaining()
-			rmon.Restart.Timer = timer
-			t.state.Resources.Set(rid, *rmon)
-			t.change = true
-		}
-	}
-
 	// discard the cluster object
 	if t.path.String() == "cluster" {
 		return
@@ -417,6 +324,91 @@ func (t *Manager) orchestrateResourceRestart() {
 	for rid, rstat := range t.instStatus[t.localhost].Resources {
 		planFor(rid, rstat.Status, started)
 	}
-	doStandby()
-	doRestart()
+	t.resourceRestartSchedule(todoStandby, true)
+	t.resourceRestartSchedule(todoRestart, false)
+}
+
+// resourceRestartSchedule schedules a restart for resources based on the provided resource map and standby mode.
+// It updates the state of resources with associated restart timers and logs the operation.
+func (t *Manager) resourceRestartSchedule(todo todoMap, standby bool) {
+	rids, delay := t.getRidsAndDelay(todo)
+	if len(rids) == 0 {
+		return
+	}
+	if standby {
+		t.log.Infof("schedule restart standby resources %v in %s", rids, delay)
+	} else {
+		t.log.Infof("schedule restart resources %v in %s", rids, delay)
+	}
+	timer := time.AfterFunc(delay, func() {
+		t.cmdC <- cmdResourceRestart{
+			rids:    rids,
+			standby: standby,
+		}
+	})
+	for _, rid := range rids {
+		rmon := t.state.Resources.Get(rid)
+		if rmon == nil {
+			continue
+		}
+		rmon.DecRestartRemaining()
+		rmon.Restart.Timer = timer
+		t.state.Resources.Set(rid, *rmon)
+		t.change = true
+	}
+}
+
+// resourceRestart restarts the specified resources and updates their state in the resource monitor.
+// Accepts a list of resource IDs and a boolean indicating if standby mode should be used.
+// Queues the appropriate start operation and initiates a state transition.
+func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
+	now := time.Now()
+	rids := make([]string, 0, len(resourceRids))
+	for _, rid := range resourceRids {
+		rmon := t.state.Resources.Get(rid)
+		if rmon == nil {
+			continue
+		}
+		rids = append(rids, rid)
+		rmon.Restart.LastAt = now
+		rmon.Restart.Timer = nil
+		t.state.Resources.Set(rid, *rmon)
+		t.change = true
+	}
+	queueFunc := t.queueResourceStart
+	if standby {
+		queueFunc = t.queueResourceStartStandby
+	}
+	action := func() error {
+		return queueFunc(rids)
+	}
+	t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
+}
+
+// getRidsAndDelay processes a todoMap to retrieve resource IDs and calculates the maximum required restart delay.
+func (t *Manager) getRidsAndDelay(todo todoMap) ([]string, time.Duration) {
+	var maxDelay time.Duration
+	rids := make([]string, 0)
+	now := time.Now()
+	for rid := range todo {
+		rcfg := t.instConfig.Resources.Get(rid)
+		if rcfg == nil {
+			continue
+		}
+		rmon := t.state.Resources.Get(rid)
+		if rmon == nil {
+			continue
+		}
+		if rcfg.RestartDelay != nil {
+			notBefore := rmon.Restart.LastAt.Add(*rcfg.RestartDelay)
+			if now.Before(notBefore) {
+				delay := notBefore.Sub(now)
+				if delay > maxDelay {
+					maxDelay = delay
+				}
+			}
+		}
+		rids = append(rids, rid)
+	}
+	return rids, maxDelay
 }
