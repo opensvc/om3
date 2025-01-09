@@ -166,13 +166,23 @@ func (t *Manager) orchestrateResourceRestart() {
 	todoRestart := newTodoMap()
 	todoStandby := newTodoMap()
 
-	resetTimer := func(rid string, rmon *instance.ResourceMonitor) {
-		todoRestart.Del(rid)
-		todoStandby.Del(rid)
-		if rmon.Restart.Timer != nil {
-			t.log.Infof("resource %s is up, reset delayed restart", rid)
-			t.change = rmon.StopRestartTimer()
-			t.state.Resources.Set(rid, *rmon)
+	dropScheduled := func(rid string, standby bool, reason string) {
+		var scheduled map[string]bool
+		var msg string
+		if standby {
+			scheduled = t.resourceStandbyWithRestartScheduled
+			msg = "delayed restart standby"
+		} else {
+			scheduled = t.resourceWithRestartScheduled
+			msg = "delayed restart"
+		}
+		if _, ok := scheduled[rid]; ok {
+			delete(scheduled, rid)
+			t.change = true
+			t.log.Infof("resource %s %s, reset %s", rid, reason, msg)
+			if len(scheduled) == 0 {
+				t.resetResourceMonitorTimer(standby)
+			}
 		}
 	}
 
@@ -189,18 +199,16 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	resetRemainingAndTimer := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor, reason string) {
 		resetRemaining(rid, rcfg, rmon, reason)
-		resetTimer(rid, rmon)
-	}
-
-	resetTimers := func() {
-		for rid, rmon := range t.state.Resources {
-			resetTimer(rid, &rmon)
+		if rcfg != nil {
+			dropScheduled(rid, rcfg.IsStandby, reason)
 		}
 	}
 
 	planFor := func(rid string, resStatus status.T, started bool) {
 		rcfg := t.instConfig.Resources.Get(rid)
 		rmon := t.state.Resources.Get(rid)
+		_, aleadyScheduled := t.resourceWithRestartScheduled[rid]
+		_, aleadyScheduledStandby := t.resourceStandbyWithRestartScheduled[rid]
 		switch {
 		case rcfg == nil:
 			return
@@ -212,8 +220,10 @@ func (t *Manager) orchestrateResourceRestart() {
 		case resStatus.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
 			t.log.Debugf("resource %s restart skip: status is %s", rid, resStatus)
 			resetRemainingAndTimer(rid, rcfg, rmon, fmt.Sprintf("status is %s", resStatus))
-		case rmon.Restart.Timer != nil:
-			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
+		case aleadyScheduledStandby && rcfg.IsStandby:
+			t.log.Debugf("resource %s restart skipped: already registered for restart standby", rid)
+		case aleadyScheduled && !rcfg.IsStandby:
+			t.log.Debugf("resource %s restart skipped: already registered for restart", rid)
 		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
 		case rcfg.IsStandby || started:
@@ -231,8 +241,7 @@ func (t *Manager) orchestrateResourceRestart() {
 				}
 			}
 		default:
-			t.log.Debugf("resource %s restart skip: instance not started", rid)
-			resetTimer(rid, rmon)
+			dropScheduled(rid, rcfg.IsStandby, "not standby or instance is not started")
 		}
 	}
 
@@ -250,19 +259,22 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// discard if the instance status does not exist
 	if _, ok := t.instStatus[t.localhost]; !ok {
-		resetTimers()
+		t.log.Errorf("skip restart: missing instance status")
+		t.resetResourceMonitorTimers()
 		return
 	}
 
 	// don't run on frozen nodes
 	if t.nodeStatus[t.localhost].IsFrozen() {
-		resetTimers()
+		t.log.Errorf("skip restart: node is frozen")
+		t.resetResourceMonitorTimers()
 		return
 	}
 
 	// don't run when the node is not idle
 	if t.nodeMonitor[t.localhost].State != node.MonitorStateIdle {
-		resetTimers()
+		t.log.Errorf("skip restart: node is %s", t.nodeMonitor[t.localhost].State)
+		t.resetResourceMonitorTimers()
 		return
 	}
 
@@ -277,22 +289,23 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// don't run on frozen instances
 	if t.instStatus[t.localhost].IsFrozen() {
-		resetTimers()
+		t.log.Errorf("skip restart: instance is frozen")
+		t.resetResourceMonitorTimers()
 		return
 	}
 
 	// discard not provisioned
 	if instanceStatus := t.instStatus[t.localhost]; instanceStatus.Provisioned.IsOneOf(provisioned.False, provisioned.Mixed, provisioned.Undef) {
-		t.log.Debugf("skip restart: provisioned=%s", instanceStatus.Provisioned)
-		resetTimers()
+		t.log.Errorf("skip restart: provisioned is %s", instanceStatus.Provisioned)
+		t.resetResourceMonitorTimers()
 		return
 	}
 
 	// discard if the instance has no monitor data
 	instMonitor, ok := t.GetInstanceMonitor(t.localhost)
 	if !ok {
-		t.log.Debugf("skip restart: no instance monitor")
-		resetTimers()
+		t.log.Errorf("skip restart: no instance monitor")
+		t.resetResourceMonitorTimers()
 		return
 	}
 
@@ -323,31 +336,37 @@ func (t *Manager) orchestrateResourceRestart() {
 // resourceRestartSchedule schedules a restart for resources based on the provided resource map and standby mode.
 // It updates the state of resources with associated restart timers and logs the operation.
 func (t *Manager) resourceRestartSchedule(todo todoMap, standby bool) {
+	var scheduled map[string]bool
 	rids, delay := t.getRidsAndDelay(todo)
 	if len(rids) == 0 {
 		return
 	}
-	if standby {
-		t.log.Infof("schedule restart standby resources %v in %s", rids, delay)
-	} else {
-		t.log.Infof("schedule restart resources %v in %s", rids, delay)
-	}
-	timer := time.AfterFunc(delay, func() {
+	onTimer := func() {
 		t.cmdC <- cmdResourceRestart{
 			rids:    rids,
 			standby: standby,
 		}
-	})
+	}
+	if standby {
+		t.log.Infof("schedule restart standby resources %v in %s", rids, delay)
+		t.resourceStandbyRestartTimer = time.AfterFunc(delay, onTimer)
+		scheduled = t.resourceStandbyWithRestartScheduled
+	} else {
+		t.log.Infof("schedule restart resources %v in %s", rids, delay)
+		t.resourceRestartTimer = time.AfterFunc(delay, onTimer)
+		scheduled = t.resourceWithRestartScheduled
+	}
 	for _, rid := range rids {
 		rmon := t.state.Resources.Get(rid)
 		if rmon == nil {
 			continue
 		}
 		rmon.DecRestartRemaining()
-		rmon.Restart.Timer = timer
 		t.state.Resources.Set(rid, *rmon)
 		t.change = true
+		scheduled[rid] = true
 	}
+
 }
 
 // resourceRestart restarts the specified resources and updates their state in the resource monitor.
@@ -356,16 +375,34 @@ func (t *Manager) resourceRestartSchedule(todo todoMap, standby bool) {
 func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 	now := time.Now()
 	rids := make([]string, 0, len(resourceRids))
+	var scheduled map[string]bool
+	var skipMessage string
+	if standby {
+		skipMessage = "skip resource restart standby"
+		scheduled = t.resourceStandbyWithRestartScheduled
+	} else {
+		skipMessage = "skip resource restart"
+		scheduled = t.resourceWithRestartScheduled
+	}
 	for _, rid := range resourceRids {
 		rmon := t.state.Resources.Get(rid)
 		if rmon == nil {
 			continue
 		}
+
+		if _, ok := scheduled[rid]; !ok {
+			t.log.Infof("%s %s: not anymore candidate", skipMessage, rid)
+			continue
+		}
 		rids = append(rids, rid)
 		rmon.Restart.LastAt = now
-		rmon.Restart.Timer = nil
 		t.state.Resources.Set(rid, *rmon)
 		t.change = true
+		delete(scheduled, rid)
+	}
+	if len(rids) == 0 {
+		t.log.Infof("%s: no more candidates", skipMessage)
+		return
 	}
 	queueFunc := t.queueResourceStart
 	if standby {
@@ -427,5 +464,22 @@ func (t *Manager) isValidMonitorAction(action instance.MonitorAction) bool {
 	default:
 		t.log.Infof("unsupported monitor action: %s", action)
 		return false
+	}
+}
+
+func (t *Manager) resetResourceMonitorTimers() {
+	t.resetResourceMonitorTimer(true)
+	t.resetResourceMonitorTimer(false)
+}
+
+func (t *Manager) resetResourceMonitorTimer(standby bool) {
+	if standby && t.resourceStandbyRestartTimer != nil {
+		t.log.Infof("reset scheduled restart standby resources")
+		t.resourceStandbyRestartTimer.Stop()
+		t.resourceStandbyRestartTimer = nil
+	} else if !standby && t.resourceRestartTimer != nil {
+		t.log.Infof("reset scheduled restart resources")
+		t.resourceRestartTimer.Stop()
+		t.resourceRestartTimer = nil
 	}
 }

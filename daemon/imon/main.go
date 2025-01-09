@@ -135,6 +135,22 @@ type (
 		// for monitoring as defined by the MonitorAction type.
 		// Its Value is created/refreshed during func initResourceMonitor.
 		initialMonitorAction instance.MonitorAction
+
+		// resourceRestartTimer represents a timer used to schedule the restart
+		// of non-standby resources.
+		resourceRestartTimer *time.Timer
+
+		// resourceStandbyRestartTimer is a timer used to schedule the restart
+		// of standby resources.
+		resourceStandbyRestartTimer *time.Timer
+
+		// resourceWithRestartScheduled maintains a mapping of non-standby
+		// resource identifiers to their restart scheduled as boolean values.
+		resourceWithRestartScheduled map[string]bool
+
+		// resourceStandbyWithRestartScheduled maintains a mapping of standby
+		// resource identifiers to their restart scheduled as boolean values.
+		resourceStandbyWithRestartScheduled map[string]bool
 	}
 
 	// cmdOrchestrate can be used from post action go routines

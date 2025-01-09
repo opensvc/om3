@@ -1049,12 +1049,24 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 func (t *Manager) initResourceMonitor() {
 	// Stop any pending restart timers before init. We may be called after
 	// instance config refreshed with some previous resource restart scheduled.
-	if t.state.Resources != nil && len(t.state.Resources) > 0 {
-		t.log.Infof("drop pending schedule restart resources: local instance config has been updated")
-		for _, rmon := range t.state.Resources {
-			rmon.StopRestartTimer()
+	t.resetResourceMonitorTimers()
+
+	logDropped := func(l map[string]bool, comment string) {
+		if l != nil {
+			dropped := make([]string, 0)
+			for rid := range l {
+				dropped = append(dropped, rid)
+			}
+			if len(dropped) > 0 {
+				t.log.Infof("instance config has been updated: drop previously scheduled restart %s %v", comment, dropped)
+			}
 		}
 	}
+	logDropped(t.resourceWithRestartScheduled, "resources")
+	logDropped(t.resourceStandbyWithRestartScheduled, "standby resources")
+
+	t.resourceWithRestartScheduled = make(map[string]bool)
+	t.resourceStandbyWithRestartScheduled = make(map[string]bool)
 
 	if monitorAction, ok := t.getValidMonitorAction(0); !ok {
 		t.initialMonitorAction = instance.MonitorActionNone

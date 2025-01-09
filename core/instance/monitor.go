@@ -78,9 +78,8 @@ type (
 		Restart ResourceMonitorRestart `json:"restart"`
 	}
 	ResourceMonitorRestart struct {
-		Remaining int         `json:"remaining"`
-		LastAt    time.Time   `json:"last_at"`
-		Timer     *time.Timer `json:"-"`
+		Remaining int       `json:"remaining"`
+		LastAt    time.Time `json:"last_at"`
 	}
 
 	MonitorState        int
@@ -431,16 +430,6 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 func (rmon *ResourceMonitor) DecRestartRemaining() {
 	if rmon.Restart.Remaining > 0 {
 		rmon.Restart.Remaining -= 1
-	}
-}
-
-func (rmon *ResourceMonitor) StopRestartTimer() bool {
-	if rmon.Restart.Timer == nil {
-		return false
-	} else {
-		rmon.Restart.Timer.Stop()
-		rmon.Restart.Timer = nil
-		return true
 	}
 }
 
