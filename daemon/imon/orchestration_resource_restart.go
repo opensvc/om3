@@ -419,7 +419,8 @@ func (t *Manager) isValidMonitorAction(action instance.MonitorAction) bool {
 	case instance.MonitorActionCrash,
 		instance.MonitorActionFreezeStop,
 		instance.MonitorActionReboot,
-		instance.MonitorActionSwitch:
+		instance.MonitorActionSwitch,
+		instance.MonitorActionNoOp:
 		return true
 	case instance.MonitorActionNone:
 		return false

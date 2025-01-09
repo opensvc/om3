@@ -303,12 +303,29 @@ var (
 	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
 	ErrSameLocalExpect     = errors.New("instance monitor local expect is already set to the same value")
 	ErrSameState           = errors.New("instance monitor state is already set to the same value")
+)
 
-	MonitorActionNone       MonitorAction = "none"
-	MonitorActionCrash      MonitorAction = "crash"
+var (
+	// MonitorActionNone: monitor action is disabled.
+	MonitorActionNone MonitorAction = "none"
+
+	// MonitorActionCrash represents the monitor action that will try system crash/panic
+	MonitorActionCrash MonitorAction = "crash"
+
+	// MonitorActionFreezeStop represents the monitor action that will try freeze and subsequently stop
+	// the monitored instance.
 	MonitorActionFreezeStop MonitorAction = "freezestop"
-	MonitorActionReboot     MonitorAction = "reboot"
-	MonitorActionSwitch     MonitorAction = "switch"
+
+	// MonitorActionReboot represents the monitor action that will reboot the system.
+	MonitorActionReboot MonitorAction = "reboot"
+
+	// MonitorActionSwitch represents the monitor action that will stop instance stop to allow
+	// any other cluster nodes to takeover instance.
+	MonitorActionSwitch MonitorAction = "switch"
+
+	// MonitorActionNoOp represents the no-operation behavior while setting the state to 'evicted'.
+	// This can be useful for demonstration purposes or cases where no action is required.
+	MonitorActionNoOp MonitorAction = "no-op"
 )
 
 func (t MonitorState) Is(states ...MonitorState) bool {
