@@ -10,11 +10,11 @@ import (
 )
 
 func (a *DaemonAPI) announceSub(name string) {
-	a.EventBus.Pub(&msgbus.ClientSubscribed{Time: time.Now(), Name: name})
+	a.EventBus.Pub(&msgbus.ClientSubscribed{Time: time.Now(), Name: name}, a.LabelNode, labelAPI)
 }
 
 func (a *DaemonAPI) announceUnsub(name string) {
-	a.EventBus.Pub(&msgbus.ClientUnsubscribed{Time: time.Now(), Name: name})
+	a.EventBus.Pub(&msgbus.ClientUnsubscribed{Time: time.Now(), Name: name}, a.LabelNode, labelAPI)
 }
 
 func (a *DaemonAPI) announceNodeState(log *plog.Logger, state node.MonitorState) {
