@@ -1055,6 +1055,15 @@ func (t *Manager) initResourceMonitor() {
 			rmon.StopRestartTimer()
 		}
 	}
+
+	if monitorAction, ok := t.getValidMonitorAction(0); !ok {
+		t.initialMonitorAction = instance.MonitorActionNone
+	} else {
+		t.initialMonitorAction = monitorAction
+	}
+
+	hasMonitorActionNone := t.initialMonitorAction == instance.MonitorActionNone
+
 	m := make(instance.ResourceMonitors, 0)
 	for rid, rcfg := range t.instConfig.Resources {
 		m[rid] = instance.ResourceMonitor{
@@ -1062,8 +1071,12 @@ func (t *Manager) initResourceMonitor() {
 				Remaining: rcfg.Restart,
 			},
 		}
+		if rcfg.IsMonitored && hasMonitorActionNone {
+			t.log.Warnf("resource %s is monitored, but monitor action is none",  rid)
+		}
 	}
 	t.state.Resources = m
+
 	t.change = true
 }
 

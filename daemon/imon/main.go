@@ -130,6 +130,11 @@ type (
 		// It is used during enableDelayTimer():
 		// When false the delay timer is reset with delayDuration
 		delayTimerEnabled bool
+
+		// initialMonitorAction specifies the initial (stage 0) monitor action
+		// for monitoring as defined by the MonitorAction type.
+		// Its Value is created/refreshed during func initResourceMonitor.
+		initialMonitorAction instance.MonitorAction
 	}
 
 	// cmdOrchestrate can be used from post action go routines

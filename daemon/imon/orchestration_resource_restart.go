@@ -91,47 +91,29 @@ func (t *Manager) monitorActionCalled() bool {
 	return !t.state.MonitorActionExecutedAt.IsZero()
 }
 
-func (t *Manager) doMonitorAction(rid string, stage int) {
+func (t *Manager) doMonitorAction(rid string, action instance.MonitorAction) {
 	t.state.MonitorActionExecutedAt = time.Now()
-	monitorActionCount := len(t.instConfig.MonitorAction)
-	if monitorActionCount < stage+1 {
-		t.log.Errorf("skip monitor action: stage %d action no longer configured", stage+1)
+	if !t.isValidMonitorAction(action) {
 		return
 	}
-
-	monitorAction := t.instConfig.MonitorAction[stage]
-
-	switch monitorAction {
-	case instance.MonitorActionCrash:
-	case instance.MonitorActionFreezeStop:
-	case instance.MonitorActionReboot:
-	case instance.MonitorActionSwitch:
-	case instance.MonitorActionNone:
-		t.log.Infof("skip monitor action: not configured")
-		return
-	default:
-		t.log.Errorf("skip monitor action: not supported: %s", monitorAction)
-		return
-	}
-
 	if err := t.doPreMonitorAction(); err != nil {
 		t.log.Errorf("pre monitor action: %s", err)
 	}
 
-	t.log.Infof("do monitor action %d/%d: %s", stage+1, len(t.instConfig.MonitorAction), monitorAction)
-	t.pubMonitorAction(rid, monitorAction)
+	t.log.Infof("do monitor action: %s", action)
+	t.pubMonitorAction(rid, action)
 
-	switch monitorAction {
+	switch action {
 	case instance.MonitorActionCrash:
 		if err := toc.Crash(); err != nil {
-			t.log.Errorf("monitor action: %s", err)
+			t.log.Errorf("monitor action %s: %s", action, err)
 		}
 	case instance.MonitorActionFreezeStop:
 		t.doFreezeStop()
 		t.doStop()
 	case instance.MonitorActionReboot:
 		if err := toc.Reboot(); err != nil {
-			t.log.Errorf("monitor action: %s", err)
+			t.log.Errorf("monitor action %s: %s", action, err)
 		}
 	case instance.MonitorActionSwitch:
 		t.createPendingWithDuration(stopDuration)
@@ -235,10 +217,10 @@ func (t *Manager) orchestrateResourceRestart() {
 		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
 		case rcfg.IsStandby || started:
-			if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
+			if rmon.Restart.Remaining == 0 && rcfg.IsMonitored && t.initialMonitorAction != instance.MonitorActionNone {
 				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action evicting: %s", disableMonitorMsg)
-				t.doMonitorAction(rid, 0)
+				t.doMonitorAction(rid, t.initialMonitorAction)
 			} else if rmon.Restart.Remaining > 0 {
 				if rcfg.IsStandby {
 					t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
@@ -285,8 +267,12 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 
 	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
-		t.disableMonitor("orchestrate resource restart recover from evicted and stop failed")
-		t.doMonitorAction("", 1)
+		if action, ok := t.getValidMonitorAction(1); ok {
+			t.disableMonitor("initial monitor action failed, try alternate monitor action %s", action)
+			t.doMonitorAction("", action)
+		} else {
+			t.disableMonitor("initial monitor action failed, no alternate monitor action")
+		}
 	}
 
 	// don't run on frozen instances
@@ -417,4 +403,28 @@ func (t *Manager) getRidsAndDelay(todo todoMap) ([]string, time.Duration) {
 		rids = append(rids, rid)
 	}
 	return rids, maxDelay
+}
+
+func (t *Manager) getValidMonitorAction(stage int) (action instance.MonitorAction, ok bool) {
+	if stage >= len(t.instConfig.MonitorAction) {
+		return
+	}
+	action = t.instConfig.MonitorAction[stage]
+	ok = t.isValidMonitorAction(action)
+	return
+}
+
+func (t *Manager) isValidMonitorAction(action instance.MonitorAction) bool {
+	switch action {
+	case instance.MonitorActionCrash,
+		instance.MonitorActionFreezeStop,
+		instance.MonitorActionReboot,
+		instance.MonitorActionSwitch:
+		return true
+	case instance.MonitorActionNone:
+		return false
+	default:
+		t.log.Errorf("unsupported monitor action: %s", action)
+		return false
+	}
 }
