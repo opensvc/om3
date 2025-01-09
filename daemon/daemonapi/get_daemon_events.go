@@ -266,7 +266,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		deleteMsg.AddLabels(a.LabelNode)
 		if !needForwardEvent("ObjectDeleted", deleteMsg) {
 			log.Debugf("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
-			sub.AddFilter(&msgbus.ObjectDeleted{}, pubsub.Label{"node", a.localhost})
+			sub.AddFilter(&msgbus.ObjectDeleted{}, a.LabelNode)
 		}
 	}
 	sub.Start()
