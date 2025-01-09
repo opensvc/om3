@@ -194,9 +194,9 @@ func (t *Manager) orchestrateResourceRestart() {
 		}
 	}
 
-	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
+	resetRemaining := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor, reason string) {
 		if rmon.Restart.Remaining != rcfg.Restart {
-			t.log.Infof("resource %s: reset restart count to the max (%d -> %d)", rid, rmon.Restart.Remaining, rcfg.Restart)
+			t.log.Infof("resource %s %s: reset restart count to the max (%d -> %d)", rid, reason, rmon.Restart.Remaining, rcfg.Restart)
 			rmon.Restart.Remaining = rcfg.Restart
 			// reset the last monitor action execution time, to rearm the next monitor action
 			t.state.MonitorActionExecutedAt = time.Time{}
@@ -205,8 +205,8 @@ func (t *Manager) orchestrateResourceRestart() {
 		}
 	}
 
-	resetRemainingAndTimer := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor) {
-		resetRemaining(rid, rcfg, rmon)
+	resetRemainingAndTimer := func(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor, reason string) {
+		resetRemaining(rid, rcfg, rmon, reason)
 		resetTimer(rid, rmon)
 	}
 
@@ -226,13 +226,10 @@ func (t *Manager) orchestrateResourceRestart() {
 			return
 		case rcfg.IsDisabled:
 			t.log.Debugf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
-			resetRemainingAndTimer(rid, rcfg, rmon)
-		case resStatus.Is(status.NotApplicable, status.Undef):
+			resetRemainingAndTimer(rid, rcfg, rmon, "is disabled")
+		case resStatus.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
 			t.log.Debugf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rid, rcfg, rmon)
-		case resStatus.Is(status.Up, status.StandbyUp):
-			t.log.Debugf("resource %s restart skip: status=%s", rid, resStatus)
-			resetRemainingAndTimer(rid, rcfg, rmon)
+			resetRemainingAndTimer(rid, rcfg, rmon, fmt.Sprintf("status is %s", resStatus))
 		case rmon.Restart.Timer != nil:
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
 		case t.monitorActionCalled():
