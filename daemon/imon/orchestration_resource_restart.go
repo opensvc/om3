@@ -234,17 +234,19 @@ func (t *Manager) orchestrateResourceRestart() {
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
 		case t.monitorActionCalled():
 			t.log.Debugf("resource %s restart skip: already ran the monitor action", rid)
-		case rcfg.IsStandby:
-			t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-			todoStandby.Add(rid)
-		case started:
+		case rcfg.IsStandby || started:
 			if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
 				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action evicting: %s", disableMonitorMsg)
 				t.doMonitorAction(rid, 0)
 			} else if rmon.Restart.Remaining > 0 {
-				t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-				todoRestart.Add(rid)
+				if rcfg.IsStandby {
+					t.log.Infof("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+					todoStandby.Add(rid)
+				} else {
+					t.log.Infof("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
+					todoRestart.Add(rid)
+				}
 			}
 		default:
 			t.log.Debugf("resource %s restart skip: instance not started", rid)
