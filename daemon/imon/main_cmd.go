@@ -335,6 +335,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 			}
 		}()
 		t.instConfig = srcCmd.Value
+		t.log.Debugf("refresh resource monitor states on local instance config updated")
 		t.initResourceMonitor()
 		janitorInstStatus(srcCmd.Value.Scope)
 		janitorRelations(srcCmd.Value.Children, "Child", t.state.Children)
@@ -1046,6 +1047,14 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 }
 
 func (t *Manager) initResourceMonitor() {
+	// Stop any pending restart timers before init. We may be called after
+	// instance config refreshed with some previous resource restart scheduled.
+	if t.state.Resources != nil && len(t.state.Resources) > 0 {
+		t.log.Infof("drop pending schedule restart resources: local instance config has been updated")
+		for _, rmon := range t.state.Resources {
+			rmon.StopRestartTimer()
+		}
+	}
 	m := make(instance.ResourceMonitors, 0)
 	for rid, rcfg := range t.instConfig.Resources {
 		m[rid] = instance.ResourceMonitor{

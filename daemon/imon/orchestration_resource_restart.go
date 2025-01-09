@@ -225,10 +225,10 @@ func (t *Manager) orchestrateResourceRestart() {
 		case rmon == nil:
 			return
 		case rcfg.IsDisabled:
-			t.log.Debugf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
+			t.log.Debugf("resource %s restart skip: is disabled", rid, rcfg.IsDisabled)
 			resetRemainingAndTimer(rid, rcfg, rmon, "is disabled")
 		case resStatus.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
-			t.log.Debugf("resource %s restart skip: status=%s", rid, resStatus)
+			t.log.Debugf("resource %s restart skip: status is %s", rid, resStatus)
 			resetRemainingAndTimer(rid, rcfg, rmon, fmt.Sprintf("status is %s", resStatus))
 		case rmon.Restart.Timer != nil:
 			t.log.Debugf("resource %s restart skip: already has a delay timer", rid)
