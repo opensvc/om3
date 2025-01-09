@@ -425,7 +425,7 @@ func (t *Manager) isValidMonitorAction(action instance.MonitorAction) bool {
 	case instance.MonitorActionNone:
 		return false
 	default:
-		t.log.Errorf("unsupported monitor action: %s", action)
+		t.log.Infof("unsupported monitor action: %s", action)
 		return false
 	}
 }

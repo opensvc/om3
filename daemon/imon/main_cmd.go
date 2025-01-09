@@ -1072,7 +1072,7 @@ func (t *Manager) initResourceMonitor() {
 			},
 		}
 		if rcfg.IsMonitored && hasMonitorActionNone {
-			t.log.Warnf("resource %s is monitored, but monitor action is none",  rid)
+			t.log.Infof("unusable monitor action: resource %s is monitored, but monitor action is none", rid)
 		}
 	}
 	t.state.Resources = m
