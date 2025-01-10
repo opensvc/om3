@@ -335,6 +335,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 			}
 		}()
 		t.instConfig = srcCmd.Value
+		t.log.Debugf("refresh resource monitor states on local instance config updated")
 		t.initResourceMonitor()
 		janitorInstStatus(srcCmd.Value.Scope)
 		janitorRelations(srcCmd.Value.Children, "Child", t.state.Children)
@@ -1046,6 +1047,35 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 }
 
 func (t *Manager) initResourceMonitor() {
+	// Stop any pending restart timers before init. We may be called after
+	// instance config refreshed with some previous resource restart scheduled.
+	t.cancelResourceOrchestrateSchedules()
+
+	logDropped := func(or *orchestrationResource) {
+		if or != nil && or.scheduled != nil {
+			dropped := make([]string, 0)
+			for rid := range or.scheduled {
+				dropped = append(dropped, rid)
+			}
+			if len(dropped) > 0 {
+				or.log.Infof("instance config has been updated: drop previously scheduled restarts %v", dropped)
+			}
+		}
+	}
+	logDropped(&t.regularResourceOrchestrate)
+	logDropped(&t.standbyResourceOrchestrate)
+
+	t.regularResourceOrchestrate.scheduled = make(map[string]bool)
+	t.standbyResourceOrchestrate.scheduled = make(map[string]bool)
+
+	if monitorAction, ok := t.getValidMonitorAction(0); !ok {
+		t.initialMonitorAction = instance.MonitorActionNone
+	} else {
+		t.initialMonitorAction = monitorAction
+	}
+
+	hasMonitorActionNone := t.initialMonitorAction == instance.MonitorActionNone
+
 	m := make(instance.ResourceMonitors, 0)
 	for rid, rcfg := range t.instConfig.Resources {
 		m[rid] = instance.ResourceMonitor{
@@ -1053,8 +1083,12 @@ func (t *Manager) initResourceMonitor() {
 				Remaining: rcfg.Restart,
 			},
 		}
+		if rcfg.IsMonitored && hasMonitorActionNone {
+			t.orchestrationResource(rcfg.IsStandby).log.Infof("rid %s is monitored, but monitor action is none", rid)
+		}
 	}
 	t.state.Resources = m
+
 	t.change = true
 }
 

@@ -1,7 +1,7 @@
 The action to trigger when a monitored resource is no longer in the "up" or
 "standby up" state, and all restart attempts for the resource have failed.
 
-The reboot and crash monitor actions do not attempt to cleanly stop any
+The `reboot` and `crash` monitor actions do not attempt to cleanly stop any
 processes. On Linux, they utilize system-level sysrq triggers.
 
 This behavior is designed to ensure that the host stops writing to shared
@@ -10,5 +10,15 @@ is critical because a failover node is likely preparing to write to the same
 shared disks.
 
 You can append a fallback monitor action to this keyword. A common example
-is "freezestop reboot". In this case, the reboot action will be executed
+is `freezestop reboot`. In this case, the reboot action will be executed
 if the stop fails or times out.
+
+Other monitor_actions values:
+  - `none`: the default value for monitor action disabled (`monitor`keyword
+     must be also `false` or undefined).
+  - `freezestop`: freeze and subsequently stop the monitored instance.
+  - `switch`: try monitored instance stop to allow any other cluster nodes to
+     takeover the instance.
+  - `no-op`: The monitor action No Operation is called but does nothing. It
+     may be used for demonstration. The final local expect after call will
+     be set to `evicted`.

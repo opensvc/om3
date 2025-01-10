@@ -70,6 +70,10 @@ var (
 
 	errConfigFileCheck = errors.New("config file check")
 
+	// standbyDefaultRestart defines the default minimum restart threshold for
+	// standby resources.
+	standbyDefaultRestart = 2
+
 	keyApp              = key.New("DEFAULT", "app")
 	keyChildren         = key.New("DEFAULT", "children")
 	keyEnv              = key.New("DEFAULT", "env")
@@ -415,12 +419,17 @@ func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {
 		if resourceset.IsSubsetSection(section) {
 			continue
 		}
+		restart := cf.GetInt(key.New(section, "restart"))
+		isStandby := cf.GetBool(key.New(section, "standby"))
+		if isStandby && restart < standbyDefaultRestart {
+			restart = standbyDefaultRestart
+		}
 		m[section] = instance.ResourceConfig{
 			RestartDelay: cf.GetDuration(key.New(section, "restart_delay")),
-			Restart:      cf.GetInt(key.New(section, "restart")),
+			Restart:      restart,
 			IsDisabled:   cf.GetBool(key.New(section, "disable")),
 			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
-			IsStandby:    cf.GetBool(key.New(section, "standby")),
+			IsStandby:    isStandby,
 		}
 	}
 	return m

@@ -130,12 +130,33 @@ type (
 		// It is used during enableDelayTimer():
 		// When false the delay timer is reset with delayDuration
 		delayTimerEnabled bool
+
+		// initialMonitorAction specifies the initial (stage 0) monitor action
+		// for monitoring as defined by the MonitorAction type.
+		// Its Value is created/refreshed during func initResourceMonitor.
+		initialMonitorAction instance.MonitorAction
+
+		// standbyResourceOrchestrate is the orchestrationResource for standby resources
+		standbyResourceOrchestrate orchestrationResource
+
+		// standbyResourceOrchestrate is the orchestrationResource for regular resources
+		regularResourceOrchestrate orchestrationResource
 	}
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
 		state    instance.MonitorState
 		newState instance.MonitorState
+	}
+
+	// cmdResourceRestart is a structure representing a command to restart resources.
+	// It can be used from imon goroutines to schedule a future resource restart
+	// handled during imon main loop.
+	// rids is a slice of resource IDs to restart.
+	// standby indicates whether the resources should restart in standby mode.
+	cmdResourceRestart struct {
+		rids    []string
+		standby bool
 	}
 
 	Factory struct {
@@ -214,6 +235,9 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	}
 
 	t.log = t.newLogger(uuid.Nil)
+	t.regularResourceOrchestrate.log = t.newResourceLogger("regular resource")
+	t.standbyResourceOrchestrate.log = t.newResourceLogger( "standby resource")
+
 	t.startSubscriptions(qs)
 
 	go func() {
@@ -223,12 +247,19 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	return nil
 }
 
+func (t *Manager) newResourceLogger(s string) *plog.Logger {
+	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+		Attr("pkg", "daemon/imon").
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path.String(), s))
+}
+
 func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
+
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := t.pubsubBus.Sub("daemon.imon "+t.id, qs)
@@ -368,6 +399,8 @@ func (t *Manager) worker(initialNodes []string) {
 			switch c := i.(type) {
 			case cmdOrchestrate:
 				t.needOrchestrate(c)
+			case cmdResourceRestart:
+				t.resourceRestart(c.rids, c.standby)
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()

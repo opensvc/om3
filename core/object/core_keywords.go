@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
@@ -219,16 +220,23 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/encapnodes"),
 	},
 	{
-		Candidates: []string{"crash", "freezestop", "none", "reboot", "switch"},
-		Converter:  converters.List,
-		Default:    "none",
-		Kind:       naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Example:    "reboot",
-		Inherit:    keywords.InheritHead,
-		Option:     "monitor_action",
-		Scopable:   true,
-		Section:    "DEFAULT",
-		Text:       keywords.NewText(fs, "text/kw/core/monitor_action"),
+		Candidates: []string{
+			string(instance.MonitorActionCrash),
+			string(instance.MonitorActionFreezeStop),
+			string(instance.MonitorActionNone),
+			string(instance.MonitorActionReboot),
+			string(instance.MonitorActionSwitch),
+			string(instance.MonitorActionNoOp),
+		},
+		Converter: converters.List,
+		Default:   string(instance.MonitorActionNone),
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Example:   string(instance.MonitorActionReboot),
+		Inherit:   keywords.InheritHead,
+		Option:    "monitor_action",
+		Scopable:  true,
+		Section:   "DEFAULT",
+		Text:      keywords.NewText(fs, "text/kw/core/monitor_action"),
 	},
 	{
 		Example:  "/bin/true",
