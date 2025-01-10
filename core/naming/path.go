@@ -385,7 +385,7 @@ func (t Path) VarDir() string {
 	case "", "root":
 		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.Var, t.Kind, t.Name)
 	default:
-		s = fmt.Sprintf("%s/namespaces/%s", rawconfig.Paths.Var, t)
+		s = fmt.Sprintf("%s/%s", rawconfig.Paths.VarNs, t)
 	}
 	return filepath.FromSlash(s)
 }
@@ -396,7 +396,7 @@ func (t Path) TmpDir() string {
 	var s string
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
-		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Tmp, t.Namespace, t.Kind)
+		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.TmpNs, t.Namespace, t.Kind)
 	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
 	default:
@@ -411,7 +411,7 @@ func (t Path) LogDir() string {
 	var s string
 	switch {
 	case t.Namespace != "", t.Namespace != "root":
-		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Log, t.Namespace, t.Kind)
+		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.LogNs, t.Namespace, t.Kind)
 	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Log)
 	default:
@@ -452,9 +452,9 @@ func InstalledPaths() (Paths, error) {
 	l := make(Paths, 0)
 	matches := make([]string, 0)
 	patterns := []string{
-		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),                // root svc
-		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),              // root other
-		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Paths.Etc), // namespaces
+		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),       // root svc
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),     // root other
+		fmt.Sprintf("%s/*/*/*.conf", rawconfig.Paths.EtcNs), // namespaces
 	}
 	for _, pattern := range patterns {
 		m, err := filepath.Glob(pattern)

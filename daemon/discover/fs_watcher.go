@@ -167,10 +167,10 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 
 		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Infof("detect %s initially exists", nodeFrozenFile)
-			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, pubsub.Label{"node", t.localhost})
+			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileUpdated{File: nodeFrozenFile, At: updated}, t.labelLocalhost)
 		} else {
 			log.Infof("detect %s initially absent", nodeFrozenFile)
-			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, pubsub.Label{"node", t.localhost})
+			t.PubDebounce(bus, nodeFrozenFile, &msgbus.NodeFrozenFileRemoved{File: nodeFrozenFile}, t.labelLocalhost)
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -188,6 +188,25 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 				log.Debugf("event: %s", event)
 				filename := event.Name
 				switch {
+				case strings.HasSuffix(filepath.Dir(filename), "/run"):
+					switch {
+					case event.Op&fsnotify.Remove != 0:
+						log.Debugf("detect removed file %s (%s)", filename, event.Op)
+						path, rid, err := runFilenameToPathAndRID(filename)
+						if err != nil {
+							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
+							continue
+						}
+						t.PubDebounce(bus, filename, &msgbus.RunFileRemoved{File: filename, Path: path, RID: rid, At: time.Now()}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+					case event.Op&fsnotify.Create != 0:
+						log.Debugf("detect updated file %s (%s)", filename, event.Op)
+						path, rid, err := runFilenameToPathAndRID(filename)
+						if err != nil {
+							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
+							continue
+						}
+						t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+					}
 				case strings.HasSuffix(filename, "frozen"):
 					if filename != nodeFrozenFile {
 						// TODO: track instance frozen flag ? the namespace var is not yet watched
@@ -197,12 +216,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debugf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileRemoved{File: filename}, pubsub.Label{"node", t.localhost})
+							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileRemoved{File: filename}, t.labelLocalhost)
 						}
 					case event.Op&updateMask != 0:
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, pubsub.Label{"node", t.localhost})
+							t.PubDebounce(bus, filename, &msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, t.labelLocalhost)
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
@@ -264,4 +283,14 @@ func filenameToPath(filename, prefix, suffix string) (naming.Path, error) {
 		return naming.Path{}, fmt.Errorf("skipped null filename")
 	}
 	return naming.ParsePath(svcName)
+}
+
+func runFilenameToPathAndRID(filename string) (naming.Path, string, error) {
+	s := filepath.Dir(filepath.Dir(filename)) // discard the /run suffix
+	rid := filepath.Base(s)
+	s = filepath.Dir(s) // discard the /<rid> suffix
+	s = strings.TrimPrefix(s, rawconfig.Paths.VarNs+"/")
+	s = strings.TrimPrefix(s, rawconfig.Paths.Var+"/")
+	path, err := naming.ParsePath(s)
+	return path, rid, err
 }

@@ -19,7 +19,7 @@ func (t *Manager) omon(started chan<- bool) {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("daemon.discover.omon", t.subQS)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
-	sub.AddFilter(&msgbus.ObjectStatusDone{}, pubsub.Label{"node", t.localhost})
+	sub.AddFilter(&msgbus.ObjectStatusDone{}, t.labelLocalhost)
 	sub.Start()
 	started <- true
 	defer func() {

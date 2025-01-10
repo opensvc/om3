@@ -76,6 +76,7 @@ type (
 		// debouncers is a map of delayed publications to cope with fs event storms
 		debouncers map[string]*Debouncer
 
+		watched       map[naming.Path]map[string]any
 		fsWatcher     *fsnotify.Watcher
 		fsWatcherStop func()
 		localhost     string
@@ -113,6 +114,8 @@ type (
 		// So we keep those pending event to retransmit them when hb message type
 		// become 'patch'
 		instanceConfigFor map[naming.Path]*msgbus.InstanceConfigFor
+
+		labelLocalhost pubsub.Label
 	}
 )
 
@@ -125,6 +128,7 @@ type (
 // components. So WithImonStarter and WithOmonSubQS must be called on the
 // returned *T
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
+	localhost := hostname.Hostname()
 	return &Manager{
 		cfgDeleting: make(map[naming.Path]bool),
 
@@ -142,9 +146,11 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		fetcherCancel:     make(map[string]context.CancelFunc),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
 		fetcherUpdated:    make(map[string]time.Time),
-		localhost:         hostname.Hostname(),
+		localhost:         localhost,
 		drainDuration:     drainDuration,
 		subQS:             subQS,
+		watched:           make(map[naming.Path]map[string]any),
+		labelLocalhost:    pubsub.Label{"node", localhost},
 	}
 }
 

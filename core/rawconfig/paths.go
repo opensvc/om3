@@ -13,17 +13,20 @@ type (
 		Root         string `mapstructure:"root"`
 		Bin          string `mapstructure:"bin"`
 		Var          string `mapstructure:"var"`
+		VarNs        string `mapstructure:"varns"`
 		Lock         string `mapstructure:"lock"`
 		Lsnr         string `mapstructure:"lsnr"`
 		Cache        string `mapstructure:"cache"`
 		Certs        string `mapstructure:"certs"`
 		CACRL        string `mapstructure:"cacrl"`
 		Log          string `mapstructure:"log"`
+		LogNs        string `mapstructure:"logns"`
 		Etc          string `mapstructure:"etc"`
 		EtcNs        string `mapstructure:"etcns"`
 		LastShutdown string `mapstructure:"last_shutdown"`
 		Capabilities string `mapstructure:"capabilities"`
 		Tmp          string `mapstructure:"tmp"`
+		TmpNs        string `mapstructure:"tmpns"`
 		Doc          string `mapstructure:"doc"`
 		HTML         string `mapstructure:"html"`
 		Drivers      string `mapstructure:"drivers"`

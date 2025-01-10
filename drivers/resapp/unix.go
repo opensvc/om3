@@ -105,6 +105,8 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 		driver.GroupDisk,
 		driver.GroupContainer,
 	})
+	aggStatus := status.Undef
+	aggCount := 0
 	for _, r := range l {
 		switch r.ID().DriverGroup() {
 		case driver.GroupIP:
@@ -124,12 +126,27 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 		st := sb.Get(r.RID())
 		switch st {
 		case status.Up:
+		case status.StandbyUp:
 		case status.NotApplicable:
 		default:
 			// required resource is not up
 			t.StatusLog().Info("not evaluated (%s is %s)", r.RID(), st)
 			return false
 		}
+		aggStatus.Add(st)
+		aggCount += 1
+	}
+	if aggCount == 0 {
+		return true
+	}
+	switch aggStatus {
+	case status.Up:
+	case status.StandbyUpWithUp:
+	case status.NotApplicable:
+	default:
+		// required resource is not up
+		t.StatusLog().Info("not evaluated (instance not up)")
+		return false
 	}
 	return true
 }
