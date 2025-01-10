@@ -40,6 +40,6 @@ func (a *DaemonAPI) localPostDaemonStop(ctx echo.Context) error {
 	a.announceNodeState(log, node.MonitorStateMaintenance)
 
 	a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
-		pubsub.Label{"id", "daemon"}, a.LabelNode, labelAPI)
+		pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelAPI)
 	return ctx.JSON(http.StatusOK, api.DaemonPid{Pid: os.Getpid()})
 }

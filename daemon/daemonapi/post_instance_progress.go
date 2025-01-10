@@ -40,7 +40,7 @@ func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kin
 	}
 	a.EventBus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: a.localhost, SessionID: payload.SessionID, State: state, IsPartial: isPartial},
 		pubsub.Label{"path", p.String()},
-		a.LabelNode,
+		a.LabelLocalhost,
 		labelAPI,
 	)
 	return ctx.JSON(http.StatusOK, nil)

@@ -32,7 +32,7 @@ func (a *DaemonAPI) PostInstanceStatus(ctx echo.Context, namespace string, kind 
 	}
 	a.EventBus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: a.localhost, Value: payload},
 		pubsub.Label{"path", p.String()},
-		a.LabelNode,
+		a.LabelLocalhost,
 		labelAPI,
 	)
 	return ctx.JSON(http.StatusOK, nil)

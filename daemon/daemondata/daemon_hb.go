@@ -42,7 +42,7 @@ func (d *data) setDaemonHeartbeat() {
 	}
 	subHb.UpdatedAt = time.Now()
 	daemonsubsystem.DataHeartbeat.Set(d.localNode, subHb.DeepCopy())
-	d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, d.labelLocalNode)
+	d.bus.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, d.labelLocalhost)
 }
 
 func (d *data) setHbMsgPatchLength(node string, length int) {
