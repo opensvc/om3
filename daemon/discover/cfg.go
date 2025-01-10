@@ -175,6 +175,9 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 	}
 	publishInitialRunFileUpdatedEvents := func(path naming.Path, node, rid, runDir string) {
+		if _, ok := prevWatched[runDir]; ok {
+			return
+		}
 		entries, err := os.ReadDir(runDir)
 		if errors.Is(err, os.ErrNotExist) {
 			return
