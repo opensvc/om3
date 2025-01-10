@@ -194,6 +194,10 @@ var (
 
 		"RemoteFileConfig": func() any { return &RemoteFileConfig{} },
 
+		"RunFileRemoved": func() any { return &RunFileRemoved{} },
+
+		"RunFileUpdated": func() any { return &RunFileUpdated{} },
+
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
 		"SetInstanceMonitorRefused": func() any { return &SetInstanceMonitorRefused{} },
@@ -777,6 +781,26 @@ type (
 		Err        chan error      `json:"-" yaml:"-"`
 	}
 
+	// RunFileUpdated is emitted by the fs_watcher when it detects a
+	// new or initial resource run file in <var>.
+	RunFileUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
+		RID        string      `json:"rid" yaml:"rid"`
+		At         time.Time   `json:"at" yaml:"at"`
+	}
+
+	// RunFileRemoved is emitted by the fs_watcher when it detects a
+	// resource run file is deleted in <var>.
+	RunFileRemoved struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
+		RID        string      `json:"rid" yaml:"rid"`
+		At         time.Time   `json:"at" yaml:"at"`
+	}
+
 	SetInstanceMonitor struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path               `json:"path" yaml:"path"`
@@ -1161,6 +1185,14 @@ func (e *NodeRejoin) Kind() string {
 
 func (e *RemoteFileConfig) Kind() string {
 	return "RemoteFileConfig"
+}
+
+func (e *RunFileRemoved) Kind() string {
+	return "RunFileRemoved"
+}
+
+func (e *RunFileUpdated) Kind() string {
+	return "RunFileUpdated"
 }
 
 func (e *SetInstanceMonitor) Kind() string {

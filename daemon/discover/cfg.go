@@ -2,19 +2,23 @@ package discover
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/icfg"
@@ -33,15 +37,18 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
 
-	sub.AddFilter(&msgbus.HbMessageTypeUpdated{}, pubsub.Label{"node", t.localhost})
+	sub.AddFilter(&msgbus.HbMessageTypeUpdated{}, t.labelLocalhost)
 
-	sub.AddFilter(&msgbus.InstanceConfigDeleting{}, pubsub.Label{"node", t.localhost})
+	sub.AddFilter(&msgbus.InstanceConfigDeleting{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigFor{})
-	sub.AddFilter(&msgbus.InstanceConfigManagerDone{}, pubsub.Label{"node", t.localhost})
+	sub.AddFilter(&msgbus.InstanceConfigManagerDone{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelLocalhost)
 
 	sub.Start()
 	return sub
@@ -103,6 +110,11 @@ func (t *Manager) cfg(started chan<- bool) {
 				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:
 				t.onObjectStatusUpdated(c)
+
+			case *msgbus.InstanceStatusDeleted:
+				t.onInstanceStatusDeleted(c)
+			case *msgbus.InstanceStatusUpdated:
+				t.onInstanceStatusUpdated(c)
 			}
 		case i := <-t.cfgCmdC:
 			switch c := i.(type) {
@@ -127,6 +139,87 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.clusterConfig = c.Value
 	t.nodeList.Add(c.NodesAdded...)
 	t.nodeList.Del(c.NodesRemoved...)
+}
+
+func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	prevWatched, ok := t.watched[c.Path]
+	if !ok {
+		prevWatched = make(map[string]any)
+	}
+	watched := make(map[string]any)
+	mustWatch := func(rid string) bool {
+		if resourceId, err := resourceid.Parse(rid); err != nil {
+			return false
+		} else if resourceId == nil {
+			return false
+		} else {
+			switch resourceId.DriverGroup() {
+			case driver.GroupTask:
+			case driver.GroupSync:
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	watch := func(runDir string) {
+		if _, ok := prevWatched[runDir]; ok {
+			watched[runDir] = nil
+		} else if err := t.fsWatcher.Add(runDir); errors.Is(err, os.ErrNotExist) {
+			t.log.Debugf("fs: skip dir watch %s: does not exist yet", runDir)
+		} else if err != nil {
+			t.log.Warnf("fs: failed to add dir watch %s: %s", runDir, err)
+		} else {
+			t.log.Infof("fs: add dir watch %s", runDir)
+			watched[runDir] = nil
+		}
+	}
+	publishInitialRunFileUpdatedEvents := func(path naming.Path, node, rid, runDir string) {
+		entries, err := os.ReadDir(runDir)
+		if errors.Is(err, os.ErrNotExist) {
+			return
+		}
+		if err != nil {
+			t.log.Warnf("fs: failed to list run files in %s: %s", runDir, err)
+			return
+		}
+		bus := pubsub.BusFromContext(t.ctx)
+		for _, entry := range entries {
+			filename := filepath.Join(runDir, entry.Name())
+			t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+		}
+	}
+	for rid, _ := range c.Value.Resources {
+		if !mustWatch(rid) {
+			continue
+		}
+		runDir := filepath.Join(c.Path.VarDir(), rid, "run")
+		publishInitialRunFileUpdatedEvents(c.Path, c.Node, rid, runDir)
+		watch(runDir)
+	}
+	for runDir, _ := range prevWatched {
+		if _, ok := watched[runDir]; !ok {
+			if err := t.fsWatcher.Remove(runDir); err != nil {
+				t.log.Warnf("fs: failed to remove dir watch %s (resource deleted): %s", runDir, err)
+			} else {
+				t.log.Infof("fs: remove dir watch %s (resource deleted)", runDir)
+			}
+		}
+	}
+	t.watched[c.Path] = watched
+}
+
+func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	if watched, ok := t.watched[c.Path]; ok {
+		for runDir, _ := range watched {
+			if err := t.fsWatcher.Remove(runDir); err != nil {
+				t.log.Warnf("fs: failed to remove dir watch %s (instance deleted): %s", runDir, err)
+			} else {
+				t.log.Infof("fs: remove dir watch %s (instance deleted)", runDir)
+			}
+		}
+		delete(t.watched, c.Path)
+	}
 }
 
 func (t *Manager) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
@@ -394,7 +487,7 @@ func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 				UpdatedAt:   ev.UpdatedAt,
 			},
 				pubsub.Label{"path", p.String()},
-				pubsub.Label{"node", t.localhost},
+				t.labelLocalhost,
 			)
 		} else {
 			t.objectLogger(p).Debugf("cfg: drop obsolete foreign config file %s event, local config file is absent", ev.Path)

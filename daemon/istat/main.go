@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -75,6 +76,8 @@ func (t *T) Start(ctx context.Context) error {
 		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.RunFileRemoved{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.RunFileUpdated{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceStatusPost{}, t.labelLocalhost)
 		sub.Start()
 		t.sub = sub
@@ -111,6 +114,10 @@ func (t *T) worker() {
 				t.onInstanceFrozenFileRemoved(m)
 			case *msgbus.InstanceFrozenFileUpdated:
 				t.onInstanceFrozenFileUpdated(m)
+			case *msgbus.RunFileRemoved:
+				t.onRunFileDeleted(m)
+			case *msgbus.RunFileUpdated:
+				t.onRunFileUpdated(m)
 			case *msgbus.InstanceStatusPost:
 				t.onInstanceStatusPost(m)
 			}
@@ -146,6 +153,57 @@ func (t *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRe
 	t.iStatusM[s] = iStatus
 	instance.StatusData.Set(fileRemoved.Path, t.localhost, iStatus.DeepCopy())
 	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
+		pubsub.Label{"path", s},
+	)
+}
+
+func (t *T) onRunFileUpdated(msg *msgbus.RunFileUpdated) {
+	s := msg.Path.String()
+
+	iStatus, ok := t.iStatusM[s]
+	if !ok {
+		// no instance status to update
+		return
+	}
+	if msg.At.Before(iStatus.UpdatedAt) {
+		// skip event from past
+		return
+	}
+	if iStatus.Running.Has(msg.RID) {
+		return
+	}
+	iStatus.Running = append(iStatus.Running, msg.RID)
+	iStatus.UpdatedAt = msg.At
+	t.iStatusM[s] = iStatus
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
+		pubsub.Label{"path", s},
+	)
+}
+
+func (t *T) onRunFileDeleted(msg *msgbus.RunFileRemoved) {
+	s := msg.Path.String()
+
+	iStatus, ok := t.iStatusM[s]
+	if !ok {
+		// no instance status to update
+		return
+	}
+	if msg.At.Before(iStatus.UpdatedAt) {
+		// skip event from past
+		return
+	}
+	i := stringslice.Index(msg.RID, iStatus.Running)
+	if i < 0 {
+		return
+	}
+	iStatus.Running = append(iStatus.Running[:i], iStatus.Running[i+1:]...)
+	iStatus.UpdatedAt = msg.At
+	t.iStatusM[s] = iStatus
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
