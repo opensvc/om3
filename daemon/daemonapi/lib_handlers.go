@@ -28,7 +28,7 @@ type (
 		EventBus   *pubsub.Bus
 		JWTcreator JWTCreater
 
-		LabelNode pubsub.Label
+		LabelLocalhost pubsub.Label
 
 		localhost string
 		SubQS     pubsub.QueueSizer
@@ -46,12 +46,12 @@ var (
 func New(ctx context.Context) *DaemonAPI {
 	localhost := hostname.Hostname()
 	return &DaemonAPI{
-		Daemondata: daemondata.FromContext(ctx),
-		EventBus:   pubsub.BusFromContext(ctx),
-		JWTcreator: daemonauth.JWTCreatorFromContext(ctx),
-		LabelNode:  pubsub.Label{"node", localhost},
-		localhost:  localhost,
-		SubQS:      SubQS(ctx),
+		Daemondata:     daemondata.FromContext(ctx),
+		EventBus:       pubsub.BusFromContext(ctx),
+		JWTcreator:     daemonauth.JWTCreatorFromContext(ctx),
+		LabelLocalhost: pubsub.Label{"node", localhost},
+		localhost:      localhost,
+		SubQS:          SubQS(ctx),
 	}
 }
 

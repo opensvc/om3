@@ -64,7 +64,7 @@ func newData() *data {
 		previousRemoteInfo: make(map[string]remoteInfo),
 		hbMsgPatchLength:   map[string]int{localNode: 0},
 		hbMsgType:          map[string]string{localNode: initialMsgType},
-		labelLocalNode:     pubsub.Label{"node", hostname.Hostname()},
+		labelLocalhost:     pubsub.Label{"node", hostname.Hostname()},
 	}
 }
 

@@ -35,7 +35,7 @@ func (t *Manager) pubClusterConfig() {
 	t.handleConfigChanges()
 
 	t.state = *state.DeepCopy()
-	labelLocalNode := pubsub.Label{"node", t.localhost}
+	labelLocalhost := pubsub.Label{"node", t.localhost}
 
 	removed, added := stringslice.Diff(previousNodes, state.Nodes)
 	if len(added) > 0 {
@@ -47,13 +47,13 @@ func (t *Manager) pubClusterConfig() {
 	cluster.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)
 
-	t.bus.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)
+	t.bus.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalhost)
 
 	for _, v := range added {
-		t.bus.Pub(&msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})
+		t.bus.Pub(&msgbus.JoinSuccess{Node: v}, labelLocalhost, pubsub.Label{"added", v})
 	}
 	for _, v := range removed {
-		t.bus.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalNode, pubsub.Label{"removed", v})
+		t.bus.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalhost, pubsub.Label{"removed", v})
 	}
 }
 

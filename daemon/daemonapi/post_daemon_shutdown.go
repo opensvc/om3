@@ -71,7 +71,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	a.announceNodeState(log, node.MonitorStateShutting)
 
 	sub := a.EventBus.Sub(fmt.Sprintf("api.post_daemon_shutdown %s", eCtx.Get("uuid")))
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelNode)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelLocalhost)
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -183,7 +183,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 					a.announceNodeState(log, node.MonitorStateShutdown)
 					log.Infof("ask daemon do stop")
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
-						pubsub.Label{"id", "daemon"}, labelAPI, a.LabelNode)
+						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelAPI)
 					log.Infof("succeed")
 					return JSONProblem(eCtx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
 				}

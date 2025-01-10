@@ -257,16 +257,16 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		// "hidden" because such messages don't require to be forwarded
 		// to response event stream.
 		createdMsg := &msgbus.ObjectCreated{}
-		createdMsg.AddLabels(a.LabelNode)
+		createdMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectCreated", createdMsg) {
 			log.Debugf("add hidden filtering: ObjectCreated")
 			sub.AddFilter(&msgbus.ObjectCreated{})
 		}
 		deleteMsg := &msgbus.ObjectDeleted{}
-		deleteMsg.AddLabels(a.LabelNode)
+		deleteMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectDeleted", deleteMsg) {
 			log.Debugf("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
-			sub.AddFilter(&msgbus.ObjectDeleted{}, pubsub.Label{"node", a.localhost})
+			sub.AddFilter(&msgbus.ObjectDeleted{}, a.LabelLocalhost)
 		}
 	}
 	sub.Start()

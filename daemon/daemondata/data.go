@@ -83,7 +83,7 @@ type (
 		// set to false after a hb message is created
 		needMsg bool
 
-		labelLocalNode pubsub.Label
+		labelLocalhost pubsub.Label
 	}
 
 	gens       map[string]uint64
@@ -287,7 +287,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					gens[s] = v
 				}
 				d.bus.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
-					d.labelLocalNode,
+					d.labelLocalhost,
 				)
 			}
 			if isCtxDone() {
@@ -386,40 +386,40 @@ func gensEqual(a, b gens) bool {
 // or that must be forwarded to peers
 func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := d.bus.Sub("daemon.data", qs)
-	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonDataUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonDnsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonListenerUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonRunnerImonUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonDataUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonDnsUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonListenerUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonRunnerImonUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalhost)
 
 	// need forward to peers
-	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
-	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
 	sub.Start()
 	d.sub = sub
 }
