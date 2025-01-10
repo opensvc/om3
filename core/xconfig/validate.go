@@ -327,6 +327,9 @@ func (t T) Validate() (Alerts, error) {
 						alerts = append(alerts, t.NewAlertUnknown(k, did))
 						continue
 					}
+				} else {
+					alerts = append(alerts, t.NewAlertUnknown(k, did))
+					continue
 				}
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
