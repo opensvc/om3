@@ -256,9 +256,9 @@ func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
 	}
 	var prefix string
 	if rid := e.RID(); rid != "DEFAULT" {
-		prefix = fmt.Sprintf("%s: %s: %s: ", obj, rid, e.Action)
+		prefix = fmt.Sprintf("%s%s: %s: %s: ", t.log.Prefix(), obj, rid, e.Action)
 	} else {
-		prefix = fmt.Sprintf("%s: %s: ", obj, e.Action)
+		prefix = fmt.Sprintf("%s%s: %s: ", t.log.Prefix(), obj, e.Action)
 	}
 	return logger.WithPrefix(prefix)
 }
