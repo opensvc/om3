@@ -11,7 +11,7 @@ import (
 
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/fatih/color"
-	tabwriter "github.com/juju/ansiterm"
+	"github.com/mattn/go-runewidth"
 	"k8s.io/client-go/util/jsonpath"
 	"sigs.k8s.io/yaml"
 
@@ -196,9 +196,7 @@ func RelaxedJSONPathExpression(pathExpression string) (string, error) {
 func (t Renderer) renderTab(options string) (string, error) {
 	var (
 		hasHeader bool
-		builder   strings.Builder
 	)
-	w := tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
 	jsonPaths := make([]*jsonpath.JSONPath, 0)
 	headers := make([]string, 0)
 	for _, option := range strings.Split(options, ",") {
@@ -222,14 +220,11 @@ func (t Renderer) renderTab(options string) (string, error) {
 		if err := jsonPath.Parse(jp); err != nil {
 			return "", err
 		}
-		headers = append(headers, header+"\t")
+		headers = append(headers, header)
 		jsonPaths = append(jsonPaths, jsonPath)
 		if header != "" {
 			hasHeader = true
 		}
-	}
-	if hasHeader {
-		fmt.Fprintf(w, strings.Join(headers, "")+"\n")
 	}
 	var data any
 	if i, ok := t.Data.(getItemser); ok {
@@ -241,20 +236,47 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, line := range unstructuredData {
-		for i, jsonPath := range jsonPaths {
-			var sep string
-			if i > 0 {
-				sep = "\t"
+
+	calculateColumnWidths := func(rows [][]string) []int {
+		widths := make([]int, len(rows[0]))
+		for _, row := range rows {
+			for i, cell := range row {
+				w := runewidth.StringWidth(cell)
+				if w > widths[i] {
+					widths[i] = w
+				}
 			}
+		}
+		return widths
+	}
+	w := bytes.NewBuffer([]byte{})
+	sprintAligned := func(rows [][]string) {
+		columnWidths := calculateColumnWidths(rows)
+
+		for _, row := range rows {
+			for i, cell := range row {
+				fmt.Fprint(w, runewidth.FillRight(cell, columnWidths[i]))
+				fmt.Fprint(w, "  ")
+			}
+			fmt.Fprintln(w)
+		}
+	}
+
+	rows := make([][]string, 0)
+	if hasHeader {
+		rows = append(rows, headers)
+	}
+	for _, line := range unstructuredData {
+		row := make([]string, len(jsonPaths))
+		for i, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
 			if err != nil {
-				fmt.Fprintf(w, "%s<%s>", sep, err)
+				row[i] = fmt.Sprintf("<%s>", err)
 				continue
 			}
 			valueStrings := []string{}
 			if len(values) == 0 || len(values[0]) == 0 {
-				fmt.Fprintf(w, "%s<none>", sep)
+				row[i] = "<none>"
 				continue
 			}
 			for arrIx := range values {
@@ -267,13 +289,12 @@ func (t Renderer) renderTab(options string) (string, error) {
 					}
 				}
 			}
-			value := strings.Join(valueStrings, ",")
-			fmt.Fprintf(w, "%s%s", sep, value)
+			row[i] = strings.Join(valueStrings, ",")
 		}
-		fmt.Fprintf(w, "\n")
+		rows = append(rows, row)
 	}
-	w.Flush()
-	return builder.String(), nil
+	sprintAligned(rows)
+	return w.String(), nil
 }
 
 // Print prints the representation of the data in one of the
