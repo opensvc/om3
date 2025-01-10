@@ -1049,24 +1049,24 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 func (t *Manager) initResourceMonitor() {
 	// Stop any pending restart timers before init. We may be called after
 	// instance config refreshed with some previous resource restart scheduled.
-	t.resetResourceMonitorTimers()
+	t.cancelResourceOrchestrateSchedules()
 
-	logDropped := func(l map[string]bool, comment string) {
-		if l != nil {
+	logDropped := func(or *orchestrationResource) {
+		if or != nil && or.scheduled != nil {
 			dropped := make([]string, 0)
-			for rid := range l {
+			for rid := range or.scheduled {
 				dropped = append(dropped, rid)
 			}
 			if len(dropped) > 0 {
-				t.log.Infof("instance config has been updated: drop previously scheduled restart %s %v", comment, dropped)
+				or.log.Infof("instance config has been updated: drop previously scheduled restarts %v", dropped)
 			}
 		}
 	}
-	logDropped(t.resourceWithRestartScheduled, "resources")
-	logDropped(t.resourceStandbyWithRestartScheduled, "standby resources")
+	logDropped(&t.regularResourceOrchestrate)
+	logDropped(&t.standbyResourceOrchestrate)
 
-	t.resourceWithRestartScheduled = make(map[string]bool)
-	t.resourceStandbyWithRestartScheduled = make(map[string]bool)
+	t.regularResourceOrchestrate.scheduled = make(map[string]bool)
+	t.standbyResourceOrchestrate.scheduled = make(map[string]bool)
 
 	if monitorAction, ok := t.getValidMonitorAction(0); !ok {
 		t.initialMonitorAction = instance.MonitorActionNone
@@ -1084,7 +1084,7 @@ func (t *Manager) initResourceMonitor() {
 			},
 		}
 		if rcfg.IsMonitored && hasMonitorActionNone {
-			t.log.Infof("unusable monitor action: resource %s is monitored, but monitor action is none", rid)
+			t.orchestrationResource(rcfg.IsStandby).log.Infof("rid %s is monitored, but monitor action is none", rid)
 		}
 	}
 	t.state.Resources = m

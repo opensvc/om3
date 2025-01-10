@@ -136,21 +136,11 @@ type (
 		// Its Value is created/refreshed during func initResourceMonitor.
 		initialMonitorAction instance.MonitorAction
 
-		// resourceRestartTimer represents a timer used to schedule the restart
-		// of non-standby resources.
-		resourceRestartTimer *time.Timer
+		// standbyResourceOrchestrate is the orchestrationResource for standby resources
+		standbyResourceOrchestrate orchestrationResource
 
-		// resourceStandbyRestartTimer is a timer used to schedule the restart
-		// of standby resources.
-		resourceStandbyRestartTimer *time.Timer
-
-		// resourceWithRestartScheduled maintains a mapping of non-standby
-		// resource identifiers to their restart scheduled as boolean values.
-		resourceWithRestartScheduled map[string]bool
-
-		// resourceStandbyWithRestartScheduled maintains a mapping of standby
-		// resource identifiers to their restart scheduled as boolean values.
-		resourceStandbyWithRestartScheduled map[string]bool
+		// standbyResourceOrchestrate is the orchestrationResource for regular resources
+		regularResourceOrchestrate orchestrationResource
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -245,6 +235,9 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	}
 
 	t.log = t.newLogger(uuid.Nil)
+	t.regularResourceOrchestrate.log = t.newResourceLogger("regular resource")
+	t.standbyResourceOrchestrate.log = t.newResourceLogger( "standby resource")
+
 	t.startSubscriptions(qs)
 
 	go func() {
@@ -254,12 +247,19 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	return nil
 }
 
+func (t *Manager) newResourceLogger(s string) *plog.Logger {
+	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+		Attr("pkg", "daemon/imon").
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path.String(), s))
+}
+
 func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
+
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := t.pubsubBus.Sub("daemon.imon "+t.id, qs)
