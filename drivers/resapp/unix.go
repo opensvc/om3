@@ -106,6 +106,7 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 		driver.GroupContainer,
 	})
 	aggStatus := status.Undef
+	aggCount := 0
 	for _, r := range l {
 		switch r.ID().DriverGroup() {
 		case driver.GroupIP:
@@ -133,6 +134,10 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 			return false
 		}
 		aggStatus.Add(st)
+		aggCount += 1
+	}
+	if aggCount == 0 {
+		return true
 	}
 	switch aggStatus {
 	case status.Up:
