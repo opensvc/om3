@@ -949,7 +949,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						row, col := t.objects.GetSelection()
 						switch {
 						case t.focus() == viewInstance && row > 1:
-							if table, ok := t.flex.GetItem(1).(*tview.Table); ok {
+							if table, ok := t.flex.GetItem(2).(*tview.Table); ok {
 								row, col := table.GetSelection()
 								rid := table.GetCell(row, col).Text
 								selection := make(map[[3]string]any)
