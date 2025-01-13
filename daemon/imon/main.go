@@ -236,7 +236,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 
 	t.log = t.newLogger(uuid.Nil)
 	t.regularResourceOrchestrate.log = t.newResourceLogger("regular resource")
-	t.standbyResourceOrchestrate.log = t.newResourceLogger( "standby resource")
+	t.standbyResourceOrchestrate.log = t.newResourceLogger("standby resource")
 
 	t.startSubscriptions(qs)
 
@@ -259,7 +259,6 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 }
-
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := t.pubsubBus.Sub("daemon.imon "+t.id, qs)
@@ -469,6 +468,13 @@ func (t *Manager) updateIfChange() {
 	case <-t.ctx.Done():
 		return
 	default:
+	}
+	if t.state.OrchestrationID == uuid.Nil &&
+		t.state.State == instance.MonitorStateIdle &&
+		t.state.LocalExpect != instance.MonitorLocalExpectStarted &&
+		t.instStatus[t.localhost].Avail.Is(status.Up) {
+		// no orchestration, state is idle, avail is up and monitor is nor yet enabled
+		t.enableMonitor("local instance is up and idle")
 	}
 	if !t.change {
 		return

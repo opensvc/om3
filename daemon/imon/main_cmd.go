@@ -217,39 +217,18 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 }
 
 func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
-	updateInstStatusMap := func() {
-		instStatus, ok := t.instStatus[srcCmd.Node]
-		switch {
-		case !ok:
-			t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
-			t.instStatus[srcCmd.Node] = srcCmd.Value
-		case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
-			// only update if more recent
-			t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
-			t.instStatus[srcCmd.Node] = srcCmd.Value
-		default:
-			t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
-		}
+	instStatus, ok := t.instStatus[srcCmd.Node]
+	switch {
+	case !ok:
+		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+		t.instStatus[srcCmd.Node] = srcCmd.Value
+	case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
+		// only update if more recent
+		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
+		t.instStatus[srcCmd.Node] = srcCmd.Value
+	default:
+		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
 	}
-	setLocalExpectStarted := func() {
-		if srcCmd.Node != t.localhost {
-			return
-		}
-		if t.state.State != instance.MonitorStateIdle {
-			// wait for idle state, we may be MonitorStateProvisioning, MonitorStateProvisioned ...
-			return
-		}
-		if !srcCmd.Value.Avail.Is(status.Up) {
-			return
-		}
-		if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
-			return
-		}
-		t.enableMonitor("this instance is now considered started")
-	}
-
-	updateInstStatusMap()
-	setLocalExpectStarted()
 }
 
 func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
