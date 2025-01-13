@@ -154,7 +154,7 @@ func (t T) parseReference(s string, filter naming.Kind, head string) object.KVIn
 		} else {
 			perm = t.Perm
 		}
-		t.Log().Infof("install %s to %s with perm %v", toPath, head, perm)
+		t.Log().Infof("install %s to %s with perm %v", from, toPath, perm)
 		return object.KVInstall{
 			ToPath:      toPath, // /here
 			ToHead:      head,
