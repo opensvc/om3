@@ -145,7 +145,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return fmt.Sprintf("%s %s", t.ipnet(), t.IPDev)
 }
 
@@ -157,11 +157,11 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Abort(ctx context.Context) bool {
+func (t *T) Abort(ctx context.Context) bool {
 	if t.Tags.Has(tagNonRouted) || t.IsActionDisabled() {
 		return false // let start fail with an explicit error message
 	}
@@ -183,11 +183,11 @@ func (t T) Abort(ctx context.Context) bool {
 	return false
 }
 
-func (t T) hasCarrier() (bool, error) {
+func (t *T) hasCarrier() (bool, error) {
 	return netif.HasCarrier(t.IPDev)
 }
 
-func (t T) abortPing() bool {
+func (t *T) abortPing() bool {
 	ip := t.ipaddr()
 	pinger, err := ping.NewPinger(ip.String())
 	if err != nil {
@@ -202,7 +202,7 @@ func (t T) abortPing() bool {
 	return pinger.Statistics().PacketsRecv > 0
 }
 
-func (t T) ipnet() *net.IPNet {
+func (t *T) ipnet() *net.IPNet {
 	if t._ipnet != nil {
 		return t._ipnet
 	}
@@ -210,7 +210,7 @@ func (t T) ipnet() *net.IPNet {
 	return t._ipnet
 }
 
-func (t T) ipaddr() net.IP {
+func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
@@ -268,7 +268,7 @@ func (t *T) defaultMask() (net.IPMask, error) {
 	return net.Mask, nil
 }
 
-func (t T) getIPAddr() net.IP {
+func (t *T) getIPAddr() net.IP {
 	switch {
 	case naming.IsValidFQDN(t.IPName) || hostname.IsValid(t.IPName):
 		var (
@@ -295,7 +295,7 @@ func (t T) getIPAddr() net.IP {
 	}
 }
 
-func (t T) netInterface() (*net.Interface, error) {
+func (t *T) netInterface() (*net.Interface, error) {
 	return net.InterfaceByName(t.IPDev)
 }
 
@@ -354,7 +354,7 @@ func getIPBits(ip net.IP) (bits int) {
 	return
 }
 
-func (t T) arpAnnounce() error {
+func (t *T) arpAnnounce() error {
 	ip := t.ipaddr()
 	if ip.IsLoopback() {
 		t.Log().Debugf("skip arp announce on loopback address %s", ip)
