@@ -85,7 +85,7 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	if err != nil {
 		return err
 	}
-	if paths, err = objectselector.New(selStr, objectselector.WithClient(c)).Expand(); err != nil {
+	if paths, err = objectselector.New(selStr, objectselector.WithClient(c)).MustExpand(); err != nil {
 		return err
 	}
 	if t.NodeSelector != "" {
@@ -116,7 +116,7 @@ func (t *CmdObjectLogs) local(selStr string) error {
 		selStr,
 		objectselector.WithLocal(true),
 	)
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}

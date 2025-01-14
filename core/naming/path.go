@@ -357,6 +357,11 @@ func (t Paths) Namespaces() []string {
 	return xmap.Keys(m)
 }
 
+func (t M) HasPath(path Path) bool {
+	_, ok := t[path.String()]
+	return ok
+}
+
 func (t M) Has(s string) bool {
 	_, ok := t[s]
 	return ok

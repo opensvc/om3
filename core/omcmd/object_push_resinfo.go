@@ -33,7 +33,7 @@ func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoLi
 	type pushResInfoer interface {
 		PushResInfo(context.Context) (resource.Infos, error)
 	}
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}
