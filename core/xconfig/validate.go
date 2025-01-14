@@ -8,12 +8,10 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (
@@ -249,45 +247,6 @@ func (t Alerts) has(lvl AlertLevel) bool {
 	return false
 }
 
-func (t Alerts) Render() string {
-	tr := t.Tree()
-	return tr.Render()
-}
-
-func (t Alerts) Tree() *tree.Tree {
-	tr := tree.New()
-	if len(t) == 0 {
-		return tr
-	}
-	node := tr.AddNode()
-	node.AddColumn().AddText("alert level").SetColor(rawconfig.Color.Secondary)
-	node.AddColumn().AddText("key").SetColor(rawconfig.Color.Secondary)
-	node.AddColumn().AddText("driver").SetColor(rawconfig.Color.Secondary)
-	node.AddColumn().AddText("kind").SetColor(rawconfig.Color.Secondary)
-	node.AddColumn().AddText("comment").SetColor(rawconfig.Color.Secondary)
-	for _, alert := range t {
-		n := tr.AddNode()
-		color := rawconfig.Color.Warning
-		if alert.Level == alertLevelError {
-			color = rawconfig.Color.Error
-		}
-		driver := alert.Driver.String()
-		if driver == "" {
-			driver = "-"
-		}
-		comment := alert.Comment
-		if comment == "" {
-			comment = "-"
-		}
-		n.AddColumn().AddText(alert.Level.String()).SetColor(color)
-		n.AddColumn().AddText(alert.Key.String())
-		n.AddColumn().AddText(driver)
-		n.AddColumn().AddText(alert.Kind.String())
-		n.AddColumn().AddText(comment)
-	}
-	return tr
-}
-
 func (t T) Validate() (Alerts, error) {
 	alerts := make(Alerts, 0)
 	for _, s := range t.file.Sections() {
@@ -327,6 +286,9 @@ func (t T) Validate() (Alerts, error) {
 						alerts = append(alerts, t.NewAlertUnknown(k, did))
 						continue
 					}
+				} else {
+					alerts = append(alerts, t.NewAlertUnknown(k, did))
+					continue
 				}
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
@@ -383,4 +345,31 @@ func (t Alert) StringWithoutMeta() string {
 		buff += ": " + t.Comment
 	}
 	return buff
+}
+
+func (t Alerts) GetItems() any {
+	return t
+}
+
+func (t Alert) Icon() string {
+	switch t.Level {
+	case alertLevelWarn:
+		return "🟠"
+	case alertLevelError:
+		return "🔴"
+	default:
+		return "⚪"
+	}
+}
+
+func (t Alert) Unstructured() map[string]any {
+	return map[string]any{
+		"icon":    t.Icon(),
+		"path":    t.Path.String(),
+		"level":   t.Level.String(),
+		"key":     t.Key.String(),
+		"kind":    t.Kind.String(),
+		"driver":  t.Driver.String(),
+		"comment": t.Comment,
+	}
 }

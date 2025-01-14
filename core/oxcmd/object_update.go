@@ -29,7 +29,7 @@ func (t *CmdObjectUpdate) Run(selector, kind string) error {
 		return err
 	}
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}

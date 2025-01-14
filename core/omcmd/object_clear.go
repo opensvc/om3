@@ -23,7 +23,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	}
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}

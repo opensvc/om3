@@ -164,20 +164,6 @@ func (t *Selection) MustExpand() (naming.Paths, error) {
 	}
 }
 
-// ExpandSet returns a set of the expandPaths returned by Expand. Usually to
-// benefit from the .Has() function.
-func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
-	s := orderedset.NewOrderedSet()
-	paths, err := t.Expand()
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range paths {
-		s.Add(p)
-	}
-	return s, nil
-}
-
 // SetPaths sets the paths from where the selection Expand is done.
 func (t *Selection) SetPaths(installed naming.Paths) {
 	t.paths = installed

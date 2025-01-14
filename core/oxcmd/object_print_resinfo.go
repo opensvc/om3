@@ -26,17 +26,8 @@ func (t *CmdObjectPrintResourceInfo) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	/*
-		if t.NodeSelector == "" {
-			t.NodeSelector = "*"
-		}
-		nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
-		if err != nil {
-			return err
-		}
-	*/
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).Expand()
+	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return err
 	}

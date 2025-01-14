@@ -18,7 +18,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 )
 
-func (t T) ActionResourceDeps() []actionresdeps.Dep {
+func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 	return []actionresdeps.Dep{
 		{Action: "start", A: t.RID(), B: t.NetNS},
 		{Action: "start", A: t.NetNS, B: t.RID()},
@@ -26,12 +26,12 @@ func (t T) ActionResourceDeps() []actionresdeps.Dep {
 	}
 }
 
-func (t T) LinkTo() string {
+func (t *T) LinkTo() string {
 	return t.NetNS
 }
 
 // Start the Resource
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (t T) Start(ctx context.Context) error {
 }
 
 // Stop the Resource
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
+func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if i, ok := r.(resource.NetNSPather); !ok {
@@ -121,7 +121,7 @@ func delRoute(ipn *net.IPNet, gw net.IP, dev netlink.Link) error {
 	})
 }
 
-func (t T) delRoutes(routes []*types.Route) error {
+func (t *T) delRoutes(routes []*types.Route) error {
 	dev, errl := t.dev()
 	if errl != nil {
 		return errl
@@ -140,7 +140,7 @@ func (t T) delRoutes(routes []*types.Route) error {
 	return nil
 }
 
-func (t T) addRoutes(routes []*types.Route) error {
+func (t *T) addRoutes(routes []*types.Route) error {
 	dev, errl := t.dev()
 	if errl != nil {
 		return errl
@@ -159,7 +159,7 @@ func (t T) addRoutes(routes []*types.Route) error {
 	return nil
 }
 
-func (t T) makeRoute() ([]*types.Route, error) {
+func (t *T) makeRoute() ([]*types.Route, error) {
 	var routes []*types.Route
 	_, dst, err := net.ParseCIDR(t.To)
 	if err != nil {
@@ -173,14 +173,14 @@ func (t T) makeRoute() ([]*types.Route, error) {
 	return routes, nil
 }
 
-func (t T) dev() (netlink.Link, error) {
+func (t *T) dev() (netlink.Link, error) {
 	if t.Dev != "" {
 		return netlink.LinkByName(t.Dev)
 	}
 	return t.defaultDev()
 }
 
-func (t T) defaultDev() (netlink.Link, error) {
+func (t *T) defaultDev() (netlink.Link, error) {
 	gw := net.ParseIP(t.Gateway)
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -212,6 +212,6 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }

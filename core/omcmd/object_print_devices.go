@@ -43,7 +43,7 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) (objectdevice.L, e
 		selector,
 		objectselector.WithLocal(true),
 	)
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}
