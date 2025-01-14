@@ -80,6 +80,7 @@ func setupLog() {
 		Out:        os.Stdout,
 		TimeFormat: time.StampMicro,
 	}
+	zerolog.CallerSkipFrameCount += 1
 	switch os.Getenv("TEST_LOG_LEVEL") {
 	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)

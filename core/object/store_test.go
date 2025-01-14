@@ -18,7 +18,6 @@ import (
 // and correctness of keystores and volumes in the system.
 func TestNewStore(t *testing.T) {
 	env := testhelper.Setup(t)
-	defer testhelper.FixLogger()()
 	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	_, err := SetClusterConfig()
