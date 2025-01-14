@@ -51,7 +51,7 @@ func (t *CmdObjectPrintResourceInfo) extractLocal(selector string) (api.Resource
 	type loadResInfoer interface {
 		LoadResInfo() (resource.Infos, error)
 	}
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}

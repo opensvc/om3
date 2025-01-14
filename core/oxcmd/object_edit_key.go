@@ -27,7 +27,7 @@ func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 		return err
 	}
 	sel := objectselector.New(selector, objectselector.WithClient(c))
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}

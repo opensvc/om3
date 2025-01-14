@@ -45,7 +45,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) (api.ScheduleList
 	type scheduler interface {
 		PrintSchedule() schedule.Table
 	}
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}
@@ -96,7 +96,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemons(selector string, c *client.T
 	if err != nil {
 		return data, err
 	}
-	paths, err := objectselector.New(selector, objectselector.WithClient(c)).Expand()
+	paths, err := objectselector.New(selector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return data, err
 	}

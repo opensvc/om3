@@ -65,7 +65,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 		objectselector.WithLocal(true),
 	)
 	h := hostname.Hostname()
-	paths, err := sel.Expand()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}
@@ -174,10 +174,11 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		mergedSelector,
 		objectselector.WithClient(c),
 	)
-	paths, err := sel.ExpandSet()
+	paths, err := sel.MustExpand()
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
+	pathMap := paths.StrMap()
 	nodenames, err := t.getNodenames(c)
 	if err != nil {
 		return err
@@ -193,7 +194,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		HumanRenderer: func() string {
 			s := ""
 			for _, d := range data {
-				if !paths.Contains(d.Path) {
+				if !pathMap.HasPath(d.Path) {
 					continue
 				}
 				s += d.Render(nodenames)
