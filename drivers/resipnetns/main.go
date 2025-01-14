@@ -77,7 +77,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) getNSPID(ctx context.Context) (int, error) {
+func (t *T) getNSPID(ctx context.Context) (int, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return 0, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if i, ok := r.(resource.PIDer); !ok {
@@ -87,7 +87,7 @@ func (t T) getNSPID(ctx context.Context) (int, error) {
 	}
 }
 
-func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
+func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if i, ok := r.(resource.NetNSPather); !ok {
@@ -112,7 +112,7 @@ func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	return data
 }
 
-func (t T) ActionResourceDeps() []actionresdeps.Dep {
+func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 	return []actionresdeps.Dep{
 		{Action: "start", A: t.RID(), B: t.NetNS},
 		{Action: "start", A: t.NetNS, B: t.RID()},
@@ -270,7 +270,7 @@ func (t *T) Stop(ctx context.Context) error {
 	}
 }
 
-func (t T) devMTU() (int, error) {
+func (t *T) devMTU() (int, error) {
 	iface, err := net.InterfaceByName(t.IPDev)
 	if err != nil {
 		return 0, fmt.Errorf("%s mtu: %w", t.IPDev, err)
@@ -330,7 +330,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	var dev string
 	if t.NSDev != "" {
 		dev = "@" + t.NSDev
@@ -347,11 +347,11 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Abort(ctx context.Context) bool {
+func (t *T) Abort(ctx context.Context) bool {
 	if t.Tags.Has(tagNonRouted) || t.IsActionDisabled() {
 		return false // let start fail with an explicit error message
 	}
@@ -367,11 +367,11 @@ func (t T) Abort(ctx context.Context) bool {
 	return false
 }
 
-func (t T) hasCarrier() (bool, error) {
+func (t *T) hasCarrier() (bool, error) {
 	return netif.HasCarrier(t.IPDev)
 }
 
-func (t T) abortPing() bool {
+func (t *T) abortPing() bool {
 	ip := t.ipaddr()
 	pinger, err := ping.NewPinger(ip.String())
 	if err != nil {
@@ -386,7 +386,7 @@ func (t T) abortPing() bool {
 	return pinger.Statistics().PacketsRecv > 0
 }
 
-func (t T) ipnet() *net.IPNet {
+func (t *T) ipnet() *net.IPNet {
 	if t._ipnet != nil {
 		return t._ipnet
 	}
@@ -394,7 +394,7 @@ func (t T) ipnet() *net.IPNet {
 	return t._ipnet
 }
 
-func (t T) ipaddr() net.IP {
+func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
@@ -452,7 +452,7 @@ func (t *T) defaultMask() (net.IPMask, error) {
 	return net.Mask, nil
 }
 
-func (t T) getIPAddr() net.IP {
+func (t *T) getIPAddr() net.IP {
 	switch {
 	case naming.IsValidFQDN(t.IPName) || hostname.IsValid(t.IPName):
 		var (
@@ -479,7 +479,7 @@ func (t T) getIPAddr() net.IP {
 	}
 }
 
-func (t T) netInterface() (*net.Interface, error) {
+func (t *T) netInterface() (*net.Interface, error) {
 	return net.InterfaceByName(t.IPDev)
 }
 
@@ -538,7 +538,7 @@ func getIPBits(ip net.IP) (bits int) {
 	return
 }
 
-func (t T) arpAnnounce(dev string) error {
+func (t *T) arpAnnounce(dev string) error {
 	ip := t.ipaddr()
 	if ip.IsLoopback() {
 		t.Log().Debugf("skip arp announce on loopback address %s", ip)
@@ -563,7 +563,7 @@ func (t T) arpAnnounce(dev string) error {
 	return nil
 }
 
-func (t T) LinkTo() string {
+func (t *T) LinkTo() string {
 	return t.NetNS
 }
 
@@ -667,7 +667,7 @@ func (t *T) ipnetStrict() (*net.IPNet, error) {
 	return ipnet, nil
 }
 
-func (t T) curGuestDev(netns ns.NetNS) (string, error) {
+func (t *T) curGuestDev(netns ns.NetNS) (string, error) {
 	ref := t.ipnet()
 	s := ""
 	if netns == nil {
@@ -686,7 +686,7 @@ func (t T) curGuestDev(netns ns.NetNS) (string, error) {
 	return s, nil
 }
 
-func (t T) newGuestDev(netns ns.NetNS) (string, error) {
+func (t *T) newGuestDev(netns ns.NetNS) (string, error) {
 	if t.NSDev != "" {
 		return t.NSDev, nil
 	}
@@ -708,7 +708,7 @@ func (t T) newGuestDev(netns ns.NetNS) (string, error) {
 	return "", fmt.Errorf("can't find a free link name")
 }
 
-func (t T) hasNSDev(netns ns.NetNS) bool {
+func (t *T) hasNSDev(netns ns.NetNS) bool {
 	if t.NSDev == "" {
 		return false
 	}
@@ -719,7 +719,7 @@ func (t T) hasNSDev(netns ns.NetNS) bool {
 	}
 }
 
-func (t T) guestDev(netns ns.NetNS) (string, error) {
+func (t *T) guestDev(netns ns.NetNS) (string, error) {
 	if dev, err := t.curGuestDev(netns); err != nil {
 		return "", err
 	} else if dev != "" {
