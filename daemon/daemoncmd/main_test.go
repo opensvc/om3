@@ -71,6 +71,8 @@ func TestDaemonBootstrap(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			hasConfig := hasConfig
 			env := setup(t, hasConfig)
+			fixLog := testhelper.FixLogger()
+			defer fixLog()
 			t.Logf("using env root: %s", env.Root)
 			cli, err := client.New(client.WithURL(daemonenv.HTTPUnixURL()))
 			daemonCli := daemoncmd.New(cli)
