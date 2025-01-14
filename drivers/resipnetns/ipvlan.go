@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/core/actionrollback"
 )
 
-func (t T) IPVLANMode() (string, error) {
+func (t *T) IPVLANMode() (string, error) {
 	switch t.Mode {
 	case "ipvlan-l2":
 		return "l2", nil
