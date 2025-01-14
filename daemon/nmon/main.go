@@ -6,7 +6,7 @@
 //	.cluster.node.<localhost>.stats
 //	.cluster.node.<localhost>.status (except gen)
 //
-// # It maintains the nodesinfo.json
+// # It maintains the nodes_info.json
 //
 // The worker watches local status updates and clear reached status
 //

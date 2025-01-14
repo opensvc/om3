@@ -48,6 +48,7 @@ func (e *Executor) Enter() error {
 	candidates := []string{"/bin/bash", "/bin/sh"}
 	enterArgs := e.args.EnterCmdCheckArgs()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+outerLoop:
 	for _, candidate := range candidates {
 		args := append(enterArgs, candidate)
 		cmd := exec.CommandContext(ctx, e.bin, args...)
@@ -58,7 +59,7 @@ func (e *Executor) Enter() error {
 			continue
 		default:
 			enterCmd = candidate
-			break
+			break outerLoop
 		}
 	}
 	cancel()

@@ -327,7 +327,7 @@ func (t *keystore) postInstall(k string) error {
 		InstallDataByKind(naming.Kind) (bool, error)
 		HasMetadata(p naming.Path, k string) bool
 		Volume() (Vol, error)
-		SendSignals() error
+		SendSignals(context.Context) error
 	}
 	paths, err := naming.InstalledPaths()
 	if err != nil {
@@ -375,7 +375,7 @@ func (t *keystore) postInstall(k string) error {
 				continue
 			}
 			t.log.Debugf("signal %s %s referrer: %s (%s)", t.path, k, p, r.RID())
-			if err := v.SendSignals(); err != nil {
+			if err := v.SendSignals(ctx); err != nil {
 				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
