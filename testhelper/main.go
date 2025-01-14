@@ -44,6 +44,21 @@ func Setup(t *testing.T) Env {
 	})
 }
 
+// FixLogger temporarily changes the global log level to Info and increases the caller
+// skip frame count by 1,
+// returning a cancelation function to restore the previous settings.
+func FixLogger() (cancel func()) {
+	prevLevel := zerolog.GlobalLevel()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	prev := zerolog.CallerSkipFrameCount
+	zerolog.CallerSkipFrameCount += 1
+
+	return func() {
+		zerolog.SetGlobalLevel(prevLevel)
+		zerolog.CallerSkipFrameCount = prev
+	}
+}
+
 func SetupEnv(env Env) Env {
 	rawconfig.Load(map[string]string{
 		"OSVC_ROOT_PATH":    env.Root,
