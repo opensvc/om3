@@ -69,7 +69,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) pluginFile(plugin string) string {
+func (t *T) pluginFile(plugin string) string {
 	candidates := []string{
 		t.CNIPlugins,
 		"/usr/lib/cni",
@@ -85,7 +85,7 @@ func (t T) pluginFile(plugin string) string {
 }
 
 // getCNINetNS returns the value of the CNI_NETNS env var of cni commands
-func (t T) getCNINetNS(ctx context.Context) (string, error) {
+func (t *T) getCNINetNS(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
 		return t.getResourceNSPathCtx(ctx)
 	} else {
@@ -94,7 +94,7 @@ func (t T) getCNINetNS(ctx context.Context) (string, error) {
 }
 
 // getCNINetNS returns the value of the CNI_NETNS env var of cni commands
-func (t T) getCNINetNSCtx(ctx context.Context) (string, error) {
+func (t *T) getCNINetNSCtx(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
 		return t.getResourceNSPathCtx(ctx)
 	} else {
@@ -103,7 +103,7 @@ func (t T) getCNINetNSCtx(ctx context.Context) (string, error) {
 }
 
 // getCNIContainerID returns the value of the CNI_CONTAINERID env var of cni commands
-func (t T) getCNIContainerID(ctx context.Context) (string, error) {
+func (t *T) getCNIContainerID(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
 		return t.getResourceNSPID(ctx)
 	} else {
@@ -111,23 +111,23 @@ func (t T) getCNIContainerID(ctx context.Context) (string, error) {
 	}
 }
 
-func (t T) objectNSPID() string {
+func (t *T) objectNSPID() string {
 	return t.ObjectID.String()
 }
 
-func (t T) objectNSPIDFile() string {
+func (t *T) objectNSPIDFile() string {
 	return "/var/run/netns/" + t.objectNSPID()
 }
 
-func (t T) getObjectNSPID() (string, error) {
+func (t *T) getObjectNSPID() (string, error) {
 	return t.objectNSPID(), nil
 }
 
-func (t T) getObjectNSPIDFile() (string, error) {
+func (t *T) getObjectNSPIDFile() (string, error) {
 	return t.objectNSPIDFile(), nil
 }
 
-func (t T) getResourceNSPID(ctx context.Context) (string, error) {
+func (t *T) getResourceNSPID(ctx context.Context) (string, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if i, ok := r.(resource.PIDer); !ok {
@@ -137,7 +137,7 @@ func (t T) getResourceNSPID(ctx context.Context) (string, error) {
 	}
 }
 
-func (t T) getResourceNSPathCtx(ctx context.Context) (string, error) {
+func (t *T) getResourceNSPathCtx(ctx context.Context) (string, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if o, ok := r.(resource.NetNSPather); ok {
@@ -147,7 +147,7 @@ func (t T) getResourceNSPathCtx(ctx context.Context) (string, error) {
 	}
 }
 
-func (t T) getResourceNSPath(ctx context.Context) (string, error) {
+func (t *T) getResourceNSPath(ctx context.Context) (string, error) {
 	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	} else if i, ok := r.(resource.NetNSPather); !ok {
@@ -156,7 +156,7 @@ func (t T) getResourceNSPath(ctx context.Context) (string, error) {
 		return i.NetNSPath(ctx)
 	}
 }
-func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
+func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 	if path, err := t.getCNINetNS(ctx); err != nil {
 		return nil, err
 	} else if path == "" {
@@ -166,7 +166,7 @@ func (t T) getNS(ctx context.Context) (ns.NetNS, error) {
 	}
 }
 
-func (t T) getNSCtx(ctx context.Context) (ns.NetNS, error) {
+func (t *T) getNSCtx(ctx context.Context) (ns.NetNS, error) {
 	if path, err := t.getCNINetNSCtx(ctx); err != nil {
 		return nil, err
 	} else if path == "" {
@@ -176,7 +176,7 @@ func (t T) getNSCtx(ctx context.Context) (ns.NetNS, error) {
 	}
 }
 
-func (t T) hasNetNS() bool {
+func (t *T) hasNetNS() bool {
 	if t.NetNS != "" {
 		return true
 	}
@@ -186,7 +186,7 @@ func (t T) hasNetNS() bool {
 	return true
 }
 
-func (t T) addObjectNetNS() error {
+func (t *T) addObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
 		return nil
@@ -203,7 +203,7 @@ func (t T) addObjectNetNS() error {
 	return nil
 }
 
-func (t T) delObjectNetNS() error {
+func (t *T) delObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
 		return nil
@@ -217,7 +217,7 @@ func (t T) delObjectNetNS() error {
 	return nil
 }
 
-func (t T) purgeCNIVarDir() error {
+func (t *T) purgeCNIVarDir() error {
 	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/*.*.*.*", t.Network)
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
@@ -231,7 +231,7 @@ func (t T) purgeCNIVarDir() error {
 	return nil
 }
 
-func (t T) purgeCNIVarFile(p string) error {
+func (t *T) purgeCNIVarFile(p string) error {
 	buff, err := os.ReadFile(p)
 	if err != nil {
 		return err
@@ -260,7 +260,7 @@ func (t T) purgeCNIVarFile(p string) error {
 	return nil
 }
 
-func (t T) purgeCNIVarFileWithIP(ip net.IP) error {
+func (t *T) purgeCNIVarFileWithIP(ip net.IP) error {
 	p := fmt.Sprintf("/var/lib/cni/networks/%s/%s", t.Network, ip)
 	err := os.Remove(p)
 	switch {
@@ -293,7 +293,7 @@ func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	return data
 }
 
-func (t T) ActionResourceDeps() []actionresdeps.Dep {
+func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 	return []actionresdeps.Dep{
 		{Action: "start", A: t.RID(), B: t.NetNS},
 		{Action: "start", A: t.NetNS, B: t.RID()},
@@ -366,7 +366,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(ctx context.Context) string {
+func (t *T) Label(ctx context.Context) string {
 	var s string
 	if ip, ipnet, _ := t.ipNet(ctx); ipnet != nil {
 		ones, _ := ipnet.Mask.Size()
@@ -385,15 +385,15 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) LinkTo() string {
+func (t *T) LinkTo() string {
 	return t.NetNS
 }
 
-func (t T) ipNet(ctx context.Context) (net.IP, *net.IPNet, error) {
+func (t *T) ipNet(ctx context.Context) (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
 		netip net.IP
@@ -405,7 +405,7 @@ func (t T) ipNet(ctx context.Context) (net.IP, *net.IPNet, error) {
 	return t.nsIPNet(netns)
 }
 
-func (t T) ipNetCtx(ctx context.Context) (net.IP, *net.IPNet, error) {
+func (t *T) ipNetCtx(ctx context.Context) (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
 		netip net.IP
@@ -417,7 +417,7 @@ func (t T) ipNetCtx(ctx context.Context) (net.IP, *net.IPNet, error) {
 	return t.nsIPNet(netns)
 }
 
-func (t T) nsIPNet(netns ns.NetNS) (net.IP, *net.IPNet, error) {
+func (t *T) nsIPNet(netns ns.NetNS) (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
 		ip    net.IP
@@ -469,11 +469,11 @@ func (t T) nsIPNet(netns ns.NetNS) (net.IP, *net.IPNet, error) {
 	return ip, ipnet, nil
 }
 
-func (t T) netConfFile() string {
+func (t *T) netConfFile() string {
 	return filepath.Join(t.CNIConfig, t.Network+".conf")
 }
 
-func (t T) netConfBytes() ([]byte, error) {
+func (t *T) netConfBytes() ([]byte, error) {
 	s := t.netConfFile()
 	return os.ReadFile(s)
 }
@@ -488,7 +488,7 @@ type (
 	}
 )
 
-func (t T) netConf() (NetConf, error) {
+func (t *T) netConf() (NetConf, error) {
 	data := NetConf{}
 	b, err := t.netConfBytes()
 	if err != nil {
@@ -500,7 +500,7 @@ func (t T) netConf() (NetConf, error) {
 	return data, nil
 }
 
-func (t T) stop(ctx context.Context) error {
+func (t *T) stop(ctx context.Context) error {
 	if ctx == nil {
 		// TODO: introduce t.StopTimeout and use context.WithTimeout ?
 		ctx = context.Background()
@@ -580,7 +580,7 @@ func (t T) stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) start(ctx context.Context) error {
+func (t *T) start(ctx context.Context) error {
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -699,7 +699,7 @@ func getInterfaceAndAddr(ref *net.IPNet) (net.Interface, net.Addr, error) {
 	return net.Interface{}, nil, nil
 }
 
-func (t T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
+func (t *T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
 	if netns == nil {
 		return "", fmt.Errorf("can't get current guest dev from nil netns")
 	}
@@ -721,7 +721,7 @@ func (t T) currentGuestDev(cidr string, netns ns.NetNS) (string, error) {
 	return s, nil
 }
 
-func (t T) newGuestDev(path string) (string, error) {
+func (t *T) newGuestDev(path string) (string, error) {
 	if t.NSDev != "" {
 		return t.NSDev, nil
 	}
