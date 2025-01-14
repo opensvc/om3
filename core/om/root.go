@@ -96,13 +96,6 @@ func configureLogger() error {
 	return nil
 }
 
-func actionsPreRunE(cmd *cobra.Command, _ []string) error {
-	if !quietFlag || debugFlag {
-		cmd.SilenceErrors = true
-	}
-	return nil
-}
-
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if flag := cmd.Flags().Lookup("quiet"); flag != nil && flag.Value.String() == "true" {
 		quietFlag = true
