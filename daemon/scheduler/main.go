@@ -69,13 +69,26 @@ type (
 )
 
 var (
+	needProvisionedInstanceMap = map[string]any{
+		"sync_update":      nil,
+		"compliance_auto":  nil,
+		"resource_monitor": nil,
+		"run":              nil,
+	}
+
 	incompatibleNodeMonitorStatus = map[node.MonitorState]any{
 		node.MonitorStateInit:        nil,
-		node.MonitorStateUpgrade:     nil,
-		node.MonitorStateShutting:    nil,
 		node.MonitorStateMaintenance: nil,
+		node.MonitorStateRejoin:      nil,
+		node.MonitorStateShutting:    nil,
+		node.MonitorStateUpgrade:     nil,
 	}
 )
+
+func needProvisionedInstance(action string) bool {
+	_, ok := needProvisionedInstanceMap[action]
+	return ok
+}
 
 func (t Schedules) DelByPath(path naming.Path) {
 	delete(t, path.String())
@@ -274,7 +287,7 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 	// even if another is running
 	e.LastRunAt = c.schedule.LastRunAt
 	e.NextRunAt = c.schedule.NextRunAt
-	t.rescheduleFrom(e, c.schedule.NextRunAt)
+	t.recreateJobFrom(e, c.schedule.NextRunAt)
 
 	go func() {
 		if n, err := t.runningCount(e); err != nil {
@@ -437,10 +450,10 @@ func (t *T) onJobRun(c eventJobRun) {
 
 func (t *T) onJobDone(c eventJobDone) {
 	job := t.jobs.Done(c.schedule)
-	t.rescheduleFrom(c.schedule, job.LastRunAt)
+	t.recreateJobFrom(c.schedule, job.LastRunAt)
 }
 
-func (t *T) rescheduleFrom(prev schedule.Entry, lastRunAt time.Time) {
+func (t *T) recreateJobFrom(prev schedule.Entry, lastRunAt time.Time) {
 	e, ok := t.schedules.Get(prev.Path, prev.Key)
 	if !ok {
 		// no longer scheduled
@@ -451,20 +464,16 @@ func (t *T) rescheduleFrom(prev schedule.Entry, lastRunAt time.Time) {
 }
 
 func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
-	t.loggerWithPath(c.Path).Infof("%s: unschedule jobs (instance deleted)", c.Path)
+	t.loggerWithPath(c.Path).Infof("%s: unschedule all jobs (instance deleted)", c.Path)
 	t.unschedule(c.Path)
 }
 
 func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+	wasProvisioned, ok := t.provisioned[c.Path]
 	t.provisioned[c.Path] = isProvisioned
-	hasAnyJob := t.hasAnyJob(c.Path)
-	switch {
-	case isProvisioned && !hasAnyJob:
-		t.schedule(c.Path)
-	case !isProvisioned && hasAnyJob:
-		t.loggerWithPath(c.Path).Infof("%s: unschedule jobs (instance no longer provisionned)", c.Path)
-		t.unschedule(c.Path)
+	if !ok || (isProvisioned != wasProvisioned) {
+		t.scheduleObject(c.Path)
 	}
 }
 
@@ -540,6 +549,9 @@ func (t *T) scheduleAll() {
 	t.scheduleNode()
 }
 
+func (t *T) reschedule(p naming.Path, isProvisioned bool) {
+}
+
 func (t *T) schedule(p naming.Path) {
 	if !t.enabled {
 		return
@@ -568,10 +580,11 @@ func (t *T) scheduleNode() {
 	table = table.Merge(t.jobs.Table(naming.Path{}))
 }
 
-func (t *T) scheduleObject(p naming.Path) {
-	i, err := object.New(p, object.WithVolatile(true))
+func (t *T) scheduleObject(path naming.Path) {
+	log := t.loggerWithPath(path).WithPrefix(t.log.Prefix() + path.String() + ": ")
+	i, err := object.New(path, object.WithVolatile(true))
 	if err != nil {
-		t.log.Errorf("%s: %s", p, err)
+		log.Errorf("%s", err)
 		return
 	}
 	o, ok := i.(object.Actor)
@@ -581,21 +594,28 @@ func (t *T) scheduleObject(p naming.Path) {
 	}
 
 	table := o.PrintSchedule()
-	defer schedule.TableData.Set(p, &table)
+	defer schedule.TableData.Set(path, &table)
 
-	if isProvisioned, ok := t.provisioned[p]; !ok {
-		t.log.Debugf("%s: provisioned state has not been discovered yet", p)
-		return
-	} else if !isProvisioned {
-		t.log.Infof("%s: not provisioned", p)
+	isProvisioned, ok := t.provisioned[path]
+	if !ok {
+		log.Infof("provisioned state has not been discovered yet")
 		return
 	}
 
 	for _, e := range table {
-		t.schedules.Add(p, e)
+		if !isProvisioned && needProvisionedInstance(e.Action) {
+			if t.jobs.Has(e) {
+				log.Infof("unschedule %s %s (instance no longer provisionned)", e.RID(), e.Action)
+				t.jobs.Del(e)
+			} else {
+				log.Infof("skip schedule %s %s: instance not provisioned", e.RID(), e.Action)
+			}
+			continue
+		}
+		t.schedules.Add(path, e)
 		t.createJob(e)
 	}
-	table = table.Merge(t.jobs.Table(p))
+	table = table.Merge(t.jobs.Table(path))
 }
 
 func (t *T) unschedule(p naming.Path) {
