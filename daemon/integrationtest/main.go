@@ -43,8 +43,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	err := mainDaemon.Start(context.Background())
 	require.NoError(t, err)
 
-	cancelLogFix := testhelper.FixLogger()
-
 	stop := func() {
 		t.Logf("Stopping daemon with OSVC_ROOT_PATH=%s", env.Root)
 		err := mainDaemon.Stop()
@@ -52,7 +50,6 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 		t.Logf("Stopped daemon with OSVC_ROOT_PATH=%s", env.Root)
 		time.Sleep(250 * time.Millisecond)
 		hostname.SetHostnameForGoTest("")
-		cancelLogFix()
 	}
 
 	publicationDuration := 50 * time.Millisecond
