@@ -93,7 +93,7 @@ Wait template examples:
 * Object avail is up on 3 objects:
 
       --wait --filter ObjectStatusUpdated --template \
-          '{{if passSet (toInst .data.path .data.node) (eq .data.object_statys.avail "up") -}}
+          '{{if passSet (toInst .data.path .data.node) (eq .data.object_status.avail "up") -}}
               {{with setSuccess (eq passCount 3)}}{{end}}{{end}}'
 
 * Object avail is up on 3 objects that starts with "foo":
