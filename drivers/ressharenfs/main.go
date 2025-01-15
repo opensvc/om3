@@ -34,12 +34,12 @@ func New() resource.Driver {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.SharePath
 }
 
 // Start the Resource
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if !capabilities.Has("node.x.exportfs") {
 		return fmt.Errorf("exportfs is not installed")
 	}
@@ -57,7 +57,7 @@ func (t T) Start(ctx context.Context) error {
 }
 
 // Stop the Resource
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if !capabilities.Has("node.x.exportfs") {
 		return fmt.Errorf("exportfs is not installed")
 	}
@@ -109,14 +109,14 @@ func (t *T) statusFromIssues() status.T {
 	}
 }
 
-func (t T) Provision(ctx context.Context) error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }

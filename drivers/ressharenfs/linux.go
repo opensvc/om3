@@ -179,7 +179,7 @@ func (t *T) isPathExported() (bool, error) {
 	return true, nil
 }
 
-func (t T) parseOpts() (Opts, error) {
+func (t *T) parseOpts() (Opts, error) {
 	return parseOpts(strings.Fields(t.ShareOpts))
 }
 
@@ -210,7 +210,7 @@ func parseOptsEntry(s string) (e OptsEntry, err error) {
 	return
 }
 
-func (t T) addExport(e OptsEntry) error {
+func (t *T) addExport(e OptsEntry) error {
 	opts := strings.Join(e.Opts, ",")
 	cmd := command.New(
 		command.WithName("exportfs"),
@@ -225,7 +225,7 @@ func (t T) addExport(e OptsEntry) error {
 	return cmd.Run()
 }
 
-func (t T) delExport(e OptsEntry) error {
+func (t *T) delExport(e OptsEntry) error {
 	cmd := command.New(
 		command.WithName("exportfs"),
 		command.WithVarArgs("-u", e.Client+":"+t.SharePath),
@@ -239,7 +239,7 @@ func (t T) delExport(e OptsEntry) error {
 	return cmd.Run()
 }
 
-func (t T) getShowmount() (Mount, error) {
+func (t *T) getShowmount() (Mount, error) {
 	if mounts, err := t.getShowmounts(); err != nil {
 		return Mount{}, err
 	} else if mounts = mounts.ByPath(t.SharePath); len(mounts) == 0 {
@@ -249,7 +249,7 @@ func (t T) getShowmount() (Mount, error) {
 	}
 }
 
-func (t T) getShowmounts() (Mounts, error) {
+func (t *T) getShowmounts() (Mounts, error) {
 	cmd := command.New(
 		command.WithName("showmount"),
 		command.WithVarArgs("-e", "--no-headers", "127.0.0.1"),
@@ -274,7 +274,7 @@ func (t T) getShowmounts() (Mounts, error) {
 	return mounts, nil
 }
 
-func (t T) getExports() (Exports, error) {
+func (t *T) getExports() (Exports, error) {
 	if exports, err := t.getAllExports(); err != nil {
 		return nil, err
 	} else {
@@ -282,7 +282,7 @@ func (t T) getExports() (Exports, error) {
 	}
 }
 
-func (t T) getAllExports() (Exports, error) {
+func (t *T) getAllExports() (Exports, error) {
 	cmd := command.New(
 		command.WithName("exportfs"),
 		command.WithVarArgs("-v"),
