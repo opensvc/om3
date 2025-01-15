@@ -34,7 +34,7 @@ type (
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	var match string
 	l := make([]string, 0)
 	r := make([]string, 0)
@@ -87,11 +87,11 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -99,20 +99,20 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t T) Provision(ctx context.Context) error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
 // StatusInfo implements resource.StatusInfoer
-func (t T) StatusInfo(_ context.Context) map[string]interface{} {
+func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	data := make(map[string]interface{})
 	data["match_path"] = t.MatchPath
 	data["match_regex"] = t.MatchRegex
