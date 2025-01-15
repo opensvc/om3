@@ -184,7 +184,7 @@ func (t *CmdDaemonLeave) checkParams() error {
 				return nil
 			}
 		}
-		return fmt.Errorf("unable to find api node to post leave request")
+		return fmt.Errorf("single node cluster, leave action is not available")
 	}
 	return nil
 }
