@@ -26,7 +26,7 @@ type BaseT struct {
 	ObjectID     uuid.UUID      `json:"objectID"`
 }
 
-func (t T) getEnv() (env []string, err error) {
+func (t *T) getEnv() (env []string, err error) {
 	var tempEnv []string
 	env = []string{
 		"OPENSVC_RID=" + t.RID(),
