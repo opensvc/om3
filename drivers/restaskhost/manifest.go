@@ -17,7 +17,7 @@ func init() {
 }
 
 // Manifest ...
-func (t T) Manifest() *manifest.T {
+func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(
