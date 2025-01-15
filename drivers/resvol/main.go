@@ -94,11 +94,11 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) startVolume(ctx context.Context, volume object.Vol) error {
+func (t *T) startVolume(ctx context.Context, volume object.Vol) error {
 	return volume.Start(ctx)
 }
 
-func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
+func (t *T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
 	ctx = actioncontext.WithForce(ctx, force)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
@@ -108,11 +108,11 @@ func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error 
 	return volume.Stop(ctx)
 }
 
-func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status, error) {
+func (t *T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status, error) {
 	return volume.FreshStatus(ctx)
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		t.Log().Errorf("%s", err)
@@ -136,7 +136,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) stopFlag(ctx context.Context) error {
+func (t *T) stopFlag(ctx context.Context) error {
 	if !t.flagInstalled() {
 		return nil
 	}
@@ -146,7 +146,7 @@ func (t T) stopFlag(ctx context.Context) error {
 	return nil
 }
 
-func (t T) startFlag(ctx context.Context) error {
+func (t *T) startFlag(ctx context.Context) error {
 	if t.flagInstalled() {
 		return nil
 	}
@@ -159,7 +159,7 @@ func (t T) startFlag(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if err := t.stopFlag(ctx); err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) name() string {
+func (t *T) name() string {
 	if t.Name != "" {
 		return t.Name
 	}
@@ -211,11 +211,11 @@ func (t *T) Status(ctx context.Context) status.T {
 	return data.Avail
 }
 
-func (t T) flagFile() string {
+func (t *T) flagFile() string {
 	return filepath.Join(t.VarDir(), "flag")
 }
 
-func (t T) flagInstalled() bool {
+func (t *T) flagInstalled() bool {
 	return file.Exists(t.flagFile())
 }
 
@@ -242,11 +242,11 @@ func (t *T) installFlag() error {
 	return nil
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	return t.exposedDevice().RemoveHolders()
 }
 
-func (t T) access() volaccess.T {
+func (t *T) access() volaccess.T {
 	a, err := volaccess.Parse(t.Access)
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
@@ -366,11 +366,11 @@ func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
-func (t T) ValidateNodesAndName() error {
+func (t *T) ValidateNodesAndName() error {
 	m := make(map[string]string)
 	for _, nodename := range t.VolNodes {
 		m[nodename] = t.Name
@@ -396,7 +396,7 @@ func (t T) ValidateNodesAndName() error {
 	return nil
 }
 
-func (t T) ProvisionLeaded(ctx context.Context) error {
+func (t *T) ProvisionLeaded(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -417,7 +417,7 @@ func (t T) ProvisionLeaded(ctx context.Context) error {
 	return volume.Provision(ctx)
 }
 
-func (t T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -429,7 +429,7 @@ func (t T) UnprovisionLeaded(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -449,7 +449,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return volume.Provision(ctx)
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -462,7 +462,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	volume, err := t.Volume()
 	if err != nil {
 		return provisioned.False, err
@@ -471,7 +471,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(exists), nil
 }
 
-func (t T) Head() string {
+func (t *T) Head() string {
 	volume, err := t.Volume()
 	if err != nil {
 		return ""
@@ -479,7 +479,7 @@ func (t T) Head() string {
 	return volume.Head()
 }
 
-func (t T) exposedDevice() *device.T {
+func (t *T) exposedDevice() *device.T {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
@@ -487,7 +487,7 @@ func (t T) exposedDevice() *device.T {
 	return volume.Device()
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	dev := t.exposedDevice()
 	if dev == nil {
 		return device.L{}

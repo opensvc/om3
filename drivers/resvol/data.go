@@ -29,14 +29,14 @@ type (
 	}
 )
 
-func (t T) getRefs() []string {
+func (t *T) getRefs() []string {
 	refs := make([]string, 0)
 	refs = append(refs, t.getRefsByKind(naming.KindSec)...)
 	refs = append(refs, t.getRefsByKind(naming.KindCfg)...)
 	return refs
 }
 
-func (t T) getRefsByKind(filter naming.Kind) []string {
+func (t *T) getRefsByKind(filter naming.Kind) []string {
 	refs := make([]string, 0)
 	switch filter {
 	case naming.KindSec:
@@ -47,14 +47,14 @@ func (t T) getRefsByKind(filter naming.Kind) []string {
 	return refs
 }
 
-func (t T) getMetadata() []object.KVInstall {
+func (t *T) getMetadata() []object.KVInstall {
 	l := make([]object.KVInstall, 0)
 	l = append(l, t.getMetadataByKind(naming.KindSec)...)
 	l = append(l, t.getMetadataByKind(naming.KindCfg)...)
 	return l
 }
 
-func (t T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
+func (t *T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
 	l := make([]object.KVInstall, 0)
 	refs := t.getRefsByKind(kind)
 	if len(refs) == 0 {
@@ -77,7 +77,7 @@ func (t T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
 
 // HasMetadata returns true if the volume has a configs or secrets reference to
 // <namespace>/<kind>/<name>[/<key>]
-func (t T) HasMetadata(p naming.Path, k string) bool {
+func (t *T) HasMetadata(p naming.Path, k string) bool {
 	for _, md := range t.getMetadataByKind(p.Kind) {
 		if md.FromStore.Name != p.Name {
 			continue
@@ -89,7 +89,7 @@ func (t T) HasMetadata(p naming.Path, k string) bool {
 	return false
 }
 
-func (t T) parseReference(s string, filter naming.Kind, head string) object.KVInstall {
+func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVInstall {
 	if head == "" {
 		return object.KVInstall{}
 	}
@@ -192,7 +192,7 @@ func (t *T) statusData() {
 	}
 }
 
-func (t T) installData(ctx context.Context) error {
+func (t *T) installData(ctx context.Context) error {
 	changed := false
 	if err := t.installDirs(); err != nil {
 		return err
@@ -213,7 +213,7 @@ func (t T) installData(ctx context.Context) error {
 	return nil
 }
 
-func (t T) signalData() []SigRoute {
+func (t *T) signalData() []SigRoute {
 	routes := make([]SigRoute, 0)
 	for i, ridmap := range volsignal.Parse(t.Signal) {
 		for rid := range ridmap {
@@ -226,7 +226,7 @@ func (t T) signalData() []SigRoute {
 	return routes
 }
 
-func (t T) SendSignals(ctx context.Context) error {
+func (t *T) SendSignals(ctx context.Context) error {
 	type signaler interface {
 		SignalResource(context.Context, string, syscall.Signal) error
 	}
@@ -247,7 +247,7 @@ func (t T) SendSignals(ctx context.Context) error {
 	return nil
 }
 
-func (t T) InstallDataByKind(filter naming.Kind) (bool, error) {
+func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {
@@ -267,14 +267,14 @@ func (t T) InstallDataByKind(filter naming.Kind) (bool, error) {
 	return changed, nil
 }
 
-func (t T) chmod(p string, mode *os.FileMode) error {
+func (t *T) chmod(p string, mode *os.FileMode) error {
 	if mode == nil {
 		return nil
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t T) chown(p string, usr, grp string) error {
+func (t *T) chown(p string, usr, grp string) error {
 	uid := -1
 	gid := -1
 	if usr != "" {
@@ -298,7 +298,7 @@ func (t T) chown(p string, usr, grp string) error {
 	return os.Chown(p, uid, gid)
 }
 
-func (t T) installDir(dir string, head string, perm os.FileMode) error {
+func (t *T) installDir(dir string, head string, perm os.FileMode) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", dir)
 	}
@@ -328,7 +328,7 @@ func (t T) installDir(dir string, head string, perm os.FileMode) error {
 	return nil
 }
 
-func (t T) installDirs() error {
+func (t *T) installDirs() error {
 	if len(t.Directories) == 0 {
 		return nil
 	}
