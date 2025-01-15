@@ -99,7 +99,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Name() string {
+func (t *T) Name() string {
 	if t.Path.Namespace != "root" {
 		return fmt.Sprintf(
 			"%s.%s.%s",
@@ -116,14 +116,14 @@ func (t T) Name() string {
 	}
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "res", Value: t.Res},
 	}
 	return m, nil
 }
 
-func (t T) WaitKnownDiskStates(dev DRBDDriver) error {
+func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
 	check := func() (bool, error) {
 		states, err := dev.DiskStates()
 		if err != nil {
@@ -154,7 +154,7 @@ func (t T) WaitKnownDiskStates(dev DRBDDriver) error {
 
 // DownForce is called by the unprovisioner. Dataloss is not an issue there,
 // so forced detach can be tried.
-func (t T) DownForce(ctx context.Context) error {
+func (t *T) DownForce(ctx context.Context) error {
 	dev := t.drbd()
 	if err := dev.Disconnect(); err != nil {
 		return err
@@ -168,7 +168,7 @@ func (t T) DownForce(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Down(ctx context.Context) error {
+func (t *T) Down(ctx context.Context) error {
 	dev := t.drbd()
 	if err := dev.Down(); err != nil {
 		return err
@@ -177,7 +177,7 @@ func (t T) Down(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Up(ctx context.Context) error {
+func (t *T) Up(ctx context.Context) error {
 	dev := t.drbd()
 	if err := dev.Up(); err != nil {
 		return err
@@ -189,7 +189,7 @@ func (t T) Up(ctx context.Context) error {
 	return nil
 }
 
-func (t T) GoSecondary(ctx context.Context) error {
+func (t *T) GoSecondary(ctx context.Context) error {
 	dev := t.drbd()
 	role, err := dev.Role()
 	if err != nil {
@@ -207,12 +207,12 @@ func (t T) GoSecondary(ctx context.Context) error {
 	return nil
 }
 
-func (t T) isConfigured() bool {
+func (t *T) isConfigured() bool {
 	cf := drbd.ResConfigFile(t.Res)
 	return file.Exists(cf)
 }
 
-func (t T) StopStandby(ctx context.Context) error {
+func (t *T) StopStandby(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")
 		return nil
@@ -230,7 +230,7 @@ func (t T) StopStandby(ctx context.Context) error {
 	return t.GoSecondary(ctx)
 }
 
-func (t T) StartStandby(ctx context.Context) error {
+func (t *T) StartStandby(ctx context.Context) error {
 	dev := t.drbd()
 	if err := t.StartConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
@@ -245,7 +245,7 @@ func (t T) StartStandby(ctx context.Context) error {
 	return dev.Secondary()
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")
 		return nil
@@ -270,7 +270,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")
 		return nil
@@ -285,7 +285,7 @@ func (t T) Stop(ctx context.Context) error {
 	return t.Down(ctx)
 }
 
-func (t T) Shutdown(ctx context.Context) error {
+func (t *T) Shutdown(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")
 		return nil
@@ -308,7 +308,7 @@ func (t T) Shutdown(ctx context.Context) error {
 //
 //	example: Unconnected, Timeout, ... wait for Connecting or Connected reached
 //	example: Disconnecting: wait for StandAlone reached before try Down, Up
-func (t T) StartConnection(ctx context.Context) error {
+func (t *T) StartConnection(ctx context.Context) error {
 	dev := t.drbd()
 	state, err := dev.ConnState()
 	if err != nil {
@@ -387,7 +387,7 @@ func (t T) StartConnection(ctx context.Context) error {
 	}
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	for _, dev := range t.ExposedDevices() {
 		if err := dev.RemoveHolders(); err != nil {
 			return nil
@@ -450,21 +450,21 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.Res
 }
 
 // UnprovisionStop is a noop to avoid calling the normal Stop before unprovision
-func (t T) UnprovisionStop(ctx context.Context) error {
+func (t *T) UnprovisionStop(ctx context.Context) error {
 	return nil
 }
 
 // ProvisionStart is a noop to avoid calling the normal Start after provision
-func (t T) ProvisionStart(ctx context.Context) error {
+func (t *T) ProvisionStart(ctx context.Context) error {
 	return nil
 }
 
-func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
+func (t *T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 	allocations := make(map[string]api.DRBDAllocation)
 	c, err := client.New()
 	if err != nil {
@@ -486,7 +486,7 @@ func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 	return allocations, nil
 }
 
-func (t T) formatConfig(wr io.Writer, res ConfRes) error {
+func (t *T) formatConfig(wr io.Writer, res ConfRes) error {
 	var text string
 	if capabilities.Has("disk.drbd.mesh") {
 		text = resTemplateTextV9
@@ -500,7 +500,7 @@ func (t T) formatConfig(wr io.Writer, res ConfRes) error {
 	return templ.Execute(wr, res)
 }
 
-func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, error) {
+func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, error) {
 	res := ConfRes{
 		Name:  t.Res,
 		Hosts: make([]ConfResOn, 0),
@@ -563,7 +563,7 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 	return res, nil
 }
 
-func (t T) getNodeIP(nodename string) (net.IP, error) {
+func (t *T) getNodeIP(nodename string) (net.IP, error) {
 	if t.Network != "" {
 		return t.getNodeIPWithNetwork(nodename)
 	} else {
@@ -571,7 +571,7 @@ func (t T) getNodeIP(nodename string) (net.IP, error) {
 	}
 }
 
-func (t T) getNodeIPWithNetwork(nodename string) (net.IP, error) {
+func (t *T) getNodeIPWithNetwork(nodename string) (net.IP, error) {
 	node, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return nil, err
@@ -590,7 +590,7 @@ func (t T) getNodeIPWithNetwork(nodename string) (net.IP, error) {
 	return nil, fmt.Errorf("node %s ip not found on network %s", nodename, t.Network)
 }
 
-func (t T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
+func (t *T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 	ips, err := net.LookupIP(nodename)
 	if err != nil {
 		return nil, err
@@ -609,17 +609,17 @@ func (t T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 }
 
 // TODO: Acquire/Release cluster lock
-func (t T) lock(ctx context.Context) error {
+func (t *T) lock(ctx context.Context) error {
 	//lockName := "drivers.resources.disk.drbd.allocate"
 	return nil
 }
 
 // TODO: Acquire/Release cluster lock
-func (t T) unlock(ctx context.Context) error {
+func (t *T) unlock(ctx context.Context) error {
 	return nil
 }
 
-func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
+func (t *T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	c, err := client.New()
 	if err != nil {
 		return nil, err
@@ -636,7 +636,7 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	return resp.JSON200.Data, nil
 }
 
-func (t T) fetchConfig() error {
+func (t *T) fetchConfig() error {
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
 		t.Log().Infof("%s already exists", cf)
@@ -656,7 +656,7 @@ func (t T) fetchConfig() error {
 	return fmt.Errorf("failed to fetch %s, tried node %s", cf, t.Nodes)
 }
 
-func (t T) writeConfig(ctx context.Context) error {
+func (t *T) writeConfig(ctx context.Context) error {
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
 		t.Log().Infof("%s already exists", cf)
@@ -694,7 +694,7 @@ func (t T) writeConfig(ctx context.Context) error {
 	return nil
 }
 
-func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error {
+func (t *T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error {
 	for _, nodename := range t.Nodes {
 		var allocationID uuid.UUID
 		if nodename == hostname.Hostname() {
@@ -712,7 +712,7 @@ func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error
 	return nil
 }
 
-func (t T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) error {
+func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -792,7 +792,7 @@ func (t *T) provisionCommon(ctx context.Context) error {
 	return nil
 }
 
-func (t T) WipeMD() error {
+func (t *T) WipeMD() error {
 	if v, err := t.drbd().HasMD(); err != nil {
 		return err
 	} else if !v {
@@ -802,7 +802,7 @@ func (t T) WipeMD() error {
 	return t.drbd().WipeMD()
 }
 
-func (t T) maxPeers() int {
+func (t *T) maxPeers() int {
 	v := t.MaxPeers
 	nNodes := len(t.Nodes)
 
@@ -825,7 +825,7 @@ func (t T) maxPeers() int {
 	return v
 }
 
-func (t T) CreateMD() error {
+func (t *T) CreateMD() error {
 	if v, err := t.drbd().HasMD(); err != nil {
 		return err
 	} else if v {
@@ -835,7 +835,7 @@ func (t T) CreateMD() error {
 	return t.drbd().CreateMD(t.maxPeers())
 }
 
-func (t T) deleteConfig() error {
+func (t *T) deleteConfig() error {
 	cf := drbd.ResConfigFile(t.Res)
 	err := os.Remove(cf)
 	if os.IsNotExist(err) {
@@ -879,7 +879,7 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
@@ -895,7 +895,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.True, nil
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	l := make(device.L, 0)
 	dump, err := drbd.GetConfig()
 	if err != nil {
@@ -915,7 +915,7 @@ func (t T) ExposedDevices() device.L {
 	return l
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
 	dump, err := drbd.GetConfig()
 	if err != nil {
@@ -939,7 +939,7 @@ func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 

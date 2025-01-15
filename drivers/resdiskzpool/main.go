@@ -44,22 +44,22 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) subDevsFilePath() string {
+func (t *T) subDevsFilePath() string {
 	return filepath.Join(t.VarDir(), "sub_devs")
 }
 
-func (t T) ToSync() []string {
+func (t *T) ToSync() []string {
 	return []string{
 		t.subDevsFilePath(),
 	}
 }
 
-func (t T) PreSync() error {
+func (t *T) PreSync() error {
 	_, err := t.updateSubDevsFile()
 	return err
 }
 
-func (t T) updateSubDevsFile() ([]string, error) {
+func (t *T) updateSubDevsFile() ([]string, error) {
 	if v, err := t.hasIt(); err != nil {
 		return nil, err
 	} else if !v {
@@ -75,7 +75,7 @@ func (t T) updateSubDevsFile() ([]string, error) {
 	return l, nil
 }
 
-func (t T) writeSubDevsFile(l []string) error {
+func (t *T) writeSubDevsFile(l []string) error {
 	path := t.subDevsFilePath()
 	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
@@ -96,7 +96,7 @@ func (t T) writeSubDevsFile(l []string) error {
 	return nil
 }
 
-func (t T) loadSubDevsFile() ([]string, error) {
+func (t *T) loadSubDevsFile() ([]string, error) {
 	path := t.subDevsFilePath()
 	l := make([]string, 0)
 	f, err := os.Open(path)
@@ -112,11 +112,11 @@ func (t T) loadSubDevsFile() ([]string, error) {
 	return l, nil
 }
 
-func (t T) hasIt() (bool, error) {
+func (t *T) hasIt() (bool, error) {
 	return t.pool().Exists()
 }
 
-func (t T) poolListZDevs() ([]string, error) {
+func (t *T) poolListZDevs() ([]string, error) {
 	if zvols, err := t.pool().ListVolumes(); err != nil {
 		return nil, err
 	} else {
@@ -124,7 +124,7 @@ func (t T) poolListZDevs() ([]string, error) {
 	}
 }
 
-func (t T) setMultihost() error {
+func (t *T) setMultihost() error {
 	if t.Multihost == "" {
 		return nil
 	}
@@ -147,7 +147,7 @@ func (t T) setMultihost() error {
 	return t.pool().SetProperty("multihost", value)
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
@@ -169,14 +169,14 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.Name},
 	}
 	return m, nil
 }
 
-func (t T) doHostID() error {
+func (t *T) doHostID() error {
 	switch t.Multihost {
 	case "", "false":
 		return nil
@@ -185,7 +185,7 @@ func (t T) doHostID() error {
 	}
 }
 
-func (t T) genHostID() error {
+func (t *T) genHostID() error {
 	if file.Exists("/etc/hostid") {
 		return nil
 	}
@@ -208,12 +208,12 @@ func (t T) genHostID() error {
 // because zfs can only destroy imported pools. The Unprovision func
 // imports anyway, but if we don't export unecessary export/import is
 // saved.
-func (t T) UnprovisionStop(ctx context.Context) error {
+func (t *T) UnprovisionStop(ctx context.Context) error {
 	t.Log().Debugf("bypass export for unprovision")
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -226,7 +226,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	pool := t.pool()
 	if v, err := t.hasIt(); err != nil {
 		return false, err
@@ -260,7 +260,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
@@ -271,7 +271,7 @@ func (t T) Label(_ context.Context) string {
 // Parallel import can fail on Solaris 11.4, with a "no such
 // pool available" error. Retry in this case, if we confirm the
 // pool exists.
-func (t T) poolImport() error {
+func (t *T) poolImport() error {
 	var err error
 	for i := 0; i < 10; i++ {
 		err = t.poolImportTryDevice(false)
@@ -283,22 +283,22 @@ func (t T) poolImport() error {
 	return err
 }
 
-func (t T) poolImportCacheFile() string {
+func (t *T) poolImportCacheFile() string {
 	return filepath.Join(rawconfig.Paths.Var, "zpool.cache")
 }
 
-func (t T) poolImportDeviceDir() string {
+func (t *T) poolImportDeviceDir() string {
 	return filepath.Join(t.VarDir(), "dev", "dsk")
 }
 
-func (t T) poolImportTryDevice(quiet bool) error {
+func (t *T) poolImportTryDevice(quiet bool) error {
 	if err := t.poolImportWithDevice(quiet); err == nil {
 		return nil
 	}
 	return t.poolImportWithoutDevice(quiet)
 }
 
-func (t T) poolImportWithoutDevice(quiet bool) error {
+func (t *T) poolImportWithoutDevice(quiet bool) error {
 	c := t.poolImportCacheFile()
 	fopts := []funcopt.O{
 		zfs.PoolImportWithForce(),
@@ -310,7 +310,7 @@ func (t T) poolImportWithoutDevice(quiet bool) error {
 	return t.pool().Import(fopts...)
 }
 
-func (t T) poolImportWithDevice(quiet bool) error {
+func (t *T) poolImportWithDevice(quiet bool) error {
 	d := t.poolImportDeviceDir()
 	if !file.Exists(d) {
 		return fmt.Errorf("%s does not exist", d)
@@ -327,7 +327,7 @@ func (t T) poolImportWithDevice(quiet bool) error {
 	return t.pool().Import(fopts...)
 }
 
-func (t T) poolExport() error {
+func (t *T) poolExport() error {
 	pool := t.pool()
 	if err := pool.Export(); err == nil {
 		return nil
@@ -335,7 +335,7 @@ func (t T) poolExport() error {
 	return pool.Export(zfs.PoolExportWithForce())
 }
 
-func (t T) poolCreate() error {
+func (t *T) poolCreate() error {
 	a := args.New()
 	a.Append(t.CreateOptions...)
 	a.DropOptionAndAnyValue("-m")
@@ -355,28 +355,28 @@ func (t T) poolCreate() error {
 	)
 }
 
-func (t T) poolDestroy() error {
+func (t *T) poolDestroy() error {
 	return t.pool().Destroy(
 		zfs.PoolDestroyWithForce(),
 	)
 }
 
-func (t T) pool() *zfs.Pool {
+func (t *T) pool() *zfs.Pool {
 	return &zfs.Pool{
 		Name: t.Name,
 		Log:  t.Log(),
 	}
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	return t.provision(ctx)
 }
 
-func (t T) provision(ctx context.Context) error {
+func (t *T) provision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if v {
@@ -386,7 +386,7 @@ func (t T) provision(ctx context.Context) error {
 	return t.poolCreate()
 }
 
-func (t T) unprovision(ctx context.Context) error {
+func (t *T) unprovision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if !v {
@@ -398,7 +398,7 @@ func (t T) unprovision(ctx context.Context) error {
 	return t.poolDestroy()
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	if v, err := t.hasIt(); err != nil {
 		return provisioned.Undef, err
 	} else {
@@ -406,7 +406,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	}
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	if l, err := t.poolListZDevs(); err == nil {
 		return t.toDevices(l)
 	} else {
@@ -414,7 +414,7 @@ func (t T) ExposedDevices() device.L {
 	}
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
@@ -430,7 +430,7 @@ func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) toDevices(l []string) device.L {
+func (t *T) toDevices(l []string) device.L {
 	log := t.Log()
 	devs := make(device.L, 0)
 	for _, s := range l {

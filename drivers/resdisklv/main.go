@@ -48,7 +48,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
@@ -64,7 +64,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.LVName},
 		{Key: "vg", Value: t.VGName},
@@ -72,7 +72,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -86,19 +86,19 @@ func (t T) Stop(ctx context.Context) error {
 	return t.lv().Deactivate()
 }
 
-func (t T) exists() (bool, error) {
+func (t *T) exists() (bool, error) {
 	return t.lv().Exists()
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	return t.lv().IsActive()
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	return t.exposedDevice().RemoveHolders()
 }
 
-func (t T) fqn() string {
+func (t *T) fqn() string {
 	return t.lv().FQN()
 }
 
@@ -114,11 +114,11 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.fqn()
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	lv := t.lv()
 	lvi, ok := lv.(LVDriverProvisioner)
 	if !ok {
@@ -145,7 +145,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	lv := t.lv()
 	exists, err := lv.Exists()
 	if err != nil {
@@ -167,24 +167,24 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return lvi.Remove([]string{"-f"})
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	v, err := t.exists()
 	return provisioned.FromBool(v), err
 }
 
-func (t T) exposedDevice() device.T {
+func (t *T) exposedDevice() device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.ExposedDevices()
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	return device.L{t.exposedDevice()}
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	if l, err := t.lv().Devices(); err != nil {
 		t.Log().Debugf("%s", err)
 		return device.L{}
@@ -193,6 +193,6 @@ func (t T) SubDevices() device.L {
 	}
 }
 
-func (t T) Boot(ctx context.Context) error {
+func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }

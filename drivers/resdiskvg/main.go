@@ -60,7 +60,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.startTag(ctx); err != nil {
 		return err
 	}
@@ -79,14 +79,14 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.VGName},
 	}
 	return m, nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -106,15 +106,15 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) exists() (bool, error) {
+func (t *T) exists() (bool, error) {
 	return t.vg().Exists()
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	return t.hasTag()
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	for _, dev := range t.ExposedDevices() {
 		if err := dev.RemoveHolders(); err != nil {
 			return nil
@@ -135,11 +135,11 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.VGName
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	vg := t.vg()
 	vgi, ok := vg.(VGDriverProvisioner)
 	if !ok {
@@ -160,7 +160,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	}
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	vg := t.vg()
 	exists, err := vg.Exists()
 	if err != nil {
@@ -183,12 +183,12 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return vgi.Remove(args)
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	v, err := t.exists()
 	return provisioned.FromBool(v), err
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	if l, err := t.vg().ActiveLVs(); err == nil {
 		return l
 	} else {
@@ -196,7 +196,7 @@ func (t T) ExposedDevices() device.L {
 	}
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
@@ -211,7 +211,7 @@ func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	if l, err := t.vg().PVs(); err != nil {
 		t.Log().Debugf("%s", err)
 		return device.L{}
@@ -220,6 +220,6 @@ func (t T) SubDevices() device.L {
 	}
 }
 
-func (t T) Boot(ctx context.Context) error {
+func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }

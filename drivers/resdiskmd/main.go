@@ -60,7 +60,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Name() string {
+func (t *T) Name() string {
 	if t.Path.Namespace != "root" {
 		return fmt.Sprintf(
 			"%s.%s.%s",
@@ -77,14 +77,14 @@ func (t T) Name() string {
 	}
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "uuid", Value: t.UUID},
 	}
 	return m, nil
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	dev := t.md()
 	_ = dev.DisableAutoActivation()
 	if v, err := t.isUp(); err != nil {
@@ -103,7 +103,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	dev := t.md()
 	if v, err := t.isUp(); err != nil {
 		return err
@@ -121,16 +121,16 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) exists() (bool, error) {
+func (t *T) exists() (bool, error) {
 	return t.md().Exists()
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	active, _, err := t.md().IsActive()
 	return active, err
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	for _, dev := range t.ExposedDevices() {
 		if err := dev.RemoveHolders(); err != nil {
 			return nil
@@ -161,7 +161,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.UUID
 }
 
@@ -195,7 +195,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) uuidKey() key.T {
+func (t *T) uuidKey() key.T {
 	k := key.T{
 		Section: t.RID(),
 		Option:  "uuid",
@@ -264,12 +264,12 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	v, err := t.exists()
 	return provisioned.FromBool(v), err
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	if t.UUID == "" {
 		return device.L{}
 	}
@@ -279,7 +279,7 @@ func (t T) ExposedDevices() device.L {
 	return device.L{}
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	if l, err := t.md().Devices(); err != nil {
 		t.Log().Debugf("%s", err)
 		return device.L{}
@@ -292,27 +292,27 @@ func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) Boot(ctx context.Context) error {
+func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }
 
-func (t T) PostSync() error {
+func (t *T) PostSync() error {
 	return t.md().DisableAutoActivation()
 }
 
-func (t T) PreSync() error {
+func (t *T) PreSync() error {
 	return t.dumpCacheFile()
 }
 
-func (t T) Resync(ctx context.Context) error {
+func (t *T) Resync(ctx context.Context) error {
 	return t.md().Resync()
 }
 
-func (t T) ToSync() []string {
+func (t *T) ToSync() []string {
 	if t.UUID == "" {
 		return []string{}
 	}
@@ -322,11 +322,11 @@ func (t T) ToSync() []string {
 	return []string{t.cacheFile()}
 }
 
-func (t T) cacheFile() string {
+func (t *T) cacheFile() string {
 	return filepath.Join(t.VarDir(), "disks")
 }
 
-func (t T) dumpCacheFile() error {
+func (t *T) dumpCacheFile() error {
 	p := t.cacheFile()
 	dids := make([]string, 0)
 	for _, dev := range t.SubDevices() {
@@ -349,7 +349,7 @@ func (t T) dumpCacheFile() error {
 	return nil
 }
 
-func (t T) loadCacheFile() ([]string, error) {
+func (t *T) loadCacheFile() ([]string, error) {
 	p := t.cacheFile()
 	data := make([]string, 0)
 	b, err := os.ReadFile(p)
@@ -362,7 +362,7 @@ func (t T) loadCacheFile() ([]string, error) {
 	return data, nil
 }
 
-func (t T) downStateAlerts() error {
+func (t *T) downStateAlerts() error {
 	if !t.IsShared() {
 		return nil
 	}
