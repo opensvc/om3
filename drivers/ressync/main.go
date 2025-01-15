@@ -111,7 +111,7 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 	return state
 }
 
-func (t T) WritePeerLastSync(peer string, peers []string) error {
+func (t *T) WritePeerLastSync(peer string, peers []string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
@@ -166,7 +166,7 @@ func (t T) WritePeerLastSync(peer string, peers []string) error {
 	return errs
 }
 
-func (t T) WriteLastSync(nodename string) error {
+func (t *T) WriteLastSync(nodename string) error {
 	p := t.lastSyncFile(nodename)
 	f, err := os.Create(p)
 	if err != nil {
@@ -176,7 +176,7 @@ func (t T) WriteLastSync(nodename string) error {
 	return nil
 }
 
-func (t T) readLastSync(nodename string) (time.Time, error) {
+func (t *T) readLastSync(nodename string) (time.Time, error) {
 	var tm time.Time
 	p := t.lastSyncFile(nodename)
 	info, err := os.Stat(p)
@@ -190,7 +190,7 @@ func (t T) readLastSync(nodename string) (time.Time, error) {
 	}
 }
 
-func (t T) lastSyncFile(nodename string) string {
+func (t *T) lastSyncFile(nodename string) string {
 	return filepath.Join(t.VarDir(), "last_sync_"+nodename)
 }
 

@@ -39,7 +39,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) SortKey() string {
+func (t *T) SortKey() string {
 	// The "+" ascii char is ordered before any rfc952 char, so using it
 	// as a prefix in the sort key makes sure it is ordered before any
 	// driver using t.ResourceID.Name as its sort key (which is the
@@ -47,7 +47,7 @@ func (t T) SortKey() string {
 	return "+" + t.ResourceID.Name
 }
 
-func (t T) IsRunning() bool {
+func (t *T) IsRunning() bool {
 	unlock, err := t.Lock(false, time.Second*0, lockName)
 	if err != nil {
 		return true
@@ -56,7 +56,7 @@ func (t T) IsRunning() bool {
 	return false
 }
 
-func (t T) Update(ctx context.Context) error {
+func (t *T) Update(ctx context.Context) error {
 	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Debugf("the instance is not sufficiently started (%s). refuse to create snapshots", strings.Join(rids, ","))
 		return nil
@@ -72,7 +72,7 @@ func (t T) Update(ctx context.Context) error {
 	return nil
 }
 
-func (t T) removeSnap(dataset string) error {
+func (t *T) removeSnap(dataset string) error {
 	datasets, err := zfs.ListFilesystems(
 		zfs.ListWithNames(dataset),
 		zfs.ListWithOrderBy("creation"),
@@ -168,7 +168,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	if t.Name != "" {
 		return fmt.Sprintf("%s of %s", t.Name, strings.Join(t.Dataset, " "))
 	} else {
@@ -176,7 +176,7 @@ func (t T) Label(_ context.Context) string {
 	}
 }
 
-func (t T) ScheduleOptions() resource.ScheduleOptions {
+func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action: "sync_update",
 		Option: "schedule",
@@ -184,7 +184,7 @@ func (t T) ScheduleOptions() resource.ScheduleOptions {
 	}
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
@@ -192,7 +192,7 @@ func (t *T) zfs(name string) *zfs.Filesystem {
 	return &zfs.Filesystem{Name: name, Log: t.Log()}
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "dataset", Value: strings.Join(t.Dataset, " ")},
 		{Key: "name", Value: t.Name},
