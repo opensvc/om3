@@ -34,7 +34,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) Abort(ctx context.Context) bool {
+func (t *T) Abort(ctx context.Context) bool {
 	if t.Topology == topology.Flex {
 		return false
 	}
@@ -85,7 +85,7 @@ func (t T) Abort(ctx context.Context) bool {
 }
 
 // Start the Resource
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if t.file() == "" {
 		return fmt.Errorf("empty file path")
 	}
@@ -107,7 +107,7 @@ func (t T) Start(ctx context.Context) error {
 }
 
 // Stop the Resource
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if t.file() == "" {
 		return fmt.Errorf("empty file path")
 	}
@@ -118,7 +118,7 @@ func (t T) Stop(ctx context.Context) error {
 	return t.stop()
 }
 
-func (t T) stop() error {
+func (t *T) stop() error {
 	p := t.file()
 	t.Log().Infof("uninstall flag file %s", p)
 	return os.Remove(p)
@@ -126,7 +126,7 @@ func (t T) stop() error {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.file()
 }
 
@@ -144,15 +144,15 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // ProvisionLeader implement ProvisionLeader for T, this allows fsflag resources
 // to have a provision/unprovision call state
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) exists() bool {
+func (t *T) exists() bool {
 	return file.Exists(t.file())
 }
 
@@ -172,7 +172,7 @@ func tmpBaseDir() string {
 	return filepath.FromSlash("/dev/shm/opensvc")
 }
 
-func (t T) dir() string {
+func (t *T) dir() string {
 	var p string
 	if t.lazyDir != "" {
 		return t.lazyDir

@@ -34,7 +34,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.create(ctx); err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -74,27 +74,27 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.path()
 }
 
-func (t T) path() string {
+func (t *T) path() string {
 	return t.Path
 }
 
-func (t T) Provision(ctx context.Context) error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) create(ctx context.Context) error {
+func (t *T) create(ctx context.Context) error {
 	p := t.path()
 	if v, err := file.ExistsAndDir(p); err != nil {
 		return err
@@ -140,7 +140,7 @@ func (t *T) checkOwnership() (ok bool) {
 	return
 }
 
-func (t T) setOwnership(ctx context.Context) error {
+func (t *T) setOwnership(ctx context.Context) error {
 	if t.User == nil && t.Group == nil {
 		return nil
 	}
@@ -172,7 +172,7 @@ func (t T) setOwnership(ctx context.Context) error {
 	return nil
 }
 
-func (t T) uid() int {
+func (t *T) uid() int {
 	if t.User == nil {
 		return -1
 	}
@@ -180,7 +180,7 @@ func (t T) uid() int {
 	return i
 }
 
-func (t T) gid() int {
+func (t *T) gid() int {
 	if t.Group == nil {
 		return -1
 	}
@@ -207,7 +207,7 @@ func (t *T) checkMode() (ok bool) {
 	return v
 }
 
-func (t T) setMode(ctx context.Context) error {
+func (t *T) setMode(ctx context.Context) error {
 	if t.Perm == nil {
 		return nil
 	}
@@ -232,7 +232,7 @@ func (t T) setMode(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Head() string {
+func (t *T) Head() string {
 	return t.Path
 }
 
