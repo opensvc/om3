@@ -236,6 +236,8 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	w := bytes.NewBuffer([]byte{})
+	needAlign := len(jsonPaths) > 1
 
 	calculateColumnWidths := func(rows [][]string) []int {
 		widths := make([]int, len(rows[0]))
@@ -249,14 +251,18 @@ func (t Renderer) renderTab(options string) (string, error) {
 		}
 		return widths
 	}
-	w := bytes.NewBuffer([]byte{})
+
 	sprintAligned := func(rows [][]string) {
 		columnWidths := calculateColumnWidths(rows)
 
 		for _, row := range rows {
 			for i, cell := range row {
-				fmt.Fprint(w, runewidth.FillRight(cell, columnWidths[i]))
-				fmt.Fprint(w, "  ")
+				if needAlign {
+					fmt.Fprint(w, runewidth.FillRight(cell, columnWidths[i]))
+					fmt.Fprint(w, "  ")
+				} else {
+					fmt.Fprint(w, cell)
+				}
 			}
 			fmt.Fprintln(w)
 		}
