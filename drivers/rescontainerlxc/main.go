@@ -145,7 +145,7 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -201,7 +201,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
@@ -260,7 +260,7 @@ func (t *T) purgeLxcVar() error {
 	return nil
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	if t.exists() {
 		t.Log().Infof("container %s is already created", t.Name)
 		return nil
@@ -315,7 +315,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return cmd.Run()
 }
 
-func (t T) createEnv() ([]string, error) {
+func (t *T) createEnv() ([]string, error) {
 	env := []string{
 		"DEBIAN_FRONTEND=noninteractive",
 		"DEBIAN_PRIORITY=critical",
@@ -335,15 +335,15 @@ func (t T) createEnv() ([]string, error) {
 	return env, nil
 }
 
-func (t T) createEnvSecrets() ([]string, error) {
+func (t *T) createEnvSecrets() ([]string, error) {
 	return envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec")
 }
 
-func (t T) createEnvConfigs() ([]string, error) {
+func (t *T) createEnvConfigs() ([]string, error) {
 	return envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg")
 }
 
-func (t T) createEnvProxy() []string {
+func (t *T) createEnvProxy() []string {
 	env := []string{}
 	keys := []string{
 		"http_proxy", "https_proxy", "ftp_proxy", "rsync_proxy",
@@ -360,16 +360,16 @@ func (t T) createEnvProxy() []string {
 	return env
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
 // Signal implements object.signaler
-func (t T) Signal(ctx context.Context, sig syscall.Signal) error {
+func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 	pid := t.PID(ctx)
 	if pid == 0 {
 		return nil
@@ -395,7 +395,7 @@ func (t *T) copyTo(src, dst string) error {
 	return file.Copy(src, dst)
 }
 
-func (t T) rcmd() ([]string, error) {
+func (t *T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
 	}
@@ -421,7 +421,7 @@ func (t *T) SetEncapFileOwnership(p string) error {
 	return file.CopyOwnership(rootDir, p)
 }
 
-func (t T) Enter() error {
+func (t *T) Enter() error {
 	sh := "/bin/bash"
 	rcmd, err := t.rcmd()
 	if err != nil {
@@ -443,7 +443,7 @@ func (t T) Enter() error {
 	return cmd.Run()
 }
 
-func (t T) stopTimeout() *int {
+func (t *T) stopTimeout() *int {
 	if t.StopTimeout == nil {
 		return nil
 	}
@@ -451,7 +451,7 @@ func (t T) stopTimeout() *int {
 	return &i
 }
 
-func (t T) hostname() string {
+func (t *T) hostname() string {
 	if t.Hostname != "" {
 		return t.Hostname
 	}
@@ -582,7 +582,7 @@ func (t *T) getConfigFile() (string, error) {
 	return "", fmt.Errorf("unable to find the container configuration file")
 }
 
-func (t T) getConfigValue(key string) (string, error) {
+func (t *T) getConfigValue(key string) (string, error) {
 	cf, err := t.configFile()
 	f, err := os.Open(cf)
 	if err != nil {
@@ -609,7 +609,7 @@ func (t T) getConfigValue(key string) (string, error) {
 	return "", fmt.Errorf("key %s not found in %s", key, cf)
 }
 
-func (t T) rootDirFromConfigFile() (string, error) {
+func (t *T) rootDirFromConfigFile() (string, error) {
 	p, err := t.rootfsFromConfigFile()
 	if err != nil {
 		return "", err
@@ -627,7 +627,7 @@ func (t T) rootDirFromConfigFile() (string, error) {
 	return p, nil
 }
 
-func (t T) rootfsFromConfigFile() (string, error) {
+func (t *T) rootfsFromConfigFile() (string, error) {
 	if p, err := t.getConfigValue("lxc.rootfs"); err == nil {
 		return p, nil
 	}
@@ -729,7 +729,7 @@ func (t *T) lxcPath() string {
 	return p
 }
 
-func (t T) ToSync() []string {
+func (t *T) ToSync() []string {
 	l := make([]string, 0)
 
 	// Don't synchronize container.lxc config in /var/lib/lxc if not shared
@@ -822,7 +822,7 @@ func (t *T) cpusetDir() string {
 	return path
 }
 
-func (t T) setCpusetCloneChildren() error {
+func (t *T) setCpusetCloneChildren() error {
 	path := t.cpusetDir()
 	if path == "" {
 		return nil
@@ -889,15 +889,15 @@ func (t T) setCpusetCloneChildren() error {
 }
 
 // cgroupDir returns the container resource cgroup path, relative to a controler head.
-func (t T) cgroupDir() string {
+func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
 
-func (t T) cgroupDirCapable() bool {
+func (t *T) cgroupDirCapable() bool {
 	return capabilities.Has(drvID.Cap() + ".cgroup_dir")
 }
 
-func (t T) createCgroup(p string) error {
+func (t *T) createCgroup(p string) error {
 	if file.Exists(p) {
 		t.Log().Debugf("%s already exists", p)
 		return nil
@@ -909,7 +909,7 @@ func (t T) createCgroup(p string) error {
 	return nil
 }
 
-func (t T) cleanupCgroup(p string) error {
+func (t *T) cleanupCgroup(p string) error {
 	patterns := []string{
 		fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s-[0-9]", t.Name),
 		fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s", t.Name),
@@ -934,7 +934,7 @@ func (t T) cleanupCgroup(p string) error {
 	return nil
 }
 
-func (t T) installCF() error {
+func (t *T) installCF() error {
 	cf, err := t.configFile()
 	if err != nil {
 		return err
@@ -1077,7 +1077,7 @@ func (t *T) getLinks() []string {
 	return l
 }
 
-func (t T) isUpPS() bool {
+func (t *T) isUpPS() bool {
 	cmd := command.New(
 		command.WithName("lxc-ps"),
 		command.WithVarArgs("--name", t.Name),
@@ -1091,14 +1091,14 @@ func (t T) isUpPS() bool {
 	return v
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	if p, err := exec.LookPath("lxc-ps"); err == nil && p != "" {
 		return t.isUpPS(), nil
 	}
 	return t.isUpInfo(), nil
 }
 
-func (t T) start(ctx context.Context) error {
+func (t *T) start(ctx context.Context) error {
 	cgroupDir := t.cgroupDir()
 	cf, err := t.configFile()
 	if err != nil {
@@ -1125,7 +1125,7 @@ func (t T) start(ctx context.Context) error {
 	return cmd.Run()
 }
 
-func (t T) stopOrKill(ctx context.Context) error {
+func (t *T) stopOrKill(ctx context.Context) error {
 	if actioncontext.IsForce(ctx) {
 		return t.kill()
 	}
@@ -1137,7 +1137,7 @@ func (t T) stopOrKill(ctx context.Context) error {
 	return t.kill()
 }
 
-func (t T) stop() error {
+func (t *T) stop() error {
 	args := []string{"-n", t.Name}
 	args = append(args, t.dataDirArgs()...)
 	cmd := command.New(
@@ -1152,7 +1152,7 @@ func (t T) stop() error {
 	return cmd.Run()
 }
 
-func (t T) kill() error {
+func (t *T) kill() error {
 	args := []string{"-n", t.Name, "--kill"}
 	args = append(args, t.dataDirArgs()...)
 	cmd := command.New(
@@ -1169,7 +1169,7 @@ func (t T) kill() error {
 
 // LinkNames implements the interface necessary for the container.lxc resources
 // to be targeted by ip.cni, ip.netns, ...
-func (t T) LinkNames() []string {
+func (t *T) LinkNames() []string {
 	return []string{t.RID()}
 }
 
@@ -1209,7 +1209,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	return false
 }
 
-func (t T) upPeer() (string, error) {
+func (t *T) upPeer() (string, error) {
 	hn := hostname.Hostname()
 	isPeerUp := func(n string) (bool, error) {
 		client, err := sshnode.NewClient(n)
