@@ -67,6 +67,9 @@ var (
 	// bufferPublicationDuration is the minimum duration where pubsub buffer
 	// publications during daemon startup.
 	bufferPublicationDuration = 200 * time.Millisecond
+
+	WatchdogUsecEnv     = "WATCHDOG_USEC"
+	WatchdogMinInterval = 2 * time.Second
 )
 
 func New() *T {
@@ -326,28 +329,32 @@ func (t *T) notifyWatchDogBus(ctx context.Context) {
 // notifyWatchDogSys is a notify watch dog loop that send notify watch dog
 //
 // It does nothing when:
-//   - env var WATCHDOG_USEC is empty, os is < 2s
+//   - env var WATCHDOG_USEC is empty
 //   - if there is no daemon sysmanager (daemonsys.New retuns error)
+//
+// The lowest watchdog interval is WatchdogMinInterval
 func (t *T) notifyWatchDogSys(ctx context.Context) {
 	var (
 		i   interface{}
 		err error
 	)
-	s := os.Getenv("WATCHDOG_USEC")
+	s := os.Getenv(WatchdogUsecEnv)
 	if s == "" {
 		return
 	}
 	i, err = converters.Duration.Convert(s + "us")
 	if err != nil {
-		t.log.Warnf("disable notify watchdog invalid WATCHDOG_USEC value: %s", s)
+		t.log.Warnf("disable notify watchdog invalid %s value: %s", WatchdogUsecEnv, s)
 		return
 	}
 	d := i.(*time.Duration)
-	sendInterval := *d / 2
-	if sendInterval < time.Second {
-		t.log.Warnf("disable notify watchdog %s < 1 second ", sendInterval)
-		return
+	watchdogTimeout := *d
+	if watchdogTimeout < WatchdogMinInterval {
+		t.log.Warnf("notify watchdog sys: %s timeout %s is below the allowed minimum %s; resetting to %s.",
+			WatchdogUsecEnv, watchdogTimeout, WatchdogMinInterval, WatchdogMinInterval)
+		watchdogTimeout = WatchdogMinInterval
 	}
+	interval := watchdogTimeout / 2
 	i, err = daemonsys.New(ctx)
 	if err != nil {
 		return
@@ -364,8 +371,8 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 		t.log.Infof("notify watchdog sys done")
 		_ = o.Close()
 	}()
-	t.log.Infof("notify watchdog sys started")
-	ticker := time.NewTicker(sendInterval)
+	t.log.Infof("notify watchdog sys started with interval %s", interval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		select {

@@ -70,7 +70,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startCertFS(); err != nil {
 		t.log.Errorf("start certificates volatile fs: %s", err)
 	} else {
-		t.stopFunc = append(t.stopFunc, stopCertFS)
+		t.stopFunc = append(t.stopFunc, t.stopCertFS)
 	}
 	if strategies, err := daemonauth.InitStategies(ctx, &authOption{}); err != nil {
 		return err
