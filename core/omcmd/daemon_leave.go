@@ -43,7 +43,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 	defer cancel()
 
 	if err = t.checkParams(); err != nil {
-		return err
+		return fmt.Errorf("daemon leave: %w", err)
 	}
 
 	// Create token using local cli
@@ -169,22 +169,21 @@ func (t *CmdDaemonLeave) leave(ctx context.Context, c *client.T) error {
 }
 
 func (t *CmdDaemonLeave) checkParams() error {
-	if t.APINode == "" {
-		var clusterNodes []string
-		ccfg, err := object.NewCluster(object.WithVolatile(true))
-		if err != nil {
-			return err
-		}
-		if clusterNodes, err = ccfg.Nodes(); err != nil {
-			return err
-		}
+	if ccfg, err := object.NewCluster(object.WithVolatile(true)); err != nil {
+		return fmt.Errorf("retrieve cluster config: %w", err)
+	} else if clusterNodes, err := ccfg.Nodes(); err != nil {
+		return fmt.Errorf("retrieve cluster nodes: %w", err)
+	} else if len(clusterNodes) < 2 {
+		return fmt.Errorf("not available on single node cluster")
+	} else if t.APINode != "" {
 		for _, node := range clusterNodes {
 			if node != hostname.Hostname() {
 				t.APINode = node
 				return nil
 			}
 		}
-		return fmt.Errorf("single node cluster, leave action is not available")
+		return fmt.Errorf("unable to find api node to post leave request")
+	} else {
+		return nil
 	}
-	return nil
 }
