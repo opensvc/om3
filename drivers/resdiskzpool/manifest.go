@@ -23,7 +23,7 @@ func init() {
 }
 
 // Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
+func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)

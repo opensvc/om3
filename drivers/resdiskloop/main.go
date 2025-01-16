@@ -30,18 +30,18 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) loop() *loop.T {
+func (t *T) loop() *loop.T {
 	l := loop.New(
 		loop.WithLogger(t.Log()),
 	)
 	return l
 }
 
-func (t T) isUp(lo *loop.T) (bool, error) {
+func (t *T) isUp(lo *loop.T) (bool, error) {
 	return lo.FileExists(t.File)
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	lo := t.loop()
 	if v, err := t.isUp(lo); err != nil {
 		return err
@@ -61,7 +61,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	lo := t.loop()
 	if v, err := t.isUp(lo); err != nil {
 		return err
@@ -76,7 +76,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Status(ctx context.Context) status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	lo := t.loop()
 	if v, err := t.isUp(lo); err != nil {
 		t.StatusLog().Warn("%s", err)
@@ -87,35 +87,35 @@ func (t T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-func (t T) fileExists() (bool, error) {
+func (t *T) fileExists() (bool, error) {
 	return file.ExistsAndRegular(t.File)
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	v, err := t.fileExists()
 	return provisioned.FromBool(v), err
 }
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.File
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "file", Value: t.File},
 	}
 	return m, nil
 }
 
-func (t T) isVolatile() bool {
+func (t *T) isVolatile() bool {
 	return df.HasTypeMount("tmpfs", t.File)
 }
 
 // autoProvision provisions the loop on start if the backing file is
 // hosted on a tmpfs
-func (t T) autoProvision(ctx context.Context) error {
+func (t *T) autoProvision(ctx context.Context) error {
 	if v, err := t.fileExists(); err != nil {
 		return err
 	} else if v {
@@ -129,7 +129,7 @@ func (t T) autoProvision(ctx context.Context) error {
 
 // autoUnprovision unprovisions the loop on stop if the backing file is
 // hosted on a tmpfs
-func (t T) autoUnprovision(ctx context.Context) error {
+func (t *T) autoUnprovision(ctx context.Context) error {
 	if v, err := t.fileExists(); err != nil {
 		return err
 	} else if !v {
@@ -141,7 +141,7 @@ func (t T) autoUnprovision(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.fileExists(); err != nil {
 		return err
 	} else if v {
@@ -150,7 +150,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return t.provision(ctx)
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	if v, err := t.fileExists(); err != nil {
 		return err
 	} else if !v {
@@ -159,7 +159,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) provisionDir(ctx context.Context) error {
+func (t *T) provisionDir(ctx context.Context) error {
 	dir := filepath.Dir(t.File)
 	if v, err := file.ExistsAndDir(dir); err != nil {
 		return err
@@ -177,7 +177,7 @@ func (t T) provisionDir(ctx context.Context) error {
 	return nil
 }
 
-func (t T) provision(ctx context.Context) error {
+func (t *T) provision(ctx context.Context) error {
 	var (
 		err  error
 		f    *os.File
@@ -215,12 +215,12 @@ func (t T) provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) unprovision(ctx context.Context) error {
+func (t *T) unprovision(ctx context.Context) error {
 	t.Log().Infof("unlink file %s", t.File)
 	return os.RemoveAll(t.File)
 }
 
-func (t T) exposedDevice(lo *loop.T) *device.T {
+func (t *T) exposedDevice(lo *loop.T) *device.T {
 	i, err := lo.FileGet(t.File)
 	if err != nil {
 		return nil
@@ -229,7 +229,7 @@ func (t T) exposedDevice(lo *loop.T) *device.T {
 	return &dev
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	lo := t.loop()
 	dev := t.exposedDevice(lo)
 	if dev == nil {

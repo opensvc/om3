@@ -158,11 +158,11 @@ func (t *T) configFiles() []string {
 	return files
 }
 
-func (t T) ToSync() []string {
+func (t *T) ToSync() []string {
 	return t.configFiles()
 }
 
-func (t T) checkCapabilities() bool {
+func (t *T) checkCapabilities() bool {
 	if !capabilities.Has(drvID.Cap() + ".hvm") {
 		t.StatusLog().Warn("hvm not supported by host")
 		return false
@@ -170,11 +170,11 @@ func (t T) checkCapabilities() bool {
 	return true
 }
 
-func (t T) hasEncap() bool {
+func (t *T) hasEncap() bool {
 	return slices.Contains(t.EncapNodes, t.Name)
 }
 
-func (t T) isOperational() (bool, error) {
+func (t *T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
 		t.Log().Debugf("isOperational: %s", err)
 		return false, nil
@@ -182,7 +182,7 @@ func (t T) isOperational() (bool, error) {
 	return true, nil
 }
 
-func (t T) isPinging() (bool, error) {
+func (t *T) isPinging() (bool, error) {
 	pinger, err := ping.NewPinger(t.hostname())
 	if err != nil {
 		return false, err
@@ -329,7 +329,7 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isDown(); err != nil {
 		return err
 	} else if v {
@@ -389,7 +389,7 @@ func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Durat
 	})
 }
 
-func (t T) containerStop(ctx context.Context) error {
+func (t *T) containerStop(ctx context.Context) error {
 	state, err := t.domState()
 	if err != nil {
 		return err
@@ -416,7 +416,7 @@ func (t T) containerStop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	state, err := t.domState()
 	if err != nil {
 		return false, err
@@ -431,7 +431,7 @@ func isUpFromState(state string) bool {
 	return false
 }
 
-func (t T) isDown() (bool, error) {
+func (t *T) isDown() (bool, error) {
 	state, err := t.domState()
 	if err != nil {
 		return false, err
@@ -476,17 +476,17 @@ func domStateFromReader(r io.Reader) (string, error) {
 	return "", fmt.Errorf("state not found")
 }
 
-func (t T) hasConfigFile() bool {
+func (t *T) hasConfigFile() bool {
 	p := t.configFile()
 	return file.Exists(p)
 }
 
-func (t T) hasAutostartFile() bool {
+func (t *T) hasAutostartFile() bool {
 	p := t.autostartFile()
 	return file.Exists(p)
 }
 
-func (t T) firmwareFiles() ([]string, error) {
+func (t *T) firmwareFiles() ([]string, error) {
 	files := make([]string, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
@@ -520,7 +520,7 @@ func (t T) firmwareFiles() ([]string, error) {
 	return files, nil
 }
 
-func (t T) HasEFI() (bool, error) {
+func (t *T) HasEFI() (bool, error) {
 	cf := t.configFile()
 	f, err := os.Open(cf)
 	if err != nil {
@@ -548,7 +548,7 @@ func (t T) HasEFI() (bool, error) {
 	return false, nil
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	l := make(device.L, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
@@ -573,7 +573,7 @@ func (t T) SubDevices() device.L {
 	return l
 }
 
-func (t T) setPartitions() error {
+func (t *T) setPartitions() error {
 	cf := t.configFile()
 	cgroupDir := t.cgroupDir()
 	f, err := os.Open(cf)
@@ -638,7 +638,7 @@ func (t T) setPartitions() error {
 	return nil
 }
 
-func (t T) unsetPartitions() error {
+func (t *T) unsetPartitions() error {
 	cf := t.configFile()
 	f, err := os.Open(cf)
 	if err != nil {
@@ -692,11 +692,11 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
-func (t T) provisioned() (bool, error) {
+func (t *T) provisioned() (bool, error) {
 	if state, err := t.domState(); err != nil {
 		return false, err
 	} else if state == DomStateNone {
@@ -730,7 +730,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	isProvisioned, err := t.provisioned()
 	if err != nil {
 		return err
@@ -754,11 +754,11 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return cmd.Run()
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	if t.hasConfigFile() {
 		return provisioned.True, nil
 	}
@@ -797,14 +797,14 @@ func (t *Path) SetEncapFileOwnership(p string) error {
 
 */
 
-func (t T) rcmd() ([]string, error) {
+func (t *T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
 	}
 	return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
 }
 
-func (t T) rexec(cmd string) error {
+func (t *T) rexec(cmd string) error {
 	if rcmd, err := t.rcmd(); err == nil {
 		rcmd = append(rcmd, cmd)
 		return t.execViaRCmd(rcmd)
@@ -812,14 +812,14 @@ func (t T) rexec(cmd string) error {
 	return t.execViaInternalSSH(cmd)
 }
 
-func (t T) Enter() error {
+func (t *T) Enter() error {
 	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
 	return t.enterViaInternalSSH()
 }
 
-func (t T) execViaInternalSSH(cmd string) error {
+func (t *T) execViaInternalSSH(cmd string) error {
 	hn := t.hostname()
 	client, err := sshnode.NewClient(hn)
 	if err != nil {
@@ -848,7 +848,7 @@ func (t T) execViaInternalSSH(cmd string) error {
 	return nil
 }
 
-func (t T) execViaRCmd(args []string) error {
+func (t *T) execViaRCmd(args []string) error {
 	cmd := command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
@@ -860,7 +860,7 @@ func (t T) execViaRCmd(args []string) error {
 	return cmd.Run()
 }
 
-func (t T) enterViaInternalSSH() error {
+func (t *T) enterViaInternalSSH() error {
 	client, err := sshnode.NewClient(t.hostname())
 	if err != nil {
 		return err
@@ -894,7 +894,7 @@ func (t T) enterViaInternalSSH() error {
 	return nil
 }
 
-func (t T) enterViaRCmd(rcmd []string) error {
+func (t *T) enterViaRCmd(rcmd []string) error {
 	sh := "/bin/bash"
 	args := append(rcmd, sh)
 	cmd := exec.Command(args[0], args[1:]...)
@@ -908,7 +908,7 @@ func (t T) enterViaRCmd(rcmd []string) error {
 	return syscall.Exec(args[0], args, os.Environ())
 }
 
-func (t T) hostname() string {
+func (t *T) hostname() string {
 	if t.Hostname != "" {
 		return t.Hostname
 	}
@@ -952,7 +952,7 @@ func (t *Path) ContainerHead() (string, error) {
 */
 
 // cgroupDir returns the container resource cgroup path, relative to a controler head.
-func (t T) cgroupDir() string {
+func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
 
@@ -1002,7 +1002,7 @@ func (t *T) abortPeerUp() bool {
 	return false
 }
 
-func (t T) upPeer() (string, error) {
+func (t *T) upPeer() (string, error) {
 	isPeerUp := func(n string) (bool, error) {
 		client, err := sshnode.NewClient(n)
 		if err != nil {

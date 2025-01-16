@@ -54,7 +54,7 @@ type (
 	}
 )
 
-func (t T) SortKey() string {
+func (t *T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
 		return t.StartCmd + " " + t.RID()
 	} else {
@@ -198,19 +198,19 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	return resultStatus
 }
 
-func (t T) Provision(ctx context.Context) error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
+func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
 	var err error
 	var baseCommand string
 	if baseCommand, err = t.getCmdStringFromBoolRule(s, action); err != nil {
@@ -224,7 +224,7 @@ func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 }
 
 // CmdArgs returns the command argv of an action
-func (t T) CmdArgs(s string, action string) ([]string, error) {
+func (t *T) CmdArgs(s string, action string) ([]string, error) {
 	if len(s) == 0 {
 		t.Log().Debugf("nothing to do for action '%v'", action)
 		return nil, nil
@@ -249,7 +249,7 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
-func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
+func (t *T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 	cmdArgs, err := t.CmdArgs(s, action)
 	if err != nil || cmdArgs == nil {
 		return nil, err
@@ -272,7 +272,7 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 	return options, nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	durationToString := func(duration *time.Duration) string {
 		if duration == nil {
 			return ""
@@ -333,7 +333,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 //	true like => getScript() + " " + action
 //	false like => ""
 //	other => original value
-func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
+func (t *T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 	if scriptCommandBool, ok := boolRule(s); ok {
 		switch scriptCommandBool {
 		case true:
@@ -355,7 +355,7 @@ func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 //
 //	<pathetc>/namespaces/<namespace>/<kind>/<svcname>.d/<script> (when namespace is not root)
 //	<pathetc>/<svcname>.d/<script> (when namespace is root)
-func (t T) getScript() string {
+func (t *T) getScript() string {
 	s := t.ScriptPath
 	if len(s) == 0 {
 		return ""
@@ -394,7 +394,7 @@ func isSequenceNumber(s string) bool {
 	return false
 }
 
-func (t T) GetTimeout(action string) time.Duration {
+func (t *T) GetTimeout(action string) time.Duration {
 	var timeout *time.Duration
 	switch action {
 	case "start":
@@ -415,7 +415,7 @@ func (t T) GetTimeout(action string) time.Duration {
 	return *timeout
 }
 
-func (t T) ExitCodeToStatus(exitCode int) (status.T, error) {
+func (t *T) ExitCodeToStatus(exitCode int) (status.T, error) {
 	m, err := retcodes.Parse(t.RetCodes)
 	if err != nil {
 		t.Log().Warnf("retcode parsing: %s", err)

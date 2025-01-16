@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/util/lvm2"
 )
 
-func (t T) vg() VGDriver {
+func (t *T) vg() VGDriver {
 	vg := lvm2.NewVG(
 		t.VGName,
 		lvm2.WithLogger(t.Log()),
@@ -22,7 +22,7 @@ func hostTag() string {
 	return hostname.Hostname()
 }
 
-func (t T) startTag(ctx context.Context) error {
+func (t *T) startTag(ctx context.Context) error {
 	if err := t.cleanTags(ctx); err != nil {
 		return err
 	}
@@ -38,23 +38,23 @@ func (t T) startTag(ctx context.Context) error {
 	return nil
 }
 
-func (t T) stopTag() error {
+func (t *T) stopTag() error {
 	return t.delTag()
 }
 
-func (t T) addTag() error {
+func (t *T) addTag() error {
 	return t.vg().AddTag("@" + hostTag())
 }
 
-func (t T) hasTag() (bool, error) {
+func (t *T) hasTag() (bool, error) {
 	return t.vg().HasTag(hostTag())
 }
 
-func (t T) delTag() error {
+func (t *T) delTag() error {
 	return t.vg().DelTag("@" + hostTag())
 }
 
-func (t T) cleanTags(ctx context.Context) error {
+func (t *T) cleanTags(ctx context.Context) error {
 	tags, err := t.vg().Tags()
 	if err != nil {
 		return err

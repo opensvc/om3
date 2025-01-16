@@ -229,7 +229,8 @@ func TestStatus(t *testing.T) {
 }
 
 func TestKeywordOptions(t *testing.T) {
-	m := T{}.Manifest()
+	r := &T{}
+	m := r.Manifest()
 	keywords := []string{}
 	for _, s := range m.Keywords() {
 		keywords = append(keywords, s.Option)

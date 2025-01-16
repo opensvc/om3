@@ -19,7 +19,7 @@ import (
 	"github.com/opensvc/om3/util/udevadm"
 )
 
-func (t T) expectedDevPath() string {
+func (t *T) expectedDevPath() string {
 	s := strings.ToLower(t.DiskID)
 	if strings.HasPrefix(s, "0x") {
 		s = s[2:]
@@ -27,7 +27,7 @@ func (t T) expectedDevPath() string {
 	return s
 }
 
-func (t T) devPath() string {
+func (t *T) devPath() string {
 	s := t.expectedDevPath()
 	matches, err := filepath.Glob("/dev/disk/by-id/dm-uuid-mpath-[36]" + s)
 	if err != nil || len(matches) != 1 {
@@ -36,7 +36,7 @@ func (t T) devPath() string {
 	return matches[0]
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	l := make(device.L, 0)
 	p, err := realpath.Realpath(t.devPath())
 	if err != nil {
@@ -57,7 +57,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t T) unconfigure() error {
+func (t *T) unconfigure() error {
 	for _, dev := range t.ExposedDevices() {
 		slaves, err := dev.Slaves()
 		if err != nil {
@@ -80,7 +80,7 @@ func (t T) unconfigure() error {
 }
 
 // waitAnyPath waits for the mapth device pointing to the disk id to appear.
-func (t T) waitDevPath(interval time.Duration, timeout time.Duration) error {
+func (t *T) waitDevPath(interval time.Duration, timeout time.Duration) error {
 	limit := time.Now().Add(timeout)
 	devPath := fmt.Sprintf("/dev/disk/by-id/dm-uuid-mpath-3%s", t.DiskID)
 	for {
@@ -105,7 +105,7 @@ func (t T) waitDevPath(interval time.Duration, timeout time.Duration) error {
 }
 
 // waitAnyPath waits for any sd or dm device pointing to the disk id to appear.
-func (t T) waitAnyPath(interval time.Duration, timeout time.Duration) error {
+func (t *T) waitAnyPath(interval time.Duration, timeout time.Duration) error {
 	limit := time.Now().Add(timeout)
 	devPath := fmt.Sprintf("/dev/disk/by-id/wwn-0x%s", t.DiskID)
 	for {
@@ -129,7 +129,7 @@ func (t T) waitAnyPath(interval time.Duration, timeout time.Duration) error {
 	return fmt.Errorf("timeout waiting for %s to appear", devPath)
 }
 
-func (t T) configureMultipath() error {
+func (t *T) configureMultipath() error {
 	realDevPath, err := realpath.Realpath(t.devPath())
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (t T) configureMultipath() error {
 	return dev.ConfigureMultipath(1)
 }
 
-func (t T) configure(force forceMode) error {
+func (t *T) configure(force forceMode) error {
 	exposedDevices := t.ExposedDevices()
 	if force == preserve && len(exposedDevices) > 0 {
 		t.Log().Infof("system configuration: skip: device already exposed: %s", exposedDevices)

@@ -59,7 +59,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) App() *resapp.T {
+func (t *T) App() *resapp.T {
 	return &resapp.T{
 		BaseT: resapp.BaseT{
 			T:           t.BaseTask.T,
@@ -85,19 +85,19 @@ func (t T) App() *resapp.T {
 	}
 }
 
-func (t T) Run(ctx context.Context) error {
+func (t *T) Run(ctx context.Context) error {
 	return t.RunIf(ctx, t.lockedRun)
 }
 
-func (t T) loggerWithProc(p proc.T) *plog.Logger {
+func (t *T) loggerWithProc(p proc.T) *plog.Logger {
 	return t.Log().Attr("cmd", p.CommandLine()).Attr("cmd_pid", p.PID())
 }
 
-func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
+func (t *T) loggerWithCmd(cmd *command.T) *plog.Logger {
 	return t.Log().Attr("cmd", cmd.String())
 }
 
-func (t T) lockedRun(ctx context.Context) (err error) {
+func (t *T) lockedRun(ctx context.Context) (err error) {
 	var opts []funcopt.O
 	app := t.App()
 	if opts, err = app.GetFuncOpts(t.RunCmd, "run"); err != nil {
@@ -137,7 +137,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t T) onError() error {
+func (t *T) onError() error {
 	app := t.App()
 	opts, err := app.GetFuncOpts(t.OnErrorCmd, "on_error")
 	if err != nil {
@@ -199,11 +199,11 @@ func (t *T) stop(ctx context.Context) error {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return ""
 }
 
-func (t T) getRunning(cmdArgs []string) (proc.L, error) {
+func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 	procs, err := proc.All()
 	if err != nil {
 		return procs, err

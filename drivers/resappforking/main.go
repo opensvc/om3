@@ -23,12 +23,12 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) loggerWithCmd(cmd *command.T) *plog.Logger {
+func (t *T) loggerWithCmd(cmd *command.T) *plog.Logger {
 	return t.Log().Attr("cmd", cmd.String())
 }
 
 // Start the Resource
-func (t T) Start(ctx context.Context) (err error) {
+func (t *T) Start(ctx context.Context) (err error) {
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StartCmd, "start"); err != nil {
 		return err
@@ -79,6 +79,6 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return drvID.String()
 }

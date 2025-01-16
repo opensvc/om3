@@ -51,7 +51,7 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
@@ -74,7 +74,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) umount(ctx context.Context) error {
+func (t *T) umount(ctx context.Context) error {
 	if legacy, err := t.isLegacy(); err != nil {
 		return err
 	} else if err := t.umountWithLegacy(legacy); err != nil {
@@ -103,7 +103,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	s := t.Device
 	m := t.mountPoint()
 	if m != "" {
@@ -112,7 +112,7 @@ func (t T) Label(_ context.Context) string {
 	return s
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "dev", Value: t.Device},
 		{Key: "mnt", Value: t.mountPoint()},
@@ -121,7 +121,7 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) fsDir() *resfsdir.T {
+func (t *T) fsDir() *resfsdir.T {
 	r := resfsdir.New().(*resfsdir.T)
 	r.SetRID(t.RID())
 	r.SetObject(t.GetObject())
@@ -132,20 +132,20 @@ func (t T) fsDir() *resfsdir.T {
 	return r
 }
 
-func (t T) testFile() string {
+func (t *T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }
 
-func (t T) mountOptions() []string {
+func (t *T) mountOptions() []string {
 	return strings.Split(t.MountOptions, ",")
 }
 
-func (t T) mountPoint() string {
+func (t *T) mountPoint() string {
 	// add zonepath translation, and cache ?
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() device.T {
+func (t *T) device() device.T {
 	return device.New(t.Device, device.WithLogger(t.Log()))
 }
 
@@ -190,7 +190,7 @@ func (t *T) mountWithLegacy(legacy bool) error {
 	}
 }
 
-func (t T) mountLegacy() error {
+func (t *T) mountLegacy() error {
 	timeout, _ := time.ParseDuration("1m")
 	a := args.New()
 	a.Append("-t", "zfs")
@@ -217,7 +217,7 @@ func (t T) mountLegacy() error {
 	return nil
 }
 
-func (t T) umountLegacy() error {
+func (t *T) umountLegacy() error {
 	timeout, _ := time.ParseDuration("1m")
 	cmd := command.New(
 		command.WithName("umount"),
@@ -236,7 +236,7 @@ func (t T) umountLegacy() error {
 	return nil
 }
 
-func (t T) maySetMountPointProperty() error {
+func (t *T) maySetMountPointProperty() error {
 	fs := t.fs()
 	mnt := t.mountPoint()
 	mntProp, err := fs.GetProperty("mountpoint")
@@ -249,14 +249,14 @@ func (t T) maySetMountPointProperty() error {
 	return fs.SetProperty("mountpoint", mnt)
 }
 
-func (t T) mountNative() error {
+func (t *T) mountNative() error {
 	if err := t.maySetMountPointProperty(); err != nil {
 		return err
 	}
 	return t.fs().Mount()
 }
 
-func (t T) umountNative() error {
+func (t *T) umountNative() error {
 	fs := t.fs()
 	if err := fs.Umount(); err == nil {
 		return nil
@@ -282,25 +282,25 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	return nil
 }
 
-func (t T) fs() *zfs.Filesystem {
+func (t *T) fs() *zfs.Filesystem {
 	return &zfs.Filesystem{
 		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
 		Name: t.Device,
 	}
 }
 
-func (t T) pool() *zfs.Pool {
+func (t *T) pool() *zfs.Pool {
 	return &zfs.Pool{
 		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
 		Name: t.poolName(),
 	}
 }
 
-func (t T) poolName() string {
+func (t *T) poolName() string {
 	return zfs.DatasetName(t.Device).PoolName()
 }
 
-func (t T) baseName() string {
+func (t *T) baseName() string {
 	return zfs.DatasetName(t.Device).BaseName()
 }
 
@@ -352,23 +352,23 @@ func parseNoneOrFactorOrSize(size *int64, expr string) (*int64, error) {
 	}
 }
 
-func (t T) refquota() (*int64, error) {
+func (t *T) refquota() (*int64, error) {
 	return parseNoneOrFactorOrSize(t.Size, t.RefQuota)
 }
 
-func (t T) quota() (*int64, error) {
+func (t *T) quota() (*int64, error) {
 	return parseNoneOrFactorOrSize(t.Size, t.Quota)
 }
 
-func (t T) refreservation() (*int64, error) {
+func (t *T) refreservation() (*int64, error) {
 	return parseNoneOrFactorOrSize(t.Size, t.RefReservation)
 }
 
-func (t T) reservation() (*int64, error) {
+func (t *T) reservation() (*int64, error) {
 	return parseNoneOrFactorOrSize(t.Size, t.Reservation)
 }
 
-func (t T) mkfsOptions() []string {
+func (t *T) mkfsOptions() []string {
 	a := args.New()
 	a.Set(t.MKFSOptions)
 	if !a.HasOption("-p") {
@@ -435,11 +435,11 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) removeMountPoint() error {
+func (t *T) removeMountPoint() error {
 	mnt := t.mountPoint()
 	if mnt == "" {
 		return nil
@@ -454,7 +454,7 @@ func (t T) removeMountPoint() error {
 	return os.RemoveAll(mnt)
 }
 
-func (t T) isLegacy() (bool, error) {
+func (t *T) isLegacy() (bool, error) {
 	if mountpoint, err := t.getMountPointProperty(); err != nil {
 		return false, err
 	} else {
@@ -462,7 +462,7 @@ func (t T) isLegacy() (bool, error) {
 	}
 }
 
-func (t T) getMountPointProperty() (string, error) {
+func (t *T) getMountPointProperty() (string, error) {
 	if val, err := t.fs().GetProperty("mountpoint"); err != nil {
 		return "", err
 	} else {
@@ -470,15 +470,15 @@ func (t T) getMountPointProperty() (string, error) {
 	}
 }
 
-func (t T) Head() string {
+func (t *T) Head() string {
 	return t.MountPoint
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	devs, _ := t.pool().VDevDevices()
 	return devs
 }

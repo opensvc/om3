@@ -271,7 +271,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	devsCount := len(t.Devices)
 	devsFromCount := len(t.DevicesFrom)
 	switch {
@@ -288,7 +288,7 @@ func (t T) Label(_ context.Context) string {
 	}
 }
 
-func (t T) ScheduleOptions() resource.ScheduleOptions {
+func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action: "sync_update",
 		Option: "schedule",
@@ -296,11 +296,11 @@ func (t T) ScheduleOptions() resource.ScheduleOptions {
 	}
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	mergedDevs, _ := t.mergeDevs()
 	m := resource.InfoKeys{
 		{Key: "devs", Value: strings.Join(t.Devices, " ")},

@@ -44,34 +44,34 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(t.DiskID != ""), nil
 }
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.DiskID
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{}
 	return m, nil
 }
 
-func (t T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	return t.unconfigure()
 }
 
-func (t T) ProvisionLeaded(ctx context.Context) error {
+func (t *T) ProvisionLeaded(ctx context.Context) error {
 	return t.configure(preserve)
 }
 
@@ -110,15 +110,15 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ReservableDevices() device.L {
+func (t *T) ReservableDevices() device.L {
 	return t.ExposedDevices()
 }
 
-func (t T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices() device.L {
 	return t.ExposedDevices()
 }
 
-func (t T) diskIDKey(node string) key.T {
+func (t *T) diskIDKey(node string) key.T {
 	k := key.T{
 		Section: t.RID(),
 		Option:  "disk_id",
@@ -128,7 +128,7 @@ func (t T) diskIDKey(node string) key.T {
 	}
 	return k
 }
-func (t T) pooler() (pool.ArrayPooler, error) {
+func (t *T) pooler() (pool.ArrayPooler, error) {
 	node, err := object.NewNode()
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func (t T) pooler() (pool.ArrayPooler, error) {
 	}
 }
 
-func (t T) diskName(p pool.Pooler) string {
+func (t *T) diskName(p pool.Pooler) string {
 	if t.Shared {
 		return t.Name
 	} else {
@@ -155,7 +155,7 @@ func (t T) diskName(p pool.Pooler) string {
 	}
 }
 
-func (t T) diskMapToNodes() []string {
+func (t *T) diskMapToNodes() []string {
 	if t.Shared {
 		return t.Nodes
 	} else {
@@ -163,7 +163,7 @@ func (t T) diskMapToNodes() []string {
 	}
 }
 
-func (t T) deleteDisk() ([]pool.Disk, error) {
+func (t *T) deleteDisk() ([]pool.Disk, error) {
 	p, err := t.pooler()
 	if err != nil {
 		return []pool.Disk{}, err
@@ -178,7 +178,7 @@ func (t T) deleteDisk() ([]pool.Disk, error) {
 	return disks, nil
 }
 
-func (t T) createDisk() ([]pool.Disk, error) {
+func (t *T) createDisk() ([]pool.Disk, error) {
 	p, err := t.pooler()
 	if err != nil {
 		return []pool.Disk{}, err

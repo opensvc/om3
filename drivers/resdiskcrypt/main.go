@@ -68,7 +68,7 @@ func genPassphrase() []byte {
 	return []byte(string(inRune))
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.getName()},
 		{Key: "dev", Value: t.getDev()},
@@ -79,18 +79,18 @@ func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t T) secPath() (naming.Path, error) {
+func (t *T) secPath() (naming.Path, error) {
 	return naming.NewPath(t.Path.Namespace, naming.KindSec, t.Secret)
 }
 
-func (t T) passphraseKeyname() string {
+func (t *T) passphraseKeyname() string {
 	s := t.RID()
 	s = strings.ReplaceAll(s, "#", "_")
 	s = s + "_crypt_passphrase"
 	return s
 }
 
-func (t T) forgetPassphrase() error {
+func (t *T) forgetPassphrase() error {
 	sec, err := t.sec()
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (t T) forgetPassphrase() error {
 	return sec.RemoveKey(keyname)
 }
 
-func (t T) passphraseNew() ([]byte, error) {
+func (t *T) passphraseNew() ([]byte, error) {
 	sec, err := t.sec()
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (t T) passphraseNew() ([]byte, error) {
 	return sec.DecodeKey(keyname)
 }
 
-func (t T) passphraseStrict() ([]byte, error) {
+func (t *T) passphraseStrict() ([]byte, error) {
 	sec, err := t.sec()
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (t T) passphraseStrict() ([]byte, error) {
 	return sec.DecodeKey(keyname)
 }
 
-func (t T) verifyPassphrase(force bool) error {
+func (t *T) verifyPassphrase(force bool) error {
 	if force {
 		return nil
 	}
@@ -142,7 +142,7 @@ func (t T) verifyPassphrase(force bool) error {
 	return nil
 }
 
-func (t T) sec() (object.Sec, error) {
+func (t *T) sec() (object.Sec, error) {
 	p, err := t.secPath()
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (t T) sec() (object.Sec, error) {
 	return v, nil
 }
 
-func (t T) exists() (bool, error) {
+func (t *T) exists() (bool, error) {
 	dev := t.getDev()
 	if dev == "" {
 		return false, nil
@@ -172,7 +172,7 @@ func (t T) exists() (bool, error) {
 	return true, nil
 }
 
-func (t T) isUp() (bool, error) {
+func (t *T) isUp() (bool, error) {
 	if v, err := t.exists(); err != nil {
 		return false, err
 	} else if !v {
@@ -185,7 +185,7 @@ func (t T) isUp() (bool, error) {
 	return file.Exists(dev.String()), nil
 }
 
-func (t T) activate() error {
+func (t *T) activate() error {
 	devp := t.getDev()
 	if devp == "" {
 		return fmt.Errorf("abort luksOpen: no dev")
@@ -228,7 +228,7 @@ func (t T) activate() error {
 	return nil
 }
 
-func (t T) deactivate(force bool) error {
+func (t *T) deactivate(force bool) error {
 	name := t.getName()
 	if name == "" {
 		return nil
@@ -257,7 +257,7 @@ func (t T) deactivate(force bool) error {
 	return nil
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
@@ -273,7 +273,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -288,15 +288,15 @@ func (t T) Stop(ctx context.Context) error {
 	return t.deactivate(force)
 }
 
-func (t T) removeHolders() error {
+func (t *T) removeHolders() error {
 	return t.exposedDevice().RemoveHolders()
 }
 
-func (t T) getDev() string {
+func (t *T) getDev() string {
 	return t.Dev
 }
 
-func (t T) getName() string {
+func (t *T) getName() string {
 	if t.Name != "" {
 		return t.Name
 	}
@@ -316,11 +316,11 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return t.getName()
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	dev := t.getDev()
 	if dev == "" {
 		return fmt.Errorf("no dev")
@@ -389,7 +389,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	dev := t.getDev()
 	if dev == "" {
 		return nil
@@ -407,7 +407,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) erase(dev string) error {
+func (t *T) erase(dev string) error {
 	cmd := command.New(
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksErase", "--batch-mode", dev),
@@ -426,12 +426,12 @@ func (t T) erase(dev string) error {
 	return nil
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	v, err := t.exists()
 	return provisioned.FromBool(v), err
 }
 
-func (t T) exposedDevpath() string {
+func (t *T) exposedDevpath() string {
 	name := t.getName()
 	if name == "" {
 		return ""
@@ -439,7 +439,7 @@ func (t T) exposedDevpath() string {
 	return fmt.Sprintf("/dev/mapper/%s", name)
 }
 
-func (t T) exposedDevice() *device.T {
+func (t *T) exposedDevice() *device.T {
 	devpath := t.exposedDevpath()
 	if devpath == "" {
 		return nil
@@ -448,7 +448,7 @@ func (t T) exposedDevice() *device.T {
 	return &dev
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	dev := t.exposedDevice()
 	if dev == nil {
 		return device.L{}
@@ -460,7 +460,7 @@ func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() device.L {
+func (t *T) SubDevices() device.L {
 	devp := t.getDev()
 	if devp == "" {
 		return device.L{}

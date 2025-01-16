@@ -42,14 +42,14 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) raw() *raw.T {
+func (t *T) raw() *raw.T {
 	l := raw.New(
 		raw.WithLogger(t.Log()),
 	)
 	return l
 }
 
-func (t T) devices() DevPairs {
+func (t *T) devices() DevPairs {
 	l := NewDevPairs()
 	for _, e := range t.Devices {
 		x := strings.SplitN(e, ":", 2)
@@ -71,7 +71,7 @@ func (t T) devices() DevPairs {
 	return l
 }
 
-func (t T) stopBlockDevice(ctx context.Context, pair DevPair) error {
+func (t *T) stopBlockDevice(ctx context.Context, pair DevPair) error {
 	if pair.Dst == nil {
 		return nil
 	}
@@ -100,7 +100,7 @@ func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
 	return s, issues
 }
 
-func (t T) RealSrc(pair DevPair) (*device.T, error) {
+func (t *T) RealSrc(pair DevPair) (*device.T, error) {
 	if !t.CreateCharDevices {
 		return pair.Src, nil
 	}
@@ -164,7 +164,7 @@ func (t *T) statusCreateBlockDevice(pair DevPair) (status.T, []string) {
 	return status.Down, issues
 }
 
-func (t T) startBlockDevice(ctx context.Context, pair DevPair) error {
+func (t *T) startBlockDevice(ctx context.Context, pair DevPair) error {
 	if pair.Dst == nil {
 		return nil
 	}
@@ -184,7 +184,7 @@ func (t T) startBlockDevice(ctx context.Context, pair DevPair) error {
 	return nil
 }
 
-func (t T) setOwnership(ctx context.Context, p string) error {
+func (t *T) setOwnership(ctx context.Context, p string) error {
 	if t.User == nil && t.Group == nil {
 		return nil
 	}
@@ -215,7 +215,7 @@ func (t T) setOwnership(ctx context.Context, p string) error {
 	return nil
 }
 
-func (t T) uid() int {
+func (t *T) uid() int {
 	if t.User == nil {
 		return -1
 	}
@@ -223,7 +223,7 @@ func (t T) uid() int {
 	return i
 }
 
-func (t T) gid() int {
+func (t *T) gid() int {
 	if t.Group == nil {
 		return -1
 	}
@@ -289,7 +289,7 @@ func (t *T) checkOwnership(p string) []string {
 	return []string{}
 }
 
-func (t T) setMode(ctx context.Context, p string) error {
+func (t *T) setMode(ctx context.Context, p string) error {
 	if t.Perm == nil {
 		return nil
 	}
@@ -312,7 +312,7 @@ func (t T) setMode(ctx context.Context, p string) error {
 	return nil
 }
 
-func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
+func (t *T) createBlockDevice(ctx context.Context, pair DevPair) error {
 	src, err := t.RealSrc(pair)
 	if err != nil {
 		return err
@@ -354,7 +354,7 @@ func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 	return nil
 }
 
-func (t T) startBlockDevices(ctx context.Context) error {
+func (t *T) startBlockDevices(ctx context.Context) error {
 	for _, pair := range t.devices() {
 		if err := t.startBlockDevice(ctx, pair); err != nil {
 			return err
@@ -363,7 +363,7 @@ func (t T) startBlockDevices(ctx context.Context) error {
 	return nil
 }
 
-func (t T) stopBlockDevices(ctx context.Context) error {
+func (t *T) stopBlockDevices(ctx context.Context) error {
 	for _, pair := range t.devices() {
 		if err := t.stopBlockDevice(ctx, pair); err != nil {
 			return err
@@ -372,7 +372,7 @@ func (t T) stopBlockDevices(ctx context.Context) error {
 	return nil
 }
 
-func (t T) startCharDevices(ctx context.Context) error {
+func (t *T) startCharDevices(ctx context.Context) error {
 	if !t.CreateCharDevices {
 		return nil
 	}
@@ -397,7 +397,7 @@ func (t T) startCharDevices(ctx context.Context) error {
 	return nil
 }
 
-func (t T) stopCharDevices(ctx context.Context) error {
+func (t *T) stopCharDevices(ctx context.Context) error {
 	if !t.CreateCharDevices {
 		return nil
 	}
@@ -460,7 +460,7 @@ func (t *T) statusCharDevices() status.T {
 	return s
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if err := t.startCharDevices(ctx); err != nil {
 		return err
 	}
@@ -470,7 +470,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if err := t.stopBlockDevices(ctx); err != nil {
 		return err
 	}
@@ -489,30 +489,30 @@ func (t *T) Status(ctx context.Context) status.T {
 	return s
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(true), nil
 }
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	return strings.Join(t.Devices, " ")
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{}
 	return m, nil
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ExposedDevices() device.L {
+func (t *T) ExposedDevices() device.L {
 	l := make(device.L, 0)
 	for _, pair := range t.devices() {
 		if pair.Dst != nil {

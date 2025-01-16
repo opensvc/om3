@@ -62,7 +62,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) IsRunning() bool {
+func (t *T) IsRunning() bool {
 	unlock, err := t.Lock(false, time.Second*0, lockName)
 	if err != nil {
 		return true
@@ -71,7 +71,7 @@ func (t T) IsRunning() bool {
 	return false
 }
 
-func (t T) Full(ctx context.Context) error {
+func (t *T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
@@ -83,7 +83,7 @@ func (t T) Full(ctx context.Context) error {
 	return t.lockedSync(ctx, modeFull, target)
 }
 
-func (t T) Update(ctx context.Context) error {
+func (t *T) Update(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
@@ -95,7 +95,7 @@ func (t T) Update(ctx context.Context) error {
 	return t.lockedSync(ctx, modeIncr, target)
 }
 
-func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
+func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
 	if len(target) == 0 {
 		target = t.Target
 	}
@@ -385,7 +385,7 @@ func (t *T) running(ctx context.Context) bool {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t T) Label(_ context.Context) string {
+func (t *T) Label(_ context.Context) string {
 	switch {
 	case t.Src != "" && len(t.Target) > 0:
 		return t.Src + " to " + strings.Join(t.Target, " ")
@@ -398,7 +398,7 @@ func (t T) Label(_ context.Context) string {
 	}
 }
 
-func (t T) getRunning(cmdArgs []string) (proc.L, error) {
+func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 	procs, err := proc.All()
 	if err != nil {
 		return procs, err
@@ -408,7 +408,7 @@ func (t T) getRunning(cmdArgs []string) (proc.L, error) {
 	return procs, nil
 }
 
-func (t T) ScheduleOptions() resource.ScheduleOptions {
+func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action: "sync_update",
 		Option: "schedule",
@@ -416,7 +416,7 @@ func (t T) ScheduleOptions() resource.ScheduleOptions {
 	}
 }
 
-func (t T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
@@ -490,7 +490,7 @@ func (t *T) remoteSnapshotExists(name, nodename string) (bool, error) {
 	return true, nil
 }
 
-func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
+func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 	err := func() error {
 		if mode == modeFull {
 			return t.sendInitial(ctx, nodename)
@@ -505,7 +505,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) error {
 	return err
 }
 
-func (t T) user() string {
+func (t *T) user() string {
 	if t.User != "" {
 		return t.User
 	} else {
@@ -513,7 +513,7 @@ func (t T) user() string {
 	}
 }
 
-func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	target := sort.StringSlice(t.Target)
 	sort.Sort(target)
 	m := resource.InfoKeys{
