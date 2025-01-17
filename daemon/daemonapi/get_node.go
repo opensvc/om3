@@ -26,8 +26,8 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		monitor := node.MonitorData.Get(config.Node)
-		status := node.StatusData.Get(config.Node)
+		monitor := node.MonitorData.GetByNode(config.Node)
+		status := node.StatusData.GetByNode(config.Node)
 		d := api.NodeItem{
 			Kind: "NodeItem",
 			Meta: api.NodeMeta{

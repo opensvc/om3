@@ -26,7 +26,7 @@ func (a *DaemonAPI) GetNodeSSHKey(ctx echo.Context, nodename string) error {
 }
 
 func (a *DaemonAPI) getLocalSSHKey(ctx echo.Context) error {
-	nodeConfig := node.ConfigData.Get(a.localhost)
+	nodeConfig := node.ConfigData.GetByNode(a.localhost)
 	log := LogHandler(ctx, "GetNodeSSHKeys")
 	b := bytes.NewBuffer(nil)
 	homeDir, err := os.UserHomeDir()

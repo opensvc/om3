@@ -31,8 +31,8 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		monitor := instance.MonitorData.Get(config.Path, config.Node)
-		status := instance.StatusData.Get(config.Path, config.Node)
+		monitor := instance.MonitorData.GetByPathAndNode(config.Path, config.Node)
+		status := instance.StatusData.GetByPathAndNode(config.Path, config.Node)
 		d := api.InstanceItem{
 			Kind: "InstanceItem",
 			Meta: api.InstanceMeta{
@@ -57,12 +57,12 @@ func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace str
 		log.Errorf("GetInstance: %s", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
 	}
-	config := instance.ConfigData.Get(path, nodename)
+	config := instance.ConfigData.GetByPathAndNode(path, nodename)
 	if config == nil {
 		return ctx.NoContent(http.StatusNotFound)
 	}
-	monitor := instance.MonitorData.Get(path, nodename)
-	status := instance.StatusData.Get(path, nodename)
+	monitor := instance.MonitorData.GetByPathAndNode(path, nodename)
+	status := instance.StatusData.GetByPathAndNode(path, nodename)
 	item := api.InstanceItem{
 		Kind: "InstanceItem",
 		Meta: api.InstanceMeta{

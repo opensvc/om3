@@ -100,7 +100,7 @@ func TestDaemonData(t *testing.T) {
 
 	t.Run("from daemon start", func(t *testing.T) {
 		t.Run("node.StatusData & cluster.ConfigData are populated initialized", func(t *testing.T) {
-			localNodeStatus := node.StatusData.Get(localNode)
+			localNodeStatus := node.StatusData.GetByNode(localNode)
 			require.NotNil(t, localNodeStatus)
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
 				"expected local node gen 1, got %+v", localNodeStatus)
@@ -136,8 +136,8 @@ func TestDaemonData(t *testing.T) {
 	})
 	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("Ensure node.MonitorData.Get result is a deep copy", func(t *testing.T) {
-		initial := *node.MonitorData.Get(localNode)
+	t.Run("Ensure node.MonitorData.GetByNode result is a deep copy", func(t *testing.T) {
+		initial := *node.MonitorData.GetByNode(localNode)
 		require.Equal(t, node.MonitorGlobalExpectNone, initial.GlobalExpect, "GlobalExpect changed !")
 		initialUpdated := initial.UpdatedAt
 		initialStateUpdated := initial.StateUpdatedAt
@@ -148,7 +148,7 @@ func TestDaemonData(t *testing.T) {
 		initial.GlobalExpect = node.MonitorGlobalExpectAborted
 		initial.GlobalExpectUpdatedAt = time.Now()
 
-		refreshed := *node.MonitorData.Get(localNode)
+		refreshed := *node.MonitorData.GetByNode(localNode)
 		require.Equal(t, node.MonitorStateInit, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
 		require.Equal(t, initialStateUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")

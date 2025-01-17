@@ -639,7 +639,7 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		c.Err <- nil
 	default:
 		confFile := c.Path.ConfigFile()
-		if instance.ConfigData.Get(c.Path, t.localhost) == nil {
+		if instance.ConfigData.GetByPathAndNode(c.Path, t.localhost) == nil {
 			if err := freezeIfOrchestrateHA(confFile); err != nil {
 				c.Err <- err
 				return

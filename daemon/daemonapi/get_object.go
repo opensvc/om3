@@ -50,7 +50,7 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 	}
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
-		ostat := object.StatusData.Get(p)
+		ostat := object.StatusData.GetByPath(p)
 		if ostat == nil {
 			continue
 		}
@@ -81,8 +81,8 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 			},
 		}
 		for nodename, config := range instance.ConfigData.GetByPath(p) {
-			monitor := instance.MonitorData.Get(p, nodename)
-			status := instance.StatusData.Get(p, nodename)
+			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)
+			status := instance.StatusData.GetByPathAndNode(p, nodename)
 			d.Data.Instances[nodename] = api.Instance{
 				Config:  config,
 				Monitor: monitor,

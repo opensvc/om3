@@ -42,7 +42,7 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 		evaluate = true
 	}
 
-	if instConfig := instance.ConfigData.Get(objPath, a.localhost); instConfig != nil {
+	if instConfig := instance.ConfigData.GetByPathAndNode(objPath, a.localhost); instConfig != nil {
 		filename := objPath.ConfigFile()
 		mtime := file.ModTime(filename)
 		if mtime.IsZero() {

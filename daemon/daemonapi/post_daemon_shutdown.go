@@ -134,7 +134,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 		}
 
 		for p := range toWait {
-			currentState := instance.MonitorData.Get(p, a.localhost).State
+			currentState := instance.MonitorData.GetByPathAndNode(p, a.localhost).State
 			if !currentState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
 				revertState(p, currentState)
 			}
@@ -145,7 +145,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	for p, state := range getMonitorStates() {
 		if state.Is(instance.MonitorStateIdle) {
 			logP := naming.LogWithPath(log, p)
-			toWait[p] = instance.MonitorData.Get(p, a.localhost).State
+			toWait[p] = instance.MonitorData.GetByPathAndNode(p, a.localhost).State
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 
 			ctx, cancel := context.WithTimeout(shutdownCtx, time.Second)

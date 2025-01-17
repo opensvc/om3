@@ -65,8 +65,8 @@ func (c *Data[T]) Unset(nodename string) {
 	delete(c.data, nodename)
 }
 
-// Get return the stored value for nodename or nil if not found
-func (c *Data[T]) Get(nodename string) *T {
+// GetByNode return the stored value for nodename or nil if not found
+func (c *Data[T]) GetByNode(nodename string) *T {
 	c.RLock()
 	v := c.data[nodename]
 	c.RUnlock()

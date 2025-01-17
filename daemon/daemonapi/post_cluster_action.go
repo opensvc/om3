@@ -25,7 +25,7 @@ func (a *DaemonAPI) PostClusterActionUnfreeze(ctx echo.Context) error {
 }
 
 func (a *DaemonAPI) PostClusterAction(eCtx echo.Context, globalExpect node.MonitorGlobalExpect) error {
-	if mon := node.MonitorData.Get(a.localhost); mon == nil {
+	if mon := node.MonitorData.GetByNode(a.localhost); mon == nil {
 		return JSONProblemf(eCtx, http.StatusNotFound, "Not found", "node monitor not found: %s", a.localhost)
 	}
 

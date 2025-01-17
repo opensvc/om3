@@ -235,7 +235,7 @@ func (t *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated
 }
 
 func (t *T) onInstanceStatusPost(post *msgbus.InstanceStatusPost) {
-	if instance.ConfigData.Get(post.Path, t.localhost) == nil {
+	if instance.ConfigData.GetByPathAndNode(post.Path, t.localhost) == nil {
 		return
 	}
 	s := post.Path.String()

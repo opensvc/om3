@@ -399,7 +399,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		if peer == t.localhost {
 			continue
 		}
-		peerStatus := node.StatusData.Get(peer)
+		peerStatus := node.StatusData.GetByNode(peer)
 		if peerStatus == nil {
 			continue
 		}

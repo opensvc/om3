@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 	}
 	log = naming.LogWithPath(log, objPath)
 
-	if instMon := instance.ConfigData.Get(objPath, a.localhost); instMon != nil {
+	if instMon := instance.ConfigData.GetByPathAndNode(objPath, a.localhost); instMon != nil {
 		filename := objPath.ConfigFile()
 		mtime := file.ModTime(filename)
 		if mtime.IsZero() {

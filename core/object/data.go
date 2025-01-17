@@ -46,7 +46,7 @@ func (c *Data[T]) Unset(p naming.Path) {
 	c.Unlock()
 }
 
-func (c *Data[T]) Get(p naming.Path) *T {
+func (c *Data[T]) GetByPath(p naming.Path) *T {
 	c.RLock()
 	v := c.data[p]
 	c.RUnlock()

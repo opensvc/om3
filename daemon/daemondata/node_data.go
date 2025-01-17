@@ -96,7 +96,7 @@ func (d *data) dropPeer(peer string) {
 		instance.MonitorData.Unset(p, peer)
 		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
 	}
-	if v := node.MonitorData.Get(peer); v != nil {
+	if v := node.MonitorData.GetByNode(peer); v != nil {
 		node.DropNode(peer)
 		// TODO: find a way to clear parts of cluster.node.<peer>.Status
 		d.bus.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)

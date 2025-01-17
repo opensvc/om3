@@ -10,7 +10,7 @@ import (
 // TODO refactor or move this logic to the message producer ?
 func (data *ClusterData) onNodeStatusUpdated(m *NodeStatusUpdated) {
 	v := data.Cluster.Node[m.Node]
-	gen := node.GenData.Get(m.Node)
+	gen := node.GenData.GetByNode(m.Node)
 	v.Status = m.Value
 	if gen != nil {
 		v.Status.Gen = *gen

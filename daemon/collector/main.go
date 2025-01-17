@@ -317,7 +317,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
-	t.isSpeaker = !t.disable && node.StatusData.Get(t.localhost).IsLeader
+	t.isSpeaker = !t.disable && node.StatusData.GetByNode(t.localhost).IsLeader
 	t.publishOnChange(t.getState())
 
 	t.initChanges()
