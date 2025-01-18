@@ -1423,6 +1423,9 @@ type Duration = string
 // Evaluate defines model for Evaluate.
 type Evaluate = bool
 
+// EventCache defines model for EventCache.
+type EventCache = bool
+
 // EventFilter defines model for EventFilter.
 type EventFilter = []string
 
@@ -1710,6 +1713,9 @@ type GetDaemonEventsParams struct {
 
 	// Filter list of event filter
 	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Cache enable cached events to re-emit latest cached events that match
+	Cache *EventCache `form:"cache,omitempty" json:"cache,omitempty"`
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`

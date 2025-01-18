@@ -45,6 +45,7 @@ type (
 		Op    string
 	}
 
+	// DataFilters is a slice of DataFilter used to define a collection of filtering data conditions.
 	DataFilters []DataFilter
 
 	kinder interface {
@@ -338,6 +339,53 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	sseWriter := sseevent.NewWriter(w)
 	evCounter := uint64(0)
+
+	doEvent := func(i any) error {
+		ev := event.ToEvent(i, evCounter)
+		if ev != nil {
+			if dataFilter, ok := dataFiltersByKind[ev.Kind]; ok {
+				v := make(map[string]any)
+				if err := json.Unmarshal(ev.Data, &v); err != nil {
+					return err
+				}
+				if !dataFilter.match(v) {
+					return nil
+				}
+			}
+		}
+		evCounter++
+		if _, err := sseWriter.Write(ev); err != nil {
+			log.Debugf("write event %s: %s", ev.Kind, err)
+			return err
+		}
+		w.Flush()
+		return nil
+	}
+
+	if params.Cache != nil && *params.Cache {
+		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		for _, filter := range filters {
+			labels := pubsub.Labels{}
+			for _, lab := range filter.Labels {
+				labels[lab[0]] = lab[1]
+			}
+			anyL, err := data.ExtractEvents(filter.Kind, labels)
+			if err != nil {
+				return fmt.Errorf("get cached data: %w", err)
+			}
+			for _, anyE := range anyL {
+				if err := doEvent(anyE); err != nil {
+					log.Debugf("do event failed on %v: %s", anyE, err)
+					return nil
+				}
+				w.Flush()
+				if limit > 0 && eventCount >= limit {
+					return nil
+				}
+			}
+		}
+	}
+
 	for {
 		select {
 		case <-evCtx.Done():
@@ -411,24 +459,10 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				}
 			}
 
-			ev := event.ToEvent(i, evCounter)
-			if ev != nil {
-				if dataFilter, ok := dataFiltersByKind[ev.Kind]; ok {
-					v := make(map[string]any)
-					if err := json.Unmarshal(ev.Data, &v); err != nil {
-						continue
-					}
-					if !dataFilter.match(v) {
-						continue
-					}
-				}
-			}
-			evCounter++
-			if _, err := sseWriter.Write(ev); err != nil {
-				log.Debugf("write event %s: %s", ev.Kind, err)
+			if err := doEvent(i); err != nil {
+				log.Warnf("doEvent error for %v: %s", i, err)
 				return nil
 			}
-			w.Flush()
 			if limit > 0 && eventCount >= limit {
 				return nil
 			}

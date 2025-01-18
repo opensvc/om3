@@ -24,6 +24,7 @@ type GetEvents struct {
 	relatives *bool
 	Limit     *uint64
 	Filters   []string
+	Wait      bool
 	Duration  *time.Duration
 }
 
@@ -39,6 +40,11 @@ func (t *GetEvents) SetLimit(limit uint64) *GetEvents {
 
 func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 	t.Filters = filters
+	return t
+}
+
+func (t *GetEvents) SetWait(wait bool) *GetEvents {
+	t.Wait = wait
 	return t
 }
 
@@ -179,6 +185,7 @@ func (t GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
+		Cache:    &t.Wait,
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)

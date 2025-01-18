@@ -200,6 +200,11 @@ func (t *CmdNodeEvents) doNodes() error {
 		go t.nodeEventLoop(ctx, nodename)
 	}
 
+	limit := t.Limit
+	if t.Wait && limit == 0 {
+		limit = 1
+	}
+
 	var count uint64
 	for {
 		for {
@@ -226,11 +231,12 @@ func (t *CmdNodeEvents) doNodes() error {
 					}
 					return nil
 				}
-				if t.Limit > 0 && count >= t.Limit {
+				if limit > 0 && count >= limit {
 					if t.templ != nil && t.Wait && !t.helper.Success {
 						err := fmt.Errorf("wait failed after %s (event count limit)", time.Now().Sub(now))
 						return err
 					}
+					_, _ = fmt.Fprintf(os.Stderr, "wait comleted after %s\n", time.Now().Sub(now))
 					return nil
 				}
 			case _ = <-t.errC:
@@ -320,6 +326,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
+		SetWait(t.Wait).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).
