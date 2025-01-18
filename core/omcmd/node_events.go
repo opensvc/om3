@@ -234,7 +234,9 @@ func (t *CmdNodeEvents) doNodes() error {
 						err := fmt.Errorf("wait failed after %s (event count limit)", time.Now().Sub(now))
 						return err
 					}
-					_, _ = fmt.Fprintf(os.Stderr, "wait comleted after %s\n", time.Now().Sub(now))
+					if !t.Quiet {
+						_, _ = fmt.Fprintf(os.Stderr, "wait comleted after %s\n", time.Now().Sub(now))
+					}
 					return nil
 				}
 			case _ = <-t.errC:
