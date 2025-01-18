@@ -135,6 +135,9 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 }
 
 func (t *CmdNodeEvents) Run() error {
+	if t.Wait && t.Limit == 0 {
+		t.Limit = 1
+	}
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -200,11 +203,6 @@ func (t *CmdNodeEvents) doNodes() error {
 		go t.nodeEventLoop(ctx, nodename)
 	}
 
-	limit := t.Limit
-	if t.Wait && limit == 0 {
-		limit = 1
-	}
-
 	var count uint64
 	for {
 		for {
@@ -231,7 +229,7 @@ func (t *CmdNodeEvents) doNodes() error {
 					}
 					return nil
 				}
-				if limit > 0 && count >= limit {
+				if t.Limit > 0 && count >= t.Limit {
 					if t.templ != nil && t.Wait && !t.helper.Success {
 						err := fmt.Errorf("wait failed after %s (event count limit)", time.Now().Sub(now))
 						return err
