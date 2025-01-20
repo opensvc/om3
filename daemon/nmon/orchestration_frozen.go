@@ -6,6 +6,8 @@ func (t *Manager) orchestrateFrozen() {
 	switch t.state.State {
 	case node.MonitorStateIdle:
 		t.frozenFromIdle()
+	case node.MonitorStateFrozen:
+		t.frozenFromFrozen()
 	}
 }
 
@@ -13,14 +15,17 @@ func (t *Manager) frozenFromIdle() {
 	if t.frozenClearIfReached() {
 		return
 	}
-	t.state.State = node.MonitorStateFreezing
-	t.updateIfChange()
 	t.log.Infof("run action freeze")
-	nextState := node.MonitorStateIdle
-	if err := t.crmFreeze(); err != nil {
-		nextState = node.MonitorStateFreezeFailed
+	t.doTransitionAction(t.crmFreeze, node.MonitorStateFreezing, node.MonitorStateFrozen, node.MonitorStateFreezeFailed)
+	return
+}
+
+func (t *Manager) frozenFromFrozen() {
+	if t.frozenClearIfReached() {
+		t.state.State = node.MonitorStateIdle
+		t.change = true
+		return
 	}
-	go t.orchestrateAfterAction(node.MonitorStateFreezing, nextState)
 	return
 }
 

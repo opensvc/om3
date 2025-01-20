@@ -423,6 +423,17 @@ func (t *Manager) onOrchestrate(c cmdOrchestrate) {
 	time.Sleep(50 * time.Millisecond)
 }
 
+// doTransitionAction performs a state transition based on the outcome of the provided action function.
+// The state transitions follow this order: newState -> (successState or errorState) based on the action's result.
+func (t *Manager) doTransitionAction(action func() error, newState, successState, errorState node.MonitorState) {
+	t.transitionTo(newState)
+	if action() != nil {
+		t.transitionTo(errorState)
+	} else {
+		t.transitionTo(successState)
+	}
+}
+
 func (t *Manager) orchestrateAfterAction(state, nextState node.MonitorState) {
 	t.cmdC <- cmdOrchestrate{state: state, newState: nextState}
 }

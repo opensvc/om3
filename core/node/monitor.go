@@ -51,6 +51,7 @@ const (
 	MonitorStateDraining
 	MonitorStateDrainFailed
 	MonitorStateDrained
+	MonitorStateThawed
 	MonitorStateThawedFailed
 	MonitorStateFreezeFailed
 	MonitorStateFreezing
@@ -91,6 +92,7 @@ var (
 		MonitorStateDrainFailed:    "drain failed",
 		MonitorStateDrained:        "drained",
 		MonitorStateIdle:           "idle",
+		MonitorStateThawed:         "thawed",
 		MonitorStateThawedFailed:   "unfreeze failed",
 		MonitorStateFreezeFailed:   "freeze failed",
 		MonitorStateFreezing:       "freezing",
@@ -110,6 +112,7 @@ var (
 		"draining":        MonitorStateDraining,
 		"drain failed":    MonitorStateDrainFailed,
 		"idle":            MonitorStateIdle,
+		"thawed":          MonitorStateThawed,
 		"unfreeze failed": MonitorStateThawedFailed,
 		"freeze failed":   MonitorStateFreezeFailed,
 		"freezing":        MonitorStateFreezing,
