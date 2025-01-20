@@ -6845,7 +6845,7 @@ components:
     EventCache:
       name: cache
       in: query
-      description: enable cached events to re-emit latest cached events that match
+      description: start the event feed using the latest past events from the cache that match the specified kind and labels.
       schema:
         type: boolean
         default: false

@@ -1714,7 +1714,7 @@ type GetDaemonEventsParams struct {
 	// Filter list of event filter
 	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 
-	// Cache enable cached events to re-emit latest cached events that match
+	// Cache start the event feed using the latest past events from the cache that match the specified kind and labels.
 	Cache *EventCache `form:"cache,omitempty" json:"cache,omitempty"`
 
 	// Selector selector
