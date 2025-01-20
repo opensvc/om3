@@ -977,14 +977,14 @@ func (sub *Subscription) keys() []string {
 }
 
 func (pub cmdPub) String() string {
-	var dataS string
+	var dataStr string
 	switch data := pub.data.(type) {
 	case stringer:
-		dataS = data.String()
+		dataStr = data.String()
 	default:
-		dataS = pub.dataType
+		dataStr = pub.dataType
 	}
-	s := fmt.Sprintf("publication %s", dataS)
+	s := fmt.Sprintf("publication %s", dataStr)
 	if len(pub.labels) > 0 {
 		s += " (" + pub.labels.String() + ")"
 	}
