@@ -707,7 +707,7 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
-	// ObjectDeleted is the message published when an object deletetion is
+	// ObjectDeleted is the message published when an object deletion is
 	// detected by localhost.
 	ObjectDeleted struct {
 		pubsub.Msg `yaml:",inline"`

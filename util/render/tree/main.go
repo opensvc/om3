@@ -433,7 +433,7 @@ func (t *Node) Load(data interface{}, title string) {
 	loadRecurse(head, data)
 }
 
-// formatCell returns the table cell, happending the separator, coloring the
+// formatCell returns the table cell, appending the separator, coloring the
 // text and applying the padding for alignment.
 func (c *Column) formatCell(text string, width int, textColor color.Attribute) string {
 	var f string

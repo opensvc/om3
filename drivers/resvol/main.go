@@ -318,7 +318,7 @@ func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
 // The withUsage critierium can be toggled on/off because it
 // may be slow to get fresh usage metrics, and only the
 // provision codepath needs them (others are satisfied with the
-// garanty the pool is of the same type).
+// guarantee the pool is of the same type).
 func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	node, err := object.NewNode()
 	if err != nil {

@@ -84,7 +84,7 @@ Inputs:
       - ">="
       - "<="
       - "IN"
-    Help: The comparison operator to use to check the parameter current value. The 'reset' operator can be used to avoid duplicate occurence of the same keyword (insert a key reset after the last key set to mark any additional key found in the original file to be removed). The IN operator verifies the current value is one of the target list member. On fix, if the check is in error, it sets the first target list member. A "IN" operator value must be a JSON formatted list.
+    Help: The comparison operator to use to check the parameter current value. The 'reset' operator can be used to avoid duplicate occurrence of the same keyword (insert a key reset after the last key set to mark any additional key found in the original file to be removed). The IN operator verifies the current value is one of the target list member. On fix, if the check is in error, it sets the first target list member. A "IN" operator value must be a JSON formatted list.
   -
     Id: value
     Label: Value
@@ -186,16 +186,16 @@ func (t *CompKeyvals) Add(s string) error {
 		switch rule.Op {
 		case "unset":
 			if keyvalValidityMap[rule.Key] == "set" {
-				keyvalValidityMap[rule.Key] = "unValid"
-			} else if keyvalValidityMap[rule.Key] != "unValid" {
+				keyvalValidityMap[rule.Key] = "invalid"
+			} else if keyvalValidityMap[rule.Key] != "invalid" {
 				keyvalValidityMap[rule.Key] = "unset"
 			}
 		case "reset":
 			keyValResetMap[rule.Key] = 0
 		default:
 			if keyvalValidityMap[rule.Key] == "unset" {
-				keyvalValidityMap[rule.Key] = "unValid"
-			} else if keyvalValidityMap[rule.Key] != "unValid" {
+				keyvalValidityMap[rule.Key] = "invalid"
+			} else if keyvalValidityMap[rule.Key] != "invalid" {
 				keyvalValidityMap[rule.Key] = "set"
 			}
 		}
@@ -210,7 +210,7 @@ func (t *CompKeyvals) filterRules() {
 	blacklisted := map[string]any{}
 	newRules := []interface{}{}
 	for _, rule := range t.Rules() {
-		if keyvalValidityMap[rule.(CompKeyval).Key] != "unValid" {
+		if keyvalValidityMap[rule.(CompKeyval).Key] != "invalid" {
 			newRules = append(newRules, rule)
 		} else if _, ok := blacklisted[rule.(CompKeyval).Key]; !ok {
 			blacklisted[rule.(CompKeyval).Key] = nil

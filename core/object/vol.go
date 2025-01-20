@@ -26,7 +26,7 @@ type (
 	// These objects contain cluster-dependent fs, disk and sync resources.
 	//
 	// They are created by feeding a volume resource configuration (cluster
-	// independant) to a pool.
+	// independent) to a pool.
 	//
 	Vol interface {
 		Actor

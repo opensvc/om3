@@ -123,7 +123,7 @@ func (c Config) Delete() (bool, error) {
 func (c Config) deleteV2() (bool, error) {
 	control, err := cgroupsv2.LoadManager(UnifiedPath(), c.ID)
 	if err != nil {
-		// doesn't verify path existance
+		// doesn't verify path existence
 		return false, nil
 	}
 	if _, err := control.Controllers(); err != nil {

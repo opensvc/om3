@@ -76,7 +76,7 @@ Inputs:
     DisplayModeLabel: check
     LabelCss: action16
     Mandatory: No
-    Help: A regular expression. Matching the regular expression is sufficent to grant compliancy. It is required to use either 'check' or 'replace'.
+    Help: A regular expression. Matching the regular expression is sufficient to grant compliance. It is required to use either 'check' or 'replace'.
     Type: string
   -
     Id: replace
@@ -84,7 +84,7 @@ Inputs:
     DisplayModeLabel: replace
     LabelCss: action16
     Mandatory: No
-    Help: A regular expression. Any pattern matched by the reguler expression will be replaced. It is required to use either 'check' or 'replace'.
+    Help: A regular expression. Any pattern matched by the regular expression will be replaced. It is required to use either 'check' or 'replace'.
     Type: string
   -
     Id: fmt

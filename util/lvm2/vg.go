@@ -343,7 +343,7 @@ func (t *VG) Devices() (device.L, error) {
 
 func (t *VG) Create(size string, pvs []string, options []string) error {
 	if i, err := sizeconv.FromSize(size); err == nil {
-		// default unit is not "B", explicitely tell
+		// default unit is not "B", explicitly tell
 		size = fmt.Sprintf("%dB", i)
 	}
 	args := make([]string, 0)

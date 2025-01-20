@@ -336,7 +336,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.exists(); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s is already luks formated", dev)
+		t.Log().Infof("%s is already luks formatted", dev)
 		return nil
 	}
 	if t.ManagePassphrase {

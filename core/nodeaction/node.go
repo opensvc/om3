@@ -99,7 +99,7 @@ func WithLocal(v bool) funcopt.O {
 	})
 }
 
-// LocalFirst makes actions not explicitely Local nor remoted
+// LocalFirst makes actions not explicitly Local nor remoted
 // via NodeSelector be treated as local (CRM level).
 func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {
@@ -538,7 +538,7 @@ func (t T) Do() error {
 }
 
 // waitExpectation subscribes to NodeMonitorUpdated and wait for expectation reached
-// It writes result to errC chanel
+// It writes result to errC channel
 func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, errC chan<- error) {
 	var (
 		filters      []string

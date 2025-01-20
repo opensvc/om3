@@ -28,7 +28,7 @@ func NewRunner(opts ...funcopt.O) *Runner {
 	return r
 }
 
-// RunnerWithCustomCheckPaths adds paths where additionnal check
+// RunnerWithCustomCheckPaths adds paths where additional check
 // driver are installed.
 func RunnerWithCustomCheckPaths(paths ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

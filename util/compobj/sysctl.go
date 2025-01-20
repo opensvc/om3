@@ -42,7 +42,7 @@ var (
 * Persistent parameter value (/etc/sysctl.conf)
 `,
 		FormDefinition: `Desc: |
-  A rule to set a list of Linux kernel parameters to be set in /etc/sysctl.conf. Current values can be checked as strictly equal, superior or equal, inferior or equal to their target value. Each field in a vectored value can be tuned independantly using the index key.
+  A rule to set a list of Linux kernel parameters to be set in /etc/sysctl.conf. Current values can be checked as strictly equal, superior or equal, inferior or equal to their target value. Each field in a vectored value can be tuned independently using the index key.
 Css: comp48
 
 Outputs:

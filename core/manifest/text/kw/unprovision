@@ -1,7 +1,7 @@
 Set to `false` to ignore the `unprovision` action on the resource.
 
 > **Warning**: `unprovision` use data-destructive operations like
-  formating.
+  formatting.
 
 It is recommended to set `provision=false` on long-lived critical objects,
 to force administrators to remove this setting when they really want to

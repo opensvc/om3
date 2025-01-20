@@ -43,7 +43,7 @@ func TestSubscriptionFilter(t *testing.T) {
 	}, pubsub.Label{"node", "node10"})
 
 	receiveMsgTimeout := 50 * time.Millisecond
-	t.Logf("verify received message from correct label (timout: %s)", receiveMsgTimeout)
+	t.Logf("verify received message from correct label (timeout: %s)", receiveMsgTimeout)
 	select {
 	case i := <-sub.C:
 		require.Equal(t, "node10", i.(*HbNodePing).Node)

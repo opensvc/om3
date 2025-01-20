@@ -9,4 +9,4 @@ on the remote node:
 The default ruser is root for all nodes.
 
 `ruser` accepts a list of `user[@node]`.
-If @node is ommited, user is considered the new default user.
+If @node is omitted, user is considered the new default user.

@@ -56,7 +56,7 @@ func Parse(s string) (*T, error) {
 }
 
 // Set stores the string slice, which must have been formatted by the
-// caller as a shlex splitted string slice.
+// caller as a shlex split string slice.
 func (t *T) Set(args []string) {
 	t.args = args
 }

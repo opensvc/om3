@@ -189,9 +189,9 @@ func parseLogFilters(l *[]string) ([]string, error) {
 //
 // filter syntax is: label=value[,label=value]*
 func parseLogFilter(s string) (string, string, error) {
-	splitted := strings.SplitN(s, "=", 2)
-	if len(splitted) == 2 {
-		return splitted[0], splitted[1], nil
+	split := strings.SplitN(s, "=", 2)
+	if len(split) == 2 {
+		return split[0], split[1], nil
 	} else {
 		return "", "", fmt.Errorf("invalid filter expression: %s", s)
 	}

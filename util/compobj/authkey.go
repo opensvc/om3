@@ -78,7 +78,7 @@ Inputs:
     Candidates:
       - add
       - del
-    Help: Defines wether the public key must be installed or uninstalled.
+    Help: Defines whether the public key must be installed or uninstalled.
 
   -
     Id: user

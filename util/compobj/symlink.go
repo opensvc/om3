@@ -23,11 +23,11 @@ var compSymlinkInfo = ObjInfo{
 		Symlink: "/tmp/foo",
 		Target:  "/tmp/bar",
 	},
-	Description: `* Verify symlink's existance.
+	Description: `* Verify symlink's existence.
 * The collector provides the format with wildcards.
 * The module replace the wildcards with contextual values.
 * In the 'fix' the symlink is created (and intermediate dirs if required).
-* There is no check or fix for target's existance.
+* There is no check or fix for target's existence.
 * There is no check or fix for mode or ownership of either symlink or target.
 `,
 	FormDefinition: `Desc: |
@@ -117,7 +117,7 @@ func (t CompSymlinks) fixLink(rule CompSymlink) ExitCode {
 	}
 	err := os.Symlink(rule.Target, rule.Symlink)
 	if err != nil {
-		t.Errorf("Cant create symlink %s\n", rule.Symlink)
+		t.Errorf("Can't create symlink %s\n", rule.Symlink)
 		return ExitNok
 	}
 	t.Infof("create symlink %s\n", rule.Symlink)

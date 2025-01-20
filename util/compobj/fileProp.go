@@ -24,7 +24,7 @@ var (
 			UID:  500,
 			GID:  500,
 		},
-		Description: `* Verify file existance, mode and ownership.
+		Description: `* Verify file existence, mode and ownership.
 * The collector provides the format with wildcards.
 * The module replace the wildcards with contextual values.
 

@@ -15,7 +15,7 @@ type (
 	}
 )
 
-// FilesystemSnapshotWithArgs defines the shlex splitted list of arguments to prepend
+// FilesystemSnapshotWithArgs defines the shlex split list of arguments to prepend
 // to the command.
 func FilesystemSnapshotWithArgs(l []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

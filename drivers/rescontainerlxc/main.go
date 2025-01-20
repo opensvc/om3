@@ -888,7 +888,7 @@ func (t *T) setCpusetCloneChildren() error {
 	return nil
 }
 
-// cgroupDir returns the container resource cgroup path, relative to a controler head.
+// cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
@@ -1179,7 +1179,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	} else if v {
 		// the local instance is already up.
-		// let the local start report the unecessary start steps
+		// let the local start report the unnecessary start steps
 		return false
 	}
 	hn := t.hostname()

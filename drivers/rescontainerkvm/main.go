@@ -951,7 +951,7 @@ func (t *Path) ContainerHead() (string, error) {
 }
 */
 
-// cgroupDir returns the container resource cgroup path, relative to a controler head.
+// cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
@@ -962,7 +962,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	} else if v {
 		// the local instance is already up.
-		// let the local start report the unecessary start steps
+		// let the local start report the unnecessary start steps
 		// but skip further abort tests
 		return false
 	} else {

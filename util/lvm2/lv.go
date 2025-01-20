@@ -233,7 +233,7 @@ func (t *LV) Devices() (device.L, error) {
 		}
 		path := strings.Split(s, "(")[0]
 		if !strings.HasPrefix(path, "/") {
-			// implicitely a lv name in the same vg
+			// implicitly a lv name in the same vg
 			// convert to a DeviceMapper devpath
 			// (rmeta are not exposed as /dev/<vg>/<lv>)
 			path = DMDevPath(t.VGName, path)
@@ -248,7 +248,7 @@ func (t *LV) Create(size string, args []string) error {
 	if strings.Contains(size, "%") {
 		args = append(args, "-l", size)
 	} else if i, err := sizeconv.FromSize(size); err == nil {
-		// default unit is not "B", explicitely tell
+		// default unit is not "B", explicitly tell
 		size = fmt.Sprintf("%dB", i)
 		args = append(args, "-L", size)
 	} else {

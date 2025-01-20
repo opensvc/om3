@@ -20,7 +20,7 @@ func (t *CmdNodeClear) Run() error {
 	if resp, err := c.PostNodeClear(context.Background()); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpcted post node clear status code %s", resp.Status)
+		return fmt.Errorf("unexpected post node clear status code %s", resp.Status)
 	}
 	return nil
 }

@@ -159,13 +159,13 @@ func (t *CompSvcconfs) Add(s string) error {
 	return nil
 }
 
-func (t CompSvcconfs) addEnvInRessourcesNamesIfNotPresent(ressourcesNames []string) []string {
-	for _, ressource := range ressourcesNames {
-		if ressource == "env" {
-			return ressourcesNames
+func (t CompSvcconfs) addEnvInRessourcesNamesIfNotPresent(resourceNames []string) []string {
+	for _, resourceName := range resourceNames {
+		if resourceName == "env" {
+			return resourceNames
 		}
 	}
-	return append(ressourcesNames, "env")
+	return append(resourceNames, "env")
 }
 
 func (t *CompSvcconfs) getKeyParts(rule CompSvcconf) (string, string, string) {

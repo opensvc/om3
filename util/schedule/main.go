@@ -438,7 +438,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	}
 
 	// needActionInterval returns false if timestamp is fresher than now-interval
-	// returns true otherwize.
+	// returns true otherwise.
 	// Zero is a infinite interval.
 	needActionInterval := func(delay time.Duration) bool {
 		if delay == 0 {
@@ -490,7 +490,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	// Iterates multiple allowed timeranges.
 	//
 	// Return a delay the caller should wait before executing the task,
-	// with garanty the delay doesn't reach outside the valid timerange:
+	// with guarantee the delay doesn't reach outside the valid timerange:
 	//
 	// * 0 => immediate execution
 	// * n => the duration to wait
