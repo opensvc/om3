@@ -2,13 +2,12 @@ package oxcmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"text/template"
 	"time"
-
-	"encoding/json"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -30,8 +29,9 @@ type (
 		Limit    uint64
 		Template string
 		Wait     bool
-		templ    *template.Template
-		helper   *templateHelper
+
+		templ  *template.Template
+		helper *templateHelper
 
 		cli          *client.T
 		NodeSelector string
@@ -136,6 +136,9 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 }
 
 func (t *CmdNodeEvents) Run() error {
+	if t.Wait && t.Limit == 0 {
+		t.Limit = 1
+	}
 	if !clientcontext.IsSet() && t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -313,6 +316,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
+		SetWait(t.Wait).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).

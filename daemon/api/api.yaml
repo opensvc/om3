@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.2
+  version: 3.12.3
 
 paths:
   /auth/info:
@@ -405,6 +405,7 @@ paths:
         - $ref: '#/components/parameters/Duration'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/EventFilter'
+        - $ref: '#/components/parameters/EventCache'
         - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
@@ -6841,6 +6842,13 @@ components:
       description: report this number of past last log entries
       schema:
         type: integer
+    EventCache:
+      name: cache
+      in: query
+      description: start the event feed using the latest past events from the cache that match the specified kind and labels.
+      schema:
+        type: boolean
+        default: false
     EventFilter:
       name: filter
       in: query
@@ -6850,7 +6858,7 @@ components:
         items:
           type: string
           description: |
-            filter expression: [kind][,label=value]*
+            filter expression: [kind][,label=value]*[.dataxxx=value]
           example: ObjectStatusUpdated,path=foo
     DRBDConfigName:
       name: name

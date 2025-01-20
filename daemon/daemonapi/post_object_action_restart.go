@@ -20,7 +20,7 @@ func (a *DaemonAPI) PostObjectActionRestart(eCtx echo.Context, namespace string,
 	if err != nil {
 		return JSONProblemf(eCtx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
-	if instMon := instance.MonitorData.Get(p, a.localhost); instMon != nil {
+	if instMon := instance.MonitorData.GetByPathAndNode(p, a.localhost); instMon != nil {
 		var payload api.PostObjectActionRestart
 		if err := eCtx.Bind(&payload); err != nil {
 			return JSONProblem(eCtx, http.StatusBadRequest, "Invalid Body", err.Error())

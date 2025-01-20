@@ -279,7 +279,7 @@ func (t *Manager) worker(initialNodes []string) {
 	defer t.log.Debugf("worker stopped")
 
 	// queueStatus() will need instance config Priority
-	if iConfig := instance.ConfigData.Get(t.path, t.localhost); iConfig != nil {
+	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
 		t.instConfig = *iConfig
 		t.scopeNodes = append([]string{}, t.instConfig.Scope...)
 	}

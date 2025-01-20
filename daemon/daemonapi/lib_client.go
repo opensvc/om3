@@ -17,7 +17,7 @@ import (
 )
 
 func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error)) error {
-	if data := node.StatusData.Get(nodename); data == nil {
+	if data := node.StatusData.GetByNode(nodename); data == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "node status data not found", "%s", nodename)
 	}
 	c, err := a.newProxyClient(ctx, nodename)

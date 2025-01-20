@@ -377,7 +377,7 @@ func (t *Manager) worker() {
 	// cluster nodes at the time the worker starts
 	initialNodes := t.config.GetStrings(key.New("cluster", "nodes"))
 	for _, name := range initialNodes {
-		if nodeMon := node.MonitorData.Get(name); nodeMon != nil {
+		if nodeMon := node.MonitorData.GetByNode(name); nodeMon != nil {
 			t.nodeMonitor[name] = *nodeMon
 		} else {
 			t.nodeMonitor[name] = node.Monitor{}

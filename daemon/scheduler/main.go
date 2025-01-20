@@ -389,13 +389,13 @@ func (t *T) loop() {
 	// The NodeMonitorUpdated event can be fired before our subscription.
 	// As this event enables the scheduler, we can't afford missing it.
 	// Read the NodeMonitor state from cache.
-	if nodeMonitorData := node.MonitorData.Get(t.localhost); nodeMonitorData != nil {
+	if nodeMonitorData := node.MonitorData.GetByNode(t.localhost); nodeMonitorData != nil {
 		t.toggleEnabled(nodeMonitorData.State)
 	}
 
 	t.status.State = "running"
 	t.status.ConfiguredAt = time.Now()
-	if nodeConfig := node.ConfigData.Get(hostname.Hostname()); nodeConfig != nil {
+	if nodeConfig := node.ConfigData.GetByNode(hostname.Hostname()); nodeConfig != nil {
 		if nodeConfig.MaxParallel > 0 {
 			t.maxRunning = nodeConfig.MaxParallel
 			t.status.MaxRunning = t.maxRunning

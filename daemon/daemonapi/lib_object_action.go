@@ -23,7 +23,7 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 		return JSONProblem(eCtx, http.StatusBadRequest, "Invalid parameters", err.Error())
 	}
 
-	if instMon := instance.MonitorData.Get(p, a.localhost); instMon != nil {
+	if instMon := instance.MonitorData.GetByPathAndNode(p, a.localhost); instMon != nil {
 		ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
 		defer cancel()
 

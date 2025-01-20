@@ -276,7 +276,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 			if isCtxDone() {
 				return
 			}
-			lgens := node.GenData.Get(d.localNode)
+			lgens := node.GenData.GetByNode(d.localNode)
 			if !needMessage && !gensEqual(d.msgLocalGen, *lgens) {
 				needMessage = true
 				if isCtxDone() {

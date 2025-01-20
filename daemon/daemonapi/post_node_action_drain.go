@@ -23,7 +23,7 @@ func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error
 }
 
 func (a *DaemonAPI) localNodeActionDrain(eCtx echo.Context) error {
-	if mon := node.MonitorData.Get(a.localhost); mon == nil {
+	if mon := node.MonitorData.GetByNode(a.localhost); mon == nil {
 		return JSONProblemf(eCtx, http.StatusNotFound, "Not found", "node monitor not found: %s", a.localhost)
 	}
 

@@ -21,7 +21,7 @@ func (a *DaemonAPI) GetNodeSchedule(ctx echo.Context, nodename string) error {
 }
 
 func (a *DaemonAPI) getLocalSchedule(ctx echo.Context) error {
-	table := schedule.TableData.Get(naming.Path{})
+	table := schedule.TableData.GetByPath(naming.Path{})
 	if table == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}

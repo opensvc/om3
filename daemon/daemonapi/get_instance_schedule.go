@@ -27,7 +27,7 @@ func (a *DaemonAPI) getLocalInstanceSchedule(ctx echo.Context, namespace string,
 	if !path.Exists() {
 		return JSONProblemf(ctx, http.StatusNotFound, "No local instance", "")
 	}
-	table := schedule.TableData.Get(path)
+	table := schedule.TableData.GetByPath(path)
 	if table == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}

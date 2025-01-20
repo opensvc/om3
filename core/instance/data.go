@@ -78,8 +78,8 @@ func (c *Data[T]) DropNode(nodename string) {
 	delete(c.nodeToPath, nodename)
 }
 
-// Get returns an instance data or nil if data is not found
-func (c *Data[T]) Get(p naming.Path, nodename string) *T {
+// GetByPathAndNode returns an instance data or nil if data is not found
+func (c *Data[T]) GetByPathAndNode(p naming.Path, nodename string) *T {
 	c.RLock()
 	v := c.data[InstanceString(p, nodename)]
 	c.RUnlock()

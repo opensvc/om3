@@ -76,7 +76,7 @@ func (t *Manager) onDelayTimer() {
 }
 
 func (t *Manager) initRelationAvailStatus() {
-	config := instance.ConfigData.Get(t.path, t.localhost)
+	config := instance.ConfigData.GetByPathAndNode(t.path, t.localhost)
 	if config == nil {
 		t.log.Infof("skip relations avail status cache init: no config cached yet")
 		return
@@ -89,7 +89,7 @@ func (t *Manager) initRelationAvailStatus() {
 			t.log.Infof("init relation subscribe to %s %s object avail status updates and deletes", name, objectPath)
 			t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
 			t.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
-			if st := object.StatusData.Get(objectPath); st != nil {
+			if st := object.StatusData.GetByPath(objectPath); st != nil {
 				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
 				cache[relationS] = st.Avail
 			} else {
@@ -100,7 +100,7 @@ func (t *Manager) initRelationAvailStatus() {
 			t.log.Infof("subscribe to %s %s@%s instance avail status updates and deletes", name, objectPath, node)
 			t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
 			t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-			if st := instance.StatusData.Get(objectPath, node); st != nil {
+			if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
 				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
 				cache[relationS] = st.Avail
 			} else {
@@ -270,7 +270,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 				if node == "" {
 					t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
 					t.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
-					if st := object.StatusData.Get(objectPath); st != nil {
+					if st := object.StatusData.GetByPath(objectPath); st != nil {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, st.Avail)
 						cache[relationS] = st.Avail
 					} else {
@@ -281,7 +281,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 				} else {
 					t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
 					t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-					if st := instance.StatusData.Get(objectPath, node); st != nil {
+					if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, st.Avail)
 						cache[relationS] = st.Avail
 					} else {

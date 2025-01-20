@@ -135,6 +135,9 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 }
 
 func (t *CmdNodeEvents) Run() error {
+	if t.Wait && t.Limit == 0 {
+		t.Limit = 1
+	}
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -320,6 +323,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
+		SetWait(t.Wait).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).

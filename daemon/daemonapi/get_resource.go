@@ -32,8 +32,8 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		monitor := instance.MonitorData.Get(config.Path, config.Node)
-		status := instance.StatusData.Get(config.Path, config.Node)
+		monitor := instance.MonitorData.GetByPathAndNode(config.Path, config.Node)
+		status := instance.StatusData.GetByPathAndNode(config.Path, config.Node)
 		for rid, resourceConfig := range config.Value.Resources {
 			if id, err := resourceid.Parse(rid); err != nil {
 				continue

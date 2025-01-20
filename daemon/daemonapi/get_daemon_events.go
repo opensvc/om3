@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -17,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/rbac"
@@ -29,6 +31,25 @@ type (
 	Filter struct {
 		Kind   any
 		Labels []pubsub.Label
+
+		// Datas is a slice of DataFilter used to define filtering data conditions
+		// based on key, value, and operator.
+		Datas DataFilters
+	}
+
+	// DataFilter represents a filtering data condition based on a key, value,
+	// and an operator.
+	DataFilter struct {
+		Key   string
+		Value string
+		Op    string
+	}
+
+	// DataFilters is a slice of DataFilter used to define a collection of filtering data conditions.
+	DataFilters []DataFilter
+
+	kinder interface {
+		Kind() string
 	}
 )
 
@@ -118,8 +139,7 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	}
 }
 
-// getLocalDaemonEvents feeds publications in rss format.
-// TODO: Honor subscribers params.
+// getLocalDaemonEvents handles streaming local daemon events based on provided filters, selectors, and parameters.
 func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); err != nil {
 		return err
@@ -134,18 +154,27 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 		// hasSelector is true when param.Selector is defined and not ""
 		hasSelector bool
+
 		// pathL list of all cluster object paths
 		pathL naming.Paths
+
 		// pathM all cluster object paths
 		pathM naming.M
+
 		// selector is used to expand param.Selector vs pathL
 		selector *objectselector.Selection
+
 		// pathSelected is a map of currently selected object paths
 		pathSelected naming.M
-		// filterM is a map indexed on requested filter identifiers.
-		// It is used to differentiate requested filters from extra filters
+
+		// requestedFilterByFilterIdentifier is a map indexed on requested
+		// filter identifiers.
+		// It is used to differentiate the requested filters from extra filters
 		// added for object selection but not for response event stream.
-		filterM = make(map[string]any)
+		requestedFilterByFilterIdentifier = make(map[string]any)
+
+		// dataFiltersByKind is a map of DataFilters indexed on event kind.
+		dataFiltersByKind = make(map[string]DataFilters)
 
 		evCtx  = ctx.Request().Context()
 		cancel context.CancelFunc
@@ -169,7 +198,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		for _, k := range labels.Keys() {
 			// need verify both kind:label and nil:label
 			for _, s := range []string{kind + ":" + k, kind + ":" + k} {
-				if _, ok := filterM[s]; ok {
+				if _, ok := requestedFilterByFilterIdentifier[s]; ok {
 					return true
 				}
 			}
@@ -234,21 +263,28 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	for _, filter := range filters {
 		if filter.Kind == nil {
 			log.Debugf("filtering %v %v", filter.Kind, filter.Labels)
-			filterM[pubsub.FilterFmt("", filter.Labels...)] = nil
+			requestedFilterByFilterIdentifier[pubsub.FilterFmt("", filter.Labels...)] = nil
 		} else if kind, ok := filter.Kind.(event.Kinder); ok {
-			log.Debugf("filtering %s %v", kind.Kind(), filter.Labels)
-			filterM[pubsub.FilterFmt(kind.Kind(), filter.Labels...)] = nil
+			requestedFilterByFilterIdentifier[pubsub.FilterFmt(kind.Kind(), filter.Labels...)] = nil
+
+			if len(filter.Datas) > 0 {
+				log.Debugf("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.Datas)
+				dataFiltersByKind[kind.Kind()] = filter.Datas
+			} else {
+				log.Debugf("filtering %s label:%v", kind.Kind(), filter.Labels)
+				log.Debugf("filtering %s %v", kind.Kind(), filter.Labels)
+			}
 		} else {
 			log.Warnf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
 			continue
 		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
 	}
-	if hasSelector && len(filterM) == 0 {
+	if hasSelector && len(requestedFilterByFilterIdentifier) == 0 {
 		// no filters => all events must be forwarded, add ObjectCreated &
-		// ObjectDeleted to filterM to simulate client has asked for them
-		filterM["ObjectCreated:"] = nil
-		filterM["ObjectDeleted:{node="+a.localhost+"}"] = nil
+		// ObjectDeleted to requestedFilterByFilterIdentifier to simulate client has asked for them
+		requestedFilterByFilterIdentifier["ObjectCreated:"] = nil
+		requestedFilterByFilterIdentifier["ObjectDeleted:{node="+a.localhost+"}"] = nil
 	}
 
 	if hasSelector {
@@ -303,6 +339,53 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	sseWriter := sseevent.NewWriter(w)
 	evCounter := uint64(0)
+
+	doEvent := func(i any) error {
+		ev := event.ToEvent(i, evCounter)
+		if ev != nil {
+			if dataFilter, ok := dataFiltersByKind[ev.Kind]; ok {
+				v := make(map[string]any)
+				if err := json.Unmarshal(ev.Data, &v); err != nil {
+					return err
+				}
+				if !dataFilter.match(v) {
+					return nil
+				}
+			}
+		}
+		evCounter++
+		if _, err := sseWriter.Write(ev); err != nil {
+			log.Debugf("write event %s: %s", ev.Kind, err)
+			return err
+		}
+		w.Flush()
+		return nil
+	}
+
+	if params.Cache != nil && *params.Cache {
+		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		for _, filter := range filters {
+			labels := pubsub.Labels{}
+			for _, lab := range filter.Labels {
+				labels[lab[0]] = lab[1]
+			}
+			anyL, err := data.ExtractEvents(filter.Kind, labels)
+			if err != nil {
+				return fmt.Errorf("get cached data: %w", err)
+			}
+			for _, anyE := range anyL {
+				if err := doEvent(anyE); err != nil {
+					log.Debugf("do event failed on %v: %s", anyE, err)
+					return nil
+				}
+				w.Flush()
+				if limit > 0 && eventCount >= limit {
+					return nil
+				}
+			}
+		}
+	}
+
 	for {
 		select {
 		case <-evCtx.Done():
@@ -375,13 +458,11 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 					// message will be forwarded
 				}
 			}
-			ev := event.ToEvent(i, evCounter)
-			evCounter++
-			if _, err := sseWriter.Write(ev); err != nil {
-				log.Debugf("write event %s: %s", ev.Kind, err)
+
+			if err := doEvent(i); err != nil {
+				log.Warnf("doEvent error for %v: %s", i, err)
 				return nil
 			}
-			w.Flush()
 			if limit > 0 && eventCount >= limit {
 				return nil
 			}
@@ -392,6 +473,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 // parseFilters return filters from b.Filter
 func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error) {
 	var filter Filter
+	matchKind := make(map[string]bool)
 
 	if params.Filter == nil {
 		return
@@ -405,6 +487,14 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 		if err != nil {
 			return
 		}
+		if k, ok := filter.Kind.(kinder); ok {
+			kind := k.Kind()
+			hasMatcher, alreadyFiltered := matchKind[kind]
+			if hasMatcher || (alreadyFiltered && len(filter.Datas) > 0) {
+				return nil, fmt.Errorf("can't filter same kind multiple times when it has a value matcher: %s", kind)
+			}
+			matchKind[kind] = len(filter.Datas) > 0
+		}
 		filters = append(filters, filter)
 	}
 	return
@@ -412,30 +502,54 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 
 // parseFilter return filter from s
 //
-// filter syntax is: [kind][,label=value]*
+// filter syntax is: [kind][,label=value][,.abcd.efgh=value]*
 func parseFilter(s string) (filter Filter, err error) {
-	kindLabels := strings.SplitN(s, ",", 2)
-	if len(kindLabels[0]) == 0 {
+	kindLabelData := strings.SplitN(s, ",", 2)
+	if len(kindLabelData[0]) == 0 {
 		// match all labels
 		filter.Kind = nil
 	} else {
-		filter.Kind, err = msgbus.KindToT(kindLabels[0])
+		filter.Kind, err = msgbus.KindToT(kindLabelData[0])
 		if err != nil {
 			return
 		}
 	}
-	if len(kindLabels) == 1 {
+	if len(kindLabelData) == 1 {
 		// no label filters
 		return
 	}
-	for _, labelElem := range strings.Split(kindLabels[1], ",") {
+	for _, labelElem := range strings.Split(kindLabelData[1], ",") {
 		splitted := strings.SplitN(labelElem, "=", 2)
 		if len(splitted) == 2 {
-			filter.Labels = append(filter.Labels, pubsub.Label{splitted[0], splitted[1]})
+			key := splitted[0]
+			value := splitted[1]
+			if len(key) == 0 {
+				err = fmt.Errorf("invalid filter expression with empty matcher key: %s", s)
+				return
+			}
+			if key[0] != '.' {
+				filter.Labels = append(filter.Labels, pubsub.Label{key, value})
+			} else {
+				filter.Datas = append(filter.Datas, DataFilter{Key: key, Value: value, Op: "="})
+			}
 		} else {
 			err = fmt.Errorf("invalid filter expression: %s", s)
 			return
 		}
 	}
 	return
+}
+
+func (df DataFilters) match(i any) bool {
+	flatten := output.Flatten(i)
+	for _, m := range df {
+		if v, ok := flatten[m.Key]; !ok {
+			return false
+		} else if s, ok := v.(string); !ok {
+			return false
+		} else if s != m.Value {
+			return false
+		}
+	}
+	return true
 }

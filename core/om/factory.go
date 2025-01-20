@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-
 	"time"
 
 	"github.com/spf13/cobra"
@@ -1165,7 +1164,7 @@ func newCmdNodeEvents() *cobra.Command {
 	addFlagEventTemplate(flags, &options.Template)
 	addFlagWait(flags, &options.Wait)
 	addFlagNodeSelector(flags, &options.NodeSelector)
-	flags.Uint64Var(&options.Limit, "limit", 0, "limit event count to fetch")
+	flags.Uint64Var(&options.Limit, "limit", 0, "stop listening when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
 	return cmd
 }
 

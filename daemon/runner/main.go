@@ -93,7 +93,7 @@ func (t *T) do(ctx context.Context) {
 		t.log.Infof("stopped")
 	}()
 
-	if nodeConfig := node.ConfigData.Get(hostname.Hostname()); nodeConfig != nil {
+	if nodeConfig := node.ConfigData.GetByNode(hostname.Hostname()); nodeConfig != nil {
 		if nodeConfig.MaxParallel > 0 {
 			t.maxRunning = nodeConfig.MaxParallel
 			t.status.MaxRunning = t.maxRunning
