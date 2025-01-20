@@ -504,11 +504,11 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 

@@ -383,7 +383,7 @@ func (t *T) mkfsOptions() []string {
 	return a.Get()
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if v, err := t.fs().Exists(); err != nil {
 		return fmt.Errorf("fs existence check: %w", err)
 	} else if v {
@@ -418,7 +418,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	fs := t.fs()
 	if v, err := fs.Exists(); err != nil {
 		return err

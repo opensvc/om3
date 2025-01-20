@@ -118,7 +118,7 @@ func (t *T) Label(_ context.Context) string {
 	return t.fqn()
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	lv := t.lv()
 	lvi, ok := lv.(LVDriverProvisioner)
 	if !ok {
@@ -145,7 +145,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	lv := t.lv()
 	exists, err := lv.Exists()
 	if err != nil {

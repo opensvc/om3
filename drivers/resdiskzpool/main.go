@@ -368,11 +368,11 @@ func (t *T) pool() *zfs.Pool {
 	}
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	return t.provision(ctx)
 }
 

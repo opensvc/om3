@@ -371,7 +371,7 @@ func (t *T) isMounted() (bool, error) {
 	return findmnt.Has(t.devpath(), t.mountPoint())
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	fs := t.fs()
 	i1, ok := fs.(IsFormateder)
 	if !ok {

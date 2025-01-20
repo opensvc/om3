@@ -320,7 +320,7 @@ func (t *T) Label(_ context.Context) string {
 	return t.getName()
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	dev := t.getDev()
 	if dev == "" {
 		return fmt.Errorf("no dev")
@@ -389,7 +389,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	dev := t.getDev()
 	if dev == "" {
 		return nil

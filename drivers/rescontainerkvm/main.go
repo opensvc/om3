@@ -706,7 +706,7 @@ func (t *T) provisioned() (bool, error) {
 	}
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	isProvisioned, err := t.provisioned()
 	if err != nil {
 		return err
@@ -723,14 +723,14 @@ func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
-	if err := t.UnprovisionLeaded(ctx); err != nil {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	if err := t.UnprovisionAsFollower(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	isProvisioned, err := t.provisioned()
 	if err != nil {
 		return err

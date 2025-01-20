@@ -205,11 +205,11 @@ func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.unprovision()
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.unprovision()
 }
 
@@ -260,7 +260,7 @@ func (t *T) purgeLxcVar() error {
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if t.exists() {
 		t.Log().Infof("container %s is already created", t.Name)
 		return nil
