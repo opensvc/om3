@@ -89,7 +89,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		t.Log().Errorf("%s", err)
 	} else if isLocalUp {
 		// the local instance is already up.
-		// let the local start report the unecessary start steps
+		// let the local start report the unnecessary start steps
 		// but skip further abort tests
 		return false
 	}
@@ -243,7 +243,7 @@ func (t *T) Presync() error {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			t.Log().Errorf("%s defered close: %s", vboxCfgFilePath, err)
+			t.Log().Errorf("%s deferred close: %s", vboxCfgFilePath, err)
 		}
 	}()
 	_, err = f.WriteString(t.configFile())
@@ -642,7 +642,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 	return nil, nil
 }
 
-// cgroupDir returns the container resource cgroup path, relative to a controler head.
+// cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }

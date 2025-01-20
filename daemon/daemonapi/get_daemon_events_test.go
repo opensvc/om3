@@ -55,9 +55,9 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 			filterS: []string{"InstanceStatusUpdated,node=nodeX,path=root/svc/foo,.data.instance_status.overall=down"},
 			expected: []Filter{
 				{
-					Kind:   &msgbus.InstanceStatusUpdated{},
-					Labels: []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
-					Datas:  DataFilters{{Key: ".data.instance_status.overall", Op: "=", Value: "down"}},
+					Kind:        &msgbus.InstanceStatusUpdated{},
+					Labels:      []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
+					DataFilters: DataFilters{{Key: ".data.instance_status.overall", Op: "=", Value: "down"}},
 				},
 			},
 		},
@@ -71,7 +71,7 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 				{
 					Kind:   &msgbus.InstanceStatusUpdated{},
 					Labels: []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
-					Datas: DataFilters{
+					DataFilters: DataFilters{
 						{Key: ".data.instance_status.overall", Op: "=", Value: "down"},
 						{Key: ".data.instance_status.avail", Op: "=", Value: "stdby up"},
 					},

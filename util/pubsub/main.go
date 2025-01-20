@@ -782,7 +782,7 @@ func (b *Bus) EnableBufferPublication(capacity int32) {
 
 type (
 	Timeouter interface {
-		timout() time.Duration
+		timeout() time.Duration
 	}
 
 	QueueSizer interface {
@@ -801,8 +801,8 @@ func (t WithQueueSize) queueSize() uint64 {
 	return uint64(t)
 }
 
-// timout implements Timeouter for Timeout
-func (t Timeout) timout() time.Duration {
+// timeout implements Timeouter for Timeout
+func (t Timeout) timeout() time.Duration {
 	return time.Duration(t)
 }
 
@@ -833,7 +833,7 @@ func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	for _, opt := range options {
 		switch v := opt.(type) {
 		case Timeouter:
-			op.timeout = v.timout()
+			op.timeout = v.timeout()
 		case QueueSizer:
 			op.queueSize = v.queueSize()
 		default:
@@ -977,16 +977,16 @@ func (sub *Subscription) keys() []string {
 }
 
 func (pub cmdPub) String() string {
-	var dataS string
+	var dataStr string
 	switch data := pub.data.(type) {
 	case stringer:
-		dataS = data.String()
+		dataStr = data.String()
 	default:
-		dataS = pub.dataType
+		dataStr = pub.dataType
 	}
-	s := fmt.Sprintf("publication %s", dataS)
+	s := fmt.Sprintf("publication %s", dataStr)
 	if len(pub.labels) > 0 {
-		s += " (" + pub.labels.String()+")"
+		s += " (" + pub.labels.String() + ")"
 	}
 	return s
 }

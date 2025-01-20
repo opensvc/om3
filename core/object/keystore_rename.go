@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-// TransactionRenameKey changes the key name and return uncommited
+// TransactionRenameKey changes the key name and return uncommitted
 func (t *keystore) TransactionRenameKey(name, to string) error {
 	if t.HasKey(to) {
 		return fmt.Errorf("%w: %s", KeystoreErrExist, to)

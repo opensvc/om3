@@ -1,3 +1,3 @@
-The name of the backend network to use for drbd trafic.
+The name of the backend network to use for drbd traffic.
 
 Set this keyword if some node names are resolved to NATed addresses.

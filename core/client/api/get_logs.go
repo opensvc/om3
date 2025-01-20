@@ -51,7 +51,7 @@ func NewGetLogs(t api.ClientInterface, nodename string) *GetLogs {
 	return options
 }
 
-// GetRaw fetchs an event json RawMessage stream from the agent api
+// GetRaw fetches an event json RawMessage stream from the agent api
 func (t GetLogs) GetRaw() (chan []byte, error) {
 	resp, err := t.eventsBase()
 	if err != nil {
@@ -70,7 +70,7 @@ func (t GetLogs) GetRaw() (chan []byte, error) {
 
 }
 
-// Do fetchs an Event stream from the agent api
+// Do fetches an Event stream from the agent api
 func (t GetLogs) Do() (chan event.Event, error) {
 	q, err := t.GetRaw()
 	if err != nil {

@@ -15,7 +15,7 @@ func TestOnNilErrCtx(t *testing.T) {
 		require.NotPanics(t, func() { i.Send(nil) })
 		require.NotPanicsf(t, func() { i.Send(nil) }, "multiple calls")
 	})
-	t.Run("Receive is not bloking", func(t *testing.T) {
+	t.Run("Receive is not blocking", func(t *testing.T) {
 		var err error
 		require.NotPanics(t, func() {
 			err = i.Receive()
@@ -114,7 +114,7 @@ func TestWithErrCtxCreatedFromNilContextAreBlocking(t *testing.T) {
 			t.Logf("Received ok")
 			require.ErrorIs(t, err, expectedError)
 			require.ErrorIs(t, e.Receive(), ErrAlreadyCalled)
-			t.Run("multiple Send are not bloking after Receive", func(t *testing.T) {
+			t.Run("multiple Send are not blocking after Receive", func(t *testing.T) {
 				e.Send(nil)
 			})
 		}

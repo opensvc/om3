@@ -330,7 +330,7 @@ func (t *T) notifyWatchDogBus(ctx context.Context) {
 //
 // It does nothing when:
 //   - env var WATCHDOG_USEC is empty
-//   - if there is no daemon sysmanager (daemonsys.New retuns error)
+//   - if there is no daemon sysmanager (daemonsys.New returns error)
 //
 // The lowest watchdog interval is WatchdogMinInterval
 func (t *T) notifyWatchDogSys(ctx context.Context) {

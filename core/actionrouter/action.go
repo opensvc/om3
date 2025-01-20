@@ -40,7 +40,7 @@ type (
 		Local bool
 
 		//
-		// DefaultIsLocal makes actions not explicitely Local nor remoted
+		// DefaultIsLocal makes actions not explicitly Local nor remoted
 		// via NodeSelector be treated as local (CRM level).
 		//
 		DefaultIsLocal bool
@@ -109,7 +109,7 @@ type (
 		Options() T
 	}
 
-	// Result is a predictible type of actions return value, for reflect.
+	// Result is a predictable type of actions return value, for reflect.
 	Result struct {
 		Nodename      string        `json:"nodename"`
 		Path          naming.Path   `json:"path,omitempty"`

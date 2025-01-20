@@ -325,7 +325,7 @@ func (t *BT) FormatNS(s string) (string, error) {
 // its ConfigsEnv: []string{"PUBLICVAR1=Value", ...}
 // secret var names from its SecretsEnv are added to the list: "SECRETVAR1", "SECRETVAR2",...
 // values for secrets are added to the returned envM: {"SECRETVAR1":"SECRETVALUE1", ...}
-// It may be used by executorArgser to prepare run args and run command environement.
+// It may be used by executorArgser to prepare run args and run command environment.
 func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
 	envM = make(map[string]string)
 	envL = []string{
@@ -609,7 +609,7 @@ func (t *BT) Stop(ctx context.Context) error {
 
 func (t *BT) Status(ctx context.Context) status.T {
 	if !t.Detach {
-		t.Log().Debugf("status n/a on not dettach")
+		t.Log().Debugf("status n/a on not detach")
 		return status.NotApplicable
 	}
 
@@ -812,7 +812,7 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 			return err
 		}
 	} else if hasImage, _, err := t.executer.HasImage(ctx); err != nil {
-		return fmt.Errorf("unable to detect if image %s exists localy: %s", t.Image, err)
+		return fmt.Errorf("unable to detect if image %s exists locally: %s", t.Image, err)
 	} else if !hasImage {
 		if err := t.pull(ctx); err != nil {
 			return err

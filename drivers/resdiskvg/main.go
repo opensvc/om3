@@ -139,7 +139,7 @@ func (t *T) Label(_ context.Context) string {
 	return t.VGName
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	vg := t.vg()
 	vgi, ok := vg.(VGDriverProvisioner)
 	if !ok {
@@ -160,7 +160,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	}
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	vg := t.vg()
 	exists, err := vg.Exists()
 	if err != nil {

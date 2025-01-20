@@ -25,7 +25,7 @@ func Flatten(inputJSON interface{}) map[string]interface{} {
 	return flattened
 }
 
-// SprintFlat accepts a JSON formated byte array and returns the sorted
+// SprintFlat accepts a JSON formatted byte array and returns the sorted
 // "key = val" buffer
 func SprintFlat(b []byte) string {
 	s := ""
@@ -62,7 +62,7 @@ func sprintFlatData(b []byte) []kv {
 	return l
 }
 
-// PrintFlat accepts a JSON formated byte array and prints to stdout the sorted
+// PrintFlat accepts a JSON formatted byte array and prints to stdout the sorted
 // "key = val"
 func PrintFlat(b []byte) {
 	var data map[string]interface{}

@@ -138,7 +138,7 @@ func WithStderrLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
-// WithBufferedStdout activates the buffering of the lines emited by the process on stdout
+// WithBufferedStdout activates the buffering of the lines emitted by the process on stdout
 func WithBufferedStdout() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -147,7 +147,7 @@ func WithBufferedStdout() funcopt.O {
 	})
 }
 
-// WithBufferedStderr activates the buffering of the lines emited by the process on stderr
+// WithBufferedStderr activates the buffering of the lines emitted by the process on stderr
 func WithBufferedStderr() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)

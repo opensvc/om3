@@ -165,7 +165,7 @@ func (t *T) Label(_ context.Context) string {
 	return t.UUID
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	dev := t.md()
 	devIntf, ok := dev.(MDDriverProvisioner)
 	if !ok {
@@ -241,7 +241,7 @@ func (t *T) UnsetUUID(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	dev := t.md()
 	exists, err := dev.Exists()
 	if err != nil {

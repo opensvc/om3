@@ -242,7 +242,7 @@ func (t *T) Tables() []string {
 }
 
 // AllowEmptyNetwork returns true if the driver supports
-// empty "network" keywork value.
+// empty "network" keyword value.
 // For one, the loopback driver does support that.
 func (t T) AllowEmptyNetwork() bool {
 	return t.allowEmptyNetwork

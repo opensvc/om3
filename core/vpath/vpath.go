@@ -71,7 +71,7 @@ func HostPathAndVol(s string, namespace string) (hostPath string, vol object.Vol
 //
 // Example:
 //
-// INPUT        VOL     OUPUT            COMMENT
+// INPUT        VOL     OUTPUT           COMMENT
 // /path                /path            host full path
 // myvol/path   myvol   /srv/myvol/path  vol head relative path
 func HostPath(s string, namespace string) (string, error) {
@@ -93,7 +93,7 @@ func HostPaths(l []string, namespace string) ([]string, error) {
 
 // HostDevpath returns host device path for a volume
 // translation rules:
-// INPUT        VOL     OUPUT       COMMENT
+// INPUT        VOL     OUTPUT      COMMENT
 // /path                /dev/sda1   loop dev
 // /dev/sda1            /dev/sda1   host full path
 // myvol        myvol   /dev/sda1   vol dev path in host

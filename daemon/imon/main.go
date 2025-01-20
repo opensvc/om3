@@ -179,7 +179,7 @@ var (
 	// updateRate is the limit rate for imon publish updates per second
 	// when orchestration loop occur on an object, too many events/commands may block
 	// databus or event bus. We must prevent such situations
-	// TODO: not anymore usefull since delayTimer
+	// TODO: no longer used, replaced by delayTimer
 	updateRate rate.Limit = 25
 )
 

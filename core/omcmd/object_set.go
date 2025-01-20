@@ -45,9 +45,9 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 		}
 		switch response.StatusCode() {
 		case 200:
-			fmt.Printf("%s: commited\n", p)
+			fmt.Printf("%s: committed\n", p)
 		case 204:
-			fmt.Printf("%s: commited\n", p)
+			fmt.Printf("%s: committed\n", p)
 		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)
 		case 401:

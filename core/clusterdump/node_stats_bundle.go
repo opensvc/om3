@@ -10,7 +10,7 @@ type (
 	// Stats is a map of node statistics.
 	Stats map[string]NodeStatsBundle
 
-	// NodeStatsBundle embeds all daemon threads and each objet system
+	// NodeStatsBundle embeds all daemon threads and each object system
 	// resource usage metrics.
 	NodeStatsBundle struct {
 		Time       time.Time              `json:"time"`

@@ -192,7 +192,7 @@ Inputs:
     DisplayModeLabel: pwd
     LabelCss: action16
     Type: string
-    Help: The password hash for this user. It is recommanded to set it to '!!' or to set initial password to change upon first login. Leave empty to not check nor set the password.
+    Help: The password hash for this user. It is recommended to set it to '!!' or to set initial password to change upon first login. Leave empty to not check nor set the password.
   -
     Id: gecos
     Label: Gecos

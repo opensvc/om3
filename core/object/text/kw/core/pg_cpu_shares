@@ -1,5 +1,5 @@
 The kernel default value is used, which usually is 1024 shares.
 
 In a cpu-bound situation, this setting ensures the service does not use more
-than its share of cpu ressource. The actual percentile depends on shares
+than its share of cpu resource. The actual percentile depends on shares
 allowed to other services.

@@ -299,7 +299,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 				_, _ = fmt.Fprintf(os.Stderr, "event read failed for node %s: '%s'\n", nodename, err)
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 			}
-			// wait time before reconnect, it is short to avoid loosing daemon
+			// wait time before reconnect, it is short to avoid losing daemon
 			// restart events.
 			time.Sleep(100 * time.Millisecond)
 			select {

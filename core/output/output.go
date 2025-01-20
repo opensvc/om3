@@ -5,7 +5,7 @@ package output
 type T int
 
 const (
-	// Human is the prefered human friendly custom output format
+	// Human is the preferred human friendly custom output format
 	Human T = iota
 	// JSON is the json output format
 	JSON

@@ -14,7 +14,7 @@ func (t *actor) Frozen() time.Time {
 	return freeze.Frozen(t.path.FrozenFile())
 }
 
-// Freeze creates a persistant flag file that prevents orchestration
+// Freeze creates a persistent flag file that prevents orchestration
 // of the object instance.
 func (t *actor) Freeze(ctx context.Context) error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
@@ -28,7 +28,7 @@ func (t *actor) Freeze(ctx context.Context) error {
 	return nil
 }
 
-// Unfreeze removes the persistant flag file that prevents orchestration
+// Unfreeze removes the persistent flag file that prevents orchestration
 // of the object instance.
 func (t *actor) Unfreeze(ctx context.Context) error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)

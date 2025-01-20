@@ -67,15 +67,15 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.unconfigure()
 }
 
-func (t *T) ProvisionLeaded(ctx context.Context) error {
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	return t.configure(preserve)
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	var (
 		disks []pool.Disk
 		err   error
@@ -93,7 +93,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return t.configure(enforce)
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if t.DiskID == "" {
 		t.Log().Infof("skip disk deletion: the disk_id keyword is not set")
 		return nil

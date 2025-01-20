@@ -371,7 +371,7 @@ func (t *T) isMounted() (bool, error) {
 	return findmnt.Has(t.devpath(), t.mountPoint())
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	fs := t.fs()
 	i1, ok := fs.(IsFormateder)
 	if !ok {
@@ -385,7 +385,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := i1.IsFormated(devpath); err != nil {
 		t.Log().Warnf("skip mkfs: %s", err)
 	} else if v {
-		t.Log().Infof("%s is already formated", t.Device)
+		t.Log().Infof("%s is already formatted", t.Device)
 		return nil
 	}
 	i2, ok := fs.(filesystems.MKFSer)

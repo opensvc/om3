@@ -27,7 +27,7 @@ func initBasicUser(i any) (string, auth.Strategy, error) {
 	name := "basicauth user"
 	userDB, ok := i.(UserGranter)
 	if !ok {
-		return name, nil, fmt.Errorf("UserGranter not implemented")
+		return name, nil, fmt.Errorf("UserGranter interface is not implemented")
 	}
 	validateUser := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
 		grants, err := userDB.UserGrants(userName, password)
@@ -43,7 +43,7 @@ func initBasicNode(i interface{}) (string, auth.Strategy, error) {
 	name := "basicauth node"
 	n, ok := i.(NodeAuthenticater)
 	if !ok {
-		return name, nil, fmt.Errorf("missing node authenticater")
+		return name, nil, fmt.Errorf("NodeAuthenticater interface is not implemented")
 	}
 	validate := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
 		if err := n.AuthenticateNode(userName, password); err != nil {

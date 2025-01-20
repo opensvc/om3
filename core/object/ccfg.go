@@ -17,7 +17,7 @@ type (
 	//
 	// Ccfg is the clusterwide configuration store.
 	//
-	// The content is the same as node.conf, and is overriden by
+	// The content is the same as node.conf, and is overridden by
 	// the definition found in node.conf.
 	//
 	Ccfg struct {

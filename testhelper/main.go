@@ -46,7 +46,7 @@ func Setup(t *testing.T) Env {
 
 // FixLogger temporarily changes the global log level to Info and increases the caller
 // skip frame count by 1,
-// returning a cancelation function to restore the previous settings.
+// returning a cancellation function to restore the previous settings.
 func FixLogger() (cancel func()) {
 	prevLevel := zerolog.GlobalLevel()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)

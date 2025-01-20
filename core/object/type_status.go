@@ -129,7 +129,7 @@ func (t Digest) ObjectWarningsString() string {
 	return strings.Join(l, " ")
 }
 
-// NewStatus allocates and return a struct to host an objet full state dataset.
+// NewStatus allocates and return a struct to host an object full state dataset.
 func NewStatus() *Digest {
 	t := &Digest{}
 	t.Instances = make([]instance.States, 0)

@@ -1756,7 +1756,7 @@ func decodeResponse(r *http.Response, v interface{}) error {
 
 // validateResponse checks that the http response is within the 200 range.
 // Some functionality needs to be added here to check for some specific errors,
-// and probably add the equivlents to hocError and hocHTTPError from the Python
+// and probably add the equivalents to hocError and hocHTTPError from the Python
 // REST client.
 func validateResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {

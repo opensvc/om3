@@ -305,8 +305,8 @@
     With:
       environment = Foo=one bar=2 Z=u
       
-    Foo=one     was previsouly changed to FOO=one
-    bar=2       was previsouly changed to BAR=2
+    Foo=one     was previously changed to FOO=one
+    bar=2       was previously changed to BAR=2
     Zoo=u       was previously changed to ZOO=u
     ```
 
@@ -438,7 +438,7 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ### Cluster Config
 
-* Need to set explicitely the `cluster.name` because the v3 daemon will generate a random cluster name if none is set:
+* Need to set explicitly the `cluster.name` because the v3 daemon will generate a random cluster name if none is set:
 
     ```
     # Ensure cluster.name is defined before upgrade to v3

@@ -206,7 +206,7 @@ func (t *T) genHostID() error {
 
 // UnprovisionStop skips the normal pre-unprovision resource stop,
 // because zfs can only destroy imported pools. The Unprovision func
-// imports anyway, but if we don't export unecessary export/import is
+// imports anyway, but if we don't export unnecessary export/import is
 // saved.
 func (t *T) UnprovisionStop(ctx context.Context) error {
 	t.Log().Debugf("bypass export for unprovision")
@@ -368,11 +368,11 @@ func (t *T) pool() *zfs.Pool {
 	}
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	return t.provision(ctx)
 }
 

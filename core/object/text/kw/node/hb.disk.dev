@@ -1,4 +1,4 @@
-The device to write the hearbeats to and read from.
+The device to write the heartbeats to and read from.
 
 It must be,
 

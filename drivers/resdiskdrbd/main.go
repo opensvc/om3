@@ -744,9 +744,9 @@ func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) 
 	}
 }
 
-func (t *T) ProvisionLeaded(ctx context.Context) error {
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.UnprovisionLeaded(ctx)
+		return t.UnprovisionAsFollower(ctx)
 	})
 	if err := t.fetchConfig(); err != nil {
 		return err
@@ -763,9 +763,9 @@ func (t *T) ProvisionLeaded(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.UnprovisionLeader(ctx)
+		return t.UnprovisionAsLeader(ctx)
 	})
 	if err := t.writeConfig(ctx); err != nil {
 		return err
@@ -849,11 +849,11 @@ func (t *T) deleteConfig() error {
 	}
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.unprovisionCommon(ctx)
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.unprovisionCommon(ctx)
 }
 

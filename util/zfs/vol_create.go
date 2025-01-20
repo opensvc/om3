@@ -17,7 +17,7 @@ type (
 	}
 )
 
-// VolCreateWithArgs defines the shlex splitted list of arguments to prepend
+// VolCreateWithArgs defines the shlex split list of arguments to prepend
 // to the command.
 func VolCreateWithArgs(l []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

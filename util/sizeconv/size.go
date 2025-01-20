@@ -126,7 +126,7 @@ func FromSize(sizeStr string) (int64, error) {
 	if strings.ToLower(matches[4]) == "i" {
 		convertMap = bMap
 	} else if strings.ToLower(matches[5]) == "" {
-		// eg. "100m" interpreted implicitely as "100MiB"
+		// eg. "100m" interpreted implicitly as "100MiB"
 		convertMap = bMap
 	} else {
 		convertMap = dMap

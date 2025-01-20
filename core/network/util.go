@@ -51,7 +51,7 @@ When the device with the lowest mac is removed from the bridge or when
 a new device with the lowest mac is added to the bridge, all containers
 can experience tcp hangs while the arp table resynchronizes.
 
-Setting a mac address to the bridge explicitely avoids these mac address
+Setting a mac address to the bridge explicitly avoids these mac address
 changes.
 */
 func MACFromIP4(ip net.IP) (net.HardwareAddr, error) {

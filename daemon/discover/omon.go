@@ -57,7 +57,7 @@ func (t *Manager) omon(started chan<- bool) {
 				if _, ok := omonStarted[c.Path]; !ok {
 					startOmon(c.Path, c.Value, "instance config updated")
 				} else {
-					// see bellow ObjectStatusDone on t0 InstanceConfigDeleted,
+					// see below ObjectStatusDone on t0 InstanceConfigDeleted,
 					// t1 InstanceConfigUpdated
 				}
 			case *msgbus.ObjectStatusDone:

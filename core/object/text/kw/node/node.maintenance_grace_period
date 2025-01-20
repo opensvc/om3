@@ -1,7 +1,7 @@
 A duration expression, like `1m30s`, defining how long the daemon keeps
 remote node data while it is known to be in `maintenance`.
 
-The maintenance state is announced to peers at the begining of a `daemon
+The maintenance state is announced to peers at the beginning of a `daemon
 stop` and `daemon restart`, but not on daemon shutdown.
 
 As long as the remote node data is kept, the local daemon won't takeover

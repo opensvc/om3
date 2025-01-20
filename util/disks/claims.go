@@ -16,7 +16,7 @@ type (
 	ObjectsDeviceClaims map[string]DeviceClaims
 
 	// deviceClaimer is an optional interface a Resource driver can implement
-	// to advertize to the core which block device it claims. Used by pushdisks
+	// to advertise to the core which block device it claims. Used by pushdisks
 	// to attribute disks regions to objects.
 	deviceClaimer interface {
 		ClaimedDevices() device.L

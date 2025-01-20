@@ -32,9 +32,9 @@ type (
 		Kind   any
 		Labels []pubsub.Label
 
-		// Datas is a slice of DataFilter used to define filtering data conditions
+		// DataFilters is a slice of DataFilter used to define filtering data conditions
 		// based on key, value, and operator.
-		Datas DataFilters
+		DataFilters DataFilters
 	}
 
 	// DataFilter represents a filtering data condition based on a key, value,
@@ -267,9 +267,9 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		} else if kind, ok := filter.Kind.(event.Kinder); ok {
 			requestedFilterByFilterIdentifier[pubsub.FilterFmt(kind.Kind(), filter.Labels...)] = nil
 
-			if len(filter.Datas) > 0 {
-				log.Debugf("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.Datas)
-				dataFiltersByKind[kind.Kind()] = filter.Datas
+			if len(filter.DataFilters) > 0 {
+				log.Debugf("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.DataFilters)
+				dataFiltersByKind[kind.Kind()] = filter.DataFilters
 			} else {
 				log.Debugf("filtering %s label:%v", kind.Kind(), filter.Labels)
 				log.Debugf("filtering %s %v", kind.Kind(), filter.Labels)
@@ -490,10 +490,10 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 		if k, ok := filter.Kind.(kinder); ok {
 			kind := k.Kind()
 			hasMatcher, alreadyFiltered := matchKind[kind]
-			if hasMatcher || (alreadyFiltered && len(filter.Datas) > 0) {
+			if hasMatcher || (alreadyFiltered && len(filter.DataFilters) > 0) {
 				return nil, fmt.Errorf("can't filter same kind multiple times when it has a value matcher: %s", kind)
 			}
-			matchKind[kind] = len(filter.Datas) > 0
+			matchKind[kind] = len(filter.DataFilters) > 0
 		}
 		filters = append(filters, filter)
 	}
@@ -519,10 +519,10 @@ func parseFilter(s string) (filter Filter, err error) {
 		return
 	}
 	for _, labelElem := range strings.Split(kindLabelData[1], ",") {
-		splitted := strings.SplitN(labelElem, "=", 2)
-		if len(splitted) == 2 {
-			key := splitted[0]
-			value := splitted[1]
+		split := strings.SplitN(labelElem, "=", 2)
+		if len(split) == 2 {
+			key := split[0]
+			value := split[1]
 			if len(key) == 0 {
 				err = fmt.Errorf("invalid filter expression with empty matcher key: %s", s)
 				return
@@ -530,7 +530,7 @@ func parseFilter(s string) (filter Filter, err error) {
 			if key[0] != '.' {
 				filter.Labels = append(filter.Labels, pubsub.Label{key, value})
 			} else {
-				filter.Datas = append(filter.Datas, DataFilter{Key: key, Value: value, Op: "="})
+				filter.DataFilters = append(filter.DataFilters, DataFilter{Key: key, Value: value, Op: "="})
 			}
 		} else {
 			err = fmt.Errorf("invalid filter expression: %s", s)

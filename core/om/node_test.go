@@ -61,7 +61,7 @@ func TestOmNodePush(t *testing.T) {
 			t.Logf("verify command create %s", expectedFile)
 			b, err := os.ReadFile(expectedFile)
 			require.NoErrorf(t, err, "command didn't create %s", expectedFile)
-			require.NoErrorf(t, json.Unmarshal(b, &res), "unexpected not json conten %s: %st", expectedFile, b)
+			require.NoErrorf(t, json.Unmarshal(b, &res), "invalid json content %s: %st", expectedFile, b)
 		})
 	}
 }

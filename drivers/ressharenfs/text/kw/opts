@@ -1,5 +1,5 @@
 The NFS share export options.
 
-On Linux, as they woud be set in `/etc/exports`
+On Linux, as they would be set in `/etc/exports`
 
 On Solaris, as they would be passed to the `share` command.

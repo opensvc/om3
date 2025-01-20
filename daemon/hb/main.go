@@ -186,7 +186,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 
 	// start debounce msg goroutine to ensure non-blocking write to msgToSendQ:
 	// the msgToTxCtx goroutine multiplexes data messages to all hb tx drivers.
-	// It can't be stalled because of slow hb trasnmitter.
+	// It can't be stalled because of slow hb transmitter.
 	debouncedMsgQ := make(chan []byte)
 	msgToSendQ := make(chan []byte)
 	go debounceLatestMsgToTx(t.msgToTxCtx, msgToSendQ, debouncedMsgQ)
@@ -274,7 +274,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 			errs = errors.Join(errs, err)
 		}
 	}
-	// Stop first to release connexion holders
+	// Stop first to release connection holders
 	stoppedRids := make(map[string]string)
 	for rid, newSig := range ridSignatureNew {
 		if sig, ok := t.ridSignature[rid]; ok {
@@ -289,7 +289,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		}
 	}
 	for rid, newSig := range stoppedRids {
-		t.log.Infof("heartbeat config changed %s => starting (from stoppped)", rid)
+		t.log.Infof("heartbeat config changed %s => starting (from stopped)", rid)
 		if err := t.startHb(ridHb[rid]); err != nil {
 			errs = errors.Join(errs, err)
 		}
@@ -606,7 +606,7 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 }
 
 // debounceLatestMsgToTx is used to relay dequeued messages from inQ
-// to outC, without blocking on outQ (lastest dequeued message from
+// to outC, without blocking on outQ (the last dequeued message from
 // inQ will replace the relay bloqued message to outQ).
 func debounceLatestMsgToTx(ctx context.Context, inQ <-chan []byte, outC chan<- []byte) {
 	var (

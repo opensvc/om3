@@ -1,4 +1,4 @@
-A cpu garantied time reservation for the pg.
+A cpu guaranteed time reservation for the pg.
 
 * `-1` means unlimited
 * `500` means 500ms out of every period

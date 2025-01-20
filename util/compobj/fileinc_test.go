@@ -340,7 +340,7 @@ func TestFileincFixRule(t *testing.T) {
 			expectedFixResult:        ExitOk,
 			withFileThatDoesNotExist: false,
 		},
-		"with a check with no patern present in the file": {
+		"with a check with no pattern present in the file": {
 			rule: CompFileinc{
 				Path:      "./testdata/fileinc_golden",
 				Check:     "lala",
@@ -353,7 +353,7 @@ func TestFileincFixRule(t *testing.T) {
 			withFileThatDoesNotExist: false,
 		},
 
-		"with too many patern present in the file (check)": {
+		"with too many pattern present in the file (check)": {
 			rule: CompFileinc{
 				Path:      "./testdata/fileinc_golden",
 				Check:     "many",
@@ -378,7 +378,7 @@ func TestFileincFixRule(t *testing.T) {
 			withFileThatDoesNotExist: false,
 		},
 
-		"with one patern false (replace)": {
+		"with one pattern false (replace)": {
 			rule: CompFileinc{
 				Path:      "./testdata/fileinc_golden",
 				Check:     "",
@@ -390,7 +390,7 @@ func TestFileincFixRule(t *testing.T) {
 			expectedFixResult:        ExitOk,
 			withFileThatDoesNotExist: false,
 		},
-		"with many paterns false in the same line (replace)": {
+		"with many patterns false in the same line (replace)": {
 			rule: CompFileinc{
 				Path:      "./testdata/fileinc_golden",
 				Check:     "",

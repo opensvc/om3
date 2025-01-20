@@ -1,2 +1,2 @@
 Create a VERSION file in this directory from the packaging automation.
-On build, this VERSION is embeded.
+On build, this VERSION is embedded.
