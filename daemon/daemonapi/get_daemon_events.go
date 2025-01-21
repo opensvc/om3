@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/labstack/echo/v4"
 
@@ -507,12 +508,32 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 func parseFilter(filterStr string) (Filter, error) {
 	var filter Filter
 
+	isAlphanumeric := func(s string) bool {
+		for _, r := range s {
+			if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+				return false
+			}
+		}
+		return true
+	}
+
 	parseKind := func(s string) (rest string, kind any, err error) {
 		if i := strings.Index(s, ","); i < 0 {
-			// match all labels
+			if isAlphanumeric(s) {
+				// <kind> => match the specified kind
+				rest = ""
+				kind, err = msgbus.KindToT(s)
+			} else {
+				// <filter>,... => match all kinds
+				rest = s
+				kind = nil
+			}
+		} else if i == 0 {
+			// ,<filter>,... => match all kinds
+			rest = s[1:]
 			kind = nil
-			rest = s
 		} else {
+			// <kind>,<filter>,... => match the specified kind
 			rest = s[i+1:]
 			kind, err = msgbus.KindToT(s[0:i])
 		}
@@ -583,6 +604,8 @@ func parseFilter(filterStr string) (Filter, error) {
 }
 
 func (df DataFilters) match(i any) bool {
+	flatten := output.Flatten(i)
+
 	intLessOrEqual := func(str1, str2 string) (bool, error) {
 		num1, err1 := strconv.Atoi(str1)
 		num2, err2 := strconv.Atoi(str2)
@@ -655,8 +678,7 @@ func (df DataFilters) match(i any) bool {
 		return num1 > num2, nil
 	}
 
-	flatten := output.Flatten(i)
-	for _, m := range df {
+	matchDataFilter := func(m DataFilter) bool {
 		s, ok := flatten[m.Key]
 		if !ok {
 			return false
@@ -699,6 +721,14 @@ func (df DataFilters) match(i any) bool {
 				return v
 			}
 			return s >= m.Value
+		default:
+			return false
+		}
+	}
+
+	for _, m := range df {
+		if !matchDataFilter(m) {
+			return false
 		}
 	}
 	return true
