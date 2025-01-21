@@ -871,7 +871,6 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 		}
 	} else {
 		t.Log().Infof("resource already not defined")
-		return nil
 	}
 	if err := t.deleteConfig(); err != nil {
 		return err
