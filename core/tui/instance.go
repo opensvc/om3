@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
@@ -88,7 +89,7 @@ func formatObjectProvisioned(data object.Status) string {
 
 func formatObjectPlacement(data object.Status) string {
 	switch data.PlacementState {
-	case 2:
+	case placement.NonOptimal:
 		return "non-optimal placement"
 	default:
 		return ""
