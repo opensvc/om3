@@ -29,14 +29,9 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 				},
 			},
 		},
-		"xxx": {
-			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo"},
-			expected: []Filter{
-				{
-					Kind:   &msgbus.ObjectStatusUpdated{},
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
-				},
-			},
+		",": {
+			filterS:  []string{","},
+			expected: nil,
 		},
 		"types and labels": {
 			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo", "ConfigFileRemoved,path=root/svc/bar"},
@@ -87,6 +82,14 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 			},
 		},
 		"only label": {
+			filterS: []string{"path=root/svc/foo"},
+			expected: []Filter{
+				{
+					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+				},
+			},
+		},
+		"only label with heading comma": {
 			filterS: []string{",path=root/svc/foo"},
 			expected: []Filter{
 				{
@@ -143,25 +146,13 @@ func TestGetDaemonEventsBadParams(t *testing.T) {
 		filterS []string
 		err     error
 	}{
-		"missing label and matcher": {
-			filterS: []string{","},
-			err:     fmt.Errorf("invalid filter expression: ,"),
-		},
-		"empty label or matcher": {
-			filterS: []string{",=foo"},
-			err:     fmt.Errorf("invalid filter expression with empty matcher key: ,=foo"),
-		},
 		"invalid kind": {
 			filterS: []string{"Plop"},
 			err:     fmt.Errorf("can't find type for kind: Plop"),
 		},
-		"missing kind": {
-			filterS: []string{"path=foo"},
-			err:     fmt.Errorf("can't find type for kind: path=foo"),
-		},
 		"missing label key": {
 			filterS: []string{",=foo"},
-			err:     fmt.Errorf("invalid filter expression with empty matcher key: ,=foo"),
+			err:     fmt.Errorf("invalid label filter expression: =foo (empty key)"),
 		},
 		"multiple value filters for same kind": {
 			filterS: []string{"InstanceStatusUpdated,.data.instance_status=up", "InstanceStatusUpdated"},

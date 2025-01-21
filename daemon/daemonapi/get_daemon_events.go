@@ -489,6 +489,9 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 		if err != nil {
 			return
 		}
+		if filter.IsZero() {
+			continue
+		}
 		if k, ok := filter.Kind.(kinder); ok {
 			kind := k.Kind()
 			hasMatcher, alreadyFiltered := matchKind[kind]
@@ -601,6 +604,10 @@ func parseFilter(filterStr string) (Filter, error) {
 		}
 	}
 	return filter, nil
+}
+
+func (f Filter) IsZero() bool {
+	return f.Kind == nil && len(f.DataFilters) == 0 && len(f.Labels) == 0
 }
 
 func (df DataFilters) match(i any) bool {
