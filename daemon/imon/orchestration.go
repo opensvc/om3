@@ -58,7 +58,7 @@ func (t *Manager) orchestrate() {
 	switch t.nodeMonitor[t.localhost].State {
 	case node.MonitorStateIdle:
 		// default orchestrate
-	case node.MonitorStateShutting:
+	case node.MonitorStateShutdownProgress:
 		// accept only local expect shutdown orchestration
 		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectShutdown:

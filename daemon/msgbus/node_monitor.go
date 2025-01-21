@@ -13,7 +13,7 @@ func (data *ClusterData) onNodeMonitorDeleted(m *NodeMonitorDeleted) {
 	if v, ok := data.Cluster.Node[m.Node]; ok {
 		now := time.Now()
 		v.Monitor = node.Monitor{
-			State:          node.MonitorStateShutting,
+			State:          node.MonitorStateShutdownProgress,
 			IsPreserved:    true,
 			UpdatedAt:      now,
 			StateUpdatedAt: now,
