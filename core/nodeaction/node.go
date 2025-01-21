@@ -258,8 +258,8 @@ func (t T) DoAsync() error {
 	}
 	if t.Wait {
 		switch t.Target {
-		case node.MonitorStateDrained.String():
-			expectation = node.MonitorStateDrained
+		case node.MonitorStateDrainSuccess.String():
+			expectation = node.MonitorStateDrainSuccess
 		case node.MonitorGlobalExpectAborted.String():
 			expectation = node.MonitorGlobalExpectAborted
 		case node.MonitorGlobalExpectFrozen.String():

@@ -6,9 +6,9 @@ func (t *Manager) orchestrateThawed() {
 	switch t.state.State {
 	case node.MonitorStateIdle:
 		t.ThawedFromIdle()
-	case node.MonitorStateThawing,
-		node.MonitorStateThawedFailed:
-	case node.MonitorStateThawed:
+	case node.MonitorStateThawProgress,
+		node.MonitorStateThawFailure:
+	case node.MonitorStateThawSuccess:
 		t.thawedFromThawed()
 	default:
 		t.log.Warnf("don't know how to orchestrate %s from %s", t.state.GlobalExpect, t.state.State)
@@ -20,7 +20,7 @@ func (t *Manager) ThawedFromIdle() {
 		return
 	}
 	t.log.Infof("run action unfreeze")
-	t.doTransitionAction(t.crmUnfreeze, node.MonitorStateThawing, node.MonitorStateThawed, node.MonitorStateThawedFailed)
+	t.doTransitionAction(t.crmUnfreeze, node.MonitorStateThawProgress, node.MonitorStateThawSuccess, node.MonitorStateThawFailure)
 	return
 }
 

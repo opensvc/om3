@@ -77,11 +77,11 @@ var (
 	}
 
 	incompatibleNodeMonitorStatus = map[node.MonitorState]any{
-		node.MonitorStateInit:        nil,
-		node.MonitorStateMaintenance: nil,
-		node.MonitorStateRejoin:      nil,
-		node.MonitorStateShutting:    nil,
-		node.MonitorStateUpgrade:     nil,
+		node.MonitorStateInit:             nil,
+		node.MonitorStateMaintenance:      nil,
+		node.MonitorStateRejoin:           nil,
+		node.MonitorStateShutdownProgress: nil,
+		node.MonitorStateUpgrade:          nil,
 	}
 )
 

@@ -96,7 +96,7 @@ func Test_daemon(t *testing.T) {
 			require.Nil(t, err)
 			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
 		}
-		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDrainProgress, node.MonitorStateDrainSuccess, node.MonitorStateIdle)
 	})
 	require.False(t, t.Failed(), "abort test")
 
@@ -361,7 +361,7 @@ func Test_daemon(t *testing.T) {
 			require.Nil(t, err)
 			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
 		}
-		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDraining, node.MonitorStateDrained, node.MonitorStateIdle)
+		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDrainProgress, node.MonitorStateDrainSuccess, node.MonitorStateIdle)
 	})
 	require.False(t, t.Failed(), "abort test")
 }

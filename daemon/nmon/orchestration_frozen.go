@@ -6,7 +6,7 @@ func (t *Manager) orchestrateFrozen() {
 	switch t.state.State {
 	case node.MonitorStateIdle:
 		t.frozenFromIdle()
-	case node.MonitorStateFrozen:
+	case node.MonitorStateFreezeSuccess:
 		t.frozenFromFrozen()
 	}
 }
@@ -16,7 +16,7 @@ func (t *Manager) frozenFromIdle() {
 		return
 	}
 	t.log.Infof("run action freeze")
-	t.doTransitionAction(t.crmFreeze, node.MonitorStateFreezing, node.MonitorStateFrozen, node.MonitorStateFreezeFailed)
+	t.doTransitionAction(t.crmFreeze, node.MonitorStateFreezeProgress, node.MonitorStateFreezeSuccess, node.MonitorStateFreezeFailure)
 	return
 }
 

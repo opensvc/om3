@@ -68,7 +68,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 
 	}
 
-	a.announceNodeState(log, node.MonitorStateShutting)
+	a.announceNodeState(log, node.MonitorStateShutdownProgress)
 
 	sub := a.EventBus.Sub(fmt.Sprintf("api.post_daemon_shutdown %s", eCtx.Get("uuid")))
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelLocalhost)
@@ -163,7 +163,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 
 			if err != nil {
 				logP.Errorf("failed: %s refused local expect shutdown: %s", p, err)
-				a.announceNodeState(log, node.MonitorStateShutdownFailed)
+				a.announceNodeState(log, node.MonitorStateShutdownFailure)
 				revertOnError()
 				return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
 					"%s refused local expect shutdown: %s", p, err)
@@ -180,7 +180,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 				onInstanceMonitorUpdated(e)
 				if len(toWait) == 0 {
 					log.Infof("all objects have state shutdown")
-					a.announceNodeState(log, node.MonitorStateShutdown)
+					a.announceNodeState(log, node.MonitorStateShutdownSuccess)
 					log.Infof("ask daemon do stop")
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelAPI)
@@ -190,7 +190,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			}
 		case <-shutdownCtx.Done():
 			log.Errorf("failed: %s", shutdownCtx.Err())
-			a.announceNodeState(log, node.MonitorStateShutdownFailed)
+			a.announceNodeState(log, node.MonitorStateShutdownFailure)
 			revertOnError()
 			return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
 				"wait: %s", shutdownCtx.Err())
