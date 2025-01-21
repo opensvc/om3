@@ -33,83 +33,14 @@ const (
 	MonitorStateShutdownSuccess
 )
 
-// Extracted constants for monitor state strings
-const (
-	StrInit        = "init"
-	StrIdle        = "idle"
-	StrRejoin      = "rejoin"
-	StrMaintenance = "maintenance"
-	StrUpgrade     = "upgrade"
-
-	StrFreezeProgress = "freezing"
-	StrFreezeFailure  = "freeze failed"
-	StrFreezeSuccess  = "frozen"
-
-	StrThawProgress = "thawing"
-	StrThawFailure  = "thaw failed"
-	StrThawSuccess  = "thawed"
-
-	StrDrainProgress = "draining"
-	StrDrainFailure  = "drain failed"
-	StrDrainSuccess  = "drained"
-
-	StrShutdownProgress = "shutting"
-	StrShutdownFailure  = "shutdown failed"
-	StrShutdownSuccess  = "shutdown"
-)
-
 var (
 	// MonitorStateStrings is a map that associates MonitorState enums with
 	// their corresponding string representations.
-	MonitorStateStrings = map[MonitorState]string{
-		MonitorStateInit:        StrInit,
-		MonitorStateIdle:        StrIdle,
-		MonitorStateMaintenance: StrMaintenance,
-		MonitorStateRejoin:      StrRejoin,
-		MonitorStateUpgrade:     StrUpgrade,
-
-		MonitorStateFreezeProgress: StrFreezeProgress,
-		MonitorStateFreezeFailure:  StrFreezeFailure,
-		MonitorStateFreezeSuccess:  StrFreezeSuccess,
-
-		MonitorStateThawProgress: StrThawProgress,
-		MonitorStateThawFailure:  StrThawFailure,
-		MonitorStateThawSuccess:  StrThawSuccess,
-
-		MonitorStateDrainProgress: StrDrainProgress,
-		MonitorStateDrainFailure:  StrDrainFailure,
-		MonitorStateDrainSuccess:  StrDrainSuccess,
-
-		MonitorStateShutdownProgress: StrShutdownProgress,
-		MonitorStateShutdownFailure:  StrShutdownFailure,
-		MonitorStateShutdownSuccess:  StrShutdownSuccess,
-	}
+	MonitorStateStrings map[MonitorState]string
 
 	// MonitorStateValues maps string representations of various states to their
 	// corresponding MonitorState constants.
-	MonitorStateValues = map[string]MonitorState{
-		StrInit:        MonitorStateInit,
-		StrIdle:        MonitorStateIdle,
-		StrRejoin:      MonitorStateRejoin,
-		StrMaintenance: MonitorStateMaintenance,
-		StrUpgrade:     MonitorStateUpgrade,
-
-		StrFreezeProgress: MonitorStateFreezeProgress,
-		StrFreezeFailure:  MonitorStateFreezeFailure,
-		StrFreezeSuccess:  MonitorStateFreezeSuccess,
-
-		StrThawProgress: MonitorStateThawProgress,
-		StrThawFailure:  MonitorStateThawFailure,
-		StrThawSuccess:  MonitorStateThawSuccess,
-
-		StrDrainProgress: MonitorStateDrainProgress,
-		StrDrainFailure:  MonitorStateDrainFailure,
-		StrDrainSuccess:  MonitorStateDrainSuccess,
-
-		StrShutdownProgress: MonitorStateShutdownProgress,
-		StrShutdownFailure:  MonitorStateShutdownFailure,
-		StrShutdownSuccess:  MonitorStateShutdownSuccess,
-	}
+	MonitorStateValues map[string]MonitorState
 
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
@@ -122,3 +53,37 @@ var (
 		MonitorStateShutdownProgress: nil,
 	}
 )
+
+func init() {
+	MonitorStateStrings = make(map[MonitorState]string)
+	MonitorStateValues = make(map[string]MonitorState)
+
+	stateStrings := []struct {
+		state MonitorState
+		str   string
+	}{
+		{MonitorStateInit, "init"},
+		{MonitorStateIdle, "idle"},
+		{MonitorStateMaintenance, "maintenance"},
+		{MonitorStateRejoin, "rejoin"},
+		{MonitorStateUpgrade, "upgrade"},
+		{MonitorStateFreezeProgress, "freezing"},
+		{MonitorStateFreezeFailure, "freeze failed"},
+		{MonitorStateFreezeSuccess, "frozen"},
+		{MonitorStateThawProgress, "thawing"},
+		{MonitorStateThawFailure, "unfreeze failed"},
+		{MonitorStateThawSuccess, "thawed"},
+		{MonitorStateDrainProgress, "draining"},
+		{MonitorStateDrainFailure, "drain failed"},
+		{MonitorStateDrainSuccess, "drained"},
+		{MonitorStateShutdownProgress, "shutting"},
+		{MonitorStateShutdownFailure, "shutdown failed"},
+		{MonitorStateShutdownSuccess, "shutdown"},
+	}
+
+	// Populate the maps
+	for _, stateString := range stateStrings {
+		MonitorStateStrings[stateString.state] = stateString.str
+		MonitorStateValues[stateString.str] = stateString.state
+	}
+}
