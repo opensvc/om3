@@ -7,15 +7,15 @@ import (
 func (t *Manager) orchestrateThawed() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
-		instance.MonitorStateStartFailed,
-		instance.MonitorStateStarted,
-		instance.MonitorStateStopFailed,
-		instance.MonitorStateStopped,
+		instance.MonitorStateStartFailure,
+		instance.MonitorStateStartSuccess,
+		instance.MonitorStateStopFailure,
+		instance.MonitorStateStopSuccess,
 		instance.MonitorStatePurgeFailed,
-		instance.MonitorStateProvisionFailed,
-		instance.MonitorStateProvisioned,
-		instance.MonitorStateUnprovisionFailed,
-		instance.MonitorStateUnprovisioned,
+		instance.MonitorStateProvisionFailure,
+		instance.MonitorStateProvisionSuccess,
+		instance.MonitorStateUnprovisionFailure,
+		instance.MonitorStateUnprovisionSuccess,
 		instance.MonitorStateReady:
 		t.ThawedFromIdle()
 	}
@@ -25,7 +25,7 @@ func (t *Manager) ThawedFromIdle() {
 	if t.thawedClearIfReached() {
 		return
 	}
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateIdle, instance.MonitorStateThawedFailed)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateIdle, instance.MonitorStateThawFailure)
 }
 
 func (t *Manager) thawedClearIfReached() bool {

@@ -63,19 +63,19 @@ func (t *Manager) orchestrateRestarted() {
 		t.orchestrateRestartedOnWaitPriors()
 	case instance.MonitorStateReady:
 		t.orchestrateRestartedOnReady()
-	case instance.MonitorStateShutdown:
+	case instance.MonitorStateShutdownSuccess:
 		t.orchestrateRestartedOnShutdown()
-	case instance.MonitorStateStopped:
+	case instance.MonitorStateStopSuccess:
 		t.orchestrateRestartedOnStopped()
 	case instance.MonitorStateRestarted:
 		t.orchestrateRestartedOnRestarted()
-	case instance.MonitorStateFrozen:
-	case instance.MonitorStateFreezing:
+	case instance.MonitorStateFreezeSuccess:
+	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateRunning:
-	case instance.MonitorStateStopping:
-	case instance.MonitorStateStopFailed:
-	case instance.MonitorStateStarting:
-	case instance.MonitorStateStartFailed:
+	case instance.MonitorStateStopProgress:
+	case instance.MonitorStateStopFailure:
+	case instance.MonitorStateStartProgress:
+	case instance.MonitorStateStartFailure:
 	default:
 		t.log.Errorf("don't know how to restart from %s", t.state.State)
 	}
@@ -137,9 +137,9 @@ func (t *Manager) orchestrateRestartedOnReady() {
 			t.enableMonitor("all prior instances are restarted, ready to restart")
 			t.createPendingWithDuration(stopDuration)
 			if t.restartedOptions().Force {
-				t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
+				t.queueAction(t.crmShutdown, instance.MonitorStateShutdownProgress, instance.MonitorStateShutdownSuccess, instance.MonitorStateShutdownFailure)
 			} else {
-				t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+				t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 			}
 		default:
 			t.log.Infof("all prior instances are restarted, local instance avail is %s -> done", instanceStatus.Avail)
@@ -169,11 +169,11 @@ func (t *Manager) orchestrateRestartedOnWaitPriors() {
 }
 
 func (t *Manager) orchestrateRestartedOnStopped() {
-	t.doTransitionAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateRestarted, instance.MonitorStateStartFailed)
+	t.doTransitionAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateRestarted, instance.MonitorStateStartFailure)
 }
 
 func (t *Manager) orchestrateRestartedOnShutdown() {
-	t.doTransitionAction(t.crmStartStandby, instance.MonitorStateStarting, instance.MonitorStateRestarted, instance.MonitorStateStartFailed)
+	t.doTransitionAction(t.crmStartStandby, instance.MonitorStateStartProgress, instance.MonitorStateRestarted, instance.MonitorStateStartFailure)
 }
 
 func (t *Manager) orchestrateRestartedOnRestarted() {
@@ -184,9 +184,9 @@ func (t *Manager) orchestrateRestartedOnRestarted() {
 		switch instanceMonitor.State {
 		case instance.MonitorStateRestarted:
 			continue
-		case instance.MonitorStateStartFailed:
+		case instance.MonitorStateStartFailure:
 			continue
-		case instance.MonitorStateStopFailed:
+		case instance.MonitorStateStopFailure:
 			continue
 		}
 		t.loggerWithState().Infof("instance on %s state is %s -> wait", nodename, instanceMonitor.State)

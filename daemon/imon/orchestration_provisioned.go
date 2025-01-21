@@ -12,24 +12,24 @@ import (
 func (t *Manager) orchestrateProvisioned() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
-		instance.MonitorStateStopFailed,
-		instance.MonitorStateThawed,
-		instance.MonitorStateUnprovisionFailed:
+		instance.MonitorStateStopFailure,
+		instance.MonitorStateThawSuccess,
+		instance.MonitorStateUnprovisionFailure:
 		t.provisionedFromIdle()
-	case instance.MonitorStateProvisioned:
+	case instance.MonitorStateProvisionSuccess:
 		t.provisionedFromProvisioned()
 	case instance.MonitorStateWaitLeader:
 		t.provisionedFromWaitLeader()
-	case instance.MonitorStateProvisionFailed:
+	case instance.MonitorStateProvisionFailure:
 		t.provisionedFromProvisionFailed()
-	case instance.MonitorStateThawing:
-	case instance.MonitorStateThawedFailed:
+	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateThawFailure:
 		// TODO: clear ?
 	}
 }
 
 func (t *Manager) provisionedFromProvisioned() {
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateThawSuccess, instance.MonitorStateThawFailure)
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
@@ -43,7 +43,7 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
+		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
 		return
 	} else {
 		t.transitionTo(instance.MonitorStateWaitLeader)
@@ -58,7 +58,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateProvisioned, instance.MonitorStateProvisionFailed)
+	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
 	return
 }
 
@@ -75,7 +75,7 @@ func (t *Manager) provisionedClearIfReached() bool {
 		t.updateIfChange()
 		return true
 	}
-	if t.isAllState(instance.MonitorStateProvisionFailed) {
+	if t.isAllState(instance.MonitorStateProvisionFailure) {
 		t.loggerWithState().Infof("all instances provision failed -> set done")
 		t.done()
 		return true

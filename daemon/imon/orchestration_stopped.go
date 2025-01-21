@@ -19,20 +19,20 @@ func (t *Manager) freezeStop() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.doFreezeStop()
-	case instance.MonitorStateFrozen:
+	case instance.MonitorStateFreezeSuccess:
 		t.doStop()
 	case instance.MonitorStateReady:
 		t.stoppedFromReady()
-	case instance.MonitorStateFreezing:
+	case instance.MonitorStateFreezeProgress:
 		// wait for the freeze exec to end
 	case instance.MonitorStateRunning:
-	case instance.MonitorStateStopped:
+	case instance.MonitorStateStopSuccess:
 		t.transitionTo(instance.MonitorStateIdle)
-	case instance.MonitorStateStopping:
+	case instance.MonitorStateStopProgress:
 		// avoid multiple concurrent stop execs
-	case instance.MonitorStateStopFailed:
+	case instance.MonitorStateStopFailure:
 		// avoid a retry-loop
-	case instance.MonitorStateStartFailed:
+	case instance.MonitorStateStartFailure:
 		t.stoppedFromFailed()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
@@ -50,17 +50,17 @@ func (t *Manager) stop() {
 		t.doStop()
 	case instance.MonitorStateReady:
 		t.stoppedFromReady()
-	case instance.MonitorStateStopped:
+	case instance.MonitorStateStopSuccess:
 		t.transitionTo(instance.MonitorStateIdle)
-	case instance.MonitorStateFrozen:
+	case instance.MonitorStateFreezeSuccess:
 		// honor the frozen state
-	case instance.MonitorStateFreezing:
+	case instance.MonitorStateFreezeProgress:
 		// wait for the freeze exec to end
-	case instance.MonitorStateStopping:
+	case instance.MonitorStateStopProgress:
 		// avoid multiple concurrent stop execs
-	case instance.MonitorStateStopFailed:
+	case instance.MonitorStateStopFailure:
 		// avoid a retry-loop
-	case instance.MonitorStateStartFailed:
+	case instance.MonitorStateStartFailure:
 		t.stoppedFromFailed()
 	default:
 		t.log.Errorf("don't know how to stop from %s", t.state.State)
@@ -68,7 +68,7 @@ func (t *Manager) stop() {
 }
 
 func (t *Manager) stoppedFromThawed() {
-	t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
+	t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateIdle, instance.MonitorStateFreezeFailure)
 }
 
 // doFreeze handle global expect stopped orchestration from idle
@@ -77,7 +77,7 @@ func (t *Manager) stoppedFromThawed() {
 // else         => stopping
 func (t *Manager) doFreezeStop() {
 	if t.instStatus[t.localhost].IsThawed() {
-		t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
+		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
 		return
 	} else {
 		t.doStop()
@@ -86,7 +86,7 @@ func (t *Manager) doFreezeStop() {
 
 func (t *Manager) doFreeze() {
 	if t.instStatus[t.localhost].IsThawed() {
-		t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateFrozen, instance.MonitorStateFreezeFailed)
+		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
 		return
 	}
 }
@@ -100,7 +100,7 @@ func (t *Manager) doStop() {
 	}
 	t.createPendingWithDuration(stopDuration)
 	t.disableMonitor("orchestrate stop")
-	t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStopped, instance.MonitorStateStopFailed)
+	t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 }
 
 func (t *Manager) stoppedFromReady() {

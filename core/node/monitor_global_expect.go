@@ -12,28 +12,29 @@ const (
 	MonitorGlobalExpectThawed
 )
 
-const (
-	StrMonitorGlobalExpectInit    = "init"
-	StrMonitorGlobalExpectAborted = "aborted"
-	StrMonitorGlobalExpectFrozen  = "frozen"
-	StrMonitorGlobalExpectNone    = "none"
-	StrMonitorGlobalExpectThawed  = "thawed"
-)
-
 var (
-	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
-		MonitorGlobalExpectAborted: StrMonitorGlobalExpectAborted,
-		MonitorGlobalExpectFrozen:  StrMonitorGlobalExpectFrozen,
-		MonitorGlobalExpectNone:    StrMonitorGlobalExpectNone,
-		MonitorGlobalExpectThawed:  StrMonitorGlobalExpectThawed,
-		MonitorGlobalExpectInit:    StrMonitorGlobalExpectInit,
+	MonitorGlobalExpectStrings map[MonitorGlobalExpect]string
+	MonitorGlobalExpectValues  map[string]MonitorGlobalExpect
+)
+
+func init() {
+	MonitorGlobalExpectStrings = make(map[MonitorGlobalExpect]string)
+	MonitorGlobalExpectValues = make(map[string]MonitorGlobalExpect)
+
+	expectStrings := []struct {
+		value MonitorGlobalExpect
+		str   string
+	}{
+		{MonitorGlobalExpectAborted, "aborted"},
+		{MonitorGlobalExpectFrozen, "frozen"},
+		{MonitorGlobalExpectNone, "none"},
+		{MonitorGlobalExpectThawed, "thawed"},
+		{MonitorGlobalExpectInit, "init"},
 	}
 
-	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
-		StrMonitorGlobalExpectAborted: MonitorGlobalExpectAborted,
-		StrMonitorGlobalExpectFrozen:  MonitorGlobalExpectFrozen,
-		StrMonitorGlobalExpectNone:    MonitorGlobalExpectNone,
-		StrMonitorGlobalExpectThawed:  MonitorGlobalExpectThawed,
-		StrMonitorGlobalExpectInit:    MonitorGlobalExpectInit,
+	// Populate the maps
+	for _, e := range expectStrings {
+		MonitorGlobalExpectStrings[e.value] = e.str
+		MonitorGlobalExpectValues[e.str] = e.value
 	}
-)
+}

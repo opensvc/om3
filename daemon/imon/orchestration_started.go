@@ -17,19 +17,19 @@ func (t *Manager) orchestrateStarted() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.startedFromIdle()
-	case instance.MonitorStateThawed:
+	case instance.MonitorStateThawSuccess:
 		t.startedFromThawed()
 	case instance.MonitorStateReady:
 		t.startedFromReady()
-	case instance.MonitorStateStarted:
+	case instance.MonitorStateStartSuccess:
 		t.startedFromStarted()
-	case instance.MonitorStateStartFailed:
+	case instance.MonitorStateStartFailure:
 		t.startedFromStartFailed()
-	case instance.MonitorStateStarting:
+	case instance.MonitorStateStartProgress:
 		t.startedFromAny()
-	case instance.MonitorStateStopping:
+	case instance.MonitorStateStopProgress:
 		t.startedFromAny()
-	case instance.MonitorStateThawing:
+	case instance.MonitorStateThawProgress:
 	case instance.MonitorStateRunning:
 	case instance.MonitorStateWaitParents:
 		t.setWaitParents()
@@ -76,7 +76,7 @@ func (t *Manager) startedFromThawed() {
 		return
 	}
 	if t.objStatus.Topology != topology.Flex {
-		if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+		if nodename, state := t.isAnyPeerState(instance.MonitorStateStartProgress, instance.MonitorStateReady); nodename != "" {
 			t.log.Debugf("peer %s imon state is %s", nodename, state)
 			return
 		}
@@ -95,9 +95,9 @@ func (t *Manager) startedFromThawed() {
 	}(t.pendingCtx)
 }
 
-// doUnfreeze idle -> thawing -> thawed or thawed failed
+// doUnfreeze idle -> thawing -> thawed or unfreeze failed
 func (t *Manager) doUnfreeze() {
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateThawSuccess, instance.MonitorStateThawFailure)
 }
 
 // cancelReadyState transitions the monitor to an Idle state if certain
@@ -122,7 +122,7 @@ func (t *Manager) cancelReadyState() bool {
 		return true
 	}
 	if t.objStatus.Topology != topology.Flex {
-		if nodename, state := t.isAnyPeerState(instance.MonitorStateStarting, instance.MonitorStateReady); nodename != "" {
+		if nodename, state := t.isAnyPeerState(instance.MonitorStateStartProgress, instance.MonitorStateReady); nodename != "" {
 			t.loggerWithState().Infof("peer %s imon state is %s, clear the ready state", nodename, state)
 			t.transitionTo(instance.MonitorStateIdle)
 			t.clearPending()
@@ -146,7 +146,7 @@ func (t *Manager) startedFromReady() {
 			t.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		t.queueAction(t.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
+		t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
 		return
 	default:
 		return
@@ -173,7 +173,7 @@ func (t *Manager) startedFromStartFailed() {
 	if t.state.OrchestrationIsDone {
 		return
 	}
-	if t.isAllState(instance.MonitorStateStartFailed) {
+	if t.isAllState(instance.MonitorStateStartFailure) {
 		t.loggerWithState().Infof("all instances start failed -> set done")
 		t.done()
 		return

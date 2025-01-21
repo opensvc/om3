@@ -5,11 +5,11 @@ import "github.com/opensvc/om3/core/instance"
 func (t *Manager) orchestrateFrozen() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
-		instance.MonitorStateStartFailed,
-		instance.MonitorStateStopFailed,
+		instance.MonitorStateStartFailure,
+		instance.MonitorStateStopFailure,
 		instance.MonitorStatePurgeFailed,
-		instance.MonitorStateProvisionFailed,
-		instance.MonitorStateUnprovisionFailed,
+		instance.MonitorStateProvisionFailure,
+		instance.MonitorStateUnprovisionFailure,
 		instance.MonitorStateReady:
 		t.frozenFromIdle()
 	default:
@@ -21,7 +21,7 @@ func (t *Manager) frozenFromIdle() {
 	if t.frozenClearIfReached() {
 		return
 	}
-	t.doTransitionAction(t.freeze, instance.MonitorStateFreezing, instance.MonitorStateIdle, instance.MonitorStateFreezeFailed)
+	t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateIdle, instance.MonitorStateFreezeFailure)
 }
 
 func (t *Manager) frozenClearIfReached() bool {
