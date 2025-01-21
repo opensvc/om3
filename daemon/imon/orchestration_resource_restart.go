@@ -141,7 +141,7 @@ func (t *Manager) doMonitorAction(rid string, action instance.MonitorAction) {
 	case instance.MonitorActionSwitch:
 		t.createPendingWithDuration(stopDuration)
 		t.disableMonitor("monitor action switch stopping")
-		t.queueAction(t.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
+		t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure)
 	}
 }
 
@@ -213,7 +213,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailed {
+	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailure {
 		if action, ok := t.getValidMonitorAction(1); ok {
 			t.disableMonitor("initial monitor action failed, try alternate monitor action %s", action)
 			t.doMonitorAction("", action)
@@ -246,7 +246,7 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// discard if the instance is not idle, start failed or stop failed.
 	switch instMonitor.State {
-	case instance.MonitorStateIdle, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed:
+	case instance.MonitorStateIdle, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure:
 		// pass
 	default:
 		t.log.Debugf("skip restart: state=%s", instMonitor.State)
@@ -358,7 +358,7 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 	action := func() error {
 		return queueFunc(rids)
 	}
-	t.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
+	t.doTransitionAction(action, instance.MonitorStateStartProgress, instance.MonitorStateIdle, instance.MonitorStateStartFailure)
 }
 
 // getRidsAndDelay processes a todoMap to retrieve resource IDs and calculates the maximum required restart delay.

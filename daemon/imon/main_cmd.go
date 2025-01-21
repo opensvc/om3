@@ -405,7 +405,7 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 
 	// local expect change ?
 	switch c.State {
-	case instance.MonitorStateStopping, instance.MonitorStateUnprovisioning, instance.MonitorStateShutting:
+	case instance.MonitorStateStopProgress, instance.MonitorStateUnprovisionProgress, instance.MonitorStateShutdownProgress:
 
 		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectStarted:
@@ -425,7 +425,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		if c.Value.State == nil {
 			return nil
 		}
-		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
+		if _, ok := instance.MonitorStateToString[*c.Value.State]; !ok {
 			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			t.log.Warnf("set instance monitor: %s", err)
 			return err
@@ -885,7 +885,7 @@ func (t *Manager) IsInstanceStartFailed(node string) (bool, bool) {
 		return false, false
 	}
 	switch instMon.State {
-	case instance.MonitorStateStartFailed:
+	case instance.MonitorStateStartFailure:
 		return true, true
 	default:
 		return false, true

@@ -40,7 +40,7 @@ func (t *Manager) orchestrateHAStart() {
 	switch t.state.State {
 	case instance.MonitorStateReady:
 		t.cancelReadyState()
-	case instance.MonitorStateStarted:
+	case instance.MonitorStateStartSuccess:
 		// started means the action start has been done. This state is a
 		// waiter step to verify if received started like local instance status
 		// to transition state: started -> idle
@@ -50,7 +50,7 @@ func (t *Manager) orchestrateHAStart() {
 			t.transitionTo(instance.MonitorStateIdle)
 		}
 		return
-	case instance.MonitorStateStopped:
+	case instance.MonitorStateStopSuccess:
 		// stopped means the action stop has been done. This state is a
 		// waiter step to take time to disable the local expect started.
 		t.disableMonitor("instance is now stopped")
@@ -99,7 +99,7 @@ func (t *Manager) clearBootFailed() {
 }
 
 func (t *Manager) clearStartFailed() {
-	if t.state.State != instance.MonitorStateStartFailed {
+	if t.state.State != instance.MonitorStateStartFailure {
 		return
 	}
 	if t.objStatus.Avail != status.Up {

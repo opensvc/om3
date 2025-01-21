@@ -446,7 +446,7 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 				},
 			},
 			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
-			expectedState:        instance.MonitorStateStartFailed,
+			expectedState:        instance.MonitorStateStartFailure,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
 			expectedIsLeader:     false,
@@ -649,8 +649,8 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 	if deleteTest != "" {
 		t.Run(deleteTest, func(t *testing.T) {
 			stateC, errC := waitNmonStates(setup.Ctx, "waiting for delete, deleting", 2*time.Second, p,
-				instance.MonitorStateDeleted,
-				instance.MonitorStateDeleting)
+				instance.MonitorStateDeleteSuccess,
+				instance.MonitorStateDeleteProgress)
 			g := instance.MonitorGlobalExpectDeleted
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()

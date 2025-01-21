@@ -183,7 +183,7 @@ func TestDaemonData(t *testing.T) {
 			t.Log("check remote node instance status")
 			require.Equal(t, full.Instance["foo"].Status.UpdatedAt, nodeRemote.Instance["foo"].Status.UpdatedAt, "instance status updated mismatch")
 			t.Log("check remote node instance monitor")
-			require.Equal(t, instance.MonitorStateStarting, nodeRemote.Instance["foo"].Monitor.State, "instance monitor state mismatch")
+			require.Equal(t, instance.MonitorStateStartProgress, nodeRemote.Instance["foo"].Monitor.State, "instance monitor state mismatch")
 			t.Log("check remote node stats monitor")
 			require.Equal(t, 0.4, nodeRemote.Stats.Load15M)
 			require.Equal(t, uint64(16012), nodeRemote.Stats.MemTotalMB)
@@ -235,7 +235,7 @@ func TestDaemonData(t *testing.T) {
 			require.False(t, t.Failed()) // fail on first error
 
 			t.Run("patch with some already applied gens gen patch-node2-t3-with-t2-changed.json", func(t *testing.T) {
-				assert.Equal(t, instance.MonitorStateStarting, bus.ClusterNodeData(remoteHost).Instance["foo"].Monitor.State)
+				assert.Equal(t, instance.MonitorStateStartProgress, bus.ClusterNodeData(remoteHost).Instance["foo"].Monitor.State)
 				patchMsg := LoadPatch(t, "patch-node2-t3-with-t2-changed.json")
 				hbRecvMsgQ <- patchMsg
 				time.Sleep(waitDurationForHbMsgProcessed)
@@ -283,7 +283,7 @@ func TestDaemonData(t *testing.T) {
 			// instance
 			remoteNodeInstanceX := cluster.Node["node2"].Instance["foo"]
 			require.Equal(t, status.Down, remoteNodeInstanceX.Status.Avail)
-			require.Equal(t, instance.MonitorStateStarting, remoteNodeInstanceX.Monitor.State)
+			require.Equal(t, instance.MonitorStateStartProgress, remoteNodeInstanceX.Monitor.State)
 		})
 		require.False(t, t.Failed()) // fail on first error
 	})

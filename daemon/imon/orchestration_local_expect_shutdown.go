@@ -28,16 +28,16 @@ import (
 func (t *Manager) orchestrateLocalExpectShutdown() {
 	t.log.Debugf("orchestrateLocalExpectShutdown from state %s", t.state.State)
 	switch t.state.State {
-	case instance.MonitorStateShutdown:
+	case instance.MonitorStateShutdownSuccess:
 		// already in expected state, no more actions
 	case instance.MonitorStateIdle:
 		t.doShutdown()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
-	case instance.MonitorStateShutting:
+	case instance.MonitorStateShutdownProgress:
 		// already shutting in progress
 		t.log.Warnf("unexpected orchestrate local expect shutdown from state %s", t.state.State)
-	case instance.MonitorStateShutdownFailed:
+	case instance.MonitorStateShutdownFailure:
 		// wait for clear or abort
 	default:
 		t.log.Errorf("don't know how to shutdown from %s", t.state.State)
@@ -47,13 +47,13 @@ func (t *Manager) orchestrateLocalExpectShutdown() {
 func (t *Manager) doShutdown() {
 	if t.isLocalShutdown() {
 		t.log.Infof("shutdown reached")
-		t.transitionTo(instance.MonitorStateShutdown)
+		t.transitionTo(instance.MonitorStateShutdownSuccess)
 		return
 	}
 	if t.setWaitChildren() {
 		return
 	}
-	t.queueAction(t.crmShutdown, instance.MonitorStateShutting, instance.MonitorStateShutdown, instance.MonitorStateShutdownFailed)
+	t.queueAction(t.crmShutdown, instance.MonitorStateShutdownProgress, instance.MonitorStateShutdownSuccess, instance.MonitorStateShutdownFailure)
 }
 
 func (t *Manager) isLocalShutdown() bool {

@@ -30,7 +30,7 @@ func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kin
 		JSONProblem(ctx, http.StatusBadRequest, "Failed to json decode request body", err.Error())
 		return err
 	}
-	state, ok := instance.MonitorStateValues[payload.State]
+	state, ok := instance.StringToMonitorState[payload.State]
 	if !ok {
 		JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "state: %s", payload.State)
 		return err

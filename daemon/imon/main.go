@@ -421,13 +421,13 @@ func (t *Manager) ensureBooted() {
 		// last instance boot id differ from current node boot id
 		// try boot and refresh last instance boot id if succeed
 		t.log.Infof("need boot (node boot id differ from last object boot id)")
-		t.transitionTo(instance.MonitorStateBooting)
+		t.transitionTo(instance.MonitorStateBootProgress)
 		if err := t.queueBoot(); err == nil {
 			t.log.Infof("set last object boot id")
 			if err := updateLastBootID(t.path, nodeLastBootID); err != nil {
 				t.log.Errorf("can't update instance last boot id file: %s", err)
 			}
-			t.transitionTo(instance.MonitorStateBooted)
+			t.transitionTo(instance.MonitorStateBootSuccess)
 			t.transitionTo(instance.MonitorStateIdle)
 		} else {
 			// boot failed, next daemon restart will retry boot

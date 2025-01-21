@@ -97,7 +97,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 		if waitedState, ok := toWait[e.Path]; !ok {
 			// not waiting => skip
 			return
-		} else if e.Value.State.Is(instance.MonitorStateShutdown) && !waitedState.Is(instance.MonitorStateShutdown) {
+		} else if e.Value.State.Is(instance.MonitorStateShutdownSuccess) && !waitedState.Is(instance.MonitorStateShutdownSuccess) {
 			delete(toWait, e.Path)
 			var waiting []string
 			for k := range toWait {
@@ -135,7 +135,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 
 		for p := range toWait {
 			currentState := instance.MonitorData.GetByPathAndNode(p, a.localhost).State
-			if !currentState.Is(instance.MonitorStateIdle, instance.MonitorStateShutting) {
+			if !currentState.Is(instance.MonitorStateIdle, instance.MonitorStateShutdownProgress) {
 				revertState(p, currentState)
 			}
 		}
