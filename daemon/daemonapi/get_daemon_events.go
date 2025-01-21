@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -503,52 +504,201 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 // parseFilter return filter from s
 //
 // filter syntax is: [kind][,label=value][,.abcd.efgh=value]*
-func parseFilter(s string) (filter Filter, err error) {
-	kindLabelData := strings.SplitN(s, ",", 2)
-	if len(kindLabelData[0]) == 0 {
-		// match all labels
-		filter.Kind = nil
-	} else {
-		filter.Kind, err = msgbus.KindToT(kindLabelData[0])
-		if err != nil {
-			return
+func parseFilter(filterStr string) (Filter, error) {
+	var filter Filter
+
+	parseKind := func(s string) (rest string, kind any, err error) {
+		if i := strings.Index(s, ","); i < 0 {
+			// match all labels
+			kind = nil
+			rest = s
+		} else {
+			rest = s[i+1:]
+			kind, err = msgbus.KindToT(s[0:i])
 		}
-	}
-	if len(kindLabelData) == 1 {
-		// no label filters
 		return
 	}
-	for _, labelElem := range strings.Split(kindLabelData[1], ",") {
-		split := strings.SplitN(labelElem, "=", 2)
-		if len(split) == 2 {
-			key := split[0]
-			value := split[1]
-			if len(key) == 0 {
-				err = fmt.Errorf("invalid filter expression with empty matcher key: %s", s)
-				return
+
+	if rest, kind, err := parseKind(filterStr); err != nil {
+		return Filter{}, err
+	} else {
+		filter.Kind = kind
+		filterStr = rest
+	}
+
+	if len(filterStr) == 0 {
+		// no label filters
+		return filter, nil
+	}
+
+	parseLabelFilter := func(s string) (pubsub.Label, error) {
+		split := strings.SplitN(s, "=", 2)
+		if len(split) != 2 {
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (expecting <key><op><value>)", filterStr)
+		}
+		key := strings.TrimSpace(split[0])
+		value := strings.TrimSpace(split[1])
+		if len(key) == 0 {
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (empty key)", filterStr)
+		}
+		return pubsub.Label{key, value}, nil
+	}
+
+	parseDataFilter := func(s string) (DataFilter, error) {
+		ops := []string{
+			"!=", ">=", "<=", // keep longer operators first
+			"=", ">", "<",
+		}
+		for _, op := range ops {
+			split := strings.SplitN(s, op, 2)
+			if len(split) != 2 {
+				continue
 			}
-			if key[0] != '.' {
-				filter.Labels = append(filter.Labels, pubsub.Label{key, value})
-			} else {
-				filter.DataFilters = append(filter.DataFilters, DataFilter{Key: key, Value: value, Op: "="})
+			key := strings.TrimSpace(split[0])
+			value := strings.TrimSpace(split[1])
+			return DataFilter{Key: key, Value: value, Op: op}, nil
+		}
+		return DataFilter{}, fmt.Errorf("invalid filter expression: %s (unknown operator)", s)
+	}
+
+	for _, filterElement := range strings.Split(filterStr, ",") {
+		switch {
+		case len(filterElement) == 0:
+			continue
+		case strings.HasPrefix(filterElement, "."):
+			dataFilter, err := parseDataFilter(filterElement)
+			if err != nil {
+				return filter, err
 			}
-		} else {
-			err = fmt.Errorf("invalid filter expression: %s", s)
-			return
+			filter.DataFilters = append(filter.DataFilters, dataFilter)
+		default:
+			label, err := parseLabelFilter(filterElement)
+			if err != nil {
+				return filter, err
+			}
+			filter.Labels = append(filter.Labels, label)
 		}
 	}
-	return
+	return filter, nil
 }
 
 func (df DataFilters) match(i any) bool {
+	intLessOrEqual := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.Atoi(str1)
+		num2, err2 := strconv.Atoi(str2)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid integers")
+		}
+		return num1 <= num2, nil
+	}
+
+	intLess := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.Atoi(str1)
+		num2, err2 := strconv.Atoi(str2)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid integers")
+		}
+		return num1 < num2, nil
+	}
+
+	intGreaterOrEqual := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.Atoi(str1)
+		num2, err2 := strconv.Atoi(str2)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid integers")
+		}
+		return num1 >= num2, nil
+	}
+
+	intGreater := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.Atoi(str1)
+		num2, err2 := strconv.Atoi(str2)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid integers")
+		}
+		return num1 > num2, nil
+	}
+
+	float64LessOrEqual := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.ParseFloat(str1, 64)
+		num2, err2 := strconv.ParseFloat(str2, 64)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid float64")
+		}
+		return num1 <= num2, nil
+	}
+
+	float64Less := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.ParseFloat(str1, 64)
+		num2, err2 := strconv.ParseFloat(str2, 64)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid float64")
+		}
+		return num1 < num2, nil
+	}
+
+	float64GreaterOrEqual := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.ParseFloat(str1, 64)
+		num2, err2 := strconv.ParseFloat(str2, 64)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid float64")
+		}
+		return num1 >= num2, nil
+	}
+
+	float64Greater := func(str1, str2 string) (bool, error) {
+		num1, err1 := strconv.ParseFloat(str1, 64)
+		num2, err2 := strconv.ParseFloat(str2, 64)
+		if err1 != nil || err2 != nil {
+			return false, fmt.Errorf("invalid input: both strings must be valid float64")
+		}
+		return num1 > num2, nil
+	}
+
 	flatten := output.Flatten(i)
 	for _, m := range df {
-		if v, ok := flatten[m.Key]; !ok {
+		s, ok := flatten[m.Key]
+		if !ok {
 			return false
-		} else if s, ok := v.(string); !ok {
-			return false
-		} else if s != m.Value {
-			return false
+		}
+		s = strings.TrimSpace(s)
+		switch m.Op {
+		case "=":
+			return s == m.Value
+		case "!=":
+			return s != m.Value
+		case "<":
+			if v, err := intLess(s, m.Value); err == nil {
+				return v
+			}
+			if v, err := float64Less(s, m.Value); err == nil {
+				return v
+			}
+			return s < m.Value
+		case ">":
+			if v, err := intGreater(s, m.Value); err == nil {
+				return v
+			}
+			if v, err := float64Greater(s, m.Value); err == nil {
+				return v
+			}
+			return s > m.Value
+		case "<=":
+			if v, err := intLessOrEqual(s, m.Value); err == nil {
+				return v
+			}
+			if v, err := float64LessOrEqual(s, m.Value); err == nil {
+				return v
+			}
+			return s <= m.Value
+		case ">=":
+			if v, err := intGreaterOrEqual(s, m.Value); err == nil {
+				return v
+			}
+			if v, err := float64GreaterOrEqual(s, m.Value); err == nil {
+				return v
+			}
+			return s >= m.Value
 		}
 	}
 	return true
