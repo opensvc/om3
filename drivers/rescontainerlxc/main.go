@@ -205,11 +205,11 @@ func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.unprovision()
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.unprovision()
 }
 
@@ -260,7 +260,7 @@ func (t *T) purgeLxcVar() error {
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if t.exists() {
 		t.Log().Infof("container %s is already created", t.Name)
 		return nil
@@ -888,7 +888,7 @@ func (t *T) setCpusetCloneChildren() error {
 	return nil
 }
 
-// cgroupDir returns the container resource cgroup path, relative to a controler head.
+// cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
@@ -1179,7 +1179,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	} else if v {
 		// the local instance is already up.
-		// let the local start report the unecessary start steps
+		// let the local start report the unnecessary start steps
 		return false
 	}
 	hn := t.hostname()

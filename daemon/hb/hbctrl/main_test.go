@@ -235,7 +235,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 
 			found := <-pingMsgC
 			require.Equalf(t, tc.expected, found,
-				"unexpect published HbNodePing from %s\n%v",
+				"unexpected published HbNodePing from %s\n%v",
 				name, tc.events)
 		})
 	}

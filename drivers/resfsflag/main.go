@@ -142,9 +142,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-// ProvisionLeader implement ProvisionLeader for T, this allows fsflag resources
+// ProvisionAsLeader implement ProvisionAsLeader for T, this allows fsflag resources
 // to have a provision/unprovision call state
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	return nil
 }
 

@@ -539,7 +539,7 @@ func (t T) send() error {
 }
 
 // unlink is a paranoid wrapper around os.Remove, verifying the file we are
-// asked to delete is under our responsability.
+// asked to delete is under our responsibility.
 func (t T) unlink(path string) error {
 	base := t.collectDir()
 	if !strings.HasPrefix(path, base) {

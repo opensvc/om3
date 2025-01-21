@@ -162,7 +162,7 @@ func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool,
 func (t *actor) announceIdle(ctx context.Context) error {
 	s := actioncontext.Props(ctx).Progress
 	if s == "" {
-		// we did not announce at the beginining of the action
+		// we did not announce at the beginning of the action
 		return nil
 	}
 	return t.announceProgress(ctx, "idle")

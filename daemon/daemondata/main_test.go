@@ -60,7 +60,7 @@ func setup(t *testing.T) {
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 }
 
-// TestDaemonData runs sequence of data updates withing t.Run, and fail fast on
+// TestDaemonData runs sequence of data updates within t.Run, and fail fast on
 // first error
 //
 // This is why each t.Run is followed by require.False(t, t.Failed()) // fail on first error

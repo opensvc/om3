@@ -9,5 +9,5 @@ This keyword can be used to setup a partial redundancy like:
 
 Which can be relevant if n[12] are in the same bladecenter b1, and n[34] are
 in the same bladecenter b2. The bladecenter having an internal network
-completely hardware independant of the network used to go outside of the
+completely hardware independent of the network used to go outside of the
 bladecenters.

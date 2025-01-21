@@ -19,7 +19,7 @@ type (
 	}
 )
 
-// FilesystemCreateWithArgs defines the shlex splitted list of arguments to prepend
+// FilesystemCreateWithArgs defines the shlex split list of arguments to prepend
 // to the command.
 func FilesystemCreateWithArgs(l []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

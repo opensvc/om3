@@ -706,7 +706,7 @@ func (t *T) provisioned() (bool, error) {
 	}
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	isProvisioned, err := t.provisioned()
 	if err != nil {
 		return err
@@ -723,14 +723,14 @@ func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
-	if err := t.UnprovisionLeaded(ctx); err != nil {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	if err := t.UnprovisionAsFollower(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	isProvisioned, err := t.provisioned()
 	if err != nil {
 		return err
@@ -951,7 +951,7 @@ func (t *Path) ContainerHead() (string, error) {
 }
 */
 
-// cgroupDir returns the container resource cgroup path, relative to a controler head.
+// cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
 	return t.GetPGID()
 }
@@ -962,7 +962,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	} else if v {
 		// the local instance is already up.
-		// let the local start report the unecessary start steps
+		// let the local start report the unnecessary start steps
 		// but skip further abort tests
 		return false
 	} else {

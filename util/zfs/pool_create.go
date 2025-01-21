@@ -26,7 +26,7 @@ func PoolCreateWithVDevs(l []string) funcopt.O {
 	})
 }
 
-// PoolCreateWithArgs defines the shlex splitted list of arguments to prepend
+// PoolCreateWithArgs defines the shlex split list of arguments to prepend
 // to the command.
 func PoolCreateWithArgs(l []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

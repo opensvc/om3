@@ -318,7 +318,7 @@ func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
 // The withUsage critierium can be toggled on/off because it
 // may be slow to get fresh usage metrics, and only the
 // provision codepath needs them (others are satisfied with the
-// garanty the pool is of the same type).
+// guarantee the pool is of the same type).
 func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	node, err := object.NewNode()
 	if err != nil {
@@ -396,7 +396,7 @@ func (t *T) ValidateNodesAndName() error {
 	return nil
 }
 
-func (t *T) ProvisionLeaded(ctx context.Context) error {
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -417,7 +417,7 @@ func (t *T) ProvisionLeaded(ctx context.Context) error {
 	return volume.Provision(ctx)
 }
 
-func (t *T) UnprovisionLeaded(ctx context.Context) error {
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -429,7 +429,7 @@ func (t *T) UnprovisionLeaded(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err
@@ -449,7 +449,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return volume.Provision(ctx)
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
 		return err

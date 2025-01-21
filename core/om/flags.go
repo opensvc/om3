@@ -300,7 +300,7 @@ func addFlagModule(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagModuleset(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "moduleset", "", "The modulesets to limit the action to. The special value `all` can be used in conjonction with detach.")
+	flagSet.StringVar(p, "moduleset", "", "The modulesets to limit the action to. The special value `all` can be used in conjunction with detach.")
 }
 
 func addFlagOutputSections(flagSet *pflag.FlagSet, p *string) {
@@ -318,7 +318,7 @@ func addFlagRoles(flagSet *pflag.FlagSet, p *[]string) {
 }
 
 func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to. the special value `all` can be used in conjonction with detach.")
+	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to. the special value `all` can be used in conjunction with detach.")
 }
 
 func addFlagSections(flagSet *pflag.FlagSet, p *[]string) {

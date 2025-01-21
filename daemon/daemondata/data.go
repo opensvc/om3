@@ -71,7 +71,7 @@ type (
 		//
 		// values are used for the choice of next message type choice
 		// - map[peer]map[string]uint64 it set from the received gens of peer
-		// - map[localnode]map[string]uint64 it from local gen after successfull
+		// - map[localnode]map[string]uint64 it from local gen after successful
 		//   apply full, apply patch, or during commitPendingOps
 		hbGens map[string]map[string]uint64
 

@@ -15,7 +15,7 @@ import (
 )
 
 func GetClusterIPs() clusterip.L {
-	cips := make(clusterip.L, 0)
+	clusterIPs := make(clusterip.L, 0)
 	for _, instStatusData := range instance.StatusData.GetAll() {
 		for rid, resStatus := range instStatusData.Value.Resources {
 			i, ok := resStatus.Info["ipaddr"]
@@ -26,16 +26,16 @@ func GetClusterIPs() clusterip.L {
 			if !ok {
 				continue
 			}
-			cip := clusterip.T{
+			clusterIP := clusterip.T{
 				Path: instStatusData.Path,
 				Node: instStatusData.Node,
 				RID:  rid,
 				IP:   net.ParseIP(ipaddr),
 			}
-			cips = append(cips, cip)
+			clusterIPs = append(clusterIPs, clusterIP)
 		}
 	}
-	return cips
+	return clusterIPs
 }
 
 // GetNetworkIP returns network status list.
@@ -44,12 +44,12 @@ func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
 	}
-	cips := GetClusterIPs()
+	clusterIPs := GetClusterIPs()
 	var networkStatusList network.StatusList
 	if params.Name != nil {
-		networkStatusList = network.ShowNetworksByName(n, *params.Name, cips)
+		networkStatusList = network.ShowNetworksByName(n, *params.Name, clusterIPs)
 	} else {
-		networkStatusList = network.ShowNetworks(n, cips)
+		networkStatusList = network.ShowNetworks(n, clusterIPs)
 	}
 	var l api.NetworkIPItems
 	for _, networkStatus := range networkStatusList {

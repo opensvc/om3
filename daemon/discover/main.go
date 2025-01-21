@@ -173,7 +173,7 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 	t.log.Infof("discover starting")
 
 	if t.omonSubQS == nil {
-		return fmt.Errorf("discover: undefined omon sub queue size, WithOmonSubQS must be called fisrt")
+		return fmt.Errorf("discover: undefined omon sub queue size, WithOmonSubQS must be called first")
 	}
 	if t.imonStarter == nil {
 		return fmt.Errorf("discover: undefined imon starter, WithImonStarter must be called first")

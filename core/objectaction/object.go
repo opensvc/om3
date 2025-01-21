@@ -124,7 +124,7 @@ func WithLocal(v bool) funcopt.O {
 	})
 }
 
-// LocalFirst makes actions not explicitely Local nor remoted
+// LocalFirst makes actions not explicitly Local nor remoted
 // via NodeSelector be treated as local (CRM level).
 func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {

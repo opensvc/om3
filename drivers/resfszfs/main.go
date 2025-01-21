@@ -309,7 +309,7 @@ func (t *T) validateDevice() error {
 		return fmt.Errorf("device keyword value must be formatted like <pool>/<ds>")
 	}
 	if v, err := t.fs().Exists(); err != nil {
-		return fmt.Errorf("dataset %s existance validation error: %w", t.Device, err)
+		return fmt.Errorf("dataset %s existence validation error: %w", t.Device, err)
 	} else if !v {
 		return fmt.Errorf("dataset %s does not exist", t.Device)
 	}
@@ -383,9 +383,9 @@ func (t *T) mkfsOptions() []string {
 	return a.Get()
 }
 
-func (t *T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if v, err := t.fs().Exists(); err != nil {
-		return fmt.Errorf("fs existance check: %w", err)
+		return fmt.Errorf("fs existence check: %w", err)
 	} else if v {
 		t.Log().Infof("dataset %s already exists", t.Device)
 		return nil
@@ -418,7 +418,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	fs := t.fs()
 	if v, err := fs.Exists(); err != nil {
 		return err

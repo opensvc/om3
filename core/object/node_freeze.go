@@ -18,7 +18,7 @@ func (t *Node) Frozen() time.Time {
 	return freeze.Frozen(t.frozenFile())
 }
 
-// Freeze creates a persistant flag file that prevents orchestration
+// Freeze creates a persistent flag file that prevents orchestration
 // of the object instance.
 func (t *Node) Freeze() error {
 	if err := freeze.Freeze(t.frozenFile()); err != nil {
@@ -28,7 +28,7 @@ func (t *Node) Freeze() error {
 	return nil
 }
 
-// Unfreeze removes the persistant flag file that prevents orchestration
+// Unfreeze removes the persistent flag file that prevents orchestration
 // of the object instance.
 func (t *Node) Unfreeze() error {
 	if err := freeze.Unfreeze(t.frozenFile()); err != nil {

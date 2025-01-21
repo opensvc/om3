@@ -15,17 +15,17 @@ import (
 )
 
 type (
-	UnprovisionLeaderer interface {
-		UnprovisionLeader(context.Context) error
+	LeaderUnprovisioner interface {
+		UnprovisionAsLeader(context.Context) error
 	}
-	ProvisionLeaderer interface {
-		ProvisionLeader(context.Context) error
+	LeaderProvisioner interface {
+		ProvisionAsLeader(context.Context) error
 	}
-	UnprovisionLeadeder interface {
-		UnprovisionLeaded(context.Context) error
+	FollowerUnprovisioner interface {
+		UnprovisionAsFollower(context.Context) error
 	}
-	ProvisionLeadeder interface {
-		ProvisionLeaded(context.Context) error
+	FollowerProvisioner interface {
+		ProvisionAsFollower(context.Context) error
 	}
 	ProvisionStarter interface {
 		ProvisionStart(context.Context) error
@@ -133,7 +133,7 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 }
 
 func provision(ctx context.Context, t Driver, leader bool) error {
-	if err := provisionLeaderOrLeaded(ctx, t, leader); err != nil {
+	if err := provisionLeaderOrFollower(ctx, t, leader); err != nil {
 		return err
 	}
 	if err := setProvisionedValue(true, t); err != nil {
@@ -145,12 +145,12 @@ func provision(ctx context.Context, t Driver, leader bool) error {
 	return nil
 }
 
-func isLeaded(t Driver, leader bool) bool {
+func isFollower(t Driver, leader bool) bool {
 	return !t.IsStandby() && !leader && t.IsShared()
 }
 
 func startLeader(ctx context.Context, t Driver, leader bool) error {
-	if isLeaded(t, leader) {
+	if isFollower(t, leader) {
 		return nil
 	}
 	switch o := t.(type) {
@@ -163,17 +163,17 @@ func startLeader(ctx context.Context, t Driver, leader bool) error {
 	}
 }
 
-func provisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
+func provisionLeaderOrFollower(ctx context.Context, t Driver, leader bool) error {
 	if leader {
-		return provisionLeader(ctx, t)
+		return provisionAsLeader(ctx, t)
 	} else {
-		return provisionLeaded(ctx, t)
+		return provisionAsFollower(ctx, t)
 	}
 }
 
-func provisionLeader(ctx context.Context, t Driver) error {
-	if i, ok := t.(ProvisionLeaderer); ok {
-		if err := i.ProvisionLeader(ctx); err != nil {
+func provisionAsLeader(ctx context.Context, t Driver) error {
+	if i, ok := t.(LeaderProvisioner); ok {
+		if err := i.ProvisionAsLeader(ctx); err != nil {
 			return err
 		}
 	}
@@ -183,15 +183,15 @@ func provisionLeader(ctx context.Context, t Driver) error {
 	return nil
 }
 
-func provisionLeaded(ctx context.Context, t Driver) error {
-	if i, ok := t.(ProvisionLeadeder); ok {
-		// The driver cared to implement a ProvisionLeaded function,
+func provisionAsFollower(ctx context.Context, t Driver) error {
+	if i, ok := t.(FollowerProvisioner); ok {
+		// The driver cared to implement a ProvisionAsFollower function,
 		// let it decide what to do with standby resources.
-		return i.ProvisionLeaded(ctx)
+		return i.ProvisionAsFollower(ctx)
 	} else if !t.IsShared() {
-		// The driver did not declare a special behaviour on leaded.
+		// The driver did not declare a special behaviour on follower.
 		// Non-shared resources must be provisioned too, use the leader method.
-		return provisionLeader(ctx, t)
+		return provisionAsLeader(ctx, t)
 	}
 	return nil
 }
@@ -203,7 +203,7 @@ func unprovision(ctx context.Context, t Driver, leader bool) error {
 	if err := SCSIPersistentReservationStop(ctx, t); err != nil {
 		return err
 	}
-	if err := unprovisionLeaderOrLeaded(ctx, t, leader); err != nil {
+	if err := unprovisionLeaderOrFollower(ctx, t, leader); err != nil {
 		return err
 	}
 	if err := setProvisionedValue(false, t); err != nil {
@@ -223,26 +223,26 @@ func unprovisionStop(ctx context.Context, t Driver) error {
 	}
 }
 
-func unprovisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
+func unprovisionLeaderOrFollower(ctx context.Context, t Driver, leader bool) error {
 	if leader {
-		return unprovisionLeader(ctx, t)
+		return unprovisionAsLeader(ctx, t)
 	} else {
-		return unprovisionLeaded(ctx, t)
+		return unprovisionAsFollower(ctx, t)
 	}
 }
 
-func unprovisionLeader(ctx context.Context, t Driver) error {
-	if i, ok := t.(UnprovisionLeaderer); ok {
-		return i.UnprovisionLeader(ctx)
+func unprovisionAsLeader(ctx context.Context, t Driver) error {
+	if i, ok := t.(LeaderUnprovisioner); ok {
+		return i.UnprovisionAsLeader(ctx)
 	}
 	return nil
 }
 
-func unprovisionLeaded(ctx context.Context, t Driver) error {
-	if i, ok := t.(UnprovisionLeadeder); ok {
-		return i.UnprovisionLeaded(ctx)
+func unprovisionAsFollower(ctx context.Context, t Driver) error {
+	if i, ok := t.(FollowerUnprovisioner); ok {
+		return i.UnprovisionAsFollower(ctx)
 	} else if t.IsStandby() && !t.IsShared() {
-		return unprovisionLeader(ctx, t)
+		return unprovisionAsLeader(ctx, t)
 	}
 	return nil
 }
@@ -267,16 +267,16 @@ func Provisioned(t Driver) (provisioned.T, error) {
 }
 
 func hasAnyProvInterface(r Driver) bool {
-	if _, ok := r.(ProvisionLeaderer); ok {
+	if _, ok := r.(LeaderProvisioner); ok {
 		return true
 	}
-	if _, ok := r.(ProvisionLeadeder); ok {
+	if _, ok := r.(FollowerProvisioner); ok {
 		return true
 	}
-	if _, ok := r.(UnprovisionLeaderer); ok {
+	if _, ok := r.(LeaderUnprovisioner); ok {
 		return true
 	}
-	if _, ok := r.(UnprovisionLeadeder); ok {
+	if _, ok := r.(FollowerUnprovisioner); ok {
 		return true
 	}
 	return false

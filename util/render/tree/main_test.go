@@ -42,7 +42,7 @@ func TestForest(t *testing.T) {
 		col.AddText("err").SetColor(color.FgRed).SetAlign(AlignLeft)
 		s := tree.Render()
 		fmt.Println(s)
-		t.Log("programatic tree")
+		t.Log("programmatic tree")
 		t.Log(s)
 		assert.Equal(t, expected, s)
 	}

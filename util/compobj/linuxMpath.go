@@ -272,8 +272,8 @@ func (t CompMpaths) recursiveLoadFile(buff []byte, sections sectionMap, chain []
 			chain = []string{}
 		}
 		chain = append(chain, section)
-		datas := t.loadSections(buff, section, originalCall)
-		for _, data := range datas {
+		data := t.loadSections(buff, section, originalCall)
+		for _, data := range data {
 			t.loadKeyWords(data, subsection, chain, mPathData)
 			t.recursiveLoadFile(data, subsection, chain, mPathData, false)
 		}
@@ -397,7 +397,7 @@ func (t CompMpaths) loadSections(buff []byte, section string, originalCall bool)
 }
 
 func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) {
-	indexs, newKey, err := t.getIndex(key)
+	indexes, newKey, err := t.getIndex(key)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +417,7 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 				return nil, fmt.Errorf(`the key %s is malformed: blacklist.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
 			}
 			for _, device := range conf.BlackList.Devices {
-				if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+				if device.Attr["vendor"][0] == indexes[0] && device.Attr["product"][0] == indexes[1] {
 					return device.Attr[splitKey[2]], nil
 				}
 			}
@@ -439,7 +439,7 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 				return nil, fmt.Errorf(`the key %s is malformed: blacklist_exceptions.device.{vendor}.{product} must be followed by ".anotherSection"`, key)
 			}
 			for _, device := range conf.BlackListExceptions.Devices {
-				if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+				if device.Attr["vendor"][0] == indexes[0] && device.Attr["product"][0] == indexes[1] {
 					return device.Attr[splitKey[2]], nil
 				}
 			}
@@ -460,7 +460,7 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 			return nil, fmt.Errorf(`the key %s is malformed: devices must be followed by ".device.{vendor}.{product}.attribute"`, key)
 		}
 		for _, device := range conf.Devices {
-			if device.Attr["vendor"][0] == indexs[0] && device.Attr["product"][0] == indexs[1] {
+			if device.Attr["vendor"][0] == indexes[0] && device.Attr["product"][0] == indexes[1] {
 				return device.Attr[splitKey[2]], nil
 			}
 		}
@@ -473,7 +473,7 @@ func (t CompMpaths) getConfValues(key string, conf MpathConf) ([]string, error) 
 			return nil, fmt.Errorf(`the key %s is malformed: multipaths must be followed by ".multipath.{wwid}"`, key)
 		}
 		for _, multipath := range conf.Multipaths {
-			if multipath.Attr["wwid"][0] == indexs[0] {
+			if multipath.Attr["wwid"][0] == indexes[0] {
 				return multipath.Attr[splitKey[2]], nil
 			}
 		}
@@ -493,17 +493,17 @@ func (t CompMpaths) getIndex(key string) ([2]string, string, error) {
 	if err != nil {
 		return [2]string{}, key, err
 	}
-	indexs := reg.FindStringSubmatch(key)
-	if len(indexs) > 2 {
-		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), strings.Trim(strings.TrimSpace(indexs[2]), `"`)}, reg.ReplaceAllString(key, "device"), nil
+	indexes := reg.FindStringSubmatch(key)
+	if len(indexes) > 2 {
+		return [2]string{strings.Trim(strings.TrimSpace(indexes[1]), `""`), strings.Trim(strings.TrimSpace(indexes[2]), `"`)}, reg.ReplaceAllString(key, "device"), nil
 	}
 	reg, err = regexp.Compile(`multipath.{([^}]+)}`)
 	if err != nil {
 		return [2]string{}, reg.ReplaceAllString(key, ""), err
 	}
-	indexs = reg.FindStringSubmatch(key)
-	if len(indexs) > 1 {
-		return [2]string{strings.Trim(strings.TrimSpace(indexs[1]), `""`), ""}, reg.ReplaceAllString(key, "multipath"), nil
+	indexes = reg.FindStringSubmatch(key)
+	if len(indexes) > 1 {
+		return [2]string{strings.Trim(strings.TrimSpace(indexes[1]), `""`), ""}, reg.ReplaceAllString(key, "multipath"), nil
 	}
 	return [2]string{}, key, nil
 }
@@ -517,13 +517,13 @@ func (t CompMpaths) checkDevicesInSection(rule CompMpath, conf MpathConf) (ExitC
 	if !isConcerned {
 		return ExitNok, false
 	}
-	indexs, newKey, err := t.getIndex(rule.Key)
+	indexes, newKey, err := t.getIndex(rule.Key)
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok, true
 	}
 	splitkey := strings.Split(newKey, ".")
-	if t.checkIfDevicesExist(conf, splitkey[0], indexs[0], indexs[1]) {
+	if t.checkIfDevicesExist(conf, splitkey[0], indexes[0], indexes[1]) {
 		return ExitOk, true
 	}
 	return ExitNok, true
@@ -658,14 +658,14 @@ func (t CompMpaths) fixRule(rule CompMpath) ExitCode {
 		return ExitNok
 	}
 	if isConcerned {
-		indexs, _, err := t.getIndex(rule.Key)
+		indexes, _, err := t.getIndex(rule.Key)
 		if err != nil {
 			t.Errorf("%s\n", err)
 			return ExitNok
 		}
 		rule.Key += ".vendor"
 		rule.Op = "="
-		rule.Value = indexs[0]
+		rule.Value = indexes[0]
 	}
 	values, err := t.getConfValues(rule.Key, conf)
 	if err != nil {
@@ -697,7 +697,7 @@ func (t CompMpaths) restartDeamon() error {
 }
 
 func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
-	indexs, newKey, err := t.getIndex(rule.Key)
+	indexes, newKey, err := t.getIndex(rule.Key)
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
@@ -709,7 +709,7 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 		return ExitNok
 	}
 	lines := strings.Split(string(fileContent), "\n")
-	indexLineToChange := t.getLineIndex(&lines, splitKey, indexs, 0, len(lines)-1)
+	indexLineToChange := t.getLineIndex(&lines, splitKey, indexes, 0, len(lines)-1)
 	if indexLineToChange == -1 {
 		t.Errorf("error during the fix: the key is supposed to exist but can't find it\n")
 		return ExitNok
@@ -778,7 +778,7 @@ func (t CompMpaths) fixAlreadyExist(rule CompMpath) ExitCode {
 }
 
 func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
-	indexs, newKey, err := t.getIndex(rule.Key)
+	indexes, newKey, err := t.getIndex(rule.Key)
 	if err != nil {
 		t.Errorf("%s\n", err)
 		return ExitNok
@@ -818,7 +818,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 			case splitKey[0] == "blacklist" || splitKey[0] == "blacklist_exceptions":
 				switch splitKey[1] {
 				case "device":
-					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+`"`+indexs[0]+`"`+"\n\t\tproduct "+`"`+indexs[1]+"\n\t}"); err != nil {
+					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+`"`+indexes[0]+`"`+"\n\t\tproduct "+`"`+indexes[1]+"\n\t}"); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
@@ -840,7 +840,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 			default:
 				switch splitKey[1] {
 				case "device":
-					if err = t.addInConfAfterLine(i-1, fileContent, splitKey[0]+" {\n"+"\tdevice {\n\t\tvendor "+`"`+indexs[0]+`"`+"\n\t\tproduct "+`"`+indexs[1]+`"`+"\n\t}\n"+"}\n"); err != nil {
+					if err = t.addInConfAfterLine(i-1, fileContent, splitKey[0]+" {\n"+"\tdevice {\n\t\tvendor "+`"`+indexes[0]+`"`+"\n\t\tproduct "+`"`+indexes[1]+`"`+"\n\t}\n"+"}\n"); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
@@ -866,7 +866,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 		if b {
 			switch splitKey[1] {
 			case "multipath":
-				if t.checkIfMultipathExist(conf, indexs[0]) {
+				if t.checkIfMultipathExist(conf, indexes[0]) {
 					scannerBis := bufio.NewScanner(bytes.NewReader(fileContent))
 					j := 0
 					for k := 0; k < i; k++ {
@@ -882,7 +882,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 							if len(splitLine) < 2 {
 								continue
 							}
-							if strings.TrimSpace(splitLine[1]) == indexs[0] {
+							if strings.TrimSpace(splitLine[1]) == indexes[0] {
 								if err = t.addInConfAfterLine(j, fileContent, "\t\t"+splitKey[2]+" "+newValue); err != nil {
 									t.Errorf("%s\n", err)
 									return ExitNok
@@ -892,13 +892,13 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 						j++
 					}
 				} else {
-					if err = t.addInConfAfterLine(i, fileContent, "\tmultipath {\n\t\twwid "+indexs[0]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n"); err != nil {
+					if err = t.addInConfAfterLine(i, fileContent, "\tmultipath {\n\t\twwid "+indexes[0]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n"); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
 				}
 			case "device":
-				if t.checkIfDevicesExist(conf, splitKey[0], indexs[0], indexs[1]) {
+				if t.checkIfDevicesExist(conf, splitKey[0], indexes[0], indexes[1]) {
 					scannerBis := bufio.NewScanner(bytes.NewReader(fileContent))
 					j := 0
 					var isVendor, isProduct bool
@@ -916,14 +916,14 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 							if len(splitLine) != 2 {
 								continue
 							}
-							if strings.TrimSpace(splitLine[1]) == indexs[0] {
+							if strings.TrimSpace(splitLine[1]) == indexes[0] {
 								isVendor = true
 							}
 						} else if strings.TrimSpace(splitLine[0]) == "product" {
 							if len(splitLine) != 2 {
 								continue
 							}
-							if strings.TrimSpace(splitLine[1]) == indexs[1] {
+							if strings.TrimSpace(splitLine[1]) == indexes[1] {
 								isProduct = true
 							}
 						} else if strings.HasPrefix(strings.TrimSpace(splitLine[0]), splitKey[0]+" ") {
@@ -941,7 +941,7 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 						j++
 					}
 				} else {
-					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+indexs[0]+"\n\t\tproduct "+indexs[1]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n"); err != nil {
+					if err = t.addInConfAfterLine(i, fileContent, "\tdevice {\n\t\tvendor "+indexes[0]+"\n\t\tproduct "+indexes[1]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n"); err != nil {
 						t.Errorf("%s\n", err)
 						return ExitNok
 					}
@@ -950,12 +950,12 @@ func (t CompMpaths) fixNotExist(rule CompMpath, conf MpathConf) ExitCode {
 		} else {
 			switch splitKey[1] {
 			case "multipath":
-				if err = t.addInConfAfterLine(i-1, fileContent, "multipaths {\n\tmultipath {\n\t\twwid "+indexs[0]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
+				if err = t.addInConfAfterLine(i-1, fileContent, "multipaths {\n\tmultipath {\n\t\twwid "+indexes[0]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
 					t.Errorf("%s\n", err)
 					return ExitNok
 				}
 			case "device":
-				if err = t.addInConfAfterLine(i-1, fileContent, "devices {\n\tdevice {\n\t\tvendor "+indexs[0]+"\n\t\tproduct "+indexs[1]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
+				if err = t.addInConfAfterLine(i-1, fileContent, "devices {\n\tdevice {\n\t\tvendor "+indexes[0]+"\n\t\tproduct "+indexes[1]+"\n\t\t"+splitKey[2]+" "+newValue+"\n\t}\n}\n"); err != nil {
 					t.Errorf("%s\n", err)
 					return ExitNok
 				}
@@ -1078,7 +1078,7 @@ func (t CompMpaths) addInConfAfterLine(lineIndex int, fileContent []byte, string
 	return nil
 }
 
-func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [2]string, beginning, end int) int {
+func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexes [2]string, beginning, end int) int {
 	end++
 	switch len(sectionList) {
 	case 1:
@@ -1102,8 +1102,8 @@ func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [
 							break
 						}
 					}
-					if t.isCorrectDevice(lines, indexs, beginning+i, beginning+j+i) {
-						return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, beginning+j+i)
+					if t.isCorrectDevice(lines, indexes, beginning+i, beginning+j+i) {
+						return t.getLineIndex(lines, sectionList[1:], indexes, beginning+i, beginning+j+i)
 					}
 				}
 			}
@@ -1120,8 +1120,8 @@ func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [
 							break
 						}
 					}
-					if t.isCorrectMultipath(lines, indexs, beginning+i, beginning+j+i) {
-						return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, beginning+j+i)
+					if t.isCorrectMultipath(lines, indexes, beginning+i, beginning+j+i) {
+						return t.getLineIndex(lines, sectionList[1:], indexes, beginning+i, beginning+j+i)
 					}
 				}
 			}
@@ -1140,7 +1140,7 @@ func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [
 							bracketCount++
 						}
 						if bracketCount == 0 {
-							return t.getLineIndex(lines, sectionList[1:], indexs, beginning+i, beginning+j)
+							return t.getLineIndex(lines, sectionList[1:], indexes, beginning+i, beginning+j)
 						}
 					}
 				}
@@ -1150,7 +1150,7 @@ func (t CompMpaths) getLineIndex(lines *[]string, sectionList []string, indexs [
 	return -1
 }
 
-func (t CompMpaths) isCorrectDevice(lines *[]string, indexs [2]string, beginning, end int) bool {
+func (t CompMpaths) isCorrectDevice(lines *[]string, indexes [2]string, beginning, end int) bool {
 	var vendor, product string
 	for _, line := range (*lines)[beginning:end] {
 		splitLine := strings.Fields(line)
@@ -1176,10 +1176,10 @@ func (t CompMpaths) isCorrectDevice(lines *[]string, indexs [2]string, beginning
 			product = splitLine[1]
 		}
 	}
-	return vendor == indexs[0] && product == indexs[1]
+	return vendor == indexes[0] && product == indexes[1]
 }
 
-func (t CompMpaths) isCorrectMultipath(lines *[]string, indexs [2]string, beginning, end int) bool {
+func (t CompMpaths) isCorrectMultipath(lines *[]string, indexes [2]string, beginning, end int) bool {
 	var wwid string
 	for _, line := range (*lines)[beginning:end] {
 		splitLine := strings.Fields(line)
@@ -1195,7 +1195,7 @@ func (t CompMpaths) isCorrectMultipath(lines *[]string, indexs [2]string, beginn
 			wwid = splitLine[1]
 		}
 	}
-	return wwid == indexs[0]
+	return wwid == indexes[0]
 }
 
 func (t CompMpaths) Fix() ExitCode {

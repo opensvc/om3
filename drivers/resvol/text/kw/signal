@@ -4,5 +4,5 @@ list of resource ids to send the signal to (ex: `container#1,container#2`).
 
 If only the signal is specified, all candidate resources will be signaled.
 
-This keyword is typically used to reload daemons on certicate or configuration
+This keyword is typically used to reload daemons on certificate or configuration
 files changes.

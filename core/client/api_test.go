@@ -10,7 +10,7 @@ import (
 func TestNewClientDefaults(t *testing.T) {
 	c, err := New()
 	if err != nil {
-		t.Fatalf("unexepected error during New: %v", err)
+		t.Fatalf("unexpected error during New: %v", err)
 	}
 	assert.Condition(t, func() bool { return strings.HasSuffix(c.URL(), ".sock") }, "default url is a ux sock")
 }

@@ -103,7 +103,7 @@
     },
     {
       "name": "Hosts",
-      "description": "Hosts organize the storage network addresses (iSCSI Qualified Names, NVMe qualified names, or Fibre Channel world wide names) of client computers to identify the host's intiators. Hosts also control communications between clients and volumes. After a volume has been created, establish a host-volume connection so that the host can read data from and write data to the volume."
+      "description": "Hosts organize the storage network addresses (iSCSI Qualified Names, NVMe qualified names, or Fibre Channel world wide names) of client computers to identify the host's initiators. Hosts also control communications between clients and volumes. After a volume has been created, establish a host-volume connection so that the host can read data from and write data to the volume."
     },
     {
       "name": "KMIP",
@@ -235,7 +235,7 @@
                     "type": "string"
                   },
                   "subject_token_type": {
-                    "description": "An identifier that indicates the type of security token specifed in the `subject_token` parameter. The Pure Storage REST API supports the JSON Web Token (JWT) as the means for requesting the access token. Set `subject_token_type` to `urn:ietf:params:oauth:token-type:jwt`.",
+                    "description": "An identifier that indicates the type of security token specified in the `subject_token` parameter. The Pure Storage REST API supports the JSON Web Token (JWT) as the means for requesting the access token. Set `subject_token_type` to `urn:ietf:params:oauth:token-type:jwt`.",
                     "type": "string",
                     "default": "urn:ietf:params:oauth:token-type:jwt"
                   }
@@ -2368,7 +2368,7 @@
     "/api/2.17/alert-watchers": {
       "get": {
         "summary": "List alert watchers",
-        "description": "Displays alert watcher email addressess and indicates whether they are `enabled`.",
+        "description": "Displays alert watcher email addresses and indicates whether they are `enabled`.",
         "parameters": [
           {
             "name": "Authorization",
@@ -45402,12 +45402,12 @@
         "type": "object",
         "properties": {
           "key": {
-            "description": "Key of the tag. Supports UTF-8 Unicode characters. Please refer to the offical document from cloud providers for limitations.",
+            "description": "Key of the tag. Supports UTF-8 Unicode characters. Please refer to the official document from cloud providers for limitations.",
             "type": "string",
             "example": "environment"
           },
           "value": {
-            "description": "Value of the tag. Supports UTF-8 Unicode characters. Please refer to the offical document from cloud providers for limitations.",
+            "description": "Value of the tag. Supports UTF-8 Unicode characters. Please refer to the official document from cloud providers for limitations.",
             "type": "string",
             "example": "staging"
           },
