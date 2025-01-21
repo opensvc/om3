@@ -17,6 +17,9 @@ import (
 var (
 	//go:embed text/node-events/flag/template
 	usageFlagEventTemplate string
+
+	//go:embed text/node-events/flag/filter
+	usageFlagEventFilter string
 )
 
 func addFlagsAsync(flagSet *pflag.FlagSet, p *commands.OptsAsync) {
@@ -163,7 +166,7 @@ func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringArrayVar(p, "filter", []string{}, "Request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
+	flagSet.StringArrayVar(p, "filter", []string{}, usageFlagEventFilter)
 }
 
 func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {
