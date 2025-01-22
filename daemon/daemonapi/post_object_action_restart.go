@@ -12,10 +12,14 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonAPI) PostObjectActionRestart(eCtx echo.Context, namespace string, kind naming.Kind, name string) error {
+	if v, err := assertGrant(eCtx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+		return err
+	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(eCtx, http.StatusBadRequest, "Invalid parameters", "%s", err)
