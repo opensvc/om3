@@ -1583,6 +1583,12 @@ type PostAuthTokenParams struct {
 
 	// Duration max token duration, maximum value 24h
 	Duration *string `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// Subject the token subject claim, must be an existing cluster user
+	Subject *string `form:"subject,omitempty" json:"subject,omitempty"`
+
+	// Scope the scope value used to create the token grant claim
+	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
 // PostDaemonJoinParams defines parameters for PostDaemonJoin.
