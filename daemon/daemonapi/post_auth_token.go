@@ -9,10 +9,15 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/converters"
+)
+
+var (
+	userDB = &object.UsrDB{}
 )
 
 // PostAuthToken create a new token for a user
@@ -33,6 +38,10 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		durationMax = time.Hour * 24
 
 		xClaims = make(map[string]interface{})
+
+		username string
+
+		user auth.Info
 	)
 	name := "PostAuthToken"
 	log := LogHandler(ctx, name)
@@ -47,8 +56,18 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 			}
 		}
 	}
-	user := ctx.Get("user").(auth.Info)
-	username := user.GetUserName()
+	if params.Subject != nil && *params.Subject != "" {
+		username := *params.Subject
+		grantL, err := userDB.GrantsFromUsername(username)
+		if err != nil {
+			log.Errorf("user grants for username '%s': %s", username, err)
+			return JSONProblemf(ctx, http.StatusNotFound, "Retrieve user grants", "%s", err)
+		}
+		user = auth.NewUserInfo(username, username, nil, auth.Extensions{"grant": grantL})
+	} else {
+		user = ctx.Get("user").(auth.Info)
+		username = user.GetUserName()
+	}
 	// TODO verify if user is allowed to create token => 403 Forbidden
 	if params.Role != nil {
 		var err error
@@ -80,6 +99,7 @@ func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, 
 	xClaims = make(map[string]interface{})
 	extensions := auth.Extensions{"grant": []string{}}
 	roleDone := make(map[api.Role]bool)
+	grants := rbac.NewGrants(srcInfo.GetExtensions().Values("grant")...)
 	for _, r := range *p.Role {
 		if _, ok := roleDone[r]; ok {
 			continue
@@ -107,7 +127,20 @@ func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, 
 			err = fmt.Errorf("%w: unexpected role %s", echo.ErrBadRequest, role)
 			return
 		}
-		extensions.Add("grant", string(r))
+		var scope string
+		if p.Scope != nil && *p.Scope != "" {
+			scope = *p.Scope
+		}
+		grant := rbac.NewGrant(role, scope)
+		if grants.HasGrant(grant) {
+			extensions.Add("grant", grant.String())
+		} else if grants.Has(rbac.RoleRoot, "") {
+			// TODO: clarify this rule
+			extensions.Add("grant", grant.String())
+		} else {
+			err = fmt.Errorf("refused grant %s", grant)
+			return
+		}
 		roleDone[r] = true
 	}
 	userName := srcInfo.GetUserName()

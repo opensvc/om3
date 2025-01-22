@@ -229,6 +229,9 @@ func newCmdDaemonAuth() *cobra.Command {
 	addFlagRoles(flags, &options.Roles)
 	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
 	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
+	flags.StringVar(&options.Subject, "subject", "", "the subject of the token")
+	flags.StringVar(&options.Scope, "scope", "", "the scope of the token grant")
+
 	return cmd
 }
 

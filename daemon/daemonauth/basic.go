@@ -14,7 +14,7 @@ import (
 type (
 	// UserGranter is the interface for UserGrants method for user basic auth.
 	UserGranter interface {
-		UserGrants(username, password string) ([]string, error)
+		GrantsFromUsernameAndPassword(username, password string) ([]string, error)
 	}
 
 	// NodeAuthenticater is the interface for AuthenticateNode method for node basic auth.
@@ -30,7 +30,7 @@ func initBasicUser(i any) (string, auth.Strategy, error) {
 		return name, nil, fmt.Errorf("UserGranter interface is not implemented")
 	}
 	validateUser := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
-		grants, err := userDB.UserGrants(userName, password)
+		grants, err := userDB.GrantsFromUsernameAndPassword(userName, password)
 		if err != nil {
 			return nil, fmt.Errorf("invalid user %s: %w", userName, err)
 		}

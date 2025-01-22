@@ -33,6 +33,18 @@ paths:
           schema:
             type: string
             example: 10m
+        - in: query
+          name: subject
+          description: the token subject claim, must be an existing cluster user
+          schema:
+            type: string
+            example: foo
+        - in: query
+          name: scope
+          description: the scope value used to create the token grant claim
+          schema:
+            type: string
+            example: ns1
       responses:
         200:
           description: OK
@@ -46,6 +58,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
         500:
           $ref: '#/components/responses/500'
         503:

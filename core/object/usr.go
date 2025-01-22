@@ -52,8 +52,8 @@ func (t *usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
-// UserGrants returns grants for username if username and password match existing usr object
-func (_ *UsrDB) UserGrants(username, password string) ([]string, error) {
+// GrantsFromUsernameAndPassword returns grants for username if username and password match existing usr object
+func (_ *UsrDB) GrantsFromUsernameAndPassword(username, password string) ([]string, error) {
 	usrPath := naming.Path{Name: username, Namespace: "system", Kind: naming.KindUsr}
 	user, err := NewUsr(usrPath, WithVolatile(true))
 	if err != nil {
@@ -65,6 +65,19 @@ func (_ *UsrDB) UserGrants(username, password string) ([]string, error) {
 	}
 	if string(storedPassword) != password {
 		return nil, fmt.Errorf("wrong password")
+	}
+	return user.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"}), nil
+}
+
+// GrantsFromUsername returns grants for username if username existing usr object
+func (_ *UsrDB) GrantsFromUsername(username string) ([]string, error) {
+	usrPath := naming.Path{Name: username, Namespace: "system", Kind: naming.KindUsr}
+	if !usrPath.Exists() {
+		return nil, fmt.Errorf("username '%s' does not exist", username)
+	}
+	user, err := NewUsr(usrPath, WithVolatile(true))
+	if err != nil {
+		return nil, err
 	}
 	return user.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"}), nil
 }
