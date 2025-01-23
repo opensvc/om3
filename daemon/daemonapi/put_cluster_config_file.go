@@ -7,5 +7,8 @@ import (
 )
 
 func (a *DaemonAPI) PutClusterConfigFile(ctx echo.Context) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	return a.writeObjectConfigFile(ctx, naming.Cluster)
 }

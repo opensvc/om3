@@ -11,6 +11,10 @@ import (
 )
 
 func (a *DaemonAPI) PostDaemonSubAction(ctx echo.Context) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
+
 	log := LogHandler(ctx, "PostDaemonSubAction")
 	log.Debugf("starting")
 

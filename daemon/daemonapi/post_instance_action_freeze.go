@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostInstanceActionFreeze(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionFreezeParams) error {
+	if _, err := assertOperator(ctx, namespace); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionFreeze(ctx, namespace, kind, name, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostInstanceActionFreeze(ctx echo.Context, nodename, namespa
 }
 
 func (a *DaemonAPI) postLocalInstanceActionFreeze(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionFreezeParams) error {
-	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostInstanceActionFreeze")
 	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)

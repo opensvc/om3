@@ -12,6 +12,9 @@ import (
 )
 
 func (a *DaemonAPI) GetClusterConfigFile(ctx echo.Context) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	logName := "GetClusterConfigFile"
 	log := LogHandler(ctx, logName)
 	log.Debugf("%s: starting", logName)

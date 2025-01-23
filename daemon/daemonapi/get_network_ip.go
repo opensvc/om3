@@ -40,6 +40,9 @@ func GetClusterIPs() clusterip.L {
 
 // GetNetworkIP returns network status list.
 func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))

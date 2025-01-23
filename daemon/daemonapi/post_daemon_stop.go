@@ -14,6 +14,10 @@ import (
 )
 
 func (a *DaemonAPI) PostDaemonStop(ctx echo.Context, nodename string) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
+
 	if nodename == a.localhost {
 		return a.localPostDaemonStop(ctx)
 	} else if !clusternode.Has(nodename) {

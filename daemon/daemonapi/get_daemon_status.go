@@ -30,6 +30,9 @@ var (
 //
 // Serve 2s cached data.
 func (a *DaemonAPI) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	now := time.Now()
 	subRefreshed.Lock()
 	if now.After(subRefreshed.updated.Add(daemonRefreshInterval)) {

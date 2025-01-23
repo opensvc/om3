@@ -12,6 +12,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeSchedule(ctx echo.Context, nodename string) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.getLocalSchedule(ctx)
 	}

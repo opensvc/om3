@@ -20,6 +20,10 @@ import (
 )
 
 func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params api.PostDaemonShutdownParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
+
 	if nodename == a.localhost {
 		return a.localPostDaemonShutdown(ctx, params)
 	} else if !clusternode.Has(nodename) {

@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostNodeActionPushPatch(ctx echo.Context, nodename string, params api.PostNodeActionPushPatchParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionPushPatch(ctx, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostNodeActionPushPatch(ctx echo.Context, nodename string, p
 }
 
 func (a *DaemonAPI) localNodeActionPushPatch(ctx echo.Context, params api.PostNodeActionPushPatchParams) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostNodeActionPushPatch")
 	var requesterSID uuid.UUID
 	args := []string{"node", "push", "patch", "--local"}

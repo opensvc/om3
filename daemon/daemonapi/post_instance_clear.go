@@ -13,6 +13,9 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+	if _, err := assertOperator(ctx, namespace); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceClear(ctx, namespace, kind, name)
 	}

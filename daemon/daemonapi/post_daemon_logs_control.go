@@ -10,6 +10,10 @@ import (
 )
 
 func (a *DaemonAPI) PostDaemonLogsControl(ctx echo.Context) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
+
 	var (
 		payload api.PostDaemonLogsControl
 	)

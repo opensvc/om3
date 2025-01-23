@@ -9,14 +9,11 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/key"
 )
 
 func (a *DaemonAPI) PostNodeConfigUpdate(ctx echo.Context, nodename string, params api.PostNodeConfigUpdateParams) error {
-	//log := LogHandler(ctx, "PostObjectConfigUpdate")
-
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
+	if _, err := assertRoot(ctx); err != nil {
 		return err
 	}
 	if nodename == a.localhost {

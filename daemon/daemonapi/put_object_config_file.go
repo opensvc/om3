@@ -11,6 +11,9 @@ import (
 )
 
 func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	if v, err := assertAdmin(ctx, namespace); !v {
+		return err
+	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", fmt.Sprint(err))

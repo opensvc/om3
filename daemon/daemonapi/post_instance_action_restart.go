@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostInstanceActionRestart(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionRestartParams) error {
+	if _, err := assertOperator(ctx, namespace); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionRestart(ctx, namespace, kind, name, params)
 	}
@@ -22,10 +24,6 @@ func (a *DaemonAPI) PostInstanceActionRestart(ctx echo.Context, nodename, namesp
 }
 
 func (a *DaemonAPI) postLocalInstanceActionRestart(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionRestartParams) error {
-	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
-		return err
-	}
-
 	log := LogHandler(ctx, "PostInstanceActionRestart")
 	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)

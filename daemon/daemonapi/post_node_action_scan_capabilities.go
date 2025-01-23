@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename string, params api.PostNodeActionScanCapabilitiesParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionScanCapabilities(ctx, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename st
 }
 
 func (a *DaemonAPI) localNodeActionScanCapabilities(ctx echo.Context, params api.PostNodeActionScanCapabilitiesParams) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostNodeActionScanCapabilities")
 	var requesterSid uuid.UUID
 	args := []string{"node", "scan", "capabilities", "--local"}

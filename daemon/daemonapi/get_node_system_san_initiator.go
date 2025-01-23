@@ -13,6 +13,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeSystemSANInitiator(ctx echo.Context, nodename api.InPathNodeName) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemSANInitiator(ctx)
 	}

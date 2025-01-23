@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionSysreport(ctx, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, p
 }
 
 func (a *DaemonAPI) localNodeActionSysreport(ctx echo.Context, params api.PostNodeActionSysreportParams) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostNodeActionSysreport")
 	var requesterSid uuid.UUID
 	args := []string{"node", "sysreport", "--local"}

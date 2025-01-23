@@ -20,6 +20,9 @@ import (
 
 // GetNodeLogs feeds publications in rss format.
 func (a *DaemonAPI) GetNodeLogs(ctx echo.Context, nodename string, params api.GetNodeLogsParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost || nodename == "localhost" {
 		return a.getLocalNodeLogs(ctx, params)
 	} else if !clusternode.Has(nodename) {

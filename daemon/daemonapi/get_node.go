@@ -10,6 +10,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	meta := Meta{
 		Context: ctx,
 		Node:    params.Node,

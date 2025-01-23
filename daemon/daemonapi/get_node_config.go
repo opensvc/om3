@@ -14,6 +14,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.GetNodeConfigParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.GetLocalNodeConfig(ctx, nodename, params)
 	}

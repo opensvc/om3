@@ -11,6 +11,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeCapabilities(ctx echo.Context, nodename string) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.getLocalCapabilities(ctx)
 	}

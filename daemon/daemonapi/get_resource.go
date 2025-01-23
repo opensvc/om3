@@ -26,6 +26,9 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 	configs := instance.ConfigData.GetAll()
 	items := make(api.ResourceItems, 0)
 	for _, config := range configs {
+		if _, err := assertGuest(ctx, config.Path.Namespace); err != nil {
+			continue
+		}
 		if !meta.HasPath(config.Path.String()) {
 			continue
 		}

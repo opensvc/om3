@@ -13,6 +13,9 @@ import (
 
 // GetNetworks returns network status list.
 func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	var items api.NetworkItems
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {

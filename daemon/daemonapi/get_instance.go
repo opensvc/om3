@@ -31,6 +31,10 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
+		if _, err := assertGuest(ctx, config.Path.Namespace); err != nil {
+			continue
+		}
+
 		monitor := instance.MonitorData.GetByPathAndNode(config.Path, config.Node)
 		status := instance.StatusData.GetByPathAndNode(config.Path, config.Node)
 		d := api.InstanceItem{
