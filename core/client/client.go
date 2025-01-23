@@ -34,12 +34,17 @@ type (
 	}
 )
 
+var (
+	// DefaultClientTimeout is the default client timeout value used by New
+	DefaultClientTimeout = 5 * time.Second
+)
+
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
 func New(opts ...funcopt.O) (*T, error) {
 	t := &T{
-		timeout: 5 * time.Second,
+		timeout: DefaultClientTimeout,
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return nil, err
