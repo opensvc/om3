@@ -40,7 +40,7 @@ type (
 var (
 	contextApiSubQS = contextKey("api-sub-queue-size")
 
-	labelAPI = pubsub.Label{"origin", "api"}
+	labelOriginAPI = pubsub.Label{"origin", "api"}
 )
 
 func New(ctx context.Context) *DaemonAPI {

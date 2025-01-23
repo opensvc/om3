@@ -178,9 +178,7 @@ func (t *Manager) pubMonitorAction(rid string, action instance.MonitorAction) {
 			Node:   t.localhost,
 			Action: action,
 			RID:    rid,
-		},
-		t.labelPath,
-		t.labelLocalhost)
+		}, t.pubLabels...)
 }
 
 // orchestrateResourceRestart manages the restart orchestration process for resources,

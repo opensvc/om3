@@ -450,7 +450,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			Path:  t.path,
 			Node:  t.localhost,
 			Value: c.Value,
-		}, t.labelPath, t.labelLocalhost)
+		}, t.pubLabels...)
 	}
 
 	doGlobalExpect := func() error {
@@ -589,10 +589,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			Reason:              fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
 			GlobalExpect:        c.Value.GlobalExpect,
 			GlobalExpectOptions: c.Value.GlobalExpectOptions,
-		},
-			t.labelPath,
-			t.labelLocalhost,
-		)
+		}, t.pubLabels...)
 	}
 }
 

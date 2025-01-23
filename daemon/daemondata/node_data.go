@@ -86,15 +86,15 @@ func (d *data) dropPeer(peer string) {
 	d.log.Infof("unset and publish deleted peer %s components", peer)
 	for p := range instance.ConfigData.GetByNode(peer) {
 		instance.ConfigData.Unset(p, peer)
-		d.bus.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
+		d.bus.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
 	}
 	for p := range instance.StatusData.GetByNode(peer) {
 		instance.StatusData.Unset(p, peer)
-		d.bus.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
+		d.bus.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
 	}
 	for p := range instance.MonitorData.GetByNode(peer) {
 		instance.MonitorData.Unset(p, peer)
-		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"path", p.String()})...)
+		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
 	}
 	if v := node.MonitorData.GetByNode(peer); v != nil {
 		node.DropNode(peer)

@@ -74,7 +74,7 @@ func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
 		Type:    record.Type,
 		TTL:     record.TTL,
 		Content: record.Content,
-	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
+	}, pubsub.Label{"node", node}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 }
 
 func (t *Manager) pubUpdated(record Record, p naming.Path, node string) {
@@ -85,7 +85,7 @@ func (t *Manager) pubUpdated(record Record, p naming.Path, node string) {
 		Type:    record.Type,
 		TTL:     record.TTL,
 		Content: record.Content,
-	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
+	}, pubsub.Label{"node", node}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 }
 
 func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {

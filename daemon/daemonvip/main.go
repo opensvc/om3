@@ -253,7 +253,7 @@ func (t *T) orchestrate(g instance.MonitorGlobalExpect) error {
 	value := instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()}
 	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, vipPath, t.localhost, value)
 
-	t.bus.Pub(msg, []pubsub.Label{{"node", t.localhost}, {"path", vipPath.String()}}...)
+	t.bus.Pub(msg, []pubsub.Label{{"node", t.localhost}, pubsub.Label{"namespace", vipPath.Namespace}, {"path", vipPath.String()}}...)
 	err := setInstanceMonitorErr.Receive()
 
 	switch {

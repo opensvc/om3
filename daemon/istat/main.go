@@ -107,36 +107,37 @@ func (t *T) worker() {
 		case <-t.ctx.Done():
 			return
 		case i := <-t.sub.C:
-			switch m := i.(type) {
+			switch msg := i.(type) {
 			case *msgbus.InstanceConfigDeleted:
-				t.onInstanceConfigDeleted(m)
+				t.onInstanceConfigDeleted(msg)
 			case *msgbus.InstanceFrozenFileRemoved:
-				t.onInstanceFrozenFileRemoved(m)
+				t.onInstanceFrozenFileRemoved(msg)
 			case *msgbus.InstanceFrozenFileUpdated:
-				t.onInstanceFrozenFileUpdated(m)
+				t.onInstanceFrozenFileUpdated(msg)
 			case *msgbus.RunFileRemoved:
-				t.onRunFileDeleted(m)
+				t.onRunFileDeleted(msg)
 			case *msgbus.RunFileUpdated:
-				t.onRunFileUpdated(m)
+				t.onRunFileUpdated(msg)
 			case *msgbus.InstanceStatusPost:
-				t.onInstanceStatusPost(m)
+				t.onInstanceStatusPost(msg)
 			}
 		}
 	}
 }
 
-func (t *T) onInstanceConfigDeleted(m *msgbus.InstanceConfigDeleted) {
-	s := m.Path.String()
-	delete(t.iStatusM, m.Path.String())
-	instance.StatusData.Unset(m.Path, t.localhost)
-	t.bus.Pub(&msgbus.InstanceStatusDeleted{Path: m.Path, Node: t.localhost},
+func (t *T) onInstanceConfigDeleted(msg *msgbus.InstanceConfigDeleted) {
+	s := msg.Path.String()
+	delete(t.iStatusM, msg.Path.String())
+	instance.StatusData.Unset(msg.Path, t.localhost)
+	t.bus.Pub(&msgbus.InstanceStatusDeleted{Path: msg.Path, Node: t.localhost},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
 }
 
-func (t *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRemoved) {
-	s := fileRemoved.Path.String()
+func (t *T) onInstanceFrozenFileRemoved(msg *msgbus.InstanceFrozenFileRemoved) {
+	s := msg.Path.String()
 	iStatus, ok := t.iStatusM[s]
 	if !ok {
 		// no instance status to update
@@ -147,13 +148,14 @@ func (t *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRe
 		return
 	}
 	iStatus.FrozenAt = time.Time{}
-	if iStatus.UpdatedAt.Before(fileRemoved.At) {
-		iStatus.UpdatedAt = fileRemoved.At
+	if iStatus.UpdatedAt.Before(msg.At) {
+		iStatus.UpdatedAt = msg.At
 	}
 	t.iStatusM[s] = iStatus
-	instance.StatusData.Set(fileRemoved.Path, t.localhost, iStatus.DeepCopy())
-	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
 }
@@ -179,6 +181,7 @@ func (t *T) onRunFileUpdated(msg *msgbus.RunFileUpdated) {
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
 	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
 }
@@ -205,43 +208,46 @@ func (t *T) onRunFileDeleted(msg *msgbus.RunFileRemoved) {
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
 	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
 }
 
-func (t *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated) {
-	s := frozen.Path.String()
+func (t *T) onInstanceFrozenFileUpdated(msg *msgbus.InstanceFrozenFileUpdated) {
+	s := msg.Path.String()
 
 	iStatus, ok := t.iStatusM[s]
 	if !ok {
 		// no instance status to update
 		return
 	}
-	if frozen.At.Before(iStatus.FrozenAt) {
+	if msg.At.Before(iStatus.FrozenAt) {
 		// skip event from past
 		return
 	}
 
-	iStatus.FrozenAt = frozen.At
-	if frozen.At.After(iStatus.UpdatedAt) {
-		iStatus.UpdatedAt = frozen.At
+	iStatus.FrozenAt = msg.At
+	if msg.At.After(iStatus.UpdatedAt) {
+		iStatus.UpdatedAt = msg.At
 	}
 	t.iStatusM[s] = iStatus
-	instance.StatusData.Set(frozen.Path, t.localhost, iStatus.DeepCopy())
-	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
 }
 
-func (t *T) onInstanceStatusPost(post *msgbus.InstanceStatusPost) {
-	if instance.ConfigData.GetByPathAndNode(post.Path, t.localhost) == nil {
+func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
+	if instance.ConfigData.GetByPathAndNode(msg.Path, t.localhost) == nil {
 		return
 	}
-	s := post.Path.String()
-	t.iStatusM[s] = post.Value
-	instance.StatusData.Set(post.Path, post.Node, post.Value.DeepCopy())
-	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
+	s := msg.Path.String()
+	t.iStatusM[s] = msg.Value
+	instance.StatusData.Set(msg.Path, msg.Node, msg.Value.DeepCopy())
+	t.bus.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: msg.Node, Value: msg.Value},
 		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s})
 }

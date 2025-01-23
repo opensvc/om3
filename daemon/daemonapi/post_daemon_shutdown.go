@@ -129,7 +129,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, State: &idleState}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-			a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+			a.EventBus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 			if err := setImonErr.Receive(); err != nil {
 				log.Warnf("can't revert %s state %s to idle: %s", p, currentState, err)
@@ -160,7 +160,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-			a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+			a.EventBus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 			err := setImonErr.Receive()
 			cancel()
@@ -187,7 +187,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 					a.announceNodeState(log, node.MonitorStateShutdownSuccess)
 					log.Infof("ask daemon do stop")
 					a.EventBus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
-						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelAPI)
+						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelOriginAPI)
 					log.Infof("succeed")
 					return JSONProblem(eCtx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
 				}

@@ -22,7 +22,7 @@ func (o *T) action(e schedule.Entry) error {
 	} else {
 		p := e.Path.String()
 		cmdArgs = append(cmdArgs, p)
-		labels = append(labels, pubsub.Label{"path", p})
+		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", p})
 	}
 	switch e.Action {
 	case "status":
