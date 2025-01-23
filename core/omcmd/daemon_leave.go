@@ -175,7 +175,7 @@ func (t *CmdDaemonLeave) checkParams() error {
 		return fmt.Errorf("retrieve cluster nodes: %w", err)
 	} else if len(clusterNodes) < 2 {
 		return fmt.Errorf("not available on single node cluster")
-	} else if t.APINode != "" {
+	} else if t.APINode == "" {
 		for _, node := range clusterNodes {
 			if node != hostname.Hostname() {
 				t.APINode = node
