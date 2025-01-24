@@ -81,6 +81,36 @@ func (t Grants) Has(role Role, scope string) bool {
 	return match(t, role, scope)
 }
 
+func (t Grants) Namespaces(roles ...Role) []string {
+	allowAll := false
+	allowedRole := make(map[Role]any)
+	m := make(map[string]any)
+	for _, role := range roles {
+		allowedRole[role] = nil
+	}
+	if len(roles) == 0 {
+		allowAll = true
+	}
+	for _, grant := range t {
+		role, namespace := SplitGrant(grant)
+		if namespace == "" {
+			continue
+		}
+		if !allowAll {
+			if _, ok := allowedRole[role]; !ok {
+				continue
+			}
+		}
+		m[namespace] = nil
+	}
+	l := make([]string, len(m))
+	i := 0
+	for k := range m {
+		l[i] = k
+	}
+	return l
+}
+
 func NewGrant(role Role, scope string) Grant {
 	var s string
 	if scope == "" {
