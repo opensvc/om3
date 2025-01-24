@@ -28,8 +28,8 @@ func (t *Manager) orchestrate() {
 		t.orchestrateAborted()
 	case node.MonitorGlobalExpectFrozen:
 		t.orchestrateFrozen()
-	case node.MonitorGlobalExpectThawed:
-		t.orchestrateThawed()
+	case node.MonitorGlobalExpectUnfrozen:
+		t.orchestrateUnfrozen()
 	}
 	t.updateIfChange()
 }

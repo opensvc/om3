@@ -11,15 +11,15 @@ func (t *Manager) orchestrateFailoverPlacedStart() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.placedUnfreeze()
-	case instance.MonitorStateThawSuccess:
-		t.orchestrateFailoverPlacedStartFromThawed()
+	case instance.MonitorStateUnfreezeSuccess:
+		t.orchestrateFailoverPlacedStartFromUnfreezeSuccess()
 	case instance.MonitorStateStartSuccess:
 		t.orchestrateFailoverPlacedStartFromStarted()
 	case instance.MonitorStateStopSuccess:
 		t.orchestrateFailoverPlacedStartFromStopped()
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
-	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
@@ -32,15 +32,15 @@ func (t *Manager) orchestrateFlexPlacedStart() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.placedUnfreeze()
-	case instance.MonitorStateThawSuccess:
-		t.orchestrateFlexPlacedStartFromThawed()
+	case instance.MonitorStateUnfreezeSuccess:
+		t.orchestrateFlexPlacedStartFromUnfrozen()
 	case instance.MonitorStateStartSuccess:
 		t.orchestrateFlexPlacedStartFromStarted()
 	case instance.MonitorStateStopSuccess:
 		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
-	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
@@ -53,7 +53,7 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.placedUnfreeze()
-	case instance.MonitorStateThawSuccess:
+	case instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
 		t.clearStopFailedIfDown()
@@ -63,7 +63,7 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
-	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
@@ -76,7 +76,7 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.placedUnfreeze()
-	case instance.MonitorStateThawSuccess:
+	case instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
 		t.clearStopFailedIfDown()
@@ -86,7 +86,7 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
-	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
@@ -117,8 +117,8 @@ func (t *Manager) orchestratePlacedAt() {
 }
 
 func (t *Manager) placedUnfreeze() {
-	if t.instStatus[t.localhost].IsThawed() {
-		t.transitionTo(instance.MonitorStateThawSuccess)
+	if t.instStatus[t.localhost].IsUnfrozen() {
+		t.transitionTo(instance.MonitorStateUnfreezeSuccess)
 	} else {
 		t.doUnfreeze()
 	}
@@ -188,7 +188,7 @@ func (t *Manager) clearStopped() {
 	t.clearPending()
 }
 
-func (t *Manager) orchestrateFailoverPlacedStartFromThawed() {
+func (t *Manager) orchestrateFailoverPlacedStartFromUnfreezeSuccess() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Up:
@@ -213,7 +213,7 @@ func (t *Manager) orchestrateFailoverPlacedStartFromStarted() {
 	t.startedClearIfReached()
 }
 
-func (t *Manager) orchestrateFlexPlacedStartFromThawed() {
+func (t *Manager) orchestrateFlexPlacedStartFromUnfrozen() {
 	t.placedStart()
 }
 

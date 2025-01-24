@@ -27,7 +27,7 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("thawed"),
+		objectaction.WithAsyncTarget("unfrozen"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),

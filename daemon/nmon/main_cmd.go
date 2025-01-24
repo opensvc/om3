@@ -394,7 +394,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		// already frozen
 		return
 	}
-	if t.state.GlobalExpect == node.MonitorGlobalExpectThawed {
+	if t.state.GlobalExpect == node.MonitorGlobalExpectUnfrozen {
 		return
 	}
 	for _, peer := range t.clusterConfig.Nodes {

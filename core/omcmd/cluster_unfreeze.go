@@ -11,7 +11,7 @@ type CmdClusterUnfreeze struct {
 
 func (t *CmdClusterUnfreeze) Run() error {
 	return nodeaction.New(
-		nodeaction.WithAsyncTarget("thawed"),
+		nodeaction.WithAsyncTarget("unfrozen"),
 		nodeaction.WithAsyncTime(t.Time),
 		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),

@@ -612,7 +612,7 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON500)
 				}
 			}
-		case instance.MonitorGlobalExpectThawed:
+		case instance.MonitorGlobalExpectUnfrozen:
 			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
 				err = e
 			} else {

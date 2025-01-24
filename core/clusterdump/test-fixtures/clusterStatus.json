@@ -129,7 +129,7 @@
     "objects": {
       "toto": {
         "avail": "up",
-        "frozen": "thawed",
+        "frozen": "unfrozen",
         "overall": "warn",
         "placement": "optimal",
         "provisioned": true

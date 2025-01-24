@@ -57,7 +57,7 @@ func (t *Manager) unfreeze() error {
 	t.log.Debugf("daemon action unfreeze")
 	p := filepath.Join(t.path.VarDir(), "frozen")
 	if !file.Exists(p) {
-		t.log.Infof("already thawed")
+		t.log.Infof("already unfrozen")
 	} else {
 		err := os.Remove(p)
 		if err != nil {

@@ -97,8 +97,8 @@ func (t *Manager) orchestrate() {
 		t.orchestrateStarted()
 	case instance.MonitorGlobalExpectStopped:
 		t.orchestrateStopped()
-	case instance.MonitorGlobalExpectThawed:
-		t.orchestrateThawed()
+	case instance.MonitorGlobalExpectUnfrozen:
+		t.orchestrateUnfrozen()
 	case instance.MonitorGlobalExpectUnprovisioned:
 		t.orchestrateUnprovisioned()
 	}

@@ -13,7 +13,7 @@ const (
 	MonitorGlobalExpectRestarted
 	MonitorGlobalExpectStarted
 	MonitorGlobalExpectStopped
-	MonitorGlobalExpectThawed
+	MonitorGlobalExpectUnfrozen
 	MonitorGlobalExpectUnprovisioned
 )
 
@@ -42,7 +42,7 @@ func init() {
 		{MonitorGlobalExpectRestarted, "restarted"},
 		{MonitorGlobalExpectStarted, "started"},
 		{MonitorGlobalExpectStopped, "stopped"},
-		{MonitorGlobalExpectThawed, "thawed"},
+		{MonitorGlobalExpectUnfrozen, "unfrozen"},
 		{MonitorGlobalExpectUnprovisioned, "unprovisioned"},
 	}
 

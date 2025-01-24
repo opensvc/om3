@@ -148,7 +148,7 @@ func (t *T) onClusterConfigUpdated(c *cluster.Config) {
 	}
 	if len(instance.ConfigData.GetByPath(vipPath)) == 0 {
 		t.log.Infof("will create vip instance from vip %s", c.Vip)
-		err := t.createAndThaw(kv)
+		err := t.createAndUnfreeze(kv)
 		if err != nil {
 			t.log.Errorf("create vip instance failed: %s", err.Error())
 			return
@@ -167,9 +167,9 @@ func (t *T) purgeVip() error {
 	return t.orchestrate(instance.MonitorGlobalExpectPurged)
 }
 
-func (t *T) createAndThaw(kv map[string]string) error {
+func (t *T) createAndUnfreeze(kv map[string]string) error {
 	timeout := 2 * time.Second
-	sub := t.bus.Sub("daemon.vip.createAndThaw", pubsub.Timeout(timeout))
+	sub := t.bus.Sub("daemon.vip.createAndUnfreeze", pubsub.Timeout(timeout))
 	waitCtx, cancel := context.WithTimeout(t.ctx, timeout)
 	defer cancel()
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", vipPath.String()})
@@ -202,8 +202,8 @@ func (t *T) createAndThaw(kv map[string]string) error {
 					delete(imonIdles, m.Node)
 				}
 				if len(imonIdles) >= expectedInstances {
-					t.log.Infof("got enough vip instance monitors call orchestrate thawed")
-					return t.orchestrate(instance.MonitorGlobalExpectThawed)
+					t.log.Infof("got enough vip instance monitors call orchestrate unfrozen")
+					return t.orchestrate(instance.MonitorGlobalExpectUnfrozen)
 				}
 			}
 		case <-t.ctx.Done():

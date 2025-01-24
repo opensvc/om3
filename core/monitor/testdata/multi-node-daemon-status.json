@@ -34,7 +34,7 @@
         "object": {
             "cluster": {
                 "avail": "n/a",
-                "frozen": "thawed",
+                "frozen": "unfrozen",
                 "orchestrate": "",
                 "overall": "n/a",
                 "placement_policy": "",
@@ -53,7 +53,7 @@
             },
             "foo": {
                 "avail": "up",
-                "frozen": "thawed",
+                "frozen": "unfrozen",
                 "orchestrate": "ha",
                 "overall": "up",
                 "placement_policy": "nodes order",
@@ -72,7 +72,7 @@
             },
             "system/sec/ca": {
                 "avail": "n/a",
-                "frozen": "thawed",
+                "frozen": "unfrozen",
                 "orchestrate": "no",
                 "overall": "n/a",
                 "placement_policy": "nodes order",
@@ -91,7 +91,7 @@
             },
             "system/sec/cert": {
                 "avail": "n/a",
-                "frozen": "thawed",
+                "frozen": "unfrozen",
                 "orchestrate": "no",
                 "overall": "n/a",
                 "placement_policy": "nodes order",

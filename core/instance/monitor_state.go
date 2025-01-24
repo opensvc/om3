@@ -25,9 +25,9 @@ const (
 	MonitorStateFreezeFailure
 	MonitorStateFreezeSuccess
 
-	MonitorStateThawProgress
-	MonitorStateThawFailure
-	MonitorStateThawSuccess
+	MonitorStateUnfreezeProgress
+	MonitorStateUnfreezeFailure
+	MonitorStateUnfreezeSuccess
 
 	MonitorStateProvisionProgress
 	MonitorStateProvisionFailure
@@ -93,9 +93,9 @@ func init() {
 		{MonitorStateFreezeFailure, "freeze failed"},
 		{MonitorStateFreezeSuccess, "frozen"},
 
-		{MonitorStateThawProgress, "thawing"},
-		{MonitorStateThawFailure, "unfreeze failed"},
-		{MonitorStateThawSuccess, "thawed"},
+		{MonitorStateUnfreezeProgress, "unfreezing"},
+		{MonitorStateUnfreezeFailure, "unfreeze failed"},
+		{MonitorStateUnfreezeSuccess, "unfrozen"},
 
 		{MonitorStateProvisionProgress, "provisioning"},
 		{MonitorStateProvisionFailure, "provision failed"},

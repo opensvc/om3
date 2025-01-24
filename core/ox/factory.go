@@ -184,26 +184,18 @@ func newCmdClusterLogs() *cobra.Command {
 }
 
 func newCmdClusterThaw() *cobra.Command {
-	var options commands.CmdClusterUnfreeze
-	cmd := &cobra.Command{
-		Use:    "thaw",
-		Hidden: true,
-		Short:  "unblock ha automatic and split action start on all nodes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
+	cmd := newCmdClusterUnfreeze()
+	cmd.Use = "thaw"
+	cmd.Hidden = true
 	return cmd
 }
 
 func newCmdClusterUnfreeze() *cobra.Command {
 	var options commands.CmdClusterUnfreeze
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "unblock ha automatic and split action start on all nodes",
+		Use:    "unfreeze",
+		Hidden: false,
+		Short:  "unblock ha automatic and split action start on all nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2907,8 +2899,8 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "unblock ha automatic start",
+		Use:    "unfreeze",
+		Short:  "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2938,19 +2930,9 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 }
 
 func newCmdObjectThaw(kind string) *cobra.Command {
-	var options commands.CmdObjectUnfreeze
-	cmd := &cobra.Command{
-		Use:    "thaw",
-		Hidden: true,
-		Short:  "unblock ha automatic start",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
-	addFlagNodeSelector(flags, &options.NodeSelector)
+	cmd := newCmdObjectUnfreeze(kind)
+	cmd.Use = "thaw"
+	cmd.Hidden = true
 	return cmd
 }
 

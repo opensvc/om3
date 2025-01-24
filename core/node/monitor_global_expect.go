@@ -9,7 +9,7 @@ const (
 	MonitorGlobalExpectAborted
 	MonitorGlobalExpectFrozen
 	MonitorGlobalExpectNone
-	MonitorGlobalExpectThawed
+	MonitorGlobalExpectUnfrozen
 )
 
 var (
@@ -28,7 +28,7 @@ func init() {
 		{MonitorGlobalExpectAborted, "aborted"},
 		{MonitorGlobalExpectFrozen, "frozen"},
 		{MonitorGlobalExpectNone, "none"},
-		{MonitorGlobalExpectThawed, "thawed"},
+		{MonitorGlobalExpectUnfrozen, "unfrozen"},
 		{MonitorGlobalExpectInit, "init"},
 	}
 

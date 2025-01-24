@@ -4,7 +4,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 )
 
-func (t *Manager) orchestrateThawed() {
+func (t *Manager) orchestrateUnfrozen() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStartFailure,
@@ -17,20 +17,20 @@ func (t *Manager) orchestrateThawed() {
 		instance.MonitorStateUnprovisionFailure,
 		instance.MonitorStateUnprovisionSuccess,
 		instance.MonitorStateReady:
-		t.ThawedFromIdle()
+		t.UnfrozenFromIdle()
 	}
 }
 
-func (t *Manager) ThawedFromIdle() {
-	if t.thawedClearIfReached() {
+func (t *Manager) UnfrozenFromIdle() {
+	if t.unfrozenClearIfReached() {
 		return
 	}
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateIdle, instance.MonitorStateThawFailure)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateIdle, instance.MonitorStateUnfreezeFailure)
 }
 
-func (t *Manager) thawedClearIfReached() bool {
-	if t.instStatus[t.localhost].IsThawed() {
-		t.log.Infof("instance state is thawed -> set reached")
+func (t *Manager) unfrozenClearIfReached() bool {
+	if t.instStatus[t.localhost].IsUnfrozen() {
+		t.log.Infof("instance state is unfrozen: expectation reached")
 		t.doneAndIdle()
 		t.clearPending()
 		return true

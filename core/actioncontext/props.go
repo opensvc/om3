@@ -159,8 +159,8 @@ var (
 	}
 	Unfreeze = Properties{
 		Name:     "unfreeze",
-		Target:   "thawed",
-		Progress: "thawing",
+		Target:   "unfrozen",
+		Progress: "unfreezing",
 		Failure:  "unfreeze failed",
 		PG:       true,
 	}

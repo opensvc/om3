@@ -21,7 +21,7 @@ func (a *DaemonAPI) PostClusterActionFreeze(ctx echo.Context) error {
 }
 
 func (a *DaemonAPI) PostClusterActionUnfreeze(ctx echo.Context) error {
-	return a.PostClusterAction(ctx, node.MonitorGlobalExpectThawed)
+	return a.PostClusterAction(ctx, node.MonitorGlobalExpectUnfrozen)
 }
 
 func (a *DaemonAPI) PostClusterAction(eCtx echo.Context, globalExpect node.MonitorGlobalExpect) error {

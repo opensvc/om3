@@ -13,7 +13,7 @@ func (t *Manager) orchestrateProvisioned() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStopFailure,
-		instance.MonitorStateThawSuccess,
+		instance.MonitorStateUnfreezeSuccess,
 		instance.MonitorStateUnprovisionFailure:
 		t.provisionedFromIdle()
 	case instance.MonitorStateProvisionSuccess:
@@ -22,14 +22,14 @@ func (t *Manager) orchestrateProvisioned() {
 		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailure:
 		t.provisionedFromProvisionFailed()
-	case instance.MonitorStateThawProgress:
-	case instance.MonitorStateThawFailure:
+	case instance.MonitorStateUnfreezeProgress:
+	case instance.MonitorStateUnfreezeFailure:
 		// TODO: clear ?
 	}
 }
 
 func (t *Manager) provisionedFromProvisioned() {
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateThawSuccess, instance.MonitorStateThawFailure)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateUnfreezeSuccess, instance.MonitorStateUnfreezeFailure)
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
