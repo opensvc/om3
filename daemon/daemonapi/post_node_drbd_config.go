@@ -14,7 +14,7 @@ import (
 )
 
 func (a *DaemonAPI) PostNodeDRBDConfig(ctx echo.Context, nodename string, params api.PostNodeDRBDConfigParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	payload := api.PostNodeDRBDConfigRequest{}

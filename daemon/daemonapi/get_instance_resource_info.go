@@ -15,7 +15,7 @@ import (
 )
 
 func (a *DaemonAPI) GetInstanceResourceInfo(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertGuest(ctx, namespace); err != nil {
+	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
 	if a.localhost == nodename {

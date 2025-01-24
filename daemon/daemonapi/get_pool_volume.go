@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) GetPoolVolumes(ctx echo.Context, params api.GetPoolVolumesParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	l := getPoolVolumes(params.Name)

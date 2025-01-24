@@ -11,7 +11,7 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	p, err := naming.NewPath(namespace, kind, name)

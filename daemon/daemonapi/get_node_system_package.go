@@ -13,7 +13,7 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeSystemPackage(ctx echo.Context, nodename api.InPathNodeName) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	if a.localhost == nodename {

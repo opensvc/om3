@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceActionUnprovision(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnprovisionParams) error {
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	if a.localhost == nodename {

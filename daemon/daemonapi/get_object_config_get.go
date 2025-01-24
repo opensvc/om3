@@ -13,7 +13,7 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectConfigGet(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigGetParams) error {
-	if _, err := assertGuest(ctx, namespace); err != nil {
+	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
 	log := LogHandler(ctx, "GetObjectConfigGet")

@@ -13,7 +13,7 @@ import (
 )
 
 func (a *DaemonAPI) GetNodeDRBDConfig(ctx echo.Context, nodename string, params api.GetNodeDRBDConfigParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	log := LogHandler(ctx, "GetNodeDRBDConfig")

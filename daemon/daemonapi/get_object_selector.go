@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsParams) error {
@@ -25,8 +26,11 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	result := api.ObjectPaths{}
+	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	for _, path := range matchedPaths {
-		if _, err := assertGuest(ctx, path.Namespace); err != nil {
+		if !hasRoot && !userGrants.Has(rbac.RoleGuest, path.Namespace) {
 			continue
 		}
 		result = append(result, path.String())

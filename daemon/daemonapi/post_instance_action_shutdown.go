@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceActionShutdown(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionShutdownParams) error {
-	if _, err := assertOperator(ctx, namespace); err != nil {
+	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
 	if a.localhost == nodename {

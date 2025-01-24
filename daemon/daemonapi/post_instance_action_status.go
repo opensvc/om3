@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceActionStatus(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStatusParams) error {
-	if _, err := assertOperator(ctx, namespace); err != nil {
+	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
 	if a.localhost == nodename {

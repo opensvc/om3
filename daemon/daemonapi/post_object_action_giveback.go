@@ -10,7 +10,7 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectActionGiveback(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertOperator(ctx, namespace); err != nil {
+	if v, err := assertOperator(ctx, namespace); v {
 		return err
 	}
 	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPlaced, func(c *client.T) (*http.Response, error) {

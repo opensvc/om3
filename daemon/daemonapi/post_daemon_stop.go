@@ -14,7 +14,7 @@ import (
 )
 
 func (a *DaemonAPI) PostDaemonStop(ctx echo.Context, nodename string) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 

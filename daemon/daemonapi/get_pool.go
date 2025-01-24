@@ -10,7 +10,7 @@ import (
 )
 
 func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	var items api.PoolItems

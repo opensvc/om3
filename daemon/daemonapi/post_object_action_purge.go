@@ -11,7 +11,7 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectActionPurge(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectPurged, func(c *client.T) (*http.Response, error) {

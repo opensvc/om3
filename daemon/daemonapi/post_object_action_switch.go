@@ -17,7 +17,7 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertOperator(eCtx, namespace); err != nil {
+	if v, err := assertOperator(eCtx, namespace); !v {
 		return err
 	}
 	p, err := naming.NewPath(namespace, kind, name)

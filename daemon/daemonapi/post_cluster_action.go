@@ -25,7 +25,7 @@ func (a *DaemonAPI) PostClusterActionUnfreeze(ctx echo.Context) error {
 }
 
 func (a *DaemonAPI) PostClusterAction(eCtx echo.Context, globalExpect node.MonitorGlobalExpect) error {
-	if _, err := assertRoot(eCtx); err != nil {
+	if v, err := assertRoot(eCtx); !v {
 		return err
 	}
 

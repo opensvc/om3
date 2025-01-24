@@ -16,7 +16,7 @@ import (
 func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectKVStoreEntryParams) error {
 	log := LogHandler(ctx, "PostObjectKVStoreEntry")
 
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 

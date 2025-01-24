@@ -40,7 +40,7 @@ func GetClusterIPs() clusterip.L {
 
 // GetNetworkIP returns network status list.
 func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	n, err := object.NewNode(object.WithVolatile(true))

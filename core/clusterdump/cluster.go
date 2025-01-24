@@ -104,21 +104,25 @@ func (s *Data) WithSelector(selector string) *Data {
 }
 
 // WithNamespace purges the dataset from objects not matching the namespace
-func (s *Data) WithNamespace(namespace string) *Data {
-	if namespace == "" {
+func (s *Data) WithNamespace(namespaces ...string) *Data {
+	if len(namespaces) == 0 {
 		return s
+	}
+	allowedNamespaces := make(map[string]any)
+	for _, namespace := range namespaces {
+		allowedNamespaces[namespace] = nil
 	}
 	for nodename, nodeData := range s.Cluster.Node {
 		for ps := range nodeData.Instance {
 			p, _ := naming.ParsePath(ps)
-			if p.Namespace != namespace {
+			if _, ok := allowedNamespaces[p.Namespace]; !ok {
 				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
 	for ps := range s.Cluster.Object {
 		p, _ := naming.ParsePath(ps)
-		if p.Namespace != namespace {
+		if _, ok := allowedNamespaces[p.Namespace]; !ok {
 			delete(s.Cluster.Object, ps)
 		}
 	}

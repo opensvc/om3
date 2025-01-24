@@ -16,7 +16,7 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
-	if _, err := assertGuest(ctx, namespace); err != nil {
+	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
 	var (
