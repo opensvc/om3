@@ -311,6 +311,7 @@ func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 	t.nodeStatus.FrozenAt = time.Time{}
 	t.bus.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: time.Time{}}, t.labelLocalhost)
 	t.publishNodeStatus()
+	t.orchestrate()
 }
 
 func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
@@ -318,6 +319,7 @@ func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 	t.nodeStatus.FrozenAt = m.At
 	t.bus.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: m.At}, t.labelLocalhost)
 	t.publishNodeStatus()
+	t.orchestrate()
 }
 
 func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
