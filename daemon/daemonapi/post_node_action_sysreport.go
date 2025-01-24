@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, params api.PostNodeActionSysreportParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	if nodename == a.localhost {

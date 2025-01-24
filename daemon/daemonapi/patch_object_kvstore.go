@@ -15,7 +15,7 @@ import (
 func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "PatchObjectKVStore")
 
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 

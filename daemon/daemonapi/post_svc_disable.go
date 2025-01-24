@@ -15,7 +15,7 @@ import (
 func (a *DaemonAPI) PostSvcDisable(ctx echo.Context, namespace string, name string, params api.PostSvcDisableParams) error {
 	log := LogHandler(ctx, "PostSvcDisable")
 
-	if _, err := assertAdmin(ctx, namespace); err != nil {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 

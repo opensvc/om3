@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams) error {
@@ -24,6 +25,9 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 	}
 	configs := instance.ConfigData.GetAll()
 	l := make(api.InstanceItems, 0)
+	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	for _, config := range configs {
 		if !meta.HasPath(config.Path.String()) {
 			continue
@@ -31,7 +35,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		if _, err := assertGuest(ctx, config.Path.Namespace); err != nil {
+		if !hasRoot && !userGrants.Has(rbac.RoleGuest, config.Path.Namespace) {
 			continue
 		}
 

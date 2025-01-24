@@ -18,7 +18,7 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	if nodename == a.localhost || nodename == "localhost" {

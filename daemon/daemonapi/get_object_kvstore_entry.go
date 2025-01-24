@@ -17,11 +17,11 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 	log := LogHandler(ctx, "GetObjectKVStoreEntry")
 
 	if kind == naming.KindSec {
-		if _, err := assertAdmin(ctx, namespace); err != nil {
+		if v, err := assertAdmin(ctx, namespace); !v {
 			return err
 		}
 	} else {
-		if _, err := assertGuest(ctx, namespace); err != nil {
+		if v, err := assertGuest(ctx, namespace); !v {
 			return err
 		}
 	}

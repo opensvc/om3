@@ -16,7 +16,7 @@ import (
 func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "GetObjectKVStore")
 
-	if _, err := assertGuest(ctx, namespace); err != nil {
+	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
 

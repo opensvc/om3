@@ -74,7 +74,7 @@ func init() {
 }
 
 func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	if a.localhost == nodename {

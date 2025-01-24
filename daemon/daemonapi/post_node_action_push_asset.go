@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonAPI) PostNodeActionPushAsset(ctx echo.Context, nodename string, params api.PostNodeActionPushAssetParams) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	if nodename == a.localhost {

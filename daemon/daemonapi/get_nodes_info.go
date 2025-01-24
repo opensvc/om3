@@ -8,7 +8,7 @@ import (
 )
 
 func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	log := LogHandler(ctx, "GetNodesInfo")

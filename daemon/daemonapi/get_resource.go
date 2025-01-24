@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams) error {
@@ -25,8 +26,11 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 	}
 	configs := instance.ConfigData.GetAll()
 	items := make(api.ResourceItems, 0)
+	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	for _, config := range configs {
-		if _, err := assertGuest(ctx, config.Path.Namespace); err != nil {
+		if !hasRoot && !userGrants.Has(rbac.RoleGuest, config.Path.Namespace) {
 			continue
 		}
 		if !meta.HasPath(config.Path.String()) {

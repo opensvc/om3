@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetObjects(ctx echo.Context, params api.GetObjectsParams) error {
@@ -48,9 +49,13 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 	if err := meta.Expand(); err != nil {
 		return nil, err
 	}
+
+	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
-		if _, err := assertGuest(ctx, p.Namespace); err != nil {
+		if !hasRoot && !userGrants.Has(rbac.RoleGuest, p.Namespace) {
 			continue
 		}
 		ostat := object.StatusData.GetByPath(p)

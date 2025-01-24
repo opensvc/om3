@@ -10,7 +10,7 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if _, err := assertOperator(ctx, namespace); err != nil {
+	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
 	return a.postObjectAction(ctx, namespace, kind, name, instance.MonitorGlobalExpectThawed, func(c *client.T) (*http.Response, error) {

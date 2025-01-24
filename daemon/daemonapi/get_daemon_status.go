@@ -32,7 +32,7 @@ var (
 // Serve 2s cached data.
 func (a *DaemonAPI) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
 	// Require at least "guest" on any namespace.
-	if _, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); err != nil {
+	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); !v {
 		return err
 	}
 	now := time.Now()

@@ -14,7 +14,7 @@ import (
 func (a *DaemonAPI) GetNodeConfigGet(ctx echo.Context, nodename string, params api.GetNodeConfigGetParams) error {
 	//log := LogHandler(ctx, "GetNodeConfigGet")
 
-	if _, err := assertRoot(ctx); err != nil {
+	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 
