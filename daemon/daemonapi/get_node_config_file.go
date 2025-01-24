@@ -9,12 +9,11 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/file"
 )
 
 func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
-	if v, err := assertRole(ctx, rbac.RoleRoot); !v {
+	if _, err := assertRoot(ctx); err != nil {
 		return err
 	}
 	if a.localhost == nodename {

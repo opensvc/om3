@@ -10,6 +10,26 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
+// assertGuest asserts that the authenticated user has is either granted the "guest", "operator" or "admin" role on the namespace or is granted the "root" role.
+func assertGuest(ctx echo.Context, namespace string) (bool, error) {
+	return assertGrant(ctx, rbac.NewGrant(rbac.RoleGuest, namespace), rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot)
+}
+
+// assertOperator asserts that the authenticated user has is either granted the "operator" or "admin" role on the namespace or is granted the "root" role.
+func assertOperator(ctx echo.Context, namespace string) (bool, error) {
+	return assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot)
+}
+
+// assertAdmin asserts that the authenticated user has is either granted the "admin" role on the namespace or is granted the "root" role.
+func assertAdmin(ctx echo.Context, namespace string) (bool, error) {
+	return assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot)
+}
+
+// assertRoot asserts that the authenticated user has is granted the "root" role.
+func assertRoot(ctx echo.Context) (bool, error) {
+	return assertGrant(ctx, rbac.GrantRoot)
+}
+
 func assertStrategy(ctx echo.Context, expected string) (bool, error) {
 	if strategy := strategyFromContext(ctx); strategy != expected {
 		return false, JSONForbiddenStrategy(ctx, strategy, expected)

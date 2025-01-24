@@ -14,6 +14,10 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	if _, err := assertGuest(ctx, namespace); err != nil {
+		return err
+	}
+
 	logName := "GetObjectConfigFile"
 	log := LogHandler(ctx, logName)
 	log.Debugf("%s: starting", logName)

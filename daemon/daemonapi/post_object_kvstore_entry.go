@@ -11,13 +11,12 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectKVStoreEntryParams) error {
 	log := LogHandler(ctx, "PostObjectKVStoreEntry")
 
-	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+	if _, err := assertAdmin(ctx, namespace); err != nil {
 		return err
 	}
 

@@ -10,6 +10,9 @@ import (
 )
 
 func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	var items api.PoolItems
 	for _, e := range pool.StatusData.GetAll() {
 		if params.Name != nil && *params.Name != e.Name {

@@ -165,10 +165,7 @@ func (t *Manager) endOrchestration() {
 			GlobalExpect:          globalExpect,
 			GlobalExpectUpdatedAt: globalExpectUpdatedAt,
 			GlobalExpectOptions:   globalExpectOptions,
-		},
-			t.labelPath,
-			t.labelLocalhost,
-		)
+		}, t.pubLabels...)
 		t.acceptedOrchestrationID = uuid.UUID{}
 	}
 	t.log = t.newLogger(uuid.Nil)

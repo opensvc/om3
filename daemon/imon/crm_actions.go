@@ -89,7 +89,7 @@ func (t *Manager) crmDelete() error {
 	t.pubsubBus.Pub(&msgbus.InstanceConfigDeleting{
 		Path: t.path,
 		Node: t.localhost,
-	}, t.labelPath, t.labelLocalhost)
+	}, t.pubLabels...)
 	return t.crmAction("delete", t.path.String(), "delete", "--local")
 }
 
@@ -166,7 +166,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 			"OSVC_SESSION_ID="+sid.String(),
 		),
 	)
-	labels := []pubsub.Label{t.labelLocalhost, t.labelPath, {"origin", "imon"}, {"sid", sid.String()}}
+	labels := append(t.pubLabels, pubsub.Label{"origin", "imon"}, pubsub.Label{"sid", sid.String()})
 	if title != "" {
 		t.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {

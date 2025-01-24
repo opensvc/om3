@@ -660,7 +660,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, hostname.Hostname(), value)
 			t.Logf("try delete orchestration with : %v", msg)
-			bus.Pub(msg, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
+			bus.Pub(msg, pubsub.Label{"namespace", "root"}, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
 			require.NoError(t, setImonErr.Receive())
 
 			t.Logf("waiting for delete, deleting")
@@ -753,6 +753,7 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 				FrozenAt:    time.Time{},
 			}
 			bus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
+				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
@@ -762,6 +763,7 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 		for _, e := range se.events {
 			t.Logf("--- crmAction %s %v publish sid effect %s %v", title, cmdArgs, reflect.TypeOf(e), e)
 			bus.Pub(e,
+				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)

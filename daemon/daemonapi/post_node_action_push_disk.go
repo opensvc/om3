@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostNodeActionPushDisk(ctx echo.Context, nodename string, params api.PostNodeActionPushDiskParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionPushDisk(ctx, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostNodeActionPushDisk(ctx echo.Context, nodename string, pa
 }
 
 func (a *DaemonAPI) localNodeActionPushDisk(ctx echo.Context, params api.PostNodeActionPushDiskParams) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostNodeActionPushDisk")
 	var requesterSID uuid.UUID
 	args := []string{"node", "push", "disk", "--local"}

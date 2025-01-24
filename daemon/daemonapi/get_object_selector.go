@@ -25,8 +25,11 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	result := api.ObjectPaths{}
-	for _, v := range matchedPaths {
-		result = append(result, v.String())
+	for _, path := range matchedPaths {
+		if _, err := assertGuest(ctx, path.Namespace); err != nil {
+			continue
+		}
+		result = append(result, path.String())
 	}
 	return ctx.JSON(http.StatusOK, result)
 }

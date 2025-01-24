@@ -10,7 +10,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/drbd"
 )
 
@@ -75,7 +74,7 @@ func init() {
 }
 
 func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
+	if _, err := assertRoot(ctx); err != nil {
 		return err
 	}
 	if a.localhost == nodename {

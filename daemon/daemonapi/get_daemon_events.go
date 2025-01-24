@@ -143,7 +143,7 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 
 // getLocalDaemonEvents handles streaming local daemon events based on provided filters, selectors, and parameters.
 func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
-	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); err != nil {
+	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); err != nil {
 		return err
 	} else if !v {
 		return nil
@@ -181,6 +181,9 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		evCtx  = ctx.Request().Context()
 		cancel context.CancelFunc
 	)
+	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	log := LogHandler(ctx, handlerName)
 	log.Debugf("starting")
 	defer log.Debugf("done")
@@ -206,6 +209,19 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			}
 		}
 		return false
+	}
+
+	// isAllowed returns false if a message has a namespace label that
+	// doesn't match any of the user's guest grant.
+	isAllowed := func(msg pubsub.Messager) bool {
+		if hasRoot {
+			return true
+		}
+		labels := msg.GetLabels()
+		if namespace, ok := labels["namespace"]; ok {
+			return userGrants.Has(rbac.RoleGuest, namespace)
+		}
+		return true
 	}
 
 	// isSelected returns true when msg has path label that is selected or
@@ -393,6 +409,11 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		case <-evCtx.Done():
 			return nil
 		case i := <-sub.C:
+			if ev, ok := i.(pubsub.Messager); ok {
+				if !isAllowed(ev) {
+					continue
+				}
+			}
 			if hasSelector {
 				switch ev := i.(type) {
 				case *msgbus.ObjectCreated:

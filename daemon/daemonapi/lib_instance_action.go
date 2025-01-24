@@ -34,12 +34,12 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		),
 	)
 	labels := []pubsub.Label{
-		labelAPI,
+		labelOriginAPI,
 		{"sid", sid.String()},
 		{"requester_sid", requesterSid.String()},
 	}
 	if !p.IsZero() {
-		labels = append(labels, pubsub.Label{"path", p.String()})
+		labels = append(labels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	}
 	log.Infof("-> exec %s", cmd)
 	msg := msgbus.Exec{Command: cmd.String(), Node: hostname.Hostname(), Origin: "api"}

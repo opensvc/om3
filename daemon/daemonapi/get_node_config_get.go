@@ -8,14 +8,13 @@ import (
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/key"
 )
 
 func (a *DaemonAPI) GetNodeConfigGet(ctx echo.Context, nodename string, params api.GetNodeConfigGetParams) error {
 	//log := LogHandler(ctx, "GetNodeConfigGet")
 
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
+	if _, err := assertRoot(ctx); err != nil {
 		return err
 	}
 

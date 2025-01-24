@@ -367,6 +367,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 			// ObjectCreated is published by icfg, before initial
 			// InstanceConfigUpdated publication.
 			d.bus.Pub(&msgbus.ObjectCreated{Path: toPath[s], Node: peer},
+				pubsub.Label{"namespace", toPath[s].Namespace},
 				pubsub.Label{"path", s},
 				pubsub.Label{"node", peer},
 				labelFromPeer,
@@ -374,6 +375,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 		}
 		instance.ConfigData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy())
 		d.bus.Pub(&msgbus.InstanceConfigUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy()},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
@@ -382,6 +384,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	for _, s := range removes {
 		instance.ConfigData.Unset(toPath[s], peer)
 		d.bus.Pub(&msgbus.InstanceConfigDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
@@ -392,6 +395,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	for _, s := range updates {
 		instance.StatusData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy())
 		d.bus.Pub(&msgbus.InstanceStatusUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy()},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
@@ -400,6 +404,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	for _, s := range removes {
 		instance.StatusData.Unset(toPath[s], peer)
 		d.bus.Pub(&msgbus.InstanceStatusDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
@@ -410,6 +415,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	for _, s := range updates {
 		instance.MonitorData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy())
 		d.bus.Pub(&msgbus.InstanceMonitorUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy()},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
@@ -418,6 +424,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	for _, s := range removes {
 		instance.MonitorData.Unset(toPath[s], peer)
 		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"namespace", toPath[s].Namespace},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", peer},
 			labelFromPeer,

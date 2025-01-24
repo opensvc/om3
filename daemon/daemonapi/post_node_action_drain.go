@@ -14,6 +14,9 @@ import (
 )
 
 func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionDrain(ctx)
 	}
@@ -37,7 +40,7 @@ func (a *DaemonAPI) localNodeActionDrain(eCtx echo.Context) error {
 	}
 
 	msg, errReceiver := msgbus.NewSetNodeMonitorWithErr(ctx, a.localhost, value)
-	a.EventBus.Pub(msg, a.LabelLocalhost, labelAPI)
+	a.EventBus.Pub(msg, a.LabelLocalhost, labelOriginAPI)
 
 	return JSONFromSetNodeMonitorError(eCtx, &value, errReceiver.Receive())
 }

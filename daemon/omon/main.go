@@ -112,7 +112,11 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 
 		ctx: ctx,
 
-		pubLabel: []pubsub.Label{{"path", p.String()}, {"node", localhost}},
+		pubLabel: []pubsub.Label{
+			{"namespace", p.Namespace},
+			{"path", p.String()},
+			{"node", localhost},
+		},
 
 		localhost: localhost,
 
@@ -412,15 +416,9 @@ func (t *Manager) updateStatus() {
 
 func (t *Manager) delete() {
 	object.StatusData.Unset(t.path)
-	t.bus.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost},
-		t.pubLabel...,
-	)
-	t.bus.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost},
-		t.pubLabel...,
-	)
-	t.bus.Pub(&msgbus.ObjectStatusDone{Path: t.path},
-		t.pubLabel...,
-	)
+	t.bus.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+	t.bus.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+	t.bus.Pub(&msgbus.ObjectStatusDone{Path: t.path}, t.pubLabel...)
 }
 
 func (t *Manager) update() {
@@ -428,9 +426,7 @@ func (t *Manager) update() {
 	value := t.status.DeepCopy()
 	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
-	t.bus.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent},
-		t.pubLabel...,
-	)
+	t.bus.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent}, t.pubLabel...)
 }
 
 func (t *Manager) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {

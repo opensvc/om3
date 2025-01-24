@@ -8,6 +8,9 @@ import (
 )
 
 func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	log := LogHandler(ctx, "GetNodesInfo")
 	log.Debugf("starting")
 	// TODO returned value should be cached

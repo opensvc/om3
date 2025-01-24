@@ -189,7 +189,7 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		bus := pubsub.BusFromContext(t.ctx)
 		for _, entry := range entries {
 			filename := filepath.Join(runDir, entry.Name())
-			t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+			t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 		}
 	}
 	for rid, _ := range c.Value.Resources {
@@ -489,6 +489,7 @@ func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 				Scope:       append([]string{}, ev.Scope...),
 				UpdatedAt:   ev.UpdatedAt,
 			},
+				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				t.labelLocalhost,
 			)

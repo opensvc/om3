@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostInstanceActionStop(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
+	if _, err := assertOperator(ctx, namespace); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionStop(ctx, namespace, kind, name, params)
 	}
@@ -35,9 +37,6 @@ func (a *DaemonAPI) postPeerInstanceActionStop(ctx echo.Context, nodename, names
 }
 
 func (a *DaemonAPI) postLocalInstanceActionStop(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStopParams) error {
-	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostInstanceActionStop")
 	var requesterSid uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)

@@ -105,6 +105,7 @@ type (
 
 		labelLocalhost pubsub.Label
 		labelPath      pubsub.Label
+		pubLabels      []pubsub.Label
 
 		// delayDuration is the minimum duration between two imon orchestrate,
 		// update.
@@ -232,6 +233,11 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 
 		labelLocalhost: pubsub.Label{"node", localhost},
 		labelPath:      pubsub.Label{"path", id},
+		pubLabels: []pubsub.Label{
+			{"namespace", p.Namespace},
+			{"path", id},
+			{"node", localhost},
+		},
 	}
 
 	t.log = t.newLogger(uuid.Nil)
@@ -336,15 +342,9 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		}()
 		instance.StatusData.Unset(t.path, t.localhost)
-		t.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost},
-			t.labelPath,
-			t.labelLocalhost,
-		)
+		t.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
 		instance.MonitorData.Unset(t.path, t.localhost)
-		t.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost},
-			t.labelPath,
-			t.labelLocalhost,
-		)
+		t.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
 		go func() {
 			tC := time.After(t.drainDuration)
 			for {
@@ -450,10 +450,7 @@ func (t *Manager) update() {
 	newValue := t.state
 
 	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
-	t.pubsubBus.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue},
-		t.labelPath,
-		t.labelLocalhost,
-	)
+	t.pubsubBus.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)
 }
 
 func (t *Manager) transitionTo(newState instance.MonitorState) {

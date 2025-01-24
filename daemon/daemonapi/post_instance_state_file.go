@@ -15,10 +15,12 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost || nodename == "localhost" {
 		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
 	}
@@ -34,9 +36,6 @@ func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace 
 }
 
 func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", fmt.Sprint(err))

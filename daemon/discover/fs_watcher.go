@@ -136,7 +136,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						}
 					*/
 					log.Debugf("publish msgbus.ConfigFileUpdated config file %s", filename)
-					t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
+					t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 				}
 				return nil
 			},
@@ -197,7 +197,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
 							continue
 						}
-						t.PubDebounce(bus, filename, &msgbus.RunFileRemoved{File: filename, Path: path, RID: rid, At: time.Now()}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+						t.PubDebounce(bus, filename, &msgbus.RunFileRemoved{File: filename, Path: path, RID: rid, At: time.Now()}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 					case event.Op&fsnotify.Create != 0:
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
 						path, rid, err := runFilenameToPathAndRID(filename)
@@ -205,7 +205,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
 							continue
 						}
-						t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"path", path.String()})
+						t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 					}
 				case strings.HasSuffix(filename, "frozen"):
 					if filename != nodeFrozenFile {
@@ -239,11 +239,11 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					case event.Op&removeMask != 0:
 						if !file.Exists(filename) {
 							log.Debugf("detect removed file %s (%s)", filename, event.Op)
-							t.PubDebounce(bus, filename, &msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"path", p.String()})
+							t.PubDebounce(bus, filename, &msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 						}
 					case event.Op&updateMask != 0:
 						log.Debugf("detect updated file %s (%s)", filename, event.Op)
-						t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"path", p.String()})
+						t.PubDebounce(bus, filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
 					if event.Name == "." {

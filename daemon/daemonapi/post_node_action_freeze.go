@@ -9,10 +9,12 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostPeerActionFreeze(ctx echo.Context, nodename string, params api.PostPeerActionFreezeParams) error {
+	if _, err := assertRoot(ctx); err != nil {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.localNodeActionFreeze(ctx, params)
 	}
@@ -22,9 +24,6 @@ func (a *DaemonAPI) PostPeerActionFreeze(ctx echo.Context, nodename string, para
 }
 
 func (a *DaemonAPI) localNodeActionFreeze(ctx echo.Context, params api.PostPeerActionFreezeParams) error {
-	if v, err := assertGrant(ctx, rbac.GrantRoot); !v {
-		return err
-	}
 	log := LogHandler(ctx, "PostPeerActionFreeze")
 	var requesterSid uuid.UUID
 	args := []string{"node", "freeze", "--local"}

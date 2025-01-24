@@ -10,14 +10,19 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetObjectKVStore(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectKVStoreParams) error {
 	log := LogHandler(ctx, "GetObjectKVStore")
 
-	if v, err := assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
-		return err
+	if kind == naming.KindSec {
+		if _, err := assertAdmin(ctx, namespace); err != nil {
+			return err
+		}
+	} else {
+		if _, err := assertGuest(ctx, namespace); err != nil {
+			return err
+		}
 	}
 
 	result := make(api.KVStoreEntries, 0)

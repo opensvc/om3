@@ -8,6 +8,9 @@ import (
 )
 
 func (a *DaemonAPI) PutNodeConfigFile(ctx echo.Context, nodename string) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	if nodename == a.localhost {
 		return a.writeNodeConfigFile(ctx, nodename)
 	}

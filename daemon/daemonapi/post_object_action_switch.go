@@ -13,12 +13,11 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if v, err := assertGrant(eCtx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot); !v {
+	if _, err := assertOperator(eCtx, namespace); err != nil {
 		return err
 	}
 	p, err := naming.NewPath(namespace, kind, name)
@@ -46,7 +45,7 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 
 		msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-		a.EventBus.Pub(msg, pubsub.Label{"path", p.String()}, labelAPI)
+		a.EventBus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
 	}

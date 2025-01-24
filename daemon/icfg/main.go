@@ -112,6 +112,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 			WithPrefix("daemon: icfg: " + p.String() + ": "),
 
 		pubLabel: []pubsub.Label{
+			{"namespace", p.Namespace},
 			{"path", p.String()},
 			{"node", localhost},
 		},
@@ -240,9 +241,7 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 	}
 	t.instanceConfig = *newConfig
 	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
-	t.bus.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()},
-		t.pubLabel...,
-	)
+	t.bus.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
 	t.published = true
 }
 

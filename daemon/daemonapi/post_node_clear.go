@@ -10,8 +10,11 @@ import (
 )
 
 func (a *DaemonAPI) PostNodeClear(ctx echo.Context) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	state := node.MonitorStateIdle
 	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}},
-		labelAPI)
+		labelOriginAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }

@@ -13,6 +13,9 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	if _, err := assertGuest(ctx, namespace); err != nil {
+		return err
+	}
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)

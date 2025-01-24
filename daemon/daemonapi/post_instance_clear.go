@@ -13,6 +13,9 @@ import (
 )
 
 func (a *DaemonAPI) PostInstanceClear(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+	if _, err := assertOperator(ctx, namespace); err != nil {
+		return err
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceClear(ctx, namespace, kind, name)
 	}
@@ -35,6 +38,6 @@ func (a *DaemonAPI) postLocalInstanceClear(ctx echo.Context, namespace string, k
 		Node:  a.localhost,
 		Value: instMonitor,
 	}
-	a.EventBus.Pub(&msg, pubsub.Label{"path", p.String()}, labelAPI)
+	a.EventBus.Pub(&msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }
