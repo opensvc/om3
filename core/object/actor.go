@@ -33,7 +33,7 @@ type (
 		actionResourceDeps *actionresdeps.Store
 	}
 
-	// freezer is implemented by object kinds supporting freeze and thaw.
+	// freezer is implemented by object kinds supporting freeze and unfreeze.
 	freezer interface {
 		Freeze(ctx context.Context) error
 		Unfreeze(ctx context.Context) error

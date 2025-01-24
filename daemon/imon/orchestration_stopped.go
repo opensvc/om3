@@ -67,16 +67,12 @@ func (t *Manager) stop() {
 	}
 }
 
-func (t *Manager) stoppedFromThawed() {
-	t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateIdle, instance.MonitorStateFreezeFailure)
-}
-
 // doFreeze handle global expect stopped orchestration from idle
 //
-// local thawed => freezing to reach frozen
-// else         => stopping
+// local unfrozen => freezing to reach frozen
+// else           => stopping
 func (t *Manager) doFreezeStop() {
-	if t.instStatus[t.localhost].IsThawed() {
+	if t.instStatus[t.localhost].IsUnfrozen() {
 		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
 		return
 	} else {
@@ -85,7 +81,7 @@ func (t *Manager) doFreezeStop() {
 }
 
 func (t *Manager) doFreeze() {
-	if t.instStatus[t.localhost].IsThawed() {
+	if t.instStatus[t.localhost].IsUnfrozen() {
 		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
 		return
 	}

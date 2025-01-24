@@ -15,7 +15,7 @@ func (t *Manager) orchestrateDeleted() {
 		instance.MonitorStateProvisionFailure,
 		instance.MonitorStateStartFailure,
 		instance.MonitorStateStopFailure,
-		instance.MonitorStateThawFailure,
+		instance.MonitorStateUnfreezeFailure,
 		instance.MonitorStateUnprovisionFailure:
 		t.deletedFromIdle()
 	case instance.MonitorStateWaitChildren:

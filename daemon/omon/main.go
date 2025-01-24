@@ -381,7 +381,7 @@ func (t *Manager) updateStatus() {
 		case n == m[false]:
 			t.status.Frozen = "frozen"
 		case n == m[true]:
-			t.status.Frozen = "thawed"
+			t.status.Frozen = "unfrozen"
 		default:
 			t.status.Frozen = "mixed"
 		}

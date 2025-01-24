@@ -17,8 +17,8 @@ func (t *Manager) orchestrateStarted() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.startedFromIdle()
-	case instance.MonitorStateThawSuccess:
-		t.startedFromThawed()
+	case instance.MonitorStateUnfreezeSuccess:
+		t.startedFromUnfrozen()
 	case instance.MonitorStateReady:
 		t.startedFromReady()
 	case instance.MonitorStateStartSuccess:
@@ -29,7 +29,7 @@ func (t *Manager) orchestrateStarted() {
 		t.startedFromAny()
 	case instance.MonitorStateStopProgress:
 		t.startedFromAny()
-	case instance.MonitorStateThawProgress:
+	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateRunning:
 	case instance.MonitorStateWaitParents:
 		t.setWaitParents()
@@ -41,7 +41,7 @@ func (t *Manager) orchestrateStarted() {
 // startedFromIdle handle global expect started orchestration from idle
 //
 // frozen => try startedFromFrozen
-// else   => try startedFromThawed
+// else   => try startedFromUnfrozen
 func (t *Manager) startedFromIdle() {
 	if t.instStatus[t.localhost].IsFrozen() {
 		if t.state.GlobalExpect == instance.MonitorGlobalExpectNone {
@@ -50,17 +50,17 @@ func (t *Manager) startedFromIdle() {
 		t.doUnfreeze()
 		return
 	} else {
-		t.startedFromThawed()
+		t.startedFromUnfrozen()
 	}
 }
 
-// startedFromThawed
+// startedFromUnfrozen
 //
 // local started => unset global expect, set local expect started
 // objectStatus.Avail Up => unset global expect, unset local expect
 // better candidate => no actions
 // else => state -> ready, start ready routine
-func (t *Manager) startedFromThawed() {
+func (t *Manager) startedFromUnfrozen() {
 	if t.startedClearIfReached() {
 		return
 	}
@@ -95,9 +95,9 @@ func (t *Manager) startedFromThawed() {
 	}(t.pendingCtx)
 }
 
-// doUnfreeze idle -> thawing -> thawed or unfreeze failed
+// doUnfreeze idle -> unfreezing -> unfrozen or unfreeze failed
 func (t *Manager) doUnfreeze() {
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateThawProgress, instance.MonitorStateThawSuccess, instance.MonitorStateThawFailure)
+	t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateUnfreezeSuccess, instance.MonitorStateUnfreezeFailure)
 }
 
 // cancelReadyState transitions the monitor to an Idle state if certain

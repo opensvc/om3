@@ -167,8 +167,8 @@ func Test_daemon(t *testing.T) {
 		})
 		require.False(t, t.Failed(), "abort test")
 
-		t.Run("wait for system/svc/vip thawed global expect", func(t *testing.T) {
-			t.Log("wait for instance monitor event thawed for system/svc/vip")
+		t.Run("wait for system/svc/vip unfrozen global expect", func(t *testing.T) {
+			t.Log("wait for instance monitor event unfrozen for system/svc/vip")
 			for {
 				ev, err := imonUpdateReader.Read()
 				require.NoError(t, err, "unable to get system/svc/vip imon update event")
@@ -177,8 +177,8 @@ func Test_daemon(t *testing.T) {
 				require.NoError(t, err, "unable to unmarshal imon update event")
 				t.Logf("got instance imon event: %s@%s state: %s global expect:%s",
 					data.Path, data.Node, data.Value.State, data.Value.GlobalExpect)
-				if data.Value.GlobalExpect == instance.MonitorGlobalExpectThawed {
-					t.Logf("done wait: got expected global expect thawed")
+				if data.Value.GlobalExpect == instance.MonitorGlobalExpectUnfrozen {
+					t.Logf("done wait: got expected global expect unfrozen")
 					break
 				}
 			}

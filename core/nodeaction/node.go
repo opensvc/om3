@@ -264,8 +264,8 @@ func (t T) DoAsync() error {
 			expectation = node.MonitorGlobalExpectAborted
 		case node.MonitorGlobalExpectFrozen.String():
 			expectation = node.MonitorGlobalExpectFrozen
-		case node.MonitorGlobalExpectThawed.String():
-			expectation = node.MonitorGlobalExpectThawed
+		case node.MonitorGlobalExpectUnfrozen.String():
+			expectation = node.MonitorGlobalExpectUnfrozen
 		default:
 			return fmt.Errorf("unexpected target: %s", t.Target)
 		}
@@ -321,8 +321,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON500)
 				}
 			}
-		case node.MonitorGlobalExpectThawed.String():
-			expectation = node.MonitorGlobalExpectThawed
+		case node.MonitorGlobalExpectUnfrozen.String():
+			expectation = node.MonitorGlobalExpectUnfrozen
 			if resp, e := c.PostClusterActionUnfreezeWithResponse(ctx); e != nil {
 				err = e
 			} else {

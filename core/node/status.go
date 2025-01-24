@@ -56,7 +56,7 @@ func (t Status) IsFrozen() bool {
 	return !t.FrozenAt.IsZero()
 }
 
-func (t Status) IsThawed() bool {
+func (t Status) IsUnfrozen() bool {
 	return t.FrozenAt.IsZero()
 }
 

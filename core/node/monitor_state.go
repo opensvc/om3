@@ -17,10 +17,10 @@ const (
 	MonitorStateFreezeFailure
 	MonitorStateFreezeSuccess
 
-	// Thawing process states
-	MonitorStateThawProgress
-	MonitorStateThawFailure
-	MonitorStateThawSuccess
+	// Unfreezing process states
+	MonitorStateUnfreezeProgress
+	MonitorStateUnfreezeFailure
+	MonitorStateUnfreezeSuccess
 
 	// Draining process states
 	MonitorStateDrainProgress
@@ -70,9 +70,9 @@ func init() {
 		{MonitorStateFreezeProgress, "freezing"},
 		{MonitorStateFreezeFailure, "freeze failed"},
 		{MonitorStateFreezeSuccess, "frozen"},
-		{MonitorStateThawProgress, "thawing"},
-		{MonitorStateThawFailure, "unfreeze failed"},
-		{MonitorStateThawSuccess, "thawed"},
+		{MonitorStateUnfreezeProgress, "unfreezing"},
+		{MonitorStateUnfreezeFailure, "unfreeze failed"},
+		{MonitorStateUnfreezeSuccess, "unfrozen"},
 		{MonitorStateDrainProgress, "draining"},
 		{MonitorStateDrainFailure, "drain failed"},
 		{MonitorStateDrainSuccess, "drained"},

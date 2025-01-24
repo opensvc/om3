@@ -1084,7 +1084,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		// already frozen
 		return
 	}
-	if t.state.GlobalExpect == instance.MonitorGlobalExpectThawed {
+	if t.state.GlobalExpect == instance.MonitorGlobalExpectUnfrozen {
 		return
 	}
 	if t.instConfig.Orchestrate != "ha" {

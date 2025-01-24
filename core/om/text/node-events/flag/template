@@ -86,7 +86,7 @@ Wait template examples:
 
       --wait --filter ClusterStatusUpdated --template '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
 
-* All cluster nodes are thawed:
+* All cluster nodes are unfrozen:
 
       --wait --filter ClusterStatusUpdated --template '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
 

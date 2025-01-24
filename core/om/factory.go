@@ -184,27 +184,20 @@ func newCmdClusterLogs() *cobra.Command {
 	return cmd
 }
 
+// newCmdClusterThaw creates a hidden 'thaw' subcommand alias for 'unfreeze' to unblock HA automatic and split actions.
 func newCmdClusterThaw() *cobra.Command {
-	var options commands.CmdClusterUnfreeze
-	cmd := &cobra.Command{
-		Use:    "thaw",
-		Hidden: true,
-		Short:  "unblock ha automatic and split action start on all nodes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
+	cmd := newCmdClusterUnfreeze()
+	cmd.Use = "thaw"
+	cmd.Hidden = true
 	return cmd
 }
 
 func newCmdClusterUnfreeze() *cobra.Command {
 	var options commands.CmdClusterUnfreeze
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "unblock ha automatic and split action start on all nodes",
+		Use:    "unfreeze",
+		Hidden: false,
+		Short:  "unblock ha automatic and split action start on all nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2973,8 +2966,9 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "unblock ha automatic start",
+		Use:    "unfreeze",
+		Hidden: false,
+		Short:  "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3003,20 +2997,12 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	return cmd
 }
 
+// newCmdObjectThaw creates a hidden 'thaw' subcommand alias for 'unfreeze' (newCmdObjectUnfreeze)
+// to unblock ha automatic start.
 func newCmdObjectThaw(kind string) *cobra.Command {
-	var options commands.CmdObjectUnfreeze
-	cmd := &cobra.Command{
-		Use:    "thaw",
-		Hidden: true,
-		Short:  "unblock ha automatic start",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
-	addFlagNodeSelector(flags, &options.NodeSelector)
+	cmd := newCmdObjectUnfreeze(kind)
+	cmd.Use = "thaw"
+	cmd.Hidden = true
 	return cmd
 }
 
