@@ -182,6 +182,8 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		cancel context.CancelFunc
 	)
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
+	userGrants := grantsFromContext(ctx)
+
 	log := LogHandler(ctx, handlerName)
 	log.Debugf("starting")
 	defer log.Debugf("done")
@@ -217,7 +219,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		}
 		labels := msg.GetLabels()
 		if namespace, ok := labels["namespace"]; ok {
-			return grantsFromContext(ctx).Has(rbac.RoleGuest, namespace)
+			return userGrants.Has(rbac.RoleGuest, namespace)
 		}
 		return true
 	}
