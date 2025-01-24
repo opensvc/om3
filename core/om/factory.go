@@ -287,7 +287,7 @@ func newCmdDaemonLeave() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node removed from cluster")
+	flags.DurationVar(&options.Timeout, "timeout", 0, "maximum duration to wait for local node removed from cluster")
 	return cmd
 }
 

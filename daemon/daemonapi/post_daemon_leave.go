@@ -24,6 +24,9 @@ func (a *DaemonAPI) PostDaemonLeave(ctx echo.Context, params api.PostDaemonLeave
 	if node == "" {
 		log.Warnf("invalid node value: '%s'", node)
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
+	} else if node == a.localhost {
+		log.Infof("removal of localhost from cluster node is forbidden")
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "node '%s' is localhost", node)
 	}
 	log.Infof("publish leave request for node %s", node)
 	a.EventBus.Pub(&msgbus.LeaveRequest{Node: node}, a.LabelLocalhost, labelOriginAPI)
