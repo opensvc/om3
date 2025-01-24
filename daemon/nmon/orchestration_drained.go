@@ -29,7 +29,7 @@ func (t *Manager) orchestrateDrained() {
 }
 
 func (t *Manager) drainFromIdle() {
-	if nodeStatus := node.StatusData.GetByNode(t.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
+	if !t.nodeStatus.FrozenAt.IsZero() {
 		// already frozen, ... advance to "frozen" state
 		t.state.State = node.MonitorStateFreezeSuccess
 		go func() {

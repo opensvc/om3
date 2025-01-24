@@ -30,7 +30,7 @@ func (t *Manager) frozenFromFrozen() {
 }
 
 func (t *Manager) frozenClearIfReached() bool {
-	if nodeStatus := node.StatusData.GetByNode(t.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
+	if !t.nodeStatus.FrozenAt.IsZero() {
 		t.log.Infof("node is not frozen, unset global expect")
 		t.change = true
 		t.state.GlobalExpect = node.MonitorGlobalExpectNone
