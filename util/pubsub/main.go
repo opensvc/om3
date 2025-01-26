@@ -744,13 +744,25 @@ type (
 // The labels are added to existing v labels, so a subscriber can retrieve message
 // publication labels from the received message.
 func (p *Publicator) Pub(v Messager, labels ...Label) {
+	op := p.cmdPubFactory(v, labels...)
+	done := make(chan bool)
+	op.resp = done
+
+	select {
+	case p.c <- op:
+	case <-p.ctx.Done():
+		return
+	}
+	<-done
+}
+
+func (p *Publicator) cmdPubFactory(v Messager, labels ...Label) cmdPub {
 	var (
 		dataType string
 		pubKeys  []string
 		ok       bool
 	)
 
-	done := make(chan bool)
 	v.AddLabels(labels...)
 	pubLabels := v.GetLabels()
 
@@ -775,17 +787,10 @@ func (p *Publicator) Pub(v Messager, labels ...Label) {
 	op := cmdPub{
 		labels:   pubLabels,
 		data:     v,
-		resp:     done,
 		dataType: dataType,
 		pubKeys:  pubKeys,
 	}
-
-	select {
-	case p.c <- op:
-	case <-p.ctx.Done():
-		return
-	}
-	<-done
+	return op
 }
 
 // DisableBufferPublication disable the publication buffering.
