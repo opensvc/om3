@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -33,16 +33,13 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 			"OSVC_REQUESTER_SESSION_ID="+fmt.Sprint(requesterSid),
 		),
 	)
-	labels := []pubsub.Label{
-		labelOriginAPI,
-		{"sid", sid.String()},
-		{"requester_sid", requesterSid.String()},
-	}
+	labels := []pubsub.Label{labelOriginAPI}
 	if !p.IsZero() {
 		labels = append(labels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	}
 	log.Infof("-> exec %s", cmd)
-	msg := msgbus.Exec{Command: cmd.String(), Node: hostname.Hostname(), Origin: "api"}
+	msg := msgbus.Exec{Command: cmd.String(), Node: a.localhost,
+		Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
 	a.EventBus.Pub(&msg, labels...)
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
@@ -54,10 +51,14 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		log.Infof("<- exec %s", cmd)
 		duration := time.Now().Sub(startTime)
 		if err != nil {
-			msg := msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: hostname.Hostname(), Origin: "api"}
+			msg := msgbus.ExecFailed{Command: cmd.String(), Duration: duration, Node: a.localhost,
+				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid,
+				ErrS: err.Error(),
+			}
 			a.EventBus.Pub(&msg, labels...)
 		} else {
-			msg := msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: hostname.Hostname(), Origin: "api"}
+			msg := msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: a.localhost,
+				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
 			a.EventBus.Pub(&msg, labels...)
 		}
 	}()
