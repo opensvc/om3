@@ -79,16 +79,16 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithEnv(cmdEnv),
 	)
 	o.log.Debugf("-> exec %s", cmd)
-	o.pubsub.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+	o.pub.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		o.pubsub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+		o.pub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 		o.log.Attr("cmd", cmd.String()).Errorf("exec error: %s", err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.pubsub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+	o.pub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	o.log.Debugf("<- exec %s", cmd)
 	return nil
 }

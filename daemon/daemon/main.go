@@ -52,6 +52,7 @@ type (
 		log    *plog.Logger
 
 		bus *pubsub.Bus
+		pub pubsub.PublishBuilder
 
 		stopFuncs []func() error
 		wg        sync.WaitGroup
@@ -109,11 +110,13 @@ func (t *T) Start(ctx context.Context) error {
 	t.wg.Add(1)
 	bus.Start(t.ctx)
 	bus.EnableBufferPublication(2000)
-	bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "starting"}, labelLocalhost)
 
 	t.bus = bus
+	t.pub = pubsub.PubFromContext(t.ctx)
+	t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "starting"}, labelLocalhost)
+
 	t.stopFuncs = append(t.stopFuncs, func() error {
-		bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopped"}, labelLocalhost)
+		t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopped"}, labelLocalhost)
 		// give chance for DaemonStatusUpdated message to reach peers
 		time.Sleep(300 * time.Millisecond)
 		defer t.wg.Done()
@@ -138,7 +141,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.wg.Add(1)
 	go func(ctx context.Context) {
 		defer t.wg.Done()
-		t.notifyWatchDogBus(ctx)
+		t.notifyWatchDogBus(ctx, "daemon")
 	}(t.ctx)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration, qsHuge)
@@ -195,7 +198,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	t.logTransition("started 🟢")
-	bus.Pub(&msgbus.DaemonStatusUpdated{
+	t.pub.Pub(&msgbus.DaemonStatusUpdated{
 		Node:    localhost,
 		Version: version.Version(),
 		Status:  "started",
@@ -211,7 +214,7 @@ func (t *T) Stop() error {
 	// stop goroutines without cancel context
 	t.logTransition("stopping 🟡")
 	localhost := hostname.Hostname()
-	t.bus.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
+	t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
 	time.Sleep(300 * time.Millisecond)
 	defer t.logTransition("stopped 🟡")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
@@ -250,7 +253,7 @@ func (t *T) logTransition(state string) {
 }
 
 func (t *T) stopWatcher() {
-	sub := pubsub.BusFromContext(t.ctx).Sub("daemon.stop.watcher")
+	sub := pubsub.SubFromContext(t.ctx, "daemon.stop.watcher")
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", hostname.Hostname()}, pubsub.Label{"id", "daemon"})
 	sub.Start()
 
@@ -310,18 +313,18 @@ func (t *T) startComponent(ctx context.Context, a startStopper) error {
 	return nil
 }
 
-func (t *T) notifyWatchDogBus(ctx context.Context) {
+func (t *T) notifyWatchDogBus(ctx context.Context, busName string) (err error) {
 	defer t.log.Infof("watch dog bus done")
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
-	labels := []pubsub.Label{{"node", hostname.Hostname()}, {"bus", t.bus.Name()}}
-	msg := msgbus.WatchDog{Bus: t.bus.Name()}
+	labels := []pubsub.Label{{"node", hostname.Hostname()}}
+	msg := msgbus.WatchDog{Bus: busName}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			t.bus.Pub(&msg, labels...)
+			t.pub.Pub(&msg, labels...)
 		}
 	}
 }

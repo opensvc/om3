@@ -274,7 +274,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	a.announceSub(name)
 	defer a.announceUnsub(name)
 
-	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second), a.SubQS)
+	sub := a.SubFactory.Sub(name, pubsub.Timeout(time.Second), a.SubQS)
 
 	for _, filter := range filters {
 		if filter.Kind == nil {

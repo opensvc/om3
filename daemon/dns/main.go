@@ -53,7 +53,7 @@ type (
 		ctx           context.Context
 		cancel        context.CancelFunc
 		cmdC          chan any
-		bus           *pubsub.Bus
+		pub           pubsub.PublishBuilder
 		log           *plog.Logger
 		startedAt     time.Time
 
@@ -118,7 +118,7 @@ func (t *Manager) Start(parent context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: dns: ").Attr("pkg", "daemon/dns")
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.bus = pubsub.BusFromContext(t.ctx)
+	t.pub = pubsub.PubFromContext(t.ctx)
 
 	t.status.State = "running"
 
@@ -159,7 +159,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("daemon.dns", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.dns", t.subQS)
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
@@ -208,7 +208,7 @@ func (t *Manager) publishSubsystemDnsUpdated() {
 	t.status.UpdatedAt = time.Now()
 	t.status.Nameservers = append([]string{}, t.clusterConfig.DNS...)
 	daemonsubsystem.DataDns.Set(t.localhost, t.status.DeepCopy())
-	t.bus.Pub(&msgbus.DaemonDnsUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
+	t.pub.Pub(&msgbus.DaemonDnsUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 
 func GetZone() Zone {

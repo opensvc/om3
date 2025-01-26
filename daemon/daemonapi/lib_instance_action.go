@@ -40,7 +40,7 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 	log.Infof("-> exec %s", cmd)
 	msg := msgbus.Exec{Command: cmd.String(), Node: a.localhost,
 		Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
-	a.EventBus.Pub(&msg, labels...)
+	a.Pub.Pub(&msg, labels...)
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
 		log.Errorf("exec StartProcess: %s", err)
@@ -55,11 +55,11 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid,
 				ErrS: err.Error(),
 			}
-			a.EventBus.Pub(&msg, labels...)
+			a.Pub.Pub(&msg, labels...)
 		} else {
 			msg := msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: a.localhost,
 				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
-			a.EventBus.Pub(&msg, labels...)
+			a.Pub.Pub(&msg, labels...)
 		}
 	}()
 	return sid, nil

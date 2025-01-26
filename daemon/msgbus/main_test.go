@@ -13,31 +13,36 @@ import (
 func TestSubscriptionFilter(t *testing.T) {
 	bus := pubsub.NewBus(t.Name())
 	bus.SetPanicOnFullQueue(time.Second)
-	bus.Start(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = pubsub.ContextWithBus(ctx, bus)
+	bus.Start(ctx)
 	defer bus.Stop()
 
-	sub := bus.Sub(t.Name())
+	sub := pubsub.SubFromContext(ctx, t.Name())
 	sub.AddFilter(&HbNodePing{}, pubsub.Label{"node", "node10"})
 	sub.Start()
 	defer sub.Stop()
 
+	pub := pubsub.PubFromContext(ctx)
+
 	// publish non watched type
-	bus.Pub(&HbStale{}, pubsub.Label{"node", "node1"})
+	pub.Pub(&HbStale{}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but not watched label
-	bus.Pub(&HbNodePing{
+	pub.Pub(&HbNodePing{
 		Node:    "node1",
 		IsAlive: true,
 	}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but without label
-	bus.Pub(&HbNodePing{
+	pub.Pub(&HbNodePing{
 		Node:    "node1",
 		IsAlive: true,
 	})
 
 	// publish message with the watched type and label
-	bus.Pub(&HbNodePing{
+	pub.Pub(&HbNodePing{
 		Node:    "node10",
 		IsAlive: true,
 	}, pubsub.Label{"node", "node10"})

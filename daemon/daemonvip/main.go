@@ -29,7 +29,7 @@ type (
 	T struct {
 		ctx    context.Context
 		cancel context.CancelFunc
-		bus    *pubsub.Bus
+		pub    pubsub.PublishBuilder
 		log    *plog.Logger
 
 		sub   *pubsub.Subscription
@@ -61,7 +61,7 @@ func New(subQS pubsub.QueueSizer) *T {
 func (t *T) Start(parent context.Context) error {
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.bus = pubsub.BusFromContext(t.ctx)
+	t.pub = pubsub.PubFromContext(t.ctx)
 
 	t.wg.Add(1)
 	go func() {
@@ -93,7 +93,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) startSubscriptions() {
-	sub := t.bus.Sub("daemon.vip", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.vip", t.subQS)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", t.localhost})
 	sub.Start()
 	t.sub = sub
@@ -169,7 +169,7 @@ func (t *T) purgeVip() error {
 
 func (t *T) createAndUnfreeze(kv map[string]string) error {
 	timeout := 2 * time.Second
-	sub := t.bus.Sub("daemon.vip.createAndUnfreeze", pubsub.Timeout(timeout))
+	sub := pubsub.SubFromContext(t.ctx, "daemon.vip.createAndUnfreeze", pubsub.Timeout(timeout))
 	waitCtx, cancel := context.WithTimeout(t.ctx, timeout)
 	defer cancel()
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", vipPath.String()})
@@ -253,7 +253,7 @@ func (t *T) orchestrate(g instance.MonitorGlobalExpect) error {
 	value := instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()}
 	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, vipPath, t.localhost, value)
 
-	t.bus.Pub(msg, []pubsub.Label{{"node", t.localhost}, pubsub.Label{"namespace", vipPath.Namespace}, {"path", vipPath.String()}}...)
+	t.pub.Pub(msg, []pubsub.Label{{"node", t.localhost}, pubsub.Label{"namespace", vipPath.Namespace}, {"path", vipPath.String()}}...)
 	err := setInstanceMonitorErr.Receive()
 
 	switch {

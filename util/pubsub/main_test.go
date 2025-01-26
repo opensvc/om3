@@ -54,12 +54,13 @@ func (m *msgI) Value() interface{} {
 func TestPub(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	bus.Pub(&msgT{v: "foo"}, Label{"op", "create"})
-	bus.Pub(&msgT{v: "foo"}, Label{"op", "update"})
-	bus.Pub(&msgT{v: "foo"}, Label{"op", "read"})
-	bus.Pub(&msgT{v: "foo"}, Label{"op", "delete"})
-	bus.Pub(&msgT{v: "bar"})
-	bus.Pub(&msgT{v: "foobar"})
+	pub := bus.Pub()
+	pub.Pub(&msgT{v: "foo"}, Label{"op", "create"})
+	pub.Pub(&msgT{v: "foo"}, Label{"op", "update"})
+	pub.Pub(&msgT{v: "foo"}, Label{"op", "read"})
+	pub.Pub(&msgT{v: "foo"}, Label{"op", "delete"})
+	pub.Pub(&msgT{v: "bar"})
+	pub.Pub(&msgT{v: "foobar"})
 }
 
 func TestSub(t *testing.T) {
@@ -138,8 +139,9 @@ func TestSub(t *testing.T) {
 				assert.NoError(t, sub.Stop())
 			}()
 
+			pub := bus.Pub()
 			for _, p := range c.pubs {
-				bus.Pub(p.v, p.labels...)
+				pub.Pub(p.v, p.labels...)
 			}
 			maxDurationTimer := time.NewTimer(5 * time.Millisecond)
 			defer maxDurationTimer.Stop()
@@ -179,7 +181,7 @@ func TestDropSlowSubscription(t *testing.T) {
 			waitAlertDuration := timeout * time.Duration(x)
 			bus := newRun(t.Name())
 			defer bus.Stop()
-
+			pub := bus.Pub()
 			t.Log("subscribe on SubscriptionError")
 			subAlert := bus.Sub("listen SubscriptionError")
 			subAlert.AddFilter(&SubscriptionError{})
@@ -202,7 +204,7 @@ func TestDropSlowSubscription(t *testing.T) {
 
 			t.Logf("push 'queue size + 2' messages, then read one message => expect one blocking message")
 			for i := 0; i < int(queueSize)+2; i++ {
-				bus.Pub(&msgT{v: i})
+				pub.Pub(&msgT{v: i})
 			}
 			assert.IsType(t, &msgT{}, <-slowSub.C, "expected at least one message on %s", slowSub)
 
@@ -226,6 +228,47 @@ func Test_labelMap_Key(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
 			assert.Equal(t, initialResult, l.Key(), "result must be consistent to avoid subscription leak")
+		})
+	}
+}
+
+func TestLabelsKeys(t *testing.T) {
+	cases := map[string]struct {
+		labels   Labels
+		expected []string
+	}{
+		"empty labels": {
+			labels:   Labels{},
+			expected: []string{""},
+		},
+		"single key-value pair": {
+			labels:   Labels{"a": "1"},
+			expected: []string{"", "{a=1}"},
+		},
+		"two key-value pairs": {
+			labels:   Labels{"a": "1", "b": "2"},
+			expected: []string{"", "{a=1}", "{b=2}", "{a=1}{b=2}", "{b=2}{a=1}"},
+		},
+		"three key-value pairs": {
+			labels: Labels{"a": "1", "b": "2", "c": "3"},
+			expected: []string{
+				"", "{a=1}", "{b=2}", "{c=3}",
+				"{a=1}{b=2}", "{b=2}{a=1}", "{a=1}{c=3}", "{c=3}{a=1}",
+				"{b=2}{c=3}", "{c=3}{b=2}",
+				"{a=1}{b=2}{c=3}", "{a=1}{c=3}{b=2}", "{b=2}{a=1}{c=3}",
+				"{b=2}{c=3}{a=1}", "{c=3}{a=1}{b=2}", "{c=3}{b=2}{a=1}",
+			},
+		},
+		"keys with equal values": {
+			labels:   Labels{"x": "val", "y": "val"},
+			expected: []string{"", "{x=val}", "{y=val}", "{x=val}{y=val}", "{y=val}{x=val}"},
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			result := c.labels.Keys()
+			assert.ElementsMatch(t, c.expected, result, "Keys() output mismatch")
 		})
 	}
 }

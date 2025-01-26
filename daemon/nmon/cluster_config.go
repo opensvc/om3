@@ -28,10 +28,10 @@ func (t *Manager) onJoinRequest(c *msgbus.JoinRequest) {
 	t.log.Infof("join request for node %s", node)
 	if slices.Contains(nodes, node) {
 		t.log.Debugf("join request ignored already member")
-		t.bus.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
+		t.pub.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
 	} else if err := t.addClusterNode(node); err != nil {
 		t.log.Warnf("join request denied: %s", err)
-		t.bus.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
+		t.pub.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 
@@ -68,10 +68,10 @@ func (t *Manager) onLeaveRequest(c *msgbus.LeaveRequest) {
 	t.log.Infof("leave request for node %s", node)
 	if !slices.Contains(nodes, node) {
 		t.log.Debugf("leave request ignored for not cluster member")
-		t.bus.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
+		t.pub.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
 	} else if err := t.removeClusterNode(node); err != nil {
 		t.log.Warnf("leave request denied: %s", err)
-		t.bus.Pub(&msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
+		t.pub.Pub(&msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 

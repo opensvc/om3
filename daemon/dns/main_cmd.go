@@ -67,7 +67,7 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 }
 
 func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
-	t.bus.Pub(&msgbus.ZoneRecordDeleted{
+	t.pub.Pub(&msgbus.ZoneRecordDeleted{
 		Path:    p,
 		Node:    node,
 		Name:    record.Name,
@@ -78,7 +78,7 @@ func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
 }
 
 func (t *Manager) pubUpdated(record Record, p naming.Path, node string) {
-	t.bus.Pub(&msgbus.ZoneRecordUpdated{
+	t.pub.Pub(&msgbus.ZoneRecordUpdated{
 		Path:    p,
 		Node:    node,
 		Name:    record.Name,

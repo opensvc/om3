@@ -182,7 +182,7 @@ func (c *C) run() {
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	heartbeat := make(map[string]daemonsubsystem.HeartbeatStream)
-	bus := pubsub.BusFromContext(c.ctx)
+	pub := pubsub.PubFromContext(c.ctx)
 	defer c.log.Infof("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
@@ -270,10 +270,10 @@ func (c *C) run() {
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
-					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
+					pub.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				} else {
 					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
-					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
+					pub.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbID, ".rx") {
@@ -281,7 +281,7 @@ func (c *C) run() {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Infof("beating node %s", o.Nodename)
-								bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
+								pub.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
 						case evStale:
@@ -292,7 +292,7 @@ func (c *C) run() {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Infof("stale node %s", o.Nodename)
-							bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
+							pub.Pub(&msgbus.HbNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
 					}

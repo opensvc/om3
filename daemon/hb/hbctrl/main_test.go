@@ -47,7 +47,6 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = bootstrapDaemon(ctx, t)
-	bus := pubsub.BusFromContext(ctx)
 
 	pubDelay = 10 * time.Millisecond
 	testCtrl := setupCtrl(ctx)
@@ -185,7 +184,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tNode := tc.node
 
-			sub := bus.Sub(name, pubsub.Timeout(time.Second))
+			sub := pubsub.SubFromContext(ctx, name, pubsub.Timeout(time.Second))
 			sub.AddFilter(&msgbus.HbNodePing{}, pubsub.Label{"node", tNode})
 			sub.Start()
 			defer func() {

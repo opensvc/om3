@@ -25,7 +25,8 @@ type (
 
 	DaemonAPI struct {
 		Daemondata *daemondata.T
-		EventBus   *pubsub.Bus
+		SubFactory pubsub.SubscribeBuilder
+		Pub        pubsub.PublishBuilder
 		JWTcreator JWTCreater
 
 		LabelLocalhost pubsub.Label
@@ -45,9 +46,11 @@ var (
 
 func New(ctx context.Context) *DaemonAPI {
 	localhost := hostname.Hostname()
+
 	return &DaemonAPI{
 		Daemondata:     daemondata.FromContext(ctx),
-		EventBus:       pubsub.BusFromContext(ctx),
+		SubFactory:     pubsub.BusFromContext(ctx),
+		Pub:            pubsub.PubFromContext(ctx),
 		JWTcreator:     daemonauth.JWTCreatorFromContext(ctx),
 		LabelLocalhost: pubsub.Label{"node", localhost},
 		localhost:      localhost,

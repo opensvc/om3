@@ -90,6 +90,8 @@ type (
 		id  uuid.UUID
 		bus *Bus
 
+		pub PublishBuilder
+
 		// family value is deducted from the first field of name.
 		// example: with name = "daemon.imon foo@nodex" family is "daemon.imon"
 		family string
@@ -198,6 +200,14 @@ type (
 	Messager interface {
 		AddLabels(...Label)
 		GetLabels() Labels
+	}
+
+	PublishBuilder interface {
+		Pub(Messager, ...Label)
+	}
+
+	SubscribeBuilder interface {
+		Sub(string, ...interface{}) *Subscription
 	}
 )
 
@@ -535,6 +545,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		id:      id,
 		timeout: c.timeout,
 		bus:     b,
+		pub:     b.Pub(),
 
 		drainChanDuration: b.drainChanDuration,
 		queuedMax:         c.queueSize / 32,
@@ -624,7 +635,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.pub.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
 					previous := sub.queuedMax
 					sub.queuedMax /= 8
@@ -639,7 +650,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.pub.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
 			}
 		}
@@ -718,10 +729,17 @@ func (b *Bus) Stop() {
 	}
 }
 
+type (
+	Publicator struct {
+		ctx context.Context
+		c   chan<- any
+	}
+)
+
 // Pub posts a new Publication on the bus.
 // The labels are added to existing v labels, so a subscriber can retrieve message
 // publication labels from the received message.
-func (b *Bus) Pub(v Messager, labels ...Label) {
+func (p *Publicator) Pub(v Messager, labels ...Label) {
 	done := make(chan bool)
 	v.AddLabels(labels...)
 	op := cmdPub{
@@ -734,8 +752,8 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 		op.dataType = dataType.String()
 	}
 	select {
-	case b.cmdC <- op:
-	case <-b.ctx.Done():
+	case p.c <- op:
+	case <-p.ctx.Done():
 		return
 	}
 	<-done
@@ -804,6 +822,13 @@ func (t WithQueueSize) queueSize() uint64 {
 // timeout implements Timeouter for Timeout
 func (t Timeout) timeout() time.Duration {
 	return time.Duration(t)
+}
+
+func (b *Bus) Pub() *Publicator {
+	return &Publicator{
+		ctx: b.ctx,
+		c:   b.cmdC,
+	}
 }
 
 // Sub function requires a new Subscription "name" on the bus.
@@ -900,6 +925,20 @@ func BusFromContext(ctx context.Context) *Bus {
 		return bus
 	}
 	panic("unable to retrieve pubsub bus from context")
+}
+
+func SubFromContext(ctx context.Context, name string, options ...interface{}) *Subscription {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
+		return bus.Sub(name, options...)
+	}
+	panic("can't create subscriber: context has no pubsub")
+}
+
+func PubFromContext(ctx context.Context) *Publicator {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
+		return bus.Pub()
+	}
+	panic("can't create publisher: context has no pubsub")
 }
 
 func (cmd cmdSubAddFilter) String() string {
@@ -1109,7 +1148,7 @@ func (sub *Subscription) Start() {
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warnf("%s error: %s. stop subscription", sub, err)
-					go sub.bus.Pub(&SubscriptionError{Name: sub.name, ID: sub.id, ErrS: err.Error()})
+					go sub.pub.Pub(&SubscriptionError{Name: sub.name, ID: sub.id, ErrS: err.Error()})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {
