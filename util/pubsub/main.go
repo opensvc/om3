@@ -125,6 +125,7 @@ type (
 		labels   Labels
 		dataType string
 		data     any
+		pubKeys  []string
 		resp     chan<- bool
 	}
 
@@ -582,7 +583,7 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
-	for _, toFilterKey := range c.keys() {
+	for _, toFilterKey := range c.pubKeys {
 		// search publication that listen on one of cmdPub.keys
 		if subIDMap, ok := b.subMap[toFilterKey]; ok {
 			for subID := range subIDMap {
@@ -733,6 +734,9 @@ type (
 	Publicator struct {
 		ctx context.Context
 		c   chan<- any
+
+		lck  sync.RWMutex
+		keys map[string][]string
 	}
 )
 
@@ -740,17 +744,42 @@ type (
 // The labels are added to existing v labels, so a subscriber can retrieve message
 // publication labels from the received message.
 func (p *Publicator) Pub(v Messager, labels ...Label) {
+	var (
+		dataType string
+		pubKeys  []string
+		ok       bool
+	)
+
 	done := make(chan bool)
 	v.AddLabels(labels...)
+	pubLabels := v.GetLabels()
+
+	dataTypeOf := reflect.TypeOf(v)
+	if dataTypeOf != nil {
+		dataType = dataTypeOf.String()
+	}
+
+	cacheKey := dataType + "-" + pubLabels.String()
+	p.lck.RLock()
+	if pubKeys, ok = p.keys[cacheKey]; ok {
+		p.lck.RUnlock()
+	} else {
+		p.lck.RUnlock()
+		p.lck.Lock()
+		keys := pubLabels.Keys()
+		pubKeys = pubKeysForDatatype(dataType, keys)
+		p.keys[cacheKey] = pubKeys
+		p.lck.Unlock()
+	}
+
 	op := cmdPub{
-		labels: v.GetLabels(),
-		data:   v,
-		resp:   done,
+		labels:   pubLabels,
+		data:     v,
+		resp:     done,
+		dataType: dataType,
+		pubKeys:  pubKeys,
 	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
+
 	select {
 	case p.c <- op:
 	case <-p.ctx.Done():
@@ -826,8 +855,9 @@ func (t Timeout) timeout() time.Duration {
 
 func (b *Bus) Pub() *Publicator {
 	return &Publicator{
-		ctx: b.ctx,
-		c:   b.cmdC,
+		ctx:  b.ctx,
+		c:    b.cmdC,
+		keys: make(map[string][]string),
 	}
 }
 
@@ -1030,14 +1060,6 @@ func (pub cmdPub) String() string {
 	return s
 }
 
-func (pub cmdPub) key() string {
-	return fmtKey(pub.dataType, pub.labels)
-}
-
-func (pub cmdPub) keys() []string {
-	return pubKeys(pub.dataType, pub.labels)
-}
-
 func (t filter) key() string {
 	return fmtKey(t.dataType, t.labels)
 }
@@ -1046,20 +1068,20 @@ func fmtKey(dataType string, labels Labels) string {
 	return dataType + ":" + labels.Key()
 }
 
-func pubKeys(dataType string, labels Labels) []string {
-	return append(
-		keys(dataType, labels),
-		keys("", labels)...,
-	)
-}
-
-func keys(dataType string, labels Labels) []string {
-	var l []string
-	if len(labels) == 0 {
-		return []string{dataType + ":"}
-	}
-	for _, key := range labels.Keys() {
-		l = append(l, dataType+":"+key)
+// pubKeysForDatatype return [] of pub filterkeys
+//
+//	[]string{
+//	        "<Type>:",  // a filter of <Type> without labels
+//	        "<Type>:{<name>:<value>}{<name>:<value>}....
+//	}
+func pubKeysForDatatype(dataType string, keys []string) []string {
+	l := make([]string, 0)
+	if len(keys) == 0 {
+		l = append(l, dataType+":", ":")
+	} else {
+		for _, key := range keys {
+			l = append(l, dataType+":"+key, ":"+key)
+		}
 	}
 	return l
 }
