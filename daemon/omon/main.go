@@ -389,6 +389,9 @@ func (t *Manager) updateStatus() {
 
 	updatePlacementState := func() {
 		t.status.PlacementState = placement.NotApplicable
+		if t.path.Kind != naming.KindSvc {
+			return
+		}
 		for node, instMonitor := range t.instMonitor {
 			instStatus, ok := t.instStatus[node]
 			if !ok {
