@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
@@ -31,11 +30,12 @@ type (
 		databus   *daemondata.T
 		publisher pubsub.Publisher
 
-		events      chan any
-		jobs        Jobs
-		enabled     bool
-		provisioned map[naming.Path]bool
-		schedules   Schedules
+		events              chan any
+		jobs                Jobs
+		enabled             bool
+		provisioned         map[naming.Path]bool
+		schedules           Schedules
+		isCollectorJoinable bool
 
 		wg sync.WaitGroup
 
@@ -232,7 +232,9 @@ func (t *T) createJob(e schedule.Entry) {
 	if !t.enabled {
 		return
 	}
-
+	if e.RequireCollector && !t.isCollectorJoinable {
+		return
+	}
 	logger := t.jobLogger(e)
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
@@ -292,13 +294,12 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 	if n, err := t.runningCount(e); err != nil {
 		logger.Warnf("%s", err)
 		return
-	}
-	if n >= e.MaxParallel {
+	} else if n >= e.MaxParallel {
 		logger.Infof("aborted, %d/%d jobs already running", n, e.MaxParallel)
 		return
 	}
-	if e.RequireCollector && !collector.Alive.Load() {
-		logger.Debugf("the collector is not alive")
+	if e.RequireCollector && !t.isCollectorJoinable {
+		logger.Infof("aborted, the collector is not joinable")
 		return
 	}
 
@@ -375,6 +376,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, labelLocalhost)
 	sub.Start()
 	return sub
 }
@@ -424,6 +426,8 @@ func (t *T) loop() {
 				t.onNodeConfigUpdated(c)
 			case *msgbus.ObjectStatusUpdated:
 				t.onMonObjectStatusUpdated(c)
+			case *msgbus.DaemonCollectorUpdated:
+				t.onDaemonCollectorUpdated(c)
 			}
 		case ev := <-t.events:
 			switch c := ev.(type) {
@@ -471,6 +475,30 @@ func (t *T) recreateJobFrom(prev schedule.Entry, lastRunAt time.Time) {
 func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	t.loggerWithPath(c.Path).Infof("%s: unschedule all jobs (instance deleted)", c.Path)
 	t.unschedule(c.Path)
+}
+
+func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
+	previousIsCollectorJoinable := t.isCollectorJoinable
+	switch c.Value.State {
+	case "speaker", "speaker-candidate":
+		t.isCollectorJoinable = true
+		if !previousIsCollectorJoinable {
+			t.log.Infof("enable jobs requiring a joinable collector")
+			t.scheduleAll()
+		}
+	default:
+		t.isCollectorJoinable = false
+		if previousIsCollectorJoinable {
+			t.log.Infof("disable jobs requiring a joinable collector")
+			for key, job := range t.jobs {
+				if job.schedule.RequireCollector {
+					job.Cancel()
+					delete(t.jobs, key)
+				}
+			}
+			t.scheduleAll()
+		}
+	}
 }
 
 func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
