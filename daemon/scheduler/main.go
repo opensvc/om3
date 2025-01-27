@@ -289,36 +289,41 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 	e.NextRunAt = c.schedule.NextRunAt
 	t.recreateJobFrom(e, c.schedule.NextRunAt)
 
+	if n, err := t.runningCount(e); err != nil {
+		logger.Warnf("%s", err)
+		return
+	}
+	if n >= e.MaxParallel {
+		logger.Infof("aborted, %d/%d jobs already running", n, e.MaxParallel)
+		return
+	}
+	if e.RequireCollector && !collector.Alive.Load() {
+		logger.Debugf("the collector is not alive")
+		return
+	}
+
 	go func() {
-		if n, err := t.runningCount(e); err != nil {
-			logger.Warnf("%s", err)
-		} else if n >= e.MaxParallel {
-			logger.Infof("aborted, %d/%d jobs already running", n, e.MaxParallel)
-		} else if e.RequireCollector && !collector.Alive.Load() {
-			logger.Debugf("the collector is not alive")
+		t.events <- eventJobRun{
+			schedule: e,
+			begin:    c.schedule.NextRunAt,
+		}
+		if err := t.action(e); err != nil {
+			logger.Errorf("on exec %s: %s", e.Key, err)
 		} else {
-			t.events <- eventJobRun{
-				schedule: e,
-				begin:    c.schedule.NextRunAt,
+			// remember last success, for users benefit
+			if err := e.SetLastSuccess(c.schedule.NextRunAt); err != nil {
+				logger.Errorf("on update last success %s: %s", e.Key, err)
 			}
-			if err := t.action(e); err != nil {
-				logger.Errorf("on exec %s: %s", e.Key, err)
-			} else {
-				// remember last success, for users benefit
-				if err := e.SetLastSuccess(c.schedule.NextRunAt); err != nil {
-					logger.Errorf("on update last success %s: %s", e.Key, err)
-				}
-			}
+		}
 
-			// remember last run, to not run the job too soon after a daemon restart
-			if err := e.SetLastRun(c.schedule.NextRunAt); err != nil {
-				logger.Errorf("on update last run %s: %s", e.Key, err)
-			}
+		// remember last run, to not run the job too soon after a daemon restart
+		if err := e.SetLastRun(c.schedule.NextRunAt); err != nil {
+			logger.Errorf("on update last run %s: %s", e.Key, err)
+		}
 
-			t.events <- eventJobDone{
-				schedule: e,
-				end:      time.Now(),
-			}
+		t.events <- eventJobDone{
+			schedule: e,
+			end:      time.Now(),
 		}
 	}()
 }
