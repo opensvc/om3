@@ -37,7 +37,7 @@ type (
 		feedPinger *collector.Pinger
 		client     requester
 		wg         sync.WaitGroup
-		bus        *pubsub.Bus
+		publisher  pubsub.Publisher
 		created    map[string]time.Time
 
 		status daemonsubsystem.Collector
@@ -257,7 +257,7 @@ func (t *T) Start(ctx context.Context) error {
 	errC := make(chan error)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
-	t.bus = pubsub.BusFromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 
 	t.wg.Add(1)
 	go func(errC chan<- error) {
@@ -292,7 +292,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
-	sub := t.bus.Sub("daemon.collector", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
@@ -432,7 +432,7 @@ func (t *T) dropChanges() {
 
 func (t *T) publish() {
 	daemonsubsystem.DataCollector.Set(t.localhost, t.status.DeepCopy())
-	t.bus.Pub(&msgbus.DaemonCollectorUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
+	t.publisher.Pub(&msgbus.DaemonCollectorUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 
 // getState compute and return new state.

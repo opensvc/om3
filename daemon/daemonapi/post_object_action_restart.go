@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -45,11 +46,11 @@ func (a *DaemonAPI) PostObjectActionRestart(eCtx echo.Context, namespace string,
 
 		msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-		a.EventBus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+		a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
 	}
-	for nodename, _ := range instance.MonitorData.GetByPath(p) {
+	for nodename := range instance.MonitorData.GetByPath(p) {
 		return a.proxy(eCtx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.PostObjectActionRestartWithBody(eCtx.Request().Context(), namespace, kind, name, eCtx.Request().Header.Get("Content-Type"), eCtx.Request().Body)
 		})

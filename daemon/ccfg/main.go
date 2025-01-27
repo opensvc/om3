@@ -31,7 +31,7 @@ type (
 		ctx           context.Context
 		cancel        context.CancelFunc
 		drainDuration time.Duration
-		bus           *pubsub.Bus
+		publisher     pubsub.Publisher
 		log           *plog.Logger
 		startedAt     time.Time
 
@@ -69,7 +69,7 @@ func New(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 // Start launches the ccfg worker goroutine
 func (t *Manager) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.bus = pubsub.BusFromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 
 	t.pubClusterConfig()
 
@@ -95,7 +95,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("daemon.ccfg", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.ccfg", t.subQS)
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.Start()
 	t.sub = sub

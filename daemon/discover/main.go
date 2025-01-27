@@ -40,7 +40,7 @@ type (
 		cancel  context.CancelFunc
 		log     *plog.Logger
 
-		bus *pubsub.Bus
+		publisher pubsub.Publisher
 
 		// cfgDeleting is a map of local crm deleting call indexed by object path
 		cfgDeleting map[naming.Path]bool
@@ -171,6 +171,8 @@ func (t *Manager) WithOmonSubQS(qs pubsub.QueueSizer) *Manager {
 func (t *Manager) Start(ctx context.Context) (err error) {
 	t.log = plog.NewDefaultLogger().Attr("pkg", "daemon/discover").WithPrefix("daemon: discover: ")
 	t.log.Infof("discover starting")
+
+	t.publisher = pubsub.PubFromContext(ctx)
 
 	if t.omonSubQS == nil {
 		return fmt.Errorf("discover: undefined omon sub queue size, WithOmonSubQS must be called first")

@@ -73,7 +73,7 @@ type (
 		cmdC         chan any
 		poolC        chan any
 		databus      *daemondata.T
-		bus          *pubsub.Bus
+		publisher    pubsub.Publisher
 		log          *plog.Logger
 		rejoinTicker *time.Ticker
 		startedAt    time.Time
@@ -187,7 +187,7 @@ func (t *Manager) Start(parent context.Context) error {
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.databus = daemondata.FromContext(t.ctx)
-	t.bus = pubsub.BusFromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 
 	// trigger an initial pool status eval
 	t.poolC <- nil
@@ -295,7 +295,7 @@ func (t *Manager) Stop() error {
 }
 
 func (t *Manager) startSubscriptions() {
-	sub := t.bus.Sub("daemon.nmon", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.nmon", t.subQS)
 
 	// watching for ClusterConfigUpdated (so we get notified when cluster config file
 	// has been changed and reloaded
@@ -386,7 +386,7 @@ func (t *Manager) worker() {
 	t.updateStats()
 	t.refreshSanPaths()
 	t.updateIfChange()
-	defer t.bus.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
+	defer t.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
 	defer node.MonitorData.Unset(t.localhost)
 
 	t.getAndUpdateStatusArbitrator()
@@ -490,7 +490,7 @@ func (t *Manager) onRejoinGracePeriodExpire() {
 func (t *Manager) update() {
 	newValue := t.state
 	node.MonitorData.Set(t.localhost, newValue.DeepCopy())
-	t.bus.Pub(&msgbus.NodeMonitorUpdated{Node: t.localhost, Value: *newValue.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeMonitorUpdated{Node: t.localhost, Value: *newValue.DeepCopy()}, t.labelLocalhost)
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
 	t.nodeMonitor[t.localhost] = t.state
 }
@@ -589,7 +589,7 @@ func (t *Manager) updateStats() {
 		t.log.Errorf("get stats: %s", err)
 	}
 	node.StatsData.Set(t.localhost, stats.DeepCopy())
-	t.bus.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
 }
 
 func (t *Manager) refreshSanPaths() {
@@ -601,7 +601,7 @@ func (t *Manager) refreshSanPaths() {
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	localNodeInfo.Paths = append(san.Paths{}, paths...)
 	t.cacheNodesInfo[t.localhost] = localNodeInfo
-	t.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: paths}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: paths}, t.labelLocalhost)
 }
 
 func (t *Manager) onDaemonListenerUpdated(m *msgbus.DaemonListenerUpdated) {
@@ -662,7 +662,7 @@ func (t *Manager) saveNodesInfo() {
 
 func (t *Manager) publishNodeStatus() {
 	node.StatusData.Set(t.localhost, t.nodeStatus.DeepCopy())
-	t.bus.Pub(&msgbus.NodeStatusUpdated{Node: t.localhost, Value: *t.nodeStatus.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeStatusUpdated{Node: t.localhost, Value: *t.nodeStatus.DeepCopy()}, t.labelLocalhost)
 }
 
 func (t *Manager) loadConfig() error {
@@ -689,10 +689,10 @@ func (t *Manager) loadAndPublishConfig() error {
 	}
 
 	node.ConfigData.Set(t.localhost, t.nodeConfig.DeepCopy())
-	t.bus.Pub(&msgbus.NodeConfigUpdated{Node: t.localhost, Value: t.nodeConfig}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeConfigUpdated{Node: t.localhost, Value: t.nodeConfig}, t.labelLocalhost)
 
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
-	t.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
 
 	t.updateSpeaker()
 	t.nodeStatus.Labels = localNodeInfo.Labels
@@ -700,7 +700,7 @@ func (t *Manager) loadAndPublishConfig() error {
 
 	paths := localNodeInfo.Paths.DeepCopy()
 	node.OsPathsData.Set(t.localhost, &paths)
-	t.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 
 	select {
 	case t.poolC <- nil:

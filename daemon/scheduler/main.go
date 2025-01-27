@@ -29,7 +29,7 @@ type (
 		log       *plog.Logger
 		localhost string
 		databus   *daemondata.T
-		pubsub    *pubsub.Bus
+		publisher pubsub.Publisher
 
 		events      chan any
 		jobs        Jobs
@@ -362,8 +362,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
-	t.pubsub = pubsub.BusFromContext(t.ctx)
-	sub := t.pubsub.Sub("daemon.scheduler", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.scheduler", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
@@ -378,6 +377,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 func (t *T) loop() {
 	t.log.Debugf("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 	sub := t.startSubscriptions()
 
 	defer func() {
@@ -627,5 +627,5 @@ func (t *T) publishUpdate() {
 	t.status.UpdatedAt = time.Now()
 	localhost := hostname.Hostname()
 	daemonsubsystem.DataScheduler.Set(localhost, t.status.DeepCopy())
-	t.pubsub.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
 }

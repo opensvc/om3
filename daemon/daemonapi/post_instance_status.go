@@ -30,7 +30,7 @@ func (a *DaemonAPI) PostInstanceStatus(ctx echo.Context, namespace string, kind 
 		_ = JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 		return err
 	}
-	a.EventBus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: a.localhost, Value: payload},
+	a.Publisher.Pub(&msgbus.InstanceStatusPost{Path: p, Node: a.localhost, Value: payload},
 		pubsub.Label{"namespace", p.Namespace},
 		pubsub.Label{"path", p.String()},
 		a.LabelLocalhost,

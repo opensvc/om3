@@ -448,8 +448,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 }
 
 func (t *T) startSubscriptions(ctx context.Context) {
-	bus := pubsub.BusFromContext(ctx)
-	t.sub = bus.Sub("daemon.hb")
+	t.sub = pubsub.SubFromContext(ctx, "daemon.hb")
 	t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.Cluster.String()})
 	t.sub.AddFilter(&msgbus.DaemonCtl{})
 	t.sub.Start()

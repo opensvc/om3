@@ -134,73 +134,73 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	// daemon
 	case *msgbus.DaemonCollectorUpdated:
 		daemonsubsystem.DataCollector.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonDataUpdated:
 		daemonsubsystem.DataDaemondata.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonDnsUpdated:
 		daemonsubsystem.DataDns.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonHeartbeatUpdated:
 		daemonsubsystem.DataHeartbeat.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonListenerUpdated:
 		daemonsubsystem.DataListener.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonRunnerImonUpdated:
 		daemonsubsystem.DataRunnerImon.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonSchedulerUpdated:
 		daemonsubsystem.DataScheduler.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.DaemonStatusUpdated:
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigFor:
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigUpdated:
 		instance.ConfigData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceMonitorDeleted:
 		instance.MonitorData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceMonitorUpdated:
 		instance.MonitorData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusDeleted:
 		instance.StatusData.Unset(c.Path, c.Node)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusUpdated:
 		instance.StatusData.Set(c.Path, c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	// node...
 	case *msgbus.NodeConfigUpdated:
 		node.ConfigData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodeMonitorDeleted:
 		node.MonitorData.Unset(c.Node)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodeMonitorUpdated:
 		node.MonitorData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodeOsPathsUpdated:
 		node.OsPathsData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodeStatsUpdated:
 		node.StatsData.Set(c.Node, &c.Value)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodeStatusUpdated:
 		node.StatusData.Set(c.Node, &c.Value)
 		node.GenData.Set(c.Node, &c.Value.Gen)
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	// object...
 	case *msgbus.ObjectCreated:
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
-		d.bus.Pub(c, labelFromPeer)
+		d.publisher.Pub(c, labelFromPeer)
 	default:
 		d.log.Errorf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)
 	}

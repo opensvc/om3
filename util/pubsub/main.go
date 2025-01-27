@@ -40,6 +40,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -52,7 +53,6 @@ import (
 
 	"github.com/opensvc/om3/util/durationlog"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xmap"
 )
 
@@ -90,6 +90,8 @@ type (
 		id  uuid.UUID
 		bus *Bus
 
+		publisher Publisher
+
 		// family value is deducted from the first field of name.
 		// example: with name = "daemon.imon foo@nodex" family is "daemon.imon"
 		family string
@@ -123,6 +125,7 @@ type (
 		labels   Labels
 		dataType string
 		data     any
+		pubKeys  []string
 		resp     chan<- bool
 	}
 
@@ -198,6 +201,18 @@ type (
 	Messager interface {
 		AddLabels(...Label)
 		GetLabels() Labels
+	}
+
+	// Publisher is an interface for publishing messages with optional associated labels.
+	// Pub publishes a Messager with an optional set of Label parameters to the subscribers.
+	Publisher interface {
+		Pub(Messager, ...Label)
+	}
+
+	// Subscriber defines the interface for subscribing to a topic with filters,
+	// returning a Subscription instance.
+	Subscriber interface {
+		Sub(string, ...interface{}) *Subscription
 	}
 )
 
@@ -314,39 +329,35 @@ func (t Labels) Key() string {
 	return s
 }
 
-// Keys returns all the permutations of all lengths of the labels
+// Keys returns all the combination of the labels, including the empty label.
+// keys are sorted first to avoid need of permutation.
 // ex:
 //
-//	keys of l1=foo l2=foo l3=foo:
-//	 {l1=foo}
-//	 {l2=foo}
-//	 {l3=foo}
-//	 {l1=foo}{l2=foo}
-//	 {l1=foo}{l3=foo}
-//	 {l2=foo}{l3=foo}
-//	 {l2=foo}{l1=foo}
-//	 {l3=foo}{l1=foo}
-//	 {l3=foo}{l2=foo}
-//	 {l1=foo}{l2=foo}{l3=foo}
-//	 {l1=foo}{l3=foo}{l2=foo}
-//	 {l2=foo}{l1=foo}{l3=foo}
-//	 {l2=foo}{l3=foo}{l1=foo}
-//	 {l3=foo}{l1=foo}{l2=foo}
-//	 {l3=foo}{l2=foo}{l1=foo}
+//			keys of l1=foo l2=foo l3=foo:
+//	      [
+//	     	"",
+//			 	"{l1=foo}",
+//			 	"{l1=foo}{l2=foo}",
+//			 	"{l1=foo}{l2=foo}{l3=foo}",
+//			 	"{l1=foo}{l3=foo}",
+//			 	"{l2=foo}",
+//			 	"{l2=foo}{l3=foo}",
+//			 	"{l3=foo}",
+//	      ]
 func (t Labels) Keys() []string {
-	m := map[string]any{"": nil}
+	m := map[string]any{"": ""}
 	keys := xmap.Keys(t)
-	total := len(keys)
-	for _, keys := range stringslice.Permute(keys) {
-		for i := 0; i < total; i++ {
-			for _, perm := range stringslice.Permute(keys[:i+1]) {
-				s := ""
-				for _, key := range perm {
-					s += "{" + key + "=" + t[key] + "}"
-				}
-				m[s] = nil
-			}
+	slices.Sort(keys)
+	for _, comb := range combinations(keys) {
+		var builder strings.Builder
+		for _, key := range comb {
+			builder.WriteString("{")
+			builder.WriteString(key)
+			builder.WriteString("=")
+			builder.WriteString(t[key])
+			builder.WriteString("}")
 		}
+		m[builder.String()] = nil
 	}
 	return xmap.Keys(m)
 }
@@ -528,13 +539,14 @@ func (b *Bus) SetPanicOnFullQueue(graceTime time.Duration) {
 func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
-		name:    c.name,
-		family:  c.family,
-		C:       make(chan any, c.queueSize),
-		q:       make(chan any, c.queueSize),
-		id:      id,
-		timeout: c.timeout,
-		bus:     b,
+		name:      c.name,
+		family:    c.family,
+		C:         make(chan any, c.queueSize),
+		q:         make(chan any, c.queueSize),
+		id:        id,
+		timeout:   c.timeout,
+		bus:       b,
+		publisher: b,
 
 		drainChanDuration: b.drainChanDuration,
 		queuedMax:         c.queueSize / 32,
@@ -571,7 +583,7 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
-	for _, toFilterKey := range c.keys() {
+	for _, toFilterKey := range c.pubKeys {
 		// search publication that listen on one of cmdPub.keys
 		if subIDMap, ok := b.subMap[toFilterKey]; ok {
 			for subID := range subIDMap {
@@ -624,7 +636,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
 					previous := sub.queuedMax
 					sub.queuedMax /= 8
@@ -639,7 +651,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
 					}
-					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 				}
 			}
 		}
@@ -722,23 +734,35 @@ func (b *Bus) Stop() {
 // The labels are added to existing v labels, so a subscriber can retrieve message
 // publication labels from the received message.
 func (b *Bus) Pub(v Messager, labels ...Label) {
+	op := cmdPubFactory(v, labels...)
 	done := make(chan bool)
-	v.AddLabels(labels...)
-	op := cmdPub{
-		labels: v.GetLabels(),
-		data:   v,
-		resp:   done,
-	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
+	op.resp = done
+
 	select {
-	case b.cmdC <- op:
+	case b.cmdC <- *op:
 	case <-b.ctx.Done():
 		return
 	}
 	<-done
+}
+
+func cmdPubFactory(v Messager, labels ...Label) *cmdPub {
+	var dataType string
+
+	v.AddLabels(labels...)
+	pubLabels := v.GetLabels()
+
+	dataTypeOf := reflect.TypeOf(v)
+	if dataTypeOf != nil {
+		dataType = dataTypeOf.String()
+	}
+
+	return &cmdPub{
+		labels:   pubLabels,
+		data:     v,
+		dataType: dataType,
+		pubKeys:  pubKeysForDatatype(dataType, pubLabels.Keys()),
+	}
 }
 
 // DisableBufferPublication disable the publication buffering.
@@ -902,6 +926,20 @@ func BusFromContext(ctx context.Context) *Bus {
 	panic("unable to retrieve pubsub bus from context")
 }
 
+func SubFromContext(ctx context.Context, name string, options ...interface{}) *Subscription {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
+		return bus.Sub(name, options...)
+	}
+	panic("can't create subscriber: context has no pubsub")
+}
+
+func PubFromContext(ctx context.Context) *Bus {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
+		return bus
+	}
+	panic("can't create publisher: context has no pubsub")
+}
+
 func (cmd cmdSubAddFilter) String() string {
 	s := fmt.Sprintf("add subscription %s filter type %s", cmd.id, cmd.dataType)
 	if len(cmd.labels) > 0 {
@@ -973,6 +1011,7 @@ func (sub *Subscription) keys() []string {
 	for i, f := range sub.filters {
 		l[i] = f.key()
 	}
+	slices.Sort(l)
 	return l
 }
 
@@ -991,14 +1030,6 @@ func (pub cmdPub) String() string {
 	return s
 }
 
-func (pub cmdPub) key() string {
-	return fmtKey(pub.dataType, pub.labels)
-}
-
-func (pub cmdPub) keys() []string {
-	return pubKeys(pub.dataType, pub.labels)
-}
-
 func (t filter) key() string {
 	return fmtKey(t.dataType, t.labels)
 }
@@ -1007,20 +1038,20 @@ func fmtKey(dataType string, labels Labels) string {
 	return dataType + ":" + labels.Key()
 }
 
-func pubKeys(dataType string, labels Labels) []string {
-	return append(
-		keys(dataType, labels),
-		keys("", labels)...,
-	)
-}
-
-func keys(dataType string, labels Labels) []string {
-	var l []string
-	if len(labels) == 0 {
-		return []string{dataType + ":"}
-	}
-	for _, key := range labels.Keys() {
-		l = append(l, dataType+":"+key)
+// pubKeysForDatatype return [] of pub filterkeys
+//
+//	[]string{
+//	        "<Type>:",  // a filter of <Type> without labels
+//	        "<Type>:{<name>:<value>}{<name>:<value>}....
+//	}
+func pubKeysForDatatype(dataType string, keys []string) []string {
+	l := make([]string, 0)
+	if len(keys) == 0 {
+		l = append(l, dataType+":", ":")
+	} else {
+		for _, key := range keys {
+			l = append(l, dataType+":"+key, ":"+key)
+		}
 	}
 	return l
 }
@@ -1109,7 +1140,7 @@ func (sub *Subscription) Start() {
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warnf("%s error: %s. stop subscription", sub, err)
-					go sub.bus.Pub(&SubscriptionError{Name: sub.name, ID: sub.id, ErrS: err.Error()})
+					go sub.publisher.Pub(&SubscriptionError{Name: sub.name, ID: sub.id, ErrS: err.Error()})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {
@@ -1203,4 +1234,23 @@ func (subM subscriptionMap) String() string {
 	}
 	s = strings.TrimSuffix(s, ", ") + "}"
 	return s
+}
+
+func combinations(elements []string) [][]string {
+	var result [][]string
+
+	var helper func(start int, current []string)
+	helper = func(start int, current []string) {
+		if len(current) > 0 {
+			combination := make([]string, len(current))
+			copy(combination, current)
+			result = append(result, combination)
+		}
+		for i := start; i < len(elements); i++ {
+			helper(i+1, append(current, elements[i]))
+		}
+	}
+
+	helper(0, []string{})
+	return result
 }

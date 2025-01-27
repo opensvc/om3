@@ -69,7 +69,7 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 		}
 		return ctx.JSON(http.StatusOK, resp)
 	}
-	for nodename, _ := range instance.ConfigData.GetByPath(objPath) {
+	for nodename := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetObjectConfig(ctx.Request().Context(), namespace, kind, name, &params)
 		})

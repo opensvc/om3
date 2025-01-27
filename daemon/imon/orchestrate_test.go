@@ -551,14 +551,14 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(lastBootIDFile(p)), 0755))
 		require.NoError(t, updateLastBootID(p, c.lastBootID))
 	}
-	bus := pubsub.BusFromContext(setup.Ctx)
+	pub := pubsub.PubFromContext(setup.Ctx)
 
 	for _, nmonState := range c.nodeMonitorStates {
 		t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
 		pubTime := time.Now()
 		nodeMonitor := node.Monitor{State: nmonState, StateUpdatedAt: pubTime, UpdatedAt: pubTime, GlobalExpectUpdatedAt: now, LocalExpectUpdatedAt: now}
 		node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
-		bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+		pub.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
 			pubsub.Label{"node", hostname.Hostname()})
 	}
 
@@ -568,7 +568,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 		nodeStatus.FrozenAt = time.Now()
 	}
 	node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
-	bus.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
+	pub.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
 		pubsub.Label{"node", hostname.Hostname()})
 
 	initialReadyDuration := defaultReadyDuration
@@ -660,7 +660,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, hostname.Hostname(), value)
 			t.Logf("try delete orchestration with : %v", msg)
-			bus.Pub(msg, pubsub.Label{"namespace", "root"}, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
+			pub.Pub(msg, pubsub.Label{"namespace", "root"}, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
 			require.NoError(t, setImonErr.Receive())
 
 			t.Logf("waiting for delete, deleting")
@@ -713,7 +713,7 @@ func (c *crmSpy) getCalls() [][]string {
 
 func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect map[string]sideEffect) *crm {
 	ctx := setup.Ctx
-	bus := pubsub.BusFromContext(ctx)
+	pub := pubsub.PubFromContext(ctx)
 	c := crm{
 		crmSpy: crmSpy{
 			RWMutex: sync.RWMutex{},
@@ -752,7 +752,7 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 				UpdatedAt:   time.Now(),
 				FrozenAt:    time.Time{},
 			}
-			bus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
+			pub.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
@@ -762,7 +762,7 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 
 		for _, e := range se.events {
 			t.Logf("--- crmAction %s %v publish sid effect %s %v", title, cmdArgs, reflect.TypeOf(e), e)
-			bus.Pub(e,
+			pub.Pub(e,
 				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
@@ -787,7 +787,7 @@ func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Fact
 	)
 
 	ctx := setup.Ctx
-	sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover")
+	sub := pubsub.SubFromContext(ctx, t.Name()+": discover")
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, pubsub.Label{"path", p.String()})
 	sub.Start()
@@ -831,7 +831,7 @@ func waitExpectations(t *testing.T, setup *daemonhelper.D, timeout time.Duration
 
 	ctx, cancel := context.WithTimeout(parent, timeout)
 
-	sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": wait expectations")
+	sub := pubsub.SubFromContext(ctx, t.Name()+": wait expectations")
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
 	sub.Start()
 
@@ -885,9 +885,7 @@ func waitNmonStates(ctx context.Context, desc string, d time.Duration, p naming.
 	errC := make(chan error)
 
 	go func() {
-		bus := pubsub.BusFromContext(ctx)
-
-		sub := bus.Sub(desc)
+		sub := pubsub.SubFromContext(ctx, desc)
 		sub.AddFilter(&msgbus.InstanceMonitorUpdated{},
 			[]pubsub.Label{{"path", p.String()}, {"node", hostname.Hostname()}}...)
 		sub.Start()

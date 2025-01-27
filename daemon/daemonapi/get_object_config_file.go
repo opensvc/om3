@@ -41,7 +41,7 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
 		return ctx.File(filename)
 	}
-	for nodename, _ := range instance.ConfigData.GetByPath(objPath) {
+	for nodename  := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name)
 		})

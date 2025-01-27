@@ -48,9 +48,9 @@ type (
 		// msgbus.ClusterConfigUpdated {NodesAdded, NodesRemoved}
 		clusterNodes map[string]struct{}
 
-		log *plog.Logger
-		bus *pubsub.Bus
-		sub *pubsub.Subscription
+		log       *plog.Logger
+		publisher pubsub.Publisher
+		sub       *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -286,7 +286,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				for s, v := range *lgens {
 					gens[s] = v
 				}
-				d.bus.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
+				d.publisher.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
 					d.labelLocalhost,
 				)
 			}
@@ -384,8 +384,8 @@ func gensEqual(a, b gens) bool {
 
 // startSubscriptions subscribes to label local node messages that change the cluster data view
 // or that must be forwarded to peers
-func (d *data) startSubscriptions(qs pubsub.QueueSizer) {
-	sub := d.bus.Sub("daemon.data", qs)
+func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
+	sub := pubsub.SubFromContext(ctx, "daemon.data", qs)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalhost)
 

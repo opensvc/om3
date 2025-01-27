@@ -47,7 +47,7 @@ func (t *Manager) freeze() error {
 		t.log.Errorf("freeze: %s", err)
 		return err
 	}
-	t.pubsubBus.Pub(&msgbus.InstanceFrozenFileUpdated{Path: t.path, At: frozen}, t.pubLabels...)
+	t.publisher.Pub(&msgbus.InstanceFrozenFileUpdated{Path: t.path, At: frozen}, t.pubLabels...)
 	return nil
 }
 
@@ -69,6 +69,6 @@ func (t *Manager) unfreeze() error {
 		instanceStatus.FrozenAt = time.Time{}
 		t.instStatus[t.localhost] = instanceStatus
 	}
-	t.pubsubBus.Pub(&msgbus.InstanceFrozenFileRemoved{Path: t.path, At: time.Now()}, t.pubLabels...)
+	t.publisher.Pub(&msgbus.InstanceFrozenFileRemoved{Path: t.path, At: time.Now()}, t.pubLabels...)
 	return nil
 }

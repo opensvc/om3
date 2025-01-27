@@ -24,14 +24,14 @@ import (
 
 type (
 	T struct {
-		bus      *pubsub.Bus
-		listener *http.Server
-		log      *plog.Logger
-		addr     string
-		certFile string
-		keyFile  string
-		wg       sync.WaitGroup
-		status   daemonsubsystem.Listener
+		publisher pubsub.Publisher
+		listener  *http.Server
+		log       *plog.Logger
+		addr      string
+		certFile  string
+		keyFile   string
+		wg        sync.WaitGroup
+		status    daemonsubsystem.Listener
 
 		labelLocalhost pubsub.Label
 		localhost      string
@@ -77,7 +77,7 @@ func (t *T) Stop() error {
 func (t *T) Start(ctx context.Context) error {
 	ctx = daemonctx.WithLsnrType(ctx, "inet")
 
-	t.bus = pubsub.BusFromContext(ctx)
+	t.publisher = pubsub.PubFromContext(ctx)
 
 	errC := make(chan error)
 	go func(ctx context.Context, errC chan error) {
@@ -162,7 +162,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	var started bool
-	sub := t.bus.Sub("daemon.lsnr.http.inet")
+	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.inet")
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})
 	sub.Start()
@@ -262,5 +262,5 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 
 func (t *T) publish() {
 	daemonsubsystem.DataListener.Set(t.localhost, t.status.DeepCopy())
-	t.bus.Pub(&msgbus.DaemonListenerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.DaemonListenerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, t.labelLocalhost)
 }

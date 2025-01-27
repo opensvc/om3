@@ -32,7 +32,7 @@ type (
 		wg         sync.WaitGroup
 		ctx        context.Context
 		cancel     context.CancelFunc
-		bus        *pubsub.Bus
+		publisher  pubsub.Publisher
 		subQS      pubsub.QueueSizer
 		log        *plog.Logger
 		status     daemonsubsystem.RunnerImon
@@ -48,8 +48,7 @@ var (
 )
 
 func (t *T) startSubscriptions() *pubsub.Subscription {
-	t.bus = pubsub.BusFromContext(t.ctx)
-	sub := t.bus.Sub("daemon.runner", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.runner", t.subQS)
 	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.Start()
@@ -82,6 +81,7 @@ func (t *T) run() {
 func (t *T) do(ctx context.Context) {
 	ticker := time.NewTicker(t.interval)
 
+	t.publisher = pubsub.PubFromContext(ctx)
 	sub := t.startSubscriptions()
 	t.log.Infof("started")
 	defer func() {
@@ -204,7 +204,7 @@ func (t *T) publishUpdate() {
 	t.status.UpdatedAt = time.Now()
 	localhost := hostname.Hostname()
 	daemonsubsystem.DataRunnerImon.Set(localhost, t.status.DeepCopy())
-	t.bus.Pub(&msgbus.DaemonRunnerImonUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+	t.publisher.Pub(&msgbus.DaemonRunnerImonUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
 }
 
 func Stop() error {

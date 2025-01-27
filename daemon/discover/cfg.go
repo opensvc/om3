@@ -31,8 +31,7 @@ import (
 )
 
 func (t *Manager) startSubscriptions() *pubsub.Subscription {
-	t.bus = pubsub.BusFromContext(t.ctx)
-	sub := t.bus.Sub("daemon.discover.cfg", t.subQS)
+	sub := pubsub.SubFromContext(t.ctx, "daemon.discover.cfg", t.subQS)
 
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
@@ -186,10 +185,9 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			t.log.Warnf("fs: failed to list run files in %s: %s", runDir, err)
 			return
 		}
-		bus := pubsub.BusFromContext(t.ctx)
 		for _, entry := range entries {
 			filename := filepath.Join(runDir, entry.Name())
-			t.PubDebounce(bus, filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
+			t.PubDebounce(filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 		}
 	}
 	for rid, _ := range c.Value.Resources {
@@ -482,7 +480,7 @@ func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		mtime := file.ModTime(p.ConfigFile())
 		if !mtime.IsZero() && len(ev.Scope) > 0 {
 			t.objectLogger(p).Infof("cfg: re-publish remaining foreign config file %s for peers", p)
-			t.bus.Pub(&msgbus.InstanceConfigFor{
+			t.publisher.Pub(&msgbus.InstanceConfigFor{
 				Path:        p,
 				Node:        t.localhost,
 				Orchestrate: ev.Orchestrate,

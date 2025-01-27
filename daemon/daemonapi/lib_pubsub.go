@@ -10,15 +10,15 @@ import (
 )
 
 func (a *DaemonAPI) announceSub(name string) {
-	a.EventBus.Pub(&msgbus.ClientSubscribed{Time: time.Now(), Name: name}, a.LabelLocalhost, labelOriginAPI)
+	a.Publisher.Pub(&msgbus.ClientSubscribed{Time: time.Now(), Name: name}, a.LabelLocalhost, labelOriginAPI)
 }
 
 func (a *DaemonAPI) announceUnsub(name string) {
-	a.EventBus.Pub(&msgbus.ClientUnsubscribed{Time: time.Now(), Name: name}, a.LabelLocalhost, labelOriginAPI)
+	a.Publisher.Pub(&msgbus.ClientUnsubscribed{Time: time.Now(), Name: name}, a.LabelLocalhost, labelOriginAPI)
 }
 
 func (a *DaemonAPI) announceNodeState(log *plog.Logger, state node.MonitorState) {
 	log.Infof("announce node state %s", state)
-	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}}, labelOriginAPI)
+	a.Publisher.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}}, labelOriginAPI)
 	time.Sleep(2 * daemondata.PropagationInterval())
 }

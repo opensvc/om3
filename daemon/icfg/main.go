@@ -51,7 +51,7 @@ type (
 		// pubLabel is the list of labels for this icfg publications (path and node)
 		pubLabel  []pubsub.Label
 		published bool
-		bus       *pubsub.Bus
+		publisher pubsub.Publisher
 		sub       *pubsub.Subscription
 
 		instanceConfig           instance.Config
@@ -96,12 +96,13 @@ var (
 func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	ctx, cancel := context.WithCancel(parent)
+
 	t := &Manager{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
 		localhost:      localhost,
 		forceRefresh:   false,
-		bus:            pubsub.BusFromContext(ctx),
+		publisher:      pubsub.PubFromContext(ctx),
 		filename:       filename,
 
 		ctx:    ctx,
@@ -147,7 +148,7 @@ func (t *Manager) startSubscriptions() {
 	labelPathCluster := pubsub.Label{"path", clusterPathString}
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
-	t.sub = t.bus.Sub("daemon.icfg " + t.path.String())
+	t.sub = pubsub.SubFromContext(t.ctx, "daemon.icfg "+t.path.String())
 	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, labelPath)
 	if t.path.String() != clusterPathString {
 		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, labelPath)
@@ -237,11 +238,11 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	if !t.published {
-		t.bus.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost}, t.pubLabel...)
+		t.publisher.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 	t.instanceConfig = *newConfig
 	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
-	t.bus.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
 	t.published = true
 }
 
@@ -297,7 +298,7 @@ func (t *Manager) configFileCheck() error {
 		cfg.Scope = scope
 		cfg.UpdatedAt = mtime
 		cfg.Orchestrate = t.getOrchestrate(cf)
-		t.bus.Pub(&msgbus.InstanceConfigFor{
+		t.publisher.Pub(&msgbus.InstanceConfigFor{
 			Path:        t.path,
 			Node:        t.localhost,
 			Orchestrate: cfg.Orchestrate,
@@ -524,10 +525,10 @@ func (t *Manager) setConfigure() error {
 func (t *Manager) delete() {
 	if t.published {
 		instance.ConfigData.Unset(t.path, t.localhost)
-		t.bus.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+		t.publisher.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 }
 
 func (t *Manager) done(parent context.Context, doneChan chan<- any) {
-	t.bus.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
 }

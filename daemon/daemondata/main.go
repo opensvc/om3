@@ -41,8 +41,8 @@ func Start(parent context.Context, drainDuration time.Duration, subQS pubsub.Que
 	hbRecvMsgQ := make(chan *hbtype.Msg)
 	var wg sync.WaitGroup
 	d := newData()
-	d.bus = pubsub.BusFromContext(ctx)
-	d.startSubscriptions(subQS)
+	d.publisher = pubsub.PubFromContext(ctx)
+	d.startSubscriptions(ctx, subQS)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

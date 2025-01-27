@@ -25,7 +25,7 @@ type (
 		ctx       context.Context
 		cancel    context.CancelFunc
 		cmdC      chan any
-		bus       *pubsub.Bus
+		publisher pubsub.Publisher
 		log       *plog.Logger
 		startedAt time.Time
 
@@ -55,7 +55,7 @@ func New(subQS pubsub.QueueSizer) *T {
 func (o *T) Start(parent context.Context) error {
 	o.log = plog.NewDefaultLogger().WithPrefix("daemon: cstat: ").Attr("pkg", "daemon/cstat")
 	o.ctx, o.cancel = context.WithCancel(parent)
-	o.bus = pubsub.BusFromContext(o.ctx)
+	o.publisher = pubsub.PubFromContext(o.ctx)
 
 	o.startSubscriptions()
 	running := make(chan bool)
@@ -83,7 +83,7 @@ func (o *T) Stop() error {
 }
 
 func (o *T) startSubscriptions() {
-	sub := o.bus.Sub("daemon.cstat", o.subQS)
+	sub := pubsub.SubFromContext(o.ctx, "daemon.cstat", o.subQS)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub

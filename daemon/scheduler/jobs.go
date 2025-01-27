@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -14,8 +15,8 @@ import (
 )
 
 func (o *T) action(e schedule.Entry) error {
-	sid := uuid.New().String()
-	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}, {"sid", sid}}
+	sid := uuid.New()
+	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
 	cmdArgs := []string{}
 	if e.Path.IsZero() {
 		cmdArgs = append(cmdArgs, "node")
@@ -68,7 +69,7 @@ func (o *T) action(e schedule.Entry) error {
 		cmdEnv,
 		env.OriginSetenvArg(env.ActionOriginDaemonScheduler),
 		env.ParentSessionIDSetenvArg(),
-		"OSVC_SESSION_ID="+sid,
+		"OSVC_SESSION_ID="+sid.String(),
 	)
 
 	cmd := command.New(
@@ -78,16 +79,16 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithEnv(cmdEnv),
 	)
 	o.log.Debugf("-> exec %s", cmd)
-	o.pubsub.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler"}, labels...)
+	o.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		o.pubsub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler"}, labels...)
+		o.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 		o.log.Attr("cmd", cmd.String()).Errorf("exec error: %s", err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.pubsub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler"}, labels...)
+	o.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	o.log.Debugf("<- exec %s", cmd)
 	return nil
 }

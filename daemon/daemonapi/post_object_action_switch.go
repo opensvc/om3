@@ -45,11 +45,11 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 
 		msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-		a.EventBus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+		a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
 	}
-	for nodename, _ := range instance.MonitorData.GetByPath(p) {
+	for nodename := range instance.MonitorData.GetByPath(p) {
 		return a.proxy(eCtx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.PostObjectActionSwitchWithBody(eCtx.Request().Context(), namespace, kind, name, eCtx.Request().Header.Get("Content-Type"), eCtx.Request().Body)
 		})

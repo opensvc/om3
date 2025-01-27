@@ -27,7 +27,7 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error
 	if alerts.HasError() {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", err)
 	}
-	// Use the non-validating commit func as we already validate to emit a explicit error
+	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := configurer.Config().RecommitInvalid(); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
@@ -50,7 +50,7 @@ func (a *DaemonAPI) writeNodeConfigFile(ctx echo.Context, nodename string) error
 	if alerts.HasError() {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", err)
 	}
-	// Use the non-validating commit func as we already validate to emit a explicit error
+	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := o.Config().RecommitInvalid(); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}

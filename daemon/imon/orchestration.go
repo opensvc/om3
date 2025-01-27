@@ -158,7 +158,7 @@ func (t *Manager) endOrchestration() {
 	t.clearPending()
 	t.updateIfChange()
 	if t.acceptedOrchestrationID != uuid.Nil {
-		t.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
+		t.publisher.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node:                  t.localhost,
 			Path:                  t.path,
 			ID:                    t.acceptedOrchestrationID.String(),
