@@ -91,7 +91,7 @@ type (
 
 		sub *pubsub.Subscription
 
-		pub pubsub.PublishBuilder
+		publisher pubsub.Publisher
 
 		// waitConvergedOrchestrationMsg is a map indexed by nodename to latest waitConvergedOrchestrationMsg.
 		// It is used while we are waiting for orchestration reached
@@ -211,7 +211,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		cancel:        cancel,
 		cmdC:          make(chan any),
 		databus:       databus,
-		pub:           pubsub.PubFromContext(ctx),
+		publisher:     pubsub.PubFromContext(ctx),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
 		nodeMonitor:   make(map[string]node.Monitor),
@@ -341,9 +341,9 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		}()
 		instance.StatusData.Unset(t.path, t.localhost)
-		t.pub.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
+		t.publisher.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
 		instance.MonitorData.Unset(t.path, t.localhost)
-		t.pub.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
+		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
 		go func() {
 			tC := time.After(t.drainDuration)
 			for {
@@ -449,7 +449,7 @@ func (t *Manager) update() {
 	newValue := t.state
 
 	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
-	t.pub.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)
+	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)
 }
 
 func (t *Manager) transitionTo(newState instance.MonitorState) {

@@ -63,16 +63,16 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	)
 	t.log.Debugf("-> exec %s %s", cmdPath, cmd)
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
-	t.pub.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
+	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		t.pub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "nmon"}, labels...)
+		t.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "nmon"}, labels...)
 		t.log.Errorf("failed %s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	t.pub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "nmon"}, labels...)
+	t.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "nmon"}, labels...)
 	t.log.Debugf("<- exec %s %s", cmdPath, cmd)
 	return nil
 }

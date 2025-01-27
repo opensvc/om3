@@ -51,8 +51,8 @@ type (
 		cancel context.CancelFunc
 		log    *plog.Logger
 
-		bus *pubsub.Bus
-		pub pubsub.PublishBuilder
+		bus       *pubsub.Bus
+		publisher pubsub.Publisher
 
 		stopFuncs []func() error
 		wg        sync.WaitGroup
@@ -112,11 +112,11 @@ func (t *T) Start(ctx context.Context) error {
 	bus.EnableBufferPublication(2000)
 
 	t.bus = bus
-	t.pub = pubsub.PubFromContext(t.ctx)
-	t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "starting"}, labelLocalhost)
+	t.publisher = pubsub.PubFromContext(t.ctx)
+	t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "starting"}, labelLocalhost)
 
 	t.stopFuncs = append(t.stopFuncs, func() error {
-		t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopped"}, labelLocalhost)
+		t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopped"}, labelLocalhost)
 		// give chance for DaemonStatusUpdated message to reach peers
 		time.Sleep(300 * time.Millisecond)
 		defer t.wg.Done()
@@ -198,7 +198,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	t.logTransition("started 🟢")
-	t.pub.Pub(&msgbus.DaemonStatusUpdated{
+	t.publisher.Pub(&msgbus.DaemonStatusUpdated{
 		Node:    localhost,
 		Version: version.Version(),
 		Status:  "started",
@@ -214,7 +214,7 @@ func (t *T) Stop() error {
 	// stop goroutines without cancel context
 	t.logTransition("stopping 🟡")
 	localhost := hostname.Hostname()
-	t.pub.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
+	t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
 	time.Sleep(300 * time.Millisecond)
 	defer t.logTransition("stopped 🟡")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
@@ -324,7 +324,7 @@ func (t *T) notifyWatchDogBus(ctx context.Context, busName string) (err error) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			t.pub.Pub(&msg, labels...)
+			t.publisher.Pub(&msg, labels...)
 		}
 	}
 }

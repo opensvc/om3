@@ -51,7 +51,7 @@ type (
 		// pubLabel is the list of labels for this icfg publications (path and node)
 		pubLabel  []pubsub.Label
 		published bool
-		pub       pubsub.PublishBuilder
+		publisher pubsub.Publisher
 		sub       *pubsub.Subscription
 
 		instanceConfig           instance.Config
@@ -102,7 +102,7 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 		path:           p,
 		localhost:      localhost,
 		forceRefresh:   false,
-		pub:            pubsub.PubFromContext(ctx),
+		publisher:      pubsub.PubFromContext(ctx),
 		filename:       filename,
 
 		ctx:    ctx,
@@ -238,11 +238,11 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	if !t.published {
-		t.pub.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost}, t.pubLabel...)
+		t.publisher.Pub(&msgbus.ObjectCreated{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 	t.instanceConfig = *newConfig
 	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
-	t.pub.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
 	t.published = true
 }
 
@@ -298,7 +298,7 @@ func (t *Manager) configFileCheck() error {
 		cfg.Scope = scope
 		cfg.UpdatedAt = mtime
 		cfg.Orchestrate = t.getOrchestrate(cf)
-		t.pub.Pub(&msgbus.InstanceConfigFor{
+		t.publisher.Pub(&msgbus.InstanceConfigFor{
 			Path:        t.path,
 			Node:        t.localhost,
 			Orchestrate: cfg.Orchestrate,
@@ -525,10 +525,10 @@ func (t *Manager) setConfigure() error {
 func (t *Manager) delete() {
 	if t.published {
 		instance.ConfigData.Unset(t.path, t.localhost)
-		t.pub.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+		t.publisher.Pub(&msgbus.InstanceConfigDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	}
 }
 
 func (t *Manager) done(parent context.Context, doneChan chan<- any) {
-	t.pub.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
 }

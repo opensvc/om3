@@ -480,7 +480,7 @@ func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		mtime := file.ModTime(p.ConfigFile())
 		if !mtime.IsZero() && len(ev.Scope) > 0 {
 			t.objectLogger(p).Infof("cfg: re-publish remaining foreign config file %s for peers", p)
-			t.pub.Pub(&msgbus.InstanceConfigFor{
+			t.publisher.Pub(&msgbus.InstanceConfigFor{
 				Path:        p,
 				Node:        t.localhost,
 				Orchestrate: ev.Orchestrate,

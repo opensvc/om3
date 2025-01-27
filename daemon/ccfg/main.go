@@ -31,7 +31,7 @@ type (
 		ctx           context.Context
 		cancel        context.CancelFunc
 		drainDuration time.Duration
-		pub           pubsub.PublishBuilder
+		publisher     pubsub.Publisher
 		log           *plog.Logger
 		startedAt     time.Time
 
@@ -69,7 +69,7 @@ func New(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 // Start launches the ccfg worker goroutine
 func (t *Manager) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.pub = pubsub.PubFromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 
 	t.pubClusterConfig()
 

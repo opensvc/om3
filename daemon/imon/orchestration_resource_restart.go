@@ -172,7 +172,7 @@ func (t *Manager) doPreMonitorAction() error {
 }
 
 func (t *Manager) pubMonitorAction(rid string, action instance.MonitorAction) {
-	t.pub.Pub(
+	t.publisher.Pub(
 		&msgbus.InstanceMonitorAction{
 			Path:   t.path,
 			Node:   t.localhost,

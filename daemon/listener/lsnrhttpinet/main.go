@@ -24,14 +24,14 @@ import (
 
 type (
 	T struct {
-		pub      pubsub.PublishBuilder
-		listener *http.Server
-		log      *plog.Logger
-		addr     string
-		certFile string
-		keyFile  string
-		wg       sync.WaitGroup
-		status   daemonsubsystem.Listener
+		publisher pubsub.Publisher
+		listener  *http.Server
+		log       *plog.Logger
+		addr      string
+		certFile  string
+		keyFile   string
+		wg        sync.WaitGroup
+		status    daemonsubsystem.Listener
 
 		labelLocalhost pubsub.Label
 		localhost      string
@@ -77,7 +77,7 @@ func (t *T) Stop() error {
 func (t *T) Start(ctx context.Context) error {
 	ctx = daemonctx.WithLsnrType(ctx, "inet")
 
-	t.pub = pubsub.PubFromContext(ctx)
+	t.publisher = pubsub.PubFromContext(ctx)
 
 	errC := make(chan error)
 	go func(ctx context.Context, errC chan error) {
@@ -262,5 +262,5 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 
 func (t *T) publish() {
 	daemonsubsystem.DataListener.Set(t.localhost, t.status.DeepCopy())
-	t.pub.Pub(&msgbus.DaemonListenerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.DaemonListenerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, t.labelLocalhost)
 }

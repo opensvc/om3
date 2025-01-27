@@ -284,7 +284,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 	}
 	action := t.nodeConfig.SplitAction
 	t.log.Warnf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(t.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
-	t.pub.Pub(&msgbus.NodeSplitAction{
+	t.publisher.Pub(&msgbus.NodeSplitAction{
 		Node:            t.localhost,
 		Action:          action,
 		NodeVotes:       len(t.livePeers),
@@ -309,7 +309,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 	t.frozen = false
 	t.nodeStatus.FrozenAt = time.Time{}
-	t.pub.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: time.Time{}}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: time.Time{}}, t.labelLocalhost)
 	t.publishNodeStatus()
 	t.orchestrate()
 }
@@ -317,7 +317,7 @@ func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 	t.frozen = true
 	t.nodeStatus.FrozenAt = m.At
-	t.pub.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: m.At}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: m.At}, t.labelLocalhost)
 	t.publishNodeStatus()
 	t.orchestrate()
 }
@@ -373,7 +373,7 @@ func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 		return
 	}
 	t.rejoinTicker.Stop()
-	t.pub.Pub(&msgbus.NodeRejoin{
+	t.publisher.Pub(&msgbus.NodeRejoin{
 		Nodes:          c.Nodes,
 		LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
 		IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",

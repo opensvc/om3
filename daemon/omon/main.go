@@ -68,8 +68,8 @@ type (
 		ctx context.Context
 		log *plog.Logger
 
-		pub pubsub.PublishBuilder
-		sub *pubsub.Subscription
+		publisher pubsub.Publisher
+		sub       *pubsub.Subscription
 
 		// pubLabel is the list of this imon publication labels
 		pubLabel []pubsub.Label
@@ -101,7 +101,7 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 			Topology:        cfg.Topology,
 		},
 
-		pub: pubsub.PubFromContext(ctx),
+		publisher: pubsub.PubFromContext(ctx),
 
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
 		instStatus: make(map[string]instance.Status),
@@ -416,9 +416,9 @@ func (t *Manager) updateStatus() {
 
 func (t *Manager) delete() {
 	object.StatusData.Unset(t.path)
-	t.pub.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
-	t.pub.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
-	t.pub.Pub(&msgbus.ObjectStatusDone{Path: t.path}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.ObjectStatusDone{Path: t.path}, t.pubLabel...)
 }
 
 func (t *Manager) update() {
@@ -426,7 +426,7 @@ func (t *Manager) update() {
 	value := t.status.DeepCopy()
 	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
-	t.pub.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent}, t.pubLabel...)
+	t.publisher.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent}, t.pubLabel...)
 }
 
 func (t *Manager) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {

@@ -27,10 +27,10 @@ import (
 
 type (
 	T struct {
-		ctx    context.Context
-		cancel context.CancelFunc
-		pub    pubsub.PublishBuilder
-		log    *plog.Logger
+		ctx       context.Context
+		cancel    context.CancelFunc
+		publisher pubsub.Publisher
+		log       *plog.Logger
 
 		sub   *pubsub.Subscription
 		subQS pubsub.QueueSizer
@@ -61,7 +61,7 @@ func New(subQS pubsub.QueueSizer) *T {
 func (t *T) Start(parent context.Context) error {
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
-	t.pub = pubsub.PubFromContext(t.ctx)
+	t.publisher = pubsub.PubFromContext(t.ctx)
 
 	t.wg.Add(1)
 	go func() {
@@ -253,7 +253,7 @@ func (t *T) orchestrate(g instance.MonitorGlobalExpect) error {
 	value := instance.MonitorUpdate{GlobalExpect: &g, CandidateOrchestrationID: uuid.New()}
 	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, vipPath, t.localhost, value)
 
-	t.pub.Pub(msg, []pubsub.Label{{"node", t.localhost}, pubsub.Label{"namespace", vipPath.Namespace}, {"path", vipPath.String()}}...)
+	t.publisher.Pub(msg, []pubsub.Label{{"node", t.localhost}, pubsub.Label{"namespace", vipPath.Namespace}, {"path", vipPath.String()}}...)
 	err := setInstanceMonitorErr.Receive()
 
 	switch {

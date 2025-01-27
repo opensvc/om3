@@ -73,7 +73,7 @@ func (t *Manager) PubDebounce(key string, v pubsub.Messager, labels ...pubsub.La
 		t.debouncers[key] = debouncer
 	}
 	debouncer.Debounce(debounceDelay, func() {
-		t.pub.Pub(v, labels...)
+		t.publisher.Pub(v, labels...)
 	})
 }
 

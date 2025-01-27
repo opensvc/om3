@@ -73,7 +73,7 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 			t.log.Warnf("arbitrator#%s is down", name)
 			t.log.Debugf("arbitrator#%s is down: %s", name, r.err)
 			aStatus = status.Down
-			t.pub.Pub(&msgbus.ArbitratorError{
+			t.publisher.Pub(&msgbus.ArbitratorError{
 				Node: t.localhost,
 				Name: name,
 				ErrS: r.err.Error(),
@@ -91,7 +91,7 @@ func (t *Manager) getAndUpdateStatusArbitrator() {
 	for k, v := range t.nodeStatus.Arbitrators {
 		pubValue[k] = v
 	}
-	t.pub.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: t.localhost, Value: pubValue}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: t.localhost, Value: pubValue}, t.labelLocalhost)
 }
 
 func (t *Manager) arbitratorVotes() (votes []string) {

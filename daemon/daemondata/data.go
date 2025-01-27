@@ -48,9 +48,9 @@ type (
 		// msgbus.ClusterConfigUpdated {NodesAdded, NodesRemoved}
 		clusterNodes map[string]struct{}
 
-		log *plog.Logger
-		pub pubsub.PublishBuilder
-		sub *pubsub.Subscription
+		log       *plog.Logger
+		publisher pubsub.Publisher
+		sub       *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -286,7 +286,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				for s, v := range *lgens {
 					gens[s] = v
 				}
-				d.pub.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
+				d.publisher.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
 					d.labelLocalhost,
 				)
 			}

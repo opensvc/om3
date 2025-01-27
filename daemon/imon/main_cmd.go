@@ -446,7 +446,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	}
 
 	globalExpectRefused := func() {
-		t.pub.Pub(&msgbus.SetInstanceMonitorRefused{
+		t.publisher.Pub(&msgbus.SetInstanceMonitorRefused{
 			Path:  t.path,
 			Node:  t.localhost,
 			Value: c.Value,
@@ -582,7 +582,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		t.acceptedOrchestrationID = c.Value.CandidateOrchestrationID
 		t.onChange()
 	} else {
-		t.pub.Pub(&msgbus.ObjectOrchestrationRefused{
+		t.publisher.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:                t.localhost,
 			Path:                t.path,
 			ID:                  c.Value.CandidateOrchestrationID.String(),

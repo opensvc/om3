@@ -86,7 +86,7 @@ func (t *Manager) crmBoot() error {
 }
 
 func (t *Manager) crmDelete() error {
-	t.pub.Pub(&msgbus.InstanceConfigDeleting{
+	t.publisher.Pub(&msgbus.InstanceConfigDeleting{
 		Path: t.path,
 		Node: t.localhost,
 	}, t.pubLabels...)
@@ -172,16 +172,16 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	} else {
 		t.loggerWithState().Debugf("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
-	t.pub.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
+	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
-		t.pub.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
+		t.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	t.pub.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
+	t.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 	if title != "" {
 		t.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {

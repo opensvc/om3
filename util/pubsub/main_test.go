@@ -53,8 +53,10 @@ func (m *msgI) Value() interface{} {
 
 func TestPub(t *testing.T) {
 	bus := newRun(t.Name())
+	ctx := ContextWithBus(context.Background(), bus)
+
 	defer bus.Stop()
-	pub := bus.Pub()
+	pub := PubFromContext(ctx)
 	pub.Pub(&msgT{v: "foo"}, Label{"op", "create"})
 	pub.Pub(&msgT{v: "foo"}, Label{"op", "update"})
 	pub.Pub(&msgT{v: "foo"}, Label{"op", "read"})
@@ -63,6 +65,40 @@ func TestPub(t *testing.T) {
 	pub.Pub(&msgT{v: "foobar"})
 }
 
+func TestGenerateCombinations(t *testing.T) {
+	cases := map[string]struct {
+		input    []string
+		expected [][]string
+	}{
+		"empty input": {
+			input:    []string{},
+			expected: [][]string{},
+		},
+		"single element": {
+			input:    []string{"a"},
+			expected: [][]string{{"a"}},
+		},
+		"two elements": {
+			input:    []string{"a", "b"},
+			expected: [][]string{{"a"}, {"b"}, {"a", "b"}},
+		},
+		"three elements": {
+			input:    []string{"a", "b", "c"},
+			expected: [][]string{{"a"}, {"b"}, {"a", "b"}, {"c"}, {"a", "c"}, {"b", "c"}, {"a", "b", "c"}},
+		},
+		"duplicate elements": {
+			input:    []string{"a", "a"},
+			expected: [][]string{{"a"}, {"a"}, {"a", "a"}},
+		},
+	}
+
+	for name, c := range cases {
+		t.Run("combinations "+name, func(t *testing.T) {
+			result := combinations(c.input)
+			assert.ElementsMatch(t, c.expected, result)
+		})
+	}
+}
 func TestSub(t *testing.T) {
 	type (
 		testPub struct {
@@ -139,9 +175,9 @@ func TestSub(t *testing.T) {
 				assert.NoError(t, sub.Stop())
 			}()
 
-			pub := bus.Pub()
+			var publisher Publisher = bus
 			for _, p := range c.pubs {
-				pub.Pub(p.v, p.labels...)
+				publisher.Pub(p.v, p.labels...)
 			}
 			maxDurationTimer := time.NewTimer(5 * time.Millisecond)
 			defer maxDurationTimer.Stop()
@@ -181,7 +217,7 @@ func TestDropSlowSubscription(t *testing.T) {
 			waitAlertDuration := timeout * time.Duration(x)
 			bus := newRun(t.Name())
 			defer bus.Stop()
-			pub := bus.Pub()
+			var publisher Publisher = bus
 			t.Log("subscribe on SubscriptionError")
 			subAlert := bus.Sub("listen SubscriptionError")
 			subAlert.AddFilter(&SubscriptionError{})
@@ -204,7 +240,7 @@ func TestDropSlowSubscription(t *testing.T) {
 
 			t.Logf("push 'queue size + 2' messages, then read one message => expect one blocking message")
 			for i := 0; i < int(queueSize)+2; i++ {
-				pub.Pub(&msgT{v: i})
+				publisher.Pub(&msgT{v: i})
 			}
 			assert.IsType(t, &msgT{}, <-slowSub.C, "expected at least one message on %s", slowSub)
 
@@ -247,28 +283,41 @@ func TestLabelsKeys(t *testing.T) {
 		},
 		"two key-value pairs": {
 			labels:   Labels{"a": "1", "b": "2"},
-			expected: []string{"", "{a=1}", "{b=2}", "{a=1}{b=2}", "{b=2}{a=1}"},
+			expected: []string{"", "{a=1}", "{a=1}{b=2}", "{b=2}"},
 		},
 		"three key-value pairs": {
 			labels: Labels{"a": "1", "b": "2", "c": "3"},
 			expected: []string{
-				"", "{a=1}", "{b=2}", "{c=3}",
-				"{a=1}{b=2}", "{b=2}{a=1}", "{a=1}{c=3}", "{c=3}{a=1}",
-				"{b=2}{c=3}", "{c=3}{b=2}",
-				"{a=1}{b=2}{c=3}", "{a=1}{c=3}{b=2}", "{b=2}{a=1}{c=3}",
-				"{b=2}{c=3}{a=1}", "{c=3}{a=1}{b=2}", "{c=3}{b=2}{a=1}",
+				"",
+				"{a=1}", "{b=2}", "{c=3}",
+				"{a=1}{b=2}", "{a=1}{c=3}", "{b=2}{c=3}",
+				"{a=1}{b=2}{c=3}",
+			},
+		},
+		"four key-value pairs": {
+			labels: Labels{"a": "1", "b": "2", "c": "3", "d": "4"},
+			expected: []string{
+				"",
+				"{a=1}", "{b=2}", "{c=3}", "{d=4}",
+				"{a=1}{b=2}", "{a=1}{c=3}", "{a=1}{d=4}", "{b=2}{c=3}", "{b=2}{d=4}", "{c=3}{d=4}",
+				"{a=1}{b=2}{c=3}", "{a=1}{b=2}{d=4}", "{a=1}{c=3}{d=4}", "{b=2}{c=3}{d=4}",
+				"{a=1}{b=2}{c=3}{d=4}",
 			},
 		},
 		"keys with equal values": {
-			labels:   Labels{"x": "val", "y": "val"},
-			expected: []string{"", "{x=val}", "{y=val}", "{x=val}{y=val}", "{y=val}{x=val}"},
+			labels: Labels{"x": "val", "y": "val"},
+			expected: []string{
+				"",
+				"{x=val}", "{y=val}",
+				"{x=val}{y=val}",
+			},
 		},
 	}
 
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			result := c.labels.Keys()
-			assert.ElementsMatch(t, c.expected, result, "Keys() output mismatch")
+			assert.ElementsMatchf(t, c.expected, result, "Keys() output mismatch:\nexpected: %s\nactual:   %s", c.expected, result)
 		})
 	}
 }

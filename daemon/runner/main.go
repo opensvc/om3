@@ -32,7 +32,7 @@ type (
 		wg         sync.WaitGroup
 		ctx        context.Context
 		cancel     context.CancelFunc
-		pub        pubsub.PublishBuilder
+		publisher  pubsub.Publisher
 		subQS      pubsub.QueueSizer
 		log        *plog.Logger
 		status     daemonsubsystem.RunnerImon
@@ -81,7 +81,7 @@ func (t *T) run() {
 func (t *T) do(ctx context.Context) {
 	ticker := time.NewTicker(t.interval)
 
-	t.pub = pubsub.PubFromContext(ctx)
+	t.publisher = pubsub.PubFromContext(ctx)
 	sub := t.startSubscriptions()
 	t.log.Infof("started")
 	defer func() {
@@ -204,7 +204,7 @@ func (t *T) publishUpdate() {
 	t.status.UpdatedAt = time.Now()
 	localhost := hostname.Hostname()
 	daemonsubsystem.DataRunnerImon.Set(localhost, t.status.DeepCopy())
-	t.pub.Pub(&msgbus.DaemonRunnerImonUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+	t.publisher.Pub(&msgbus.DaemonRunnerImonUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
 }
 
 func Stop() error {

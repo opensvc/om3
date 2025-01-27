@@ -14,7 +14,7 @@ func (o *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		o.change = false
 		localhost := hostname.Hostname()
 		labelLocalhost := pubsub.Label{"node", localhost}
-		o.pub.Pub(&msgbus.ClusterStatusUpdated{Node: localhost, Value: o.state}, labelLocalhost)
+		o.publisher.Pub(&msgbus.ClusterStatusUpdated{Node: localhost, Value: o.state}, labelLocalhost)
 	}
 }
 
