@@ -14,7 +14,7 @@ func (a *DaemonAPI) PostNodeClear(ctx echo.Context) error {
 		return err
 	}
 	state := node.MonitorStateIdle
-	a.Pub.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}},
+	a.Publisher.Pub(&msgbus.SetNodeMonitor{Node: a.localhost, Value: node.MonitorUpdate{State: &state}},
 		labelOriginAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }

@@ -45,7 +45,7 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 
 		msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-		a.Pub.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+		a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
 	}

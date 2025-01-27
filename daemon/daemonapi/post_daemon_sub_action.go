@@ -42,7 +42,7 @@ func (a *DaemonAPI) PostDaemonSubAction(ctx echo.Context) error {
 	log.Infof("asking to %s sub components: %s", action, subs)
 	for _, sub := range payload.Subs {
 		log.Infof("ask to %s sub component: %s", action, sub)
-		a.Pub.Pub(&msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub}, labelOriginAPI)
+		a.Publisher.Pub(&msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub}, labelOriginAPI)
 	}
 	return JSONProblemf(ctx, http.StatusOK, "daemon routines action queued", "%s %s", action, subs)
 }

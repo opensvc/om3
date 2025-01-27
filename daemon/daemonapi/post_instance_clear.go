@@ -38,6 +38,6 @@ func (a *DaemonAPI) postLocalInstanceClear(ctx echo.Context, namespace string, k
 		Node:  a.localhost,
 		Value: instMonitor,
 	}
-	a.Pub.Pub(&msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+	a.Publisher.Pub(&msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }
