@@ -1,9 +1,11 @@
 package daemonapi
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/opensvc/om3/daemon/api"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
+
+	"github.com/opensvc/om3/daemon/api"
 )
 
 func (a *DaemonAPI) Getwhoami(ctx echo.Context) error {

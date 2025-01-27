@@ -36,7 +36,7 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
 	}
-	for nodename, _ := range instance.MonitorData.GetByPath(p) {
+	for nodename := range instance.MonitorData.GetByPath(p) {
 		if nodename == a.localhost {
 			continue
 		}

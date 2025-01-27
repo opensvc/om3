@@ -7,10 +7,11 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/ssh"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/util/sshnode"
-	"golang.org/x/crypto/ssh"
 )
 
 func (a *DaemonAPI) PutNodeSSHTrust(ctx echo.Context, nodename string) error {

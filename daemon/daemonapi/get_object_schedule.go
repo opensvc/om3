@@ -21,7 +21,7 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
 	}
 	items := make(api.ScheduleItems, 0)
-	for nodename, _ := range instance.MonitorData.GetByPath(path) {
+	for nodename := range instance.MonitorData.GetByPath(path) {
 		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
