@@ -392,6 +392,10 @@ func (t *Manager) updateStatus() {
 		if t.path.Kind != naming.KindSvc {
 			return
 		}
+		if t.status.Avail.Is(status.Down, status.NotApplicable, status.Undef, status.Warn) {
+			// no need to report a placement issue for a object not up
+			return
+		}
 		for node, instMonitor := range t.instMonitor {
 			instStatus, ok := t.instStatus[node]
 			if !ok {
