@@ -321,3 +321,69 @@ func TestLabelsKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestSubscriptionKeys(t *testing.T) {
+	cases := map[string]struct {
+		filters  filters
+		expected []string
+	}{
+		"no filters": {
+			filters:  filters{},
+			expected: []string{":"},
+		},
+		"single filter": {
+			filters: filters{
+				filter{
+					labels:   map[string]string{"a": "1"},
+					dataType: "type1",
+				},
+			},
+			expected: []string{"type1:{a=1}"},
+		},
+		"multiple filters unsorted must return filter with sorted labels to match combination": {
+			filters: filters{
+				filter{
+					labels:   map[string]string{"c": "3", "b": "2", "a": "1"},
+					dataType: "type1",
+				},
+			},
+			expected: []string{"type1:{a=1}{b=2}{c=3}"},
+		},
+		"multiple datatype and filters unsorted": {
+			filters: filters{
+				filter{
+					labels:   map[string]string{"C": "3", "B": "2", "A": "1"},
+					dataType: "type3",
+				},
+				filter{
+					labels:   map[string]string{"c": "3", "b": "2", "a": "1"},
+					dataType: "type1",
+				},
+			},
+			expected: []string{"type1:{a=1}{b=2}{c=3}", "type3:{A=1}{B=2}{C=3}"},
+		},
+		"multiple datatype and filters unsorted with same key": {
+			filters: filters{
+				filter{
+					labels:   map[string]string{"C": "3", "B": "2", "A": "1"},
+					dataType: "type3",
+				},
+				filter{
+					labels:   map[string]string{"C": "5", "B": "2", "A": "1"},
+					dataType: "type3",
+				},
+			},
+			expected: []string{"type3:{A=1}{B=2}{C=3}", "type3:{A=1}{B=2}{C=5}"},
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			sub := &Subscription{
+				filters: c.filters,
+			}
+			result := sub.keys()
+			assert.Equal(t, c.expected, result, "keys() output mismatch")
+		})
+	}
+}
