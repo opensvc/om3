@@ -315,7 +315,7 @@ var (
 )
 
 // Key returns labelMap key as a string
-// with ordered label names
+// with ordered label names, to ensure matching publication filter label combination
 func (t Labels) Key() string {
 	s := ""
 	var sortKeys []string
@@ -997,7 +997,8 @@ func (sub *Subscription) drain() {
 	}
 }
 
-// keys return [] of sub filterkeys
+// keys return [] of sub filterkeys where labels are sorted to match publication
+// combination.
 //
 //	[]string{
 //	        "<Type>:",  // a filter of <Type> without labels
