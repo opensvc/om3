@@ -390,6 +390,12 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
+		case c.Ref == "object.parents":
+			if l, err := t.config.GetStringsStrict(key.T{"DEFAULT", "parents"}); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, l); err != nil {
+				return err
+			}
 		case c.Ref == "object.peers":
 			if nodes, err := t.Peers(); err != nil {
 				return err
