@@ -286,6 +286,11 @@ func (t T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 }
 
 func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) error {
+	mode := t.GetString("tunnel_mode")
+	if mode == "ipip" && localIP.To4() == nil {
+		mode = "ip6ip6"
+	}
+
 	// clean up existing tunnels with same endpoints but different name
 	link, err := t.getTunnelByEndpoints(localIP, peerIP)
 	if err != nil {
@@ -293,6 +298,18 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
+			if !t.isSameTunnelMode(link, mode) {
+				err := netlink.LinkDel(link)
+				if err != nil {
+					return fmt.Errorf("del tunnel to %s: %w", nodename, err)
+				}
+				err = t.addTunnel(name, mode, localIP, peerIP)
+				if err != nil {
+					return fmt.Errorf("add tunnel to %s: %w", nodename, err)
+				}
+				return nil
+
+			}
 			t.Log().Infof("tunnel to %s is already setup", nodename)
 			return nil
 		} else {
@@ -306,24 +323,38 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	// modify up existing tunnels with same name but different endpoints
 	// or add a new tunnel
 	link, err = netlink.LinkByName(name)
-	switch {
-	case err != nil:
+	if err != nil {
 		if _, ok := err.(netlink.LinkNotFoundError); !ok {
 			return err
 		}
-		fallthrough
-	case link == nil:
-		if err := t.addTunnel(name, localIP, peerIP); err != nil {
-			return fmt.Errorf("add tunnel: %w", err)
+	}
+	if link == nil {
+		err := t.addTunnel(name, mode, localIP, peerIP)
+		if err != nil {
+			return fmt.Errorf("add tunnel to %s: %w", nodename, err)
 		}
-	case link != nil && t.isSameTunnel(link, localIP, peerIP):
-		t.Log().Infof("tunnel to %s is already configured", nodename)
 		return nil
-	default:
-		if err := t.modTunnel(name, localIP, peerIP); err != nil {
+	}
+	if !t.isSameTunnelMode(link, mode) {
+		err := netlink.LinkDel(link)
+		if err != nil {
+			return fmt.Errorf("del tunnel to %s: %w", nodename, err)
+		}
+		err = t.addTunnel(name, mode, localIP, peerIP)
+		if err != nil {
+			return fmt.Errorf("add tunnel to %s: %w", nodename, err)
+		}
+		return nil
+
+	}
+	if !t.isSameTunnelEndpoints(link, localIP, peerIP) {
+		err := t.modTunnel(name, mode, localIP, peerIP)
+		if err != nil {
 			return fmt.Errorf("modify tunnel to %s: %w", nodename, err)
 		}
+		return nil
 	}
+	t.Log().Infof("tunnel to %s is already configured", nodename)
 	return nil
 }
 
@@ -360,24 +391,44 @@ func (t T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
 	return nil, nil
 }
 
-func (t T) isSameTunnel(link netlink.Link, localIP, peerIP net.IP) bool {
+func (t T) isSameTunnelMode(link netlink.Link, mode string) bool {
+	name := link.Attrs().Name
+	switch link.(type) {
+	case *netlink.Gretun:
+		if mode != "gre" {
+			t.Log().Infof("%s mode is gre, expected %s", name, mode)
+			return false
+		}
+	case *netlink.Iptun:
+		if mode != "ipip" {
+			t.Log().Infof("%s mode is ipip, expected %s", name, mode)
+			return false
+		}
+	case *netlink.Ip6tnl:
+		if mode != "ip6ip6" {
+			t.Log().Infof("%s mode is ip6ip6, expected %s", name, mode)
+			return false
+		}
+	}
+	t.Log().Infof("%s mode is already %s", name, mode)
+	return true
+}
+
+func (t T) isSameTunnelEndpoints(link netlink.Link, localIP, peerIP net.IP) bool {
 	name := link.Attrs().Name
 	var local, remote net.IP
 	switch tun := link.(type) {
+	case *netlink.Gretun:
+		local = tun.Local
+		remote = tun.Remote
 	case *netlink.Iptun:
-		if localIP.To4() == nil {
-			t.Log().Infof("link %s is not a ipip tunnel", name)
-			return false
-		}
 		local = tun.Local
 		remote = tun.Remote
 	case *netlink.Ip6tnl:
-		if localIP.To4() != nil {
-			t.Log().Infof("link %s is not a ip6ip6 tunnel", name)
-			return false
-		}
 		local = tun.Local
 		remote = tun.Remote
+	default:
+		return false
 	}
 	if !local.Equal(localIP) {
 		t.Log().Infof("tunnel %s local ip is %s, should be %s", name, local, localIP)
@@ -387,22 +438,29 @@ func (t T) isSameTunnel(link netlink.Link, localIP, peerIP net.IP) bool {
 		t.Log().Infof("tunnel %s remote ip is %s, should be %s", name, remote, peerIP)
 		return false
 	}
+	t.Log().Infof("tunnel %s endpoints are already %s to %s", name, local, remote)
 	return true
 }
 
-func (t T) modTunnel(name string, localIP, peerIP net.IP) error {
+func (t T) modTunnel(name, mode string, localIP, peerIP net.IP) error {
+	if mode == "gre" {
+		return t.modTunnelGre(name, localIP, peerIP)
+	}
 	if localIP.To4() == nil {
-		return t.modTunnel6(name, localIP, peerIP)
+		return t.modTunnelIp6(name, localIP, peerIP)
 	} else {
-		return t.modTunnel4(name, localIP, peerIP)
+		return t.modTunnelIp4(name, localIP, peerIP)
 	}
 }
 
-func (t T) addTunnel(name string, localIP, peerIP net.IP) error {
+func (t T) addTunnel(name, mode string, localIP, peerIP net.IP) error {
+	if mode == "gre" {
+		return t.addTunnelGre(name, localIP, peerIP)
+	}
 	if localIP.To4() == nil {
-		return t.addTunnel6(name, localIP, peerIP)
+		return t.addTunnelIp6(name, localIP, peerIP)
 	} else {
-		return t.addTunnel4(name, localIP, peerIP)
+		return t.addTunnelIp4(name, localIP, peerIP)
 	}
 }
 
@@ -410,7 +468,25 @@ func (t T) loggerWithLink(link any) *plog.Logger {
 	return t.Log().Attr("link", link)
 }
 
-func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {
+func (t T) modTunnelGre(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Ip6tnl{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "gretun",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.loggerWithLink(link).Infof("modify gre tun %s", name)
+	if h, err := netlink.NewHandle(); err != nil {
+		defer h.Delete()
+		return h.LinkModify(link)
+	} else {
+		return err
+	}
+}
+
+func (t T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -428,7 +504,7 @@ func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) modTunnel4(name string, localIP, peerIP net.IP) error {
+func (t T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Iptun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -446,7 +522,20 @@ func (t T) modTunnel4(name string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) addTunnel6(name string, localIP, peerIP net.IP) error {
+func (t T) addTunnelGre(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Gretun{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "gretun",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.loggerWithLink(link).Infof("add gre tun %s", name)
+	return netlink.LinkAdd(link)
+}
+
+func (t T) addTunnelIp6(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -459,7 +548,7 @@ func (t T) addTunnel6(name string, localIP, peerIP net.IP) error {
 	return netlink.LinkAdd(link)
 }
 
-func (t T) addTunnel4(name string, localIP, peerIP net.IP) error {
+func (t T) addTunnelIp4(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Iptun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
