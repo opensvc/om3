@@ -68,6 +68,12 @@ func (t *Manager) orchestrateHAStart() {
 	if t.isLocalStarted() {
 		return
 	}
+	if t.instStatus[t.localhost].Avail.Is(status.Warn) {
+		// must be skipped when instance status avail is warn,
+		// this is handled by instance resource monitoring.
+		// example: after instance stop --rid ...
+		return
+	}
 	t.orchestrateStarted()
 }
 
