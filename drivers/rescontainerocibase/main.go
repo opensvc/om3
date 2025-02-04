@@ -341,9 +341,6 @@ func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
 	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
 		return nil, nil, err
 	} else {
-		for _, s := range tempEnv {
-			t.Log().Infof("env: %s", s)
-		}
 		envL = append(envL, tempEnv...)
 	}
 	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
@@ -354,7 +351,6 @@ func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
 			if len(kv) != 2 {
 				return nil, nil, fmt.Errorf("can't prepare env from secrets")
 			}
-			t.Log().Infof("sec %s: %s=%s", s, kv[0], kv[1])
 			envM[kv[0]] = kv[1]
 			envL = append(envL, kv[0])
 		}
