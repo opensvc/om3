@@ -400,12 +400,10 @@ func (t *Manager) isValidMonitorAction(action instance.MonitorAction) bool {
 	switch action {
 	case instance.MonitorActionCrash,
 		instance.MonitorActionFreezeStop,
+		instance.MonitorActionNone,
 		instance.MonitorActionReboot,
-		instance.MonitorActionSwitch,
-		instance.MonitorActionNoOp:
+		instance.MonitorActionSwitch:
 		return true
-	case instance.MonitorActionNone:
-		return false
 	default:
 		t.log.Infof("unsupported monitor action: %s", action)
 		return false
@@ -480,7 +478,7 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 	case t.monitorActionCalled():
 		or.log.Debugf("planFor rid %s skipped: monitor action has been already called", rid)
 	case rcfg.IsStandby || started:
-		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored && t.initialMonitorAction != instance.MonitorActionNone {
+		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
 			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
 			needMonitorAction = true
 		} else if rmon.Restart.Remaining > 0 {

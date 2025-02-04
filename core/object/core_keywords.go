@@ -226,7 +226,6 @@ var keywordStore = keywords.Store{
 			string(instance.MonitorActionNone),
 			string(instance.MonitorActionReboot),
 			string(instance.MonitorActionSwitch),
-			string(instance.MonitorActionNoOp),
 		},
 		Converter: converters.List,
 		Default:   string(instance.MonitorActionNone),

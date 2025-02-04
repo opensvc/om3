@@ -14,11 +14,7 @@ is `freezestop reboot`. In this case, the reboot action will be executed
 if the stop fails or times out.
 
 Other monitor_actions values:
-  - `none`: the default value for monitor action disabled (`monitor`keyword
-     must be also `false` or undefined).
+  - `none`: Is the No Operation monitor action (the default value).
   - `freezestop`: freeze and subsequently stop the monitored instance.
   - `switch`: try monitored instance stop to allow any other cluster nodes to
      takeover the instance.
-  - `no-op`: The monitor action No Operation is called but does nothing. It
-     may be used for demonstration. The final local expect after call will
-     be set to `evicted`.
