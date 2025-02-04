@@ -6339,6 +6339,8 @@ components:
         - heartbeat
         - join
         - leave
+        - operator
+        - prioritizer
         - root
         - squatter
 
