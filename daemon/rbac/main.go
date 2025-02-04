@@ -30,6 +30,9 @@ const (
 )
 
 var (
+	// roleMap maps string identifiers to their corresponding Role constants,
+	// defining the available roles and their associations.
+	// public roles must be added to the api.yaml Role definition.
 	roleMap = map[string]Role{
 		"":               RoleUndef,
 		"root":           RoleRoot,

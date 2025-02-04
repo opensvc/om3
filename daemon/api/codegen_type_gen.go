@@ -265,6 +265,8 @@ const (
 	Heartbeat      Role = "heartbeat"
 	Join           Role = "join"
 	Leave          Role = "leave"
+	Operator       Role = "operator"
+	Prioritizer    Role = "prioritizer"
 	Root           Role = "root"
 	Squatter       Role = "squatter"
 )
