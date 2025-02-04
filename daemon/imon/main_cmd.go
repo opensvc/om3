@@ -418,6 +418,7 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	}
 
 	t.onChange()
+	t.updateIfChange()
 }
 
 func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
