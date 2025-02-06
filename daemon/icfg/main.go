@@ -76,6 +76,7 @@ var (
 
 	keyApp              = key.New("DEFAULT", "app")
 	keyChildren         = key.New("DEFAULT", "children")
+	keyDisable          = key.New("DEFAULT", "disable")
 	keyEnv              = key.New("DEFAULT", "env")
 	keyFlexMax          = key.New("DEFAULT", "flex_max")
 	keyFlexMin          = key.New("DEFAULT", "flex_min")
@@ -313,6 +314,7 @@ func (t *Manager) configFileCheck() error {
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Children = t.getChildren(cf)
 	cfg.Env = cf.GetString(keyEnv)
+	cfg.IsDisabled = cf.GetBool(keyDisable)
 	cfg.MonitorAction = t.getMonitorAction(cf)
 	cfg.Orchestrate = t.getOrchestrate(cf)
 	cfg.Parents = t.getParents(cf)

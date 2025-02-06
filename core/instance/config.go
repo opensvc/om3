@@ -36,6 +36,9 @@ type (
 		Topology         topology.T       `json:"topology"`
 		UpdatedAt        time.Time        `json:"updated_at"`
 
+		// IsDisabled is true when DEFAULT.disable is true
+		IsDisabled bool `json:"is_disabled"`
+
 		// Volume specific
 		Pool *string `json:"pool,omitempty"`
 		Size *int64  `json:"size,omitempty"`
