@@ -42,7 +42,8 @@ func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params
 	return nil
 }
 
-// PostDaemonShutdown is the daemon shutdown handler.
+// localPostDaemonShutdown shuts down all local instances and transitions the daemon
+// to a stop state upon success.
 //
 // It shuts down vol and svc objects then stop the daemon with following steps:
 //   - announces node monitor state shutting
@@ -54,12 +55,21 @@ func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params
 // On unexpected errors it reverts pending local expect, and announces node monitor state shutdown failed
 func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDaemonShutdownParams) error {
 	var (
-		log                        = LogHandler(eCtx, "PostDaemonShutdown")
-		monitorLocalExpectShutdown = instance.MonitorLocalExpectShutdown
-		orchestrationID            = uuid.New()
-		shutdownCancel             context.CancelFunc
-		shutdownCtx                = context.Background()
-		toWait                     = make(map[naming.Path]instance.MonitorState)
+		log             = LogHandler(eCtx, "PostDaemonShutdown")
+		orchestrationID = uuid.New()
+		shutdownCancel  context.CancelFunc
+		shutdownCtx     = context.Background()
+
+		// shutdownWaiting is a map of instance paths where shutdown has been requested but has not yet occurred
+		shutdownWaiting = make(map[naming.Path]struct{})
+
+		// shutdownFail is a list of local instances that failed to shut down.
+		shutdownFail = make([]naming.Path, 0)
+
+		// pathsToResetOnFailure is a list of local instance paths where "local expect"
+		// was set to shut down. If the daemon fails to shut down, it won't be stopped,
+		// so we need to reset the "local expect" of the local instance to "none".
+		pathsToResetOnFailure = make([]naming.Path, 0)
 	)
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
@@ -98,65 +108,76 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	}
 
 	onInstanceMonitorUpdated := func(e *msgbus.InstanceMonitorUpdated) {
-		if waitedState, ok := toWait[e.Path]; !ok {
-			// not waiting => skip
+		if _, ok := shutdownWaiting[e.Path]; !ok {
+			// not waiting => skipped
 			return
-		} else if e.Value.State.Is(instance.MonitorStateShutdownSuccess) && !waitedState.Is(instance.MonitorStateShutdownSuccess) {
-			delete(toWait, e.Path)
-			var waiting []string
-			for k := range toWait {
-				waiting = append(waiting, k.String())
-			}
-			logP := naming.LogWithPath(log, e.Path)
-			if len(waiting) > 0 {
-				logP.Infof("object '%s' has now state shutdown, remaining objects to wait: %s", e.Path, waiting)
-			} else {
-				logP.Infof("object '%s' has now state shutdown", e.Path)
-			}
+		}
+		switch e.Value.State {
+		case instance.MonitorStateShutdownSuccess:
+			delete(shutdownWaiting, e.Path)
+		case instance.MonitorStateShutdownFailure:
+			delete(shutdownWaiting, e.Path)
+			shutdownFail = append(shutdownFail, e.Path)
+		default:
+			return
+		}
+		var waiting []string
+		for p := range shutdownWaiting {
+			waiting = append(waiting, p.String())
+		}
+		logP := naming.LogWithPath(log, e.Path)
+		if len(waiting) > 0 {
+			logP.Infof("the local instance '%s' is %s. Remaining local instances waiting for shutdown: %s", e.Path, e.Value.State, waiting)
 		} else {
-			toWait[e.Path] = e.Value.State
+			logP.Infof("the local instance '%s' is %s", e.Path, e.Value.State)
 		}
 	}
 
-	revertOnError := func() {
-		idleState := instance.MonitorStateIdle
+	resetLocalExpectOnError := func(l ...naming.Path) {
+		localExpectNone := instance.MonitorLocalExpectNone
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 
-		revertState := func(p naming.Path, currentState instance.MonitorState) {
-			log.Infof("revert %s state %s to idle", p, currentState)
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, State: &idleState}
+		for _, p := range l {
+			mon := instance.MonitorData.GetByPathAndNode(p, a.localhost)
+			if mon == nil {
+				continue
+			}
+			if mon.LocalExpect != instance.MonitorLocalExpectShutdown {
+				continue
+			}
+			value := instance.MonitorUpdate{CandidateOrchestrationID: orchestrationID, LocalExpect: &localExpectNone}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
+			naming.LogWithPath(log, p).Warnf("revert %s local expect %s to %s", p, mon.LocalExpect, localExpectNone)
 			a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 			if err := setImonErr.Receive(); err != nil {
-				log.Warnf("can't revert %s state %s to idle: %s", p, currentState, err)
-			}
-			cancel()
-		}
-
-		for p := range toWait {
-			currentState := instance.MonitorData.GetByPathAndNode(p, a.localhost).State
-			if !currentState.Is(instance.MonitorStateIdle, instance.MonitorStateShutdownProgress) {
-				revertState(p, currentState)
+				log.Warnf("can't revert %s local expect %s to %s: %s", p, mon.LocalExpect, localExpectNone, err)
 			}
 		}
 	}
 
 	log.Infof("prepare objects to accept local expect shutdown")
 	for p, state := range getMonitorStates() {
-		if state.Is(instance.MonitorStateIdle) {
-			logP := naming.LogWithPath(log, p)
-			toWait[p] = instance.MonitorData.GetByPathAndNode(p, a.localhost).State
+		logP := naming.LogWithPath(log, p)
+		if instance.ConfigData.GetByPathAndNode(p, a.localhost).IsDisabled {
+			logP.Debugf("shutdown skipped on disabled local instance")
+			continue
+		}
+		// TODO: perhaps here we should shutdown all local instance that are not shutdown ?
+		//       if !state.Is(instance.MonitorStateShutdown)
+		if state.Is(instance.MonitorStateIdle) || state.Is(instance.MonitorStatesFailure...) {
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 
 			ctx, cancel := context.WithTimeout(shutdownCtx, time.Second)
 
+			localExpectShutdown := instance.MonitorLocalExpectShutdown
+			stateIdle := instance.MonitorStateIdle
 			value := instance.MonitorUpdate{
 				CandidateOrchestrationID: orchestrationID,
-				LocalExpect:              &monitorLocalExpectShutdown,
+				LocalExpect:              &localExpectShutdown,
+				State:                    &stateIdle,
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
@@ -166,38 +187,58 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			cancel()
 
 			if err != nil {
-				logP.Errorf("failed: %s refused local expect shutdown: %s", p, err)
+				logP.Errorf("failure: %s refused local expect shutdown: %s", p, err)
 				a.announceNodeState(log, node.MonitorStateShutdownFailure)
-				revertOnError()
-				return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
+				resetLocalExpectOnError()
+				return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failure",
 					"%s refused local expect shutdown: %s", p, err)
+			} else {
+				pathsToResetOnFailure = append(pathsToResetOnFailure, p)
+				shutdownWaiting[p] = struct{}{}
 			}
 		}
 	}
 
-	log.Infof("wait for objects to reach state shutdown")
+	if len(shutdownWaiting) == 0 {
+		log.Infof("no local instances pending shutdown: daemon will stop immediately")
+		a.announceNodeState(log, node.MonitorStateShutdownSuccess)
+		a.Publisher.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
+			pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelOriginAPI)
+		log.Infof("succeed")
+		return JSONProblem(eCtx, http.StatusOK, "no local instances pending shutdown: daemon will stop immediately", "")
+	}
+	log.Infof("waiting for local instances to shut down")
 	for {
 		select {
 		case i := <-sub.C:
 			switch e := i.(type) {
 			case *msgbus.InstanceMonitorUpdated:
 				onInstanceMonitorUpdated(e)
-				if len(toWait) == 0 {
-					log.Infof("all objects have state shutdown")
+				if len(shutdownWaiting) > 0 {
+					// some local instance shut down are still pending
+					continue
+				}
+				if len(shutdownFail) == 0 { // all local instance shut down occurred and no failures.
+					log.Infof("all local instances are in the shutdown state: daemon will stop immediately")
 					a.announceNodeState(log, node.MonitorStateShutdownSuccess)
-					log.Infof("ask daemon do stop")
 					a.Publisher.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelOriginAPI)
 					log.Infof("succeed")
-					return JSONProblem(eCtx, http.StatusOK, "all objects are now shutdown, daemon will stop", "")
+					return JSONProblem(eCtx, http.StatusOK, "all local instances are in the shutdown state: daemon will stop immediately", "")
 				}
+				// all local instance shut down occurred but some has failed to shut down.
+				log.Errorf("failed to shut down local instances: %v", shutdownFail)
+				a.announceNodeState(log, node.MonitorStateShutdownFailure)
+				resetLocalExpectOnError(pathsToResetOnFailure...)
+				return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failure",
+					"cannot stop daemon: failed to shut down local instances: %v", shutdownFail)
 			}
 		case <-shutdownCtx.Done():
-			log.Errorf("failed: %s", shutdownCtx.Err())
+			log.Errorf("failure: %s", shutdownCtx.Err())
 			a.announceNodeState(log, node.MonitorStateShutdownFailure)
-			revertOnError()
-			return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failed",
-				"wait: %s", shutdownCtx.Err())
+			resetLocalExpectOnError(pathsToResetOnFailure...)
+			return JSONProblemf(eCtx, http.StatusInternalServerError, "daemon shutdown failure",
+				"cannot stop daemon: waiting for local instances to shut down: %s", shutdownCtx.Err())
 		}
 	}
 }
