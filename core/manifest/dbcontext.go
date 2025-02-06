@@ -36,6 +36,11 @@ var (
 		Attr: "ObjectID",
 		Ref:  "object.id",
 	}
+	ContextObjectParents = Context{
+		Key:  "object_parents",
+		Attr: "ObjectParents",
+		Ref:  "object.parents",
+	}
 	ContextDNS = Context{
 		Key:  "dns",
 		Attr: "DNS",

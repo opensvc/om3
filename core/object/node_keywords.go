@@ -1071,6 +1071,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:      []string{"routed_bridge"},
 	},
 	{
+		Candidates: []string{"gre", "ipip", "ip6ip6"},
+		Default:    "ipip",
+		Option:     "tunnel_mode",
+		Section:    "network",
+		Text:       keywords.NewText(fs, "text/kw/node/network.routed_bridge.tunnel_mode"),
+		Types:      []string{"routed_bridge"},
+	},
+	{
 		Option:  "network",
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.network"),

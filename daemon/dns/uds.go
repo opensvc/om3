@@ -288,7 +288,7 @@ func (t *Manager) startUDSListener() error {
 			reqCount uint64
 		)
 		defer conn.Close()
-		t.log.Infof("%d: new connection", id)
+		t.log.Debugf("%d: new connection", id)
 		for {
 			if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
 				t.log.Infof("%d: can't set client read deadline: %s", id, err)
@@ -302,7 +302,7 @@ func (t *Manager) startUDSListener() error {
 				t.log.Debugf("%d: alive", id)
 				continue
 			} else if errors.Is(err, io.EOF) {
-				t.log.Infof("%d: close connection (%s), served %d requests", id, err, reqCount)
+				t.log.Debugf("%d: close connection (%s), served %d requests", id, err, reqCount)
 				return
 			} else if err != nil {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)

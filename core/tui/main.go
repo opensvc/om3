@@ -1601,6 +1601,9 @@ func (t *App) getConfigUpdatedAt() time.Time {
 	path := t.viewPath.String()
 	for _, nodeData := range t.Current.Cluster.Node {
 		if instanceData, ok := nodeData.Instance[path]; ok {
+			if instanceData.Config == nil {
+				continue
+			}
 			return instanceData.Config.UpdatedAt
 		}
 	}

@@ -37,6 +37,17 @@ func (t Relation) Path() (Path, error) {
 	return ParsePath(s)
 }
 
+func (relations Relations) HasPath(path Path) (bool, error) {
+	for _, relation := range relations {
+		if p, err := relation.Path(); err != nil {
+			return false, err
+		} else if p == path {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (relations Relations) Strings() []string {
 	l := make([]string, len(relations))
 	for i, relation := range relations {

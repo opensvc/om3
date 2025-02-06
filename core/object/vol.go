@@ -32,8 +32,9 @@ type (
 		Actor
 		Head() string
 		Device() *device.T
-		HoldersExcept(ctx context.Context, p naming.Path) naming.Paths
+		HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error)
 		Access() (volaccess.T, error)
+		Children() (naming.Relations, error)
 	}
 )
 
@@ -122,14 +123,19 @@ func (t *vol) Device() *device.T {
 	return nil
 }
 
-func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) naming.Paths {
+func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error) {
 	l := make(naming.Paths, 0)
 	type volNamer interface {
 		VolName() string
 	}
-	for _, rel := range t.Children() {
+	children, err := t.Children()
+	if err != nil {
+		return l, err
+	}
+	for _, rel := range children {
 		p, node, err := rel.Split()
 		if err != nil {
+			t.log.Errorf("%s", err)
 			continue
 		}
 		if node != "" && node != hostname.Hostname() {
@@ -153,24 +159,24 @@ func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) naming.Paths {
 					continue
 				}
 			}
-			switch r.Status(ctx) {
-			case status.Up, status.Warn:
-				l = append(l, p)
+			if resourceStatus := r.Status(ctx); resourceStatus.Is(status.Down, status.StandbyDown, status.NotApplicable, status.Undef) {
+				continue
 			}
+			l = append(l, p)
 		}
 
 	}
-	return l
+	return l, nil
 }
 
-func (t *vol) Children() naming.Relations {
+func (t *vol) Children() (naming.Relations, error) {
 	k := key.Parse("children")
 	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
 		t.log.Errorf("%s", err)
-		return naming.Relations{}
+		return naming.Relations{}, err
 	}
-	return naming.ParseRelations(l)
+	return naming.ParseRelations(l), nil
 }
 
 // Access returns the volaccess.Parse result of volume kw 'access'.

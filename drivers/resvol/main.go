@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/opensvc/fcntllock"
@@ -30,6 +31,7 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/pool"
@@ -65,9 +67,10 @@ type (
 		Signal      string       `json:"signal"`
 		VolNodes    []string
 
-		Path     naming.Path
-		Topology topology.T
-		Nodes    []string
+		Path          naming.Path
+		Topology      topology.T
+		Nodes         []string
+		ObjectParents []string
 	}
 )
 
@@ -95,12 +98,27 @@ func New() resource.Driver {
 }
 
 func (t *T) startVolume(ctx context.Context, volume object.Vol) error {
-	return volume.Start(ctx)
+	if volumeStatus, err := t.statusVolume(ctx, volume); err != nil {
+		return err
+	} else if volumeStatus.Avail.Is(status.Up, status.StandbyUpWithUp) {
+		t.Log().Infof("volume %s is already up", volume.Path())
+		return nil
+	}
+	if err := volume.Start(ctx); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func(ctx context.Context) error {
+		return t.stopVolume(ctx, volume, false)
+	})
+	return nil
 }
 
 func (t *T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
 	ctx = actioncontext.WithForce(ctx, force)
-	holders := volume.HoldersExcept(ctx, t.Path)
+	holders, err := volume.HoldersExcept(ctx, t.Path)
+	if err != nil {
+		return err
+	}
 	if len(holders) > 0 {
 		t.Log().Infof("skip volume %s stop: active users: %s", volume.Path(), holders)
 		return nil
@@ -124,9 +142,6 @@ func (t *T) Start(ctx context.Context) error {
 	if err = t.startVolume(ctx, volume); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.stopVolume(ctx, volume, false)
-	})
 	if err = t.startFlag(ctx); err != nil {
 		return err
 	}
@@ -244,6 +259,71 @@ func (t *T) installFlag() error {
 
 func (t *T) removeHolders() error {
 	return t.exposedDevice().RemoveHolders()
+}
+
+func (t *T) unclaim(volume object.Vol) error {
+	volumeChildren, err := volume.Children()
+	if err != nil {
+		return err
+	}
+	if v, err := volumeChildren.HasPath(t.Path); err != nil {
+		return err
+	} else if !v {
+		t.Log().Infof("volume %s is already unclaimed by %s", volume.Path(), t.Path)
+		return nil
+	}
+	t.Log().Infof("unclaim volume %s", volume.Path())
+	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Remove, Value: t.Path.String()})
+}
+
+func (t *T) incompatibleClaims(volumeChildren naming.Relations) []string {
+	volumeChildrenNotInObjectParents := make(map[string]any)
+	for _, volumeChild := range volumeChildren {
+		volumeChildPath, err := volumeChild.Path()
+		if err != nil {
+			continue
+		}
+		rel1 := fmt.Sprintf("%s@%s", volumeChildPath, hostname.Hostname())
+		rel2 := fmt.Sprintf("%s@%s", volumeChildPath.Name, hostname.Hostname())
+		if !slices.Contains(t.ObjectParents, rel1) && !slices.Contains(t.ObjectParents, rel2) {
+			volumeChildrenNotInObjectParents[volumeChildPath.String()] = nil
+		}
+	}
+	l := make([]string, len(volumeChildrenNotInObjectParents))
+	i := 0
+	for k := range volumeChildrenNotInObjectParents {
+		l[i] = k
+		i++
+	}
+	return l
+}
+
+func (t *T) claim(volume object.Vol) error {
+	volumeChildren, err := volume.Children()
+	if err != nil {
+		return err
+	}
+	if t.Shared {
+		if v, err := volumeChildren.HasPath(t.Path); err != nil {
+			return err
+		} else if v {
+			t.Log().Infof("shared volume %s is already claimed by %s", volume.Path(), t.Path)
+			return nil
+		}
+		if l := t.incompatibleClaims(volumeChildren); len(l) > 0 {
+			return fmt.Errorf("shared %s children %v must be local parents of %s to preserve placement affinity", volume.Path(), l, t.Path)
+		}
+		t.Log().Infof("shared volume %s current claims are compatible: %v", volumeChildren)
+	} else {
+		if v, err := volumeChildren.HasPath(t.Path); err != nil {
+			return err
+		} else if v {
+			t.Log().Infof("volume %s is already claimed by %s", volume.Path(), t.Path)
+			return nil
+		}
+	}
+	t.Log().Infof("claim volume %s", volume.Path())
+	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Merge, Value: t.Path.String()})
 }
 
 func (t *T) access() volaccess.T {
@@ -396,39 +476,6 @@ func (t *T) ValidateNodesAndName() error {
 	return nil
 }
 
-func (t *T) ProvisionAsFollower(ctx context.Context) error {
-	volume, err := t.Volume()
-	if err != nil {
-		return err
-	}
-	if !volume.Path().Exists() {
-		if t.IsShared() {
-			return fmt.Errorf("shared volume %s does not exists", volume.Path())
-		}
-		if volume, err = t.createVolume(volume); err != nil {
-			return err
-		}
-		// the volume resources cache is now wrong. Allocate a new one.
-		volume, err = t.Volume()
-		if err != nil {
-			return err
-		}
-	}
-	return volume.Provision(ctx)
-}
-
-func (t *T) UnprovisionAsFollower(ctx context.Context) error {
-	volume, err := t.Volume()
-	if err != nil {
-		return err
-	}
-	if !volume.Path().Exists() {
-		t.Log().Infof("volume %s is already unprovisioned", volume.Path())
-		return nil
-	}
-	return nil
-}
-
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
@@ -446,6 +493,15 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	} else {
 		t.Log().Infof("volume %s is already created", volume.Path())
 	}
+	if err := t.claim(volume); err != nil {
+		return err
+	}
+	if volumeStatus, err := volume.Status(ctx); err != nil {
+		return err
+	} else if volumeStatus.Provisioned == provisioned.True {
+		t.Log().Infof("volume %s is already provisioned", volume.Path())
+		return nil
+	}
 	return volume.Provision(ctx)
 }
 
@@ -457,6 +513,9 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if !volume.Path().Exists() {
 		t.Log().Infof("volume %s is already unprovisioned", volume.Path())
 		return nil
+	}
+	if err := t.unclaim(volume); err != nil {
+		return err
 	}
 	// don't unprovision vol objects (independent lifecycle)
 	return nil

@@ -29,6 +29,7 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(
 		manifest.ContextNodes,
 		manifest.ContextObjectPath,
+		manifest.ContextObjectParents,
 		manifest.ContextTopology,
 		keywords.Keyword{
 			Attr:     "Name",
