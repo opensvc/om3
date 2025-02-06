@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/util/plog"
@@ -53,7 +54,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) run(ctx context.Context) {
-	gens := make(map[string]map[string]uint64)
+	gens := make(map[string]node.Gen)
 	heartbeats := make([]daemonsubsystem.HeartbeatStream, 0)
 	log := plog.NewDefaultLogger().WithPrefix("daemon: hbcache: ").Attr("pkg", "daemon/hbcache")
 	log.Debugf("started")

@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	Gen = map[string]uint64
+	Gen map[string]uint64
 
 	Dataer interface {
 		Config | Monitor | san.Paths | Stats | Status | Gen
@@ -68,9 +68,8 @@ func (c *Data[T]) Unset(nodename string) {
 // GetByNode return the stored value for nodename or nil if not found
 func (c *Data[T]) GetByNode(nodename string) *T {
 	c.RLock()
-	v := c.data[nodename]
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[nodename])
 }
 
 // GetAll returns all stored elements as list of DataElement[T]
@@ -80,7 +79,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	for nodename, v := range c.data {
 		result = append(result, DataElement[T]{
 			Node:  nodename,
-			Value: v,
+			Value: deepCopy(v),
 		})
 	}
 	c.RUnlock()
@@ -104,6 +103,25 @@ func InitData() {
 	StatusData = NewData[Status]()
 	StatsData = NewData[Stats]()
 	GenData = NewData[Gen]()
+}
+
+func (t *Gen) DeepCopy() *Gen {
+	r := make(Gen)
+	for k, v := range *t {
+		r[k] = v
+	}
+	return &r
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

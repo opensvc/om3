@@ -54,7 +54,7 @@ func newData() *data {
 	initialMsgType := "undef"
 	return &data{
 		gen:                nodeData.Status.Gen[localNode],
-		hbGens:             map[string]map[string]uint64{localNode: {localNode: 0}},
+		hbGens:             map[string]node.Gen{localNode: {localNode: 0}},
 		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 		localNode:          localNode,
@@ -91,7 +91,7 @@ func newNodeData(localNode string) node.Node {
 			// TODO: Compat fix
 			Compat:          12,
 			FrozenAt:        frozen,
-			Gen:             map[string]uint64{localNode: 1},
+			Gen:             node.Gen{localNode: 1},
 			Labels:          node.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,

@@ -425,7 +425,7 @@ type (
 		JoinedNodes []string `json:"joined_nodes" yaml:"joined_nodes"`
 
 		// InstalledGens are the current installed node gens
-		InstalledGens map[string]uint64 `json:"installed_gens" yaml:"installed_gens"`
+		InstalledGens node.Gen `json:"installed_gens" yaml:"installed_gens"`
 	}
 
 	HbStale struct {
@@ -685,7 +685,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string
 		// Value is Node.Status.Gen
-		Value map[string]uint64 `json:"gens" yaml:"gens"`
+		Value node.Gen `json:"gens" yaml:"gens"`
 	}
 
 	NodeStatusLabelsUpdated struct {

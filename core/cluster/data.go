@@ -41,12 +41,23 @@ func (c *DataT[T]) Get() *T {
 	if c.data == nil {
 		panic("Get called before initial Set")
 	}
-	return c.data
+	return deepCopy(c.data)
 }
 
 // InitData reset package objects data, it can be used for tests.
 func InitData() {
 	ConfigData = NewData[Config]()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

@@ -3,6 +3,7 @@ package daemondata
 import (
 	"context"
 
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/util/xmap"
 )
 
@@ -11,7 +12,7 @@ type (
 		Type        string
 		Nodes       []string
 		JoinedNodes []string
-		Gens        map[string]uint64
+		Gens        node.Gen
 	}
 	opGetHbMessageType struct {
 		errC

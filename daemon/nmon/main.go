@@ -645,7 +645,7 @@ func (t *Manager) onPeerNodeStatusLabelsUpdated(m *msgbus.NodeStatusLabelsUpdate
 // localhost gens management. The value stored here is lazy updated for debug.
 // We must not publish a msgbus.NodeStatusUpdated to avoid ping pong nmon<->data
 func (t *Manager) onNodeStatusGenUpdates(m *msgbus.NodeStatusGenUpdates) {
-	gens := make(map[string]uint64)
+	gens := make(node.Gen)
 	for k, v := range m.Value {
 		gens[k] = v
 	}

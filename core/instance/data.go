@@ -24,10 +24,6 @@ type (
 		pathToNode map[naming.Path]map[string]struct{}
 		data       map[string]*T
 	}
-
-	deepcopyer[T Dataer] interface {
-		DeepCopy() *T
-	}
 )
 
 var (
@@ -85,13 +81,8 @@ func (c *Data[T]) DropNode(nodename string) {
 // GetByPathAndNode returns an instance data or nil if data is not found
 func (c *Data[T]) GetByPathAndNode(p naming.Path, nodename string) *T {
 	c.RLock()
-	v := c.data[InstanceString(p, nodename)]
-	var i any = v
-	if v != nil {
-		v = i.(deepcopyer[T]).DeepCopy()
-	}
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[InstanceString(p, nodename)])
 }
 
 // GetByNode returns a map (indexed by path) of instance data for nodename
@@ -99,8 +90,7 @@ func (c *Data[T]) GetByNode(nodename string) map[naming.Path]*T {
 	c.RLock()
 	result := make(map[naming.Path]*T)
 	for p := range c.nodeToPath[nodename] {
-		var i any = c.data[InstanceString(p, nodename)]
-		result[p] = i.(deepcopyer[T]).DeepCopy()
+		result[p] = deepCopy(c.data[InstanceString(p, nodename)])
 	}
 	c.RUnlock()
 	return result
@@ -111,8 +101,7 @@ func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	c.RLock()
 	result := make(map[string]*T)
 	for nodename := range c.pathToNode[p] {
-		var i any = c.data[InstanceString(p, nodename)]
-		result[nodename] = i.(deepcopyer[T]).DeepCopy()
+		result[nodename] = deepCopy(c.data[InstanceString(p, nodename)])
 	}
 	c.RUnlock()
 	return result
@@ -124,11 +113,10 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	result := make([]DataElement[T], 0)
 	for nodename, v := range c.nodeToPath {
 		for p := range v {
-			var i any = c.data[InstanceString(p, nodename)]
 			result = append(result, DataElement[T]{
 				Path:  p,
 				Node:  nodename,
-				Value: i.(deepcopyer[T]).DeepCopy(),
+				Value: deepCopy(c.data[InstanceString(p, nodename)]),
 			})
 		}
 	}
@@ -155,6 +143,17 @@ func InitData() {
 	StatusData = NewData[Status]()
 	MonitorData = NewData[Monitor]()
 	ConfigData = NewData[Config]()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {
