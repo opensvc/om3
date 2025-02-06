@@ -13,7 +13,7 @@ type (
 	Msg struct {
 		Kind      string                   `json:"kind"`
 		Compat    uint64                   `json:"compat"`
-		Gen       map[string]uint64        `json:"gen"`
+		Gen       node.Gen                 `json:"gen"`
 		UpdatedAt time.Time                `json:"updated_at"`
 		Ping      node.Monitor             `json:"monitor,omitempty"`
 		Events    map[string][]event.Event `json:"events,omitempty"`

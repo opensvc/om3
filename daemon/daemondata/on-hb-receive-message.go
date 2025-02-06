@@ -4,6 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/node"
 )
 
 func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
@@ -52,7 +53,7 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 	}
 }
 
-func (d *data) setFromPeerMsg(peer, msgType string, length int, gen gens) {
+func (d *data) setFromPeerMsg(peer, msgType string, length int, gen node.Gen) {
 	d.setHbMsgType(peer, msgType)
 	d.setHbMsgPatchLength(peer, length)
 	d.hbGens[peer] = gen

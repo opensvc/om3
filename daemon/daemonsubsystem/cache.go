@@ -77,9 +77,8 @@ func (c *CacheData[T]) Unset(nodename string) {
 // Get return the stored value for nodename or nil if not found
 func (c *CacheData[T]) Get(nodename string) *T {
 	c.RLock()
-	v := c.data[nodename]
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[nodename])
 }
 
 // GetAll returns all stored elements as list of CacheElement[T]
@@ -89,7 +88,7 @@ func (c *CacheData[T]) GetAll() []CacheElement[T] {
 	for nodename, v := range c.data {
 		result = append(result, CacheElement[T]{
 			Node:  nodename,
-			Value: v,
+			Value: deepCopy(v),
 		})
 	}
 	c.RUnlock()
@@ -105,6 +104,17 @@ func InitData() {
 	DataListener = NewData[Listener]()
 	DataRunnerImon = NewData[RunnerImon]()
 	DataScheduler = NewData[Scheduler]()
+}
+
+func deepCopy[T Cacher](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Cacher] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

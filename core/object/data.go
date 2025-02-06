@@ -48,9 +48,8 @@ func (c *Data[T]) Unset(p naming.Path) {
 
 func (c *Data[T]) GetByPath(p naming.Path) *T {
 	c.RLock()
-	v := c.data[p]
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[p])
 }
 
 func (c *Data[T]) GetAll() []DataElement[T] {
@@ -59,7 +58,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	for p, v := range c.data {
 		l = append(l, DataElement[T]{
 			Path:  p,
-			Value: v,
+			Value: deepCopy(v),
 		})
 	}
 	c.RUnlock()
@@ -83,4 +82,15 @@ func InitData() {
 
 func init() {
 	InitData()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }

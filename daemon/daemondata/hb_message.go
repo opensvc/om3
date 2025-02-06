@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/node"
 )
 
 type (
@@ -52,7 +53,7 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 	if msg, err := d.getHbMessage(); err != nil {
 		return err
 	} else {
-		msgLocalGen := make(gens)
+		msgLocalGen := make(node.Gen)
 		for n, gen := range msg.Gen {
 			msgLocalGen[n] = gen
 		}
@@ -128,8 +129,8 @@ func (p eventQueue) deepCopy() (result eventQueue, err error) {
 	return
 }
 
-func (d *data) deepCopyLocalGens() gens {
-	localGens := make(gens)
+func (d *data) deepCopyLocalGens() node.Gen {
+	localGens := make(node.Gen)
 	for n, gen := range d.hbGens[d.localNode] {
 		localGens[n] = gen
 	}

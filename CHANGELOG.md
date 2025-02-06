@@ -429,6 +429,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     
     Now object instance <foo@localhost> orchestration only waits for <foo@localhost> boot action completed. Each instance has a last boot id.
 
+* The daemon now resets the local_expect=started instance monitor state when a sysadmin stops a resource, preventing automatic resource restarts.
+
+    In version 2.1, a partially stopped instance caused by executing om foo stop --rid xx could inadvertently be restarted by the resource monitoring subsystem.
+
 ### sec
 
 * Add "o[mx] rename --key old --to new" commands

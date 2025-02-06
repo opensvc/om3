@@ -160,7 +160,7 @@ func TestDaemonData(t *testing.T) {
 	t.Run("on receive hb messages...", func(t *testing.T) {
 		t.Run("on receive hb message full-node2-t1.json", func(t *testing.T) {
 			full := LoadFull(t, "full-node2-t1.json")
-			fullGens := make(map[string]uint64)
+			fullGens := make(node.Gen)
 			for n, gen := range full.Status.Gen {
 				fullGens[n] = gen
 			}
@@ -194,7 +194,7 @@ func TestDaemonData(t *testing.T) {
 		t.Run("on receive hb message from non cluster member", func(t *testing.T) {
 			peerNotMemmber := "peer-not-member"
 			full := LoadFull(t, "full-node2-t1.json")
-			fullGens := make(map[string]uint64)
+			fullGens := make(node.Gen)
 			for n, gen := range full.Status.Gen {
 				fullGens[n] = gen
 			}

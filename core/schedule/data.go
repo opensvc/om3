@@ -48,9 +48,9 @@ func (c *Data[T]) Unset(p naming.Path) {
 
 func (c *Data[T]) GetByPath(p naming.Path) *T {
 	c.RLock()
+	defer c.RUnlock()
 	v := c.data[p]
-	c.RUnlock()
-	return v
+	return deepCopy(v)
 }
 
 func (c *Data[T]) GetAll() []DataElement[T] {
@@ -59,7 +59,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	for p, v := range c.data {
 		l = append(l, DataElement[T]{
 			Path:  p,
-			Value: v,
+			Value: deepCopy(v),
 		})
 	}
 	c.RUnlock()
@@ -79,6 +79,17 @@ func (c *Data[T]) GetPaths() naming.Paths {
 // InitData reset package objects data, it can be used for tests.
 func InitData() {
 	TableData = NewData[Table]()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

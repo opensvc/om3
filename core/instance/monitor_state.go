@@ -59,6 +59,17 @@ const (
 var (
 	MonitorStateToString map[MonitorState]string
 	StringToMonitorState map[string]MonitorState
+
+	MonitorStatesFailure = []MonitorState{
+		MonitorStateDeleteFailure,
+		MonitorStateFreezeFailure,
+		MonitorStateProvisionFailure,
+		MonitorStateShutdownFailure,
+		MonitorStateStartFailure,
+		MonitorStateStopFailure,
+		MonitorStateUnfreezeFailure,
+		MonitorStateUnprovisionFailure,
+	}
 )
 
 func init() {

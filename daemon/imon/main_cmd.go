@@ -435,14 +435,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			err := fmt.Errorf("%w %s", instance.ErrInvalidState, *c.Value.State)
 			return err
 		}
-		if t.state.State == *c.Value.State {
-			err := fmt.Errorf("%w %s", instance.ErrSameState, *c.Value.State)
-			t.log.Infof("set instance monitor: %s", err)
-			return err
+		if t.state.State != *c.Value.State {
+			t.log.Infof("set instance monitor state %s -> %s", t.state.State, *c.Value.State)
+			t.change = true
+			t.state.State = *c.Value.State
 		}
-		t.log.Infof("set instance monitor state %s -> %s", t.state.State, *c.Value.State)
-		t.change = true
-		t.state.State = *c.Value.State
 		return nil
 	}
 
@@ -559,12 +556,10 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return err
 		}
 		target := *c.Value.LocalExpect
-		if t.state.LocalExpect == target {
-			err := fmt.Errorf("%w %s", instance.ErrSameLocalExpect, *c.Value.LocalExpect)
-			t.log.Infof("set instance monitor: %s", err)
-			return err
+		if t.state.LocalExpect != target {
+			t.setLocalExpect(target, "set instance monitor: update local expect to %s", target)
+			t.change = true
 		}
-		t.setLocalExpect(target, "set instance monitor: update local expect to %s", target)
 		return nil
 	}
 

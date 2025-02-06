@@ -16,7 +16,7 @@ type (
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
 		Compat          uint64                      `json:"compat"`
 		FrozenAt        time.Time                   `json:"frozen_at"`
-		Gen             map[string]uint64           `json:"gen"`
+		Gen             Gen                         `json:"gen"`
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		IsLeader        bool                        `json:"is_leader"`
@@ -68,7 +68,7 @@ func (t *Status) DeepCopy() *Status {
 	}
 	result.Arbitrators = newArbitrator
 
-	newGen := make(map[string]uint64)
+	newGen := make(Gen)
 	for n, v := range t.Gen {
 		newGen[n] = v
 	}

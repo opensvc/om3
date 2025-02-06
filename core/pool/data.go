@@ -43,9 +43,8 @@ func (c *Data[T]) Unset(name string) {
 // Get returns a pool data or nil if data is not found
 func (c *Data[T]) Get(name string) *T {
 	c.RLock()
-	v := c.data[name]
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[name])
 }
 
 // GetAll returns all instance data as a list of DataElements
@@ -55,7 +54,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	for name, v := range c.data {
 		result = append(result, DataElement[T]{
 			Name:  name,
-			Value: v,
+			Value: deepCopy(v),
 		})
 	}
 	c.RUnlock()
@@ -71,6 +70,17 @@ func NewData[T Dataer]() *Data[T] {
 // InitData reset package instances data, it can be used for tests.
 func InitData() {
 	StatusData = NewData[Status]()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

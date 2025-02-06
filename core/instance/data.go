@@ -81,9 +81,8 @@ func (c *Data[T]) DropNode(nodename string) {
 // GetByPathAndNode returns an instance data or nil if data is not found
 func (c *Data[T]) GetByPathAndNode(p naming.Path, nodename string) *T {
 	c.RLock()
-	v := c.data[InstanceString(p, nodename)]
-	c.RUnlock()
-	return v
+	defer c.RUnlock()
+	return deepCopy(c.data[InstanceString(p, nodename)])
 }
 
 // GetByNode returns a map (indexed by path) of instance data for nodename
@@ -91,7 +90,7 @@ func (c *Data[T]) GetByNode(nodename string) map[naming.Path]*T {
 	c.RLock()
 	result := make(map[naming.Path]*T)
 	for p := range c.nodeToPath[nodename] {
-		result[p] = c.data[InstanceString(p, nodename)]
+		result[p] = deepCopy(c.data[InstanceString(p, nodename)])
 	}
 	c.RUnlock()
 	return result
@@ -102,7 +101,7 @@ func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	c.RLock()
 	result := make(map[string]*T)
 	for nodename := range c.pathToNode[p] {
-		result[nodename] = c.data[InstanceString(p, nodename)]
+		result[nodename] = deepCopy(c.data[InstanceString(p, nodename)])
 	}
 	c.RUnlock()
 	return result
@@ -117,7 +116,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 			result = append(result, DataElement[T]{
 				Path:  p,
 				Node:  nodename,
-				Value: c.data[p.String()+"@"+nodename],
+				Value: deepCopy(c.data[InstanceString(p, nodename)]),
 			})
 		}
 	}
@@ -144,6 +143,17 @@ func InitData() {
 	StatusData = NewData[Status]()
 	MonitorData = NewData[Monitor]()
 	ConfigData = NewData[Config]()
+}
+
+func deepCopy[T Dataer](t *T) *T {
+	if t == nil {
+		return t
+	}
+	type deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
+	var i any = t
+	return i.(deepCopyer[T]).DeepCopy()
 }
 
 func init() {

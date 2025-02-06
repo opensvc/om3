@@ -476,7 +476,7 @@ func (t StatusList) LoadTreeNode(head *tree.Node) {
 }
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
-func (t Status) LoadTreeNode(head *tree.Node) {
+func (t *Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Color.Primary)
 	head.AddColumn().AddText(t.Type)
 	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
@@ -548,11 +548,11 @@ func HasCapability(p Pooler, s string) bool {
 
 }
 
-func (t Status) HasAccess(acs volaccess.T) bool {
+func (t *Status) HasAccess(acs volaccess.T) bool {
 	return t.HasCapability(acs.String())
 }
 
-func (t Status) HasCapability(s string) bool {
+func (t *Status) HasCapability(s string) bool {
 	for _, capa := range t.Capabilities {
 		if capa == s {
 			return true
@@ -560,6 +560,21 @@ func (t Status) HasCapability(s string) bool {
 	}
 	return false
 
+}
+
+func (t *Status) DeepCopy() *Status {
+	return &Status{
+		Name:        t.Name,
+		Type:        t.Type,
+		Head:        t.Head,
+		VolumeCount: t.VolumeCount,
+		Capabilities: append([]string{}, t.Capabilities...),
+		Usage: Usage{
+			Size:  t.Usage.Size,
+			Used:  t.Usage.Used,
+		},
+		Errors: append([]string{}, t.Errors...),
+	}
 }
 
 func GetMappings(p ArrayPooler, nodes []string, pathType string) (array.Mappings, error) {

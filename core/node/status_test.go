@@ -22,7 +22,7 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 		},
 		Compat:   9,
 		FrozenAt: t1,
-		Gen: map[string]uint64{
+		Gen: Gen{
 			"node1": uint64(19),
 			"node2": uint64(10),
 		},

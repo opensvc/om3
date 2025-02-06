@@ -53,7 +53,7 @@ type (
 		sub       *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
-		msgLocalGen map[string]uint64
+		msgLocalGen node.Gen
 		hbSendQ     chan<- hbtype.Msg
 
 		// hbMsgPatchLength holds the hb mode of cluster nodes:
@@ -67,13 +67,13 @@ type (
 		// - other nodes associated value is changed during onReceiveHbMsg
 		hbMsgType map[string]string
 
-		// hbGens holds the cluster nodes gens
+		// hbGens holds the cluster nodes node.Gen
 		//
 		// values are used for the choice of next message type choice
-		// - map[peer]map[string]uint64 it set from the received gens of peer
-		// - map[localnode]map[string]uint64 it from local gen after successful
+		// - map[peer]node.Gen it set from the received node.Gen of peer
+		// - map[localnode]node.Gen it from local gen after successful
 		//   apply full, apply patch, or during commitPendingOps
-		hbGens map[string]map[string]uint64
+		hbGens map[string]node.Gen
 
 		// hbPatchMsgUpdated track last applied kind patch hb message
 		// It is used to drop outdated patch messages
@@ -86,7 +86,6 @@ type (
 		labelLocalhost pubsub.Label
 	}
 
-	gens       map[string]uint64
 	eventQueue map[string][]event.Event
 
 	// remoteInfo struct holds information about remote node used to publish diff on full message received
@@ -236,7 +235,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 	subHbRefreshTicker := time.NewTicker(subHbRefreshAdaptiveInterval)
 
 	defer subHbRefreshTicker.Stop()
-	d.msgLocalGen = make(map[string]uint64)
+	d.msgLocalGen = make(node.Gen)
 
 	countRoutineTicker := time.NewTicker(countRoutineInterval)
 	defer countRoutineTicker.Stop()
@@ -282,7 +281,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				if isCtxDone() {
 					return
 				}
-				gens := make(map[string]uint64)
+				gens := make(node.Gen)
 				for s, v := range *lgens {
 					gens[s] = v
 				}
@@ -369,7 +368,7 @@ func (c errC) SetError(err error) {
 	c <- err
 }
 
-func gensEqual(a, b gens) bool {
+func gensEqual(a, b node.Gen) bool {
 	if len(a) != len(b) {
 		return false
 	} else {

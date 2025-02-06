@@ -557,6 +557,11 @@ func updateLastBootID(p naming.Path, s string) error {
 }
 
 func (t *Manager) bootAble() bool {
+	if t.instConfig.IsDisabled {
+		// ensures disabled instances are not erroneously booted, aligning
+		// behavior with the intended configuration.
+		return false
+	}
 	switch t.path.Kind {
 	case naming.KindSvc:
 		return true
