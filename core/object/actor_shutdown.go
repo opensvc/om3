@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
@@ -23,10 +24,10 @@ func (t *actor) Shutdown(ctx context.Context) error {
 }
 
 func (t *actor) lockedShutdown(ctx context.Context) error {
-	if err := t.masterShutdown(ctx); err != nil {
+	if err := t.masterShutdown(ctx); err != nil && !errors.Is(err, ErrDisabled) {
 		return err
 	}
-	if err := t.slaveShutdown(ctx); err != nil {
+	if err := t.slaveShutdown(ctx); err != nil && !errors.Is(err, ErrDisabled) {
 		return err
 	}
 	return nil
