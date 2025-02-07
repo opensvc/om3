@@ -1008,8 +1008,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 	)
 	filters = []string{
 		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
-		fmt.Sprintf("ExecFailed,path=%s,requester_sid=%s", p, requesterSid),
-		fmt.Sprintf("ExecSuccess,path=%s,requester_sid=%s", p, requesterSid),
+		fmt.Sprintf("ExecFailed,path=%s,.requester_session_id=%s", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,.requester_session_id=%s", p, requesterSid),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {
