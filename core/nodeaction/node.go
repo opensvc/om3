@@ -472,8 +472,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 	)
 	filters = []string{
 		fmt.Sprintf("NodeMonitorDeleted"),
-		fmt.Sprintf("ExecFailed,requester_sid=%s", requesterSid),
-		fmt.Sprintf("ExecSuccess,requester_sid=%s", requesterSid),
+		fmt.Sprintf("ExecFailed,.requester_session_id=%s", requesterSid),
+		fmt.Sprintf("ExecSuccess,.requester_session_id=%s", requesterSid),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {

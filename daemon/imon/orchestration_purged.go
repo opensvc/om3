@@ -21,6 +21,8 @@ func (t *Manager) orchestratePurged() {
 		t.purgedFromUnprovisioned()
 	case instance.MonitorStateWaitNonLeader:
 		t.purgedFromWaitNonLeader()
+	case instance.MonitorStatePurgeFailed:
+		t.done()
 	case instance.MonitorStateUnprovisionProgress,
 		instance.MonitorStateDeleteProgress,
 		instance.MonitorStateRunning,
@@ -70,7 +72,7 @@ func (t *Manager) purgedFromUnprovisioned() {
 
 func (t *Manager) purgedFromIdleUp() {
 	t.disableMonitor("orchestrate purged stopping")
-	t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
+	t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStatePurgeFailed)
 }
 
 func (t *Manager) purgedFromIdleProvisioned() {

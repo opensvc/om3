@@ -43,6 +43,9 @@ func (data *ClusterData) instanceConfigUpdated(labels pubsub.Labels) ([]any, err
 			continue
 		}
 		for instancePath, instanceData := range nodeData.Instance {
+			if instanceData.Config == nil {
+				continue
+			}
 			if path != "" && path != instancePath {
 				continue
 			}

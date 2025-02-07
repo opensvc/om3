@@ -929,11 +929,13 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 		err      error
 		evReader event.ReadCloser
 	)
+	// TODO: make a choice, wait for ObjectOrchestrationEnd in not enought
+	// We have to also verify final status to decide if it is a success or not
 	switch expectation {
 	case instance.MonitorGlobalExpectPurged.String():
-		filters = []string{"ObjectStatusDeleted,path=" + p.String()}
+		filters = []string{"ObjectStatusDeleted,path=" + p.String(), "ObjectOrchestrationEnd,path=" + p.String()}
 	default:
-		filters = []string{"InstanceMonitorUpdated,path=" + p.String()}
+		filters = []string{"ObjectOrchestrationEnd,path=" + p.String()}
 	}
 	filters = append(filters, "SetInstanceMonitorRefused,path="+p.String())
 	getEvents := c.NewGetEvents().SetFilters(filters)
@@ -985,9 +987,9 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 				err = fmt.Errorf("%s: can't wait expectation %s, got SetInstanceMonitorRefused", p, expectation)
 				log.Debug().Msgf("%s", err)
 				return
-			case *msgbus.InstanceMonitorUpdated:
-				if m.Value.GlobalExpect == instance.MonitorGlobalExpectNone {
-					log.Debug().Msgf("%s: reached expectation %s (global expect is %s)", p, expectation, m.Value.GlobalExpect)
+			case *msgbus.ObjectOrchestrationEnd:
+				if instance.MonitorGlobalExpectValues[t.Target] == m.GlobalExpect {
+					log.Debug().Msgf("%s: reached expectation %s (global expect was %s id: %s)", p, expectation, m.GlobalExpect, m.ID)
 					return
 				}
 			case *msgbus.ObjectStatusDeleted:
@@ -1008,8 +1010,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 	)
 	filters = []string{
 		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
-		fmt.Sprintf("ExecFailed,path=%s,requester_sid=%s", p, requesterSid),
-		fmt.Sprintf("ExecSuccess,path=%s,requester_sid=%s", p, requesterSid),
+		fmt.Sprintf("ExecFailed,path=%s,.requester_session_id=%s", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,.requester_session_id=%s", p, requesterSid),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {

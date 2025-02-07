@@ -31,7 +31,7 @@ func (t *Manager) freezeStop() {
 	case instance.MonitorStateStopProgress:
 		// avoid multiple concurrent stop execs
 	case instance.MonitorStateStopFailure:
-		// avoid a retry-loop
+		t.done()
 	case instance.MonitorStateStartFailure:
 		t.stoppedFromFailed()
 	case instance.MonitorStateWaitChildren:
