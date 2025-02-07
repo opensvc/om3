@@ -929,9 +929,11 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 		err      error
 		evReader event.ReadCloser
 	)
+	// TODO: make a choice, wait for ObjectOrchestrationEnd in not enought
+	// We have to also verify final status to decide if it is a success or not
 	switch expectation {
 	case instance.MonitorGlobalExpectPurged.String():
-		filters = []string{"ObjectStatusDeleted,path=" + p.String()}
+		filters = []string{"ObjectStatusDeleted,path=" + p.String(), "ObjectOrchestrationEnd,path=" + p.String()}
 	default:
 		filters = []string{"ObjectOrchestrationEnd,path=" + p.String()}
 	}
