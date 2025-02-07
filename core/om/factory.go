@@ -1633,7 +1633,10 @@ func newCmdNodeSSHTrust() *cobra.Command {
 	var options commands.CmdNodeSSHTrust
 	cmd := &cobra.Command{
 		Use:   "trust",
-		Short: "ssh-trust peer nodes",
+		Short: "ssh-trust node peers",
+		Long: "Configure the nodes specified by the --node flag to allow SSH communication from their peers." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1645,19 +1648,10 @@ func newCmdNodeSSHTrust() *cobra.Command {
 }
 
 func newCmdNodeUpdateSSHKeys() *cobra.Command {
-	var options commands.CmdNodeSSHTrust
+	cmd := newCmdNodeSSHTrust()
+	cmd.Use = "keys"
 	program := os.Args[0]
-	cmd := &cobra.Command{
-		Use:        "keys",
-		Short:      "ssh-trust peer nodes",
-		Deprecated: fmt.Sprintf("use the \"%s node ssh trust\" or \"%s cluster ssh trust\" command instead.", program, program),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagNodeSelector(flags, &options.NodeSelector)
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	cmd.Deprecated = fmt.Sprintf("use the \"%s node ssh trust\" or \"%s cluster ssh trust\" command instead.", program, program)
 	return cmd
 }
 
@@ -1665,7 +1659,10 @@ func newCmdClusterSSHTrust() *cobra.Command {
 	var options commands.CmdClusterSSHTrust
 	cmd := &cobra.Command{
 		Use:   "trust",
-		Short: "setup the ssh access trust mesh",
+		Short: "ssh-trust all the node mesh",
+		Long: "Configure all nodes to allow SSH communication from their peers." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
