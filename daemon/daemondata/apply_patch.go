@@ -199,6 +199,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	// object...
 	case *msgbus.ObjectCreated:
 		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.ObjectOrchestrationEnd:
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.ObjectOrchestrationRefused:
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
 		d.publisher.Pub(c, labelFromPeer)
 	default:

@@ -933,7 +933,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 	case instance.MonitorGlobalExpectPurged.String():
 		filters = []string{"ObjectStatusDeleted,path=" + p.String()}
 	default:
-		filters = []string{"InstanceMonitorUpdated,path=" + p.String()}
+		filters = []string{"ObjectOrchestrationEnd,path=" + p.String()}
 	}
 	filters = append(filters, "SetInstanceMonitorRefused,path="+p.String())
 	getEvents := c.NewGetEvents().SetFilters(filters)
@@ -985,9 +985,9 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 				err = fmt.Errorf("%s: can't wait expectation %s, got SetInstanceMonitorRefused", p, expectation)
 				log.Debug().Msgf("%s", err)
 				return
-			case *msgbus.InstanceMonitorUpdated:
-				if m.Value.GlobalExpect == instance.MonitorGlobalExpectNone {
-					log.Debug().Msgf("%s: reached expectation %s (global expect is %s)", p, expectation, m.Value.GlobalExpect)
+			case *msgbus.ObjectOrchestrationEnd:
+				if instance.MonitorGlobalExpectValues[t.Target] == m.GlobalExpect {
+					log.Debug().Msgf("%s: reached expectation %s (global expect was %s id: %s)", p, expectation, m.GlobalExpect, m.ID)
 					return
 				}
 			case *msgbus.ObjectStatusDeleted:
