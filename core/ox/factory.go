@@ -1645,7 +1645,10 @@ func newCmdNodeSSHTrust() *cobra.Command {
 	var options commands.CmdNodeSSHTrust
 	cmd := &cobra.Command{
 		Use:   "trust",
-		Short: "ssh-trust peer nodes",
+		Short: "ssh-trust node peers",
+		Long: "Configure the nodes specified by the --node flag to allow SSH communication from their peers." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1660,7 +1663,10 @@ func newCmdClusterSSHTrust() *cobra.Command {
 	var options commands.CmdClusterSSHTrust
 	cmd := &cobra.Command{
 		Use:   "trust",
-		Short: "setup the ssh access trust mesh",
+		Short: "ssh-trust all the node mesh",
+		Long: "Configure all nodes to allow SSH communication from their peers." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2899,8 +2905,8 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
-		Use:    "unfreeze",
-		Short:  "unblock ha automatic start",
+		Use:   "unfreeze",
+		Short: "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
