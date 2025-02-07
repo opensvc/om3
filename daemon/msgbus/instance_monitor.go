@@ -43,6 +43,9 @@ func (data *ClusterData) instanceMonitorUpdated(labels pubsub.Labels) ([]any, er
 			continue
 		}
 		for instancePath, instanceData := range nodeData.Instance {
+			if instanceData.Monitor == nil {
+				continue
+			}
 			if path != "" && path != instancePath {
 				continue
 			}
