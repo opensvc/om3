@@ -12,9 +12,16 @@ type (
 		sync.RWMutex
 		data *T
 	}
+
+	deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
 )
 
 var (
+	// _ ensures that *Config implements the deepCopyer[Config] interface.
+	_ deepCopyer[Config] = (*Config)(nil)
+
 	// ConfigData is the package data holder for local cluster config
 	ConfigData *DataT[Config]
 )
@@ -52,9 +59,6 @@ func InitData() {
 func deepCopy[T Dataer](t *T) *T {
 	if t == nil {
 		return t
-	}
-	type deepCopyer[T Dataer] interface {
-		DeepCopy() *T
 	}
 	var i any = t
 	return i.(deepCopyer[T]).DeepCopy()

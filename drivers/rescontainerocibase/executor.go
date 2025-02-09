@@ -64,7 +64,7 @@ outerLoop:
 	}
 	cancel()
 	if enterCmd == "" {
-		return fmt.Errorf("can''t enter: container needs at least one of following command: %s",
+		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
 	cmd := exec.Command(e.bin, append(e.args.EnterCmdArgs(), enterCmd)...)

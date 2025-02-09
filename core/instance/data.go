@@ -24,9 +24,18 @@ type (
 		pathToNode map[naming.Path]map[string]struct{}
 		data       map[string]*T
 	}
+
+	deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
 )
 
 var (
+	// _ ensures that *Status, *Monitor and *Config implements the deepCopyer[Status] interface.
+	_ deepCopyer[Status]  = (*Status)(nil)
+	_ deepCopyer[Monitor] = (*Monitor)(nil)
+	_ deepCopyer[Config]  = (*Config)(nil)
+
 	// StatusData is the package data holder for all instances statuses
 	StatusData *Data[Status]
 
@@ -148,9 +157,6 @@ func InitData() {
 func deepCopy[T Dataer](t *T) *T {
 	if t == nil {
 		return t
-	}
-	type deepCopyer[T Dataer] interface {
-		DeepCopy() *T
 	}
 	var i any = t
 	return i.(deepCopyer[T]).DeepCopy()

@@ -23,9 +23,21 @@ type (
 		sync.RWMutex
 		data map[string]*T
 	}
+
+	deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
 )
 
 var (
+	// _ ensures implements the deepCopyer[] interface.
+	_ deepCopyer[Config]    = (*Config)(nil)
+	_ deepCopyer[Monitor]   = (*Monitor)(nil)
+	_ deepCopyer[san.Paths] = (*san.Paths)(nil)
+	_ deepCopyer[Stats]     = (*Stats)(nil)
+	_ deepCopyer[Status]    = (*Status)(nil)
+	_ deepCopyer[Gen]       = (*Gen)(nil)
+
 	// ConfigData is the package data holder for all nodes Configs
 	ConfigData *Data[Config]
 
@@ -116,9 +128,6 @@ func (t *Gen) DeepCopy() *Gen {
 func deepCopy[T Dataer](t *T) *T {
 	if t == nil {
 		return t
-	}
-	type deepCopyer[T Dataer] interface {
-		DeepCopy() *T
 	}
 	var i any = t
 	return i.(deepCopyer[T]).DeepCopy()
