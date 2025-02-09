@@ -94,6 +94,28 @@ func (t Table) AddEntries(l ...Entry) Table {
 	return append(t, l...)
 }
 
+func (t Table) DeepCopy() *Table {
+	r := make(Table, 0, len(t))
+	for _, x := range t {
+		r = append(r, Entry{
+			Action:             x.Action,
+			Schedule:           x.Schedule,
+			Key:                x.Key,
+			LastRunAt:          x.LastRunAt,
+			LastRunFile:        x.LastRunFile,
+			LastSuccessFile:    x.LastSuccessFile,
+			MaxParallel:        x.MaxParallel,
+			NextRunAt:          x.NextRunAt,
+			Node:               x.Node,
+			Path:               x.Path,
+			RequireCollector:   x.RequireCollector,
+			RequireProvisioned: x.RequireProvisioned,
+			RunDir:             x.RunDir,
+		})
+	}
+	return &r
+}
+
 func (t Entry) GetNext() (time.Time, time.Duration, error) {
 	sc := usched.New(t.Schedule)
 	return sc.Next(usched.NextWithLast(t.LastRunAt))
