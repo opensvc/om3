@@ -698,9 +698,8 @@ func (t *Manager) loadAndPublishConfig() error {
 	t.nodeStatus.Labels = localNodeInfo.Labels
 	t.publishNodeStatus()
 
-	paths := localNodeInfo.Paths.DeepCopy()
-	node.OsPathsData.Set(t.localhost, &paths)
-	t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
+	node.OsPathsData.Set(t.localhost, localNodeInfo.Paths.DeepCopy())
+	t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: *localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 
 	select {
 	case t.poolC <- nil:

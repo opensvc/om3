@@ -202,12 +202,12 @@ func (t Paths) HasAnyOf(paths Paths) bool {
 	return false
 }
 
-func (t Paths) DeepCopy() Paths {
+func (t Paths) DeepCopy() *Paths {
 	l := make(Paths, len(t))
 	for i, p := range t {
 		l[i] = p.DeepCopy()
 	}
-	return l
+	return &l
 }
 
 func (t Path) DeepCopy() Path {
