@@ -21,9 +21,16 @@ type (
 		sync.RWMutex
 		data map[naming.Path]*T
 	}
+
+	deepCopyer[T Dataer] interface {
+		DeepCopy() *T
+	}
 )
 
 var (
+	// _ ensures that *Table implements the deepCopyer[Config] interface.
+	_ deepCopyer[Table] = (*Table)(nil)
+
 	// TableData is the package data holder for all objects schedule
 	TableData *Data[Table]
 )
@@ -84,9 +91,6 @@ func InitData() {
 func deepCopy[T Dataer](t *T) *T {
 	if t == nil {
 		return t
-	}
-	type deepCopyer[T Dataer] interface {
-		DeepCopy() *T
 	}
 	var i any = t
 	return i.(deepCopyer[T]).DeepCopy()

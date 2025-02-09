@@ -19,9 +19,22 @@ type (
 		sync.RWMutex
 		data map[string]*T
 	}
+
+	deepCopyer[T Cacher] interface {
+		DeepCopy() *T
+	}
 )
 
 var (
+	// _ ensures implements the deepCopyer[] interface.
+	_ deepCopyer[Collector]  = (*Collector)(nil)
+	_ deepCopyer[Dns]        = (*Dns)(nil)
+	_ deepCopyer[Daemondata] = (*Daemondata)(nil)
+	_ deepCopyer[Heartbeat]  = (*Heartbeat)(nil)
+	_ deepCopyer[Listener]   = (*Listener)(nil)
+	_ deepCopyer[RunnerImon] = (*RunnerImon)(nil)
+	_ deepCopyer[Scheduler]  = (*Scheduler)(nil)
+
 	// DataCollector is the package data holder for all nodes Collector
 	DataCollector *CacheData[Collector]
 
@@ -109,9 +122,6 @@ func InitData() {
 func deepCopy[T Cacher](t *T) *T {
 	if t == nil {
 		return t
-	}
-	type deepCopyer[T Cacher] interface {
-		DeepCopy() *T
 	}
 	var i any = t
 	return i.(deepCopyer[T]).DeepCopy()
