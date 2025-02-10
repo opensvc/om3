@@ -1,0 +1,4 @@
+Add the value as a suffix to the DNS record name. The record created is thus formatted as:
+
+* `<name>-<dns_name_suffix>.<app>.<managed zone>` in the collector managed zone
+* `<name>-<dns_name_suffix>.<namespace>.<kind>.<clustername>` in the cluster dns zone.

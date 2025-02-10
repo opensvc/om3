@@ -85,6 +85,13 @@ type (
 		PID(context.Context) int
 	}
 
+	// GetHostnamer exposes a GetHostname method a resource can call
+	// to get the hostname used by ip resources to obtain a
+	// hostname-based DNS record
+	GetHostnamer interface {
+		GetHostname() string
+	}
+
 	shutdowner interface {
 		Shutdown(context.Context) error
 	}

@@ -183,7 +183,7 @@ func (t *T) isOperational() (bool, error) {
 }
 
 func (t *T) isPinging() (bool, error) {
-	pinger, err := ping.NewPinger(t.hostname())
+	pinger, err := ping.NewPinger(t.GetHostname())
 	if err != nil {
 		return false, err
 	}
@@ -820,7 +820,7 @@ func (t *T) Enter() error {
 }
 
 func (t *T) execViaInternalSSH(cmd string) error {
-	hn := t.hostname()
+	hn := t.GetHostname()
 	client, err := sshnode.NewClient(hn)
 	if err != nil {
 		return err
@@ -861,7 +861,7 @@ func (t *T) execViaRCmd(args []string) error {
 }
 
 func (t *T) enterViaInternalSSH() error {
-	client, err := sshnode.NewClient(t.hostname())
+	client, err := sshnode.NewClient(t.GetHostname())
 	if err != nil {
 		return err
 	}
@@ -908,7 +908,7 @@ func (t *T) enterViaRCmd(rcmd []string) error {
 	return syscall.Exec(args[0], args, os.Environ())
 }
 
-func (t *T) hostname() string {
+func (t *T) GetHostname() string {
 	if t.Hostname != "" {
 		return t.Hostname
 	}
@@ -971,7 +971,7 @@ func (t *T) Abort(ctx context.Context) bool {
 }
 
 func (t *T) abortPing() bool {
-	hn := t.hostname()
+	hn := t.GetHostname()
 	t.Log().Infof("abort test: ping %s", hn)
 
 	if pinger, err := ping.NewPinger(hn); err == nil {
@@ -996,7 +996,7 @@ func (t *T) abortPeerUp() bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Infof("abort: %s is up on %s", t.hostname(), n)
+		t.Log().Infof("abort: %s is up on %s", t.GetHostname(), n)
 		return true
 	}
 	return false

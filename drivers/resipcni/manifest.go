@@ -37,6 +37,13 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
+			Attr:     "DNSNameSuffix",
+			Example:  "-backup",
+			Option:   "dns_name_suffix",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dns_name_suffix"),
+		},
+		keywords.Keyword{
 			Attr:      "Expose",
 			Converter: converters.List,
 			Example:   "443/tcp:8443 53/udp",

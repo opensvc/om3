@@ -259,6 +259,12 @@ func (t *BT) ContainerID(ctx context.Context) string {
 	}
 }
 
+// Implement the resource.Hostnamer interface,
+// used by ip resources to obtain a hostname-based DNS record
+func (t *BT) GetHostname() string {
+	return t.Hostname
+}
+
 // ContainerName formats a docker container name
 func (t *BT) ContainerName() string {
 	if t.Name != "" {

@@ -38,6 +38,13 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
+			Attr:     "DNSNameSuffix",
+			Example:  "-backup",
+			Option:   "dns_name_suffix",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dns_name_suffix"),
+		},
+		keywords.Keyword{
 			Aliases:  []string{"container_rid"},
 			Attr:     "NetNS",
 			Example:  "container#0",
