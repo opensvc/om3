@@ -40,15 +40,16 @@ type (
 		DNS  []string
 
 		// config
-		Expose     []string `json:"expose"`
-		NetNS      string   `json:"netns"`
-		NSDev      string   `json:"nsdev"`
-		Network    string   `json:"network"`
-		CNIConfig  string
-		CNIPlugins string
-		ObjectID   uuid.UUID
-		ObjectFQDN string
-		WaitDNS    *time.Duration `json:"wait_dns"`
+		Expose        []string `json:"expose"`
+		NetNS         string   `json:"netns"`
+		NSDev         string   `json:"nsdev"`
+		Network       string   `json:"network"`
+		CNIConfig     string
+		CNIPlugins    string
+		ObjectID      uuid.UUID
+		ObjectFQDN    string
+		WaitDNS       *time.Duration `json:"wait_dns"`
+		DNSNameSuffix string
 	}
 
 	Addrs []net.Addr
@@ -125,6 +126,16 @@ func (t *T) getObjectNSPID() (string, error) {
 
 func (t *T) getObjectNSPIDFile() (string, error) {
 	return t.objectNSPIDFile(), nil
+}
+
+func (t *T) getResourceHostname(ctx context.Context) (string, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	} else if i, ok := r.(resource.GetHostnamer); !ok {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a hostname", t.NetNS)
+	} else {
+		return i.GetHostname(), nil
+	}
 }
 
 func (t *T) getResourceNSPID(ctx context.Context) (string, error) {
@@ -281,15 +292,12 @@ func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 		data["ipaddr"] = ip.String()
 	}
 	data["expose"] = t.Expose
-	/*
-	   if self.container:
-	       if self.container.vm_hostname != self.container.name:
-	           data["hostname"] = self.container.vm_hostname
-	       else:
-	           data["hostname"] = self.container.name
-	       if self.dns_name_suffix:
-	           data["hostname"] += self.dns_name_suffix
-	*/
+	if hostname, _ := t.getResourceHostname(ctx); hostname != "" {
+		if t.DNSNameSuffix != "" {
+			hostname += t.DNSNameSuffix
+		}
+		data["hostname"] = hostname
+	}
 	return data
 }
 

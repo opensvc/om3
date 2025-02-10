@@ -451,7 +451,7 @@ func (t *T) stopTimeout() *int {
 	return &i
 }
 
-func (t *T) hostname() string {
+func (t *T) GetHostname() string {
 	if t.Hostname != "" {
 		return t.Hostname
 	}
@@ -467,7 +467,7 @@ func (t *T) setHostname() error {
 	if err != nil {
 		return err
 	}
-	h := t.hostname()
+	h := t.GetHostname()
 	if err := os.WriteFile(p, []byte(h+"\n"), 0644); err != nil {
 		return err
 	}
@@ -484,7 +484,7 @@ func (t *T) checkHostname() error {
 	if err != nil {
 		return fmt.Errorf("can not read container hostname: %w", err)
 	}
-	target := t.hostname()
+	target := t.GetHostname()
 	if string(b) != target {
 		return fmt.Errorf("container hostname is %s, should be %s", string(b), target)
 	}
@@ -1182,10 +1182,10 @@ func (t *T) Abort(ctx context.Context) bool {
 		// let the local start report the unnecessary start steps
 		return false
 	}
-	hn := t.hostname()
+	hn := t.GetHostname()
 	t.Log().Infof("abort test: ping %s", hn)
 
-	if pinger, err := ping.NewPinger(t.hostname()); err == nil {
+	if pinger, err := ping.NewPinger(t.GetHostname()); err == nil {
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {

@@ -61,21 +61,21 @@ func keyopStringRbac(op string) error {
 
 func keyopRbac(op keyop.T) error {
 	if strings.HasSuffix(op.Key.Option, "_trigger") {
-		return fmt.Errorf("%s", op.Key)
+		return fmt.Errorf("triggers requires the root grant")
 	}
 	drvGroup := strings.Split(op.Key.Section, "#")[0]
 	switch drvGroup {
 	case "app", "task":
 		switch op.Key.Option {
 		case "script", "start", "stop", "check", "info":
-			return fmt.Errorf("%s", op.Key)
+			return fmt.Errorf("app and task commands require the root grant")
 		}
 	case "container":
 		switch op.Key.Option {
 		case "volume_mounts":
 			for _, e := range strings.Fields(op.Value) {
 				if strings.HasPrefix(e, "_") || strings.Contains(e, "/../") || strings.HasPrefix(e, "../") || strings.HasSuffix(e, "../") {
-					return fmt.Errorf("not authorized to mount a host path in container: %s", op)
+					return fmt.Errorf("host path mounts in container require the root grant")
 				}
 			}
 		}

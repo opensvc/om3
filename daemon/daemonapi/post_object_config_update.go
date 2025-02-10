@@ -56,11 +56,11 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 		for _, kop := range sets {
 			// Dangerous keywords require GrantRoot.
 			if err := keyopRbac(kop); err != nil {
-				return JSONProblemf(ctx, http.StatusUnauthorized, "Not allowed keyword (root-only)", "%s", err)
+				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, err)
 			}
 			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
 			if !hasGrantPrioritizer && (kop.Key == priorityKey) {
-				return JSONProblemf(ctx, http.StatusUnauthorized, "Not allowed to set priority (the root or prioritizer grant is required)", "")
+				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, "setting priority requires the root or prioritizer grant")
 			}
 		}
 	}

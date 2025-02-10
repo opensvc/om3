@@ -15,8 +15,9 @@ import (
 const hexDigit = "0123456789abcdef"
 
 var (
-	exposeInfoKey = "expose"
-	ipAddrInfoKey = "ipaddr"
+	hostnameInfoKey = "hostname"
+	exposeInfoKey   = "expose"
+	ipAddrInfoKey   = "ipaddr"
 
 	// SOA records properties
 	contact = "contact@opensvc.com"
@@ -181,6 +182,23 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			aType = "A6"
 			ptrType = "PTR6"
 		}
+		getResNames := func() (string, string) {
+			if i, ok := rstat.Info[hostnameInfoKey]; ok {
+				hostname, _ := i.(string)
+				if hostname != "" {
+					resName := hostname + "." + name
+					resNameOnNode := hostname + "." + nameOnNode
+					return resName, resNameOnNode
+				}
+			}
+			if id, err := resourceid.Parse(rid); err == nil {
+				resName := id.Index() + "." + name
+				resNameOnNode := id.Index() + "." + nameOnNode
+				return resName, resNameOnNode
+			}
+			return "", ""
+		}
+		resName, resNameOnNode := getResNames()
 
 		// Add a direct record (node agnostic)
 		stage(Record{
@@ -190,15 +208,32 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			TTL:      60,
 			Content:  ipAddr,
 		})
-
-		// Add a reverse record (node agnostic)
-		stage(Record{
-			Name:     reverseAddr(ip),
-			DomainID: -1,
-			Type:     ptrType,
-			TTL:      60,
-			Content:  name,
-		})
+		if resName != "" {
+			stage(Record{
+				Name:     resName,
+				DomainID: -1,
+				Type:     aType,
+				TTL:      60,
+				Content:  ipAddr,
+			})
+			// Add a reverse record (node agnostic)
+			stage(Record{
+				Name:     reverseAddr(ip),
+				DomainID: -1,
+				Type:     ptrType,
+				TTL:      60,
+				Content:  resName,
+			})
+		} else {
+			// Add a reverse record (node agnostic)
+			stage(Record{
+				Name:     reverseAddr(ip),
+				DomainID: -1,
+				Type:     ptrType,
+				TTL:      60,
+				Content:  name,
+			})
+		}
 
 		// Add a direct record (node affine)
 		stage(Record{
@@ -208,56 +243,33 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			TTL:      60,
 			Content:  ipAddr,
 		})
-
-		// Add a reverse record (node affine)
-		stage(Record{
-			Name:     reverseAddr(ip),
-			DomainID: -1,
-			Type:     ptrType,
-			TTL:      60,
-			Content:  nameOnNode,
-		})
-
-		if id, err := resourceid.Parse(rid); err == nil {
-			nameWithResourceName := id.Index() + "." + name
-			nameOnNodeWithResourceName := id.Index() + "." + nameOnNode
-
-			// Add a resource direct record (node agnostic)
+		if resNameOnNode != "" {
 			stage(Record{
-				Name:     nameWithResourceName,
+				Name:     resNameOnNode,
 				DomainID: -1,
 				Type:     aType,
 				TTL:      60,
 				Content:  ipAddr,
 			})
-
-			// Add a resource reverse record (node agnostic)
-			stage(Record{
-				Name:     reverseAddr(ip),
-				DomainID: -1,
-				Type:     ptrType,
-				TTL:      60,
-				Content:  nameWithResourceName,
-			})
-
-			// Add a direct record (node affine)
-			stage(Record{
-				Name:     nameOnNodeWithResourceName,
-				DomainID: -1,
-				Type:     aType,
-				TTL:      60,
-				Content:  ipAddr,
-			})
-
 			// Add a reverse record (node affine)
 			stage(Record{
 				Name:     reverseAddr(ip),
 				DomainID: -1,
 				Type:     ptrType,
 				TTL:      60,
-				Content:  nameOnNodeWithResourceName,
+				Content:  resNameOnNode,
+			})
+		} else {
+			// Add a reverse record (node affine)
+			stage(Record{
+				Name:     reverseAddr(ip),
+				DomainID: -1,
+				Type:     ptrType,
+				TTL:      60,
+				Content:  nameOnNode,
 			})
 		}
+
 		stageSRVs(rid, rstat)
 	}
 

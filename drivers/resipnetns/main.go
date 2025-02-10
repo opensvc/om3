@@ -41,22 +41,23 @@ type (
 		DNS        []string
 
 		// config
-		NetNS        string         `json:"netns"`
-		VLANTag      string         `json:"vlan_tag"`
-		VLANMode     string         `json:"vlan_mode"`
-		Mode         string         `json:"mode"`
-		NSDev        string         `json:"nsdev"`
-		MacAddr      string         `json:"mac_addr"`
-		DelNetRoute  bool           `json:"del_net_route"`
-		IPName       string         `json:"ipname"`
-		IPDev        string         `json:"ipdev"`
-		Netmask      string         `json:"netmask"`
-		Gateway      string         `json:"gateway"`
-		Network      string         `json:"network"`
-		WaitDNS      *time.Duration `json:"wait_dns"`
-		CheckCarrier bool           `json:"check_carrier"`
-		Alias        bool           `json:"alias"`
-		Expose       []string       `json:"expose"`
+		DNSNameSuffix string         `json:"dns_name_suffix"`
+		NetNS         string         `json:"netns"`
+		VLANTag       string         `json:"vlan_tag"`
+		VLANMode      string         `json:"vlan_mode"`
+		Mode          string         `json:"mode"`
+		NSDev         string         `json:"nsdev"`
+		MacAddr       string         `json:"mac_addr"`
+		DelNetRoute   bool           `json:"del_net_route"`
+		IPName        string         `json:"ipname"`
+		IPDev         string         `json:"ipdev"`
+		Netmask       string         `json:"netmask"`
+		Gateway       string         `json:"gateway"`
+		Network       string         `json:"network"`
+		WaitDNS       *time.Duration `json:"wait_dns"`
+		CheckCarrier  bool           `json:"check_carrier"`
+		Alias         bool           `json:"alias"`
+		Expose        []string       `json:"expose"`
 
 		// cache
 		_ipaddr net.IP
@@ -75,6 +76,16 @@ var (
 func New() resource.Driver {
 	t := &T{}
 	return t
+}
+
+func (t *T) getResourceHostname(ctx context.Context) (string, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	} else if i, ok := r.(resource.GetHostnamer); !ok {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a hostname", t.NetNS)
+	} else {
+		return i.GetHostname(), nil
+	}
 }
 
 func (t *T) getNSPID(ctx context.Context) (int, error) {
@@ -102,13 +113,19 @@ func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 }
 
 // StatusInfo implements resource.StatusInfoer
-func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
+func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
 	data["ipdev"] = t.IPDev
 	data["netmask"] = netmask
+	if hostname, _ := t.getResourceHostname(ctx); hostname != "" {
+		if t.DNSNameSuffix != "" {
+			hostname += t.DNSNameSuffix
+		}
+		data["hostname"] = hostname
+	}
 	return data
 }
 
