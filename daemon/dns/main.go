@@ -47,7 +47,7 @@ type (
 		state map[stateKey]Zone
 
 		// score stores the node.Stats.Score values, to use as weight in SRV records
-		score map[string]uint64
+		score map[string]int
 
 		clusterConfig cluster.Config
 		ctx           context.Context
@@ -102,7 +102,7 @@ func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cmdC:          make(chan any),
 		drainDuration: d,
 		state:         make(map[stateKey]Zone),
-		score:         make(map[string]uint64),
+		score:         make(map[string]int),
 		subQS:         subQS,
 
 		status: daemonsubsystem.Dns{

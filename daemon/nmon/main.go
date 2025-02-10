@@ -24,6 +24,7 @@ package nmon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -562,18 +563,18 @@ func (t *Manager) getStats() (node.Stats, error) {
 		return stats, err
 	} else {
 		stats.Load15M = load.Load15
-		stats.Score += uint64(100 / math.Max(load.Load15, 1))
+		stats.Score += int(100 / math.Max(load.Load15, 1))
 	}
 	if mem, err := fs.Meminfo(); err != nil {
 		return stats, err
 	} else {
 		if *mem.MemTotal > 0 {
 			stats.MemTotalMB = *mem.MemTotal / 1024
-			stats.MemAvailPct = 100 * *mem.MemAvailable / *mem.MemTotal
+			stats.MemAvailPct = int(100 * *mem.MemAvailable / *mem.MemTotal)
 		}
 		if *mem.SwapTotal > 0 {
 			stats.SwapTotalMB = *mem.SwapTotal / 1024
-			stats.SwapAvailPct = 100 * *mem.SwapFree / *mem.SwapTotal
+			stats.SwapAvailPct = int(100 * *mem.SwapFree / *mem.SwapTotal)
 		}
 		stats.Score += 100 + stats.MemAvailPct
 		stats.Score += 2 * (100 + stats.SwapAvailPct)
@@ -590,6 +591,39 @@ func (t *Manager) updateStats() {
 	}
 	node.StatsData.Set(t.localhost, stats.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
+
+	if isOverloaded := t.isOverloaded(stats); isOverloaded != t.nodeStatus.IsOverloaded {
+		t.nodeStatus.IsOverloaded = isOverloaded
+		t.publishNodeStatus()
+		fmtVals := func(pct, minPct int) string {
+			if minPct <= 0 {
+				return fmt.Sprintf("%d%%/-", pct)
+			} else {
+				return fmt.Sprintf("%d%%/%d%%", pct, minPct)
+			}
+		}
+		if isOverloaded {
+			t.log.Warnf("node is now overloaded: avail mem=%s swap=%s",
+				fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+				fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+			)
+		} else {
+			t.log.Infof("node is no longer overloaded: avail mem=%s swap=%s",
+				fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+				fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+			)
+		}
+	}
+}
+
+func (t *Manager) isOverloaded(stats node.Stats) bool {
+	if (t.nodeConfig.MinAvailMemPct > 0) && (stats.MemAvailPct < t.nodeConfig.MinAvailMemPct) {
+		return true
+	}
+	if (t.nodeConfig.MinAvailSwapPct > 0) && (stats.SwapAvailPct < t.nodeConfig.MinAvailSwapPct) {
+		return true
+	}
+	return false
 }
 
 func (t *Manager) refreshSanPaths() {

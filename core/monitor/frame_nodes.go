@@ -104,11 +104,11 @@ func (f Frame) StrNodeMem(n string) string {
 		if val.Stats.MemAvailPct == 0 {
 			return hiblue("-")
 		}
-		limit := 100 - val.Status.MinAvailMemPct
+		limit := 100 - val.Config.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
 		var s string
-		if limit > 0 {
+		if val.Config.MinAvailMemPct > 0 {
 			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
 		} else {
 			s = fmt.Sprintf("%d%%%s", usage, total)
@@ -129,11 +129,11 @@ func (f Frame) StrNodeSwap(n string) string {
 		if val.Stats.SwapAvailPct == 0 {
 			return hiblue("-")
 		}
-		limit := 100 - val.Status.MinAvailSwapPct
+		limit := 100 - val.Config.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
 		var s string
-		if limit > 0 {
+		if val.Config.MinAvailSwapPct > 0 {
 			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
 		} else {
 			s = fmt.Sprintf("%d%%%s", usage, total)

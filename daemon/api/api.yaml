@@ -5234,6 +5234,8 @@ components:
       required:
         - env
         - maintenance_grace_period
+        - min_avail_mem
+        - min_avail_swap
         - ready_period
         - rejoin_grace_period
         - split_action
@@ -5243,6 +5245,10 @@ components:
         maintenance_grace_period:
           type: string
           format: duration
+        min_avail_mem:
+          type: integer
+        min_avail_swap:
+          type: integer
         ready_period:
           type: string
           format: duration
@@ -5308,9 +5314,8 @@ components:
         - compat
         - frozen_at
         - gen
-        - min_avail_mem
-        - min_avail_swap
         - is_leader
+        - is_overloaded
         - labels
       properties:
         agent:
@@ -5329,11 +5334,9 @@ components:
         gen:
           additionalProperties:
             type: integer
-        min_avail_mem:
-          type: integer
-        min_avail_swap:
-          type: integer
         is_leader:
+          type: boolean
+        is_overloaded:
           type: boolean
         labels:
           type: object

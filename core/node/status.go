@@ -11,16 +11,15 @@ import (
 
 type (
 	Status struct {
-		Agent           string                      `json:"agent"`
-		API             uint64                      `json:"api"`
-		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
-		Compat          uint64                      `json:"compat"`
-		FrozenAt        time.Time                   `json:"frozen_at"`
-		Gen             Gen                         `json:"gen"`
-		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
-		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
-		IsLeader        bool                        `json:"is_leader"`
-		Labels          Labels                      `json:"labels"`
+		Agent        string                      `json:"agent"`
+		API          uint64                      `json:"api"`
+		Arbitrators  map[string]ArbitratorStatus `json:"arbitrators"`
+		Compat       uint64                      `json:"compat"`
+		FrozenAt     time.Time                   `json:"frozen_at"`
+		Gen          Gen                         `json:"gen"`
+		IsLeader     bool                        `json:"is_leader"`
+		IsOverloaded bool                        `json:"is_overloaded"`
+		Labels       Labels                      `json:"labels"`
 	}
 
 	// Instances groups instances configuration digest and status
@@ -101,15 +100,14 @@ func (t NodesInfo) Keys() []string {
 
 func (t *Status) Unstructured() map[string]any {
 	return map[string]any{
-		"agent":          t.Agent,
-		"api":            t.API,
-		"arbitrators":    t.Arbitrators,
-		"compat":         t.Compat,
-		"frozen_at":      t.FrozenAt,
-		"gen":            t.Gen,
-		"min_avail_mem":  t.MinAvailMemPct,
-		"min_avail_swap": t.MinAvailSwapPct,
-		"is_leader":      t.IsLeader,
-		"labels":         t.Labels,
+		"agent":         t.Agent,
+		"api":           t.API,
+		"arbitrators":   t.Arbitrators,
+		"compat":        t.Compat,
+		"frozen_at":     t.FrozenAt,
+		"gen":           t.Gen,
+		"is_leader":     t.IsLeader,
+		"is_overloaded": t.IsOverloaded,
+		"labels":        t.Labels,
 	}
 }
