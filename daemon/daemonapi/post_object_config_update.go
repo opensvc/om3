@@ -60,7 +60,7 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 			}
 			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
 			if !hasGrantPrioritizer && (kop.Key == priorityKey) {
-				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, "setting priority requires the root or prioritizer grant", "")
+				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, "setting priority requires the root or prioritizer grant")
 			}
 		}
 	}
