@@ -79,6 +79,10 @@ var (
 
 		"DaemonStatusUpdated": func() any { return &DaemonStatusUpdated{} },
 
+		"EnterOverloadPeriod": func() any { return &EnterOverloadPeriod{} },
+
+		"LeaveOverloadPeriod": func() any { return &LeaveOverloadPeriod{} },
+
 		"Exec": func() any { return &Exec{} },
 
 		"ExecFailed": func() any { return &ExecFailed{} },
@@ -349,6 +353,10 @@ type (
 		Status     string `json:"status" yaml:"status"`
 	}
 
+	EnterOverloadPeriod struct {
+		pubsub.Msg `yaml:",inline"`
+	}
+
 	// Exec message describes an exec call
 	Exec struct {
 		pubsub.Msg `yaml:",inline"`
@@ -577,6 +585,10 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		// Node is a node that is not in cluster config nodes
 		Node string `json:"node" yaml:"node"`
+	}
+
+	LeaveOverloadPeriod struct {
+		pubsub.Msg `yaml:",inline"`
 	}
 
 	LeaveRequest struct {
@@ -939,6 +951,14 @@ func (e *DaemonSchedulerUpdated) Kind() string {
 
 func (e *DaemonStatusUpdated) Kind() string {
 	return "DaemonStatusUpdated"
+}
+
+func (e *EnterOverloadPeriod) Kind() string {
+	return "EnterOverloadPeriod"
+}
+
+func (e *LeaveOverloadPeriod) Kind() string {
+	return "LeaveOverloadPeriod"
 }
 
 func (e *Exec) Kind() string {

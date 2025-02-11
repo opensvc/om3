@@ -610,11 +610,13 @@ func (t *Manager) updateIsOverloaded(stats node.Stats) bool {
 		}
 	}
 	if isOverloaded {
+		t.publisher.Pub(&msgbus.EnterOverloadPeriod{}, t.labelLocalhost)
 		t.log.Warnf("node is now overloaded: avail mem=%s swap=%s",
 			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
 			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
 		)
 	} else {
+		t.publisher.Pub(&msgbus.LeaveOverloadPeriod{}, t.labelLocalhost)
 		t.log.Infof("node is no longer overloaded: avail mem=%s swap=%s",
 			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
 			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
