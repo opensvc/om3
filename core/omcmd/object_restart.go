@@ -39,6 +39,8 @@ func (t *CmdObjectRestart) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithAsyncTarget("restarted"),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncTargetOptions(options),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
