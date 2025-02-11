@@ -591,29 +591,36 @@ func (t *Manager) updateStats() {
 	}
 	node.StatsData.Set(t.localhost, stats.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
-
-	if isOverloaded := t.isOverloaded(stats); isOverloaded != t.nodeStatus.IsOverloaded {
-		t.nodeStatus.IsOverloaded = isOverloaded
+	if changed := t.updateIsOverloaded(stats); changed {
 		t.publishNodeStatus()
-		fmtVals := func(pct, minPct int) string {
-			if minPct <= 0 {
-				return fmt.Sprintf("%d%%/-", pct)
-			} else {
-				return fmt.Sprintf("%d%%/%d%%", pct, minPct)
-			}
-		}
-		if isOverloaded {
-			t.log.Warnf("node is now overloaded: avail mem=%s swap=%s",
-				fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
-				fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
-			)
+	}
+}
+
+func (t *Manager) updateIsOverloaded(stats node.Stats) bool {
+	isOverloaded := t.isOverloaded(stats)
+	if isOverloaded == t.nodeStatus.IsOverloaded {
+		return false
+	}
+	t.nodeStatus.IsOverloaded = isOverloaded
+	fmtVals := func(pct, minPct int) string {
+		if minPct <= 0 {
+			return fmt.Sprintf("%d%%/-", pct)
 		} else {
-			t.log.Infof("node is no longer overloaded: avail mem=%s swap=%s",
-				fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
-				fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
-			)
+			return fmt.Sprintf("%d%%/%d%%", pct, minPct)
 		}
 	}
+	if isOverloaded {
+		t.log.Warnf("node is now overloaded: avail mem=%s swap=%s",
+			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+		)
+	} else {
+		t.log.Infof("node is no longer overloaded: avail mem=%s swap=%s",
+			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+		)
+	}
+	return true
 }
 
 func (t *Manager) isOverloaded(stats node.Stats) bool {
@@ -724,6 +731,10 @@ func (t *Manager) loadConfigAndPublish() error {
 
 	node.ConfigData.Set(t.localhost, t.nodeConfig.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeConfigUpdated{Node: t.localhost, Value: t.nodeConfig}, t.labelLocalhost)
+
+	if stats := node.StatsData.GetByNode(t.localhost); stats != nil && stats.MemTotalMB != 0 {
+		t.updateIsOverloaded(*stats)
+	}
 
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
