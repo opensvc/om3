@@ -1279,7 +1279,8 @@ func assertPlacedAt(p naming.Path, placedAT instance.MonitorGlobalExpectOptionsP
 			if !found.Avail.Is(avail...) {
 				return fmt.Errorf("instance %s@%s status avail '%s' is not one of %s", p, nodename, found.Avail, avail)
 			} else {
-				naming.LogWithPath(plog.NewDefaultLogger(), p).Debugf("instance %s@%s: status avail '%s' on node %s is not one of %s", p, nodename, found.Avail, avail)
+				naming.LogWithPath(plog.NewDefaultLogger(), p).Debugf("instance %s@%s: status avail '%s' is one of %s", p, nodename, found.Avail, avail)
+				continue
 			}
 		}
 		return fmt.Errorf("can't find instance status for node %s", nodename)
