@@ -207,7 +207,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
-	if err := t.loadAndPublishConfig(); err != nil {
+	if err := t.loadConfigAndPublish(); err != nil {
 		return err
 	}
 
@@ -717,7 +717,7 @@ func (t *Manager) loadConfig() error {
 	return nil
 }
 
-func (t *Manager) loadAndPublishConfig() error {
+func (t *Manager) loadConfigAndPublish() error {
 	if err := t.loadConfig(); err != nil {
 		return err
 	}
