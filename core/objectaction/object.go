@@ -970,6 +970,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 	)
 
 	logger := naming.LogWithPath(plog.NewDefaultLogger(), p)
+	getEvents := c.NewGetEvents()
 
 	switch globalExpect {
 	case instance.MonitorGlobalExpectStarted:
@@ -1021,6 +1022,10 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			return assertPlaced(p, status.Up, status.NotApplicable)
 		}
 	case instance.MonitorGlobalExpectPlacedAt:
+		// switch --to same-node will not reproduce InstanceStatusUpdated events
+		// we need --wait to replay events from cache
+		getEvents = getEvents.SetWait(true)
+
 		filters = append(filters,
 			"InstanceStatusUpdated,path="+p.String(),
 			"InstanceStatusDeleted,path="+p.String(),
@@ -1043,7 +1048,8 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		"InstanceMonitorUpdated,path="+p.String(),
 	)
 
-	getEvents := c.NewGetEvents().SetFilters(filters)
+	getEvents = getEvents.SetFilters(filters)
+
 	logger.Debugf("object %s: wait expectation %s filters %v", p, globalExpect, filters)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
