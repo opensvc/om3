@@ -307,7 +307,6 @@ func rawFromConfigURI(p naming.Path, u uri.T) (Pivot, error) {
 		return make(Pivot), nil
 	}
 	defer os.Remove(fpath)
-	fmt.Print("fetched... ")
 	return rawFromConfigFile(p, fpath)
 }
 
@@ -318,7 +317,6 @@ func rawFromConfigFile(p naming.Path, fpath string) (Pivot, error) {
 		return pivot, err
 	}
 	pivot[p.String()] = c.Raw()
-	fmt.Print("parsed... ")
 	return pivot, nil
 }
 
