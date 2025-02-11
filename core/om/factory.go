@@ -2225,6 +2225,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsLock(flags, &options.OptsLock)
 	addFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd

@@ -14,6 +14,7 @@ import (
 type (
 	CmdObjectDelete struct {
 		OptsGlobal
+		OptsAsync
 		OptsLock
 		NodeSelector string
 	}
@@ -26,6 +27,8 @@ func (t *CmdObjectDelete) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTarget("deleted"),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
