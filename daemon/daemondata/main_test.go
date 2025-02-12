@@ -187,7 +187,7 @@ func TestDaemonData(t *testing.T) {
 			t.Log("check remote node stats monitor")
 			require.Equal(t, 0.4, nodeRemote.Stats.Load15M)
 			require.Equal(t, uint64(16012), nodeRemote.Stats.MemTotalMB)
-			require.Equal(t, uint64(96), nodeRemote.Stats.MemAvailPct)
+			require.Equal(t, int(96), nodeRemote.Stats.MemAvailPct)
 			require.Equal(t, uint64(979), nodeRemote.Stats.SwapTotalMB)
 		})
 
