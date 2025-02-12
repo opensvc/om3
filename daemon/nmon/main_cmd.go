@@ -41,7 +41,7 @@ var (
 func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.clusterConfig = c.Value
 
-	if err := t.loadAndPublishConfig(); err != nil {
+	if err := t.loadConfigAndPublish(); err != nil {
 		t.log.Errorf("load and publish config from cluster config updated event: %s", err)
 	}
 	t.setArbitratorConfig()
@@ -57,7 +57,7 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
-	if err := t.loadAndPublishConfig(); err != nil {
+	if err := t.loadConfigAndPublish(); err != nil {
 		t.log.Errorf("load and publish config from node config file updated event: %s", err)
 		return
 	}
@@ -78,6 +78,8 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyEnv                    = key.New("node", "env")
 		keySplitAction            = key.New("node", "split_action")
 		keySSHKey                 = key.New("node", "sshkey")
+		keyMinAvailMemPct         = key.New("node", "min_avail_mem")
+		keyMinAvailSwapPct        = key.New("node", "min_avail_swap")
 	)
 	cfg := node.Config{}
 	if d := t.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
@@ -88,6 +90,12 @@ func (t *Manager) getNodeConfig() node.Config {
 	}
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
+	}
+	if d := t.config.GetSize(keyMinAvailMemPct); d != nil {
+		cfg.MinAvailMemPct = int(*d)
+	}
+	if d := t.config.GetSize(keyMinAvailSwapPct); d != nil {
+		cfg.MinAvailSwapPct = int(*d)
 	}
 	cfg.MaxParallel = t.config.GetInt(keyMaxParallel)
 	cfg.Env = t.config.GetString(keyEnv)

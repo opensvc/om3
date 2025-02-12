@@ -421,6 +421,10 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
+
+	sub.AddFilter(&msgbus.EnterOverloadPeriod{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.LeaveOverloadPeriod{}, d.labelLocalhost)
+
 	sub.Start()
 	d.sub = sub
 }
@@ -473,6 +477,9 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.ObjectOrchestrationEnd:
 	case *msgbus.ObjectOrchestrationRefused:
 	case *msgbus.ObjectStatusDeleted:
+		// overload
+	case *msgbus.EnterOverloadPeriod:
+	case *msgbus.LeaveOverloadPeriod:
 	default:
 		return false
 	}

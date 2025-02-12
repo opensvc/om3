@@ -1,17 +1,17 @@
-Threads                    node3         
- daemon                  | O             
- dns                     | O             
- collector               | o             
- hb                      |               
- listener                | 2222          
- scheduler               |               
-                                         
-Nodes                      node3         
- score                   | 96            
-  load15m                | 0.1           
-  mem                    | 26%1.94g<100% 
-  swap                   | 0%1.92g<100%  
-  compat           warn  | 12            
- state                   | *             
-                                         
-Objects matching *         node3         
+Threads                    node3    
+ daemon                  | O        
+ dns                     | O        
+ collector               | o        
+ hb                      |          
+ listener                | 2222     
+ scheduler               |          
+                                    
+Nodes                      node3    
+ score                   | 96       
+  load15m                | 0.1      
+  mem                    | 26%1.94g 
+  swap                   | 0%1.92g  
+  compat           warn  | 12       
+ state                   | *        
+                                    
+Objects matching *         node3    

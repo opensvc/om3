@@ -154,7 +154,7 @@ func (t States) descString() string {
 		case MonitorLocalExpectNone:
 		case MonitorLocalExpectInit:
 		default:
-			l = append(l, t.Monitor.LocalExpect.String())
+			l = append(l, rawconfig.Colorize.Secondary(t.Monitor.LocalExpect.String()))
 		}
 	}
 

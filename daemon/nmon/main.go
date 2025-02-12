@@ -24,6 +24,7 @@ package nmon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -206,7 +207,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
-	if err := t.loadAndPublishConfig(); err != nil {
+	if err := t.loadConfigAndPublish(); err != nil {
 		return err
 	}
 
@@ -562,18 +563,18 @@ func (t *Manager) getStats() (node.Stats, error) {
 		return stats, err
 	} else {
 		stats.Load15M = load.Load15
-		stats.Score += uint64(100 / math.Max(load.Load15, 1))
+		stats.Score += int(100 / math.Max(load.Load15, 1))
 	}
 	if mem, err := fs.Meminfo(); err != nil {
 		return stats, err
 	} else {
 		if *mem.MemTotal > 0 {
 			stats.MemTotalMB = *mem.MemTotal / 1024
-			stats.MemAvailPct = 100 * *mem.MemAvailable / *mem.MemTotal
+			stats.MemAvailPct = int(100 * *mem.MemAvailable / *mem.MemTotal)
 		}
 		if *mem.SwapTotal > 0 {
 			stats.SwapTotalMB = *mem.SwapTotal / 1024
-			stats.SwapAvailPct = 100 * *mem.SwapFree / *mem.SwapTotal
+			stats.SwapAvailPct = int(100 * *mem.SwapFree / *mem.SwapTotal)
 		}
 		stats.Score += 100 + stats.MemAvailPct
 		stats.Score += 2 * (100 + stats.SwapAvailPct)
@@ -590,6 +591,48 @@ func (t *Manager) updateStats() {
 	}
 	node.StatsData.Set(t.localhost, stats.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
+	if changed := t.updateIsOverloaded(stats); changed {
+		t.publishNodeStatus()
+	}
+}
+
+func (t *Manager) updateIsOverloaded(stats node.Stats) bool {
+	isOverloaded := t.isOverloaded(stats)
+	if isOverloaded == t.nodeStatus.IsOverloaded {
+		return false
+	}
+	t.nodeStatus.IsOverloaded = isOverloaded
+	fmtVals := func(pct, minPct int) string {
+		if minPct <= 0 {
+			return fmt.Sprintf("%d%%/-", pct)
+		} else {
+			return fmt.Sprintf("%d%%/%d%%", pct, minPct)
+		}
+	}
+	if isOverloaded {
+		t.publisher.Pub(&msgbus.EnterOverloadPeriod{}, t.labelLocalhost)
+		t.log.Warnf("node is now overloaded: avail mem=%s swap=%s",
+			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+		)
+	} else {
+		t.publisher.Pub(&msgbus.LeaveOverloadPeriod{}, t.labelLocalhost)
+		t.log.Infof("node is no longer overloaded: avail mem=%s swap=%s",
+			fmtVals(stats.MemAvailPct, t.nodeConfig.MinAvailMemPct),
+			fmtVals(stats.SwapAvailPct, t.nodeConfig.MinAvailSwapPct),
+		)
+	}
+	return true
+}
+
+func (t *Manager) isOverloaded(stats node.Stats) bool {
+	if (t.nodeConfig.MinAvailMemPct > 0) && (stats.MemAvailPct < t.nodeConfig.MinAvailMemPct) {
+		return true
+	}
+	if (t.nodeConfig.MinAvailSwapPct > 0) && (stats.SwapAvailPct < t.nodeConfig.MinAvailSwapPct) {
+		return true
+	}
+	return false
 }
 
 func (t *Manager) refreshSanPaths() {
@@ -683,13 +726,17 @@ func (t *Manager) loadConfig() error {
 	return nil
 }
 
-func (t *Manager) loadAndPublishConfig() error {
+func (t *Manager) loadConfigAndPublish() error {
 	if err := t.loadConfig(); err != nil {
 		return err
 	}
 
 	node.ConfigData.Set(t.localhost, t.nodeConfig.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeConfigUpdated{Node: t.localhost, Value: t.nodeConfig}, t.labelLocalhost)
+
+	if stats := node.StatsData.GetByNode(t.localhost); stats != nil && stats.MemTotalMB != 0 {
+		t.updateIsOverloaded(*stats)
+	}
 
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)

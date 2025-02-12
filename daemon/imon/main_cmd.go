@@ -765,7 +765,7 @@ func (t *Manager) sortWithSpreadPolicy(candidates []string) []string {
 func (t *Manager) sortWithScorePolicy(candidates []string) []string {
 	l := append([]string{}, candidates...)
 	sort.SliceStable(l, func(i, j int) bool {
-		var si, sj uint64
+		var si, sj int
 		if stats, ok := t.nodeStats[l[i]]; ok {
 			si = stats.Score
 		}

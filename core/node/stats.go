@@ -5,10 +5,10 @@ type (
 	// and an opensvc-specific score.
 	Stats struct {
 		Load15M      float64 `json:"load_15m"`
-		MemAvailPct  uint64  `json:"mem_avail"`
+		MemAvailPct  int     `json:"mem_avail"`
 		MemTotalMB   uint64  `json:"mem_total"`
-		Score        uint64  `json:"score"`
-		SwapAvailPct uint64  `json:"swap_avail"`
+		Score        int     `json:"score"`
+		SwapAvailPct int     `json:"swap_avail"`
 		SwapTotalMB  uint64  `json:"swap_total"`
 	}
 )

@@ -205,6 +205,11 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
 		d.publisher.Pub(c, labelFromPeer)
+	// overload
+	case *msgbus.EnterOverloadPeriod:
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.LeaveOverloadPeriod:
+		d.publisher.Pub(c, labelFromPeer)
 	default:
 		d.log.Errorf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)
 	}

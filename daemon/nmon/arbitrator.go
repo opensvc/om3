@@ -84,8 +84,36 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	return result
 }
 
+func compareArbitratorStatusMap(a, b map[string]node.ArbitratorStatus) bool {
+	for key, status := range a {
+		target, ok := b[key]
+		if !ok {
+			// key in a but not in b
+			return false
+		}
+		// key in a and b
+		if status.URL != target.URL || status.Status != target.Status {
+			return false
+		}
+	}
+	for key, _ := range b {
+		_, ok := a[key]
+		if !ok {
+			// key in a but not in b
+			return false
+		}
+		// key in b but not in a
+	}
+	return true
+
+}
+
 func (t *Manager) getAndUpdateStatusArbitrator() {
-	t.nodeStatus.Arbitrators = t.getStatusArbitrators()
+	arbitrators := t.getStatusArbitrators()
+	if compareArbitratorStatusMap(arbitrators, t.nodeStatus.Arbitrators) {
+		return
+	}
+	t.nodeStatus.Arbitrators = arbitrators
 	t.publishNodeStatus()
 	pubValue := make(map[string]node.ArbitratorStatus)
 	for k, v := range t.nodeStatus.Arbitrators {

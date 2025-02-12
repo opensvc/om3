@@ -75,7 +75,9 @@ func newNodeData(localNode string) node.Node {
 	nodeStatus := node.Node{
 		Config: node.Config{
 			// use initial default value
-			MaxParallel: object.DefaultNodeMaxParallel,
+			MaxParallel:     object.DefaultNodeMaxParallel,
+			MinAvailMemPct:  0,
+			MinAvailSwapPct: 0,
 		},
 		Instance: map[string]instance.Instance{},
 		Monitor: node.Monitor{
@@ -89,12 +91,10 @@ func newNodeData(localNode string) node.Node {
 			API:         8,
 			Arbitrators: map[string]node.ArbitratorStatus{},
 			// TODO: Compat fix
-			Compat:          12,
-			FrozenAt:        frozen,
-			Gen:             node.Gen{localNode: 1},
-			Labels:          node.Labels{},
-			MinAvailMemPct:  0,
-			MinAvailSwapPct: 0,
+			Compat:   12,
+			FrozenAt: frozen,
+			Gen:      node.Gen{localNode: 1},
+			Labels:   node.Labels{},
 		},
 		Os: node.Os{
 			Paths: san.Paths{},

@@ -57,6 +57,11 @@ func (t *T) Start(ctx context.Context) (err error) {
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 	)
 	cmd := command.New(opts...)
+
+	cmd.Cmd().SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true, // Create a new session to avoid kill on exit
+	}
+
 	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	if err := cmd.Start(); err != nil {
 		return err
@@ -149,15 +154,10 @@ func (t *T) status() status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
-	switch procs.Len() {
-	case 0:
+	if procs.Len() == 0 {
 		return status.Down
-	case 1:
-		return status.Up
-	default:
-		t.StatusLog().Warn("too many process (%d)", procs.Len())
-		return status.Up
 	}
+	return status.Up
 }
 
 func (t *T) getRunning(cmdArgs []string) (proc.L, error) {

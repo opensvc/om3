@@ -187,7 +187,7 @@ func TestDaemonData(t *testing.T) {
 			t.Log("check remote node stats monitor")
 			require.Equal(t, 0.4, nodeRemote.Stats.Load15M)
 			require.Equal(t, uint64(16012), nodeRemote.Stats.MemTotalMB)
-			require.Equal(t, uint64(96), nodeRemote.Stats.MemAvailPct)
+			require.Equal(t, int(96), nodeRemote.Stats.MemAvailPct)
 			require.Equal(t, uint64(979), nodeRemote.Stats.SwapTotalMB)
 		})
 
@@ -229,7 +229,7 @@ func TestDaemonData(t *testing.T) {
 				require.Equal(t, patchMsg.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 				require.Equal(t, 0.5, nodeRemote.Stats.Load15M)
 				require.Equal(t, uint64(1000), nodeRemote.Stats.MemTotalMB)
-				require.Equal(t, uint64(10), nodeRemote.Stats.MemAvailPct)
+				require.Equal(t, int(10), nodeRemote.Stats.MemAvailPct)
 				require.Equal(t, uint64(11), nodeRemote.Stats.SwapTotalMB)
 			})
 			require.False(t, t.Failed()) // fail on first error
@@ -261,7 +261,7 @@ func TestDaemonData(t *testing.T) {
 				t.Log("ensure future delta not applied")
 				remoteNode := bus.ClusterNodeData(remoteHost)
 				require.NotNil(t, remoteNode)
-				require.Equal(t, uint64(2), bus.ClusterData().GetNodeData(remoteHost).Stats.Score, "hum have applied broken sequence data !")
+				require.Equal(t, int(2), bus.ClusterData().GetNodeData(remoteHost).Stats.Score, "hum have applied broken sequence data !")
 
 			})
 			require.False(t, t.Failed()) // fail on first error

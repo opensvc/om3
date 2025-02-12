@@ -66,19 +66,13 @@ func (t *actor) setenv(action string, leader bool) {
 	os.Setenv("OPENSVC_SVCNAME", t.path.Name)
 	os.Setenv("OPENSVC_NAMESPACE", t.path.Namespace)
 	os.Setenv("OPENSVC_ACTION", action)
+	os.Setenv("OPENSVC_SID", xsession.ID.String())
 	if leader {
 		os.Setenv("OPENSVC_LEADER", "1")
 	} else {
 		os.Setenv("OPENSVC_LEADER", "0")
 	}
 	// each Setenv resource Driver will load its own env vars when actioned
-}
-
-func (t *actor) preAction(ctx context.Context) error {
-	if err := t.mayFreeze(ctx); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (t *actor) needRollback(ctx context.Context) bool {
@@ -224,14 +218,14 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	return nil
 }
 
-func (t *actor) abortStart(ctx context.Context, l resourceLister) (err error) {
+func (t *actor) abortStart(ctx context.Context, resources resource.Drivers) (err error) {
 	if actioncontext.Props(ctx).Name != "start" {
 		return nil
 	}
 	if err := t.abortStartAffinity(ctx); err != nil {
 		return err
 	}
-	return t.abortStartDrivers(ctx, l)
+	return t.abortStartDrivers(ctx, resources)
 }
 
 func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
@@ -286,9 +280,8 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err error) {
+func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Drivers) (err error) {
 	sb := statusbus.FromContext(ctx)
-	resources := l.Resources()
 	added := 0
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
@@ -341,6 +334,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)
+	barrier := actioncontext.To(ctx)
+	resourceSelector := resourceselector.FromContext(ctx, t)
+	resources := resourceSelector.Resources()
+	isDesc := resourceSelector.IsDesc()
+
+	if len(resources) == 0 && !resourceSelector.IsZero() {
+		return fmt.Errorf("resource does not exist")
+	}
+
 	logger := t.log.
 		Attr("argv", os.Args).
 		Attr("cwd", wd).
@@ -372,13 +374,30 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	ctxWithTimeout, cancelCtxWithTimeout := t.withActionTimeout(ctx)
 	defer cancelCtxWithTimeout()
 
-	if err := t.preAction(ctxWithTimeout); err != nil {
+	freeze := func() error {
+		if !action.Freeze {
+			return nil
+		}
+		if !resourceSelector.IsZero() {
+			t.log.Debugf("skip freeze: resource selection")
+			return nil
+		}
+		if !t.orchestrateWantsFreeze() {
+			t.log.Debugf("skip freeze: orchestrate value")
+			return nil
+		}
+		if env.HasDaemonMonitorOrigin() {
+			t.log.Debugf("skip freeze: action has daemon origin")
+			return nil
+		}
+		return t.Freeze(ctxWithTimeout)
+	}
+
+	if err := freeze(); err != nil {
 		_, _ = t.statusEval(ctxWithTimeout)
 		t.announceFailure(ctxWithTimeout)
 		return err
 	}
-	l := resourceselector.FromContext(ctxWithTimeout, t)
-	b := actioncontext.To(ctxWithTimeout)
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
@@ -387,8 +406,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			} else if !v {
 				return nil
 			}
-			l := t.log.Attr("rid", r.RID())
-			ctx = l.WithContext(ctx)
+			logger := t.log.Attr("rid", r.RID())
+			ctx = logger.WithContext(ctx)
 			err := fn(ctx, r)
 			switch {
 			case errors.Is(err, resource.ErrDisabled):
@@ -405,7 +424,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkToer, ok := r.(resource.LinkToer); ok {
-				if name := linkToer.LinkTo(); name != "" && l.Resources().HasRID(name) {
+				if name := linkToer.LinkTo(); name != "" && resources.HasRID(name) {
 					// will be handled by the targeted LinkNameser resource
 					return resource.ErrActionPostponedToLinker
 				}
@@ -416,7 +435,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			} else {
 				// Here, we handle a resource other resources can link to.
 				names := linkNameser.LinkNames()
-				rids := l.Resources().LinkersRID(names)
+				rids := resources.LinkersRID(names)
 				filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
 					// filter applies the action only on linkers
 					return func(ctx context.Context, r resource.Driver) error {
@@ -428,8 +447,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				}
 
 				// On descending action, do action on linkers first.
-				if l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
+				if isDesc {
+					if err := t.ResourceSets().Do(ctx, resourceSelector, barrier, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
 						return err
 					}
 				}
@@ -437,8 +456,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 					return err
 				}
 				// On ascending action, do action on linkers last.
-				if !l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
+				if !isDesc {
+					if err := t.ResourceSets().Do(ctx, resourceSelector, barrier, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
 						return err
 					}
 				}
@@ -450,7 +469,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
 	var evaluated sync.Map
-	t.ResourceSets().Do(ctxWithTimeout, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
@@ -474,12 +493,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return nil
 	})
 
-	if err := t.abortStart(ctxWithTimeout, l); err != nil {
+	if err := t.abortStart(ctxWithTimeout, resources); err != nil {
 		_, _ = t.statusEval(ctxWithTimeout)
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctxWithTimeout, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctxWithTimeout) {
 			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
@@ -543,26 +562,6 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func (t *actor) mayFreeze(ctx context.Context) error {
-	action := actioncontext.Props(ctx)
-	if !action.Freeze {
-		return nil
-	}
-	if !resourceselector.FromContext(ctx, nil).IsZero() {
-		t.log.Debugf("skip freeze: resource selection")
-		return nil
-	}
-	if !t.orchestrateWantsFreeze() {
-		t.log.Debugf("skip freeze: orchestrate value")
-		return nil
-	}
-	if env.HasDaemonMonitorOrigin() {
-		t.log.Debugf("skip freeze: action has daemon origin")
-		return nil
-	}
-	return t.Freeze(ctx)
 }
 
 func (t *actor) orchestrateWantsFreeze() bool {
