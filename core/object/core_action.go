@@ -66,6 +66,7 @@ func (t *actor) setenv(action string, leader bool) {
 	os.Setenv("OPENSVC_SVCNAME", t.path.Name)
 	os.Setenv("OPENSVC_NAMESPACE", t.path.Namespace)
 	os.Setenv("OPENSVC_ACTION", action)
+	os.Setenv("OPENSVC_SID", xsession.ID.String())
 	if leader {
 		os.Setenv("OPENSVC_LEADER", "1")
 	} else {
