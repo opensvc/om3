@@ -1,4 +1,7 @@
 If set to `last_run`, the last run retcode is used to report a task resource
 status.
 
+If set to `last_run_warn`, the last run error retcode is displayed as a
+resource warning.
+
 If not set (default), the status of a task is always n/a.
