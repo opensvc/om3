@@ -1635,7 +1635,7 @@ func newCmdNodeSSHTrust() *cobra.Command {
 		Use:   "trust",
 		Short: "ssh-trust node peers",
 		Long: "Configure the nodes specified by the --node flag to allow SSH communication from their peers." +
-			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.sshkey setting." +
 			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1661,7 +1661,7 @@ func newCmdClusterSSHTrust() *cobra.Command {
 		Use:   "trust",
 		Short: "ssh-trust all the node mesh",
 		Long: "Configure all nodes to allow SSH communication from their peers." +
-			" By default, the trusted SSH key is opensvc, but this can be customized using the node.ssh_key setting." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.sshkey setting." +
 			" If the key does not exist, OpenSVC automatically generates it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
