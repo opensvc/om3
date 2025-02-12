@@ -574,31 +574,59 @@ func (t *T) getPid() (int, error) {
 func isCmdlineMatchingDaemon(pid int) (bool, error) {
 	log := logger("test:")
 	log.Debugf("test cmdline")
-	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+	getPidInfo := func(pid int) (args [][]byte, running bool, err error) {
+		b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false, nil
+		} else if err != nil {
+			return nil, false, err
+		} else if strings.Contains(string(b), "/daemoncmd.test") {
+			return nil, true, errGoTest
+		}
+
+		sep := make([]byte, 1)
+		l := bytes.Split(b, sep)
+		return l, true, nil
 	}
 
-	if err != nil {
+	returnsFromArgs := func(args [][]byte) (bool, error) {
+		if len(args) < 3 {
+			return false, fmt.Errorf("process %d pointed by %s ran by a command with too few arguments: '%s'", pid, daemonPidFile(), args)
+		} else if string(args[1]) != "daemon" || string(args[2]) != "start" {
+			return false, fmt.Errorf("process %d pointed by %s is not a om daemon: '%s'", pid, daemonPidFile(), args)
+		} else {
+			return true, nil
+		}
+	}
+
+	if l, running, err := getPidInfo(pid); err != nil {
 		return false, err
+	} else if !running {
+		return false, nil
+	} else if len(l) == 0 {
+		// need rescan, pid is detected, but read the read /proc/%d/cmdline may returns empty []byte
+		//     om[364661]: daemon: main: daemon started
+		//     om[364661]: daemon: cmd: locked start: started
+		//     ...
+		//     om[368219]: daemon: cmd: cli restart: origin os, no unit defined
+		//     om[364661]: daemon: main: stopping on daemon ctl message
+		//     om[364661]: daemon: main: daemon stopping
+		//     om[368219]: daemon: cmd: start from cmd: wait running: start checker wait
+		//                 running failed: wait running: process 364661 pointed
+		//                 by /var/lib/opensvc/osvcd.pid ran by a command with too few arguments: []
+		time.Sleep(500 * time.Millisecond)
+		if l, running, err := getPidInfo(pid); err != nil {
+			return false, err
+		} else if !running {
+			return false, nil
+		} else {
+			return returnsFromArgs(l)
+		}
+	} else {
+		return returnsFromArgs(l)
 	}
-
-	if strings.Contains(string(b), "/daemoncmd.test") {
-		return true, errGoTest
-	}
-
-	sep := make([]byte, 1)
-	l := bytes.Split(b, sep)
-
-	if len(l) < 3 {
-		return false, fmt.Errorf("process %d pointed by %s ran by a command with too few arguments: %s", pid, daemonPidFile(), l)
-	}
-	if string(l[1]) != "daemon" || string(l[2]) != "start" {
-		return false, fmt.Errorf("process %d pointed by %s is not a om daemon", pid, daemonPidFile())
-	}
-	return true, nil
-
 }
 
 func extractPidFromPidFile(pidFile string) (int, error) {
