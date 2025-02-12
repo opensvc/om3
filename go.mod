@@ -102,7 +102,7 @@ require (
 	github.com/cilium/ebpf v0.11.0 // indirect
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
@@ -121,11 +121,11 @@ require (
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
-	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx v1.2.25 // indirect
-	github.com/lestrrat-go/option v1.0.0 // indirect
+	github.com/lestrrat-go/jwx v1.2.29 // indirect
+	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
