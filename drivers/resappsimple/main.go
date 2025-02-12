@@ -57,6 +57,11 @@ func (t *T) Start(ctx context.Context) (err error) {
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 	)
 	cmd := command.New(opts...)
+
+	cmd.Cmd().SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true, // Create a new session to avoid kill on exit
+	}
+
 	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
 	if err := cmd.Start(); err != nil {
 		return err
