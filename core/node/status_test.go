@@ -26,9 +26,8 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 			"node1": uint64(19),
 			"node2": uint64(10),
 		},
-		MinAvailMemPct:  9,
-		MinAvailSwapPct: 15,
-		IsLeader:        true,
+		IsOverloaded: false,
+		IsLeader:     true,
 		Labels: map[string]string{
 			"node1": "abc",
 			"node2": "efg",
