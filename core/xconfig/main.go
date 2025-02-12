@@ -812,6 +812,15 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 		v, err = t.descope(k, kw, impersonate)
 	} else {
 		v, err = t.GetStrict(k)
+		if err != nil {
+			for _, alias := range kw.Aliases {
+				k.Option = alias
+				v, err = t.GetStrict(k)
+				if err == nil {
+					break
+				}
+			}
+		}
 	}
 	return v, err
 }
@@ -868,7 +877,7 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 	if err != nil {
 		return "", err
 	}
-	l := append(kw.Aliases, kw.Option)
+	l := append([]string{kw.Option}, kw.Aliases...)
 	for _, o := range l {
 		if v, ok := s[o+"@"+impersonate]; ok {
 			return v, nil
