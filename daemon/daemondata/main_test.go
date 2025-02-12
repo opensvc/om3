@@ -229,7 +229,7 @@ func TestDaemonData(t *testing.T) {
 				require.Equal(t, patchMsg.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 				require.Equal(t, 0.5, nodeRemote.Stats.Load15M)
 				require.Equal(t, uint64(1000), nodeRemote.Stats.MemTotalMB)
-				require.Equal(t, uint64(10), nodeRemote.Stats.MemAvailPct)
+				require.Equal(t, int(10), nodeRemote.Stats.MemAvailPct)
 				require.Equal(t, uint64(11), nodeRemote.Stats.SwapTotalMB)
 			})
 			require.False(t, t.Failed()) // fail on first error
