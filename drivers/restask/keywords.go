@@ -14,7 +14,7 @@ var (
 	Keywords = []keywords.Keyword{
 		{
 			Attr:       "Check",
-			Candidates: []string{"last_run", ""},
+			Candidates: []string{"last_run", "last_run_warn", ""},
 			Example:    "last_run",
 			Option:     "check",
 			Scopable:   true,

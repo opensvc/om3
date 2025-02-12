@@ -90,6 +90,34 @@ func (t *BaseTask) lastRunFile() string {
 	return filepath.Join(t.VarDir(), "last_run_retcode")
 }
 
+func (t *BaseTask) StatusInfo(ctx context.Context) map[string]any {
+	m := make(map[string]any)
+	if i, err := t.readLastRun(); err == nil {
+		m["last_run_exitcode"] = i
+	}
+	return m
+}
+
+func (t *BaseTask) statusLastRunWarn(ctx context.Context) status.T {
+	if err := resource.StatusCheckRequires(ctx, t); err != nil {
+		t.StatusLog().Info("requirements not met")
+		return status.NotApplicable
+	}
+	if i, err := t.readLastRun(); err != nil {
+		t.StatusLog().Info("never run")
+		return status.NotApplicable
+	} else {
+		s, err := t.ExitCodeToStatus(i)
+		if err != nil {
+			t.StatusLog().Info("%s", err)
+		}
+		if s != status.Up {
+			t.StatusLog().Warn("last run failed (%d)", i)
+		}
+		return status.NotApplicable
+	}
+}
+
 func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
 	if err := resource.StatusCheckRequires(ctx, t); err != nil {
 		t.StatusLog().Info("requirements not met")
@@ -203,6 +231,8 @@ func (t *BaseTask) Status(ctx context.Context) status.T {
 	switch t.Check {
 	case "last_run":
 		return t.statusLastRun(ctx)
+	case "last_run_warn":
+		return t.statusLastRunWarn(ctx)
 	default:
 		return status.NotApplicable
 	}

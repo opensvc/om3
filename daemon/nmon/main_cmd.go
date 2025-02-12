@@ -78,8 +78,8 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyEnv                    = key.New("node", "env")
 		keySplitAction            = key.New("node", "split_action")
 		keySSHKey                 = key.New("node", "sshkey")
-		keyMinAvailMemPct         = key.New("node", "min_avail_mem")
-		keyMinAvailSwapPct        = key.New("node", "min_avail_swap")
+		keyMinAvailMemPct         = key.New("node", "min_avail_mem_pct")
+		keyMinAvailSwapPct        = key.New("node", "min_avail_swap_pct")
 	)
 	cfg := node.Config{}
 	if d := t.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
@@ -91,12 +91,8 @@ func (t *Manager) getNodeConfig() node.Config {
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
 	}
-	if d := t.config.GetSize(keyMinAvailMemPct); d != nil {
-		cfg.MinAvailMemPct = int(*d)
-	}
-	if d := t.config.GetSize(keyMinAvailSwapPct); d != nil {
-		cfg.MinAvailSwapPct = int(*d)
-	}
+	cfg.MinAvailMemPct = t.config.GetInt(keyMinAvailMemPct)
+	cfg.MinAvailSwapPct = t.config.GetInt(keyMinAvailSwapPct)
 	cfg.MaxParallel = t.config.GetInt(keyMaxParallel)
 	cfg.Env = t.config.GetString(keyEnv)
 	cfg.SplitAction = t.config.GetString(keySplitAction)
