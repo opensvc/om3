@@ -261,7 +261,7 @@ func TestDaemonData(t *testing.T) {
 				t.Log("ensure future delta not applied")
 				remoteNode := bus.ClusterNodeData(remoteHost)
 				require.NotNil(t, remoteNode)
-				require.Equal(t, uint64(2), bus.ClusterData().GetNodeData(remoteHost).Stats.Score, "hum have applied broken sequence data !")
+				require.Equal(t, int(2), bus.ClusterData().GetNodeData(remoteHost).Stats.Score, "hum have applied broken sequence data !")
 
 			})
 			require.False(t, t.Failed()) // fail on first error
