@@ -527,6 +527,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 
 		if *c.Value.GlobalExpect != t.state.GlobalExpect {
+			if *c.Value.GlobalExpect == instance.MonitorGlobalExpectAborted && t.state.GlobalExpect != instance.MonitorGlobalExpectNone {
+				// This is an abort orchestration, pickup the pending orchestration
+				// it will be used to publish ObjectOrchestrationEnd with abort true
+				t.abortedOrchestration = t.getOrchestrationEnd()
+			}
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
 			t.state.GlobalExpectOptions = c.Value.GlobalExpectOptions

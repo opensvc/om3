@@ -726,6 +726,7 @@ type (
 		GlobalExpect          instance.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 		GlobalExpectUpdatedAt time.Time                    `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
 		GlobalExpectOptions   any                          `json:"global_expect_options" yaml:"global_expect_options"`
+		Aborted               bool                         `json:"aborted" yaml:"aborted"`
 	}
 
 	ObjectOrchestrationRefused struct {

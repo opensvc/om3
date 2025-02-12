@@ -934,10 +934,11 @@ func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nod
 	}(nodename, path)
 }
 
-// waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
-// It starts new subscription before return to avoid missed events.
-// it starts go routine to watch events for expectation reached
-// idC is used to retrieve the orchestration id to match.
+// waitExpectation waits for a specific global expectation to be fulfilled for an object by monitoring relevant events.
+// It listens for updates tied to the provided path, orchestration ID, and global expectation to detect state changes.
+// The orchestration ID is received from the idC channel, and filters are applied to narrow the monitored events.
+// Reports an error to the errC channel if the expectation is not met or if issues occur during execution.
+// The provided targetOptions parameter can be used to specify additional data for expectation validation.
 func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUID, globalExpect instance.MonitorGlobalExpect, p naming.Path, errC chan<- error, targetOptions any) {
 	var (
 		filters = make([]string, 0)
@@ -946,11 +947,30 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		err      error
 		evReader event.ReadCloser
 
+		// orchestrationID is the ID of the orchestration we are waiting for.
+		// waitExpectation starts before the orchestration ID exists, so
+		// it will be received from the idC channel.
 		orchestrationID uuid.UUID
-		checkFunc       func() error
+
+		// orchestrationGlobalExpectUpdatedAt is the global expect updated at value
+		// for the orchestration we are waiting for.
+		// It will be received from event InstanceMonitorUpdated matching the orchestrationID
+		// value.
+		// It will be used to failfast when out waiting orchestration has been replaced
+		// by a more recent MonitorGlobalExpectAborted.
+		orchestrationGlobalExpectUpdatedAt time.Time
+
+		// checkFunc is a placeholder for validation logic that varies
+		// based on the value of `globalExpect`.
+		// For example, when `globalExpect` is `GlobalExpectFrozen`,
+		// it verifies that the object's frozen status is set to `frozen`.
+		// This function is used after orchestration completes successfully to
+		// validate expectations.
+		checkFunc func() error
 	)
 
 	logger := naming.LogWithPath(plog.NewDefaultLogger(), p)
+	getEvents := c.NewGetEvents()
 
 	switch globalExpect {
 	case instance.MonitorGlobalExpectStarted:
@@ -1002,6 +1022,10 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			return assertPlaced(p, status.Up, status.NotApplicable)
 		}
 	case instance.MonitorGlobalExpectPlacedAt:
+		// switch --to same-node will not reproduce InstanceStatusUpdated events
+		// we need --wait to replay events from cache
+		getEvents = getEvents.SetWait(true)
+
 		filters = append(filters,
 			"InstanceStatusUpdated,path="+p.String(),
 			"InstanceStatusDeleted,path="+p.String(),
@@ -1021,9 +1045,11 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		"ObjectStatusDeleted,path="+p.String(),
 		"ObjectOrchestrationEnd,path="+p.String(),
 		"SetInstanceMonitorRefused,path="+p.String(),
+		"InstanceMonitorUpdated,path="+p.String(),
 	)
 
-	getEvents := c.NewGetEvents().SetFilters(filters)
+	getEvents = getEvents.SetFilters(filters)
+
 	logger.Debugf("object %s: wait expectation %s filters %v", p, globalExpect, filters)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
@@ -1074,6 +1100,16 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 				return
 			}
 			switch m := msg.(type) {
+			case *msgbus.InstanceMonitorUpdated:
+				if m.Value.OrchestrationID == orchestrationID && m.Value.GlobalExpectUpdatedAt.After(orchestrationGlobalExpectUpdatedAt) {
+					orchestrationGlobalExpectUpdatedAt = m.Value.GlobalExpectUpdatedAt
+				} else if m.Value.GlobalExpectUpdatedAt.After(orchestrationGlobalExpectUpdatedAt) {
+					if m.Value.GlobalExpect == instance.MonitorGlobalExpectAborted {
+						err = fmt.Errorf("orchestration aborted:%s replaced our waiting %s:%s", m.Value.OrchestrationID, globalExpect, orchestrationID)
+						logger.Debugf("object %s: %s", p, err)
+						return
+					}
+				}
 			case *msgbus.InstanceStatusUpdated:
 				instance.StatusData.Set(m.Path, m.Node, &m.Value)
 			case *msgbus.InstanceStatusDeleted:
@@ -1089,7 +1125,11 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 					logger.Debugf("object %s: skip unmatched orchestration end (id %s global expect %s) we are waiting for (id %s global expect %s)",
 						p, m.ID, m.GlobalExpect, orchestrationID, globalExpect)
 					continue
-				} else if m.GlobalExpect == globalExpect {
+				} else if m.Aborted {
+					err = fmt.Errorf("orchestration end aborted (id %s global expect %s)", m.ID, m.GlobalExpect)
+					logger.Debugf("object %s: %s", p, err)
+					return
+				} else {
 					logger.Debugf("object %s: orchestration end (id %s global expect %s)", p, m.ID, m.GlobalExpect)
 					if checkFunc != nil {
 						if err = checkFunc(); err != nil {
@@ -1245,7 +1285,8 @@ func assertPlacedAt(p naming.Path, placedAT instance.MonitorGlobalExpectOptionsP
 			if !found.Avail.Is(avail...) {
 				return fmt.Errorf("instance %s@%s status avail '%s' is not one of %s", p, nodename, found.Avail, avail)
 			} else {
-				naming.LogWithPath(plog.NewDefaultLogger(), p).Debugf("instance %s@%s: status avail '%s' on node %s is not one of %s", p, nodename, found.Avail, avail)
+				naming.LogWithPath(plog.NewDefaultLogger(), p).Debugf("instance %s@%s: status avail '%s' is one of %s", p, nodename, found.Avail, avail)
+				continue
 			}
 		}
 		return fmt.Errorf("can't find instance status for node %s", nodename)
