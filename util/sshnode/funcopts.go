@@ -43,6 +43,9 @@ func WithPrivateKeyFiles(privateKeyFiles ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*clientOption)
 		for _, identityFile := range privateKeyFiles {
+			if identityFile == "" {
+				continue
+			}
 			if slices.Contains(t.privateKeyFiles, identityFile) {
 				continue
 			}
