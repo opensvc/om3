@@ -91,6 +91,9 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 
 		for scanner.Scan() {
 			line := scanner.Bytes()
+			if len(line) == 0 {
+				continue
+			}
 			key, _, _, _, err := ssh.ParseAuthorizedKey(line)
 			if err != nil {
 				return fmt.Errorf("failed to parse node %s host key: %w", node, err)
