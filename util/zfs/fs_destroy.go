@@ -8,7 +8,6 @@ import (
 
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/sshnode"
 )
 
 type (
@@ -111,7 +110,7 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 		}
 		return err
 	}
-	client, err := sshnode.NewClient(opts.Node)
+	client, err := t.newSSHClient(opts.Node)
 	if err != nil {
 		return err
 	}
