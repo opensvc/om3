@@ -103,8 +103,11 @@ func (t *CmdNodeEval) Run() error {
 	}
 
 out:
+	defaultOutput := "tab=data.value"
+	if len(l) > 1 {
+		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value,EVALUATED_AS:meta.evaluated_as"
+	}
 
-	defaultOutput := "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value,EVALUATED_AS:meta.evaluated_as"
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

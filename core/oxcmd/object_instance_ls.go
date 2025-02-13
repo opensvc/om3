@@ -18,7 +18,7 @@ type (
 )
 
 func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "*/"+kind+"/*")
 
 	c, err := client.New()
 	if err != nil {

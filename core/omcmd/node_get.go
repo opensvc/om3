@@ -74,10 +74,15 @@ func (t *CmdNodeGet) Run() error {
 			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
-	defaultOutput := "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-	if t.Eval {
-		defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+
+	defaultOutput := "tab=data.value"
+	if len(l) > 1 {
+		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
+		if t.Eval {
+			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+		}
 	}
+
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,

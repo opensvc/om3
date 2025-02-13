@@ -68,10 +68,15 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
 		}
 	}
-	defaultOutput := "tab=OBJECT:meta.object,KEYWORD:meta.keyword,VALUE:data.value"
-	if t.Eval {
-		defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+
+	defaultOutput := "tab=data.value"
+	if len(l) > 1 {
+		defaultOutput = "tab=OBJECT:meta.object,NODE=meta.node,KEYWORD:meta.keyword,VALUE:data.value"
+		if t.Eval {
+			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+		}
 	}
+
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
