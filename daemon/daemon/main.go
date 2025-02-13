@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"os/user"
 	"sync"
 	"syscall"
 	"time"
@@ -97,6 +98,17 @@ func (t *T) Start(ctx context.Context) error {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
 	t.logTransition("starting 🟢")
+
+	// When started by the systemd unit, HOME is empty.
+	// os.UserHomeDir() uses $HOME, so we want HOME initialized once and for all, early.
+	if os.Getenv("HOME") == "" {
+		if currentUser, err := user.Current(); err != nil {
+			return err
+		} else {
+			os.Setenv("HOME", currentUser.HomeDir)
+		}
+	}
+
 	go startProfiling()
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	localhost := hostname.Hostname()
