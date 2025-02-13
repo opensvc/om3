@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
@@ -22,13 +24,13 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/schedule"
-	"github.com/rs/zerolog"
 )
 
 // T is the driver structure.
 type (
 	T struct {
 		ressync.T
+		resource.SSH
 		BandwidthLimit string
 		Src            string
 		Dst            string
@@ -231,6 +233,9 @@ func (t *T) fullOptions() []string {
 		a.DropOption("--timeout")
 		a.Append("--timeout=" + fmt.Sprint(int(t.Timeout.Seconds())))
 	}
+	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
+		a.Append("-e", "ssh -i "+sshKeyFile)
+	}
 	a.Append(t.bandwitdthLimitOptions()...)
 	return a.Get()
 }
@@ -354,11 +359,15 @@ func (t *T) isDstFSMounted(nodename string) (bool, error) {
 	if t.DstFS == "" {
 		return true, nil
 	}
-	return isFSMounted(t.user(), nodename, t.DstFS)
+	return t.isFSMounted(nodename, t.DstFS)
 }
 
-func isFSMounted(user, nodename, mnt string) (bool, error) {
+func (t *T) isFSMounted(nodename, mnt string) (bool, error) {
+	user := t.user()
 	a := args.New()
+	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
+		a.Append("-i", sshKeyFile)
+	}
 	a.Append(user + "@" + nodename)
 	a.Append("stat --printf=%m " + mnt)
 	cmd := command.New(
