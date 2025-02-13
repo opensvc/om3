@@ -1,5 +1,7 @@
 package cluster
 
+import "github.com/opensvc/om3/util/file"
+
 type (
 	Nodes []string
 
@@ -19,6 +21,8 @@ type (
 		// fields private, no exposed in daemon data
 		// json nor events
 		secret string
+
+		sshKeyFile string
 	}
 	ConfigListener struct {
 		CRL             string `json:"crl"`
@@ -52,6 +56,10 @@ func (t Config) Secret() string {
 
 func (t *Config) SetSecret(s string) {
 	t.secret = s
+}
+
+func (t *Config) SetSSHKeyFile(s string) {
+	t.sshKeyFile = s
 }
 
 func (t Nodes) Contains(s string) bool {
@@ -103,4 +111,11 @@ func (v *Vip) Equal(o *Vip) bool {
 		}
 	}
 	return true
+}
+
+// SSHKeyFile returns the configured SSH key file path and a boolean indicating
+// if the file exists and is regular.
+func (t *Config) SSHKeyFile() (string, bool) {
+	ok, _ := file.ExistsAndRegular(t.sshKeyFile)
+	return t.sshKeyFile, ok
 }
