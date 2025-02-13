@@ -34,7 +34,10 @@ func (a *DaemonAPI) getLocalSSHHostkeys(ctx echo.Context) error {
 	for _, pubFile := range pubFiles {
 		data, err := os.ReadFile(pubFile)
 		if err != nil {
-			log.Warnf("%s", err)
+			log.Warnf("read %s: %s", pubFile, err)
+			continue
+		}
+		if len(data) == 0 {
 			continue
 		}
 		_, _, _, _, err = ssh.ParseAuthorizedKey(bytes.TrimSpace(data))
@@ -43,6 +46,7 @@ func (a *DaemonAPI) getLocalSSHHostkeys(ctx echo.Context) error {
 			continue
 		}
 		b.Write(data)
+		b.Write([]byte("\n"))
 	}
 	return ctx.String(http.StatusOK, b.String())
 }
