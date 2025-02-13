@@ -65,8 +65,14 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
 		}
 	}
+
+	defaultOutput := "tab=data.value"
+	if len(l) > 1 {
+		defaultOutput = "tab=OBJECT:meta.object,NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
+	}
+
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value",
+		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
