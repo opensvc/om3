@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 )
 
@@ -64,6 +66,21 @@ func NewClient(nodename string, opts ...funcopt.O) (*ssh.Client, error) {
 	}
 
 	return ssh.Dial("tcp", option.addr(nodename), option.clientConfig())
+}
+
+func CreateSSHDir() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	sshDir := filepath.Join(homeDir, ".ssh")
+	if ok, err := file.ExistsAndDir(sshDir); err != nil {
+		return err
+	} else if !ok {
+		return os.MkdirAll(filepath.Join(homeDir, ".ssh"), 0700)
+	} else {
+		return nil
+	}
 }
 
 func AppendAuthorizedKeys(line []byte) error {
