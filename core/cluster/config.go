@@ -1,6 +1,8 @@
 package cluster
 
-import "github.com/opensvc/om3/util/file"
+import (
+	"github.com/opensvc/om3/util/file"
+)
 
 type (
 	Nodes []string
@@ -82,6 +84,7 @@ func (t *Config) DeepCopy() *Config {
 		Quorum:     t.Quorum,
 		Vip:        *t.Vip.DeepCopy(),
 		secret:     t.secret,
+		sshKeyFile: t.sshKeyFile,
 	}
 }
 
