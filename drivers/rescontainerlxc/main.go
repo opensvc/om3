@@ -34,7 +34,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/sshnode"
 )
 
 const (
@@ -52,6 +51,7 @@ var (
 type (
 	T struct {
 		resource.T
+		resource.SSH
 		resource.SCSIPersistentReservation
 		Path                     naming.Path    `json:"path"`
 		ObjectID                 uuid.UUID      `json:"object_id"`
@@ -1212,7 +1212,7 @@ func (t *T) Abort(ctx context.Context) bool {
 func (t *T) upPeer() (string, error) {
 	hn := hostname.Hostname()
 	isPeerUp := func(n string) (bool, error) {
-		client, err := sshnode.NewClient(n)
+		client, err := t.NewSSHClient(n)
 		if err != nil {
 			return false, err
 		}

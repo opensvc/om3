@@ -6,6 +6,8 @@ type (
 	Filesystem struct {
 		Name string
 		Log  *plog.Logger
+
+		SSHKeyFile string
 	}
 	Filesystems []Filesystem
 )

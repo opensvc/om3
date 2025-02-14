@@ -32,6 +32,10 @@ type (
 		Configure() error
 	}
 
+	SetSSHKeyFiler interface {
+		SetSSHKeyFile()
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

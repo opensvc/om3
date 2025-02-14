@@ -33,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/sshnode"
 	"github.com/opensvc/om3/util/waitfor"
 )
 
@@ -51,6 +50,7 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.SSH
 		resource.SCSIPersistentReservation
 		Path       naming.Path `json:"path"`
 		ObjectID   uuid.UUID   `json:"object_id"`
@@ -821,7 +821,7 @@ func (t *T) Enter() error {
 
 func (t *T) execViaInternalSSH(cmd string) error {
 	hn := t.GetHostname()
-	client, err := sshnode.NewClient(hn)
+	client, err := t.NewSSHClient(hn)
 	if err != nil {
 		return err
 	}
@@ -861,7 +861,7 @@ func (t *T) execViaRCmd(args []string) error {
 }
 
 func (t *T) enterViaInternalSSH() error {
-	client, err := sshnode.NewClient(t.GetHostname())
+	client, err := t.NewSSHClient(t.GetHostname())
 	if err != nil {
 		return err
 	}
@@ -1004,7 +1004,7 @@ func (t *T) abortPeerUp() bool {
 
 func (t *T) upPeer() (string, error) {
 	isPeerUp := func(n string) (bool, error) {
-		client, err := sshnode.NewClient(n)
+		client, err := t.NewSSHClient(n)
 		if err != nil {
 			return false, err
 		}

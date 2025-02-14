@@ -469,6 +469,9 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			return err
 		}
 	}
+	if i, ok := r.(resource.SetSSHKeyFiler); ok {
+		i.SetSSHKeyFile()
+	}
 	if i, ok := r.(resource.ActionResourceDepser); ok {
 		deps := i.ActionResourceDeps()
 		t.actionResourceDeps.RegisterSlice(deps)

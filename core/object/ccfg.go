@@ -3,6 +3,8 @@ package object
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -110,6 +112,8 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerOpenIDWellKnown = key.New("listener", "openid_well_known")
 		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
 		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
+
+		keyNodeSSHKey = key.New("node", "sshkey")
 	)
 
 	cfg := &cluster.Config{}
@@ -145,14 +149,19 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Listener.OpenIDWellKnown = c.GetString(keyListenerOpenIDWellKnown)
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
+	if homedir, err := os.UserHomeDir(); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("user home dir: %s", err))
+	} else {
+		cfg.SetSSHKeyFile(filepath.Join(homedir, ".ssh", c.GetString(keyNodeSSHKey)))
+	}
 	return cfg, errs
 }
 
-// VIP returns the VIP from cluster config
 var (
 	ErrVIPScope = errors.New("vip scope")
 )
 
+// getVip returns the VIP from cluster config
 func getVip(c *xconfig.T, nodes []string) (cluster.Vip, error) {
 	vip := cluster.Vip{}
 	keyVip := key.New("cluster", "vip")

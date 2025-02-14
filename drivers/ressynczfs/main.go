@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/provisioned"
@@ -20,15 +22,14 @@ import (
 	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
-	"github.com/opensvc/om3/util/sshnode"
 	"github.com/opensvc/om3/util/zfs"
-	"golang.org/x/crypto/ssh"
 )
 
 // T is the driver structure.
 type (
 	T struct {
 		ressync.T
+		resource.SSH
 		Src          string
 		Dst          string
 		Target       []string
@@ -184,7 +185,7 @@ func (t *T) sendIncremental(ctx context.Context, nodename string) error {
 	args := t.sendIncrementalCmd()
 	cmd := exec.Command(args[0], args[1:]...)
 
-	client, err := sshnode.NewClient(nodename)
+	client, err := t.NewSSHClient(nodename)
 	if err != nil {
 		return err
 	}
@@ -251,7 +252,7 @@ func (t *T) sendInitial(ctx context.Context, nodename string) error {
 	args := t.sendInitialCmd()
 	cmd := exec.Command(args[0], args[1:]...)
 
-	client, err := sshnode.NewClient(nodename)
+	client, err := t.NewSSHClient(nodename)
 	if err != nil {
 		return err
 	}
@@ -430,7 +431,7 @@ func (t *T) Configure() error {
 }
 
 func (t *T) zfs(name string) *zfs.Filesystem {
-	return &zfs.Filesystem{Name: name, Log: t.Log()}
+	return &zfs.Filesystem{Name: name, Log: t.Log(), SSHKeyFile: t.GetSSHKeyFile()}
 }
 
 func (t *T) rotatePeerSnaps(nodename, src, dst string) error {
@@ -458,7 +459,7 @@ func (t *T) snapshotExists(name string) (bool, error) {
 }
 
 func (t *T) remoteSnapshotExists(name, nodename string) (bool, error) {
-	client, err := sshnode.NewClient(nodename)
+	client, err := t.NewSSHClient(nodename)
 	if err != nil {
 		return false, err
 	}

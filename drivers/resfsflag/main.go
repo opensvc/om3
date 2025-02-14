@@ -17,12 +17,12 @@ import (
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/sshnode"
 )
 
 // T is the driver structure.
 type T struct {
 	resource.T
+	resource.SSH
 	Path     naming.Path `json:"path"`
 	Nodes    []string    `json:"nodes"`
 	Topology topology.T  `json:"topology"`
@@ -49,7 +49,7 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	}
 	test := func(n string) bool {
-		client, err := sshnode.NewClient(n)
+		client, err := t.NewSSHClient(n)
 		if err != nil {
 			t.Log().Warnf("peer %s: no abort: new ssh client: %s", n, err)
 			return false

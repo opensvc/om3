@@ -30,6 +30,9 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 	log := LogHandler(ctx, "PutNodeSSHTrust")
 
 	clusterConfigData := cluster.ConfigData.Get()
+	if err := sshnode.CreateSSHDir(); err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "create ssh dir", "%s", err)
+	}
 	authorizedKeys, err := sshnode.GetAuthorizedKeysMap()
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "parse authorized_keys", "%s", err)
