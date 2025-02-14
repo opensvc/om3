@@ -114,13 +114,15 @@ func AddKnownHost(host string, key ssh.PublicKey) error {
 }
 
 func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
+	m := make(AuthorizedKeysMap)
 	filename, err := authorizedKeysFile()
 	file, err := os.Open(filename)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
+		return m, nil
+	} else if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	m := make(AuthorizedKeysMap)
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
@@ -153,16 +155,18 @@ func (m AuthorizedKeysMap) Has(data []byte) (bool, error) {
 }
 
 func GetKnownHostsMap() (KnownHostsMap, error) {
+	m := make(KnownHostsMap)
 	filename, err := knownHostsFile()
 	if err != nil {
 		return nil, err
 	}
 	file, err := os.Open(filename)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
+		return m, nil
+	} else if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	m := make(KnownHostsMap)
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
