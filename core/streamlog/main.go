@@ -9,9 +9,10 @@ import (
 	"sort"
 
 	"github.com/fatih/color"
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -56,7 +57,7 @@ func (event Event) RenderConsole() {
 }
 
 func (event Event) RenderData() {
-	fmt.Printf("%s\n", string(event.B))
+	fmt.Printf("%s", string(event.B))
 }
 
 func (event Event) Render(format string) {
