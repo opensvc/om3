@@ -185,14 +185,14 @@ func TestAppStop(t *testing.T) {
 		}
 	})
 
-	t.Run("exit with error", func(t *testing.T) {
+	t.Run("exit without error", func(t *testing.T) {
 		name := "logError"
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		_, err := cmd.CombinedOutput()
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 	})
 
 	t.Run("environment", func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestAppStop(t *testing.T) {
 			cmd := exec.Command(os.Args[0], args...)
 			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
-			assert.NotNil(t, err, "got: '\n%v'", string(out))
+			assert.Nil(t, err, "app failure has not been ignored as expected", string(out))
 			for _, expected := range cases[name].expectedResults {
 				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
 			}
@@ -295,19 +295,12 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("when stop is true and script not found into <svcname>.d", func(t *testing.T) {
 		name := "stopTrueScript"
-		var msg string
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, err := cmd.CombinedOutput()
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
-			msg = string(exitError.Stderr)
-		} else {
-			msg = ""
-		}
-		require.NotNilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+		require.Nil(t, err, "app failure has not been ignored as expected", string(out))
 		for _, expected := range cases[name].expectedResults {
 			assert.Containsf(t, string(out), env.Root+"/etc/svcappforking.d/"+expected+": no such file or directory", "got: '%v'", string(out))
 		}
@@ -380,19 +373,12 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("stop value true without script keyword exit non 0", func(t *testing.T) {
 		name := "stopScriptUndef"
-		var msg string
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, err := cmd.CombinedOutput()
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
-			msg = string(exitError.Stderr)
-		} else {
-			msg = ""
-		}
-		require.NotNilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+		require.Nil(t, err, "app failure should not return exit code failed", string(out))
 		for _, expected := range cases[name].expectedResults {
 			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
 		}
@@ -623,8 +609,8 @@ func TestAppStopTimeout(t *testing.T) {
 	cases := map[string]bool{
 		"no_timeout":           true,
 		"stop_timeout_succeed": true,
-		"stop_timeout_failure": false,
-		"timeout_failure":      false,
+		"stop_timeout_failure": true,
+		"timeout_failure":      true,
 	}
 	getCmd := func(name string) []string {
 		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
@@ -691,15 +677,17 @@ func TestAppStartRollback(t *testing.T) {
 			unexpectedRollback: []string{"1ok", "2ok", "3fail", "6ok"},
 			exitCode:           1,
 		},
-		"do not continue rollbacks when one rollback step fails": {
+		"continue rollbacks when one rollback step fails": {
 			rids: []string{"1ok", "2ok", "4rollbackFail", "5fail", "6ok"},
 			// start apps until one fails
 			expectedStart: []string{"1ok", "2ok", "4rollbackFail", "5fail"},
 			// do not continue start after one app fails
 			unexpectedStart:  []string{"6ok"},
-			expectedRollback: []string{"4rollbackFail"},
+			expectedRollback: []string{"1ok", "4rollbackFail"},
 			// do not continue  rollbacks when one rollback fails
-			unexpectedRollback: []string{"1ok", "2ok", "5fail", "6ok"},
+
+			// app#2ok is not called (it is a simple app without checker => app#2ok: already down, so rollback is skipped)
+			unexpectedRollback: []string{"2ok", "5fail", "6ok"},
 			exitCode:           1,
 		},
 	}
