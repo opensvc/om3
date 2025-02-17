@@ -185,14 +185,14 @@ func TestAppStop(t *testing.T) {
 		}
 	})
 
-	t.Run("exit with error", func(t *testing.T) {
+	t.Run("exit without error", func(t *testing.T) {
 		name := "logError"
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		_, err := cmd.CombinedOutput()
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 	})
 
 	t.Run("environment", func(t *testing.T) {
