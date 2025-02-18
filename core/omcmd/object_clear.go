@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectselector"
 )
 
@@ -29,7 +30,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	}
 	var errs error
 	for _, p := range paths {
-		nodes, err := nodesFromPaths(c, p.String())
+		nodes, err := commoncmd.NodesFromPaths(c, p.String())
 		if err != nil {
 			errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 			continue

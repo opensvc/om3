@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/render"
 )
@@ -15,6 +16,18 @@ type (
 		NodeSelector string
 	}
 )
+
+func (t *CmdNodeLogs) Run() error {
+	render.SetColor(t.Color)
+	if t.NodeSelector == "" {
+		t.NodeSelector = "*"
+	}
+	if t.Local {
+		return t.local()
+	} else {
+		return t.asCommonCmd().Remote()
+	}
+}
 
 func parseFilters(l *[]string) []string {
 	m := make([]string, 0)
@@ -51,10 +64,18 @@ func (t *CmdNodeLogs) local() error {
 	}
 }
 
-func (t *CmdNodeLogs) Run() error {
-	render.SetColor(t.Color)
-	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+func (t *CmdNodeLogs) asCommonCmd() *commoncmd.CmdNodeLogs {
+	return &commoncmd.CmdNodeLogs{
+		OptsGlobal: commoncmd.OptsGlobal{
+			Color:          t.Color,
+			Output:         t.Output,
+			ObjectSelector: t.ObjectSelector,
+		},
+		OptsLogs: commoncmd.OptsLogs{
+			Follow: t.Follow,
+			Lines:  t.Lines,
+			Filter: t.Filter,
+		},
+		NodeSelector: t.NodeSelector,
 	}
-	return t.local()
 }
