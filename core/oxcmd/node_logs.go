@@ -1,15 +1,7 @@
 package oxcmd
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"sync"
-
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/streamlog"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/util/render"
 )
 
@@ -21,68 +13,26 @@ type (
 	}
 )
 
-func (t *CmdNodeLogs) stream(node string) {
-	c, err := client.New(client.WithTimeout(0))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	reader, err := c.NewGetLogs(node).
-		SetFilters(&t.Filter).
-		SetLines(&t.Lines).
-		SetFollow(&t.Follow).
-		GetReader()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	defer reader.Close()
-
-	for {
-		event, err := reader.Read()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
-		}
-		rec, err := streamlog.NewEvent(event.Data)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
-		}
-		rec.Render(t.Output)
-	}
-}
-
-func (t *CmdNodeLogs) remote() error {
-	c, err := client.New(client.WithTimeout(0))
-	if err != nil {
-		return err
-	}
-	nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
-	if err != nil {
-		return err
-	}
-	if len(nodes) == 0 {
-		return fmt.Errorf("no nodes to fetch logs from")
-	}
-	var wg sync.WaitGroup
-	wg.Add(len(nodes))
-	for _, node := range nodes {
-		go func(n string) {
-			defer wg.Done()
-			t.stream(n)
-		}(node)
-	}
-	wg.Wait()
-	return nil
-}
-
 func (t *CmdNodeLogs) Run() error {
 	render.SetColor(t.Color)
 	if t.NodeSelector == "" {
 		t.NodeSelector = "*"
 	}
-	return t.remote()
+	return t.asCommonCmd().Remote()
+}
+
+func (t *CmdNodeLogs) asCommonCmd() *commoncmd.CmdNodeLogs {
+	return &commoncmd.CmdNodeLogs{
+		OptsGlobal: commoncmd.OptsGlobal{
+			Color:          t.Color,
+			Output:         t.Output,
+			ObjectSelector: t.ObjectSelector,
+		},
+		OptsLogs: commoncmd.OptsLogs{
+			Follow: t.Follow,
+			Lines:  t.Lines,
+			Filter: t.Filter,
+		},
+		NodeSelector: t.NodeSelector,
+	}
 }

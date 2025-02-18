@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
@@ -105,8 +106,16 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 	case <-r.ctx.Done():
 		return nil, r.ctx.Err()
 	case err := <-r.errC:
+		if err == nil {
+			// bug
+			return nil, fmt.Errorf("event reader: read unexpected nil from err channel")
+		}
 		return nil, err
 	case e := <-r.eventC:
+		if e == nil {
+			// bug
+			return nil, fmt.Errorf("event reader: read unexpected nil from event channel")
+		}
 		return e, nil
 	}
 }

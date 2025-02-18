@@ -9,9 +9,10 @@ import (
 	"sort"
 
 	"github.com/fatih/color"
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -32,15 +33,15 @@ type (
 	Events []Event
 )
 
-func (event Event) Map() map[string]any {
+func (event *Event) Map() map[string]any {
 	return event.M
 }
 
-func (event Event) IsZero() bool {
+func (event *Event) IsZero() bool {
 	return event.M == nil
 }
 
-func (event Event) RenderConsole() {
+func (event *Event) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
@@ -55,11 +56,11 @@ func (event Event) RenderConsole() {
 	}
 }
 
-func (event Event) RenderData() {
+func (event *Event) RenderData() {
 	fmt.Printf("%s\n", string(event.B))
 }
 
-func (event Event) Render(format string) {
+func (event *Event) Render(format string) {
 	switch format {
 	case "json":
 		event.RenderData()
@@ -136,7 +137,11 @@ func NewEvent(b []byte) (Event, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return Event{}, err
 	} else {
-		return Event{B: b, M: m}, nil
+		if len(b) > 0 && b[len(b)-1] == '\n' {
+			return Event{B: b[:len(b)-1], M: m}, nil
+		} else {
+			return Event{B: b, M: m}, nil
+		}
 	}
 }
 
@@ -147,17 +152,17 @@ func NewStream() *Stream {
 	}
 }
 
-func (stream Stream) Errors() chan error {
+func (stream *Stream) Errors() chan error {
 	return stream.errs
 }
 
-func (stream Stream) Events() chan Event {
+func (stream *Stream) Events() chan Event {
 	return stream.q
 }
 
 func (stream *Stream) Stop() error {
 	if c := stream.cmd.Cmd(); c != nil {
-		c.Process.Kill()
+		_ = c.Process.Kill()
 	}
 	return nil
 }
@@ -190,7 +195,7 @@ func (stream *Stream) Start(streamConfig StreamConfig) error {
 		return err
 	}
 	go func() {
-		stream.cmd.Wait()
+		_ = stream.cmd.Wait()
 		stream.errs <- nil // signal client we are done sending
 	}()
 	return nil
