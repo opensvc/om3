@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 )
@@ -40,7 +41,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	var todoN int
 
 	for _, path := range paths {
-		nodes, err := nodesFromPaths(c, path.String())
+		nodes, err := commoncmd.NodesFromPaths(c, path.String())
 		if err != nil {
 			errC <- fmt.Errorf("%s: %w", path, err)
 		}
