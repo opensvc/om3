@@ -137,7 +137,11 @@ func NewEvent(b []byte) (Event, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return Event{}, err
 	} else {
-		return Event{B: b, M: m}, nil
+		if len(b) > 0 && b[len(b)-1] == '\n' {
+			return Event{B: b[:len(b)-1], M: m}, nil
+		} else {
+			return Event{B: b, M: m}, nil
+		}
 	}
 }
 
