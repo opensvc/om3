@@ -20,12 +20,12 @@ type (
 )
 
 const (
-	name = "opensvc-agent.service"
+	UnitName = "opensvc-server.service"
 )
 
 // Activated detects if opensvc unit is activated
 func (t *T) Activated(ctx context.Context) (bool, error) {
-	prop, err := t.conn.GetUnitPropertyContext(ctx, name, "ActiveState")
+	prop, err := t.conn.GetUnitPropertyContext(ctx, UnitName, "ActiveState")
 	if err != nil {
 		return false, err
 	}
@@ -50,7 +50,7 @@ func (t *T) Close() error {
 
 // Defined verify if opensvc systemd unit exists
 func (t *T) Defined(ctx context.Context) (bool, error) {
-	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{name})
+	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{UnitName})
 	if err != nil {
 		return false, err
 	}
@@ -76,26 +76,26 @@ func (t *T) NotifyWatchdog() (bool, error) {
 // the command to be attached on another control group and prevent systemd
 // warnings during 'om daemon restart' such as:
 //
-//	systemd[1]: Stopping OpenSVC agent...
-//	systemd[1]: opensvc-agent.service: Succeeded.
-//	systemd[1]: Stopped OpenSVC agent.
-//	systemd[1]: opensvc-agent.service: Found left-over process 2899690 (om) in control group while starting unit. Ignoring.
+//	systemd[1]: Stopping OpenSVC server...
+//	systemd[1]: opensvc-server.service: Succeeded.
+//	systemd[1]: Stopped OpenSVC server.
+//	systemd[1]: opensvc-server.service: Found left-over process 2899690 (om) in control group while starting unit. Ignoring.
 //	systemd[1]: This usually indicates unclean termination of a previous run, or service implementation deficiencies.
-//	systemd[1]: opensvc-agent.service: Found left-over process 2899697 (systemctl) in control group while starting unit. Ignoring.
+//	systemd[1]: opensvc-server.service: Found left-over process 2899697 (systemctl) in control group while starting unit. Ignoring.
 //	systemd[1]: This usually indicates unclean termination of a previous run, or service implementation deficiencies.
-//	systemd[1]: Starting OpenSVC agent...
-//	systemd[1]: Started OpenSVC agent.
+//	systemd[1]: Starting OpenSVC server...
+//	systemd[1]: Started OpenSVC server.
 func (t *T) Restart() error {
 	return command.New(
 		command.WithName("systemd-run"),
-		command.WithVarArgs("systemctl", "restart", name),
+		command.WithVarArgs("systemctl", "restart", UnitName),
 	).Run()
 }
 
 // Start starts the opensvc systemd unit
 func (t *T) Start(ctx context.Context) error {
 	c := make(chan string)
-	_, err := t.conn.StartUnitContext(ctx, name, "replace", c)
+	_, err := t.conn.StartUnitContext(ctx, UnitName, "replace", c)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (t *T) Start(ctx context.Context) error {
 // Stop stops the opensvc systemd unit
 func (t *T) Stop(ctx context.Context) error {
 	c := make(chan string)
-	_, err := t.conn.StopUnitContext(ctx, name, "replace", c)
+	_, err := t.conn.StopUnitContext(ctx, UnitName, "replace", c)
 	if err != nil {
 		return err
 	}
