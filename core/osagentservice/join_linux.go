@@ -9,12 +9,10 @@ import (
 
 	"github.com/containerd/cgroups"
 	"github.com/containerd/cgroups/v3/cgroup2"
+
+	"github.com/opensvc/om3/daemon/daemonsys"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/systemd"
-)
-
-var (
-	agentServiceName = "opensvc-agent.service"
 )
 
 // Join add current process to opensvc systemd agent service when
@@ -32,7 +30,7 @@ func Join() error {
 }
 
 func joinV1() error {
-	agentSlice := cgroups.Slice("system.slice", agentServiceName)
+	agentSlice := cgroups.Slice("system.slice", daemonsys.UnitName)
 	cg, err := cgroups.Load(cgroups.Systemd, agentSlice)
 	if errors.Is(err, cgroups.ErrCgroupDeleted) {
 		p, _ := agentSlice(cgroups.Pids)
@@ -44,7 +42,7 @@ func joinV1() error {
 }
 
 func joinV2() error {
-	cg, err := cgroup2.LoadSystemd("system.slice", agentServiceName)
+	cg, err := cgroup2.LoadSystemd("system.slice", daemonsys.UnitName)
 	if err != nil {
 		return err
 	}
