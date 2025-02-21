@@ -66,7 +66,11 @@ func (t *T) Start(ctx context.Context) (err error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	return t.CommonStop(ctx, t)
+	if err := t.CommonStop(ctx, t); err != nil {
+		// compat b2.1: ignore app resource stop error
+		t.Log().Warnf("ignored stop failure: %s", err)
+	}
+	return nil
 }
 
 func (t *T) Status(ctx context.Context) status.T {

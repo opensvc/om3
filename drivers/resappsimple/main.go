@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -15,7 +17,6 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/proc"
-	"github.com/rs/zerolog"
 )
 
 // T is the driver structure.
@@ -87,10 +88,17 @@ func (t *T) Start(ctx context.Context) (err error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	var err error
 	if t.StopCmd != "" {
-		return t.CommonStop(ctx, t)
+		err = t.CommonStop(ctx, t)
+	} else {
+		err = t.stop(ctx)
 	}
-	return t.stop(ctx)
+	if err != nil {
+		// compat b2.1: ignore app resource stop error
+		t.Log().Warnf("ignored stop failure: %s", err)
+	}
+	return nil
 }
 
 func (t *T) stop(ctx context.Context) error {
