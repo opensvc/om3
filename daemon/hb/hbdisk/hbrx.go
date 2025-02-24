@@ -61,7 +61,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	if err := t.base.device.open(); err != nil {
 		return err
 	}
-	if err := t.base.LoadPeerConfig(t.nodes); err != nil {
+	if err := t.base.loadPeerConfig(t.nodes); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithCancel(t.ctx)
@@ -112,12 +112,12 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	meta, err := t.base.GetPeer(nodename)
+	meta, err := t.base.getPeer(nodename)
 	if err != nil {
 		t.log.Debugf("recv: failed to allocate a slot for node %s: %s", nodename, err)
 		return
 	}
-	c, err := t.base.ReadDataSlot(meta.Slot) // TODO read timeout?
+	c, err := t.base.readDataSlot(meta.Slot) // TODO read timeout?
 	if err != nil {
 		t.log.Debugf("recv: reading node %s data slot %d: %s", nodename, meta.Slot, err)
 		return

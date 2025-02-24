@@ -55,7 +55,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	if err := t.base.device.open(); err != nil {
 		return err
 	}
-	if err := t.base.LoadPeerConfig(t.nodes); err != nil {
+	if err := t.base.loadPeerConfig(t.nodes); err != nil {
 		return err
 	}
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
@@ -102,13 +102,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 }
 
 func (t *tx) send(b []byte) {
-	meta, err := t.base.GetPeer(hostname.Hostname())
+	meta, err := t.base.getPeer(hostname.Hostname())
 	if err != nil {
 		t.log.Debugf("send can't get peer for localhost: %s", err)
 		return
 	}
-	if t.base.WriteDataSlot(meta.Slot, b); err != nil { // TODO write timeout?
-		t.log.Debugf("send can't write data slot: %s", err)
+	if err := t.base.writeDataSlot(meta.Slot, b); err != nil { // TODO write timeout?
+		t.log.Debugf("send can't write data slot %d: %s", meta.Slot, err)
 		return
 	} else {
 		t.log.Debugf("send wrote to slot %d %s", meta.Slot, string(b))

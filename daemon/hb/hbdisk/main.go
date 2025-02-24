@@ -7,21 +7,13 @@ package hbdisk
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"syscall"
 	"time"
 
 	"github.com/ncw/directio"
 
 	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/plog"
@@ -36,36 +28,44 @@ type (
 		Updated time.Time `json:"updated"`
 		Msg     []byte    `json:"msg"`
 	}
+
 	base struct {
 		peerConfigs
 		device
 		log *plog.Logger
 	}
+
 	peerConfigs map[string]peerConfig
-	peerConfig  struct {
+
+	peerConfig struct {
 		Slot int
-	}
-	device struct {
-		mode string
-		path string
-		file *os.File
 	}
 )
 
 var (
-	// PageSize is the directio block size
-	PageSize = directio.BlockSize
-
 	// MetaSize is the size of the header reserved on dev to store the
 	// slot allocations.
 	// A 4MB meta size can index 1024 nodes if pagesize is 4k.
-	MetaSize = 4 * 1024 * 1024
+	MetaSize      = 4 * 1024 * 1024
+	MetaSizeInt64 = int64(MetaSize)
 
 	// SlotSize is the data size reserved for a single node
 	SlotSize = 1024 * 1024
 
+	SlotSizeInt64 = int64(SlotSize)
+
 	// MaxSlots is maximum number of slots that can fit in MetaSize
 	MaxSlots = MetaSize / PageSize
+)
+
+const (
+	// PageSize is the directio block size
+	PageSize = directio.BlockSize
+
+	// pageSizeInt64 is the int64 conversion of directio block size
+	pageSizeInt64 = int64(directio.BlockSize) // Introduce a constant for int64 conversion of PageSize
+
+	endOfDataMarker = '\x00'
 )
 
 func New() hbcfg.Confer {
@@ -97,6 +97,8 @@ func (t *T) Configure(ctx context.Context) {
 	dev := t.GetString("dev")
 	oNodes := hostname.OtherNodes(nodes)
 	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s", timeout, interval, dev, nodes, oNodes)
+	log.Infof("storage area is metadata_size + (max_slots x slot_size): %d + (%d x %d)", MetaSize, MaxSlots, SlotSize)
+
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s", dev, nodes, timeout, interval)
@@ -108,177 +110,26 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetRx(rx)
 }
 
-func (t *device) open() error {
-	if t.path == "" {
-		return fmt.Errorf("the 'dev' keyword is not set")
-	}
-	newDev, err := filepath.EvalSymlinks(t.path)
-	if err != nil {
-		return fmt.Errorf("%s eval symlink: %w", t.path, err)
-	}
-
-	isBlockDevice, err := file.IsBlockDevice(newDev)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("%s does not exist: %w", t.path, err)
-	} else if err != nil {
-		return err
-	}
-
-	isCharDevice, err := file.IsCharDevice(newDev)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("%s does not exist: %w", t.path, err)
-	} else if err != nil {
-		return err
-	}
-
-	if runtime.GOOS == "linux" {
-		if !isBlockDevice {
-			return fmt.Errorf("%s must be a block device", t.path)
-		}
-		if strings.HasPrefix("/dev/dm-", t.path) {
-			return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", t.path)
-		}
-		if strings.HasPrefix("/dev/sd", t.path) {
-			return fmt.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", t.path)
-		}
-		t.mode = "directio"
-		if t.file, err = directio.OpenFile(t.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			return fmt.Errorf("%s open block device: %w", t.path, err)
-		}
-	} else {
-		if !isCharDevice {
-			return fmt.Errorf("must be a char device %s", t.path)
-		}
-		t.mode = "raw"
-		if t.file, err = os.OpenFile(t.path, os.O_RDWR, 0755); err != nil {
-			return fmt.Errorf("%s open char device: %w", t.path, err)
-		}
-	}
-	return nil
-}
-
-// SlotOffset returns the offset of the meta page of the slot.
-func (t *device) MetaSlotOffset(slot int) int64 {
-	return int64(slot) * int64(PageSize)
-}
-
-func (t *device) ReadMetaSlot(slot int) ([]byte, error) {
-	offset := t.MetaSlotOffset(slot)
-	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
-		return nil, err
-	}
-	block := directio.AlignedBlock(PageSize)
-	if _, err := io.ReadFull(t.file, block); err != nil {
-		return nil, err
-	}
-	return block, nil
-}
-
-func (t *device) WriteMetaSlot(slot int, b []byte) error {
-	if len(b) > PageSize {
-		return fmt.Errorf("attempt to write too long data in meta slot %d", slot)
-	}
-	offset := t.MetaSlotOffset(slot)
-	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
-		return err
-	}
-	block := directio.AlignedBlock(PageSize)
-	copy(block, b)
-	_, err := t.file.Write(block)
-	return err
-}
-
-func (t *device) DataSlotOffset(slot int) int64 {
-	return int64(MetaSize) + int64(slot)*int64(SlotSize)
-}
-
-func (t *device) ReadDataSlot(slot int) (capsule, error) {
-	c := capsule{}
-	offset := t.DataSlotOffset(slot)
-	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
-		return c, err
-	}
-	data := make([]byte, 0)
-	totalRead := 0
-	for {
-		block := directio.AlignedBlock(PageSize)
-		n, err := io.ReadFull(t.file, block)
-		totalRead += n
-		if err != nil {
-			return c, err
-		}
-		if n == 0 {
-			break
-		}
-		i := bytes.IndexRune(block, '\x00')
-		if i < 0 {
-			data = append(data, block...)
-		} else {
-			data = append(data, block[:i]...)
-			break
-		}
-		if totalRead >= SlotSize {
-			break
-		}
-	}
-	if err := json.Unmarshal(data, &c); err != nil {
-		return c, err
-	}
-	return c, nil
-}
-
-func (t *device) WriteDataSlot(slot int, b []byte) error {
-	c := capsule{
-		Msg:     b,
-		Updated: time.Now(),
-	}
-	b, err := json.Marshal(c)
-	if err != nil {
-		return fmt.Errorf("msg encapsulation: %w", err)
-	}
-	b = append(b, []byte{'\x00'}...)
-	if len(b) > SlotSize {
-		return fmt.Errorf("attempt to write too long data in data slot %d", slot)
-	}
-	offset := t.DataSlotOffset(slot)
-	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
-		return err
-	}
-	remaining := len(b)
-	for {
-		if remaining == 0 {
-			break
-		}
-		block := directio.AlignedBlock(PageSize)
-		copied := copy(block, b)
-		if _, err := t.file.Write(block); err != nil {
-			return err
-		}
-		if copied < PageSize {
-			return nil
-		}
-		b = b[copied:]
-		remaining -= copied
-	}
-	return nil
-}
-
-func (t *base) LoadPeerConfig(nodes []string) error {
+func (t *base) loadPeerConfig(nodes []string) error {
 	var errs error
 	t.peerConfigs = make(peerConfigs)
+
+	// Initialize peer configs with all provided nodes and local hostname.
 	for _, node := range append(nodes, hostname.Hostname()) {
 		t.peerConfigs[node] = newPeerConfig()
 	}
+
+	// Process each metadata slot.
 	for slot := 0; slot < MaxSlots; slot++ {
-		b, err := t.device.ReadMetaSlot(slot)
+		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
-			errs := errors.Join(errs, err)
-			return errs
+			return fmt.Errorf("read meta slot %d: %w", slot, errors.Join(errs, err))
 		}
 		nodename := string(b[:bytes.IndexRune(b, '\x00')])
 		data, ok := t.peerConfigs[nodename]
 		if !ok {
 			// foreign node
+			t.log.Debugf("skip foreign node detected in metadata slot %d: %s", slot, nodename)
 			continue
 		}
 		if data.Slot > 0 && data.Slot != slot {
@@ -286,37 +137,31 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 			continue
 		}
 		t.log.Infof("detect slot %d for node %s", slot, nodename)
-		data.Slot = slot
-		t.peerConfigs[nodename] = data
 	}
 	return errs
 }
 
-func (t *base) AllocateSlot(nodename string) (peerConfig, error) {
+func (t *base) allocateSlot(nodename string) (peerConfig, error) {
 	conf := newPeerConfig()
-	conf.Slot = t.peerConfigs.FreeSlot()
+	conf.Slot = t.peerConfigs.freeSlot()
 	if conf.Slot < 0 {
 		return conf, errors.New("no free slot on dev")
 	}
 	b := []byte(nodename)
-	b = append(b, '\x00')
-	if err := t.WriteMetaSlot(conf.Slot, b); err != nil {
-		return conf, err
+	b = append(b, endOfDataMarker)
+	if err := t.writeMetaSlot(conf.Slot, b); err != nil {
+		return conf, fmt.Errorf("write mata slot %d: %w", conf.Slot, err)
 	}
 	t.peerConfigs[nodename] = conf
 	return conf, nil
 }
 
-func (t *base) GetPeer(s string) (peerConfig, error) {
+func (t *base) getPeer(s string) (peerConfig, error) {
 	data := t.peerConfigs.Get(s)
 	if data.Slot >= 0 {
 		return data, nil
 	}
-	return t.AllocateSlot(s)
-}
-
-func (t peerConfigs) Set(s string, data peerConfig) {
-	t[s] = data
+	return t.allocateSlot(s)
 }
 
 func (t peerConfigs) Get(s string) peerConfig {
@@ -327,7 +172,7 @@ func (t peerConfigs) Get(s string) peerConfig {
 	}
 }
 
-func (t peerConfigs) UsedSlots() map[int]any {
+func (t peerConfigs) usedSlots() map[int]any {
 	m := make(map[int]any)
 	for _, data := range t {
 		m[data.Slot] = nil
@@ -335,8 +180,8 @@ func (t peerConfigs) UsedSlots() map[int]any {
 	return m
 }
 
-func (t peerConfigs) FreeSlot() int {
-	used := t.UsedSlots()
+func (t peerConfigs) freeSlot() int {
+	used := t.usedSlots()
 	for slot := 0; slot < MaxSlots; slot++ {
 		if _, ok := used[slot]; !ok {
 			return slot
