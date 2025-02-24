@@ -125,7 +125,12 @@ func (t *base) loadPeerConfig(nodes []string) error {
 		if err != nil {
 			return fmt.Errorf("read meta slot %d: %w", slot, errors.Join(errs, err))
 		}
-		nodename := string(b[:bytes.IndexRune(b, '\x00')])
+		index := bytes.IndexRune(b, endOfDataMarker)
+		if index < 0 {
+			// ignore corrupted meta slot
+			continue
+		}
+		nodename := string(b[:index])
 		data, ok := t.peerConfigs[nodename]
 		if !ok {
 			// foreign node
