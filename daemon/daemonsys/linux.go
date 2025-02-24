@@ -4,7 +4,9 @@ package daemonsys
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	sddaemon "github.com/coreos/go-systemd/daemon"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -128,4 +130,12 @@ func New(ctx context.Context) (*T, error) {
 		return nil, err
 	}
 	return &T{conn: c}, nil
+}
+
+func (t *T) IsSystemStopping() (bool, error) {
+	state, err := t.conn.GetManagerProperty("SystemState")
+	if err != nil {
+		return false, fmt.Errorf("failed to get system state: %w", err)
+	}
+	return strings.Trim(state, "\"") == "stopping", nil
 }

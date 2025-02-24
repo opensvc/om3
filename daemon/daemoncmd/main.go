@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -57,6 +58,7 @@ type (
 		Start(ctx context.Context) error
 		Restart() error
 		Stop(context.Context) error
+		IsSystemStopping() (bool, error)
 	}
 )
 
@@ -291,10 +293,10 @@ func (t *T) StopFromCmd(ctx context.Context) error {
 	}
 	if t.daemonsys.CalledFromManager() {
 		log.Infof("origin manager")
-		return t.Stop()
+		return t.stopFromManager()
 	}
 	log.Infof("origin os")
-	return t.managerStop(ctx)
+	return t.stopViaManager(ctx)
 }
 
 // Stop function will stop daemon with internal lock protection
@@ -379,7 +381,27 @@ func (t *T) managerStart(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) managerStop(ctx context.Context) error {
+func (t *T) stopFromManager() error {
+	isSystemStopping, err := t.daemonsys.IsSystemStopping()
+	if err != nil {
+		return err
+	}
+
+	if isSystemStopping {
+		log := logger("stop from manager: ")
+		log.Infof("system is stopping: promote to daemon shutdown")
+		cmd := command.New(
+			command.WithName(os.Args[0]),
+			command.WithVarArgs("daemon", "shutdown"),
+		)
+		cmd.Cmd().Stdout = ioutil.Discard
+		cmd.Cmd().Stderr = ioutil.Discard
+		return cmd.Run()
+	}
+	return t.Stop()
+}
+
+func (t *T) stopViaManager(ctx context.Context) error {
 	log := logger("stop with manager: ")
 	log.Infof("forward to daemonsys...")
 	name := "stop with manager"
