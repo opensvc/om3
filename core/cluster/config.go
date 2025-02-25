@@ -11,6 +11,7 @@ type (
 	// The cluster name is used as the right most part of cluster dns
 	// names.
 	Config struct {
+		Issues     []string       `json:"issues"`
 		ID         string         `json:"id"`
 		Name       string         `json:"name"`
 		Nodes      Nodes          `json:"nodes"`

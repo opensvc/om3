@@ -108,7 +108,7 @@ func bootStrapCcfg() error {
 		if k.Obfuscate {
 			op.Value = "xxxx"
 		}
-		log.Infof("bootstrap cluster config: %s", op)
+		log.Infof("%s", op)
 	}
 
 	// Prepares futures node join, because it requires at least one heartbeat.
@@ -126,14 +126,18 @@ func bootStrapCcfg() error {
 		if err := ccfg.Config().PrepareSet(*op); err != nil {
 			return err
 		}
-		log.Infof("bootstrap cluster config to have at least one heartbeat: %s", op)
+		log.Infof("add default heartbeat: %s", op)
 	}
 
 	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
-	if _, err := object.SetClusterConfig(); err != nil {
-		log.Errorf("bootstrap cluster config: set cluster config: %s", err)
+	if cfg, err := object.SetClusterConfig(); err != nil {
+		return err
+	} else {
+		for _, issue := range cfg.Issues {
+			log.Warnf("issue: %s", issue)
+		}
 	}
 	return nil
 }
