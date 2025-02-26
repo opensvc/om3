@@ -96,7 +96,6 @@ func (t *actor) init(referrer xconfig.Referrer, path naming.Path, opts ...funcop
 	if err := t.core.init(referrer, path, opts...); err != nil {
 		return err
 	}
-	t.pg = t.pgConfig("")
 	t.actionResourceDeps = actionresdeps.NewStore()
 	t.actionResourceDeps.SetActionMap(map[string]string{
 		"provision":   "start",

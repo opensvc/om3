@@ -116,9 +116,11 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if err := configureLogger(); err != nil {
 		return err
 	}
-	if _, err := object.SetClusterConfig(); err != nil {
-		return err
-	}
+
+	// Ignore errors so non-root can use om until it needs the root privilege.
+	// For example, om svc doc doesn't need root privilege.
+	_, _ = object.SetClusterConfig()
+
 	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
 			log.Logger.Debug().Err(err).Send()
