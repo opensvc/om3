@@ -697,6 +697,15 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"disk"},
 	},
 	{
+		Converter: converters.Int,
+		Example:   "64",
+		Default:   "64",
+		Option:    "max_slots",
+		Section:   "hb",
+		Text:      keywords.NewText(fs, "text/kw/node/hb.disk.max_slots"),
+		Types:     []string{"disk"},
+	},
+	{
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",

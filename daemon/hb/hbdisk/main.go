@@ -30,32 +30,20 @@ type (
 	}
 
 	base struct {
-		peerConfigs
 		device
-		log *plog.Logger
-	}
-
-	peerConfigs map[string]peerConfig
-
-	peerConfig struct {
-		Slot int
+		nodeSlot        map[string]int
+		nodeSlotUnknown map[string]bool
+		log             *plog.Logger
+		localhost       string
+		maxSlots        int
 	}
 )
 
 var (
-	// MetaSize is the size of the header reserved on dev to store the
-	// slot allocations.
-	// A 4MB meta size can index 1024 nodes if pagesize is 4k.
-	MetaSize      = 4 * 1024 * 1024
-	MetaSizeInt64 = int64(MetaSize)
-
 	// SlotSize is the data size reserved for a single node
 	SlotSize = 1024 * 1024
 
 	SlotSizeInt64 = int64(SlotSize)
-
-	// MaxSlots is maximum number of slots that can fit in MetaSize
-	MaxSlots = MetaSize / PageSize
 )
 
 const (
@@ -95,32 +83,41 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	dev := t.GetString("dev")
+	maxSlots := t.GetInt("max_slots")
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s", timeout, interval, dev, nodes, oNodes)
-	log.Infof("storage area is metadata_size + (max_slots x slot_size): %d + (%d x %d)", MetaSize, MaxSlots, SlotSize)
+	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s max_slot=%d", timeout, interval, dev, nodes, oNodes, maxSlots)
+	log.Infof("storage area is metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(maxSlots), maxSlots, SlotSize)
 
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s", dev, nodes, timeout, interval)
+	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d", dev, nodes, timeout, interval, maxSlots)
 	t.SetSignature(signature)
 	name := t.Name()
-	tx := newTx(ctx, name, oNodes, dev, timeout, interval)
+	tx := newTx(ctx, name, oNodes, dev, timeout, interval, maxSlots)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, dev, timeout, interval)
+	rx := newRx(ctx, name, oNodes, dev, timeout, interval, maxSlots)
 	t.SetRx(rx)
 }
 
-func (t *base) loadPeerConfig(nodes []string) error {
+func (t *base) scanMetadata(searchedNodes ...string) error {
 	var errs error
-	t.peerConfigs = make(peerConfigs)
-
-	// Initialize peer configs with all provided nodes and local hostname.
-	for _, node := range append(nodes, hostname.Hostname()) {
-		t.peerConfigs[node] = newPeerConfig()
+	var nodeSlotPrevious map[string]int
+	if t.nodeSlot != nil {
+		nodeSlotPrevious = t.nodeSlot
+	} else {
+		nodeSlotPrevious = t.nodeSlot
+	}
+	t.nodeSlot = make(map[string]int)
+	t.nodeSlotUnknown = make(map[string]bool)
+	defer func(now time.Time) { t.log.Debugf("scanMetadata elapsed %s", time.Since(now)) }(time.Now())
+	// Initialize peer configs with all provided searchedNodes and local hostname.
+	for _, node := range searchedNodes {
+		t.nodeSlot[node] = -1
+		t.nodeSlotUnknown[node] = true
 	}
 
 	// Process each metadata slot.
-	for slot := 0; slot < MaxSlots; slot++ {
+	for slot := 0; slot < t.maxSlots; slot++ {
 		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
 			return fmt.Errorf("read meta slot %d: %w", slot, errors.Join(errs, err))
@@ -129,74 +126,61 @@ func (t *base) loadPeerConfig(nodes []string) error {
 		if index < 0 {
 			// ignore corrupted meta slot
 			continue
+		} else if index == 0 {
+			// ignore unallocated meta slot, b2.1 abort here
+			continue
 		}
 		nodename := string(b[:index])
-		data, ok := t.peerConfigs[nodename]
+		initialSlot, ok := t.nodeSlot[nodename]
 		if !ok {
-			// foreign node
-			t.log.Debugf("skip foreign node detected in metadata slot %d: %s", slot, nodename)
+			// ignore non searched node: perhaps a non cluster node, or a cluster node that we are not searching.
 			continue
 		}
-		if data.Slot > 0 && data.Slot != slot {
-			errs = errors.Join(errs, fmt.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, data.Slot))
+		if initialSlot >= 0 && initialSlot != slot {
+			errs = errors.Join(errs, fmt.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, initialSlot))
 			continue
 		}
-		t.log.Infof("detect slot %d for node %s", slot, nodename)
+		t.nodeSlot[nodename] = slot
+		delete(t.nodeSlotUnknown, nodename)
+		if previousSlot, ok := nodeSlotPrevious[nodename]; !ok || previousSlot != slot {
+			t.log.Infof("detect slot %d for node %s", slot, nodename)
+		}
+		if len(t.nodeSlotUnknown) == 0 {
+			t.log.Infof("parsed %d slots, found all required slots", slot+1)
+			return nil
+		}
 	}
 	return errs
 }
 
-func (t *base) allocateSlot(nodename string) (peerConfig, error) {
-	conf := newPeerConfig()
-	conf.Slot = t.peerConfigs.freeSlot()
-	if conf.Slot < 0 {
-		return conf, errors.New("no free slot on dev")
-	}
-	b := []byte(nodename)
-	b = append(b, endOfDataMarker)
-	if err := t.writeMetaSlot(conf.Slot, b); err != nil {
-		return conf, fmt.Errorf("write mata slot %d: %w", conf.Slot, err)
-	}
-	t.peerConfigs[nodename] = conf
-	return conf, nil
-}
-
-func (t *base) getPeer(s string) (peerConfig, error) {
-	data := t.peerConfigs.Get(s)
-	if data.Slot >= 0 {
-		return data, nil
-	}
-	return t.allocateSlot(s)
-}
-
-func (t peerConfigs) Get(s string) peerConfig {
-	if data, ok := t[s]; ok {
-		return data
-	} else {
-		return newPeerConfig()
-	}
-}
-
-func (t peerConfigs) usedSlots() map[int]any {
-	m := make(map[int]any)
-	for _, data := range t {
-		m[data.Slot] = nil
-	}
-	return m
-}
-
-func (t peerConfigs) freeSlot() int {
-	used := t.usedSlots()
-	for slot := 0; slot < MaxSlots; slot++ {
-		if _, ok := used[slot]; !ok {
-			return slot
+// freeSlot scans available slots on the device and returns the first free slot
+// index or an error if no free slot is found.
+func (t *base) freeSlot() (int, error) {
+	for slot := 0; slot < t.maxSlots; slot++ {
+		b, err := t.device.readMetaSlot(slot)
+		if err != nil {
+			return -1, fmt.Errorf("read meta slot %d: %w", slot, err)
 		}
+		if len(b) == 0 {
+			break
+		} else if b[0] != endOfDataMarker {
+			continue
+		}
+		return slot, nil
 	}
-	return -1
+	return -1, fmt.Errorf("no free slot on dev")
 }
 
-func newPeerConfig() peerConfig {
-	return peerConfig{
-		Slot: -1,
+func nodeFromMetadata(b []byte) string {
+	index := bytes.IndexRune(b, endOfDataMarker)
+	if index < 0 {
+		return ""
+	} else if index == 0 {
+		return ""
 	}
+	return string(b[:index])
+}
+
+func metaSize(maxSlots int) int64 {
+	return int64(maxSlots * PageSize)
 }

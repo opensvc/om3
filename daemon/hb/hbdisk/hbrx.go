@@ -3,12 +3,16 @@ package hbdisk
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -33,6 +37,12 @@ type (
 		cancel func()
 
 		encryptDecrypter *omcrypto.Factory
+
+		// rescanMetadataReason stores the most recent reason for a metadata rescan,
+		// helping to prevent excessive logging of the same reason.
+		rescanMetadataReason string
+
+		status daemonsubsystem.Heartbeat
 	}
 )
 
@@ -58,12 +68,18 @@ func (t *rx) Stop() error {
 
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
+	t.log.Infof("starting")
+	minimumSlots := len(t.nodes) + 1
+	if t.base.maxSlots < minimumSlots {
+		return fmt.Errorf("can't start: not enough slots for %d nodes", minimumSlots)
+	}
 	if err := t.base.device.open(); err != nil {
 		return err
 	}
-	if err := t.base.loadPeerConfig(t.nodes); err != nil {
+	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
 		return err
 	}
+
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
 	t.msgC = msgC
@@ -71,7 +87,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 
 	clusterConfig := cluster.ConfigData.Get()
 	t.encryptDecrypter = &omcrypto.Factory{
-		NodeName:    hostname.Hostname(),
+		NodeName:    t.base.localhost,
 		ClusterName: clusterConfig.Name,
 		Key:         clusterConfig.Secret(),
 	}
@@ -106,52 +122,56 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 }
 
 func (t *rx) onTick() {
+	if len(t.base.nodeSlotUnknown) > 0 {
+		t.rescanMetadata(fmt.Sprintf("missing peers: %s", maps.Keys(t.base.nodeSlotUnknown)))
+	}
 	for _, node := range t.nodes {
 		t.recv(node)
 	}
 }
 
 func (t *rx) recv(nodename string) {
-	meta, err := t.base.getPeer(nodename)
-	if err != nil {
-		t.log.Debugf("recv: failed to allocate a slot for node %s: %s", nodename, err)
+	slot := t.base.nodeSlot[nodename]
+	if slot < 0 {
 		return
 	}
-	c, err := t.base.readDataSlot(meta.Slot) // TODO read timeout?
+	c, err := t.base.readDataSlot(slot) // TODO read timeout?
 	if err != nil {
-		t.log.Debugf("recv: reading node %s data slot %d: %s", nodename, meta.Slot, err)
+		reason := fmt.Sprintf("node %s slot %d: %s", nodename, slot, err)
+		t.rescanMetadata(reason)
 		return
 	}
 	if c.Updated.IsZero() {
-		t.log.Debugf("recv: node %s data slot %d has never been updated", nodename, meta.Slot)
+		t.log.Debugf("node %s slot %d has never been updated", nodename, slot)
 		return
 	}
 	if !t.last.IsZero() && c.Updated == t.last {
-		t.log.Debugf("recv: node %s data slot %d has not change since last read", nodename, meta.Slot)
+		t.log.Debugf("node %s slot %d unchanged since last read", nodename, slot)
 		return
 	}
 	elapsed := time.Now().Sub(c.Updated)
 	if elapsed > t.timeout {
-		t.log.Debugf("recv: node %s data slot %d has not been updated for %s", nodename, meta.Slot, elapsed)
+		t.log.Debugf("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
 	}
 	b, msgNodename, err := t.encryptDecrypter.DecryptWithNode(c.Msg)
 	if err != nil {
-		t.log.Debugf("recv: decrypting node %s data slot %d: %s", nodename, meta.Slot, err)
+		t.log.Debugf("node %s slot %d decrypt: %s", nodename, slot, err)
 		return
 	}
 
 	if nodename != msgNodename {
-		t.log.Debugf("recv: node %s data slot %d was written by unexpected node %s", nodename, meta.Slot, msgNodename)
+		reason := fmt.Sprintf("node %s slot %d was stolen by node %s", nodename, slot, msgNodename)
+		t.rescanMetadata(reason)
 		return
 	}
 
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(b, &msg); err != nil {
-		t.log.Warnf("can't unmarshal msg from %s: %s", nodename, err)
+		t.log.Warnf("node %s slot %d can't unmarshal msg: %s", nodename, slot, err)
 		return
 	}
-	t.log.Debugf("recv: node %s", nodename)
+	t.log.Debugf("node %s slot %d ok", nodename, slot)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbID:     t.id,
@@ -161,7 +181,7 @@ func (t *rx) recv(nodename string) {
 	t.last = c.Updated
 }
 
-func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration, maxSlots int) *rx {
 	id := name + ".rx"
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").
 		Attr("hb_func", "rx").
@@ -179,8 +199,21 @@ func newRx(ctx context.Context, name string, nodes []string, dev string, timeout
 		base: base{
 			log: log,
 			device: device{
-				path: dev,
+				path:     dev,
+				metaSize: metaSize(maxSlots),
 			},
+			maxSlots:  maxSlots,
+			localhost: hostname.Hostname(),
 		},
+	}
+}
+
+func (t *rx) rescanMetadata(reason string) {
+	if reason != t.rescanMetadataReason {
+		t.log.Infof("rescan metadata needed: %s", reason)
+		t.rescanMetadataReason = reason
+	}
+	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
+		t.log.Infof("rescan metadata: %s", err)
 	}
 }

@@ -19,6 +19,10 @@ type (
 		mode string
 		path string
 		file *os.File
+
+		// metaSize is the size of the header reserved on dev to store the
+		// slot allocations. It is used by calculateDataSlotOffset
+		metaSize int64
 	}
 )
 
@@ -68,7 +72,7 @@ func (t *device) writeMetaSlot(slot int, b []byte) error {
 
 // calculateDataSlotOffset calculates the byte offset of a data slot within the storage device.
 func (t *device) calculateDataSlotOffset(slot int) int64 {
-	return MetaSizeInt64 + SlotSizeInt64*int64(slot)
+	return t.metaSize + SlotSizeInt64*int64(slot)
 }
 
 func (t *device) readDataSlot(slot int) (capsule, error) {
@@ -100,8 +104,11 @@ func (t *device) readDataSlot(slot int) (capsule, error) {
 			break
 		}
 	}
+	if len(data) == 0 {
+		return c, fmt.Errorf("read no data at offset %d", offset)
+	}
 	if err := json.Unmarshal(data, &c); err != nil {
-		return c, fmt.Errorf("unmarshall from offset %d :%w", slot, err)
+		return c, fmt.Errorf("unmarshall from offset %d data len %d from total read %d: %w", slot, len(data), totalRead, err)
 	}
 	return c, nil
 }
