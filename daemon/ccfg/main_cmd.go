@@ -1,7 +1,6 @@
 package ccfg
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -24,13 +23,11 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 func (t *Manager) pubClusterConfig() {
 	previousNodes := t.state.Nodes
 	state, err := object.SetClusterConfig()
-	switch {
-	case err == nil:
-	case errors.Is(err, object.ErrVIPScope):
-		t.log.Warnf("%s", err)
-	default:
+	if err != nil {
 		t.log.Errorf("%s", err)
-
+	}
+	for _, issue := range state.Issues {
+		t.log.Warnf("issue: %s", issue)
 	}
 	t.handleConfigChanges()
 

@@ -1,7 +1,7 @@
 The DNS name or IP address of the ip resource.
 
 Can be different from one node to the other, in which case the
-`ipname@<nodename>` scoping syntax can be used.
+`name@<nodename>` scoping syntax can be used.
 
 This is most useful to specify a different ip when the service starts in DRP
 mode, where subnets are likely to be different than those of the production

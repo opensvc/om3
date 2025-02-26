@@ -95,6 +95,9 @@ func (t *BaseTask) StatusInfo(ctx context.Context) map[string]any {
 	if i, err := t.readLastRun(); err == nil {
 		m["last_run_exitcode"] = i
 	}
+	if i, err := t.readLastRunAt(); err == nil {
+		m["last_run_at"] = i
+	}
 	return m
 }
 
@@ -135,6 +138,15 @@ func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
 			t.StatusLog().Info("last run failed (%d)", i)
 		}
 		return s
+	}
+}
+
+func (t *BaseTask) readLastRunAt() (time.Time, error) {
+	p := t.lastRunFile()
+	if stat, err := os.Stat(p); err != nil {
+		return time.Time{}, err
+	} else {
+		return stat.ModTime(), nil
 	}
 }
 

@@ -67,7 +67,7 @@ func (t *T) startMACVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev st
 	} else if v {
 		return nil
 	}
-	if t.makeMACVLANDev(t.IPDev, tmpDev, mtu); err != nil {
+	if t.makeMACVLANDev(t.Dev, tmpDev, mtu); err != nil {
 		return err
 	}
 	if err := t.linkSetNsPidAndNameAndUp(tmpDev, pid, dev); err != nil {

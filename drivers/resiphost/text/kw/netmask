@@ -1,4 +1,4 @@
-The netmask to configure with `ipname`.
+The netmask to configure with the address resolved from `name`.
 
 If an ip is already plumbed on the root interface, the netmask default is the
 netmask of this existing ip.

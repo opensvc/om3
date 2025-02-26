@@ -1,4 +1,4 @@
 The ip link mode.
 
-If `ipdev` is set to a bridge interface the mode defaults to `bridge`, else
+If `dev` is set to a bridge interface the mode defaults to `bridge`, else
 defaults to `macvlan`. The `ipvlan` mode requires a 4.2+ Linux kernel.

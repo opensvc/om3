@@ -32,19 +32,21 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 		resip.KeywordWaitDNS,
 		keywords.Keyword{
-			Attr:     "IPName",
+			Aliases:  []string{"ipname"},
+			Attr:     "Name",
 			Example:  "1.2.3.4",
-			Option:   "ipname",
+			Option:   "name",
 			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/ipname"),
+			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
 		keywords.Keyword{
-			Attr:     "IPDev",
+			Aliases:  []string{"ipdev"},
+			Attr:     "Dev",
 			Example:  "eth0",
-			Option:   "ipdev",
+			Option:   "dev",
 			Required: true,
 			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/ipdev"),
+			Text:     keywords.NewText(fs, "text/kw/dev"),
 		},
 		keywords.Keyword{
 			Attr:     "Netmask",
@@ -74,7 +76,7 @@ func (t *T) Manifest() *manifest.T {
 			Default:   "true",
 			Option:    "check_carrier",
 			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/ipname"),
+			Text:      keywords.NewText(fs, "text/kw/check_carrier"),
 		},
 		keywords.Keyword{
 			Attr:      "Alias",
@@ -82,7 +84,7 @@ func (t *T) Manifest() *manifest.T {
 			Default:   "true",
 			Option:    "alias",
 			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/ipname"),
+			Text:      keywords.NewText(fs, "text/kw/alias"),
 		},
 		keywords.Keyword{
 			Attr:      "Expose",
@@ -90,7 +92,7 @@ func (t *T) Manifest() *manifest.T {
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
 			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/ipname"),
+			Text:      keywords.NewText(fs, "text/kw/expose"),
 		},
 	)
 	return m

@@ -1,7 +1,7 @@
 The interface name to setup the ip address on.
 
 This interface can be different from one node to the other, in which case the
-`ipdev@<nodename>` scoping syntax can be used.
+`dev@<nodename>` scoping syntax can be used.
 
 If the value is expressed as `<intf>:<n>`, the stacked interface index is
 forced to `<n>` instead of the lowest free index.

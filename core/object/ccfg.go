@@ -129,20 +129,19 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
 	cfg.Quorum = c.GetBool(keyQuorum)
-	var errs error
 	if vip, err := getVip(c, cfg.Nodes); err != nil {
-		errs = errors.Join(errs, err)
+		cfg.Issues = append(cfg.Issues, err.Error())
 	} else {
 		cfg.Vip = vip
 	}
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)
 	if v, err := c.Eval(keyListenerAddr); err != nil {
-		errs = errors.Join(errs, fmt.Errorf("eval listener addr: %s", err))
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("eval listener addr: %s", err))
 	} else {
 		cfg.Listener.Addr = v.(string)
 	}
 	if v, err := c.Eval(keyListenerPort); err != nil {
-		errs = errors.Join(errs, fmt.Errorf("eval listener port: %s", err))
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("eval listener port: %s", err))
 	} else {
 		cfg.Listener.Port = v.(int)
 	}
@@ -150,11 +149,11 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
 	if homedir, err := os.UserHomeDir(); err != nil {
-		errs = errors.Join(errs, fmt.Errorf("user home dir: %s", err))
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("user home dir: %s", err))
 	} else {
 		cfg.SetSSHKeyFile(filepath.Join(homedir, ".ssh", c.GetString(keyNodeSSHKey)))
 	}
-	return cfg, errs
+	return cfg, nil
 }
 
 var (
