@@ -19,7 +19,6 @@ type (
 		CASecPaths []string       `json:"ca_sec_paths"`
 		Listener   ConfigListener `json:"listener"`
 		Quorum     bool           `json:"quorum"`
-		Vip        Vip            `json:"vip"`
 
 		// fields private, no exposed in daemon data
 		// json nor events
@@ -34,22 +33,6 @@ type (
 		OpenIDWellKnown string `json:"openid_well_known"`
 		DNSSockGID      string `json:"dns_sock_gid"`
 		DNSSockUID      string `json:"dns_sock_uid"`
-	}
-
-	// Vip struct describes cluster vip settings
-	Vip struct {
-		// Default is the default vip configuration value, must be not zero to
-		// enable cluster vip
-		Default string `json:"default"`
-		// Addr is the default vip addr
-		Addr string `json:"name"`
-		// Netmask is the default vip netmask
-		Netmask string `json:"netmask"`
-		// Dev is the default vip device
-		Dev string `json:"dev"`
-		// Devs is a map of node names to custom vip device (when
-		// the device for node name is not equal to default vip device)
-		Devs map[string]string `json:"devs"`
 	}
 )
 
@@ -83,38 +66,9 @@ func (t *Config) DeepCopy() *Config {
 		CASecPaths: append([]string{}, t.CASecPaths...),
 		Listener:   t.Listener,
 		Quorum:     t.Quorum,
-		Vip:        *t.Vip.DeepCopy(),
 		secret:     t.secret,
 		sshKeyFile: t.sshKeyFile,
 	}
-}
-
-func (v *Vip) DeepCopy() *Vip {
-	newV := *v
-	devs := make(map[string]string)
-	for k, v := range v.Devs {
-		devs[k] = v
-	}
-	newV.Devs = devs
-	return &newV
-}
-
-func (v *Vip) Equal(o *Vip) bool {
-	if (v == nil && o != nil) || (o == nil && v != nil) {
-		return false
-	}
-	if v.Default != o.Default || v.Dev != o.Dev || v.Netmask != o.Netmask || v.Addr != o.Addr {
-		return false
-	}
-	if len(v.Devs) != len(o.Devs) {
-		return false
-	}
-	for k, value := range v.Devs {
-		if oValue, ok := o.Devs[k]; !ok || oValue != value {
-			return false
-		}
-	}
-	return true
 }
 
 // SSHKeyFile returns the configured SSH key file path and a boolean indicating

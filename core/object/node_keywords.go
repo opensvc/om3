@@ -499,13 +499,6 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/syslog.port"),
 	},
 	{
-		Example:  "192.168.99.12/24@eth0",
-		Option:   "vip",
-		Scopable: true,
-		Section:  "cluster",
-		Text:     keywords.NewText(fs, "text/kw/node/cluster.vip"),
-	},
-	{
 		Converter: converters.List,
 		Option:    "dns",
 		Scopable:  true,

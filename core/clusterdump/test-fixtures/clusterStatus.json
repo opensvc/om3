@@ -197,22 +197,6 @@
         "queued": "2020-03-04T16:33:23.16700383+01:00",
         "expire": "2020-03-04T16:33:23.16700383+01:00",
         "csum": "500fb8028b62583e2b755daa49e6bb63"
-      },
-      {
-        "action": "resource_monitor",
-        "path": "system/svc/vip",
-        "rid": null,
-        "queued": "2020-03-04T16:33:23.16700383+01:00",
-        "expire": "2020-03-04T16:33:23.16700383+01:00",
-        "csum": "f47492caeb5a2decf236d96c6c121ed1"
-      },
-      {
-        "action": "status",
-        "path": "system/svc/vip",
-        "rid": null,
-        "queued": "2020-03-04T16:33:23.16700383+01:00",
-        "expire": "2020-03-04T16:33:23.16700383+01:00",
-        "csum": "f47492caeb5a2decf236d96c6c121ed1"
       }
     ]
   },
