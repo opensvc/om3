@@ -42,7 +42,7 @@ type (
 		// helping to prevent excessive logging of the same reason.
 		rescanMetadataReason string
 
-		status daemonsubsystem.Heartbeat
+		alert []daemonsubsystem.Alert
 	}
 )
 
@@ -106,6 +106,10 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		defer t.Done()
 		t.log.Infof("started")
 		defer t.log.Infof("stopped")
+
+		t.updateAlertWithSlots()
+		t.sendAlert()
+
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		for {
@@ -181,6 +185,33 @@ func (t *rx) recv(nodename string) {
 	t.last = c.Updated
 }
 
+func (t *rx) rescanMetadata(reason string) {
+	t.alert = make([]daemonsubsystem.Alert, 0)
+	if reason != t.rescanMetadataReason {
+		t.log.Infof("rescan metadata needed: %s", reason)
+		t.rescanMetadataReason = reason
+	}
+	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
+		t.log.Infof("rescan metadata: %s", err)
+		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "warning", Message: reason})
+	}
+	t.updateAlertWithSlots()
+	t.sendAlert()
+}
+
+func (t *rx) updateAlertWithSlots() {
+	for nodename, slot := range t.base.nodeSlot {
+		t.alert = append(t.alert, getSlotAlert(nodename, slot))
+	}
+}
+
+func (t *rx) sendAlert() {
+	t.cmdC <- hbctrl.CmdSetAlert{
+		HbID:  t.id,
+		Alert: append([]daemonsubsystem.Alert{}, t.alert...),
+	}
+}
+
 func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration, maxSlots int) *rx {
 	id := name + ".rx"
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").
@@ -205,15 +236,6 @@ func newRx(ctx context.Context, name string, nodes []string, dev string, timeout
 			maxSlots:  maxSlots,
 			localhost: hostname.Hostname(),
 		},
-	}
-}
-
-func (t *rx) rescanMetadata(reason string) {
-	if reason != t.rescanMetadataReason {
-		t.log.Infof("rescan metadata needed: %s", reason)
-		t.rescanMetadataReason = reason
-	}
-	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
-		t.log.Infof("rescan metadata: %s", err)
+		alert: make([]daemonsubsystem.Alert, 0),
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -29,6 +30,7 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+		alert  []daemonsubsystem.Alert
 	}
 )
 
@@ -62,12 +64,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		return err
 	}
 	if err := t.base.scanMetadata(t.base.localhost); err != nil {
-		t.log.Infof("initial scan metadata: %s", err)
+		msg := fmt.Sprintf("initial scan metadata: %s", err)
+		t.log.Infof(msg)
+		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
 	}
 	if slot := t.base.nodeSlot[t.base.localhost]; slot >= 0 {
 		t.slot = slot
 	}
-
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
@@ -83,6 +86,9 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				t.log.Infof("can't allocate new slot: %s", err)
 			}
 		}
+
+		t.updateAlertWithSlot()
+		t.sendAlert()
 
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
@@ -165,13 +171,20 @@ func (t *tx) send(b []byte) {
 	}
 	if len(needAllocateReason) > 0 {
 		t.log.Infof(needAllocateReason)
+		t.alert = make([]daemonsubsystem.Alert, 0)
+		defer t.sendAlert()
 		if err := t.allocateSlot(); err != nil {
 			t.log.Infof("can't allocate new slot: %s", err)
+			t.alert = append(t.alert,
+				daemonsubsystem.Alert{Severity: "info", Message: needAllocateReason},
+				daemonsubsystem.Alert{Severity: "warning", Message: fmt.Sprintf("can't allocate new slot: %s", err)},
+			)
 			return
 		}
 		if t.slot < 0 {
 			return
 		}
+		t.updateAlertWithSlot()
 	}
 
 	if err := t.base.writeDataSlot(t.slot, b); err != nil { // TODO write timeout?
@@ -186,6 +199,17 @@ func (t *tx) send(b []byte) {
 			HbID:     t.id,
 			Success:  true,
 		}
+	}
+}
+
+func (t *tx) updateAlertWithSlot() {
+	t.alert = append(t.alert, getSlotAlert(t.base.localhost, t.slot))
+}
+
+func (t *tx) sendAlert() {
+	t.cmdC <- hbctrl.CmdSetAlert{
+		HbID:  t.id,
+		Alert: append([]daemonsubsystem.Alert{}, t.alert...),
 	}
 }
 

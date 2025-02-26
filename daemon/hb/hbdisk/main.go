@@ -14,6 +14,7 @@ import (
 	"github.com/ncw/directio"
 
 	"github.com/opensvc/om3/core/hbcfg"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/plog"
@@ -183,4 +184,13 @@ func nodeFromMetadata(b []byte) string {
 
 func metaSize(maxSlots int) int64 {
 	return int64(maxSlots * PageSize)
+}
+
+func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {
+	msg := fmt.Sprintf("node %s slot %d", nodename, slot)
+	level := "info"
+	if slot < 0 {
+		level = "warning"
+	}
+	return daemonsubsystem.Alert{Severity: level, Message: msg}
 }
