@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,9 +41,13 @@ func (a *DaemonAPI) getLocalSSHKey(ctx echo.Context) error {
 	pubFile := filepath.Join(homeDir, ".ssh", nodeConfig.SSHKey+".pub")
 	data, err := os.ReadFile(pubFile)
 	if errors.Is(err, os.ErrNotExist) {
+		args := []string{
+			"-N", "", "-q", "-f", keyFile,
+			"-C", fmt.Sprintf("opensvc-cluster-root-trust@%s", a.localhost),
+		}
 		err = command.New(
 			command.WithName("ssh-keygen"),
-			command.WithVarArgs("-N", "", "-q", "-f", keyFile),
+			command.WithArgs(args),
 			command.WithLogger(log),
 			command.WithCommandLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.ErrorLevel),
