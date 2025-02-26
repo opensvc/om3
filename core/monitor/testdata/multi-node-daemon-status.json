@@ -18,14 +18,7 @@
                 "dns_sock_gid": "953",
                 "dns_sock_uid": "953"
             },
-            "quorum": false,
-            "vip": {
-                "default": "",
-                "name": "",
-                "netmask": "",
-                "dev": "",
-                "devs": null
-            }
+            "quorum": false
         },
         "status": {
             "is_compat": true,

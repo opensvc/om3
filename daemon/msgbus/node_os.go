@@ -21,7 +21,7 @@ func (data *ClusterData) nodeOsPathsUpdated(labels pubsub.Labels) ([]any, error)
 					Labels: pubsub.NewLabels("node", nodename, "from", "cache"),
 				},
 				Node:  nodename,
-				Value: append(append([]san.Path{}, nodeData.Os.Paths...)),
+				Value: append([]san.Path{}, nodeData.Os.Paths...),
 			})
 		}
 	} else {
@@ -31,7 +31,7 @@ func (data *ClusterData) nodeOsPathsUpdated(labels pubsub.Labels) ([]any, error)
 					Labels: pubsub.NewLabels("node", nodename, "from", "cache"),
 				},
 				Node:  nodename,
-				Value: append(append([]san.Path{}, nodeData.Os.Paths...)),
+				Value: append([]san.Path{}, nodeData.Os.Paths...),
 			})
 		}
 	}

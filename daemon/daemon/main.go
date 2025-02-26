@@ -27,7 +27,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonsys"
-	"github.com/opensvc/om3/daemon/daemonvip"
 	"github.com/opensvc/om3/daemon/discover"
 	"github.com/opensvc/om3/daemon/dns"
 	"github.com/opensvc/om3/daemon/hb"
@@ -201,7 +200,6 @@ func (t *T) Start(ctx context.Context) error {
 		hb.New(t.ctx),
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),
-		daemonvip.New(qsSmall),
 		runner.NewDefault(qsSmall),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {
