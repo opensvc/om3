@@ -47,7 +47,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	} else if v {
 		return nil
 	}
-	if err := t.makeIPVLANDev(t.IPDev, tmpDev, mtu, mode); err != nil {
+	if err := t.makeIPVLANDev(t.Dev, tmpDev, mtu, mode); err != nil {
 		return err
 	}
 	if err := t.linkSetNsPidAndNameAndUp(tmpDev, pid, dev); err != nil {

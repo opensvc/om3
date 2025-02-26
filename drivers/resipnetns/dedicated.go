@@ -24,11 +24,11 @@ func (t *T) startDedicated(ctx context.Context) error {
 	}
 
 	if !t.hasNSDev(netns) {
-		if v, err := t.hasLink(t.IPDev); err != nil {
+		if v, err := t.hasLink(t.Dev); err != nil {
 			return err
 		} else if !v {
-			t.Log().Infof("dev %s not found in the host ns... may already be in netns %d", t.IPDev, pid)
-		} else if err := t.linkSetNsPidAndNameAndUp(t.IPDev, pid, guestDev); err != nil {
+			t.Log().Infof("dev %s not found in the host ns... may already be in netns %d", t.Dev, pid)
+		} else if err := t.linkSetNsPidAndNameAndUp(t.Dev, pid, guestDev); err != nil {
 			return err
 		}
 	}
@@ -82,5 +82,5 @@ func (t *T) stopDedicated(ctx context.Context) error {
 		t.Log().Infof("preserve nsdev %s, in use by %s", guestDev, strings.Join(addrs, " "))
 		return ErrLinkInUse
 	}
-	return t.linkSetNsPidAndNameIn(guestDev, 1, t.IPDev, netns.Path())
+	return t.linkSetNsPidAndNameIn(guestDev, 1, t.Dev, netns.Path())
 }

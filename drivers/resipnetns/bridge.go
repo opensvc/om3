@@ -47,7 +47,7 @@ func (t *T) startBridge(ctx context.Context) error {
 		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
 			return err
 		}
-		if err := t.linkSetMaster(hostDev, t.IPDev); err != nil {
+		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
 			t.linkDel(tmpGuestDev)
 			return err
 		}

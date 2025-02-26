@@ -598,11 +598,11 @@ func (t *T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 	n := len(ips)
 	switch n {
 	case 0:
-		return nil, fmt.Errorf("ipname %s is unresolvable", nodename)
+		return nil, fmt.Errorf("name %s is unresolvable", nodename)
 	case 1:
 		// ok
 	default:
-		t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", nodename, n)
+		t.Log().Debugf("name %s is resolvables to %d address. Using the first.", nodename, n)
 	}
 	return ips[0], nil
 

@@ -49,8 +49,8 @@ type (
 		NSDev         string         `json:"nsdev"`
 		MacAddr       string         `json:"mac_addr"`
 		DelNetRoute   bool           `json:"del_net_route"`
-		IPName        string         `json:"ipname"`
-		IPDev         string         `json:"ipdev"`
+		Name          string         `json:"name"`
+		Dev           string         `json:"dev"`
 		Netmask       string         `json:"netmask"`
 		Gateway       string         `json:"gateway"`
 		Network       string         `json:"network"`
@@ -118,7 +118,7 @@ func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	data := make(map[string]interface{})
 	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
-	data["ipdev"] = t.IPDev
+	data["dev"] = t.Dev
 	data["netmask"] = netmask
 	if hostname, _ := t.getResourceHostname(ctx); hostname != "" {
 		if t.DNSNameSuffix != "" {
@@ -288,9 +288,9 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) devMTU() (int, error) {
-	iface, err := net.InterfaceByName(t.IPDev)
+	iface, err := net.InterfaceByName(t.Dev)
 	if err != nil {
-		return 0, fmt.Errorf("%s mtu: %w", t.IPDev, err)
+		return 0, fmt.Errorf("%s mtu: %w", t.Dev, err)
 	}
 	return iface.MTU, nil
 }
@@ -300,12 +300,12 @@ func (t *T) Status(ctx context.Context) status.T {
 		err     error
 		carrier bool
 	)
-	if t.IPName == "" {
-		t.StatusLog().Warn("ipname not set")
+	if t.Name == "" {
+		t.StatusLog().Warn("name not set")
 		return status.NotApplicable
 	}
-	if t.IPDev == "" {
-		t.StatusLog().Warn("ipdev not set")
+	if t.Dev == "" {
+		t.StatusLog().Warn("dev not set")
 		return status.NotApplicable
 	}
 	if _, err := t.netInterface(); err != nil {
@@ -320,7 +320,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if t.CheckCarrier {
 		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", t.IPDev)
+			t.StatusLog().Error("interface %s no-carrier.", t.Dev)
 			return status.Down
 		}
 	}
@@ -385,7 +385,7 @@ func (t *T) Abort(ctx context.Context) bool {
 }
 
 func (t *T) hasCarrier() (bool, error) {
-	return netif.HasCarrier(t.IPDev)
+	return netif.HasCarrier(t.Dev)
 }
 
 func (t *T) abortPing() bool {
@@ -471,12 +471,12 @@ func (t *T) defaultMask() (net.IPMask, error) {
 
 func (t *T) getIPAddr() net.IP {
 	switch {
-	case naming.IsValidFQDN(t.IPName) || hostname.IsValid(t.IPName):
+	case naming.IsValidFQDN(t.Name) || hostname.IsValid(t.Name):
 		var (
 			l   []net.IP
 			err error
 		)
-		l, err = net.LookupIP(t.IPName)
+		l, err = net.LookupIP(t.Name)
 		if err != nil {
 			t.Log().Errorf("%s", err)
 			return nil
@@ -484,20 +484,20 @@ func (t *T) getIPAddr() net.IP {
 		n := len(l)
 		switch n {
 		case 0:
-			t.Log().Errorf("ipname %s is unresolvable", t.IPName)
+			t.Log().Errorf("name %s is unresolvable", t.Name)
 		case 1:
 			// ok
 		default:
-			t.Log().Debugf("ipname %s is resolvables to %d address. Using the first.", t.IPName, n)
+			t.Log().Debugf("name %s is resolvables to %d address. Using the first.", t.Name, n)
 		}
 		return l[0]
 	default:
-		return net.ParseIP(t.IPName)
+		return net.ParseIP(t.Name)
 	}
 }
 
 func (t *T) netInterface() (*net.Interface, error) {
-	return net.InterfaceByName(t.IPDev)
+	return net.InterfaceByName(t.Dev)
 }
 
 func (t Addrs) Has(ip net.IP) bool {
