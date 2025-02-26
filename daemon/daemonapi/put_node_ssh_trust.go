@@ -130,9 +130,6 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 
 	var errs error
 	for _, node := range clusterConfigData.Nodes {
-		if node == a.localhost {
-			continue
-		}
 		if err := doNode(node); err != nil {
 			errs = errors.Join(errs, err)
 		}
