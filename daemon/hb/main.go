@@ -501,6 +501,9 @@ func (t *T) janitor(ctx context.Context) {
 						t.daemonCtlStop(hbID, action)
 					case "start":
 						t.daemonCtlStart(t.ctx, hbID, action)
+					case "restart":
+						t.daemonCtlStop(hbID, action)
+						t.daemonCtlStart(t.ctx, hbID, action)
 					}
 				}
 			}
