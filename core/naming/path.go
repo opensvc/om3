@@ -438,6 +438,9 @@ func (t Path) FrozenFile() string {
 // ConfigFile returns the object configuration file path on the local filesystem.
 func (t Path) ConfigFile() string {
 	s := t.String()
+	if s == "" {
+		return ""
+	}
 	switch t.Namespace {
 	case "", "root":
 		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
