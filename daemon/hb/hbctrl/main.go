@@ -93,6 +93,12 @@ type (
 		result chan<- EventStats
 	}
 
+	// CmdSetAlert is a command to post new hb alert
+	CmdSetAlert struct {
+		HbID  string
+		Alert []daemonsubsystem.Alert
+	}
+
 	// CmdSetPeerSuccess is a command to set a hb peer success value for a node
 	CmdSetPeerSuccess struct {
 		Nodename string
@@ -213,6 +219,7 @@ func (c *C) run() {
 					Status: heartbeat[key].Status,
 					Type:   heartbeat[key].Type,
 					Peers:  peers,
+					Alerts: append([]daemonsubsystem.Alert(nil), heartbeat[key].Alerts...),
 				})
 			}
 			hbcache.SetHeartbeats(heartbeats)
@@ -304,6 +311,12 @@ func (c *C) run() {
 					o.result <- foundHeartbeat.Peers
 				} else {
 					o.result <- make(map[string]daemonsubsystem.HeartbeatStreamPeerStatus)
+				}
+			case CmdSetAlert:
+				hbID := o.HbID
+				if foundHeartbeat, ok := heartbeat[hbID]; ok {
+					foundHeartbeat.Alerts = append([]daemonsubsystem.Alert(nil), o.Alert...)
+					heartbeat[hbID] = foundHeartbeat
 				}
 			case CmdSetPeerStatus:
 				hbID := o.HbID
