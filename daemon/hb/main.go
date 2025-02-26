@@ -168,10 +168,10 @@ func (t *T) stopHb(hb hbtype.IDStopper) error {
 
 func (t *T) startHb(hb hbcfg.Confer) error {
 	var errs error
-	if err := t.startHbRx(hb); err != nil {
+	if err := t.startHbTx(hb); err != nil {
 		errs = errors.Join(errs, err)
 	}
-	if err := t.startHbTx(hb); err != nil {
+	if err := t.startHbRx(hb); err != nil {
 		errs = errors.Join(errs, err)
 	}
 	return errs
