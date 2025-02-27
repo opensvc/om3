@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
@@ -43,7 +44,7 @@ func (a *DaemonAPI) getLocalSSHKey(ctx echo.Context) error {
 	if errors.Is(err, os.ErrNotExist) {
 		args := []string{
 			"-N", "", "-q", "-f", keyFile,
-			"-C", fmt.Sprintf("opensvc-cluster-root-trust@%s", a.localhost),
+			"-C", fmt.Sprintf("opensvc@%s sshkey=%s %s", a.localhost, nodeConfig.SSHKey, time.Now().Format(time.RFC3339)),
 		}
 		err = command.New(
 			command.WithName("ssh-keygen"),
