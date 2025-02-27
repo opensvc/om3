@@ -195,6 +195,10 @@ func (t *rx) rescanMetadata(reason string) {
 		t.log.Infof("rescan metadata: %s", err)
 		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "warning", Message: reason})
 	}
+	if len(t.base.nodeSlotUnknown) > 0 {
+		msg := fmt.Sprintf("nodes without slot: %s", maps.Keys(t.base.nodeSlotUnknown))
+		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "warning", Message: msg})
+	}
 	t.updateAlertWithSlots()
 	t.sendAlert()
 }
