@@ -44,6 +44,7 @@ func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 		MaxParallel:         t.MaxParallel,
 		Option:              "schedule",
 		Base:                "",
+		Require:             t.RunRequires,
 		RequireConfirmation: t.Confirmation,
 		RequireProvisioned:  true,
 		RequireCollector:    false,
