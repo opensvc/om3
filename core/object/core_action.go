@@ -332,6 +332,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if t.IsDisabled() {
 		return ErrDisabled
 	}
+	t.pg = t.pgConfig("")
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)
 	barrier := actioncontext.To(ctx)

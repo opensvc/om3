@@ -38,8 +38,10 @@ func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	cf := t.ConfigFile()
 	if t.configData != nil {
 		sources = []any{t.configData}
-	} else {
+	} else if cf != "" {
 		sources = []any{cf}
+	} else {
+		sources = []any{}
 	}
 	if t.config, err = xconfig.NewObject(cf, sources...); err != nil {
 		return err
