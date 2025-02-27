@@ -27,6 +27,7 @@ func (a *DaemonAPI) PostDaemonSubAction(ctx echo.Context) error {
 	}
 	action := string(payload.Action)
 	switch action {
+	case "restart":
 	case "start":
 	case "stop":
 	default:
