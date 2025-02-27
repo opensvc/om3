@@ -2,14 +2,20 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
@@ -44,6 +50,15 @@ type (
 		status daemonsubsystem.Scheduler
 
 		maxRunning int
+
+		// lastRunOnAllPeers stores the schedule most recent run time
+		// whatever the node. Used to avoid running again too soon
+		// after a failover.
+		//
+		// This map is updated from the InstanceStatusUpdated events
+		// received via ObjectStatusUpdated.SrcEv for peers and from
+		// job execution for the local node.
+		lastRunOnAllPeers lastRunMap
 	}
 
 	Schedules map[string]map[string]schedule.Entry
@@ -66,6 +81,8 @@ type (
 		schedule schedule.Entry
 		begin    time.Time
 	}
+
+	lastRunMap map[string]time.Time
 )
 
 var (
@@ -114,13 +131,14 @@ func (t Schedules) Get(path naming.Path, k string) (schedule.Entry, bool) {
 
 func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
-		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
-		localhost:   hostname.Hostname(),
-		events:      make(chan any),
-		jobs:        make(Jobs),
-		schedules:   make(Schedules),
-		provisioned: make(map[naming.Path]bool),
-		subQS:       subQS,
+		log:               plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
+		localhost:         hostname.Hostname(),
+		events:            make(chan any),
+		jobs:              make(Jobs),
+		schedules:         make(Schedules),
+		provisioned:       make(map[naming.Path]bool),
+		subQS:             subQS,
+		lastRunOnAllPeers: make(lastRunMap),
 
 		status: daemonsubsystem.Scheduler{
 			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
@@ -235,7 +253,13 @@ func (t *T) createJob(e schedule.Entry) {
 	if e.RequireCollector && !t.isCollectorJoinable {
 		return
 	}
+
 	logger := t.jobLogger(e)
+	if lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key); ok && e.LastRunAt.Before(lastRunOnAllPeers) {
+		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, lastRunOnAllPeers)
+		e.LastRunAt = lastRunOnAllPeers
+	}
+
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
@@ -308,6 +332,7 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 			schedule: e,
 			begin:    c.schedule.NextRunAt,
 		}
+		t.lastRunOnAllPeers.Set(c.schedule.Path, c.schedule.Key, c.schedule.NextRunAt)
 		if err := t.action(e); err != nil {
 			logger.Errorf("on exec %s: %s", e.Key, err)
 		} else {
@@ -426,6 +451,8 @@ func (t *T) loop() {
 				t.onNodeConfigUpdated(c)
 			case *msgbus.ObjectStatusUpdated:
 				t.onMonObjectStatusUpdated(c)
+			case *msgbus.ObjectStatusDeleted:
+				t.onMonObjectStatusDeleted(c)
 			case *msgbus.DaemonCollectorUpdated:
 				t.onDaemonCollectorUpdated(c)
 			}
@@ -477,6 +504,115 @@ func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
+func (t *T) onInstStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	if c.Node == t.localhost {
+		return
+	}
+	if _, ok := t.schedules[c.Path.String()]; !ok {
+		// we don't have a local instance
+		return
+	}
+	log := t.loggerWithPath(c.Path)
+	for rid, r := range c.Value.Resources {
+		resourceId, err := resourceid.Parse(rid)
+		if err != nil {
+			continue
+		}
+		switch resourceId.DriverGroup() {
+		case driver.GroupTask:
+		case driver.GroupSync:
+		default:
+			continue
+		}
+		if _, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid); !ok {
+			if tm, nodename, err := t.readLastRunOnFile(c.Path, rid); err == nil {
+				log.Infof("%s: %s: initialize last run at %s on %s", c.Path, rid, tm, nodename)
+				t.lastRunOnAllPeers.SetWithRID(c.Path, rid, tm)
+			}
+		}
+		i, ok := r.Info["last_run_at"]
+		if !ok {
+			continue
+		}
+		var lastRunAtOnPeer time.Time
+		switch v := i.(type) {
+		case time.Time:
+			lastRunAtOnPeer = v
+		case string:
+			tm, err := time.Parse(time.RFC3339Nano, v)
+			if err != nil {
+				continue
+			}
+			lastRunAtOnPeer = tm
+		}
+		if !ok {
+			continue
+		}
+		if err := t.updateLastRunOnFile(c.Path, rid, c.Node, lastRunAtOnPeer); err != nil {
+			log.Warnf("%s: %s: write last run on file: %s", c.Path, rid, err)
+		}
+
+		cachedLastRunAtOnPeer, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid)
+
+		if !ok || lastRunAtOnPeer.After(cachedLastRunAtOnPeer) {
+			log.Infof("%s: %s: last run on peer %s at %s", c.Path, rid, c.Node, lastRunAtOnPeer)
+			t.lastRunOnAllPeers.SetWithRID(c.Path, rid, lastRunAtOnPeer)
+		}
+	}
+}
+
+func (t *T) lastRunOnFile(path naming.Path, rid string) string {
+	return filepath.Join(path.VarDir(), rid, "last_run_on")
+}
+
+func (t *T) lastRunOnFileModTime(path naming.Path, rid string) (time.Time, error) {
+	p := t.lastRunOnFile(path, rid)
+	if stat, err := os.Stat(p); err != nil {
+		return time.Time{}, err
+	} else {
+		return stat.ModTime(), nil
+	}
+}
+
+func (t *T) readLastRunOnFile(path naming.Path, rid string) (time.Time, string, error) {
+	tm, err := t.lastRunOnFileModTime(path, rid)
+	if err != nil {
+		return tm, "", err
+	}
+	p := t.lastRunOnFile(path, rid)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return tm, "", err
+	}
+	nodename := strings.TrimSpace(string(b))
+	return tm, nodename, nil
+}
+
+func (t *T) updateLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
+	lastTm, err := t.lastRunOnFileModTime(path, rid)
+	if errors.Is(err, os.ErrNotExist) {
+		return os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 755)
+	} else if err != nil {
+		return err
+	}
+	if !lastTm.IsZero() && lastTm.After(tm) {
+		return nil
+	}
+	return t.writeLastRunOnFile(path, rid, nodename, tm)
+}
+
+func (t *T) writeLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
+	p := t.lastRunOnFile(path, rid)
+	f, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s\n", nodename)
+	os.Chtimes(p, tm, tm)
+	return nil
+}
+
 func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 	previousIsCollectorJoinable := t.isCollectorJoinable
 	switch c.Value.State {
@@ -501,7 +637,22 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 	}
 }
 
+func (t *T) onMonObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	m := make(lastRunMap)
+	prefix := c.Path.String() + ":"
+	for k, v := range t.lastRunOnAllPeers {
+		if strings.HasPrefix(k, prefix) {
+			continue
+		}
+		m[k] = v
+	}
+	t.lastRunOnAllPeers = m
+}
+
 func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	if srcEv, ok := c.SrcEv.(*msgbus.InstanceStatusUpdated); ok {
+		t.onInstStatusUpdated(srcEv)
+	}
 	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	wasProvisioned, ok := t.provisioned[c.Path]
 	t.provisioned[c.Path] = isProvisioned
@@ -582,9 +733,6 @@ func (t *T) scheduleAll() {
 	t.scheduleNode()
 }
 
-func (t *T) reschedule(p naming.Path, isProvisioned bool) {
-}
-
 func (t *T) schedule(p naming.Path) {
 	if !t.enabled {
 		return
@@ -661,4 +809,27 @@ func (t *T) publishUpdate() {
 	localhost := hostname.Hostname()
 	daemonsubsystem.DataScheduler.Set(localhost, t.status.DeepCopy())
 	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+}
+
+func (t lastRunMap) key(path naming.Path, s string) string {
+	return fmt.Sprintf("%s:%s", path.String(), s)
+}
+
+func (t lastRunMap) Get(path naming.Path, s string) (time.Time, bool) {
+	id := t.key(path, s)
+	tm, ok := t[id]
+	return tm, ok
+}
+
+func (t lastRunMap) Set(path naming.Path, s string, tm time.Time) {
+	id := t.key(path, s)
+	t[id] = tm
+}
+
+func (t lastRunMap) GetWithRID(path naming.Path, s string) (time.Time, bool) {
+	return t.Get(path, s+".schedule")
+}
+
+func (t lastRunMap) SetWithRID(path naming.Path, s string, tm time.Time) {
+	t.Set(path, s+".schedule", tm)
 }
