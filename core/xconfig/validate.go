@@ -304,9 +304,9 @@ func (t T) Validate() (Alerts, error) {
 			}
 			if len(kw.Candidates) > 0 {
 				switch kw.Converter {
-				case nil:
+				case nil,
+					converters.Int:
 					if !slices.Contains(kw.Candidates, v) {
-
 						alerts = append(alerts, t.NewAlertCandidates(k, did, v))
 					}
 				case converters.List:

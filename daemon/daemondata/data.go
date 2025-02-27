@@ -281,11 +281,8 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				if isCtxDone() {
 					return
 				}
-				gens := make(node.Gen)
-				for s, v := range *lgens {
-					gens[s] = v
-				}
-				d.publisher.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
+				node.GenData.Set(d.localNode, d.msgLocalGen.DeepCopy())
+				d.publisher.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: *d.msgLocalGen.DeepCopy()},
 					d.labelLocalhost,
 				)
 			}

@@ -168,10 +168,10 @@ func (t *T) stopHb(hb hbtype.IDStopper) error {
 
 func (t *T) startHb(hb hbcfg.Confer) error {
 	var errs error
-	if err := t.startHbRx(hb); err != nil {
+	if err := t.startHbTx(hb); err != nil {
 		errs = errors.Join(errs, err)
 	}
-	if err := t.startHbTx(hb); err != nil {
+	if err := t.startHbRx(hb); err != nil {
 		errs = errors.Join(errs, err)
 	}
 	return errs
@@ -500,6 +500,9 @@ func (t *T) janitor(ctx context.Context) {
 					case "stop":
 						t.daemonCtlStop(hbID, action)
 					case "start":
+						t.daemonCtlStart(t.ctx, hbID, action)
+					case "restart":
+						t.daemonCtlStop(hbID, action)
 						t.daemonCtlStart(t.ctx, hbID, action)
 					}
 				}
