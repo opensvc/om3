@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/daemoncmd"
 	"github.com/opensvc/om3/util/hostname"
@@ -31,16 +32,6 @@ func (t *CmdDaemonStop) Run() error {
 		return fmt.Errorf("--node must be specified")
 	}
 	return t.doNodes()
-}
-
-func (t *CmdDaemonStop) doLocal() error {
-	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on localhost\n")
-	cli, err := client.New()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).StopFromCmd(ctx)
 }
 
 func (t *CmdDaemonStop) doNodes() error {
@@ -87,17 +78,17 @@ func (t *CmdDaemonStop) doNodes() error {
 
 func (t *CmdDaemonStop) doNode(ctx context.Context, cli *client.T, nodename string) error {
 	if nodename == hostname.Hostname() {
-		return t.doLocal()
+		return t.doLocalDaemonStop()
 	}
-	r, err := cli.PostDaemonStopWithResponse(ctx, nodename)
+	return commoncmd.PostDaemonStop(ctx, cli, nodename)
+}
+
+func (t *CmdDaemonStop) doLocalDaemonStop() error {
+	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on localhost\n")
+	cli, err := client.New()
 	if err != nil {
-		return fmt.Errorf("unexpected post daemon stop failure for %s: %w", nodename, err)
+		return err
 	}
-	switch {
-	case r.JSON200 != nil:
-		_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on remote %s with pid %d\n", nodename, r.JSON200.Pid)
-		return nil
-	default:
-		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode())
-	}
+	ctx := context.Background()
+	return daemoncmd.NewContext(ctx, cli).StopFromCmd(ctx)
 }

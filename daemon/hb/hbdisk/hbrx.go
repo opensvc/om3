@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -69,11 +70,13 @@ func (t *rx) Stop() error {
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.log.Infof("starting")
-	minimumSlots := len(t.nodes) + 1
-	if t.base.maxSlots < minimumSlots {
-		return fmt.Errorf("can't start: not enough slots for %d nodes", minimumSlots)
+	nodeCount := len(t.nodes) + 1
+	if t.base.maxSlots < nodeCount {
+		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
 	if err := t.base.device.open(); err != nil {
+		err := fmt.Errorf("device %s: %w", t.base.path, err)
+		t.log.Warnf("startup failed: %s", err)
 		return err
 	}
 	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
@@ -136,7 +139,7 @@ func (t *rx) onTick() {
 
 func (t *rx) recv(nodename string) {
 	slot := t.base.nodeSlot[nodename]
-	if slot < 0 {
+	if slot < minimumSlot {
 		return
 	}
 	c, err := t.base.readDataSlot(slot) // TODO read timeout?
@@ -204,8 +207,13 @@ func (t *rx) rescanMetadata(reason string) {
 }
 
 func (t *rx) updateAlertWithSlots() {
-	for nodename, slot := range t.base.nodeSlot {
-		t.alert = append(t.alert, getSlotAlert(nodename, slot))
+	nodes := make([]string, 0, len(t.base.nodeSlot))
+	for nodename := range t.base.nodeSlot {
+		nodes = append(nodes, nodename)
+	}
+	sort.Strings(nodes)
+	for _, nodename := range nodes {
+		t.alert = append(t.alert, getSlotAlert(nodename, t.base.nodeSlot[nodename]))
 	}
 }
 

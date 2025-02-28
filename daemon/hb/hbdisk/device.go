@@ -35,11 +35,31 @@ const (
 
 	// modeRaw is the mode for non-Linux systems
 	modeRaw = "raw" // Mode for non-Linux systems
+
+	HBDiskSignature = "62d09ef2-3fce-41ad-9ffb-05f1c2b31c1a"
 )
 
 // calculateMetaSlotOffset returns the offset of the meta page of the slot.
 func (t *device) calculateMetaSlotOffset(slot int) int64 {
 	return pageSizeInt64 * int64(slot)
+}
+
+func (t *device) readSignature() (string, error) {
+	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("seek offset %d: %w", 0, err)
+	}
+	block := directio.AlignedBlock(PageSize)
+	if n, err := io.ReadAtLeast(t.file, block, len(HBDiskSignature)); err != nil {
+		return "", fmt.Errorf("read failed: %w", err)
+	} else if n < len(HBDiskSignature) {
+		return "", fmt.Errorf("expected %d bytes, got %d", len(HBDiskSignature), n)
+	} else if block[0] == endOfDataMarker {
+		return "", fmt.Errorf("no data found at offset 0")
+	}
+	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("seek offset %d: %w", 0, err)
+	}
+	return string(block[:len(HBDiskSignature)]), nil
 }
 
 func (t *device) readMetaSlot(slot int) ([]byte, error) {
@@ -159,7 +179,13 @@ func (t *device) open() error {
 		return err
 	}
 
-	return t.openDevice(newDev)
+	if err := t.openDevice(newDev); err != nil {
+		return err
+	}
+	if err := t.ensureHBSignature(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ensureBlockDevice checks if the specified device path refers to a valid
@@ -180,6 +206,17 @@ func (t *device) ensureCharDevice(path string) error {
 		return fmt.Errorf("%s must be a char device: %w", path, err)
 	} else if !ok {
 		return fmt.Errorf("%s must be a char device", path)
+	}
+	return nil
+}
+
+// ensureHBSignature verifies that the device contains the expected HB signature
+// and returns an error if validation fails.
+func (t *device) ensureHBSignature() error {
+	if signature, err := t.readSignature(); err != nil {
+		return fmt.Errorf("expected signature '%s': read failed: %w", HBDiskSignature, err)
+	} else if signature != HBDiskSignature {
+		return fmt.Errorf("expected signature '%s' found '%s'", HBDiskSignature, signature)
 	}
 	return nil
 }

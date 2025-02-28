@@ -4,28 +4,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"slices"
+	"strings"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/daemon/daemoncmd"
 	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
-	CmdDaemonRestart struct {
+	CmdDaemonComponentAction struct {
 		OptsGlobal
 		Debug        bool
 		NodeSelector string
+		SubComponent []string
+		Action       string
 	}
 )
 
 // Run functions restart daemon.
 //
 // The daemon restart is asynchronous when node selector is used
-func (t *CmdDaemonRestart) Run() error {
+func (t *CmdDaemonComponentAction) Run() error {
+	if !slices.Contains(commoncmd.DaemonComponentAllowedActions, t.Action) {
+		return fmt.Errorf("action %s is not permitted. Allowed actions are %s",
+			t.Action, strings.Join(commoncmd.DaemonComponentAllowedActions, ", "))
+	}
+	if len(t.SubComponent) == 0 {
+		return fmt.Errorf("need at least one daemon sub component")
+	}
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
 	}
@@ -38,7 +47,7 @@ func (t *CmdDaemonRestart) Run() error {
 	return t.doNodes()
 }
 
-func (t *CmdDaemonRestart) doNodes() error {
+func (t *CmdDaemonComponentAction) doNodes() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -82,19 +91,6 @@ func (t *CmdDaemonRestart) doNodes() error {
 	return errs
 }
 
-func (t *CmdDaemonRestart) doNode(ctx context.Context, cli *client.T, nodename string) error {
-	if nodename == hostname.Hostname() {
-		return t.doLocalDaemonRestart()
-	}
-	return commoncmd.PostDaemonRestart(ctx, cli, nodename)
-}
-
-func (t *CmdDaemonRestart) doLocalDaemonRestart() error {
-	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on localhost\n")
-	cli, err := client.New()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).RestartFromCmd(ctx)
+func (t *CmdDaemonComponentAction) doNode(ctx context.Context, cli *client.T, nodename string) error {
+	return commoncmd.PostDaemonComponentAction(ctx, cli, nodename, t.Action, t.SubComponent)
 }

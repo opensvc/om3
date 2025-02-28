@@ -698,8 +698,8 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Converter: converters.Int,
-		Example:   "64",
-		Default:   "64",
+		Example:   "1024",
+		Default:   "1024",
 		Option:    "max_slots",
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.disk.max_slots"),

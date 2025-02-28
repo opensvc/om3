@@ -30,5 +30,6 @@ func (t *device) openDevice(newDev string) error {
 	if t.file, err = directio.OpenFile(newDev, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, openDevicePermission); err != nil {
 		return fmt.Errorf("%s directio open block device: %w", newDev, err)
 	}
+
 	return nil
 }
