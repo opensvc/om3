@@ -3,6 +3,7 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -220,6 +221,23 @@ func newCmdDaemonAuth() *cobra.Command {
 	addFlagRoles(flags, &options.Roles)
 	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
 	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
+	return cmd
+}
+
+func newCmdDaemonComponentAction(action string) *cobra.Command {
+	options := commands.CmdDaemonComponentAction{Action: action}
+	cmd := &cobra.Command{
+		Use:   action,
+		Short: fmt.Sprintf("%s damon component", action),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	flags.StringSliceVar(&options.SubComponent, "sub", []string{}, "Daemon sub components. Example: hb#dsk1.rx")
+	cmd.MarkFlagRequired("sub")
 	return cmd
 }
 

@@ -10,6 +10,11 @@ var (
 		Short: "Manage the opensvc daemon",
 	}
 
+	cmdDaemonComponent = &cobra.Command{
+		Use:   "component",
+		Short: "Manage opensvc daemon components",
+	}
+
 	cmdDaemonDNS = &cobra.Command{
 		Use:   "dns",
 		Short: "dns subsystem commands",
@@ -25,8 +30,10 @@ func init() {
 	root.AddCommand(
 		cmdDaemon,
 	)
+
 	cmdDaemon.AddCommand(
 		newCmdDaemonAuth(),
+		cmdDaemonComponent,
 		cmdDaemonDNS,
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
@@ -35,9 +42,17 @@ func init() {
 		newCmdDaemonStatus(),
 		newCmdDaemonStop(),
 	)
+
+	cmdDaemonComponent.AddCommand(
+		newCmdDaemonComponentAction("restart"),
+		newCmdDaemonComponentAction("start"),
+		newCmdDaemonComponentAction("stop"),
+	)
+
 	cmdDaemonDNS.AddCommand(
 		newCmdDaemonDNSDump(),
 	)
+
 	cmdDaemonRelay.AddCommand(
 		newCmdDaemonRelayStatus(),
 	)
