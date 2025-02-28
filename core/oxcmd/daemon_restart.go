@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 )
 
@@ -44,7 +44,7 @@ func (t *CmdDaemonRestart) doNodes() error {
 		running++
 		go func(nodename string) {
 			_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on remote %s\n", nodename)
-			err := t.doNode(ctx, c, nodename)
+			err := commoncmd.PostDaemonRestart(ctx, c, nodename)
 			errC <- err
 		}(nodename)
 	}
@@ -60,17 +60,4 @@ func (t *CmdDaemonRestart) doNodes() error {
 		running--
 	}
 	return errs
-}
-
-func (t *CmdDaemonRestart) doNode(ctx context.Context, cli *client.T, nodename string) error {
-	r, err := cli.PostDaemonRestart(ctx, nodename)
-	if err != nil {
-		return fmt.Errorf("unexpected post daemon restart failure for %s: %w", nodename, err)
-	}
-	switch r.StatusCode {
-	case http.StatusOK:
-		return nil
-	default:
-		return fmt.Errorf("unexpected post daemon restart status code for %s: %d", nodename, r.StatusCode)
-	}
 }
