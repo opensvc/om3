@@ -217,13 +217,6 @@ const (
 	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
 )
 
-// Defines values for PostDaemonSubActionAction.
-const (
-	PostDaemonSubActionActionRestart PostDaemonSubActionAction = "restart"
-	PostDaemonSubActionActionStart   PostDaemonSubActionAction = "start"
-	PostDaemonSubActionActionStop    PostDaemonSubActionAction = "stop"
-)
-
 // Defines values for PropertyListKind.
 const (
 	PropertyListKindPropertyList PropertyListKind = "PropertyList"
@@ -321,6 +314,20 @@ const (
 // Defines values for UserListKind.
 const (
 	UserListKindUserList UserListKind = "UserList"
+)
+
+// Defines values for InPathDaemonComponentAction.
+const (
+	InPathDaemonComponentActionRestart InPathDaemonComponentAction = "restart"
+	InPathDaemonComponentActionStart   InPathDaemonComponentAction = "start"
+	InPathDaemonComponentActionStop    InPathDaemonComponentAction = "stop"
+)
+
+// Defines values for PostDaemonComponentActionParamsAction.
+const (
+	Restart PostDaemonComponentActionParamsAction = "restart"
+	Start   PostDaemonComponentActionParamsAction = "start"
+	Stop    PostDaemonComponentActionParamsAction = "stop"
 )
 
 // ArbitratorStatus defines model for ArbitratorStatus.
@@ -1034,6 +1041,12 @@ type PoolVolumeList struct {
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
 
+// PostDaemonComponentActionBody defines model for PostDaemonComponentActionBody.
+type PostDaemonComponentActionBody struct {
+	// Subs daemon component list
+	Subs []string `json:"subs"`
+}
+
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
 	Level PostDaemonLogsControlLevel `json:"level"`
@@ -1041,17 +1054,6 @@ type PostDaemonLogsControl struct {
 
 // PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
 type PostDaemonLogsControlLevel string
-
-// PostDaemonSubAction defines model for PostDaemonSubAction.
-type PostDaemonSubAction struct {
-	Action PostDaemonSubActionAction `json:"action"`
-
-	// Subs daemon component list
-	Subs []string `json:"subs"`
-}
-
-// PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
-type PostDaemonSubActionAction string
 
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
@@ -1485,6 +1487,9 @@ type Roles = []Role
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
 
+// InPathDaemonComponentAction defines model for inPathDaemonComponentAction.
+type InPathDaemonComponentAction string
+
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
 
@@ -1710,6 +1715,9 @@ type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 }
+
+// PostDaemonComponentActionParamsAction defines parameters for PostDaemonComponentAction.
+type PostDaemonComponentActionParamsAction string
 
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
@@ -2042,14 +2050,14 @@ type GetResourcesParams struct {
 // PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
 type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControl
 
-// PostDaemonSubActionJSONRequestBody defines body for PostDaemonSubAction for application/json ContentType.
-type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
-
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
+
+// PostDaemonComponentActionJSONRequestBody defines body for PostDaemonComponentAction for application/json ContentType.
+type PostDaemonComponentActionJSONRequestBody = PostDaemonComponentActionBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

@@ -12,7 +12,11 @@ import (
 )
 
 var (
-	DaemonComponentAllowedActions = []string{"start", "stop", "restart"}
+	DaemonComponentAllowedActions = []string{
+		string(api.InPathDaemonComponentActionStart),
+		string(api.InPathDaemonComponentActionStop),
+		string(api.InPathDaemonComponentActionRestart),
+	}
 )
 
 // PostDaemonComponentAction performs an action on specific daemon
@@ -23,11 +27,11 @@ func PostDaemonComponentAction(ctx context.Context, cli *client.T, nodename stri
 	subs := strings.Join(sub, ", ")
 	_, _ = fmt.Fprintf(os.Stderr, "Invoke action %s on node %s daemon components %s\n",
 		action, nodename, subs)
-	body := api.PostDaemonSubActionJSONRequestBody{
-		Action: api.PostDaemonSubActionBodyAction(action),
-		Subs:   sub,
+	body := api.PostDaemonComponentActionJSONRequestBody{
+		Subs: sub,
 	}
-	r, err := cli.PostDaemonSubAction(ctx, nodename, body)
+	actionParam := api.PostDaemonComponentActionParamsAction(action)
+	r, err := cli.PostDaemonComponentAction(ctx, nodename, actionParam, body)
 	if err != nil {
 		return fmt.Errorf("Invoke action %s on node %s daemon components %s: %w",
 			action, nodename, subs, err)

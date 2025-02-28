@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.3
+  version: 3.12.4
 
 paths:
   /auth/info:
@@ -442,6 +442,38 @@ paths:
       tags:
         - daemon
 
+  /node/name/{nodename}/daemon/component/action/{action}:
+    post:
+      description: |
+        Execute action on some daemon sub components on `nodename`.
+      operationId: PostDaemonComponentAction
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathDaemonComponentAction'
+      requestBody:
+        description: action on daemon sub components
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostDaemonComponentActionBody'
+      tags:
+        - daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/capabilities:
     get:
       operationId: GetNodeCapabilities
@@ -647,33 +679,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DaemonStatus'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /daemon/sub/action:
-    post:
-      operationId: PostDaemonSubAction
-      tags:
-        - daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      requestBody:
-        description: action on daemon sub components
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostDaemonSubAction'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2013,6 +2018,7 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
     post:
       description: |
@@ -5607,18 +5613,11 @@ components:
             - none
           default: info
 
-    PostDaemonSubAction:
+    PostDaemonComponentActionBody:
       type: object
       required:
-        - action
         - subs
       properties:
-        action:
-          type: string
-          enum:
-            - restart
-            - start
-            - stop
         subs:
           type: array
           description: daemon component list
@@ -6615,6 +6614,16 @@ components:
           type: string
 
   parameters:
+    inPathDaemonComponentAction:
+      in: path
+      name: action
+      required: true
+      schema:
+        type: string
+        enum:
+          - restart
+          - start
+          - stop
 
     inPathName:
       in: path
