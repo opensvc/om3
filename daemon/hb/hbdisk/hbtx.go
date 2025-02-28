@@ -58,11 +58,14 @@ func (t *tx) Stop() error {
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.log.Infof("starting")
 	if t.base.maxSlots < len(t.nodes) {
-		return fmt.Errorf("can't start: not enough slots for %d nodes", len(t.nodes))
+		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
 	if err := t.base.device.open(); err != nil {
+		err := fmt.Errorf("device %s: %w", t.base.path, err)
+		t.log.Warnf("startup failed: %s", err)
 		return err
 	}
+
 	if err := t.base.scanMetadata(t.base.localhost); err != nil {
 		msg := fmt.Sprintf("initial scan metadata: %s", err)
 		t.log.Infof(msg)

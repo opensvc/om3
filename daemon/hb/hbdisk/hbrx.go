@@ -74,6 +74,8 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		return fmt.Errorf("can't start: not enough slots for %d nodes", minimumSlots)
 	}
 	if err := t.base.device.open(); err != nil {
+		err := fmt.Errorf("device %s: %w", t.base.path, err)
+		t.log.Warnf("startup failed: %s", err)
 		return err
 	}
 	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
