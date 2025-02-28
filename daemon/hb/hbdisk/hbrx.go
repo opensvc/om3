@@ -69,9 +69,9 @@ func (t *rx) Stop() error {
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.log.Infof("starting")
-	minimumSlots := len(t.nodes) + 1
-	if t.base.maxSlots < minimumSlots {
-		return fmt.Errorf("can't start: not enough slots for %d nodes", minimumSlots)
+	nodeCount := len(t.nodes) + 1
+	if t.base.maxSlots < nodeCount {
+		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
 	if err := t.base.device.open(); err != nil {
 		err := fmt.Errorf("device %s: %w", t.base.path, err)
@@ -138,7 +138,7 @@ func (t *rx) onTick() {
 
 func (t *rx) recv(nodename string) {
 	slot := t.base.nodeSlot[nodename]
-	if slot < 0 {
+	if slot < minimumSlot {
 		return
 	}
 	c, err := t.base.readDataSlot(slot) // TODO read timeout?

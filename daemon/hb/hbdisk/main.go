@@ -55,6 +55,10 @@ const (
 	pageSizeInt64 = int64(directio.BlockSize) // Introduce a constant for int64 conversion of PageSize
 
 	endOfDataMarker = '\x00'
+
+	// minimumSlot represents the minimum slot value in the system, used as the
+	// base or default starting slot.
+	minimumSlot = 1
 )
 
 func New() hbcfg.Confer {
@@ -113,12 +117,12 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 	defer func(now time.Time) { t.log.Debugf("scanMetadata elapsed %s", time.Since(now)) }(time.Now())
 	// Initialize peer configs with all provided searchedNodes and local hostname.
 	for _, node := range searchedNodes {
-		t.nodeSlot[node] = -1
+		t.nodeSlot[node] = 0
 		t.nodeSlotUnknown[node] = true
 	}
 
 	// Process each metadata slot.
-	for slot := 0; slot < t.maxSlots; slot++ {
+	for slot := minimumSlot; slot < t.maxSlots; slot++ {
 		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
 			return fmt.Errorf("read meta slot %d: %w", slot, errors.Join(errs, err))
@@ -137,7 +141,7 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 			// ignore non searched node: perhaps a non cluster node, or a cluster node that we are not searching.
 			continue
 		}
-		if initialSlot >= 0 && initialSlot != slot {
+		if initialSlot >= minimumSlot && initialSlot != slot {
 			errs = errors.Join(errs, fmt.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, initialSlot))
 			continue
 		}
@@ -157,10 +161,10 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 // freeSlot scans available slots on the device and returns the first free slot
 // index or an error if no free slot is found.
 func (t *base) freeSlot() (int, error) {
-	for slot := 0; slot < t.maxSlots; slot++ {
+	for slot := minimumSlot; slot < t.maxSlots; slot++ {
 		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
-			return -1, fmt.Errorf("read meta slot %d: %w", slot, err)
+			return 0, fmt.Errorf("read meta slot %d: %w", slot, err)
 		}
 		if len(b) == 0 {
 			break
@@ -169,7 +173,7 @@ func (t *base) freeSlot() (int, error) {
 		}
 		return slot, nil
 	}
-	return -1, fmt.Errorf("no free slot on dev")
+	return 0, fmt.Errorf("no free slot on dev")
 }
 
 func nodeFromMetadata(b []byte) string {
@@ -189,7 +193,7 @@ func metaSize(maxSlots int) int64 {
 func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {
 	msg := fmt.Sprintf("node %s slot %d", nodename, slot)
 	level := "info"
-	if slot < 0 {
+	if slot < minimumSlot {
 		level = "warning"
 	}
 	return daemonsubsystem.Alert{Severity: level, Message: msg}

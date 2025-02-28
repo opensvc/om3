@@ -71,7 +71,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		t.log.Infof(msg)
 		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
 	}
-	if slot := t.base.nodeSlot[t.base.localhost]; slot >= 0 {
+	if slot := t.base.nodeSlot[t.base.localhost]; slot >= minimumSlot {
 		t.slot = slot
 	}
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
@@ -84,7 +84,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		t.log.Infof("started")
 		defer t.log.Infof("stopped")
 
-		if t.slot < 0 {
+		if t.slot < minimumSlot {
 			if err := t.allocateSlot(); err != nil {
 				t.log.Infof("can't allocate new slot: %s", err)
 			}
@@ -163,7 +163,7 @@ func (t *tx) allocateSlot() error {
 
 func (t *tx) send(b []byte) {
 	var needAllocateReason string
-	if t.slot < 0 {
+	if t.slot < minimumSlot {
 		needAllocateReason = "meta data slot is unknown"
 	} else if slotInfo, err := t.base.readMetaSlot(t.slot); err != nil {
 		needAllocateReason = fmt.Sprintf("can't read meta data slot %d: %s", t.slot, err)
@@ -184,7 +184,7 @@ func (t *tx) send(b []byte) {
 			)
 			return
 		}
-		if t.slot < 0 {
+		if t.slot < minimumSlot {
 			return
 		}
 		t.updateAlertWithSlot()
@@ -230,7 +230,7 @@ func newTx(ctx context.Context, name string, nodes []string, dev string, timeout
 		timeout:  timeout,
 		interval: interval,
 		log:      log,
-		slot:     -1, // initial slot is unknown
+		slot:     0, // initial slot is unknown
 		base: base{
 			log: log,
 			device: device{
