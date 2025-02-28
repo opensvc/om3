@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -206,8 +207,13 @@ func (t *rx) rescanMetadata(reason string) {
 }
 
 func (t *rx) updateAlertWithSlots() {
-	for nodename, slot := range t.base.nodeSlot {
-		t.alert = append(t.alert, getSlotAlert(nodename, slot))
+	nodes := make([]string, 0, len(t.base.nodeSlot))
+	for nodename := range t.base.nodeSlot {
+		nodes = append(nodes, nodename)
+	}
+	sort.Strings(nodes)
+	for _, nodename := range nodes {
+		t.alert = append(t.alert, getSlotAlert(nodename, t.base.nodeSlot[nodename]))
 	}
 }
 
