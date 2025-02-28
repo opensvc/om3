@@ -20,6 +20,6 @@ func PostDaemonStop(ctx context.Context, cli *client.T, nodename string) error {
 		_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on node %s with pid %d\n", nodename, r.JSON200.Pid)
 		return nil
 	default:
-		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode)
+		return fmt.Errorf("unexpected post daemon stop status code for %s: %d", nodename, r.StatusCode())
 	}
 }
