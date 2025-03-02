@@ -11,16 +11,23 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonAPI) PostDaemonComponentAction(ctx echo.Context, nodename api.InPathNodeName, action api.PostDaemonComponentActionParamsAction) error {
+func (a *DaemonAPI) PostDaemonHeartbeatAction(ctx echo.Context, nodename api.InPathNodeName, action api.InPathDaemonSubAction) error {
+	return a.postDaemonSubsystemAction(ctx, "heartbeat", nodename, action)
+}
+
+func (a *DaemonAPI) PostDaemonListenerAction(ctx echo.Context, nodename api.InPathNodeName, action api.InPathDaemonSubAction) error {
+	return a.postDaemonSubsystemAction(ctx, "listener", nodename, action)
+}
+
+func (a *DaemonAPI) postDaemonSubsystemAction(ctx echo.Context, sub string, nodename api.InPathNodeName, action api.InPathDaemonSubAction) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 
-	payload := api.PostDaemonComponentActionBody{}
+	payload := api.DaemonSubNameBody{}
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
-
 	if nodename == a.localhost {
 		return a.localPostDaemonSubAction(ctx, action, payload)
 	} else if !clusternode.Has(nodename) {
@@ -30,16 +37,19 @@ func (a *DaemonAPI) PostDaemonComponentAction(ctx echo.Context, nodename api.InP
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 	}
-	resp, err := c.PostDaemonComponentActionWithResponse(ctx.Request().Context(), nodename, action, payload)
+	poster, err := c.NewPostDaemonSubFunc(sub)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Unhandled daemon sub", "get post daemon sub: %s", err)
+	}
+	resp, err := poster(ctx.Request().Context(), nodename, action, payload)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if len(resp.Body) > 0 {
-		return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 	}
-	return nil
+	defer func() { _ = resp.Body.Close() }()
+	return ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 }
 
-func (a *DaemonAPI) localPostDaemonSubAction(ctx echo.Context, action api.PostDaemonComponentActionParamsAction, payload api.PostDaemonComponentActionBody) error {
+func (a *DaemonAPI) localPostDaemonSubAction(ctx echo.Context, action api.InPathDaemonSubAction, payload api.DaemonSubNameBody) error {
 	log := LogHandler(ctx, "PostDaemonSubAction")
 	log.Debugf("starting")
 
@@ -50,17 +60,13 @@ func (a *DaemonAPI) localPostDaemonSubAction(ctx echo.Context, action api.PostDa
 	default:
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "unexpected action: %s", action)
 	}
-	var subs []string
-	for _, sub := range payload.Subs {
-		subs = append(subs, sub)
+	if len(payload.Name) == 0 {
+		return JSONProblemf(ctx, http.StatusOK, "Daemon sub component not found", "Daemon sub component list is empty: skip %s", action)
 	}
-	if len(subs) == 0 {
-		return JSONProblemf(ctx, http.StatusOK, "Daemon routine not found", "No daemon routine to %s", action)
+	log.Infof("asking to %s sub components: %s", action, payload.Name)
+	for _, name := range payload.Name {
+		log.Infof("ask to %s sub component: %s", action, name)
+		a.Publisher.Pub(&msgbus.DaemonCtl{Component: name, Action: string(action)}, pubsub.Label{"id", name}, labelOriginAPI)
 	}
-	log.Infof("asking to %s sub components: %s", action, subs)
-	for _, sub := range payload.Subs {
-		log.Infof("ask to %s sub component: %s", action, sub)
-		a.Publisher.Pub(&msgbus.DaemonCtl{Component: sub, Action: string(action)}, pubsub.Label{"id", sub}, labelOriginAPI)
-	}
-	return JSONProblemf(ctx, http.StatusOK, "daemon routines action queued", "%s %s", action, subs)
+	return JSONProblemf(ctx, http.StatusOK, "daemon routines action queued", "%s %s", action, payload.Name)
 }

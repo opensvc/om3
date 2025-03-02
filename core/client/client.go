@@ -294,3 +294,14 @@ func (t *T) Hostname() string {
 		return ""
 	}
 }
+
+func (t *T) NewPostDaemonSubFunc(s string) (oapi.PostDaemonSubAction, error) {
+	switch s {
+	case oapi.DaemonSubHeartbeat:
+		return t.PostDaemonHeartbeatAction, nil
+	case oapi.DaemonSubListener:
+		return t.PostDaemonListenerAction, nil
+	default:
+		return nil, fmt.Errorf("invalid daemon sub: %s", s)
+	}
+}

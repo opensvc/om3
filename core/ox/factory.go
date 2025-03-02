@@ -224,11 +224,11 @@ func newCmdDaemonAuth() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonComponentAction(action string) *cobra.Command {
-	options := commands.CmdDaemonComponentAction{Action: action}
+func newCmdDaemonSubAction(sub string, action string) *cobra.Command {
+	options := commands.CmdDaemonSubAction{Sub: sub, Action: action}
 	cmd := &cobra.Command{
 		Use:   action,
-		Short: fmt.Sprintf("%s damon component", action),
+		Short: fmt.Sprintf("%s damon %s components", action, sub),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -236,8 +236,8 @@ func newCmdDaemonComponentAction(action string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagNodeSelector(flags, &options.NodeSelector)
-	flags.StringSliceVar(&options.SubComponent, "sub", []string{}, "Daemon sub components. Example: hb#dsk1.rx")
-	cmd.MarkFlagRequired("sub")
+	flags.StringSliceVar(&options.Name, "name", []string{}, fmt.Sprintf("daemon %s component.", sub))
+	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

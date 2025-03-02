@@ -37,6 +37,13 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
+// Defines values for DaemonSubsystemAction.
+const (
+	DaemonSubsystemActionRestart DaemonSubsystemAction = "restart"
+	DaemonSubsystemActionStart   DaemonSubsystemAction = "start"
+	DaemonSubsystemActionStop    DaemonSubsystemAction = "stop"
+)
+
 // Defines values for DiskItemKind.
 const (
 	DiskItemKindDiskItem DiskItemKind = "DiskItem"
@@ -316,20 +323,6 @@ const (
 	UserListKindUserList UserListKind = "UserList"
 )
 
-// Defines values for InPathDaemonComponentAction.
-const (
-	InPathDaemonComponentActionRestart InPathDaemonComponentAction = "restart"
-	InPathDaemonComponentActionStart   InPathDaemonComponentAction = "start"
-	InPathDaemonComponentActionStop    InPathDaemonComponentAction = "stop"
-)
-
-// Defines values for PostDaemonComponentActionParamsAction.
-const (
-	Restart PostDaemonComponentActionParamsAction = "restart"
-	Start   PostDaemonComponentActionParamsAction = "start"
-	Stop    PostDaemonComponentActionParamsAction = "stop"
-)
-
 // ArbitratorStatus defines model for ArbitratorStatus.
 type ArbitratorStatus struct {
 	Status Status `json:"status"`
@@ -447,6 +440,15 @@ type DaemonStatus struct {
 	Cluster Cluster     `json:"cluster"`
 	Daemon  DaemonLocal `json:"daemon"`
 }
+
+// DaemonSubNameBody defines model for DaemonSubNameBody.
+type DaemonSubNameBody struct {
+	// Name List of daemon subsystem ids. Example for heartbeat is hb#myvalue.tx
+	Name []string `json:"name"`
+}
+
+// DaemonSubsystemAction Daemon subsystem action
+type DaemonSubsystemAction string
 
 // Disk defines model for Disk.
 type Disk struct {
@@ -1041,12 +1043,6 @@ type PoolVolumeList struct {
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
 
-// PostDaemonComponentActionBody defines model for PostDaemonComponentActionBody.
-type PostDaemonComponentActionBody struct {
-	// Subs daemon component list
-	Subs []string `json:"subs"`
-}
-
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
 	Level PostDaemonLogsControlLevel `json:"level"`
@@ -1488,8 +1484,8 @@ type Roles = []Role
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
 
-// InPathDaemonComponentAction defines model for inPathDaemonComponentAction.
-type InPathDaemonComponentAction string
+// InPathDaemonSubAction Daemon subsystem action
+type InPathDaemonSubAction = DaemonSubsystemAction
 
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
@@ -1716,9 +1712,6 @@ type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 }
-
-// PostDaemonComponentActionParamsAction defines parameters for PostDaemonComponentAction.
-type PostDaemonComponentActionParamsAction string
 
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
@@ -2057,8 +2050,11 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
 
-// PostDaemonComponentActionJSONRequestBody defines body for PostDaemonComponentAction for application/json ContentType.
-type PostDaemonComponentActionJSONRequestBody = PostDaemonComponentActionBody
+// PostDaemonHeartbeatActionJSONRequestBody defines body for PostDaemonHeartbeatAction for application/json ContentType.
+type PostDaemonHeartbeatActionJSONRequestBody = DaemonSubNameBody
+
+// PostDaemonListenerActionJSONRequestBody defines body for PostDaemonListenerAction for application/json ContentType.
+type PostDaemonListenerActionJSONRequestBody = DaemonSubNameBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

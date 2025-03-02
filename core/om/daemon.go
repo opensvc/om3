@@ -10,14 +10,19 @@ var (
 		Short: "Manage the opensvc daemon",
 	}
 
-	cmdDaemonComponent = &cobra.Command{
-		Use:   "component",
-		Short: "Manage opensvc daemon components",
-	}
-
 	cmdDaemonDNS = &cobra.Command{
 		Use:   "dns",
 		Short: "dns subsystem commands",
+	}
+
+	cmdDaemonHeartbeat = &cobra.Command{
+		Use:   "hb",
+		Short: "Manage opensvc daemon heartbeat",
+	}
+
+	cmdDaemonListener = &cobra.Command{
+		Use:   "listener",
+		Short: "Manage opensvc daemon listener",
 	}
 
 	cmdDaemonRelay = &cobra.Command{
@@ -33,8 +38,9 @@ func init() {
 
 	cmdDaemon.AddCommand(
 		newCmdDaemonAuth(),
-		cmdDaemonComponent,
 		cmdDaemonDNS,
+		cmdDaemonHeartbeat,
+		cmdDaemonListener,
 		newCmdDaemonJoin(),
 		newCmdDaemonLeave(),
 		cmdDaemonRelay,
@@ -48,14 +54,20 @@ func init() {
 		newCmdDaemonStop(),
 	)
 
-	cmdDaemonComponent.AddCommand(
-		newCmdDaemonComponentAction("restart"),
-		newCmdDaemonComponentAction("start"),
-		newCmdDaemonComponentAction("stop"),
-	)
-
 	cmdDaemonDNS.AddCommand(
 		newCmdDaemonDNSDump(),
+	)
+
+	cmdDaemonHeartbeat.AddCommand(
+		newCmdDaemonSubAction("hb", "restart"),
+		newCmdDaemonSubAction("hb", "start"),
+		newCmdDaemonSubAction("hb", "stop"),
+	)
+
+	cmdDaemonListener.AddCommand(
+		newCmdDaemonSubAction("listener", "restart"),
+		newCmdDaemonSubAction("listener", "start"),
+		newCmdDaemonSubAction("listener", "stop"),
 	)
 
 	cmdDaemonRelay.AddCommand(

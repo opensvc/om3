@@ -13,9 +13,9 @@ import (
 
 var (
 	DaemonComponentAllowedActions = []string{
-		string(api.InPathDaemonComponentActionStart),
-		string(api.InPathDaemonComponentActionStop),
-		string(api.InPathDaemonComponentActionRestart),
+		string(api.DaemonSubsystemActionStart),
+		string(api.DaemonSubsystemActionStop),
+		string(api.DaemonSubsystemActionRestart),
 	}
 )
 
@@ -23,24 +23,28 @@ var (
 // subcomponents for a given node.
 // It sends a POST request to execute the provided action on the specified
 // subcomponents on the target node.
-func PostDaemonComponentAction(ctx context.Context, cli *client.T, nodename string, action string, sub []string) error {
-	subs := strings.Join(sub, ", ")
-	_, _ = fmt.Fprintf(os.Stderr, "Invoke action %s on node %s daemon components %s\n",
-		action, nodename, subs)
-	body := api.PostDaemonComponentActionJSONRequestBody{
-		Subs: sub,
+func PostDaemonComponentAction(ctx context.Context, sub string, cli *client.T, nodename string, action string, name []string) error {
+	names := strings.Join(name, ", ")
+	_, _ = fmt.Fprintf(os.Stderr, "Invoke on node %s: action daemon %s %s for %s\n",
+		nodename, sub, action, names)
+	body := api.DaemonSubNameBody{
+		Name: name,
 	}
-	actionParam := api.PostDaemonComponentActionParamsAction(action)
-	r, err := cli.PostDaemonComponentAction(ctx, nodename, actionParam, body)
+	poster, err := cli.NewPostDaemonSubFunc(sub)
 	if err != nil {
-		return fmt.Errorf("Invoke action %s on node %s daemon components %s: %w",
-			action, nodename, subs, err)
+		return err
+	}
+	actionParam := api.InPathDaemonSubAction(action)
+	r, err := poster(ctx, nodename, actionParam, body)
+	if err != nil {
+		return fmt.Errorf("Invoked on node %s: action daemon %s %s for %s: %w",
+			nodename, sub, action, names, err)
 	}
 	switch r.StatusCode {
 	case http.StatusOK:
 		return nil
 	default:
-		return fmt.Errorf("Invoke action %s on node %s daemon sub-components %s: unexpected status code %d",
-			action, nodename, subs, r.StatusCode)
+		return fmt.Errorf("Invoked on node %s: action daemon %s %s for %s: unexpected status code %d",
+			nodename, sub, action, names, r.StatusCode)
 	}
 }

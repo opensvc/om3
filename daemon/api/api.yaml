@@ -442,23 +442,56 @@ paths:
       tags:
         - daemon
 
-  /node/name/{nodename}/daemon/component/action/{action}:
+  /node/name/{nodename}/daemon/hb/action/{action}:
     post:
       description: |
-        Execute action on some daemon sub components on `nodename`.
-      operationId: PostDaemonComponentAction
+        Execute action on some daemon hb components on `nodename`.
+      operationId: PostDaemonHeartbeatAction
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathDaemonComponentAction'
+        - $ref: '#/components/parameters/inPathDaemonSubAction'
       requestBody:
         description: action on daemon sub components
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostDaemonComponentActionBody'
+              $ref: '#/components/schemas/DaemonSubNameBody'
       tags:
-        - daemon
+        - internal
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/daemon/listener/action/{action}:
+    post:
+      description: |
+        Execute action on some daemon listener components on `nodename`.
+        One of listener component is 'lsnr-http-inet'
+      operationId: PostDaemonListenerAction
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathDaemonSubAction'
+      requestBody:
+        description: action on daemon sub components
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DaemonSubNameBody'
+      tags:
+        - internal
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -4291,6 +4324,14 @@ components:
         state:
           type: string
 
+    DaemonSubsystemAction:
+      type: string
+      description: Daemon subsystem action
+      enum:
+        - start
+        - stop
+        - restart
+
     DiskList:
       type: object
       required:
@@ -5613,17 +5654,16 @@ components:
             - none
           default: info
 
-    PostDaemonComponentActionBody:
+    DaemonSubNameBody:
       type: object
       required:
-        - subs
+        - name
       properties:
-        subs:
+        name:
           type: array
-          description: daemon component list
+          description: List of daemon subsystem ids. Example for heartbeat is hb#myvalue.tx
           items:
             type: string
-            example: hb#1.rx
 
     PostNodeDRBDConfigRequest:
       type: object
@@ -6617,16 +6657,12 @@ components:
           type: string
 
   parameters:
-    inPathDaemonComponentAction:
+    inPathDaemonSubAction:
       in: path
       name: action
       required: true
       schema:
-        type: string
-        enum:
-          - restart
-          - start
-          - stop
+        $ref: '#/components/schemas/DaemonSubsystemAction'
 
     inPathName:
       in: path

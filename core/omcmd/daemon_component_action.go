@@ -15,24 +15,23 @@ import (
 )
 
 type (
-	CmdDaemonComponentAction struct {
+	CmdDaemonSubAction struct {
 		OptsGlobal
 		Debug        bool
 		NodeSelector string
-		SubComponent []string
+		Sub          string
 		Action       string
+		Name         []string
 	}
 )
 
-// Run functions restart daemon.
-//
-// The daemon restart is asynchronous when node selector is used
-func (t *CmdDaemonComponentAction) Run() error {
+// Run daemon sub-component action
+func (t *CmdDaemonSubAction) Run() error {
 	if !slices.Contains(commoncmd.DaemonComponentAllowedActions, t.Action) {
 		return fmt.Errorf("action %s is not permitted. Allowed actions are %s",
 			t.Action, strings.Join(commoncmd.DaemonComponentAllowedActions, ", "))
 	}
-	if len(t.SubComponent) == 0 {
+	if len(t.Name) == 0 {
 		return fmt.Errorf("need at least one daemon sub component")
 	}
 	if t.Local {
@@ -47,7 +46,7 @@ func (t *CmdDaemonComponentAction) Run() error {
 	return t.doNodes()
 }
 
-func (t *CmdDaemonComponentAction) doNodes() error {
+func (t *CmdDaemonSubAction) doNodes() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -91,6 +90,6 @@ func (t *CmdDaemonComponentAction) doNodes() error {
 	return errs
 }
 
-func (t *CmdDaemonComponentAction) doNode(ctx context.Context, cli *client.T, nodename string) error {
-	return commoncmd.PostDaemonComponentAction(ctx, cli, nodename, t.Action, t.SubComponent)
+func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename string) error {
+	return commoncmd.PostDaemonComponentAction(ctx, t.Sub, cli, nodename, t.Action, t.Name)
 }
