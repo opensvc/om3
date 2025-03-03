@@ -315,6 +315,36 @@ paths:
       tags:
         - internal
 
+  /node/name/{nodename}/capabilities:
+    get:
+      operationId: GetNodeCapabilities
+      description: |
+        Return the capabilities of the node.
+        Capability scanners are provided by the core agent and by every resource driver.
+        Capabalities are used to enable or disable features based on the current operating system state.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /node/name/{nodename}/daemon/action/restart:
     post:
       description: |
@@ -442,21 +472,14 @@ paths:
       tags:
         - daemon
 
-  /node/name/{nodename}/daemon/hb/action/{action}:
+  /node/name/{nodename}/daemon/hb/name/{name}/action/restart:
     post:
       description: |
-        Execute action on some daemon hb components on `nodename`.
-      operationId: PostDaemonHeartbeatAction
+        Restart daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatRestart
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathDaemonSubAction'
-      requestBody:
-        description: action on daemon sub components
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DaemonSubNameBody'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
         - internal
       security:
@@ -474,22 +497,14 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/daemon/listener/action/{action}:
+  /node/name/{nodename}/daemon/hb/name/{name}/action/start:
     post:
       description: |
-        Execute action on some daemon listener components on `nodename`.
-        One of listener component is 'lsnr-http-inet'
-      operationId: PostDaemonListenerAction
+        Start daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatStart
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathDaemonSubAction'
-      requestBody:
-        description: action on daemon sub components
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DaemonSubNameBody'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
         - internal
       security:
@@ -507,22 +522,22 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/capabilities:
-    get:
-      operationId: GetNodeCapabilities
+  /node/name/{nodename}/daemon/hb/name/{name}/action/stop:
+    post:
       description: |
-        Return the capabilities of the node.
-        Capability scanners are provided by the core agent and by every resource driver.
-        Capabalities are used to enable or disable features based on the current operating system state.
+        Stop daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatStop
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - internal
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
       responses:
         200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CapabilityList'
+          $ref: '#/components/responses/200'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -531,11 +546,81 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+
+  /node/name/{nodename}/daemon/listener/name/{name}/action/restart:
+    post:
+      description: |
+        Restart daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - node
+        - internal
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/daemon/listener/name/{name}/action/start:
+    post:
+      description: |
+        Start daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerStart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - internal
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/daemon/listener/name/{name}/action/stop:
+    post:
+      description: |
+        Stop daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - internal
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 
   /node/name/{nodename}/schedule:
     get:
@@ -4205,6 +4290,11 @@ components:
             - full
             - patch
 
+    DaemonHeartbeatName:
+      type: string
+      example: 1.rx
+      description: Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+
     DaemonHeartbeatStream:
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
@@ -4260,6 +4350,11 @@ components:
           required:
             - addr
             - port
+
+    DaemonListenerName:
+      type: string
+      example: inet-http
+      description: Listener name
 
     DaemonPid:
       type: object
@@ -4323,14 +4418,6 @@ components:
           x-go-name: ID
         state:
           type: string
-
-    DaemonSubsystemAction:
-      type: string
-      description: Daemon subsystem action
-      enum:
-        - start
-        - stop
-        - restart
 
     DiskList:
       type: object
@@ -6657,12 +6744,19 @@ components:
           type: string
 
   parameters:
-    inPathDaemonSubAction:
+    inPathHeartbeatName:
       in: path
-      name: action
+      name: name
       required: true
       schema:
-        $ref: '#/components/schemas/DaemonSubsystemAction'
+        $ref: '#/components/schemas/DaemonHeartbeatName'
+
+    inPathListenerName:
+      in: path
+      name: name
+      required: true
+      schema:
+        $ref: '#/components/schemas/DaemonListenerName'
 
     inPathName:
       in: path

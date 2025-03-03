@@ -215,15 +215,23 @@ type ClientInterface interface {
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonHeartbeatActionWithBody request with any body
-	PostDaemonHeartbeatActionWithBody(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonHeartbeatRestart request
+	PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDaemonHeartbeatAction(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonHeartbeatActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonHeartbeatStart request
+	PostDaemonHeartbeatStart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonListenerActionWithBody request with any body
-	PostDaemonListenerActionWithBody(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonHeartbeatStop request
+	PostDaemonHeartbeatStop(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDaemonListenerAction(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonListenerActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonListenerRestart request
+	PostDaemonListenerRestart(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonListenerStart request
+	PostDaemonListenerStart(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonListenerStop request
+	PostDaemonListenerStop(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1004,8 +1012,8 @@ func (c *Client) GetDaemonEvents(ctx context.Context, nodename InPathNodeName, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonHeartbeatActionWithBody(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonHeartbeatActionRequestWithBody(c.Server, nodename, action, contentType, body)
+func (c *Client) PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonHeartbeatRestartRequest(c.Server, nodename, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1016,8 +1024,8 @@ func (c *Client) PostDaemonHeartbeatActionWithBody(ctx context.Context, nodename
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonHeartbeatAction(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonHeartbeatActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonHeartbeatActionRequest(c.Server, nodename, action, body)
+func (c *Client) PostDaemonHeartbeatStart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonHeartbeatStartRequest(c.Server, nodename, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1028,8 +1036,8 @@ func (c *Client) PostDaemonHeartbeatAction(ctx context.Context, nodename InPathN
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonListenerActionWithBody(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonListenerActionRequestWithBody(c.Server, nodename, action, contentType, body)
+func (c *Client) PostDaemonHeartbeatStop(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonHeartbeatStopRequest(c.Server, nodename, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,8 +1048,32 @@ func (c *Client) PostDaemonListenerActionWithBody(ctx context.Context, nodename 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonListenerAction(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonListenerActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonListenerActionRequest(c.Server, nodename, action, body)
+func (c *Client) PostDaemonListenerRestart(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerRestartRequest(c.Server, nodename, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonListenerStart(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerStartRequest(c.Server, nodename, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonListenerStop(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerStopRequest(c.Server, nodename, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4119,19 +4151,8 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 	return req, nil
 }
 
-// NewPostDaemonHeartbeatActionRequest calls the generic PostDaemonHeartbeatAction builder with application/json body
-func NewPostDaemonHeartbeatActionRequest(server string, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonHeartbeatActionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostDaemonHeartbeatActionRequestWithBody(server, nodename, action, "application/json", bodyReader)
-}
-
-// NewPostDaemonHeartbeatActionRequestWithBody generates requests for PostDaemonHeartbeatAction with any type of body
-func NewPostDaemonHeartbeatActionRequestWithBody(server string, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostDaemonHeartbeatRestartRequest generates requests for PostDaemonHeartbeatRestart
+func NewPostDaemonHeartbeatRestartRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4143,7 +4164,7 @@ func NewPostDaemonHeartbeatActionRequestWithBody(server string, nodename InPathN
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "action", runtime.ParamLocationPath, action)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4153,7 +4174,7 @@ func NewPostDaemonHeartbeatActionRequestWithBody(server string, nodename InPathN
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/action/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/restart", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4163,29 +4184,16 @@ func NewPostDaemonHeartbeatActionRequestWithBody(server string, nodename InPathN
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
 
-// NewPostDaemonListenerActionRequest calls the generic PostDaemonListenerAction builder with application/json body
-func NewPostDaemonListenerActionRequest(server string, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonListenerActionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostDaemonListenerActionRequestWithBody(server, nodename, action, "application/json", bodyReader)
-}
-
-// NewPostDaemonListenerActionRequestWithBody generates requests for PostDaemonListenerAction with any type of body
-func NewPostDaemonListenerActionRequestWithBody(server string, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostDaemonHeartbeatStartRequest generates requests for PostDaemonHeartbeatStart
+func NewPostDaemonHeartbeatStartRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4197,7 +4205,7 @@ func NewPostDaemonListenerActionRequestWithBody(server string, nodename InPathNo
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "action", runtime.ParamLocationPath, action)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4207,7 +4215,7 @@ func NewPostDaemonListenerActionRequestWithBody(server string, nodename InPathNo
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/action/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/start", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4217,12 +4225,174 @@ func NewPostDaemonListenerActionRequestWithBody(server string, nodename InPathNo
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", contentType)
+	return req, nil
+}
+
+// NewPostDaemonHeartbeatStopRequest generates requests for PostDaemonHeartbeatStop
+func NewPostDaemonHeartbeatStopRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/stop", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonListenerRestartRequest generates requests for PostDaemonListenerRestart
+func NewPostDaemonListenerRestartRequest(server string, nodename InPathNodeName, name InPathListenerName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/restart", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonListenerStartRequest generates requests for PostDaemonListenerStart
+func NewPostDaemonListenerStartRequest(server string, nodename InPathNodeName, name InPathListenerName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/start", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonListenerStopRequest generates requests for PostDaemonListenerStop
+func NewPostDaemonListenerStopRequest(server string, nodename InPathNodeName, name InPathListenerName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/stop", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -10343,15 +10513,23 @@ type ClientWithResponsesInterface interface {
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
 
-	// PostDaemonHeartbeatActionWithBodyWithResponse request with any body
-	PostDaemonHeartbeatActionWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatActionResponse, error)
+	// PostDaemonHeartbeatRestartWithResponse request
+	PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error)
 
-	PostDaemonHeartbeatActionWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonHeartbeatActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatActionResponse, error)
+	// PostDaemonHeartbeatStartWithResponse request
+	PostDaemonHeartbeatStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStartResponse, error)
 
-	// PostDaemonListenerActionWithBodyWithResponse request with any body
-	PostDaemonListenerActionWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerActionResponse, error)
+	// PostDaemonHeartbeatStopWithResponse request
+	PostDaemonHeartbeatStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStopResponse, error)
 
-	PostDaemonListenerActionWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonListenerActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerActionResponse, error)
+	// PostDaemonListenerRestartWithResponse request
+	PostDaemonListenerRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerRestartResponse, error)
+
+	// PostDaemonListenerStartWithResponse request
+	PostDaemonListenerStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStartResponse, error)
+
+	// PostDaemonListenerStopWithResponse request
+	PostDaemonListenerStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStopResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -11647,7 +11825,7 @@ func (r GetDaemonEventsResponse) StatusCode() int {
 	return 0
 }
 
-type PostDaemonHeartbeatActionResponse struct {
+type PostDaemonHeartbeatRestartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *N200
@@ -11658,7 +11836,7 @@ type PostDaemonHeartbeatActionResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonHeartbeatActionResponse) Status() string {
+func (r PostDaemonHeartbeatRestartResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11666,14 +11844,14 @@ func (r PostDaemonHeartbeatActionResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonHeartbeatActionResponse) StatusCode() int {
+func (r PostDaemonHeartbeatRestartResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostDaemonListenerActionResponse struct {
+type PostDaemonHeartbeatStartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *N200
@@ -11684,7 +11862,7 @@ type PostDaemonListenerActionResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonListenerActionResponse) Status() string {
+func (r PostDaemonHeartbeatStartResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11692,7 +11870,111 @@ func (r PostDaemonListenerActionResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonListenerActionResponse) StatusCode() int {
+func (r PostDaemonHeartbeatStartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonHeartbeatStopResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonHeartbeatStopResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonHeartbeatStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonListenerRestartResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonListenerRestartResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonListenerRestartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonListenerStartResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonListenerStartResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonListenerStartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonListenerStopResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonListenerStopResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonListenerStopResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14279,38 +14561,58 @@ func (c *ClientWithResponses) GetDaemonEventsWithResponse(ctx context.Context, n
 	return ParseGetDaemonEventsResponse(rsp)
 }
 
-// PostDaemonHeartbeatActionWithBodyWithResponse request with arbitrary body returning *PostDaemonHeartbeatActionResponse
-func (c *ClientWithResponses) PostDaemonHeartbeatActionWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatActionResponse, error) {
-	rsp, err := c.PostDaemonHeartbeatActionWithBody(ctx, nodename, action, contentType, body, reqEditors...)
+// PostDaemonHeartbeatRestartWithResponse request returning *PostDaemonHeartbeatRestartResponse
+func (c *ClientWithResponses) PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error) {
+	rsp, err := c.PostDaemonHeartbeatRestart(ctx, nodename, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonHeartbeatActionResponse(rsp)
+	return ParsePostDaemonHeartbeatRestartResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDaemonHeartbeatActionWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonHeartbeatActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatActionResponse, error) {
-	rsp, err := c.PostDaemonHeartbeatAction(ctx, nodename, action, body, reqEditors...)
+// PostDaemonHeartbeatStartWithResponse request returning *PostDaemonHeartbeatStartResponse
+func (c *ClientWithResponses) PostDaemonHeartbeatStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStartResponse, error) {
+	rsp, err := c.PostDaemonHeartbeatStart(ctx, nodename, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonHeartbeatActionResponse(rsp)
+	return ParsePostDaemonHeartbeatStartResponse(rsp)
 }
 
-// PostDaemonListenerActionWithBodyWithResponse request with arbitrary body returning *PostDaemonListenerActionResponse
-func (c *ClientWithResponses) PostDaemonListenerActionWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerActionResponse, error) {
-	rsp, err := c.PostDaemonListenerActionWithBody(ctx, nodename, action, contentType, body, reqEditors...)
+// PostDaemonHeartbeatStopWithResponse request returning *PostDaemonHeartbeatStopResponse
+func (c *ClientWithResponses) PostDaemonHeartbeatStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStopResponse, error) {
+	rsp, err := c.PostDaemonHeartbeatStop(ctx, nodename, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonListenerActionResponse(rsp)
+	return ParsePostDaemonHeartbeatStopResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDaemonListenerActionWithResponse(ctx context.Context, nodename InPathNodeName, action InPathDaemonSubAction, body PostDaemonListenerActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerActionResponse, error) {
-	rsp, err := c.PostDaemonListenerAction(ctx, nodename, action, body, reqEditors...)
+// PostDaemonListenerRestartWithResponse request returning *PostDaemonListenerRestartResponse
+func (c *ClientWithResponses) PostDaemonListenerRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerRestartResponse, error) {
+	rsp, err := c.PostDaemonListenerRestart(ctx, nodename, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonListenerActionResponse(rsp)
+	return ParsePostDaemonListenerRestartResponse(rsp)
+}
+
+// PostDaemonListenerStartWithResponse request returning *PostDaemonListenerStartResponse
+func (c *ClientWithResponses) PostDaemonListenerStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStartResponse, error) {
+	rsp, err := c.PostDaemonListenerStart(ctx, nodename, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerStartResponse(rsp)
+}
+
+// PostDaemonListenerStopWithResponse request returning *PostDaemonListenerStopResponse
+func (c *ClientWithResponses) PostDaemonListenerStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStopResponse, error) {
+	rsp, err := c.PostDaemonListenerStop(ctx, nodename, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerStopResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -17206,15 +17508,15 @@ func ParseGetDaemonEventsResponse(rsp *http.Response) (*GetDaemonEventsResponse,
 	return response, nil
 }
 
-// ParsePostDaemonHeartbeatActionResponse parses an HTTP response from a PostDaemonHeartbeatActionWithResponse call
-func ParsePostDaemonHeartbeatActionResponse(rsp *http.Response) (*PostDaemonHeartbeatActionResponse, error) {
+// ParsePostDaemonHeartbeatRestartResponse parses an HTTP response from a PostDaemonHeartbeatRestartWithResponse call
+func ParsePostDaemonHeartbeatRestartResponse(rsp *http.Response) (*PostDaemonHeartbeatRestartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonHeartbeatActionResponse{
+	response := &PostDaemonHeartbeatRestartResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17260,15 +17562,231 @@ func ParsePostDaemonHeartbeatActionResponse(rsp *http.Response) (*PostDaemonHear
 	return response, nil
 }
 
-// ParsePostDaemonListenerActionResponse parses an HTTP response from a PostDaemonListenerActionWithResponse call
-func ParsePostDaemonListenerActionResponse(rsp *http.Response) (*PostDaemonListenerActionResponse, error) {
+// ParsePostDaemonHeartbeatStartResponse parses an HTTP response from a PostDaemonHeartbeatStartWithResponse call
+func ParsePostDaemonHeartbeatStartResponse(rsp *http.Response) (*PostDaemonHeartbeatStartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonListenerActionResponse{
+	response := &PostDaemonHeartbeatStartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonHeartbeatStopResponse parses an HTTP response from a PostDaemonHeartbeatStopWithResponse call
+func ParsePostDaemonHeartbeatStopResponse(rsp *http.Response) (*PostDaemonHeartbeatStopResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonHeartbeatStopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonListenerRestartResponse parses an HTTP response from a PostDaemonListenerRestartWithResponse call
+func ParsePostDaemonListenerRestartResponse(rsp *http.Response) (*PostDaemonListenerRestartResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonListenerRestartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonListenerStartResponse parses an HTTP response from a PostDaemonListenerStartWithResponse call
+func ParsePostDaemonListenerStartResponse(rsp *http.Response) (*PostDaemonListenerStartResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonListenerStartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonListenerStopResponse parses an HTTP response from a PostDaemonListenerStopWithResponse call
+func ParsePostDaemonListenerStopResponse(rsp *http.Response) (*PostDaemonListenerStopResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonListenerStopResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

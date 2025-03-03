@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
+	"net/http"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -19,34 +16,22 @@ type (
 		OptsGlobal
 		Debug        bool
 		NodeSelector string
-		Sub          string
-		Action       string
-		Name         []string
+		Name         string
 	}
+
+	apiFuncWithNode func(context.Context, *client.T, string) (*http.Response, error)
 )
 
 // Run daemon sub-component action
-func (t *CmdDaemonSubAction) Run() error {
-	if !slices.Contains(commoncmd.DaemonComponentAllowedActions, t.Action) {
-		return fmt.Errorf("action %s is not permitted. Allowed actions are %s",
-			t.Action, strings.Join(commoncmd.DaemonComponentAllowedActions, ", "))
-	}
-	if len(t.Name) == 0 {
-		return fmt.Errorf("need at least one daemon sub component")
+func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
+	if t.Name == "" {
+		return fmt.Errorf("--name must be specified")
 	}
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
-	}
-	if !clientcontext.IsSet() && t.NodeSelector == "" {
+	} else if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
-	if t.NodeSelector == "" {
-		return fmt.Errorf("--node must be specified")
-	}
-	return t.doNodes()
-}
-
-func (t *CmdDaemonSubAction) doNodes() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -68,8 +53,7 @@ func (t *CmdDaemonSubAction) doNodes() error {
 		}
 		running++
 		go func(nodename string) {
-			err := t.doNode(ctx, c, nodename)
-			errC <- err
+			errC <- t.doNode(ctx, c, nodename, fn)
 		}(nodename)
 	}
 	var (
@@ -84,12 +68,18 @@ func (t *CmdDaemonSubAction) doNodes() error {
 		running--
 	}
 	if needDoLocal {
-		err := t.doNode(ctx, c, hostname.Hostname())
+		err := t.doNode(ctx, c, hostname.Hostname(), fn)
 		errs = errors.Join(errs, err)
 	}
 	return errs
 }
 
-func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename string) error {
-	return commoncmd.PostDaemonComponentAction(ctx, t.Sub, cli, nodename, t.Action, t.Name)
+func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename string, fn apiFuncWithNode) error {
+	resp, err := fn(ctx, cli, nodename)
+	if err != nil {
+		return fmt.Errorf("action failed on node %s: %w", nodename, err)
+	} else if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("action failed on node %s: unexpected status code %d", resp.StatusCode)
+	}
+	return nil
 }

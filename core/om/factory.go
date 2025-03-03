@@ -228,11 +228,11 @@ func newCmdDaemonAuth() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonSubAction(sub string, action string) *cobra.Command {
-	options := commands.CmdDaemonSubAction{Sub: sub, Action: action}
+func newCmdDaemonHeartbeatRestart() *cobra.Command {
+	options := commands.CmdDaemonHeartbeatRestart{}
 	cmd := &cobra.Command{
-		Use:   action,
-		Short: fmt.Sprintf("%s damon %s components", action, sub),
+		Use:   "restart",
+		Short: fmt.Sprintf("restart daemon heartbeat component `name`"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -240,7 +240,41 @@ func newCmdDaemonSubAction(sub string, action string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagNodeSelector(flags, &options.NodeSelector)
-	flags.StringSliceVar(&options.Name, "name", []string{}, fmt.Sprintf("daemon %s component.", sub))
+	addFlagDaemonHeartbeatName(flags, &options.Name)
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newCmdDaemonHeartbeatStart() *cobra.Command {
+	options := commands.CmdDaemonHeartbeatStart{}
+	cmd := &cobra.Command{
+		Use:   "start",
+		Short: fmt.Sprintf("start daemon heartbeat component `name`"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagDaemonHeartbeatName(flags, &options.Name)
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newCmdDaemonHeartbeatStop() *cobra.Command {
+	options := commands.CmdDaemonHeartbeatStop{}
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: fmt.Sprintf("stop daemon heartbeat component `name`"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagDaemonHeartbeatName(flags, &options.Name)
 	cmd.MarkFlagRequired("name")
 	return cmd
 }
@@ -298,6 +332,57 @@ func newCmdDaemonLeave() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.DurationVar(&options.Timeout, "timeout", 0, "maximum duration to wait for local node removed from cluster")
+	return cmd
+}
+
+func newCmdDaemonListenerRestart() *cobra.Command {
+	options := commands.CmdDaemonListenerRestart{}
+	cmd := &cobra.Command{
+		Use:   "restart",
+		Short: fmt.Sprintf("restart daemon listener component `name`"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagDaemonListenerName(flags, &options.Name)
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newCmdDaemonListenerStart() *cobra.Command {
+	options := commands.CmdDaemonListenerStart{}
+	cmd := &cobra.Command{
+		Use:   "start",
+		Short: fmt.Sprintf("start daemon listener component `name`"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagDaemonListenerName(flags, &options.Name)
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newCmdDaemonListenerStop() *cobra.Command {
+	options := commands.CmdDaemonListenerStop{}
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: fmt.Sprintf("stop daemon listener component `name`"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagNodeSelector(flags, &options.NodeSelector)
+	addFlagDaemonListenerName(flags, &options.Name)
+	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

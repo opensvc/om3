@@ -59,15 +59,15 @@ func init() {
 	)
 
 	cmdDaemonHeartbeat.AddCommand(
-		newCmdDaemonSubAction("hb", "restart"),
-		newCmdDaemonSubAction("hb", "start"),
-		newCmdDaemonSubAction("hb", "stop"),
+		newCmdDaemonHeartbeatRestart(),
+		newCmdDaemonHeartbeatStart(),
+		newCmdDaemonHeartbeatStop(),
 	)
 
 	cmdDaemonListener.AddCommand(
-		newCmdDaemonSubAction("listener", "restart"),
-		newCmdDaemonSubAction("listener", "start"),
-		newCmdDaemonSubAction("listener", "stop"),
+		newCmdDaemonListenerRestart(),
+		newCmdDaemonListenerStart(),
+		newCmdDaemonListenerStop(),
 	)
 
 	cmdDaemonRelay.AddCommand(

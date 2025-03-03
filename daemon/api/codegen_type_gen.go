@@ -37,13 +37,6 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
-// Defines values for DaemonSubsystemAction.
-const (
-	DaemonSubsystemActionRestart DaemonSubsystemAction = "restart"
-	DaemonSubsystemActionStart   DaemonSubsystemAction = "start"
-	DaemonSubsystemActionStop    DaemonSubsystemAction = "stop"
-)
-
 // Defines values for DiskItemKind.
 const (
 	DiskItemKindDiskItem DiskItemKind = "DiskItem"
@@ -151,9 +144,9 @@ const (
 
 // Defines values for Orchestrate.
 const (
-	OrchestrateHa    Orchestrate = "ha"
-	OrchestrateNo    Orchestrate = "no"
-	OrchestrateStart Orchestrate = "start"
+	Ha    Orchestrate = "ha"
+	No    Orchestrate = "no"
+	Start Orchestrate = "start"
 )
 
 // Defines values for PackageItemKind.
@@ -424,6 +417,12 @@ type DRBDConfig struct {
 	Data []byte `json:"data"`
 }
 
+// DaemonHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+type DaemonHeartbeatName = string
+
+// DaemonListenerName Listener name
+type DaemonListenerName = string
+
 // DaemonLocal defines model for DaemonLocal.
 type DaemonLocal struct {
 	Nodename string `json:"nodename"`
@@ -440,15 +439,6 @@ type DaemonStatus struct {
 	Cluster Cluster     `json:"cluster"`
 	Daemon  DaemonLocal `json:"daemon"`
 }
-
-// DaemonSubNameBody defines model for DaemonSubNameBody.
-type DaemonSubNameBody struct {
-	// Name List of daemon subsystem ids. Example for heartbeat is hb#myvalue.tx
-	Name []string `json:"name"`
-}
-
-// DaemonSubsystemAction Daemon subsystem action
-type DaemonSubsystemAction string
 
 // Disk defines model for Disk.
 type Disk struct {
@@ -1484,11 +1474,14 @@ type Roles = []Role
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
 
-// InPathDaemonSubAction Daemon subsystem action
-type InPathDaemonSubAction = DaemonSubsystemAction
+// InPathHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+type InPathHeartbeatName = DaemonHeartbeatName
 
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
+
+// InPathListenerName Listener name
+type InPathListenerName = DaemonListenerName
 
 // InPathName defines model for inPathName.
 type InPathName = string
@@ -2049,12 +2042,6 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
-
-// PostDaemonHeartbeatActionJSONRequestBody defines body for PostDaemonHeartbeatAction for application/json ContentType.
-type PostDaemonHeartbeatActionJSONRequestBody = DaemonSubNameBody
-
-// PostDaemonListenerActionJSONRequestBody defines body for PostDaemonListenerAction for application/json ContentType.
-type PostDaemonListenerActionJSONRequestBody = DaemonSubNameBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
