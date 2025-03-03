@@ -168,10 +168,6 @@ func addFlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
 	flagSet.StringArrayVar(p, "filter", []string{}, usageFlagEventFilter)
 }
 
-func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "foreground", "f", false, "Restart the daemon in foreground mode.")
-}
-
 func addFlagForce(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "force", false, "Allow dangerous operations.")
 }
