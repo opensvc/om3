@@ -4,6 +4,8 @@
 
 > **_NOTE:_** This project is the alpha stage of the golang port of https://github.com/opensvc/opensvc.
 
+> **_NOTE:_** General Availability is expected Q1 2025
+
 A cluster orchestrator with a distinctive feature set
 =====================================================
 
@@ -21,14 +23,9 @@ A cluster orchestrator with a distinctive feature set
 Dig Agent Features
 ==================
 
-https://www.opensvc.com
-
-Playing With Services Demo
-==========================
-
-https://www.opensvc.com/?cast=0
+https://book.opensvc.com
 
 Agent Installation
 ==================
 
-https://docs.opensvc.com/latest/agent.install.html
+https://book.opensvc.com/agent/install.html
