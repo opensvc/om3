@@ -79,7 +79,7 @@ func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename
 	if err != nil {
 		return fmt.Errorf("action failed on node %s: %w", nodename, err)
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("action failed on node %s: unexpected status code %d", resp.StatusCode)
+		return fmt.Errorf("action failed on node %s: unexpected status code %d", nodename, resp.StatusCode)
 	}
 	return nil
 }

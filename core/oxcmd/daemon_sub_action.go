@@ -50,7 +50,7 @@ func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
 			if err != nil {
 				err = fmt.Errorf("action failed on node %s: %w", nodename, err)
 			} else if resp.StatusCode != http.StatusOK {
-				errC <- fmt.Errorf("action failed on node %s: unexpected status code %d", resp.StatusCode)
+				errC <- fmt.Errorf("action failed on node %s: unexpected status code %d", nodename, resp.StatusCode)
 			}
 			errC <- err
 		}(nodename)
