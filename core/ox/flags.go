@@ -98,7 +98,7 @@ func addFlagDaemonHeartbeatName(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "Listener name, example 'inet-http'.")
+	flagSet.StringVar(p, "name", "", "Listener name, example 'http-inet'.")
 }
 
 func addFlagDevRoles(flagSet *pflag.FlagSet, p *string) {

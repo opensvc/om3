@@ -4353,7 +4353,7 @@ components:
 
     DaemonListenerName:
       type: string
-      example: inet-http
+      example: http-inet
       description: Listener name
 
     DaemonPid:
