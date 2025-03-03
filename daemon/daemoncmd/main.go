@@ -248,17 +248,19 @@ func (t *T) StartFromCmd(ctx context.Context, foreground bool, profile string) e
 	}
 	if t.daemonsys.CalledFromManager() {
 		if foreground {
-			log.Infof("foreground (origin manager)")
+			// Type=simple unit (expected)
+			log.Infof("run (origin manager)")
 			return t.startFromCmd(foreground, profile)
 		}
+		// Type=forking unit
 		if isRunning, err := t.isRunning(); err != nil {
 			return err
 		} else if isRunning {
 			log.Infof("already running (origin manager)")
 			return nil
 		}
-		log.Infof("run new cmd --foreground (origin manager)")
-		args := []string{"daemon", "start", "--foreground"}
+		log.Infof("exec run (origin manager)")
+		args := []string{"daemon", "run"}
 		cmd := command.New(
 			command.WithName(os.Args[0]),
 			command.WithArgs(args),
@@ -519,10 +521,7 @@ func (t *T) startFromCmd(foreground bool, profile string) error {
 			}
 			return nil
 		}
-		args := []string{"daemon", "start", "--foreground"}
-		if t.daemonsys == nil {
-			args = append(args, "--native")
-		}
+		args := []string{"daemon", "run"}
 		cmd := command.New(
 			command.WithName(os.Args[0]),
 			command.WithArgs(args),

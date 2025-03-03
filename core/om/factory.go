@@ -332,6 +332,23 @@ func newCmdDaemonRestart() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonRun() *cobra.Command {
+	var options commands.CmdDaemonRun
+	cmd := &cobra.Command{
+		Use:     "run",
+		Short:   "run the daemon in foreground",
+		Long:    "Start executes a detached run",
+		Aliases: []string{"star"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagCPUProfile(flags, &options.CPUProfile)
+	return cmd
+}
+
 func newCmdDaemonRunning() *cobra.Command {
 	var options commands.CmdDaemonRunning
 	cmd := &cobra.Command{
@@ -376,7 +393,6 @@ func newCmdDaemonStart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagForeground(flags, &options.Foreground)
 	addFlagCPUProfile(flags, &options.CPUProfile)
 	return cmd
 }
@@ -1164,7 +1180,7 @@ func newCmdNodeEvents() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "events",
 		Short:   "print the node event stream",
-		Long:    "print the node event stream\n\nAvailable kinds: \n" + eventKindTemplate,
+		Long:    "Print the node event stream\n\nAvailable kinds: \n" + eventKindTemplate,
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -2230,7 +2246,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 		Use:     "delete",
 		Aliases: []string{"del"},
 		Short:   "delete configuration object or instances (with --local)",
-		Long: "delete configuration object or instances (with --local)\n\n" +
+		Long: "Delete configuration object or instances (with --local)\n\n" +
 			"Beware: --local only removes the local instance config." +
 			" The config may be recreated by the daemon from a remote instance copy." +
 			" Without --local the delete is orchestrated so all instance configurations" +

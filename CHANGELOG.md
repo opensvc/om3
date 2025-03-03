@@ -421,6 +421,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ### Daemon
 
+* The daemon process name is changed from `/usr/bin/python3 -m opensvc.daemon` to `om daemon run`. Monitoring checks may need to adapt.
+
 * Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
 
 * Earlier local object instance orchestration after node boot
