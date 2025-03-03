@@ -6464,6 +6464,7 @@ components:
         - last_run_file
         - last_success_file
         - next_run_at
+        - require
         - require_collector
         - require_provisioned
       properties:
@@ -6483,6 +6484,8 @@ components:
         next_run_at:
           type: string
           format: date-time
+        require:
+          type: string
         require_collector:
           type: boolean
         require_provisioned:

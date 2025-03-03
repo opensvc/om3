@@ -72,6 +72,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) (api.ScheduleList
 					LastRunFile:        e.LastRunFile,
 					LastSuccessFile:    e.LastSuccessFile,
 					NextRunAt:          e.NextRunAt,
+					Require:            e.Require,
 					RequireCollector:   e.RequireCollector,
 					RequireProvisioned: e.RequireProvisioned,
 					Schedule:           e.Schedule,

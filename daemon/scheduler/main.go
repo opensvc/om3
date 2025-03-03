@@ -2,15 +2,23 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/resourcereqs"
 	"github.com/opensvc/om3/core/schedule"
+	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -44,6 +52,22 @@ type (
 		status daemonsubsystem.Scheduler
 
 		maxRunning int
+
+		// lastRunOnAllPeers stores the schedule most recent run time
+		// whatever the node. Used to avoid running again too soon
+		// after a failover.
+		//
+		// This map is updated from the InstanceStatusUpdated events
+		// received via ObjectStatusUpdated.SrcEv for peers and from
+		// job execution for the local node.
+		lastRunOnAllPeers timeMap
+
+		// reqUnsatisfied stores which schedule entry has unsatisfied
+		// requirements, blocking its scheduling.
+		//
+		// This map is updated from the InstanceStatusUpdated events
+		// received via ObjectStatusUpdated.SrcEv for the local node.
+		reqUnsatisfied timeMap
 	}
 
 	Schedules map[string]map[string]schedule.Entry
@@ -66,6 +90,8 @@ type (
 		schedule schedule.Entry
 		begin    time.Time
 	}
+
+	timeMap map[string]time.Time
 )
 
 var (
@@ -114,13 +140,15 @@ func (t Schedules) Get(path naming.Path, k string) (schedule.Entry, bool) {
 
 func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
-		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
-		localhost:   hostname.Hostname(),
-		events:      make(chan any),
-		jobs:        make(Jobs),
-		schedules:   make(Schedules),
-		provisioned: make(map[naming.Path]bool),
-		subQS:       subQS,
+		log:               plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
+		localhost:         hostname.Hostname(),
+		events:            make(chan any),
+		jobs:              make(Jobs),
+		schedules:         make(Schedules),
+		provisioned:       make(map[naming.Path]bool),
+		subQS:             subQS,
+		lastRunOnAllPeers: make(timeMap),
+		reqUnsatisfied:    make(timeMap),
 
 		status: daemonsubsystem.Scheduler{
 			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
@@ -235,7 +263,16 @@ func (t *T) createJob(e schedule.Entry) {
 	if e.RequireCollector && !t.isCollectorJoinable {
 		return
 	}
+	if _, ok := t.reqUnsatisfied.Get(e.Path, e.Key); ok {
+		return
+	}
+
 	logger := t.jobLogger(e)
+	if lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key); ok && e.LastRunAt.Before(lastRunOnAllPeers) {
+		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, lastRunOnAllPeers)
+		e.LastRunAt = lastRunOnAllPeers
+	}
+
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
@@ -417,15 +454,17 @@ func (t *T) loop() {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
 			case *msgbus.InstanceConfigUpdated:
-				t.onInstConfigUpdated(c)
+				t.onInstanceConfigUpdated(c)
 			case *msgbus.InstanceStatusDeleted:
-				t.onInstStatusDeleted(c)
+				t.onInstanceStatusDeleted(c)
 			case *msgbus.NodeMonitorUpdated:
 				t.onNodeMonitorUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onNodeConfigUpdated(c)
 			case *msgbus.ObjectStatusUpdated:
-				t.onMonObjectStatusUpdated(c)
+				t.onObjectStatusUpdated(c)
+			case *msgbus.ObjectStatusDeleted:
+				t.onObjectStatusDeleted(c)
 			case *msgbus.DaemonCollectorUpdated:
 				t.onDaemonCollectorUpdated(c)
 			}
@@ -448,6 +487,7 @@ func (t *T) loop() {
 }
 
 func (t *T) onJobRun(c eventJobRun) {
+	t.lastRunOnAllPeers.Set(c.schedule.Path, c.schedule.Key, c.schedule.NextRunAt)
 	jobId := newJobId(c.schedule)
 	job, ok := t.jobs[jobId]
 	if !ok {
@@ -472,9 +512,170 @@ func (t *T) recreateJobFrom(prev schedule.Entry, lastRunAt time.Time) {
 	t.createJob(e)
 }
 
-func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	t.loggerWithPath(c.Path).Infof("%s: unschedule all jobs (instance deleted)", c.Path)
 	t.unschedule(c.Path)
+}
+
+func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
+	if c.Node == t.localhost {
+		return t.onLocalInstanceStatusUpdated(c)
+	} else {
+		return t.onPeerInstanceStatusUpdated(c)
+	}
+}
+
+func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
+	schedules := schedule.TableData.GetByPath(c.Path)
+	if schedules == nil {
+		return false
+	}
+
+	checkReq := func(rid string, requiredStatusList status.L) error {
+		resourceStatus, ok := c.Value.Resources[rid]
+		if !ok {
+			return fmt.Errorf("resource %s not found in the instance status data", rid)
+		}
+		if !requiredStatusList.Has(resourceStatus.Status) {
+			return fmt.Errorf("resource %s status is %s, required %s", rid, resourceStatus.Status, requiredStatusList)
+		}
+		return nil
+	}
+
+	log := t.loggerWithPath(c.Path)
+	changed := false
+
+	for _, e := range *schedules {
+		if e.Require == "" {
+			continue
+		}
+		reqs := resourcereqs.New(e.Require)
+		for requiredRID, requiredStatusList := range reqs.Requirements() {
+			err := checkReq(requiredRID, requiredStatusList)
+			_, currentlyUnsatisfied := t.reqUnsatisfied.Get(c.Path, e.Key)
+			if err != nil {
+				if !currentlyUnsatisfied {
+					t.reqUnsatisfied.Set(c.Path, e.Key, c.Value.UpdatedAt)
+					log.Infof("%s: %s: requirement no longer satisfied: %s", c.Path, e.RID(), err)
+					changed = true
+				}
+			} else {
+				if currentlyUnsatisfied {
+					t.reqUnsatisfied.Unset(c.Path, e.Key)
+					log.Infof("%s: %s: requirement now satisfied", c.Path, e.RID())
+					changed = true
+				}
+			}
+		}
+	}
+	return changed
+}
+
+func (t *T) onPeerInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
+	if _, ok := t.schedules[c.Path.String()]; !ok {
+		// we don't have a local instance
+		return false
+	}
+	log := t.loggerWithPath(c.Path)
+	for rid, r := range c.Value.Resources {
+		resourceId, err := resourceid.Parse(rid)
+		if err != nil {
+			continue
+		}
+		switch resourceId.DriverGroup() {
+		case driver.GroupTask:
+		case driver.GroupSync:
+		default:
+			continue
+		}
+		if _, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid); !ok {
+			if tm, nodename, err := t.readLastRunOnFile(c.Path, rid); err == nil {
+				log.Infof("%s: %s: initialize last run at %s on %s", c.Path, rid, tm, nodename)
+				t.lastRunOnAllPeers.SetWithRID(c.Path, rid, tm)
+			}
+		}
+		i, ok := r.Info["last_run_at"]
+		if !ok {
+			continue
+		}
+		var lastRunAtOnPeer time.Time
+		switch v := i.(type) {
+		case time.Time:
+			lastRunAtOnPeer = v
+		case string:
+			tm, err := time.Parse(time.RFC3339Nano, v)
+			if err != nil {
+				continue
+			}
+			lastRunAtOnPeer = tm
+		}
+		if !ok {
+			continue
+		}
+		if err := t.updateLastRunOnFile(c.Path, rid, c.Node, lastRunAtOnPeer); err != nil {
+			log.Warnf("%s: %s: write last run on file: %s", c.Path, rid, err)
+		}
+
+		cachedLastRunAtOnPeer, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid)
+
+		if !ok || lastRunAtOnPeer.After(cachedLastRunAtOnPeer) {
+			log.Debugf("%s: %s: last run on peer %s at %s", c.Path, rid, c.Node, lastRunAtOnPeer)
+			t.lastRunOnAllPeers.SetWithRID(c.Path, rid, lastRunAtOnPeer)
+		}
+	}
+	return false
+}
+
+func (t *T) lastRunOnFile(path naming.Path, rid string) string {
+	return filepath.Join(path.VarDir(), rid, "last_run_on")
+}
+
+func (t *T) lastRunOnFileModTime(path naming.Path, rid string) (time.Time, error) {
+	p := t.lastRunOnFile(path, rid)
+	if stat, err := os.Stat(p); err != nil {
+		return time.Time{}, err
+	} else {
+		return stat.ModTime(), nil
+	}
+}
+
+func (t *T) readLastRunOnFile(path naming.Path, rid string) (time.Time, string, error) {
+	tm, err := t.lastRunOnFileModTime(path, rid)
+	if err != nil {
+		return tm, "", err
+	}
+	p := t.lastRunOnFile(path, rid)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return tm, "", err
+	}
+	nodename := strings.TrimSpace(string(b))
+	return tm, nodename, nil
+}
+
+func (t *T) updateLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
+	lastTm, err := t.lastRunOnFileModTime(path, rid)
+	if errors.Is(err, os.ErrNotExist) {
+		return os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 755)
+	} else if err != nil {
+		return err
+	}
+	if !lastTm.IsZero() && lastTm.After(tm) {
+		return nil
+	}
+	return t.writeLastRunOnFile(path, rid, nodename, tm)
+}
+
+func (t *T) writeLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
+	p := t.lastRunOnFile(path, rid)
+	f, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s\n", nodename)
+	os.Chtimes(p, tm, tm)
+	return nil
 }
 
 func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
@@ -501,11 +702,22 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 	}
 }
 
-func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
+	t.lastRunOnAllPeers.UnsetPath(c.Path)
+	t.reqUnsatisfied.UnsetPath(c.Path)
+}
+
+func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	changed := false
+	if srcEv, ok := c.SrcEv.(*msgbus.InstanceStatusUpdated); ok {
+		if t.onInstanceStatusUpdated(srcEv) {
+			changed = true
+		}
+	}
 	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	wasProvisioned, ok := t.provisioned[c.Path]
 	t.provisioned[c.Path] = isProvisioned
-	if !ok || (isProvisioned != wasProvisioned) {
+	if !ok || (isProvisioned != wasProvisioned) || changed {
 		t.scheduleObject(c.Path)
 	}
 }
@@ -514,7 +726,7 @@ func (t *T) loggerWithPath(path naming.Path) *plog.Logger {
 	return naming.LogWithPath(t.log, path)
 }
 
-func (t *T) onInstConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	switch {
 	case t.enabled:
 		t.loggerWithPath(c.Path).Infof("%s: update schedules", c.Path)
@@ -582,13 +794,7 @@ func (t *T) scheduleAll() {
 	t.scheduleNode()
 }
 
-func (t *T) reschedule(p naming.Path, isProvisioned bool) {
-}
-
 func (t *T) schedule(p naming.Path) {
-	if !t.enabled {
-		return
-	}
 	if p.IsZero() {
 		t.scheduleNode()
 	} else {
@@ -597,6 +803,9 @@ func (t *T) schedule(p naming.Path) {
 }
 
 func (t *T) scheduleNode() {
+	if !t.enabled {
+		return
+	}
 	o, err := object.NewNode()
 	if err != nil {
 		t.log.Errorf("node: %s", err)
@@ -614,6 +823,9 @@ func (t *T) scheduleNode() {
 }
 
 func (t *T) scheduleObject(path naming.Path) {
+	if !t.enabled {
+		return
+	}
 	log := t.loggerWithPath(path).WithPrefix(t.log.Prefix() + path.String() + ": ")
 	i, err := object.New(path, object.WithVolatile(true))
 	if err != nil {
@@ -638,12 +850,22 @@ func (t *T) scheduleObject(path naming.Path) {
 	for _, e := range table {
 		if !isProvisioned && needProvisionedInstance(e.Action) {
 			if t.jobs.Has(e) {
-				log.Infof("unschedule %s %s (instance no longer provisionned)", e.RID(), e.Action)
+				log.Infof("%s: unschedule %s (instance no longer provisionned)", e.RID(), e.Action)
 				t.jobs.Del(e)
 			} else {
-				log.Infof("skip schedule %s %s: instance not provisioned", e.RID(), e.Action)
+				log.Infof("%s: skip schedule %s (instance not provisioned)", e.RID(), e.Action)
 			}
 			continue
+		}
+		if _, ok := t.reqUnsatisfied.Get(path, e.Key); ok {
+			if t.jobs.Has(e) {
+				log.Infof("%s: unschedule %s (requirements no longer met)", e.RID(), e.Action)
+				t.jobs.Del(e)
+			} else {
+				log.Infof("%s: skip schedule %s (requirements not met)", e.RID(), e.Action)
+			}
+			continue
+
 		}
 		t.schedules.Add(path, e)
 		t.createJob(e)
@@ -661,4 +883,41 @@ func (t *T) publishUpdate() {
 	localhost := hostname.Hostname()
 	daemonsubsystem.DataScheduler.Set(localhost, t.status.DeepCopy())
 	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+}
+
+func (t timeMap) key(path naming.Path, s string) string {
+	return fmt.Sprintf("%s:%s", path.String(), s)
+}
+
+func (t timeMap) Get(path naming.Path, s string) (time.Time, bool) {
+	id := t.key(path, s)
+	tm, ok := t[id]
+	return tm, ok
+}
+
+func (t timeMap) Set(path naming.Path, s string, tm time.Time) {
+	id := t.key(path, s)
+	t[id] = tm
+}
+
+func (t timeMap) UnsetPath(path naming.Path) {
+	prefix := t.key(path, "")
+	for k, _ := range t {
+		if strings.HasPrefix(k, prefix) {
+			t.Unset(path, k)
+		}
+	}
+}
+
+func (t timeMap) Unset(path naming.Path, s string) {
+	id := t.key(path, s)
+	delete(t, id)
+}
+
+func (t timeMap) GetWithRID(path naming.Path, s string) (time.Time, bool) {
+	return t.Get(path, s+".schedule")
+}
+
+func (t timeMap) SetWithRID(path naming.Path, s string, tm time.Time) {
+	t.Set(path, s+".schedule", tm)
 }

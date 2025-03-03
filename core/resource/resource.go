@@ -254,6 +254,7 @@ type (
 		RequireProvisioned  bool
 		RequireConfirmation bool
 		RunDir              string
+		Require             string
 	}
 )
 
