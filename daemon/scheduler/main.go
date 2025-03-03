@@ -534,7 +534,7 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 	checkReq := func(rid string, requiredStatusList status.L) error {
 		resourceStatus, ok := c.Value.Resources[rid]
 		if !ok {
-			return fmt.Errorf("resource %s not found in the instance status data")
+			return fmt.Errorf("resource %s not found in the instance status data", rid)
 		}
 		if !requiredStatusList.Has(resourceStatus.Status) {
 			return fmt.Errorf("resource %s status is %s, required %s", rid, resourceStatus.Status, requiredStatusList)
