@@ -1342,6 +1342,7 @@ type Schedule struct {
 	LastRunFile        string    `json:"last_run_file"`
 	LastSuccessFile    string    `json:"last_success_file"`
 	NextRunAt          time.Time `json:"next_run_at"`
+	Require            string    `json:"require"`
 	RequireCollector   bool      `json:"require_collector"`
 	RequireProvisioned bool      `json:"require_provisioned"`
 	Schedule           string    `json:"schedule"`

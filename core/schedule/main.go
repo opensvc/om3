@@ -23,6 +23,7 @@ type (
 		NextRunAt          time.Time   `json:"next_run_at"`
 		Node               string      `json:"node"`
 		Path               naming.Path `json:"path"`
+		Require            string      `json:"require"`
 		RequireCollector   bool        `json:"require_collector"`
 		RequireProvisioned bool        `json:"require_provisioned"`
 		RunDir             string      `json:"run_dir"`
@@ -108,6 +109,7 @@ func (t Table) DeepCopy() *Table {
 			NextRunAt:          x.NextRunAt,
 			Node:               x.Node,
 			Path:               x.Path,
+			Require:            x.Require,
 			RequireCollector:   x.RequireCollector,
 			RequireProvisioned: x.RequireProvisioned,
 			RunDir:             x.RunDir,
