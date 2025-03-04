@@ -619,7 +619,7 @@ func isCmdlineMatchingDaemon(pid int) (bool, error) {
 	returnsFromArgs := func(args [][]byte) (bool, error) {
 		if len(args) < 3 {
 			return false, fmt.Errorf("process %d pointed by %s ran by a command with too few arguments: '%s'", pid, daemonPidFile(), args)
-		} else if string(args[1]) != "daemon" || string(args[2]) != "start" {
+		} else if string(args[1]) != "daemon" || string(args[2]) != "run" {
 			return false, fmt.Errorf("process %d pointed by %s is not a om daemon: '%s'", pid, daemonPidFile(), args)
 		} else {
 			return true, nil
