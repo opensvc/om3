@@ -91,7 +91,6 @@ func (t *T) Configure(ctx context.Context) {
 	maxSlots := t.GetInt("max_slots")
 	oNodes := hostname.OtherNodes(nodes)
 	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s max_slot=%d", timeout, interval, dev, nodes, oNodes, maxSlots)
-	log.Infof("storage area is metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(maxSlots), maxSlots, SlotSize)
 
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)

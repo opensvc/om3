@@ -144,9 +144,9 @@ const (
 
 // Defines values for Orchestrate.
 const (
-	OrchestrateHa    Orchestrate = "ha"
-	OrchestrateNo    Orchestrate = "no"
-	OrchestrateStart Orchestrate = "start"
+	Ha    Orchestrate = "ha"
+	No    Orchestrate = "no"
+	Start Orchestrate = "start"
 )
 
 // Defines values for PackageItemKind.
@@ -316,20 +316,6 @@ const (
 	UserListKindUserList UserListKind = "UserList"
 )
 
-// Defines values for InPathDaemonComponentAction.
-const (
-	InPathDaemonComponentActionRestart InPathDaemonComponentAction = "restart"
-	InPathDaemonComponentActionStart   InPathDaemonComponentAction = "start"
-	InPathDaemonComponentActionStop    InPathDaemonComponentAction = "stop"
-)
-
-// Defines values for PostDaemonComponentActionParamsAction.
-const (
-	Restart PostDaemonComponentActionParamsAction = "restart"
-	Start   PostDaemonComponentActionParamsAction = "start"
-	Stop    PostDaemonComponentActionParamsAction = "stop"
-)
-
 // ArbitratorStatus defines model for ArbitratorStatus.
 type ArbitratorStatus struct {
 	Status Status `json:"status"`
@@ -430,6 +416,12 @@ type DRBDAllocation struct {
 type DRBDConfig struct {
 	Data []byte `json:"data"`
 }
+
+// DaemonHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+type DaemonHeartbeatName = string
+
+// DaemonListenerName Listener name
+type DaemonListenerName = string
 
 // DaemonLocal defines model for DaemonLocal.
 type DaemonLocal struct {
@@ -1041,12 +1033,6 @@ type PoolVolumeList struct {
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
 
-// PostDaemonComponentActionBody defines model for PostDaemonComponentActionBody.
-type PostDaemonComponentActionBody struct {
-	// Subs daemon component list
-	Subs []string `json:"subs"`
-}
-
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
 	Level PostDaemonLogsControlLevel `json:"level"`
@@ -1488,11 +1474,14 @@ type Roles = []Role
 // SelectorOptional defines model for SelectorOptional.
 type SelectorOptional = string
 
-// InPathDaemonComponentAction defines model for inPathDaemonComponentAction.
-type InPathDaemonComponentAction string
+// InPathHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+type InPathHeartbeatName = DaemonHeartbeatName
 
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
+
+// InPathListenerName Listener name
+type InPathListenerName = DaemonListenerName
 
 // InPathName defines model for inPathName.
 type InPathName = string
@@ -1716,9 +1705,6 @@ type PostDaemonShutdownParams struct {
 	// Duration max duration
 	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 }
-
-// PostDaemonComponentActionParamsAction defines parameters for PostDaemonComponentAction.
-type PostDaemonComponentActionParamsAction string
 
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
@@ -2056,9 +2042,6 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
-
-// PostDaemonComponentActionJSONRequestBody defines body for PostDaemonComponentAction for application/json ContentType.
-type PostDaemonComponentActionJSONRequestBody = PostDaemonComponentActionBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

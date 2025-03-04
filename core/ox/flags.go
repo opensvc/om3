@@ -3,7 +3,6 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
-
 	"fmt"
 	"strings"
 	"time"
@@ -92,6 +91,14 @@ func addFlagCreateRestore(flagSet *pflag.FlagSet, p *bool) {
 
 func addFlagCron(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "cron", false, "Run the action as if executed by the daemon. For example, the run action requirements error message are disabled.")
+}
+
+func addFlagDaemonHeartbeatName(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "name", "", "Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section.")
+}
+
+func addFlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "name", "", "Listener name, example 'http-inet'.")
 }
 
 func addFlagDevRoles(flagSet *pflag.FlagSet, p *string) {

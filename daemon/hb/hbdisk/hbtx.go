@@ -56,7 +56,7 @@ func (t *tx) Stop() error {
 
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
-	t.log.Infof("starting")
+	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}

@@ -46,7 +46,7 @@ func (t *device) calculateMetaSlotOffset(slot int) int64 {
 
 func (t *device) readSignature() (string, error) {
 	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
-		return "", fmt.Errorf("seek offset %d: %w", 0, err)
+		return "", fmt.Errorf("seek: %w", err)
 	}
 	block := directio.AlignedBlock(PageSize)
 	if n, err := io.ReadAtLeast(t.file, block, len(HBDiskSignature)); err != nil {
@@ -54,10 +54,10 @@ func (t *device) readSignature() (string, error) {
 	} else if n < len(HBDiskSignature) {
 		return "", fmt.Errorf("expected %d bytes, got %d", len(HBDiskSignature), n)
 	} else if block[0] == endOfDataMarker {
-		return "", fmt.Errorf("no data found at offset 0")
+		return "", fmt.Errorf("no data")
 	}
 	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
-		return "", fmt.Errorf("seek offset %d: %w", 0, err)
+		return "", fmt.Errorf("seek: %w", err)
 	}
 	return string(block[:len(HBDiskSignature)]), nil
 }
@@ -214,9 +214,9 @@ func (t *device) ensureCharDevice(path string) error {
 // and returns an error if validation fails.
 func (t *device) ensureHBSignature() error {
 	if signature, err := t.readSignature(); err != nil {
-		return fmt.Errorf("expected signature '%s': read failed: %w", HBDiskSignature, err)
+		return fmt.Errorf("expected signature '%s' at offset 0: read failed: %w", HBDiskSignature, err)
 	} else if signature != HBDiskSignature {
-		return fmt.Errorf("expected signature '%s' found '%s'", HBDiskSignature, signature)
+		return fmt.Errorf("expected signature '%s' at offset 0: found '%s'", HBDiskSignature, signature)
 	}
 	return nil
 }

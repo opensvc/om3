@@ -496,13 +496,32 @@ func (t *T) janitor(ctx context.Context) {
 					if !strings.HasPrefix(hbID, "hb#") {
 						continue
 					}
+					t.log.Infof("on daemonCtl %s %s", action, hbID)
 					switch msg.Action {
 					case "stop":
+						t.log.Infof("stopping %s", hbID)
 						t.daemonCtlStop(hbID, action)
 					case "start":
+						if hbI := strings.TrimSuffix(hbID, ".tx"); hbI != hbID {
+							if _, found := t.txs[hbI]; found {
+								t.log.Infof("start %s skipped: already running", hbID)
+								continue
+							}
+						} else if hbI := strings.TrimSuffix(hbID, ".rx"); hbI != hbID {
+							if _, found := t.rxs[hbI]; found {
+								t.log.Infof("start %s skipped: already running", hbID)
+								continue
+							}
+						} else {
+							t.log.Infof("start %s skipped: not a tx/rx pair", hbID)
+							continue
+						}
+						t.log.Infof("starting %s", hbID)
 						t.daemonCtlStart(t.ctx, hbID, action)
 					case "restart":
+						t.log.Infof("restart %s: stopping", hbID)
 						t.daemonCtlStop(hbID, action)
+						t.log.Infof("restart %s:starting", hbID)
 						t.daemonCtlStart(t.ctx, hbID, action)
 					}
 				}
@@ -549,16 +568,19 @@ func (t *T) daemonCtlStop(hbID string, action string) {
 			t.log.Infof("daemonctl %s %s found no %s.rx component", action, hbID, rid)
 			return
 		}
+		defer delete(t.rxs, rid)
 	} else if strings.HasSuffix(hbID, ".tx") {
 		rid := strings.TrimSuffix(hbID, ".tx")
 		if hbI, found = t.txs[rid]; !found {
 			t.log.Infof("daemonctl %s %s found no %s.tx component", action, hbID, rid)
 			return
 		}
+		defer delete(t.txs, rid)
 	} else {
 		t.log.Infof("daemonctl %s %s found no component", action, hbID)
 		return
 	}
+	// delete(t.txs, rid)
 	t.log.Infof("ask to %s %s", action, hbID)
 	switch hbI.(type) {
 	case hbtype.Transmitter:
