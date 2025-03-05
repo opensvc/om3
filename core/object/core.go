@@ -86,6 +86,7 @@ func (t *core) List() (string, error) {
 }
 
 func (t *core) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt.O) error {
+	t.configFile = t.path.ConfigFile()
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}
@@ -118,9 +119,6 @@ func (t *core) Path() naming.Path {
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.
 func (t *core) ConfigFile() string {
-	if t.configFile == "" {
-		t.configFile = t.path.ConfigFile()
-	}
 	return t.configFile
 }
 

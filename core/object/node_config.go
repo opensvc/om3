@@ -23,32 +23,34 @@ func (t Node) Exists() bool {
 }
 
 func (t *Node) ConfigFile() string {
-	return rawconfig.NodeConfigFile()
+	return t.configFile
 }
 
 func (t *Node) ClusterConfigFile() string {
-	return rawconfig.ClusterConfigFile()
+	return t.clusterConfigFile
 }
 
 func (t *Node) loadConfig() error {
 	var sources []any
-	nodeConfigFile := t.ConfigFile()
 
 	if t.configData != nil {
 		sources = []any{t.configData}
+	} else if t.configFile != "" {
+		sources = []any{t.configFile}
 	} else {
-		sources = []any{nodeConfigFile}
+		sources = []any{}
 	}
 
-	if config, err := xconfig.NewObject(nodeConfigFile, sources...); err != nil {
+	if config, err := xconfig.NewObject(t.configFile, sources...); err != nil {
 		return err
 	} else {
 		t.config = config
 		t.config.Referrer = t
 	}
-	clusterConfigFile := t.ClusterConfigFile()
-	sources = append([]any{clusterConfigFile}, sources...)
-	if config, err := xconfig.NewObject(clusterConfigFile, sources...); err != nil {
+	if t.clusterConfigFile != "" {
+		sources = append([]any{t.clusterConfigFile}, sources...)
+	}
+	if config, err := xconfig.NewObject(t.clusterConfigFile, sources...); err != nil {
 		return err
 	} else {
 		t.mergedConfig = config

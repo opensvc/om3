@@ -35,15 +35,14 @@ func (t *core) reloadConfig() error {
 func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	var err error
 	var sources []any
-	cf := t.ConfigFile()
 	if t.configData != nil {
 		sources = []any{t.configData}
-	} else if cf != "" {
-		sources = []any{cf}
+	} else if t.configFile != "" {
+		sources = []any{t.configFile}
 	} else {
 		sources = []any{}
 	}
-	if t.config, err = xconfig.NewObject(cf, sources...); err != nil {
+	if t.config, err = xconfig.NewObject(t.configFile, sources...); err != nil {
 		return err
 	}
 	t.config.Path = t.path
