@@ -270,3 +270,14 @@ func IsDevice(p string) (bool, error) {
 	}
 	return true, nil
 }
+
+// Sync attempts to synchronize a file's in-memory state to the storage device.
+// This ensures that the file data is safely written to disk.
+func Sync(p string) error {
+	f, err := os.Open(p)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Sync()
+}
