@@ -19,7 +19,11 @@ func (t *CmdNodeDoc) Run() error {
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
+			n, err := object.NewNode(
+				object.WithVolatile(true),
+				object.WithConfigFile(""),
+				object.WithClusterConfigFile(""),
+			)
 			if err != nil {
 				return nil, err
 			}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
@@ -17,18 +18,22 @@ type (
 		volatile bool
 
 		// caches
-		id           uuid.UUID
-		configData   any
-		configFile   string
-		config       *xconfig.T
-		mergedConfig *xconfig.T
-		paths        nodePaths
+		id                uuid.UUID
+		configData        any
+		configFile        string
+		clusterConfigFile string
+		config            *xconfig.T
+		mergedConfig      *xconfig.T
+		paths             nodePaths
 	}
 )
 
 // NewNode allocates a node.
 func NewNode(opts ...funcopt.O) (*Node, error) {
-	t := &Node{}
+	t := &Node{
+		configFile:        rawconfig.NodeConfigFile(),
+		clusterConfigFile: rawconfig.ClusterConfigFile(),
+	}
 	if err := t.init(opts...); err != nil {
 		return nil, err
 	}

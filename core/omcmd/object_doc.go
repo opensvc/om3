@@ -28,7 +28,7 @@ func (t *CmdObjectDoc) Run(selector, kind string) error {
 			objectaction.WithOutput(t.Output),
 			objectaction.WithObjectSelector(mergedSelector),
 			objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-				o, err := object.New(p)
+				o, err := object.New(p, object.WithConfigFile(""))
 				if err != nil {
 					return nil, err
 				}
@@ -56,7 +56,7 @@ func (t *CmdObjectDoc) Run(selector, kind string) error {
 	case "cfg":
 		c, err = object.NewCfg(naming.Path{})
 	case "ccfg":
-		c, err = object.NewCluster()
+		c, err = object.NewCluster(object.WithConfigFile(""))
 	default:
 		return fmt.Errorf("unknown kind %s", kind)
 	}
