@@ -130,6 +130,10 @@ func AddKnownHost(host string, key ssh.PublicKey) error {
 	return err
 }
 
+func AuthorizedKeysFile() (string, error) {
+	return authorizedKeysFile()
+}
+
 func GetAuthorizedKeysMap() (AuthorizedKeysMap, error) {
 	m := make(AuthorizedKeysMap)
 	filename, err := authorizedKeysFile()
@@ -202,6 +206,10 @@ func GetKnownHostsMap() (KnownHostsMap, error) {
 	}
 
 	return m, nil
+}
+
+func KnownHostsFile() (string, error) {
+	return knownHostsFile()
 }
 
 func (m KnownHostsMap) Add(host string, k ssh.PublicKey) error {
