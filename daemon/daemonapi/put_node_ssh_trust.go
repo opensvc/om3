@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/sshnode"
 )
 
@@ -28,6 +29,7 @@ func (a *DaemonAPI) PutNodeSSHTrust(ctx echo.Context, nodename string) error {
 
 func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 	log := LogHandler(ctx, "PutNodeSSHTrust")
+	var authorizedKeysUpdated, knownHostsUpdated bool
 
 	clusterConfigData := cluster.ConfigData.Get()
 	if err := sshnode.CreateSSHDir(); err != nil {
@@ -64,6 +66,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 			} else if err := sshnode.AppendAuthorizedKeys(line); err != nil {
 				return fmt.Errorf("node %s key couldn't be added to the authorized_keys file: %s", node, err)
 			} else {
+				authorizedKeysUpdated = true
 				log.Infof("node %s key added to the authorized_keys file: %s", node, fingerprint)
 			}
 		}
@@ -105,6 +108,7 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 			if err := knownHosts.Add(node, key); err != nil {
 				return fmt.Errorf("node %s key couldn't be added to the known_hosts file: %s", node, err)
 			} else {
+				knownHostsUpdated = true
 				log.Infof("node %s key added to the known_hosts file: %s", node, fingerprint)
 			}
 		}
@@ -136,6 +140,20 @@ func (a *DaemonAPI) localPutNodeSSHTrust(ctx echo.Context) error {
 	}
 	if errs != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "trust nodes", "%s", errs)
+	}
+	if authorizedKeysUpdated {
+		if name, err := sshnode.AuthorizedKeysFile(); err != nil {
+			log.Warnf("can't get authorized file: %s", err)
+		} else if err := file.Sync(name); err != nil {
+			log.Warnf("can't sync %s: %s", name, err)
+		}
+	}
+	if knownHostsUpdated {
+		if name, err := sshnode.KnownHostsFile(); err != nil {
+			log.Warnf("can't get known host file: %s", err)
+		} else if err := file.Sync(name); err != nil {
+			log.Warnf("can't sync %s: %s", name, err)
+		}
 	}
 	return ctx.NoContent(http.StatusNoContent)
 }
