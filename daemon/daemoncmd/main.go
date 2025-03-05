@@ -552,6 +552,11 @@ func (t *T) isNotRunning(pid int) (bool, error) {
 	return false, nil
 }
 
+// isRunning checks if daemon is running:
+//
+//		It is running when api ping succeeds
+//	 or if process id from daemon pid file exists, matching 'daemon run' and is
+//	    not self pid.
 func (t *T) isRunning() (bool, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -573,6 +578,11 @@ func (t *T) isRunning() (bool, error) {
 		return false, nil
 	}
 
+	if os.Getpid() == pid {
+		// avoids false positives caused by remnants of a previous daemon PID
+		// after a fast OS reboot.
+		return false, nil
+	}
 	isNotRunning, err := t.isNotRunning(pid)
 	if err != nil {
 		return false, err

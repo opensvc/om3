@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (a *DaemonAPI) GetNodeSSHKey(ctx echo.Context, nodename string) error {
@@ -59,8 +60,18 @@ func (a *DaemonAPI) getLocalSSHKey(ctx echo.Context) error {
 			return err
 		}
 		data, err = os.ReadFile(pubFile)
-	}
-	if err != nil {
+		if err != nil {
+			log.Warnf("%s", err)
+			return err
+		}
+		for _, name := range []string{keyFile, pubFile} {
+			// sync file to prevent unrecoverable empty file on crash
+			if err := file.Sync(name); err != nil {
+				log.Warnf("%s", err)
+				return err
+			}
+		}
+	} else if err != nil {
 		log.Warnf("%s", err)
 		return err
 	}
