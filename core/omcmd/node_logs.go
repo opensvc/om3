@@ -12,7 +12,7 @@ import (
 type (
 	CmdNodeLogs struct {
 		OptsGlobal
-		OptsLogs
+		commoncmd.OptsLogs
 		NodeSelector string
 	}
 )

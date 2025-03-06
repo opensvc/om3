@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
@@ -17,7 +18,7 @@ import (
 type (
 	CmdNodeUpdate struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Delete       []string
 		Set          []string
 		Unset        []string

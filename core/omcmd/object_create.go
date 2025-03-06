@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/cmd"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -31,16 +32,15 @@ import (
 type (
 	CmdObjectCreate struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
-		Config      string
-		Keywords    []string
-		Env         string
-		Interactive bool
-		Provision   bool
-		Restore     bool
-		Force       bool
-		Namespace   string
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
+		Config    string
+		Keywords  []string
+		Env       string
+		Provision bool
+		Restore   bool
+		Force     bool
+		Namespace string
 
 		client *client.T
 		path   naming.Path

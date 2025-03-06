@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -12,8 +13,8 @@ import (
 type (
 	CmdObjectDisable struct {
 		OptsGlobal
-		OptsLock
-		OptsResourceSelector
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
 	}
 )
 

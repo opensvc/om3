@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -14,7 +15,7 @@ import (
 type (
 	CmdNodeUpdate struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Delete       []string
 		Set          []string
 		Unset        []string

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -16,10 +17,10 @@ import (
 type (
 	CmdObjectProvision struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
-		OptsResourceSelector
-		OptTo
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		DisableRollback bool
 		Force           bool
 		Leader          bool

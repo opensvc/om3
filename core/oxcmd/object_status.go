@@ -1,13 +1,14 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectaction"
 )
 
 type (
 	CmdObjectStatus struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Refresh      bool
 		NodeSelector string
 	}

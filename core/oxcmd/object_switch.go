@@ -3,6 +3,7 @@ package oxcmd
 import (
 	"strings"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/objectaction"
 )
@@ -10,8 +11,8 @@ import (
 type (
 	CmdObjectSwitch struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
 		To string
 	}
 )

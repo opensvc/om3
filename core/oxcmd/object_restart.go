@@ -1,16 +1,17 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectaction"
 )
 
 type (
 	CmdObjectRestart struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
-		OptsResourceSelector
-		OptTo
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		NodeSelector    string
 		Force           bool
 		DisableRollback bool

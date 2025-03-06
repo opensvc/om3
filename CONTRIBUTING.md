@@ -26,3 +26,10 @@ The `%w` wildcard in `fmt.Errorf` format triggers the error wrapping.
 
 https://google.github.io/styleguide/go/decisions.html#error-strings
 
+## Do not capitalize cobra command Short description string
+
+And do not terminate with a dot.
+
+## Do not capitalize pflag description string
+
+And do not terminate with a dot.

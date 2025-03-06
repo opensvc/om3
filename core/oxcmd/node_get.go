@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -16,7 +17,7 @@ import (
 type (
 	CmdNodeGet struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Eval         bool
 		Impersonate  string
 		Keywords     []string

@@ -1,11 +1,14 @@
 package omcmd
 
-import "github.com/opensvc/om3/core/objectaction"
+import (
+	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/core/objectaction"
+)
 
 type (
 	CmdObjectAbort struct {
 		OptsGlobal
-		OptsAsync
+		commoncmd.OptsAsync
 	}
 )
 

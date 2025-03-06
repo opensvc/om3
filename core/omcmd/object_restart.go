@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -13,10 +14,10 @@ import (
 type (
 	CmdObjectRestart struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
-		OptsResourceSelector
-		OptTo
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		NodeSelector    string
 		Force           bool
 		DisableRollback bool

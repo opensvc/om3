@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
@@ -18,7 +19,7 @@ import (
 type (
 	CmdNodeGet struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Eval         bool
 		Impersonate  string
 		Keywords     []string

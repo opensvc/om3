@@ -1,14 +1,15 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectaction"
 )
 
 type (
 	CmdObjectSyncUpdate struct {
 		OptsGlobal
-		OptsLock
-		OptsResourceSelector
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
 		Force  bool
 		Target []string
 	}

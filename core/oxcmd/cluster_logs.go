@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/render"
@@ -16,7 +17,7 @@ import (
 type (
 	CmdClusterLogs struct {
 		OptsGlobal
-		OptsLogs
+		commoncmd.OptsLogs
 		NodeSelector string
 	}
 )

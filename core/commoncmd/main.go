@@ -18,12 +18,6 @@ type (
 		Output         string
 		ObjectSelector string
 	}
-
-	OptsLogs struct {
-		Follow bool
-		Lines  int
-		Filter []string
-	}
 )
 
 func NodesFromPaths(c *client.T, selector string) ([]string, error) {

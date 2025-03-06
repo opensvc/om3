@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -13,7 +14,7 @@ import (
 type (
 	CmdKeystoreAdd struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Key   string
 		From  *string
 		Value *string

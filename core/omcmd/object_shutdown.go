@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -16,9 +17,9 @@ import (
 type (
 	CmdObjectShutdown struct {
 		OptsGlobal
-		OptsLock
-		OptsResourceSelector
-		OptTo
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		Force        bool
 		NodeSelector string
 	}

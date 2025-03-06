@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -19,7 +20,7 @@ import (
 type (
 	CmdObjectUnset struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		Keywords []string
 		Sections []string
 	}

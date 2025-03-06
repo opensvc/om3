@@ -1,12 +1,13 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeaction"
 )
 
 type CmdClusterAbort struct {
 	OptsGlobal
-	OptsAsync
+	commoncmd.OptsAsync
 }
 
 func (t *CmdClusterAbort) Run() error {

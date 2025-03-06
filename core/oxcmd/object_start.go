@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
@@ -14,10 +15,10 @@ import (
 type (
 	CmdObjectStart struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
-		OptsResourceSelector
-		OptTo
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		Force           bool
 		DisableRollback bool
 		NodeSelector    string
