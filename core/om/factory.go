@@ -454,7 +454,7 @@ func newCmdDaemonShutdown() *cobra.Command {
 	var options commands.CmdDaemonShutdown
 	cmd := &cobra.Command{
 		Use:   "shutdown",
-		Short: "Shutdown all local svc and vol objects then shutdown the daemon.",
+		Short: "shutdown all local svc and vol objects then shutdown the daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -664,7 +664,7 @@ func newCmdMonitor() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "monitor",
 		Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
-		Short:   "Print the cluster status",
+		Short:   "print the cluster status",
 		Long:    monitor.CmdLong,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run("*", "")
@@ -1733,10 +1733,10 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 func newCmdObjectBoot(kind string) *cobra.Command {
 	var options commands.CmdObjectBoot
 	cmd := &cobra.Command{
-		Use: "boot",
-		Short: "Clean up actions executed before the daemon starts." +
-			" For example scsi reservation release and vg tags removal." +
-			" Never execute this action manually.",
+		Use:    "boot",
+		Hidden: true,
+		Short:  "clean up actions executed on boot only",
+		Long:   "SCSI reservation release, vg tags removal, ... Never execute this action manually.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3126,7 +3126,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectUnprovision
 	cmd := &cobra.Command{
 		Use:     "unprovision",
-		Short:   "free system resources (data-loss danger).",
+		Short:   "free system resources (data-loss danger)",
 		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)

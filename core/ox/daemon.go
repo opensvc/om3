@@ -7,7 +7,7 @@ import (
 var (
 	cmdDaemon = &cobra.Command{
 		Use:   "daemon",
-		Short: "Manage the opensvc daemon",
+		Short: "manage the opensvc daemon",
 	}
 
 	cmdDaemonDNS = &cobra.Command{
@@ -17,12 +17,12 @@ var (
 
 	cmdDaemonHeartbeat = &cobra.Command{
 		Use:   "hb",
-		Short: "Manage opensvc daemon heartbeat",
+		Short: "manage opensvc daemon heartbeat",
 	}
 
 	cmdDaemonListener = &cobra.Command{
 		Use:   "listener",
-		Short: "Manage opensvc daemon listener",
+		Short: "manage opensvc daemon listener",
 	}
 
 	cmdDaemonRelay = &cobra.Command{

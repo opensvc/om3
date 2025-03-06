@@ -42,7 +42,7 @@ var (
 
 	root = &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
-		Short:                  "Manage the opensvc cluster infrastructure and its deployed services.",
+		Short:                  "the opensvc cluster management command",
 		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,
 		SilenceErrors:          false,

@@ -10,7 +10,7 @@ var (
 
 	execCmd = &cobra.Command{
 		Use:   "exec",
-		Short: "Execute a command with cappings and limits",
+		Short: "execute a command with cappings and limits",
 		Run: func(_ *cobra.Command, args []string) {
 			xo.Exec(args)
 		},

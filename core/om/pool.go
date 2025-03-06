@@ -7,12 +7,12 @@ import (
 var (
 	cmdPool = &cobra.Command{
 		Use:   "pool",
-		Short: "Manage storage pools",
+		Short: "manage storage pools",
 		Long:  ` A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.`,
 	}
 	cmdPoolVolume = &cobra.Command{
 		Use:     "volume",
-		Short:   "Manage storage pool volumes",
+		Short:   "manage storage pool volumes",
 		Aliases: []string{"vol"},
 	}
 )
