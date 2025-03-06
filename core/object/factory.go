@@ -14,8 +14,25 @@ var ErrWrongType = errors.New("wrong type provided for interface")
 // WithConfigFile sets a non-standard configuration location.
 func WithConfigFile(s string) funcopt.O {
 	return funcopt.F(func(t any) error {
-		o := t.(*core)
-		o.configFile = s
+		if o, ok := t.(*core); ok {
+			o.configFile = s
+		} else if o, ok := t.(*Node); ok {
+			o.configFile = s
+		} else {
+			return fmt.Errorf("WithConfigFile() is not supported on %v", t)
+		}
+		return nil
+	})
+}
+
+// WithConfigFile sets a non-standard configuration location.
+func WithClusterConfigFile(s string) funcopt.O {
+	return funcopt.F(func(t any) error {
+		if o, ok := t.(*Node); ok {
+			o.clusterConfigFile = s
+		} else {
+			return fmt.Errorf("WithClusterConfigFile() is not supported on %v", t)
+		}
 		return nil
 	})
 }
