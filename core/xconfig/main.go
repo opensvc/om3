@@ -675,6 +675,9 @@ func (t *T) write() (err error) {
 	if err := os.Rename(fName, t.ConfigFilePath); err != nil {
 		return err
 	}
+	if err := file.Sync(t.ConfigFilePath); err != nil {
+		return err
+	}
 	t.changed = false
 	return nil
 }
