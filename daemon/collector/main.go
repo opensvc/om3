@@ -276,7 +276,11 @@ func (t *T) Start(ctx context.Context) error {
 		errC <- nil
 		// delay collector allows more consistent state during startup and
 		// reduces state transitions: undef->speaker->speaker-candidate
-		<-time.After(5 * time.Second)
+		select {
+		case <-time.After(5 * time.Second):
+		case <-ctx.Done():
+			return
+		}
 		t.loop()
 	}(errC)
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -16,7 +17,7 @@ import (
 type (
 	CmdObjectPrintResourceInfo struct {
 		OptsGlobal
-		OptsLock
+		commoncmd.OptsLock
 		NodeSelector string
 	}
 )

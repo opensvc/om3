@@ -1,6 +1,7 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/util/hostname"
@@ -9,8 +10,8 @@ import (
 type (
 	CmdObjectTakeover struct {
 		OptsGlobal
-		OptsAsync
-		OptsLock
+		commoncmd.OptsAsync
+		commoncmd.OptsLock
 	}
 )
 

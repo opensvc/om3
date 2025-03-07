@@ -8,7 +8,7 @@ import (
 type (
 	CmdObjectLogs struct {
 		OptsGlobal
-		OptsLogs
+		commoncmd.OptsLogs
 		NodeSelector string
 	}
 )

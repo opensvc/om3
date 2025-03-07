@@ -1,12 +1,13 @@
 package omcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeaction"
 )
 
 type CmdClusterUnfreeze struct {
 	OptsGlobal
-	OptsAsync
+	commoncmd.OptsAsync
 }
 
 func (t *CmdClusterUnfreeze) Run() error {

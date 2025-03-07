@@ -104,7 +104,11 @@ func (t *Manager) getList(zonename string) Zone {
 		errC: err,
 		resp: make(chan Zone),
 	}
-	t.cmdC <- c
+	select {
+	case t.cmdC <- c:
+	case <-t.ctx.Done():
+		return Zone{}
+	}
 	if <-err != nil {
 		return Zone{}
 	}
@@ -128,7 +132,11 @@ func (t *Manager) getRecords(recordType, recordName string) Zone {
 		Type: recordType,
 		resp: make(chan Zone),
 	}
-	t.cmdC <- c
+	select {
+	case t.cmdC <- c:
+	case <-t.ctx.Done():
+		return Zone{}
+	}
 	if <-err != nil {
 		return Zone{}
 	}
@@ -349,6 +357,12 @@ func (t *Manager) startUDSListener() error {
 
 		var i uint64
 		for {
+			select {
+			case <-t.ctx.Done():
+				t.log.Debugf("stop accepting (abort)")
+				_ = l.Close()
+				return
+			}
 			conn, err := l.Accept()
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {

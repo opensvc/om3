@@ -14,7 +14,7 @@ var (
 	arrayName string
 	cmdArray  = &cobra.Command{
 		Use:   "array",
-		Short: "Manage storage arrays",
+		Short: "manage storage arrays",
 		Long:  `A array is a backend storage provider for pools.`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runArray(args)

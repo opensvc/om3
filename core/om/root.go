@@ -29,7 +29,6 @@ var (
 	colorFlag    string
 	nodeFlag     string
 	selectorFlag string
-	serverFlag   string
 
 	callerFlag     bool
 	debugFlag      bool
@@ -42,7 +41,7 @@ var (
 
 	root = &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
-		Short:                  "Manage the opensvc cluster infrastructure and its deployed services.",
+		Short:                  "the opensvc cluster management command",
 		PersistentPreRunE:      persistentPreRunE,
 		SilenceUsage:           true,
 		SilenceErrors:          false,
@@ -196,11 +195,10 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
-	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
-	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
-	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Display logs on stderr.")
-	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Display logs in debug level.")
-	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
+	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization (yes|no|auto)")
+	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
+	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")
+	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show the caller file and linenum in logs")
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -18,7 +19,7 @@ import (
 
 type CmdNodeDrain struct {
 	OptsGlobal
-	OptsAsync
+	commoncmd.OptsAsync
 	NodeSelector string
 }
 
