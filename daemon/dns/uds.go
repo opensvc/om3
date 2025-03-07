@@ -104,7 +104,11 @@ func (t *Manager) getList(zonename string) Zone {
 		errC: err,
 		resp: make(chan Zone),
 	}
-	t.cmdC <- c
+	select {
+	case t.cmdC <- c:
+	case <-t.ctx.Done():
+		return Zone{}
+	}
 	if <-err != nil {
 		return Zone{}
 	}
@@ -128,7 +132,11 @@ func (t *Manager) getRecords(recordType, recordName string) Zone {
 		Type: recordType,
 		resp: make(chan Zone),
 	}
-	t.cmdC <- c
+	select {
+	case t.cmdC <- c:
+	case <-t.ctx.Done():
+		return Zone{}
+	}
 	if <-err != nil {
 		return Zone{}
 	}
