@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -18,6 +17,8 @@ type (
 	CmdDaemonStop struct {
 		OptsGlobal
 		NodeSelector string
+
+		nodeCount int
 	}
 )
 
@@ -49,6 +50,7 @@ func (t *CmdDaemonStop) doNodes() error {
 	ctx := context.Background()
 	running := 0
 	needDoLocal := false
+	t.nodeCount = len(nodenames)
 	for _, nodename := range nodenames {
 		if nodename == hostname.Hostname() {
 			needDoLocal = true
@@ -80,15 +82,24 @@ func (t *CmdDaemonStop) doNode(ctx context.Context, cli *client.T, nodename stri
 	if nodename == hostname.Hostname() {
 		return t.doLocalDaemonStop()
 	}
+	if t.nodeCount > 1 {
+		_, _ = fmt.Printf("stopping daemon on node %s with pid\n", nodename)
+	}
 	return commoncmd.PostDaemonStop(ctx, cli, nodename)
 }
 
 func (t *CmdDaemonStop) doLocalDaemonStop() error {
-	_, _ = fmt.Fprintf(os.Stderr, "stopping daemon on localhost\n")
+	if t.nodeCount > 1 {
+		_, _ = fmt.Printf("stopping daemon on localhost\n")
+	}
 	cli, err := client.New()
 	if err != nil {
 		return err
 	}
 	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).StopFromCmd(ctx)
+	cmd := daemoncmd.New(cli)
+	if err := cmd.LoadManager(ctx); err != nil {
+		return err
+	}
+	return cmd.Stop(ctx)
 }

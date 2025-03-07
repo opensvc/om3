@@ -44,6 +44,7 @@ func (t *CmdDaemonStop) doNodes() error {
 	for _, nodename := range nodenames {
 		running++
 		go func(nodename string) {
+			_, _ = fmt.Printf("stopping daemon on node %s with pid\n", nodename)
 			err := commoncmd.PostDaemonStop(ctx, c, nodename)
 			errC <- err
 		}(nodename)

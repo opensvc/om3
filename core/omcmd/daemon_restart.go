@@ -19,6 +19,9 @@ type (
 		OptsGlobal
 		Debug        bool
 		NodeSelector string
+		CPUProfile   string
+
+		nodeCount int
 	}
 )
 
@@ -53,6 +56,7 @@ func (t *CmdDaemonRestart) doNodes() error {
 	ctx := context.Background()
 	running := 0
 	needDoLocal := false
+	t.nodeCount = len(nodenames)
 	for _, nodename := range nodenames {
 		if nodename == hostname.Hostname() {
 			needDoLocal = true
@@ -86,15 +90,24 @@ func (t *CmdDaemonRestart) doNode(ctx context.Context, cli *client.T, nodename s
 	if nodename == hostname.Hostname() {
 		return t.doLocalDaemonRestart()
 	}
+	if t.nodeCount > 1 {
+		_, _ = fmt.Fprintf(os.Stderr, "invoke post daemon restart on node %s\n", nodename)
+	}
 	return commoncmd.PostDaemonRestart(ctx, cli, nodename)
 }
 
 func (t *CmdDaemonRestart) doLocalDaemonRestart() error {
-	_, _ = fmt.Fprintf(os.Stderr, "restarting daemon on localhost\n")
+	if t.nodeCount > 1 {
+		_, _ = fmt.Printf("restarting daemon on localhost\n")
+	}
 	cli, err := client.New()
 	if err != nil {
 		return err
 	}
 	ctx := context.Background()
-	return daemoncmd.NewContext(ctx, cli).RestartFromCmd(ctx)
+	cmd := daemoncmd.New(cli)
+	if err := cmd.LoadManager(ctx); err != nil {
+		return err
+	}
+	return cmd.Restart(ctx, t.CPUProfile)
 }

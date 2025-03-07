@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
@@ -63,7 +62,7 @@ func (t *CmdDaemonShutdown) doNodes() error {
 		}
 		running++
 		go func(nodename string) {
-			_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on remote %s\n", nodename)
+			_, _ = fmt.Printf("shutting down daemon on remote %s\n", nodename)
 			err := t.doRemote(ctx, c, nodename, params)
 			errC <- err
 		}(nodename)
@@ -82,7 +81,7 @@ func (t *CmdDaemonShutdown) doNodes() error {
 
 	// make sure the local host is shutdown last, as it relays the api calls
 	if needDoLocal {
-		_, _ = fmt.Fprintf(os.Stderr, "shutting down daemon on localhost\n")
+		_, _ = fmt.Printf("shutting down daemon on localhost\n")
 		err := t.doRemote(ctx, c, hostname.Hostname(), params)
 		errs = errors.Join(errs, err)
 	}

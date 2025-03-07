@@ -414,6 +414,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

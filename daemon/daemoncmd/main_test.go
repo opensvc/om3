@@ -1,6 +1,7 @@
 package daemoncmd_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -93,7 +94,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 	t.Run("check daemonCli.Start", func(t *testing.T) {
 		logf("daemonCli.Start...")
 		go func() {
-			startError <- daemonCli.Start()
+			startError <- daemonCli.Run(context.Background(), "")
 		}()
 		select {
 		case err := <-startError:
@@ -201,7 +202,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			cli, err := client.New(client.WithPassword(cluster.ConfigData.Get().Secret()), client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
 			require.NoError(t, err)
 			daemonCli = daemoncmd.New(cli)
-			e := daemonCli.Stop()
+			e := daemonCli.StopWithoutManager()
 			require.NoErrorf(t, e, "unexpected error during stop: %s", e)
 			require.NoFileExists(t, filepath.Join(rawconfig.Paths.Var, "osvcd.pid"))
 		})
@@ -222,7 +223,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			t.Run("check stop again with client "+name, func(t *testing.T) {
 				cli, err := newClient(url)
 				require.Nil(t, err)
-				require.NoError(t, daemoncmd.New(cli).Stop())
+				require.NoError(t, daemoncmd.New(cli).StopWithoutManager())
 				isRunning, err = daemonCli.IsRunning()
 				require.NoError(t, err)
 				require.False(t, isRunning)

@@ -357,6 +357,12 @@ func (t *Manager) startUDSListener() error {
 
 		var i uint64
 		for {
+			select {
+			case <-t.ctx.Done():
+				t.log.Debugf("stop accepting (abort)")
+				_ = l.Close()
+				return
+			}
 			conn, err := l.Accept()
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
