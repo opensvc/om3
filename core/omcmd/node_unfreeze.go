@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
@@ -28,11 +27,8 @@ func (t *CmdNodeUnfreeze) Run() error {
 		}
 		return n.Unfreeze()
 	}
-	if !clientcontext.IsSet() && t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if t.NodeSelector == "" {
-		return fmt.Errorf("--node must be specified")
+		t.NodeSelector = hostname.Hostname()
 	}
 	return t.doRemote()
 }

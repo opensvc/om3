@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
@@ -30,13 +29,12 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	if err != nil {
 		return err
 	}
-	wc := clientcontext.IsSet()
 	for _, p := range paths {
 		obj, err := object.NewConfigurer(p)
 		if err != nil {
 			return err
 		}
-		if !wc && p.Exists() {
+		if p.Exists() {
 			if err := t.doLocal(obj, c); err != nil {
 				return err
 			}

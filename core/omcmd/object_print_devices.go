@@ -1,10 +1,7 @@
 package omcmd
 
 import (
-	"fmt"
-
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectdevice"
 	"github.com/opensvc/om3/core/objectselector"
@@ -25,14 +22,11 @@ type (
 )
 
 func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) (objectdevice.L, error) {
-	if t.Local || (t.NodeSelector == "" && !clientcontext.IsSet()) {
+	if t.Local || t.NodeSelector == "" {
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		return data, nil
-	}
-	if clientcontext.IsSet() {
-		return objectdevice.NewList(), fmt.Errorf("can not fetch daemon data")
 	}
 	return t.extractLocal(selector)
 }

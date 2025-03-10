@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
@@ -54,8 +53,6 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
 	if data, err := t.extractFromDaemon(p, c); err == nil {
 		return data, nil
-	} else if clientcontext.IsSet() {
-		return rawconfig.T{}, err
 	} else if p.Exists() {
 		return t.extractLocal(p)
 	} else {

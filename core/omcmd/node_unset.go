@@ -6,7 +6,6 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -32,10 +31,7 @@ func (t *CmdNodeUnset) Run() error {
 	if t.NodeSelector != "" {
 		return t.doRemote()
 	}
-	if !clientcontext.IsSet() {
-		return t.doLocal()
-	}
-	return fmt.Errorf("--node must be specified")
+	return t.doLocal()
 }
 
 func (t *CmdNodeUnset) doRemote() error {

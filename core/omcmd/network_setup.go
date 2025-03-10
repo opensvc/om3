@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 )
@@ -16,7 +15,7 @@ type (
 )
 
 func (t *CmdNetworkSetup) Run() error {
-	if t.Local || !clientcontext.IsSet() {
+	if t.Local {
 		return t.doLocal()
 	} else {
 		return t.doDaemon()

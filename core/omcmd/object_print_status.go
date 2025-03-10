@@ -9,7 +9,6 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/instance"
@@ -43,11 +42,6 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 	// try daemon
 	data, err = t.extractFromDaemon(selector, c)
 	if err == nil {
-		return
-	}
-
-	if clientcontext.IsSet() {
-		// no fallback for remote cluster
 		return
 	}
 
@@ -146,13 +140,6 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
 	if t.NodeSelector != "" {
 		if nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
-			return nil, fmt.Errorf("expand node selection: %w", err)
-		} else {
-			return nodes, nil
-		}
-	}
-	if clientcontext.IsSet() {
-		if nodes, err := nodeselector.New("*", nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
 		} else {
 			return nodes, nil
