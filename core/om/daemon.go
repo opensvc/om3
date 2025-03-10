@@ -49,7 +49,6 @@ func init() {
 		newCmdDaemonRunning(),
 		newCmdDaemonShutdown(),
 		newCmdDaemonStart(),
-		newCmdDaemonStats(),
 		newCmdDaemonStatus(),
 		newCmdDaemonStop(),
 	)

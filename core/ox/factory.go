@@ -412,20 +412,6 @@ func newCmdDaemonStatus() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonStats() *cobra.Command {
-	var options commands.CmdDaemonStats
-	cmd := &cobra.Command{
-		Use:   "stats",
-		Short: "print the resource usage statistics",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdDaemonStop() *cobra.Command {
 	var options commands.CmdDaemonStop
 	cmd := &cobra.Command{
