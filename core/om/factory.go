@@ -1673,22 +1673,6 @@ func newCmdNodeConfigValidate() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeValidate() *cobra.Command {
-	var options commands.CmdNodeConfigValidate
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "verify the node configuration syntax",
-		Aliases: []string{"validat", "valida", "valid", "val"},
-		Hidden:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdNodeValidateConfig() *cobra.Command {
 	var options commands.CmdNodeConfigValidate
 	cmd := &cobra.Command{
@@ -1808,22 +1792,6 @@ func newCmdObjectPush(kind string) *cobra.Command {
 		Short:   "push information about the object to the collector",
 		Aliases: []string{"push", "pus", "pu"},
 	}
-}
-
-func newCmdObjectValidate(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigValidate
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "verify the object configuration syntax",
-		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	return cmd
 }
 
 func newCmdObjectSSH(kind string) *cobra.Command {
@@ -3348,6 +3316,22 @@ func newCmdNodeUnset() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeValidate() *cobra.Command {
+	var options commands.CmdNodeConfigValidate
+	cmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "verify the node configuration syntax",
+		Aliases: []string{"validat", "valida", "valid", "val"},
+		Hidden:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodeVersion() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "version",
@@ -3428,5 +3412,22 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagSections(flags, &options.Sections)
+	return cmd
+}
+
+func newCmdObjectValidate(kind string) *cobra.Command {
+	var options commands.CmdObjectConfigValidate
+	cmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "verify the object configuration syntax",
+		Hidden:  true,
+		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	return cmd
 }
