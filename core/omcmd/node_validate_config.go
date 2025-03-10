@@ -11,13 +11,13 @@ import (
 )
 
 type (
-	CmdNodeValidateConfig struct {
+	CmdNodeConfigValidate struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeValidateConfig) Run() error {
+func (t *CmdNodeConfigValidate) Run() error {
 	alerts := make(xconfig.Alerts, 0)
 	alertsQ := make(chan xconfig.Alerts)
 	done := make(chan bool)

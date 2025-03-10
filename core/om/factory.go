@@ -1192,7 +1192,7 @@ func newCmdNodeDrivers() *cobra.Command {
 }
 
 func newCmdNodeEdit() *cobra.Command {
-	var options commands.CmdNodeEditConfig
+	var options commands.CmdNodeConfigEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
 		Short:   "edit the node configuration",
@@ -1211,7 +1211,7 @@ func newCmdNodeEdit() *cobra.Command {
 }
 
 func newCmdNodeConfigEdit() *cobra.Command {
-	var options commands.CmdNodeEditConfig
+	var options commands.CmdNodeConfigEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
 		Short:   "edit the node configuration",
@@ -1229,7 +1229,7 @@ func newCmdNodeConfigEdit() *cobra.Command {
 }
 
 func newCmdNodeEditConfig() *cobra.Command {
-	var options commands.CmdNodeEditConfig
+	var options commands.CmdNodeConfigEdit
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "edit the node configuration",
@@ -1248,7 +1248,7 @@ func newCmdNodeEditConfig() *cobra.Command {
 }
 
 func newCmdNodeConfigEval() *cobra.Command {
-	var options commands.CmdNodeEval
+	var options commands.CmdNodeConfigEval
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
@@ -1304,7 +1304,7 @@ func newCmdNodeFreeze() *cobra.Command {
 }
 
 func newCmdNodeConfigGet() *cobra.Command {
-	var options commands.CmdNodeGet
+	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "get a configuration key value",
@@ -1372,7 +1372,7 @@ func newCmdNodePRKey() *cobra.Command {
 }
 
 func newCmdNodeConfigShow() *cobra.Command {
-	var options commands.CmdNodePrintConfig
+	var options commands.CmdNodeConfigShow
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "show the node configuration",
@@ -1388,7 +1388,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 }
 
 func newCmdNodePrintConfig() *cobra.Command {
-	var options commands.CmdNodePrintConfig
+	var options commands.CmdNodeConfigShow
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "print the node configuration",
@@ -1605,7 +1605,7 @@ func newCmdNodeRelayStatus() *cobra.Command {
 }
 
 func newCmdNodeConfigUpdate() *cobra.Command {
-	var options commands.CmdNodeUpdate
+	var options commands.CmdNodeConfigUpdate
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "update the node configuration",
@@ -1659,7 +1659,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 }
 
 func newCmdNodeConfigValidate() *cobra.Command {
-	var options commands.CmdNodeValidateConfig
+	var options commands.CmdNodeConfigValidate
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the node configuration syntax",
@@ -1674,7 +1674,7 @@ func newCmdNodeConfigValidate() *cobra.Command {
 }
 
 func newCmdNodeValidate() *cobra.Command {
-	var options commands.CmdNodeValidateConfig
+	var options commands.CmdNodeConfigValidate
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the node configuration syntax",
@@ -1690,7 +1690,7 @@ func newCmdNodeValidate() *cobra.Command {
 }
 
 func newCmdNodeValidateConfig() *cobra.Command {
-	var options commands.CmdNodeValidateConfig
+	var options commands.CmdNodeConfigValidate
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "verify the node configuration syntax",
@@ -1811,7 +1811,7 @@ func newCmdObjectPush(kind string) *cobra.Command {
 }
 
 func newCmdObjectValidate(kind string) *cobra.Command {
-	var options commands.CmdObjectValidateConfig
+	var options commands.CmdObjectConfigValidate
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the object configuration syntax",
@@ -2007,7 +2007,7 @@ func newCmdObjectConfig(kind string) *cobra.Command {
 
 func newCmdObjectEdit(kind string) *cobra.Command {
 	var optionsGlobal commands.OptsGlobal
-	var optionsConfig commands.CmdObjectEditConfig
+	var optionsConfig commands.CmdObjectConfigEdit
 	var optionsKey commands.CmdObjectEditKey
 	cmd := &cobra.Command{
 		Use:     "edit",
@@ -2036,7 +2036,7 @@ func newCmdObjectEdit(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigEdit(kind string) *cobra.Command {
-	var options commands.CmdObjectEditConfig
+	var options commands.CmdObjectConfigEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
 		Short:   "edit selected object and instance configuration",
@@ -2054,7 +2054,7 @@ func newCmdObjectConfigEdit(kind string) *cobra.Command {
 }
 
 func newCmdObjectEditConfig(kind string) *cobra.Command {
-	var options commands.CmdObjectEditConfig
+	var options commands.CmdObjectConfigEdit
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "edit selected object and instance configuration",
@@ -2455,7 +2455,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigEval(kind string) *cobra.Command {
-	var options commands.CmdObjectEval
+	var options commands.CmdObjectConfigEval
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
@@ -2488,7 +2488,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigGet(kind string) *cobra.Command {
-	var options commands.CmdObjectGet
+	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "get a configuration key value",
@@ -2571,7 +2571,7 @@ func newCmdObjectMonitor(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigShow(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintConfig
+	var options commands.CmdObjectConfigShow
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "show the object configuration",
@@ -2587,7 +2587,7 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 }
 
 func newCmdObjectPrintConfig(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintConfig
+	var options commands.CmdObjectConfigShow
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "print the object configuration",
@@ -3159,7 +3159,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigUpdate(kind string) *cobra.Command {
-	var options commands.CmdObjectUpdate
+	var options commands.CmdObjectConfigUpdate
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "update configuration",
@@ -3178,7 +3178,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigValidate(kind string) *cobra.Command {
-	var options commands.CmdObjectValidateConfig
+	var options commands.CmdObjectConfigValidate
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the object configuration syntax",
@@ -3194,7 +3194,7 @@ func newCmdObjectConfigValidate(kind string) *cobra.Command {
 }
 
 func newCmdObjectValidateConfig(kind string) *cobra.Command {
-	var options commands.CmdObjectValidateConfig
+	var options commands.CmdObjectConfigValidate
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "verify the object configuration syntax",
@@ -3272,7 +3272,7 @@ func newCmdSecPKCS(kind string) *cobra.Command {
 
 // Hidden commands. Kept for backward compatibility.
 func newCmdNodeEval() *cobra.Command {
-	var options commands.CmdNodeEval
+	var options commands.CmdNodeConfigEval
 	cmd := &cobra.Command{
 		Use:    "eval",
 		Short:  "evaluate a configuration key value",
@@ -3292,7 +3292,7 @@ func newCmdNodeEval() *cobra.Command {
 }
 
 func newCmdNodeGet() *cobra.Command {
-	var options commands.CmdNodeGet
+	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
 		Use:    "get",
 		Short:  "get a configuration key value",
@@ -3361,7 +3361,7 @@ func newCmdNodeVersion() *cobra.Command {
 }
 
 func newCmdObjectEval(kind string) *cobra.Command {
-	var options commands.CmdObjectEval
+	var options commands.CmdObjectConfigEval
 	cmd := &cobra.Command{
 		Use:    "eval",
 		Short:  "evaluate a configuration key value",
@@ -3379,7 +3379,7 @@ func newCmdObjectEval(kind string) *cobra.Command {
 }
 
 func newCmdObjectGet(kind string) *cobra.Command {
-	var options commands.CmdObjectGet
+	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
 		Use:    "get",
 		Short:  "get a configuration key value",

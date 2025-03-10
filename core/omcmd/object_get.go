@@ -16,7 +16,7 @@ import (
 )
 
 type (
-	CmdObjectGet struct {
+	CmdObjectConfigGet struct {
 		OptsGlobal
 		Eval        bool
 		Impersonate string
@@ -24,7 +24,7 @@ type (
 	}
 )
 
-func (t *CmdObjectGet) Run(selector, kind string) error {
+func (t *CmdObjectConfigGet) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
@@ -88,7 +88,7 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectGet) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),

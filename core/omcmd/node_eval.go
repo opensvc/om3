@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdNodeEval struct {
+	CmdNodeConfigEval struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Keywords     []string
@@ -26,7 +26,7 @@ type (
 	}
 )
 
-func (t *CmdNodeEval) Run() error {
+func (t *CmdNodeConfigEval) Run() error {
 	if t.Local {
 		return t.doNodeAction()
 	}
@@ -89,7 +89,7 @@ func (t *CmdNodeEval) Run() error {
 	return nil
 }
 
-func (t *CmdNodeEval) doNodeAction() error {
+func (t *CmdNodeConfigEval) doNodeAction() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),

@@ -16,14 +16,14 @@ import (
 )
 
 type (
-	CmdObjectEval struct {
+	CmdObjectConfigEval struct {
 		OptsGlobal
 		Keywords    []string
 		Impersonate string
 	}
 )
 
-func (t *CmdObjectEval) Run(selector, kind string) error {
+func (t *CmdObjectConfigEval) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
@@ -81,7 +81,7 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectEval) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectConfigEval) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),

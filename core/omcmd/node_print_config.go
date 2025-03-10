@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	CmdNodePrintConfig struct {
+	CmdNodeConfigShow struct {
 		OptsGlobal
 		Eval         bool
 		Impersonate  string
@@ -14,7 +14,7 @@ type (
 	}
 )
 
-func (t *CmdNodePrintConfig) Run() error {
+func (t *CmdNodeConfigShow) Run() error {
 	return nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Local),

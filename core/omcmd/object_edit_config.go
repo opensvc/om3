@@ -13,14 +13,14 @@ import (
 )
 
 type (
-	CmdObjectEditConfig struct {
+	CmdObjectConfigEdit struct {
 		OptsGlobal
 		Discard bool
 		Recover bool
 	}
 )
 
-func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
+func (t *CmdObjectConfigEdit) do(selector string, c *client.T) error {
 	sel := objectselector.New(
 		selector,
 		objectselector.WithClient(c),
@@ -47,7 +47,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
+func (t *CmdObjectConfigEdit) doLocal(obj object.Configurer, c *client.T) error {
 	var err error
 	switch {
 	case t.Discard:
@@ -63,7 +63,7 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 	return nil
 }
 
-func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
+func (t *CmdObjectConfigEdit) doRemote(p naming.Path, c *client.T) error {
 	var (
 		err      error
 		refSum   []byte
@@ -89,7 +89,7 @@ func (t *CmdObjectEditConfig) doRemote(p naming.Path, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEditConfig) Run(selector, kind string) error {
+func (t *CmdObjectConfigEdit) Run(selector, kind string) error {
 	var (
 		c   *client.T
 		err error

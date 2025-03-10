@@ -18,7 +18,7 @@ import (
 )
 
 type (
-	CmdObjectPrintConfig struct {
+	CmdObjectConfigShow struct {
 		OptsGlobal
 		Eval        bool
 		Impersonate string
@@ -27,7 +27,7 @@ type (
 
 type result map[string]rawconfig.T
 
-func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
+func (t *CmdObjectConfigShow) extract(selector string) (result, error) {
 	data := make(result)
 	c, err := client.New()
 	if err != nil {
@@ -50,7 +50,7 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
+func (t *CmdObjectConfigShow) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
 	if data, err := t.extractFromDaemon(p, c); err == nil {
 		return data, nil
 	} else if p.Exists() {
@@ -60,7 +60,7 @@ func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig
 	}
 }
 
-func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) {
+func (t *CmdObjectConfigShow) extractLocal(p naming.Path) (rawconfig.T, error) {
 	obj, err := object.NewConfigurer(p)
 	if err != nil {
 		return rawconfig.T{}, err
@@ -74,7 +74,7 @@ func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) 
 	return obj.PrintConfig()
 }
 
-func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
+func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
@@ -97,7 +97,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (ra
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
+func (t *CmdObjectConfigShow) Run(selector, kind string) error {
 	var (
 		data result
 		err  error

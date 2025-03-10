@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	CmdNodeUpdate struct {
+	CmdNodeConfigUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Delete       []string
@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func (t *CmdNodeUpdate) Run() error {
+func (t *CmdNodeConfigUpdate) Run() error {
 	if t.Local {
 		return t.doLocal()
 	}
@@ -35,7 +35,7 @@ func (t *CmdNodeUpdate) Run() error {
 	return t.doLocal()
 }
 
-func (t *CmdNodeUpdate) doRemote() error {
+func (t *CmdNodeConfigUpdate) doRemote() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func (t *CmdNodeUpdate) doRemote() error {
 	return nil
 }
 
-func (t *CmdNodeUpdate) doLocal() error {
+func (t *CmdNodeConfigUpdate) doLocal() error {
 	o, err := object.NewNode()
 	if err != nil {
 		return err

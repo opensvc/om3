@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdNodeGet struct {
+	CmdNodeConfigGet struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Eval         bool
@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func (t *CmdNodeGet) Run() error {
+func (t *CmdNodeConfigGet) Run() error {
 	if t.Local {
 		return t.doNodeAction()
 	}
@@ -95,7 +95,7 @@ func (t *CmdNodeGet) Run() error {
 	return nil
 }
 
-func (t *CmdNodeGet) doNodeAction() error {
+func (t *CmdNodeConfigGet) doNodeAction() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),

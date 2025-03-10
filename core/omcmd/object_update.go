@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdObjectUpdate struct {
+	CmdObjectConfigUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Delete []string
@@ -26,7 +26,7 @@ type (
 	}
 )
 
-func (t *CmdObjectUpdate) Run(selector, kind string) error {
+func (t *CmdObjectConfigUpdate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
@@ -67,7 +67,7 @@ func (t *CmdObjectUpdate) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectUpdate) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectConfigUpdate) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
