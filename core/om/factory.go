@@ -3240,42 +3240,14 @@ func newCmdSecPKCS(kind string) *cobra.Command {
 
 // Hidden commands. Kept for backward compatibility.
 func newCmdNodeEval() *cobra.Command {
-	var options commands.CmdNodeConfigEval
-	cmd := &cobra.Command{
-		Use:    "eval",
-		Short:  "evaluate a configuration key value",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	cmd.MarkFlagRequired("kw")
+	cmd := newCmdNodeConfigEval()
+	cmd.Hidden = true
 	return cmd
 }
 
 func newCmdNodeGet() *cobra.Command {
-	var options commands.CmdNodeConfigGet
-	cmd := &cobra.Command{
-		Use:    "get",
-		Short:  "get a configuration key value",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd := newCmdNodeConfigGet()
+	cmd.Hidden = true
 	return cmd
 }
 
@@ -3317,18 +3289,9 @@ func newCmdNodeUnset() *cobra.Command {
 }
 
 func newCmdNodeValidate() *cobra.Command {
-	var options commands.CmdNodeConfigValidate
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "verify the node configuration syntax",
-		Aliases: []string{"validat", "valida", "valid", "val"},
-		Hidden:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	cmd := newCmdNodeConfigValidate()
+	cmd.Hidden = true
+	cmd.Aliases = []string{"validat", "valida", "valid", "val"}
 	return cmd
 }
 
@@ -3345,38 +3308,14 @@ func newCmdNodeVersion() *cobra.Command {
 }
 
 func newCmdObjectEval(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigEval
-	cmd := &cobra.Command{
-		Use:    "eval",
-		Short:  "evaluate a configuration key value",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	cmd.MarkFlagRequired("kw")
+	cmd := newCmdObjectConfigEval(kind)
+	cmd.Hidden = true
 	return cmd
 }
 
 func newCmdObjectGet(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigGet
-	cmd := &cobra.Command{
-		Use:    "get",
-		Short:  "get a configuration key value",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	cmd := newCmdObjectConfigGet(kind)
+	cmd.Hidden = true
 	return cmd
 }
 
@@ -3416,18 +3355,8 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 }
 
 func newCmdObjectValidate(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigValidate
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "verify the object configuration syntax",
-		Hidden:  true,
-		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
+	cmd := newCmdObjectConfigValidate(kind)
+	cmd.Hidden = true
+	cmd.Aliases = []string{"validat", "valida", "valid", "vali", "val"}
 	return cmd
 }
