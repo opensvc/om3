@@ -253,6 +253,9 @@ func (t Renderer) renderTab(options string) (string, error) {
 	}
 
 	sprintAligned := func(rows [][]string) {
+		if len(rows) == 0 {
+			return
+		}
 		columnWidths := calculateColumnWidths(rows)
 
 		for _, row := range rows {
