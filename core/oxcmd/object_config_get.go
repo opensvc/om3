@@ -12,7 +12,7 @@ import (
 )
 
 type (
-	CmdObjectGet struct {
+	CmdObjectConfigGet struct {
 		OptsGlobal
 		Eval        bool
 		Impersonate string
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectGet) Run(selector, kind string) error {
+func (t *CmdObjectConfigGet) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {

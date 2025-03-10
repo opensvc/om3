@@ -12,14 +12,14 @@ import (
 )
 
 type (
-	CmdObjectEval struct {
+	CmdObjectConfigEval struct {
 		OptsGlobal
 		Keywords    []string
 		Impersonate string
 	}
 )
 
-func (t *CmdObjectEval) Run(selector, kind string) error {
+func (t *CmdObjectConfigEval) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
