@@ -49,9 +49,15 @@ var (
 		Short:   "show modules, modulesets, rulesets, modules, attachments",
 		Aliases: []string{"sho", "sh", "s"},
 	}
+	cmdNodeConfig = &cobra.Command{
+		Use:     "config",
+		Short:   "configuration commands",
+		Aliases: []string{"conf", "c", "cf", "cfg"},
+	}
 	cmdNodePrint = &cobra.Command{
 		Use:     "print",
 		Short:   "print node discover information",
+		Hidden:  true,
 		Aliases: []string{"prin", "pri", "pr"},
 	}
 	cmdNodePush = &cobra.Command{
@@ -66,12 +72,15 @@ var (
 		Use:   "ssh",
 		Short: "ssh subsystem commands",
 	}
+	cmdNodeUpdate = &cobra.Command{
+		Use:    "update",
+		Hidden: true,
+	}
 	cmdNodeUpdateSSH = &cobra.Command{
 		Use:    "ssh",
 		Hidden: true,
 	}
 	cmdNodeEdit     = newCmdNodeEdit()
-	cmdNodeUpdate   = newCmdNodeUpdate()
 	cmdNodeValidate = newCmdNodeValidate()
 )
 
@@ -124,6 +133,7 @@ func init() {
 		newCmdNodeEditConfig(),
 	)
 	cmdNode.AddCommand(
+		cmdNodeConfig,
 		cmdNodeEdit,
 		cmdNodePrint,
 		cmdNodePush,
@@ -154,6 +164,13 @@ func init() {
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
 		newCmdNodeVersion(),
+	)
+	cmdNodeConfig.AddCommand(
+		newCmdNodeConfigEdit(),
+		newCmdNodeConfigEval(),
+		newCmdNodeConfigGet(),
+		newCmdNodeConfigShow(),
+		newCmdNodeConfigValidate(),
 	)
 	cmdNodePrint.AddCommand(
 		newCmdNodePrintConfig(),

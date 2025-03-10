@@ -4,6 +4,7 @@ func init() {
 	kind := "ccfg"
 
 	cmdObject := newCmdCcfg()
+	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectSSH := newCmdObjectSSH(kind)
@@ -15,6 +16,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddCommand(
+		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectSet,
 		cmdObjectSSH,
@@ -34,7 +36,14 @@ func init() {
 		newCmdObjectMonitor(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
+	)
+	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigEdit(kind),
+		newCmdObjectConfigEval(kind),
+		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigShow(kind),
+		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
