@@ -71,7 +71,7 @@ func (t *CmdObjectConfigShow) extractLocal(p naming.Path) (rawconfig.T, error) {
 		}
 		return obj.EvalConfig()
 	}
-	return obj.PrintConfig()
+	return obj.RawConfig()
 }
 
 func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {

@@ -14,11 +14,23 @@ import (
 	"github.com/opensvc/om3/util/plog"
 )
 
-func (t Node) Log() *plog.Logger {
+func (t *Node) RawConfig() (rawconfig.T, error) {
+	return t.config.Raw(), nil
+}
+
+func (t *Node) EvalConfig() (rawconfig.T, error) {
+	return t.config.RawEvaluatedAs("")
+}
+
+func (t *Node) EvalConfigAs(impersonate string) (rawconfig.T, error) {
+	return t.config.RawEvaluatedAs(impersonate)
+}
+
+func (t *Node) Log() *plog.Logger {
 	return t.log
 }
 
-func (t Node) Exists() bool {
+func (t *Node) Exists() bool {
 	return true
 }
 
@@ -59,15 +71,15 @@ func (t *Node) loadConfig() error {
 	return nil
 }
 
-func (t Node) Config() *xconfig.T {
+func (t *Node) Config() *xconfig.T {
 	return t.config
 }
 
-func (t Node) MergedConfig() *xconfig.T {
+func (t *Node) MergedConfig() *xconfig.T {
 	return t.mergedConfig
 }
 
-func (t Node) ID() uuid.UUID {
+func (t *Node) ID() uuid.UUID {
 	if t.id != uuid.Nil {
 		return t.id
 	}
@@ -90,7 +102,7 @@ func (t Node) ID() uuid.UUID {
 	return t.id
 }
 
-func (t Node) Env() string {
+func (t *Node) Env() string {
 	k := key.Parse("env")
 	if s := t.config.GetString(k); s != "" {
 		return s
@@ -98,12 +110,12 @@ func (t Node) Env() string {
 	return "TST"
 }
 
-func (t Node) App() string {
+func (t *Node) App() string {
 	k := key.Parse("app")
 	return t.config.GetString(k)
 }
 
-func (t Node) Dereference(ref string) (string, error) {
+func (t *Node) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
 		return t.ID().String(), nil
@@ -123,11 +135,11 @@ func (t Node) Dereference(ref string) (string, error) {
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
-func (t Node) PostCommit() error {
+func (t *Node) PostCommit() error {
 	return nil
 }
 
-func (t Node) Nodes() ([]string, error) {
+func (t *Node) Nodes() ([]string, error) {
 	k := key.T{Section: "cluster", Option: "nodes"}
 	nodes := t.MergedConfig().GetStrings(k)
 	if len(nodes) == 0 {
@@ -136,11 +148,11 @@ func (t Node) Nodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (t Node) DRPNodes() ([]string, error) {
+func (t *Node) DRPNodes() ([]string, error) {
 	return []string{}, nil
 }
 
-func (t Node) EncapNodes() ([]string, error) {
+func (t *Node) EncapNodes() ([]string, error) {
 	return []string{}, nil
 }
 

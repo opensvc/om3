@@ -4,8 +4,8 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 )
 
-// PrintConfig gets a keyword value
-func (t *core) PrintConfig() (rawconfig.T, error) {
+// RawConfig gets a keyword value
+func (t *core) RawConfig() (rawconfig.T, error) {
 	return t.config.Raw(), nil
 }
 

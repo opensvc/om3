@@ -91,7 +91,7 @@ func configData(p naming.Path, eval bool, impersonate string) (data *orderedmap.
 			config, err = o.EvalConfig()
 		}
 	} else {
-		config, err = o.PrintConfig()
+		config, err = o.RawConfig()
 	}
 	if err != nil {
 		return

@@ -18,7 +18,7 @@ type (
 		EditConfig() error
 		RecoverAndEditConfig() error
 		DiscardAndEditConfig() error
-		PrintConfig() (rawconfig.T, error)
+		RawConfig() (rawconfig.T, error)
 		EvalConfig() (rawconfig.T, error)
 		EvalConfigAs(string) (rawconfig.T, error)
 		Eval(key.T) (interface{}, error)

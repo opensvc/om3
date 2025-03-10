@@ -29,7 +29,7 @@ func (t *CmdNodeConfigShow) Run() error {
 			case t.Eval:
 				return n.EvalConfigAs(t.Impersonate)
 			default:
-				return n.PrintConfig()
+				return n.RawConfig()
 			}
 		}),
 	).Do()

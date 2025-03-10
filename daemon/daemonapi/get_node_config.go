@@ -85,7 +85,7 @@ func nodeConfigData(eval bool, impersonate string) (data *orderedmap.OrderedMap,
 			config, err = o.EvalConfig()
 		}
 	} else {
-		config, err = o.PrintConfig()
+		config, err = o.RawConfig()
 	}
 	if err != nil {
 		return
