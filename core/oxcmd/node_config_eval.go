@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	CmdNodeEval struct {
+	CmdNodeConfigEval struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Keywords     []string
@@ -24,7 +24,7 @@ type (
 	}
 )
 
-func (t *CmdNodeEval) Run() error {
+func (t *CmdNodeConfigEval) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err

@@ -6,7 +6,6 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -16,7 +15,7 @@ import (
 )
 
 type (
-	CmdNodeUpdate struct {
+	CmdNodeConfigUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Delete       []string
@@ -26,20 +25,17 @@ type (
 	}
 )
 
-func (t *CmdNodeUpdate) Run() error {
+func (t *CmdNodeConfigUpdate) Run() error {
 	if t.Local {
 		return t.doLocal()
 	}
 	if t.NodeSelector != "" {
 		return t.doRemote()
 	}
-	if !clientcontext.IsSet() {
-		return t.doLocal()
-	}
-	return fmt.Errorf("--node must be specified")
+	return t.doLocal()
 }
 
-func (t *CmdNodeUpdate) doRemote() error {
+func (t *CmdNodeConfigUpdate) doRemote() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -74,7 +70,7 @@ func (t *CmdNodeUpdate) doRemote() error {
 	return nil
 }
 
-func (t *CmdNodeUpdate) doLocal() error {
+func (t *CmdNodeConfigUpdate) doLocal() error {
 	o, err := object.NewNode()
 	if err != nil {
 		return err

@@ -6,13 +6,13 @@ import (
 )
 
 type (
-	CmdObjectValidateConfig struct {
+	CmdObjectConfigValidate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 	}
 )
 
-func (t *CmdObjectValidateConfig) Run(selector, kind string) error {
+func (t *CmdObjectConfigValidate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithColor(t.Color),

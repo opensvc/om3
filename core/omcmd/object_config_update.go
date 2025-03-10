@@ -4,26 +4,29 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/key"
 )
 
 type (
-	CmdObjectEval struct {
+	CmdObjectConfigUpdate struct {
 		OptsGlobal
-		Keywords    []string
-		Impersonate string
+		commoncmd.OptsLock
+		Delete []string
+		Set    []string
+		Unset  []string
 	}
 )
 
-func (t *CmdObjectEval) Run(selector, kind string) error {
+func (t *CmdObjectConfigUpdate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
@@ -37,22 +40,18 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
-		params := api.GetObjectConfigGetParams{}
-		params.Kw = &t.Keywords
-		v := true
-		params.Evaluate = &v
-		if t.Impersonate != "" {
-			params.Impersonate = &t.Impersonate
-		}
-		response, err := c.GetObjectConfigGetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		params := api.PostObjectConfigUpdateParams{}
+		params.Set = &t.Set
+		params.Unset = &t.Unset
+		params.Delete = &t.Delete
+		response, err := c.PostObjectConfigUpdateWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}
 		switch response.StatusCode() {
-		case 200:
-			l = append(l, response.JSON200.Items...)
+		case 204:
+			fmt.Printf("%s: committed\n", p)
 		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)
 		case 401:
@@ -65,23 +64,10 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
 		}
 	}
-
-	defaultOutput := "tab=data.value"
-	if len(l) > 1 {
-		defaultOutput = "tab=OBJECT:meta.object,NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-	}
-
-	output.Renderer{
-		DefaultOutput: defaultOutput,
-		Output:        t.Output,
-		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
-		Colorize:      rawconfig.Colorize,
-	}.Print()
 	return nil
 }
 
-func (t *CmdObjectEval) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectConfigUpdate) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
@@ -89,19 +75,13 @@ func (t *CmdObjectEval) doObjectAction(mergedSelector string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			c, err := object.NewConfigurer(p)
+			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}
-			for _, s := range t.Keywords {
-				kw := key.Parse(s)
-				if t.Impersonate != "" {
-					return c.EvalAs(kw, t.Impersonate)
-				} else {
-					return c.Eval(kw)
-				}
-			}
-			return nil, nil
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return nil, o.Update(ctx, t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set))
 		}),
 	).Do()
 }

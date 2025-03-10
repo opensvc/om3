@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdNodePrintConfig struct {
+	CmdNodeConfigShow struct {
 		OptsGlobal
 		Eval         bool
 		Impersonate  string
@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func (t *CmdNodePrintConfig) Run() error {
+func (t *CmdNodeConfigShow) Run() error {
 
 	var (
 		data      result
@@ -97,7 +97,7 @@ func (t *CmdNodePrintConfig) Run() error {
 	return err
 }
 
-func (t *CmdNodePrintConfig) extract(nodenames []string, c *client.T) (result, error) {
+func (t *CmdNodeConfigShow) extract(nodenames []string, c *client.T) (result, error) {
 
 	data := make(result)
 
@@ -140,7 +140,7 @@ func (t *CmdNodePrintConfig) extract(nodenames []string, c *client.T) (result, e
 	}
 }
 
-func (t *CmdNodePrintConfig) extractFromDaemon(ctx context.Context, nodename string, c *client.T) (rawconfig.T, error) {
+func (t *CmdNodeConfigShow) extractFromDaemon(ctx context.Context, nodename string, c *client.T) (rawconfig.T, error) {
 	params := api.GetNodeConfigParams{}
 	if t.Eval {
 		v := true

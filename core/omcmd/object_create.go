@@ -1,7 +1,6 @@
 package omcmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/cmd"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/freeze"
@@ -182,33 +180,6 @@ func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, e
 	return oc.Config().Raw().String(), nil
 }
 
-func (t *CmdObjectCreate) submit(pivot Pivot) error {
-	for pathStr, c := range pivot {
-		path, err := naming.ParsePath(pathStr)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err)
-		}
-		s, err := t.configFromRaw(path, c)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err)
-		}
-		body := bytes.NewBufferString(s)
-		resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), path.Namespace, path.Kind, path.Name, "application/octet-stream", body)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err)
-		}
-		switch resp.StatusCode() {
-		case 204:
-			fmt.Printf("%s: created\n", path)
-		case 400:
-			fmt.Printf("%s: %s\n", path, *resp.JSON400)
-		default:
-			return fmt.Errorf("%s: %s", path, resp.Status())
-		}
-	}
-	return nil
-}
-
 func (t CmdObjectCreate) fromPaths(paths naming.Paths) error {
 	pivot := make(Pivot)
 	multi := len(paths) > 1
@@ -279,9 +250,6 @@ func (t CmdObjectCreate) fromStdin() error {
 }
 
 func (t CmdObjectCreate) fromData(pivot Pivot) error {
-	if clientcontext.IsSet() {
-		return t.submit(pivot)
-	}
 	return t.localFromData(pivot)
 }
 

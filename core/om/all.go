@@ -10,6 +10,7 @@ func init() {
 	cmdObjectComplianceDetach := newCmdObjectComplianceDetach(kind)
 	cmdObjectComplianceShow := newCmdObjectComplianceShow(kind)
 	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
+	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
@@ -26,6 +27,7 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectCollector,
 		cmdObjectCompliance,
+		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPrint,
@@ -64,13 +66,20 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceLs(kind),
 	)
 	cmdObjectResource.AddCommand(
 		newCmdObjectResourceLs(kind),
+	)
+	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigEdit(kind),
+		newCmdObjectConfigEval(kind),
+		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigShow(kind),
+		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

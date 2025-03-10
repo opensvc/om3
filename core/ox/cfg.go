@@ -4,6 +4,7 @@ func init() {
 	kind := "cfg"
 
 	cmdObject := newCmdCfg()
+	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
@@ -15,6 +16,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddCommand(
+		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPrint,
@@ -39,6 +41,14 @@ func init() {
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
 		newCmdTUI(kind),
+	)
+	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigEdit(kind),
+		newCmdObjectConfigEval(kind),
+		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigShow(kind),
+		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

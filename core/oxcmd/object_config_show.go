@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
@@ -9,9 +9,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -19,7 +17,7 @@ import (
 )
 
 type (
-	CmdObjectPrintConfig struct {
+	CmdObjectConfigShow struct {
 		OptsGlobal
 		Eval        bool
 		Impersonate string
@@ -28,7 +26,7 @@ type (
 
 type result map[string]rawconfig.T
 
-func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
+func (t *CmdObjectConfigShow) extract(selector string) (result, error) {
 	data := make(result)
 	c, err := client.New()
 	if err != nil {
@@ -42,7 +40,7 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 		return data, err
 	}
 	for _, p := range paths {
-		if d, err := t.extractOne(p, c); err != nil {
+		if d, err := t.extractFromDaemon(p, c); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
 		} else {
 			data[p.String()] = d
@@ -51,33 +49,7 @@ func (t *CmdObjectPrintConfig) extract(selector string) (result, error) {
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) extractOne(p naming.Path, c *client.T) (rawconfig.T, error) {
-	if data, err := t.extractFromDaemon(p, c); err == nil {
-		return data, nil
-	} else if clientcontext.IsSet() {
-		return rawconfig.T{}, err
-	} else if p.Exists() {
-		return t.extractLocal(p)
-	} else {
-		return rawconfig.T{}, fmt.Errorf("%w, and no local instance to read from", err)
-	}
-}
-
-func (t *CmdObjectPrintConfig) extractLocal(p naming.Path) (rawconfig.T, error) {
-	obj, err := object.NewConfigurer(p)
-	if err != nil {
-		return rawconfig.T{}, err
-	}
-	if t.Eval {
-		if t.Impersonate != "" {
-			return obj.EvalConfigAs(t.Impersonate)
-		}
-		return obj.EvalConfig()
-	}
-	return obj.PrintConfig()
-}
-
-func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
+func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) (rawconfig.T, error) {
 	params := api.GetObjectConfigParams{
 		Evaluate:    &t.Eval,
 		Impersonate: &t.Impersonate,
@@ -100,7 +72,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p naming.Path, c *client.T) (ra
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
+func (t *CmdObjectConfigShow) Run(selector, kind string) error {
 	var (
 		data result
 		err  error

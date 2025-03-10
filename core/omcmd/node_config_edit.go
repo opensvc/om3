@@ -5,14 +5,14 @@ import (
 )
 
 type (
-	CmdNodeEditConfig struct {
+	CmdNodeConfigEdit struct {
 		OptsGlobal
 		Discard bool
 		Recover bool
 	}
 )
 
-func (t *CmdNodeEditConfig) Run() error {
+func (t *CmdNodeConfigEdit) Run() error {
 	n, err := object.NewNode()
 	if err != nil {
 		return err

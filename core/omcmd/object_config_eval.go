@@ -16,15 +16,14 @@ import (
 )
 
 type (
-	CmdObjectGet struct {
+	CmdObjectConfigEval struct {
 		OptsGlobal
-		Eval        bool
-		Impersonate string
 		Keywords    []string
+		Impersonate string
 	}
 )
 
-func (t *CmdObjectGet) Run(selector, kind string) error {
+func (t *CmdObjectConfigEval) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
@@ -42,10 +41,8 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 	for _, p := range paths {
 		params := api.GetObjectConfigGetParams{}
 		params.Kw = &t.Keywords
-		if t.Eval {
-			v := true
-			params.Evaluate = &v
-		}
+		v := true
+		params.Evaluate = &v
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
@@ -53,16 +50,16 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 		if err != nil {
 			return err
 		}
-		switch {
-		case response.JSON200 != nil:
+		switch response.StatusCode() {
+		case 200:
 			l = append(l, response.JSON200.Items...)
-		case response.JSON400 != nil:
+		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)
-		case response.JSON401 != nil:
+		case 401:
 			return fmt.Errorf("%s: %s", p, *response.JSON401)
-		case response.JSON403 != nil:
+		case 403:
 			return fmt.Errorf("%s: %s", p, *response.JSON403)
-		case response.JSON500 != nil:
+		case 500:
 			return fmt.Errorf("%s: %s", p, *response.JSON500)
 		default:
 			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
@@ -71,10 +68,7 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 
 	defaultOutput := "tab=data.value"
 	if len(l) > 1 {
-		defaultOutput = "tab=OBJECT:meta.object,NODE=meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-		if t.Eval {
-			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
-		}
+		defaultOutput = "tab=OBJECT:meta.object,NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
 	}
 
 	output.Renderer{
@@ -84,11 +78,10 @@ func (t *CmdObjectGet) Run(selector, kind string) error {
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
 	return nil
 }
 
-func (t *CmdObjectGet) doObjectAction(mergedSelector string) error {
+func (t *CmdObjectConfigEval) doObjectAction(mergedSelector string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
@@ -102,14 +95,10 @@ func (t *CmdObjectGet) doObjectAction(mergedSelector string) error {
 			}
 			for _, s := range t.Keywords {
 				kw := key.Parse(s)
-				if t.Eval {
-					if t.Impersonate != "" {
-						return c.EvalAs(kw, t.Impersonate)
-					} else {
-						return c.Eval(kw)
-					}
+				if t.Impersonate != "" {
+					return c.EvalAs(kw, t.Impersonate)
 				} else {
-					return c.Get(kw)
+					return c.Eval(kw)
 				}
 			}
 			return nil, nil

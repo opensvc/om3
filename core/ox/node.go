@@ -66,6 +66,10 @@ var (
 		Use:   "ssh",
 		Short: "ssh subsystem commands",
 	}
+	cmdNodeConfig = &cobra.Command{
+		Use:   "config",
+		Short: "node configuration commands",
+	}
 	cmdNodeSystem    = newCmdNodeSystem()
 	cmdNodeSystemSAN = newCmdNodeSystemSAN()
 	cmdNodeEdit      = newCmdNodeEdit()
@@ -133,12 +137,20 @@ func init() {
 		newCmdNodeSystemSANPathInitiator(),
 		newCmdNodeSystemSANPath(),
 	)
-
+	cmdNodeConfig.AddCommand(
+		newCmdNodeConfigEdit(),
+		newCmdNodeConfigEval(),
+		newCmdNodeConfigGet(),
+		newCmdNodeConfigShow(),
+		newCmdNodeConfigUpdate(),
+		newCmdNodeConfigValidate(),
+	)
 	cmdNodeEdit.AddCommand(
 		newCmdNodeEditConfig(),
 	)
 	cmdNode.AddCommand(
 		cmdNodeSystem,
+		cmdNodeConfig,
 		cmdNodeEdit,
 		cmdNodePrint,
 		cmdNodePush,

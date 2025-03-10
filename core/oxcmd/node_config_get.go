@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	CmdNodeGet struct {
+	CmdNodeConfigGet struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Eval         bool
@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func (t *CmdNodeGet) Run() error {
+func (t *CmdNodeConfigGet) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err

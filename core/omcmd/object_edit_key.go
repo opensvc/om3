@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
@@ -25,7 +24,6 @@ type (
 
 func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 	sel := objectselector.New(selector)
-	wc := clientcontext.IsSet()
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
@@ -44,7 +42,7 @@ func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 			fmt.Fprintf(os.Stderr, "skip %s: not a keystore\n", p)
 			continue
 		}
-		if !wc && p.Exists() {
+		if p.Exists() {
 			if err := t.doLocal(ks, c); err != nil {
 				return err
 			}

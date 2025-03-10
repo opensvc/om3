@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -21,7 +20,7 @@ func (t *CmdArrayLs) Run() error {
 		data []string
 		err  error
 	)
-	if t.Local || !clientcontext.IsSet() {
+	if t.Local {
 		data, err = t.extractLocal()
 	} else {
 		data, err = t.extractDaemon()

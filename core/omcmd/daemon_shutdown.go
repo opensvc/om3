@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/hostname"
@@ -28,11 +27,8 @@ func (t *CmdDaemonShutdown) Run() error {
 	if t.Local {
 		t.NodeSelector = hostname.Hostname()
 	}
-	if !clientcontext.IsSet() && t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if t.NodeSelector == "" {
-		return fmt.Errorf("--node must be specified")
+		t.NodeSelector = hostname.Hostname()
 	}
 	return t.doNodes()
 }

@@ -4,6 +4,7 @@ func init() {
 	kind := "sec"
 
 	cmdObject := newCmdSec()
+	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
@@ -15,6 +16,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddCommand(
+		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPrint,
@@ -38,9 +40,16 @@ func init() {
 		newCmdObjectPurge(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
 		newCmdSecGenCert(kind),
 		newCmdSecPKCS(kind),
+	)
+	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigEdit(kind),
+		newCmdObjectConfigEval(kind),
+		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigShow(kind),
+		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

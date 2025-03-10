@@ -1652,17 +1652,17 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 				t.errorf("%s", err)
 			}
 		case !t.viewPath.IsZero():
-			cmd := oxcmd.CmdObjectEditConfig{}
+			cmd := oxcmd.CmdObjectConfigEdit{}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)
 			}
 		case t.viewNode != "":
-			cmd := oxcmd.CmdNodeEditConfig{}
+			cmd := oxcmd.CmdNodeConfigEdit{}
 			if err := cmd.DoRemote(t.viewNode, t.client); err != nil {
 				t.errorf("%s", err)
 			}
 		case row == 0 && col == 1:
-			cmd := oxcmd.CmdObjectEditConfig{}
+			cmd := oxcmd.CmdObjectConfigEdit{}
 			if err := cmd.DoRemote(naming.Cluster, t.client); err != nil {
 				t.errorf("%s", err)
 			}

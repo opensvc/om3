@@ -17,17 +17,16 @@ import (
 )
 
 type (
-	CmdNodeGet struct {
+	CmdNodeConfigEval struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		Eval         bool
-		Impersonate  string
 		Keywords     []string
+		Impersonate  string
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeGet) Run() error {
+func (t *CmdNodeConfigEval) Run() error {
 	if t.Local {
 		return t.doNodeAction()
 	}
@@ -49,10 +48,8 @@ func (t *CmdNodeGet) Run() error {
 	for _, nodename := range nodenames {
 		params := api.GetNodeConfigGetParams{}
 		params.Kw = &t.Keywords
-		if t.Eval {
-			v := true
-			params.Evaluate = &v
-		}
+		v := true
+		params.Evaluate = &v
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
@@ -78,10 +75,7 @@ func (t *CmdNodeGet) Run() error {
 
 	defaultOutput := "tab=data.value"
 	if len(l) > 1 {
-		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-		if t.Eval {
-			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
-		}
+		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value,EVALUATED_AS:meta.evaluated_as"
 	}
 
 	output.Renderer{
@@ -95,7 +89,7 @@ func (t *CmdNodeGet) Run() error {
 	return nil
 }
 
-func (t *CmdNodeGet) doNodeAction() error {
+func (t *CmdNodeConfigEval) doNodeAction() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),
@@ -109,15 +103,7 @@ func (t *CmdNodeGet) doNodeAction() error {
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			for _, s := range t.Keywords {
-				if t.Eval {
-					if t.Impersonate != "" {
-						return n.EvalAs(ctx, s, t.Impersonate)
-					} else {
-						return n.Eval(ctx, s)
-					}
-				} else {
-					return n.Get(ctx, s)
-				}
+				return n.EvalAs(ctx, s, t.Impersonate)
 			}
 			return nil, nil
 		}),
