@@ -12,7 +12,7 @@ import (
 )
 
 type (
-	CmdNodeEditConfig struct {
+	CmdNodeConfigEdit struct {
 		OptsGlobal
 		NodeSelector string
 		Discard      bool
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdNodeEditConfig) DoRemote(nodename string, c *client.T) error {
+func (t *CmdNodeConfigEdit) DoRemote(nodename string, c *client.T) error {
 	var (
 		err      error
 		refSum   []byte
@@ -46,7 +46,7 @@ func (t *CmdNodeEditConfig) DoRemote(nodename string, c *client.T) error {
 	return nil
 }
 
-func (t *CmdNodeEditConfig) Run() error {
+func (t *CmdNodeConfigEdit) Run() error {
 	nodename := t.NodeSelector
 	if !clientcontext.IsSet() && nodename == "" {
 		nodename = hostname.Hostname()

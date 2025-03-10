@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	CmdNodeUpdate struct {
+	CmdNodeConfigUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Delete       []string
@@ -23,14 +23,14 @@ type (
 	}
 )
 
-func (t *CmdNodeUpdate) Run() error {
+func (t *CmdNodeConfigUpdate) Run() error {
 	if t.NodeSelector != "" {
 		return t.doRemote()
 	}
 	return fmt.Errorf("--node must be specified")
 }
 
-func (t *CmdNodeUpdate) doRemote() error {
+func (t *CmdNodeConfigUpdate) doRemote() error {
 	c, err := client.New()
 	if err != nil {
 		return err

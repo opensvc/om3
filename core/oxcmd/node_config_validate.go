@@ -5,13 +5,13 @@ import (
 )
 
 type (
-	CmdNodeValidateConfig struct {
+	CmdNodeConfigValidate struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeValidateConfig) Run() error {
+func (t *CmdNodeConfigValidate) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),

@@ -1663,7 +1663,7 @@ func newCmdNodeConfigValidate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the node configuration syntax",
-		Aliases: []string{"validat", "valida", "valid", "val"},
+		Aliases: []string{"val", "valid"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -3150,7 +3150,7 @@ func newCmdObjectConfigValidate(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "verify the object configuration syntax",
-		Aliases: []string{"val"},
+		Aliases: []string{"val", "valid"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},

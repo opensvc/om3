@@ -1657,7 +1657,7 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 				t.errorf("%s", err)
 			}
 		case t.viewNode != "":
-			cmd := oxcmd.CmdNodeEditConfig{}
+			cmd := oxcmd.CmdNodeConfigEdit{}
 			if err := cmd.DoRemote(t.viewNode, t.client); err != nil {
 				t.errorf("%s", err)
 			}

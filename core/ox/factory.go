@@ -1276,8 +1276,8 @@ func newCmdNodeSystemUser() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeEdit() *cobra.Command {
-	var options commands.CmdNodeEditConfig
+func newCmdNodeConfigEdit() *cobra.Command {
+	var options commands.CmdNodeConfigEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
 		Short:   "edit the node configuration",
@@ -1294,26 +1294,8 @@ func newCmdNodeEdit() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeEditConfig() *cobra.Command {
-	var options commands.CmdNodeEditConfig
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "edit the node configuration",
-		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagDiscard(flags, &options.Discard)
-	commoncmd.FlagRecover(flags, &options.Recover)
-	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
-	return cmd
-}
-
-func newCmdNodeEval() *cobra.Command {
-	var options commands.CmdNodeEval
+func newCmdNodeConfigEval() *cobra.Command {
+	var options commands.CmdNodeConfigEval
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
@@ -1328,6 +1310,77 @@ func newCmdNodeEval() *cobra.Command {
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagRequired("kw")
+	return cmd
+}
+
+func newCmdNodeConfigGet() *cobra.Command {
+	var options commands.CmdNodeConfigGet
+	cmd := &cobra.Command{
+		Use:   "get",
+		Short: "get a configuration key value",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagEval(flags, &options.Eval)
+	commoncmd.FlagImpersonate(flags, &options.Impersonate)
+	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeConfigShow() *cobra.Command {
+	var options commands.CmdNodeConfigShow
+	cmd := &cobra.Command{
+		Use:   "show",
+		Short: "show the node configuration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagEval(flags, &options.Eval)
+	commoncmd.FlagImpersonate(flags, &options.Impersonate)
+	return cmd
+}
+
+func newCmdNodeConfigUpdate() *cobra.Command {
+	var options commands.CmdNodeConfigUpdate
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "update the node configuration",
+		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagUpdateDelete(flags, &options.Delete)
+	commoncmd.FlagUpdateSet(flags, &options.Set)
+	commoncmd.FlagUpdateUnset(flags, &options.Unset)
+	return cmd
+}
+
+func newCmdNodeConfigValidate() *cobra.Command {
+	var options commands.CmdNodeConfigValidate
+	cmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "verify the node configuration syntax",
+		Aliases: []string{"valid", "val"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -1364,25 +1417,6 @@ func newCmdNodeFreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdNodeGet() *cobra.Command {
-	var options commands.CmdNodeGet
-	cmd := &cobra.Command{
-		Use:   "get",
-		Short: "get a configuration key value",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -1433,24 +1467,6 @@ func newCmdNodePRKey() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdNodePrintConfig() *cobra.Command {
-	var options commands.CmdNodePrintConfig
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "print the node configuration",
-		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	return cmd
 }
 
@@ -1570,44 +1586,6 @@ func newCmdNodeRelayStatus() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeSet() *cobra.Command {
-	var options commands.CmdNodeSet
-	cmd := &cobra.Command{
-		Use:    "set",
-		Short:  "set a configuration key value",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdNodeUpdate() *cobra.Command {
-	var options commands.CmdNodeUpdate
-	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "update the node configuration",
-		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagUpdateDelete(flags, &options.Delete)
-	commoncmd.FlagUpdateSet(flags, &options.Set)
-	commoncmd.FlagUpdateUnset(flags, &options.Unset)
-	return cmd
-}
-
 func newCmdNodeSysreport() *cobra.Command {
 	var options commands.CmdNodeSysreport
 	cmd := &cobra.Command{
@@ -1670,37 +1648,6 @@ func newCmdNodeVersion() *cobra.Command {
 			commands.CmdNodeVersion()
 		},
 	}
-	return cmd
-}
-
-func newCmdNodeValidate() *cobra.Command {
-	var options commands.CmdNodeValidateConfig
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "verify the node configuration syntax",
-		Aliases: []string{"validat", "valida", "valid", "val"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdNodeValidateConfig() *cobra.Command {
-	var options commands.CmdNodeValidateConfig
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "verify the node configuration syntax",
-		Aliases: []string{"confi", "conf", "con", "co", "c"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3182,5 +3129,78 @@ func newCmdTUI(kind string) *cobra.Command {
 			return tui.Run(&options)
 		},
 	}
+	return cmd
+}
+
+// Hidden commands. Kept for backward compatibility.
+func newCmdNodeEdit() *cobra.Command {
+	cmd := newCmdNodeConfigEdit()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodeEditConfig() *cobra.Command {
+	cmd := newCmdNodeConfigEdit()
+	cmd.Hidden = true
+	cmd.Use = "config"
+	cmd.Aliases = []string{"confi", "conf", "con", "co", "c", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdNodeEval() *cobra.Command {
+	cmd := newCmdNodeConfigEval()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodeGet() *cobra.Command {
+	cmd := newCmdNodeConfigGet()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodePrintConfig() *cobra.Command {
+	cmd := newCmdNodeConfigShow()
+	cmd.Hidden = true
+	cmd.Use = "config"
+	cmd.Aliases = []string{"confi", "conf", "con", "co", "c", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdNodeUpdate() *cobra.Command {
+	cmd := newCmdNodeConfigUpdate()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodeSet() *cobra.Command {
+	var options commands.CmdNodeSet
+	cmd := &cobra.Command{
+		Use:    "set",
+		Short:  "set a configuration key value",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeValidate() *cobra.Command {
+	cmd := newCmdNodeConfigValidate()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodeValidateConfig() *cobra.Command {
+	cmd := newCmdNodeConfigValidate()
+	cmd.Hidden = true
+	cmd.Use = "config"
+	cmd.Aliases = []string{"confi", "conf", "con", "co", "c"}
 	return cmd
 }
