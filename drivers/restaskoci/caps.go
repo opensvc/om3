@@ -1,6 +1,7 @@
-package restaskpodman
+package rescontaineroci
 
 import (
+	"github.com/opensvc/om3/drivers/rescontainerdocker"
 	"github.com/opensvc/om3/drivers/rescontainerpodman"
 	"github.com/opensvc/om3/util/capabilities"
 )
@@ -11,10 +12,10 @@ func init() {
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	drvCap := DrvID.Cap()
-	if !rescontainerpodman.IsGenuine() {
-		return l, nil
+	if rescontainerdocker.IsGenuine() {
+		l = append(l, drvID.Cap())
+	} else if rescontainerpodman.IsGenuine() {
+		l = append(l, drvID.Cap())
 	}
-	l = append(l, drvCap)
 	return l, nil
 }
