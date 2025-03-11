@@ -18,7 +18,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
-	github.com/deepmap/oapi-codegen v1.16.3
 	github.com/devans10/pugo/pure1 v0.0.0-20230602184138-1a5d930c950e
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
@@ -54,6 +53,7 @@ require (
 	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
+	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/opensvc/fcache v1.0.3
