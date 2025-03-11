@@ -2440,10 +2440,11 @@ func newCmdObjectPrintDevices(kind string) *cobra.Command {
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintResourceInfo
+	var options commands.CmdObjectResourceInfoList
 	cmd := &cobra.Command{
-		Use:   "resinfo",
-		Short: "print all objects resource info",
+		Use:    "resinfo",
+		Short:  "list the key-values reported by resources",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2600,10 +2601,11 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 }
 
 func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectPushResourceInfo
+	var options commands.CmdObjectResourceInfoPush
 	cmd := &cobra.Command{
+		Hidden:  true,
 		Use:     "resinfo",
-		Short:   "push resource info key/val pairs",
+		Short:   "push key-values reported by resources",
 		Aliases: []string{"res"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -2715,6 +2717,44 @@ func newCmdObjectResource(kind string) *cobra.Command {
 		Short:   "config, status, monitor, list",
 		Aliases: []string{"res"},
 	}
+}
+
+func newCmdObjectResourceInfo(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "info",
+		Short: "list, push the key-values reported by resources",
+	}
+}
+
+func newCmdObjectResourceInfoList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceInfoList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the key-values reported by resources",
+		Aliases: []string{"ls"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceInfoPush
+	cmd := &cobra.Command{
+		Use:   "push",
+		Short: "push key-values reported by resources",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
 }
 
 func newCmdObjectResourceList(kind string) *cobra.Command {
