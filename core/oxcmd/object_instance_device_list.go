@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	CmdObjectPrintDevices struct {
+	CmdObjectInstanceDeviceList struct {
 		OptsGlobal
 		NodeSelector string
 		Roles        string
@@ -21,19 +21,19 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) (objectdevice.L, error) {
+func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		return data, nil
 	}
 	return objectdevice.NewList(), fmt.Errorf("can not fetch daemon data")
 }
 
-func (t *CmdObjectPrintDevices) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
+func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
 	data := objectdevice.NewList()
 	return data, fmt.Errorf("todo")
 }
 
-func (t *CmdObjectPrintDevices) Run(selector, kind string) error {
+func (t *CmdObjectInstanceDeviceList) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {

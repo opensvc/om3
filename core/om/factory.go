@@ -1964,6 +1964,14 @@ func newCmdObjectInstance(kind string) *cobra.Command {
 	}
 }
 
+func newCmdObjectInstanceDevice(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "device",
+		Short:   "block device commands",
+		Aliases: []string{"dev"},
+	}
+}
+
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show",
@@ -2593,23 +2601,6 @@ func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintDevices(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintDevices
-	cmd := &cobra.Command{
-		Use:     "devices",
-		Short:   "print the object's exposed, used, base and claimed block devices",
-		Aliases: []string{"device", "devic", "devi", "dev", "devs", "de"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagDevRoles(flags, &options.Roles)
-	return cmd
-}
-
 func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintSchedule
 	cmd := &cobra.Command{
@@ -2623,6 +2614,23 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceDeviceList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "print the object's exposed, used, base and claimed block devices",
+		Aliases: []string{"ls"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDevRoles(flags, &options.Roles)
 	return cmd
 }
 
