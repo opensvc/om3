@@ -11,13 +11,13 @@ import (
 )
 
 type (
-	CmdPoolVolumeLs struct {
+	CmdPoolVolumeList struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdPoolVolumeLs) Run() error {
+func (t *CmdPoolVolumeList) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err

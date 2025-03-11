@@ -8,13 +8,13 @@ import (
 )
 
 type (
-	CmdNodeLs struct {
+	CmdNodeList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeLs) Run() error {
+func (t *CmdNodeList) Run() error {
 	var (
 		err      error
 		selector string

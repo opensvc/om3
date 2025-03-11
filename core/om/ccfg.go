@@ -32,7 +32,7 @@ func init() {
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
-		newCmdObjectLs(kind),
+		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),

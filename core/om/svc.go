@@ -52,7 +52,7 @@ func init() {
 		newCmdObjectGet(kind),
 		newCmdObjectGiveback(kind),
 		newCmdObjectLogs(kind),
-		newCmdObjectLs(kind),
+		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectProvision(kind),
@@ -84,10 +84,10 @@ func init() {
 		newCmdObjectEditConfig(kind),
 	)
 	cmdObjectResource.AddCommand(
-		newCmdObjectResourceLs(kind),
+		newCmdObjectResourceList(kind),
 	)
 	cmdObjectInstance.AddCommand(
-		newCmdObjectInstanceLs(kind),
+		newCmdObjectInstanceList(kind),
 	)
 	cmdObjectSet.AddCommand(
 		newCmdObjectSetProvisioned(kind),

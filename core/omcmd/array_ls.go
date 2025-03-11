@@ -10,12 +10,12 @@ import (
 )
 
 type (
-	CmdArrayLs struct {
+	CmdArrayList struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdArrayLs) Run() error {
+func (t *CmdArrayList) Run() error {
 	var (
 		data []string
 		err  error
@@ -41,7 +41,7 @@ func (t *CmdArrayLs) Run() error {
 	return err
 }
 
-func (t *CmdArrayLs) extractLocal() ([]string, error) {
+func (t *CmdArrayList) extractLocal() ([]string, error) {
 	n, err := object.NewNode()
 	if err != nil {
 		return []string{}, err
@@ -49,7 +49,7 @@ func (t *CmdArrayLs) extractLocal() ([]string, error) {
 	return n.ListArrays(), nil
 }
 
-func (t *CmdArrayLs) extractDaemon() ([]string, error) {
+func (t *CmdArrayList) extractDaemon() ([]string, error) {
 	var (
 		c   *client.T
 		err error

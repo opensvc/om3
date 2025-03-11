@@ -12,14 +12,14 @@ import (
 )
 
 type (
-	CmdObjectResourceLs struct {
+	CmdObjectResourceList struct {
 		OptsGlobal
 		commoncmd.OptsResourceSelector
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectResourceLs) Run(selector, kind string) error {
+func (t *CmdObjectResourceList) Run(selector, kind string) error {
 	defaultSelector := ""
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)
