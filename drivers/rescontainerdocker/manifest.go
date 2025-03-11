@@ -14,18 +14,16 @@ var (
 )
 
 var (
-	drvID    = driver.NewID(driver.GroupContainer, "docker")
-	altDrvID = driver.NewID(driver.GroupContainer, "oci")
+	DrvID = driver.NewID(driver.GroupContainer, "docker")
 )
 
 func init() {
-	driver.Register(drvID, New)
-	driver.Register(altDrvID, New)
+	driver.Register(DrvID, New)
 }
 
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
-	m := t.BT.ManifestWithID(drvID)
+	m := t.BT.ManifestWithID(DrvID)
 	m.Add(
 		keywords.Keyword{
 			Option:   "userns",

@@ -14,6 +14,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/rescontainerkvm"
 	_ "github.com/opensvc/om3/drivers/rescontainerlxc"
 	_ "github.com/opensvc/om3/drivers/rescontainerpodman"
+	_ "github.com/opensvc/om3/drivers/rescontaineroci"
 	_ "github.com/opensvc/om3/drivers/rescontainervbox"
 	_ "github.com/opensvc/om3/drivers/resdiskcrypt"
 	_ "github.com/opensvc/om3/drivers/resdiskdrbd"

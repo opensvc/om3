@@ -2,7 +2,6 @@ package rescontainerpodman
 
 import (
 	"embed"
-	"os/exec"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
@@ -15,20 +14,16 @@ var (
 )
 
 var (
-	drvID    = driver.NewID(driver.GroupContainer, "podman")
-	altDrvID = driver.NewID(driver.GroupContainer, "oci")
+	DrvID = driver.NewID(driver.GroupContainer, "podman")
 )
 
 func init() {
-	driver.Register(drvID, New)
-	if _, err := exec.LookPath("docker"); err != nil {
-		driver.Register(altDrvID, New)
-	}
+	driver.Register(DrvID, New)
 }
 
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
-	m := t.BT.ManifestWithID(drvID)
+	m := t.BT.ManifestWithID(DrvID)
 	m.Add(
 		manifest.ContextCNIConfig,
 		keywords.Keyword{
