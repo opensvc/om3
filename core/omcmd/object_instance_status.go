@@ -22,7 +22,7 @@ import (
 )
 
 type (
-	CmdObjectPrintStatus struct {
+	CmdObjectInstanceStatus struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		NodeSelector string
@@ -30,7 +30,7 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
+func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
 	var localData []object.Digest
 	if t.Refresh || t.Local {
 		localData, err = t.extractLocal(selector)
@@ -53,7 +53,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 	return
 }
 
-func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extractLocal(selector string) ([]object.Digest, error) {
 	data := make([]object.Digest, 0)
 	sel := objectselector.New(
 		selector,
@@ -109,7 +109,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 	return data, errs
 }
 
-func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extractFromDaemon(selector string, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
@@ -137,7 +137,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	return data, nil
 }
 
-func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
+func (t *CmdObjectInstanceStatus) getNodenames(c *client.T) ([]string, error) {
 	if t.NodeSelector != "" {
 		if nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
@@ -148,7 +148,7 @@ func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
 	return []string{hostname.Hostname()}, nil
 }
 
-func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
+func (t *CmdObjectInstanceStatus) Run(selector, kind string) error {
 	var (
 		data []object.Digest
 		err  error

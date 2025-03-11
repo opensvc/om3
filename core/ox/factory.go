@@ -2488,7 +2488,7 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintStatus
+	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
 		Use:     "status",
 		Aliases: []string{"statu", "stat", "sta", "st"},
