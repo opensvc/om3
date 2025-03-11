@@ -24,4 +24,5 @@ import (
 	_ "github.com/opensvc/om3/drivers/resipnetns"
 	_ "github.com/opensvc/om3/drivers/restaskdocker"
 	_ "github.com/opensvc/om3/drivers/restaskpodman"
+	_ "github.com/opensvc/om3/drivers/restaskoci"
 )

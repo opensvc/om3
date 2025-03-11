@@ -1,8 +1,7 @@
 package restaskdocker
 
 import (
-	"os/exec"
-
+	"github.com/opensvc/om3/drivers/rescontainerdocker"
 	"github.com/opensvc/om3/util/capabilities"
 )
 
@@ -12,11 +11,10 @@ func init() {
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	drvCap := drvID.Cap()
-	if _, err := exec.LookPath("docker"); err != nil {
+	drvCap := DrvID.Cap()
+	if !rescontainerdocker.IsGenuine() {
 		return l, nil
 	}
 	l = append(l, drvCap)
-	l = append(l, altDrvID.Cap())
 	return l, nil
 }

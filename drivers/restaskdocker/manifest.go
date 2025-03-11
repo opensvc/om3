@@ -18,18 +18,16 @@ var (
 )
 
 var (
-	drvID    = driver.NewID(driver.GroupTask, "docker")
-	altDrvID = driver.NewID(driver.GroupTask, "oci")
+	DrvID = driver.NewID(driver.GroupTask, "docker")
 )
 
 func init() {
-	driver.Register(drvID, New)
-	driver.Register(altDrvID, New)
+	driver.Register(DrvID, New)
 }
 
 // Manifest ...
 func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
+	m := manifest.New(DrvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(
 		manifest.ContextObjectPath,
