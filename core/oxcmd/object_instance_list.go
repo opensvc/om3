@@ -11,13 +11,13 @@ import (
 )
 
 type (
-	CmdObjectInstanceLs struct {
+	CmdObjectInstanceList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectInstanceLs) Run(selector, kind string) error {
+func (t *CmdObjectInstanceList) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "*/"+kind+"/*")
 
 	c, err := client.New()

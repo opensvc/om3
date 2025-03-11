@@ -163,7 +163,7 @@ func init() {
 		newCmdNodeDrain(),
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
-		newCmdNodeLs(),
+		newCmdNodeList(),
 		newCmdNodePRKey(),
 		newCmdNodePing(),
 		newCmdNodeFreeze(),

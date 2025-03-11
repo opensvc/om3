@@ -13,13 +13,13 @@ import (
 )
 
 type (
-	CmdPoolLs struct {
+	CmdPoolList struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdPoolLs) Run() error {
+func (t *CmdPoolList) Run() error {
 
 	render := func(items api.PoolItems) {
 		lines := make(unstructured.List, len(items))

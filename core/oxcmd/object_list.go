@@ -11,12 +11,12 @@ import (
 )
 
 type (
-	CmdObjectLs struct {
+	CmdObjectList struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdObjectLs) Run(selector, kind string) error {
+func (t *CmdObjectList) Run(selector, kind string) error {
 	defaultSelector := ""
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)

@@ -23,9 +23,9 @@ func init() {
 	)
 	cmdPool.AddCommand(
 		cmdPoolVolume,
-		newCmdPoolLs(),
+		newCmdPoolList(),
 	)
 	cmdPoolVolume.AddCommand(
-		newCmdPoolVolumeLs(),
+		newCmdPoolVolumeList(),
 	)
 }
