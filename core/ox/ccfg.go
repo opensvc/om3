@@ -51,7 +51,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectSSH.AddCommand(
 		newCmdClusterSSHTrust(),

@@ -59,7 +59,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectPrintConfig.AddCommand(
 		newCmdObjectPrintConfigMtime(kind),

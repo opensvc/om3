@@ -70,6 +70,7 @@ func init() {
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceList(kind),
+		newCmdObjectInstanceStatus(kind),
 	)
 	cmdObjectResource.AddCommand(
 		cmdObjectResourceInfo,

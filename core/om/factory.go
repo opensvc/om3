@@ -2642,7 +2642,7 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintStatus(kind string) *cobra.Command {
+func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintStatus
 	cmd := &cobra.Command{
 		Use:     "status",
@@ -3406,5 +3406,11 @@ func newCmdObjectValidate(kind string) *cobra.Command {
 	cmd := newCmdObjectConfigValidate(kind)
 	cmd.Hidden = true
 	cmd.Aliases = []string{"validat", "valida", "valid", "vali", "val"}
+	return cmd
+}
+
+func newCmdObjectPrintStatus(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceStatus(kind)
+	cmd.Hidden = true
 	return cmd
 }
