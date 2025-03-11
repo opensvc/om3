@@ -1,4 +1,4 @@
-package restaskpodman
+package restaskdocker
 
 import (
 	"embed"
