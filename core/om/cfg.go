@@ -31,7 +31,6 @@ func init() {
 		newCmdKeystoreRename(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
@@ -42,6 +41,7 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

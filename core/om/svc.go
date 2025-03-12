@@ -48,7 +48,6 @@ func init() {
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
 		newCmdObjectDisable(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEnable(kind),
 		newCmdObjectEnter(kind),
 		newCmdObjectEval(kind),
@@ -77,6 +76,7 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

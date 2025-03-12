@@ -46,7 +46,6 @@ func init() {
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectFreeze(kind),
 		newCmdObjectGet(kind),
@@ -88,6 +87,7 @@ func init() {
 		newCmdObjectResourceInfoPush(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

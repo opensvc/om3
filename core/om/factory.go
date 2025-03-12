@@ -2349,11 +2349,11 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectDoc(kind string) *cobra.Command {
-	var options commands.CmdObjectDoc
+func newCmdObjectConfigDoc(kind string) *cobra.Command {
+	var options commands.CmdObjectConfigDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
+		Short: "print the keyword documentation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
