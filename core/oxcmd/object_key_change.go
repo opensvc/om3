@@ -7,26 +7,60 @@ import (
 	"slices"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/keystore"
+	"github.com/opensvc/om3/util/uri"
 )
 
 type (
-	CmdKeystoreRename struct {
+	CmdObjectKeyChange struct {
 		OptsGlobal
-		Key string
-		To  string
+		commoncmd.OptsLock
+		Key   string
+		From  *string
+		Value *string
 	}
 )
 
-func (t *CmdKeystoreRename) Run(selector, kind string) error {
-	data := api.PatchObjectKVStoreJSONRequestBody{
-		api.PatchKVStoreEntry{
-			Key:    t.Key,
-			Name:   &t.To,
-			Action: api.Rename,
-		},
+func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
+	data := make(api.PatchObjectKVStoreJSONRequestBody, 0)
+
+	if value != nil {
+		data = append(data, api.PatchKVStoreEntry{
+			Key:    key,
+			String: value,
+			Action: action,
+		})
+		return data, nil
+	}
+	m, err := uri.ReadAllFrom(*from)
+	if err != nil {
+		return data, err
+	}
+	for path, b := range m {
+		k, err := keystore.FileToKey(path, key, *from)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, api.PatchKVStoreEntry{
+			Key:    k,
+			Bytes:  &b,
+			Action: action,
+		})
+	}
+	return data, nil
+}
+
+func (t *CmdObjectKeyChange) Run(selector, kind string) error {
+	if t.Value == nil && t.From == nil {
+		return fmt.Errorf("a value or value source mut be specified for a change action")
+	}
+	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Change)
+	if err != nil {
+		return err
 	}
 
 	ctx := context.Background()
@@ -52,7 +86,7 @@ func (t *CmdKeystoreRename) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdKeystoreRename) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
+func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
 	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err

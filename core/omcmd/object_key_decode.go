@@ -9,13 +9,13 @@ import (
 )
 
 type (
-	CmdKeystoreRemove struct {
+	CmdObjectKeyDecode struct {
 		OptsGlobal
 		Key string
 	}
 )
 
-func (t *CmdKeystoreRemove) Run(selector, kind string) error {
+func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -28,7 +28,7 @@ func (t *CmdKeystoreRemove) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.RemoveKey(t.Key)
+			return store.DecodeKey(t.Key)
 		}),
 	).Do()
 }

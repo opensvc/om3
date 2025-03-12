@@ -1,9 +1,12 @@
 package oxcmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"slices"
 
 	"github.com/opensvc/om3/core/client"
@@ -13,13 +16,13 @@ import (
 )
 
 type (
-	CmdKeystoreRemove struct {
+	CmdObjectKeyDecode struct {
 		OptsGlobal
 		Key string
 	}
 )
 
-func (t *CmdKeystoreRemove) Run(selector, kind string) error {
+func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 	ctx := context.Background()
 	c, err := client.New()
 	if err != nil {
@@ -43,17 +46,18 @@ func (t *CmdKeystoreRemove) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdKeystoreRemove) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
-	params := api.DeleteObjectKVStoreEntryParams{
+func (t *CmdObjectKeyDecode) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
+	params := api.GetObjectKVStoreEntryParams{
 		Key: t.Key,
 	}
-	response, err := c.DeleteObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	response, err := c.GetObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {
 		return err
 	}
 	switch response.StatusCode() {
-	case http.StatusNoContent:
-		return nil
+	case http.StatusOK:
+		_, err := io.Copy(os.Stdout, bytes.NewReader(response.Body))
+		return err
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", path, *response.JSON400)
 	case http.StatusUnauthorized:
@@ -62,6 +66,8 @@ func (t *CmdKeystoreRemove) RunForPath(ctx context.Context, c *client.T, path na
 		return fmt.Errorf("%s: %s", path, *response.JSON403)
 	case http.StatusInternalServerError:
 		return fmt.Errorf("%s: %s", path, *response.JSON500)
+	case http.StatusNotFound:
+		return fmt.Errorf("%s: %s", path, *response.JSON404)
 	default:
 		return fmt.Errorf("%s: unexpected response: %s", path, response.Status())
 	}

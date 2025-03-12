@@ -2,8 +2,8 @@ package omcmd
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -12,16 +12,15 @@ import (
 )
 
 type (
-	CmdKeystoreAdd struct {
+	CmdObjectKeyChange struct {
 		OptsGlobal
-		commoncmd.OptsLock
 		Key   string
 		From  *string
 		Value *string
 	}
 )
 
-func (t *CmdKeystoreAdd) Run(selector, kind string) error {
+func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -35,10 +34,10 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 				return nil, err
 			}
 			if t.Value != nil {
-				return nil, store.AddKey(t.Key, []byte(*t.Value))
+				return nil, store.ChangeKey(t.Key, []byte(*t.Value))
 			}
 			if t.From == nil {
-				return nil, store.AddKey(t.Key, []byte{})
+				return nil, fmt.Errorf("value or value source mut be specified for a change action")
 			}
 			m, err := uri.ReadAllFrom(*t.From)
 			if err != nil {
@@ -49,7 +48,8 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 				if err != nil {
 					return nil, err
 				}
-				if err := store.TransactionAddKey(k, b); err != nil {
+
+				if err := store.TransactionChangeKey(k, b); err != nil {
 					return nil, err
 				}
 			}

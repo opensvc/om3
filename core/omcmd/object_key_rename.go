@@ -9,13 +9,14 @@ import (
 )
 
 type (
-	CmdKeystoreDecode struct {
+	CmdObjectKeyRename struct {
 		OptsGlobal
 		Key string
+		To  string
 	}
 )
 
-func (t *CmdKeystoreDecode) Run(selector, kind string) error {
+func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -28,7 +29,7 @@ func (t *CmdKeystoreDecode) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return store.DecodeKey(t.Key)
+			return nil, store.RenameKey(t.Key, t.To)
 		}),
 	).Do()
 }
