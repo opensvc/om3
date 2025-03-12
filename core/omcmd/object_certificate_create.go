@@ -10,12 +10,12 @@ import (
 )
 
 type (
-	CmdSecGenCert struct {
+	CmdObjectCertificateCreate struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdSecGenCert) Run(selector, kind string) error {
+func (t *CmdObjectCertificateCreate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),

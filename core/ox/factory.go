@@ -1745,6 +1745,44 @@ func newCmdClusterSSHTrust() *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectCertificate(kind string) *cobra.Command {
+	return &cobra.Command{
+		Aliases: []string{"cert", "crt"},
+		Use:     "certificate",
+		Short:   "create, renew, delete certificates",
+	}
+}
+
+func newCmdObjectCertificateCreate(kind string) *cobra.Command {
+	var options commands.CmdSecGenCert
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "create a certificate and store as a keyset",
+		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificatePKCS
+	cmd := &cobra.Command{
+		Use:   "pkcs",
+		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdObjectClear(kind string) *cobra.Command {
 	var options commands.CmdObjectClear
 	cmd := &cobra.Command{
@@ -3084,36 +3122,6 @@ func newCmdPoolVolumeList() *cobra.Command {
 	return cmd
 }
 
-func newCmdSecGenCert(kind string) *cobra.Command {
-	var options commands.CmdSecGenCert
-	cmd := &cobra.Command{
-		Use:   "gencert",
-		Short: "create or replace a x509 certificate stored as a keyset",
-		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdSecPKCS(kind string) *cobra.Command {
-	var options commands.CmdPKCS
-	cmd := &cobra.Command{
-		Use:   "pkcs",
-		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdTUI(kind string) *cobra.Command {
 	var options tui.Options
 	cmd := &cobra.Command{
@@ -3486,4 +3494,24 @@ func newCmdKeystoreRename(kind string) *cobra.Command {
 	commoncmd.FlagKey(flags, &options.Key)
 	commoncmd.FlagKeyTo(flags, &options.To)
 	return cmd
+}
+
+func newCmdObjectGenCert(kind string) *cobra.Command {
+	cmd := newCmdObjectCertificateCreate(kind)
+	cmd.Hidden = true
+	cmd.Aliases = []string{"crt"}
+	return cmd
+}
+
+func newCmdObjectPKCS(kind string) *cobra.Command {
+	cmd := newCmdObjectCertificatePKCS(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectGen(kind string) *cobra.Command {
+	return &cobra.Command{
+		Hidden: true,
+		Use:    "gen",
+	}
 }

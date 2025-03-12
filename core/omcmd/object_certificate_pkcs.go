@@ -10,12 +10,12 @@ import (
 )
 
 type (
-	CmdPKCS struct {
+	CmdObjectCertificatePKCS struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdPKCS) Run(selector, kind string) error {
+func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
