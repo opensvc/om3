@@ -18,7 +18,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
-	github.com/devans10/pugo/pure1 v0.0.0-20230602184138-1a5d930c950e
+	github.com/devans10/pugo/pure1 v0.0.0-20241116160615-6bb8c469c9a0
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/fatih/color v1.16.0
@@ -103,7 +103,6 @@ require (
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0 // indirect
@@ -157,5 +156,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.2.2 // indirect
 )
-
-replace github.com/spf13/viper => github.com/opensvc/viper v1.7.0-osvc.1
