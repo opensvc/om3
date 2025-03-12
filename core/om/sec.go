@@ -47,6 +47,7 @@ func init() {
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -61,7 +62,7 @@ func init() {
 		cmdObjectPrintConfig,
 	)
 	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectPrintConfigMtime(kind),
+		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

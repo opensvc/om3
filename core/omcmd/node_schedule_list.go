@@ -16,13 +16,13 @@ import (
 )
 
 type (
-	CmdNodePrintSchedule struct {
+	CmdNodeScheduleList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodePrintSchedule) extract(c *client.T) (api.ScheduleList, error) {
+func (t *CmdNodeScheduleList) extract(c *client.T) (api.ScheduleList, error) {
 	var data api.ScheduleList
 	data.Kind = "ScheduleList"
 
@@ -42,7 +42,7 @@ func (t *CmdNodePrintSchedule) extract(c *client.T) (api.ScheduleList, error) {
 	return data, err
 }
 
-func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleItems, error) {
+func (t *CmdNodeScheduleList) extractLocal() (api.ScheduleItems, error) {
 	var items api.ScheduleItems
 
 	n, err := object.NewNode()
@@ -74,7 +74,7 @@ func (t *CmdNodePrintSchedule) extractLocal() (api.ScheduleItems, error) {
 	return items, nil
 }
 
-func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T) (api.ScheduleItems, error) {
+func (t *CmdNodeScheduleList) extractFromDaemon(c *client.T) (api.ScheduleItems, error) {
 	var l api.ScheduleItems
 
 	if t.NodeSelector == "" {
@@ -154,7 +154,7 @@ out:
 	return l, errs
 }
 
-func (t *CmdNodePrintSchedule) Run() error {
+func (t *CmdNodeScheduleList) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err

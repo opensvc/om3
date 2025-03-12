@@ -11,12 +11,12 @@ import (
 )
 
 type (
-	CmdObjectPrintConfigMtime struct {
+	CmdObjectConfigMtime struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdObjectPrintConfigMtime) Run(selector, kind string) error {
+func (t *CmdObjectConfigMtime) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),

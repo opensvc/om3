@@ -1391,24 +1391,6 @@ func newCmdNodeConfigShow() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintConfig() *cobra.Command {
-	var options commands.CmdNodeConfigShow
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "print the node configuration",
-		Hidden:  true,
-		Aliases: []string{"conf", "co", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	return cmd
-}
-
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceInfoList
 	cmd := &cobra.Command{
@@ -1425,12 +1407,12 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintSchedule() *cobra.Command {
-	var options commands.CmdNodePrintSchedule
+func newCmdNodeScheduleList() *cobra.Command {
+	var options commands.CmdNodeScheduleList
 	cmd := &cobra.Command{
-		Use:     "schedule",
-		Short:   "print selected objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		Use:     "list",
+		Short:   "list the node scheduler entries",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2568,26 +2550,8 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintConfig(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigShow
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "print the object configuration",
-		Hidden:  true,
-		Aliases: []string{"conf", "co", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	return cmd
-}
-
-func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintConfigMtime
+func newCmdObjectConfigMtime(kind string) *cobra.Command {
+	var options commands.CmdObjectConfigMtime
 	cmd := &cobra.Command{
 		Use:     "mtime",
 		Short:   "print the object configuration file modification time",
@@ -2601,12 +2565,21 @@ func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintSchedule(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintSchedule
+func newCmdObjectSchedule(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "schedule",
-		Short:   "print the objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		Short:   "object scheduler commands",
+		Aliases: []string{"sched"},
+	}
+	return cmd
+}
+
+func newCmdObjectScheduleList(kind string) *cobra.Command {
+	var options commands.CmdObjectScheduleList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the object scheduler entries",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3307,6 +3280,14 @@ func newCmdNodeGet() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePrintConfig() *cobra.Command {
+	cmd := newCmdNodeConfigShow()
+	cmd.Use = "config"
+	cmd.Hidden = true
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
+	return cmd
+}
+
 func newCmdNodeSet() *cobra.Command {
 	var options commands.CmdNodeSet
 	cmd := &cobra.Command{
@@ -3420,5 +3401,21 @@ func newCmdObjectValidate(kind string) *cobra.Command {
 func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	cmd := newCmdObjectInstanceStatus(kind)
 	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectPrintSchedule(kind string) *cobra.Command {
+	cmd := newCmdObjectScheduleList(kind)
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	return cmd
+}
+
+func newCmdObjectPrintConfig(kind string) *cobra.Command {
+	cmd := newCmdObjectConfigShow(kind)
+	cmd.Use = "config"
+	cmd.Hidden = true
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
 	return cmd
 }

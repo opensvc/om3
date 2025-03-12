@@ -62,6 +62,11 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
+	cmdNodeSchedule = &cobra.Command{
+		Use:     "schedule",
+		Short:   "node scheduler commands",
+		Aliases: []string{"sched"},
+	}
 	cmdNodeSSH = &cobra.Command{
 		Use:   "ssh",
 		Short: "ssh subsystem commands",
@@ -155,6 +160,7 @@ func init() {
 		cmdNodePrint,
 		cmdNodePush,
 		cmdNodeRelay,
+		cmdNodeSchedule,
 		cmdNodeSSH,
 		cmdNodeValidate,
 		newCmdNodeAbort(),
@@ -193,6 +199,9 @@ func init() {
 	)
 	cmdNodeRelay.AddCommand(
 		newCmdNodeRelayStatus(),
+	)
+	cmdNodeSchedule.AddCommand(
+		newCmdNodeScheduleList(),
 	)
 	cmdNodeSSH.AddCommand(
 		newCmdNodeSSHTrust(),

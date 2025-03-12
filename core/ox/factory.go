@@ -1103,6 +1103,22 @@ func newCmdNodePing() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeScheduleList() *cobra.Command {
+	var options commands.CmdNodeScheduleList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the node scheduler entries",
+		Aliases: []string{"ls"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdNodeSystem() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "system",
@@ -1474,14 +1490,23 @@ func newCmdNodePRKey() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintSchedule() *cobra.Command {
-	var options commands.CmdNodePrintSchedule
+func newCmdObjectSchedule(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "schedule",
-		Short:   "print selected objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		Short:   "object scheduler commands",
+		Aliases: []string{"sched"},
+	}
+	return cmd
+}
+
+func newCmdObjectScheduleList(kind string) *cobra.Command {
+	var options commands.CmdObjectScheduleList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the object scheduler entries",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
+			return options.Run(selectorFlag, kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2438,22 +2463,6 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintSchedule(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintSchedule
-	cmd := &cobra.Command{
-		Use:     "schedule",
-		Short:   "print the objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
 func newCmdObjectInstanceDevice(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "device",
@@ -3125,7 +3134,15 @@ func newCmdNodePrintConfig() *cobra.Command {
 	cmd := newCmdNodeConfigShow()
 	cmd.Hidden = true
 	cmd.Use = "config"
-	cmd.Aliases = []string{"confi", "conf", "con", "co", "c", "cf", "cfg"}
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdNodePrintSchedule() *cobra.Command {
+	cmd := newCmdNodeScheduleList()
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
 	return cmd
 }
 
@@ -3201,7 +3218,7 @@ func newCmdObjectGet(kind string) *cobra.Command {
 func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	cmd := newCmdObjectConfigShow(kind)
 	cmd.Hidden = true
-	cmd.Aliases = []string{"confi", "conf", "con", "co", "c", "cf", "cfg"}
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
 	return cmd
 }
 
@@ -3300,5 +3317,13 @@ func newCmdObjectValidateConfig(kind string) *cobra.Command {
 func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	cmd := newCmdObjectInstanceStatus(kind)
 	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectPrintSchedule(kind string) *cobra.Command {
+	cmd := newCmdObjectScheduleList(kind)
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
 	return cmd
 }
