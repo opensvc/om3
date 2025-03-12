@@ -113,6 +113,14 @@ func (t *T) HasOption(s string) bool {
 	})
 }
 
+// HasOptionAndAnyValue returns true if any of the elements is matching s with any value
+func (t *T) HasOptionAndAnyValue(s string) bool {
+	return t.hasOption(matchOpt{
+		Option: s,
+		Type:   matchAny,
+	})
+}
+
 // HasOptionAndMatchingValue returns true if any of the elements is matching s
 // and the following element is matching the v regular expression.
 func (t *T) HasOptionAndMatchingValue(s, v string) bool {
