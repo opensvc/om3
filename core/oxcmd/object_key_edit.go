@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
@@ -16,47 +15,28 @@ import (
 )
 
 type (
-	CmdObjectEditKey struct {
+	CmdObjectKeyEdit struct {
 		OptsGlobal
 		Key string
 	}
 )
 
-func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
-	sel := objectselector.New(selector)
+func (t *CmdObjectKeyEdit) do(selector string, c *client.T) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	sel := objectselector.New(selector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
 	for _, p := range paths {
-		obj, err := object.New(p)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip %s: %s\n", p, err)
-			continue
-		}
-		var (
-			ks object.Keystore
-			ok bool
-		)
-		if ks, ok = obj.(object.Keystore); !ok {
-			fmt.Fprintf(os.Stderr, "skip %s: not a keystore\n", p)
-			continue
-		}
-		if p.Exists() {
-			if err := t.doLocal(ks, c); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := t.doRemote(p, c); err != nil {
+		if err := t.DoRemote(p, c); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (t *CmdObjectEditKey) doLocal(obj object.Keystore, c *client.T) error {
-	return obj.EditKey(t.Key)
 }
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
@@ -92,7 +72,7 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 	return nil
 }
 
-func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {
+func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 	var (
 		err    error
 		refSum []byte
@@ -126,7 +106,7 @@ func (t *CmdObjectEditKey) doRemote(p naming.Path, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEditKey) Run(selector, kind string) error {
+func (t *CmdObjectKeyEdit) Run(selector, kind string) error {
 	var (
 		c   *client.T
 		err error

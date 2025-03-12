@@ -518,8 +518,8 @@ func newCmdDaemonStop() *cobra.Command {
 	return cmd
 }
 
-func newCmdKeystoreAdd(kind string) *cobra.Command {
-	var options commands.CmdKeystoreAdd
+func newCmdObjectKeyAdd(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyAdd
 	var from, value string
 	cmd := &cobra.Command{
 		Use:   "add",
@@ -537,15 +537,15 @@ func newCmdKeystoreAdd(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagKey(flags, &options.Key)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagValue(flags, &value)
+	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
 
-func newCmdKeystoreChange(kind string) *cobra.Command {
-	var options commands.CmdKeystoreChange
+func newCmdObjectKeyChange(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyChange
 	var from, value string
 	cmd := &cobra.Command{
 		Use:   "change",
@@ -562,15 +562,15 @@ func newCmdKeystoreChange(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagValue(flags, &value)
+	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
 
-func newCmdKeystoreDecode(kind string) *cobra.Command {
-	var options commands.CmdKeystoreDecode
+func newCmdObjectKeyDecode(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyDecode
 	cmd := &cobra.Command{
 		Use:   "decode",
 		Short: "decode a key value",
@@ -580,12 +580,28 @@ func newCmdKeystoreDecode(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Key)
 	return cmd
 }
 
-func newCmdKeystoreInstall(kind string) *cobra.Command {
-	var options commands.CmdKeystoreInstall
+func newCmdObjectKeyEdit(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyEdit
+	cmd := &cobra.Command{
+		Use:     "edit",
+		Short:   "edit a key value",
+		Aliases: []string{"ed"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagKeyName(flags, &options.Key)
+	return cmd
+}
+
+func newCmdObjectKeyInstall(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyInstall
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "install keys as files in volumes",
@@ -597,15 +613,16 @@ func newCmdKeystoreInstall(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Key)
 	return cmd
 }
 
-func newCmdKeystoreKeys(kind string) *cobra.Command {
-	var options commands.CmdKeystoreKeys
+func newCmdObjectKeyList(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyList
 	cmd := &cobra.Command{
-		Use:   "keys",
-		Short: "list the keys",
+		Use:     "list",
+		Short:   "list the keys",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -616,8 +633,8 @@ func newCmdKeystoreKeys(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdKeystoreRemove(kind string) *cobra.Command {
-	var options commands.CmdKeystoreRemove
+func newCmdObjectKeyRemove(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyRemove
 	cmd := &cobra.Command{
 		Use:   "remove",
 		Short: "remove a key",
@@ -627,12 +644,12 @@ func newCmdKeystoreRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Key)
 	return cmd
 }
 
-func newCmdKeystoreRename(kind string) *cobra.Command {
-	var options commands.CmdKeystoreRename
+func newCmdObjectKeyRename(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyRename
 	cmd := &cobra.Command{
 		Use:   "rename",
 		Short: "rename a key",
@@ -642,7 +659,7 @@ func newCmdKeystoreRename(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Key)
 	commoncmd.FlagKeyTo(flags, &options.To)
 	return cmd
 }
@@ -1391,24 +1408,6 @@ func newCmdNodeConfigShow() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintConfig() *cobra.Command {
-	var options commands.CmdNodeConfigShow
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "print the node configuration",
-		Hidden:  true,
-		Aliases: []string{"conf", "co", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	return cmd
-}
-
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceInfoList
 	cmd := &cobra.Command{
@@ -1425,12 +1424,12 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintSchedule() *cobra.Command {
-	var options commands.CmdNodePrintSchedule
+func newCmdNodeScheduleList() *cobra.Command {
+	var options commands.CmdNodeScheduleList
 	cmd := &cobra.Command{
-		Use:     "schedule",
-		Short:   "print selected objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		Use:     "list",
+		Short:   "list the node scheduler entries",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1769,6 +1768,44 @@ func newCmdClusterSSHTrust() *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectCertificate(kind string) *cobra.Command {
+	return &cobra.Command{
+		Aliases: []string{"cert", "crt"},
+		Use:     "certificate",
+		Short:   "create, renew, delete certificates",
+	}
+}
+
+func newCmdObjectCertificateCreate(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificateCreate
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "create a certificate and store as a keyset",
+		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificatePKCS
+	cmd := &cobra.Command{
+		Use:   "pkcs",
+		Short: "dump the private key and certificate chain in PKCS#12 format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdObjectClear(kind string) *cobra.Command {
 	var options commands.CmdObjectClear
 	cmd := &cobra.Command{
@@ -1972,6 +2009,13 @@ func newCmdObjectInstanceDevice(kind string) *cobra.Command {
 	}
 }
 
+func newCmdObjectKey(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "key",
+		Short: "keystore entry commands",
+	}
+}
+
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show",
@@ -1989,7 +2033,7 @@ func newCmdObjectConfig(kind string) *cobra.Command {
 func newCmdObjectEdit(kind string) *cobra.Command {
 	var optionsGlobal commands.OptsGlobal
 	var optionsConfig commands.CmdObjectConfigEdit
-	var optionsKey commands.CmdObjectEditKey
+	var optionsKey commands.CmdObjectKeyEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
 		Short:   "edit object configuration or keystore key",
@@ -2367,11 +2411,11 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectDoc(kind string) *cobra.Command {
-	var options commands.CmdObjectDoc
+func newCmdObjectConfigDoc(kind string) *cobra.Command {
+	var options commands.CmdObjectConfigDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
+		Short: "print the keyword documentation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2568,26 +2612,8 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintConfig(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigShow
-	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "print the object configuration",
-		Hidden:  true,
-		Aliases: []string{"conf", "co", "cf", "cfg"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	return cmd
-}
-
-func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintConfigMtime
+func newCmdObjectConfigMtime(kind string) *cobra.Command {
+	var options commands.CmdObjectConfigMtime
 	cmd := &cobra.Command{
 		Use:     "mtime",
 		Short:   "print the object configuration file modification time",
@@ -2601,12 +2627,21 @@ func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPrintSchedule(kind string) *cobra.Command {
-	var options commands.CmdObjectPrintSchedule
+func newCmdObjectSchedule(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "schedule",
-		Short:   "print the objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
+		Short:   "object scheduler commands",
+		Aliases: []string{"sched"},
+	}
+	return cmd
+}
+
+func newCmdObjectScheduleList(kind string) *cobra.Command {
+	var options commands.CmdObjectScheduleList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the object scheduler entries",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3264,36 +3299,6 @@ func newCmdPoolVolumeList() *cobra.Command {
 	return cmd
 }
 
-func newCmdSecGenCert(kind string) *cobra.Command {
-	var options commands.CmdSecGenCert
-	cmd := &cobra.Command{
-		Use:   "gencert",
-		Short: "create or replace a x509 certificate stored as a keyset",
-		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdSecPKCS(kind string) *cobra.Command {
-	var options commands.CmdPKCS
-	cmd := &cobra.Command{
-		Use:   "pkcs",
-		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 // Hidden commands. Kept for backward compatibility.
 func newCmdNodeEval() *cobra.Command {
 	cmd := newCmdNodeConfigEval()
@@ -3304,6 +3309,14 @@ func newCmdNodeEval() *cobra.Command {
 func newCmdNodeGet() *cobra.Command {
 	cmd := newCmdNodeConfigGet()
 	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodePrintConfig() *cobra.Command {
+	cmd := newCmdNodeConfigShow()
+	cmd.Use = "config"
+	cmd.Hidden = true
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
 	return cmd
 }
 
@@ -3419,6 +3432,178 @@ func newCmdObjectValidate(kind string) *cobra.Command {
 
 func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	cmd := newCmdObjectInstanceStatus(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectPrintSchedule(kind string) *cobra.Command {
+	cmd := newCmdObjectScheduleList(kind)
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	return cmd
+}
+
+func newCmdObjectPrintConfig(kind string) *cobra.Command {
+	cmd := newCmdObjectConfigShow(kind)
+	cmd.Use = "config"
+	cmd.Hidden = true
+	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdKeystoreAdd(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyAdd
+	var from, value string
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "add",
+		Short:  "add new keys",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("from").Changed {
+				options.From = &from
+			}
+			if cmd.Flag("value").Changed {
+				options.Value = &value
+			}
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagFrom(flags, &from)
+	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyValue(flags, &value)
+	cmd.MarkFlagsMutuallyExclusive("from", "value")
+	return cmd
+}
+
+func newCmdKeystoreChange(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyChange
+	var from, value string
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "change",
+		Short:  "change existing keys value",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("from").Changed {
+				options.From = &from
+			}
+			if cmd.Flag("value").Changed {
+				options.Value = &value
+			}
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagFrom(flags, &from)
+	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyValue(flags, &value)
+	cmd.MarkFlagsMutuallyExclusive("from", "value")
+	return cmd
+}
+
+func newCmdKeystoreDecode(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyDecode
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "decode",
+		Short:  "decode a key value",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagKeyName(flags, &options.Key)
+	return cmd
+}
+
+func newCmdKeystoreInstall(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyInstall
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "install",
+		Short:  "install keys as files in volumes",
+		Long:   "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value change all projections are automatically refreshed. This command triggers manually the same operations.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagKey(flags, &options.Key)
+	return cmd
+}
+
+func newCmdKeystoreKeys(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyList
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "keys",
+		Short:  "list the keys",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagMatch(flags, &options.Match)
+	return cmd
+}
+
+func newCmdKeystoreRemove(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyRemove
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "remove",
+		Short:  "remove a key",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagKey(flags, &options.Key)
+	return cmd
+}
+
+func newCmdKeystoreRename(kind string) *cobra.Command {
+	var options commands.CmdObjectKeyRename
+	cmd := &cobra.Command{
+		Hidden: true,
+		Use:    "rename",
+		Short:  "rename a key",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKeyTo(flags, &options.To)
+	return cmd
+}
+
+func newCmdObjectGen(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:    "gen",
+		Hidden: true,
+	}
+}
+
+func newCmdObjectGenCert(kind string) *cobra.Command {
+	cmd := newCmdObjectCertificateCreate(kind)
+	cmd.Hidden = true
+	cmd.Aliases = []string{"crt"}
+	return cmd
+}
+
+func newCmdObjectPKCS(kind string) *cobra.Command {
+	cmd := newCmdObjectCertificatePKCS(kind)
 	cmd.Hidden = true
 	return cmd
 }

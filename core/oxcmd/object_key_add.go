@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	CmdKeystoreAdd struct {
+	CmdObjectKeyAdd struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		Key   string
@@ -23,7 +23,7 @@ type (
 	}
 )
 
-func (t *CmdKeystoreAdd) Run(selector, kind string) error {
+func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 	if t.Value == nil && t.From == nil {
 		s := ""
 		t.Value = &s
@@ -56,7 +56,7 @@ func (t *CmdKeystoreAdd) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdKeystoreAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
+func (t *CmdObjectKeyAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
 	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err

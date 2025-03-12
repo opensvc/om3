@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	CmdObjectDoc struct {
+	CmdObjectConfigDoc struct {
 		OptsGlobal
 		Keyword string
 		Driver  string
@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func (t *CmdObjectDoc) Run(selector, kind string) error {
+func (t *CmdObjectConfigDoc) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if selector != "" {
 		return objectaction.New(

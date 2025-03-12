@@ -8,7 +8,7 @@ import (
 
 var (
 	KeystoreErrExist    = errors.New("key already exists")
-	KeystoreErrKeyEmpty = errors.New("key is empty")
+	KeystoreErrKeyEmpty = errors.New("key name is empty")
 	KeystoreErrNotExist = errors.New("key does not exist")
 )
 

@@ -5,14 +5,14 @@ import (
 )
 
 type (
-	CmdKeystoreInstall struct {
+	CmdObjectKeyInstall struct {
 		OptsGlobal
 		NodeSelector string
 		Key          string
 	}
 )
 
-func (t *CmdKeystoreInstall) Run(selector, kind string) error {
+func (t *CmdObjectKeyInstall) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithColor(t.Color),

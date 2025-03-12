@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -9,13 +10,12 @@ import (
 )
 
 type (
-	CmdKeystoreDecode struct {
+	CmdObjectCertificateCreate struct {
 		OptsGlobal
-		Key string
 	}
 )
 
-func (t *CmdKeystoreDecode) Run(selector, kind string) error {
+func (t *CmdObjectCertificateCreate) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -24,11 +24,15 @@ func (t *CmdKeystoreDecode) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			store, err := object.NewKeystore(p)
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}
-			return store.DecodeKey(t.Key)
+			store, ok := o.(object.SecureKeystore)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a secure keystore", o)
+			}
+			return nil, store.GenCert()
 		}),
 	).Do()
 }

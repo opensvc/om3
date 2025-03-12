@@ -28,7 +28,6 @@ func init() {
 		newCmdClusterThaw(),
 		newCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
@@ -38,9 +37,11 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -52,7 +53,7 @@ func init() {
 		cmdObjectPrintConfig,
 	)
 	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectPrintConfigMtime(kind),
+		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectSSH.AddCommand(
 		newCmdClusterSSHTrust(),

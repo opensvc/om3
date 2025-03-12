@@ -15,13 +15,13 @@ import (
 )
 
 type (
-	CmdObjectPrintSchedule struct {
+	CmdObjectScheduleList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
+func (t *CmdObjectScheduleList) Run(selector, kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err

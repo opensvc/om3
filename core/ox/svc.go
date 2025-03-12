@@ -15,6 +15,7 @@ func init() {
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectInstanceDevice := newCmdObjectInstanceDevice(kind)
+	cmdObjectSchedule := newCmdObjectSchedule(kind)
 	cmdObjectResource := newCmdObjectResource(kind)
 	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
@@ -37,6 +38,7 @@ func init() {
 		cmdObjectPush,
 		cmdObjectResource,
 		cmdObjectSet,
+		cmdObjectSchedule,
 		cmdObjectSync,
 		cmdObjectValidate,
 		newCmdObjectAbort(kind),
@@ -101,6 +103,9 @@ func init() {
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),
+	)
+	cmdObjectSchedule.AddCommand(
+		newCmdObjectScheduleList(kind),
 	)
 	cmdObjectSet.AddCommand(
 		newCmdObjectSetProvisioned(kind),

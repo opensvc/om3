@@ -6,6 +6,7 @@ func init() {
 	cmdObject := newCmdCfg()
 	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
+	cmdObjectKey := newCmdObjectKey(kind)
 	cmdObjectInstance := newCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
@@ -18,6 +19,7 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectConfig,
 		cmdObjectEdit,
+		cmdObjectKey,
 		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectSet,
@@ -52,6 +54,16 @@ func init() {
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
+	)
+	cmdObjectKey.AddCommand(
+		newCmdObjectKeyAdd(kind),
+		newCmdObjectKeyChange(kind),
+		newCmdObjectKeyDecode(kind),
+		newCmdObjectKeyEdit(kind),
+		newCmdObjectKeyInstall(kind),
+		newCmdObjectKeyList(kind),
+		newCmdObjectKeyRemove(kind),
+		newCmdObjectKeyRename(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceList(kind),

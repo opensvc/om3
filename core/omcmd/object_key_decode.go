@@ -2,7 +2,6 @@ package omcmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -10,12 +9,13 @@ import (
 )
 
 type (
-	CmdPKCS struct {
+	CmdObjectKeyDecode struct {
 		OptsGlobal
+		Key string
 	}
 )
 
-func (t *CmdPKCS) Run(selector, kind string) error {
+func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -24,15 +24,11 @@ func (t *CmdPKCS) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.New(p)
+			store, err := object.NewKeystore(p)
 			if err != nil {
 				return nil, err
 			}
-			store, ok := o.(object.SecureKeystore)
-			if !ok {
-				return nil, fmt.Errorf("%s is not a secure keystore", o)
-			}
-			return store.PKCS()
+			return store.DecodeKey(t.Key)
 		}),
 	).Do()
 }

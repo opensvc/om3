@@ -15,13 +15,13 @@ import (
 )
 
 type (
-	CmdKeystoreKeys struct {
+	CmdObjectKeyList struct {
 		OptsGlobal
 		Match string
 	}
 )
 
-func (t *CmdKeystoreKeys) Run(selector, kind string) error {
+func (t *CmdObjectKeyList) Run(selector, kind string) error {
 	ctx := context.Background()
 	c, err := client.New()
 	if err != nil {
@@ -58,7 +58,7 @@ func (t *CmdKeystoreKeys) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdKeystoreKeys) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.KVStoreKeyListItems, error) {
+func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.KVStoreKeyListItems, error) {
 	response, err := c.GetObjectKVStoreKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return nil, err

@@ -18,6 +18,7 @@ func init() {
 	cmdObjectResource := newCmdObjectResource(kind)
 	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectSchedule := newCmdObjectSchedule(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
@@ -36,6 +37,7 @@ func init() {
 		cmdObjectPrint,
 		cmdObjectPush,
 		cmdObjectResource,
+		cmdObjectSchedule,
 		cmdObjectSet,
 		cmdObjectSync,
 		cmdObjectValidate,
@@ -46,7 +48,6 @@ func init() {
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
 		newCmdObjectDisable(kind),
-		newCmdObjectDoc(kind),
 		newCmdObjectEnable(kind),
 		newCmdObjectEnter(kind),
 		newCmdObjectEval(kind),
@@ -75,9 +76,11 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -101,6 +104,9 @@ func init() {
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),
 	)
+	cmdObjectSchedule.AddCommand(
+		newCmdObjectScheduleList(kind),
+	)
 	cmdObjectSet.AddCommand(
 		newCmdObjectSetProvisioned(kind),
 		newCmdObjectSetUnprovisioned(kind),
@@ -112,7 +118,7 @@ func init() {
 		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectPrintConfigMtime(kind),
+		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectPush.AddCommand(
 		newCmdObjectPushResourceInfo(kind),

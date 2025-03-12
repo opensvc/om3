@@ -18,13 +18,13 @@ import (
 )
 
 type (
-	CmdObjectPrintSchedule struct {
+	CmdObjectScheduleList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) (api.ScheduleList, error) {
+func (t *CmdObjectScheduleList) extract(selector string, c *client.T) (api.ScheduleList, error) {
 	if t.Local {
 		return t.extractLocal(selector)
 	}
@@ -34,7 +34,7 @@ func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) (api.Sche
 	return t.extractLocal(selector)
 }
 
-func (t *CmdObjectPrintSchedule) extractLocal(selector string) (api.ScheduleList, error) {
+func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList, error) {
 	data := api.ScheduleList{
 		Kind: "ScheduleList",
 	}
@@ -84,7 +84,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) (api.ScheduleList
 	return data, nil
 }
 
-func (t *CmdObjectPrintSchedule) extractFromDaemons(selector string, c *client.T) (api.ScheduleList, error) {
+func (t *CmdObjectScheduleList) extractFromDaemons(selector string, c *client.T) (api.ScheduleList, error) {
 	var (
 		errs error
 		data api.ScheduleList
@@ -113,7 +113,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemons(selector string, c *client.T
 	return data, errs
 }
 
-func (t *CmdObjectPrintSchedule) extractFromDaemon(nodename string, path naming.Path, c *client.T) (api.ScheduleList, error) {
+func (t *CmdObjectScheduleList) extractFromDaemon(nodename string, path naming.Path, c *client.T) (api.ScheduleList, error) {
 	resp, err := c.GetInstanceScheduleWithResponse(context.Background(), nodename, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return api.ScheduleList{}, err
@@ -130,7 +130,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemon(nodename string, path naming.
 	}
 }
 
-func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
+func (t *CmdObjectScheduleList) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {

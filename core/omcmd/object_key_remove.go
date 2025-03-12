@@ -9,13 +9,13 @@ import (
 )
 
 type (
-	CmdKeystoreKeys struct {
+	CmdObjectKeyRemove struct {
 		OptsGlobal
-		Match string
+		Key string
 	}
 )
 
-func (t *CmdKeystoreKeys) Run(selector, kind string) error {
+func (t *CmdObjectKeyRemove) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -28,7 +28,7 @@ func (t *CmdKeystoreKeys) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return store.MatchingKeys(t.Match)
+			return nil, store.RemoveKey(t.Key)
 		}),
 	).Do()
 }

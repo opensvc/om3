@@ -310,7 +310,11 @@ func FlagFrom(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin)")
 }
 
-func FlagValue(flagSet *pflag.FlagSet, p *string) {
+func FlagKeyName(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "name", "", "the key name")
+}
+
+func FlagKeyValue(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "value", "", "the key value")
 }
 

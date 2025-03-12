@@ -285,14 +285,14 @@ func (t *T) createJob(e schedule.Entry) {
 		return
 	}
 	if next.Before(now) {
-		logger.Warnf("last %s, next %s is in the past", e.LastRunAt, next)
+		logger.Warnf("next %s is in the past", next)
 		t.jobs.Del(e)
 		return
 	}
 	e.NextRunAt = next
 	delay := next.Sub(now)
 	if delay >= time.Second {
-		logger.Infof("next at %s (in %s)", next, delay)
+		logger.Debugf("next at %s (in %s)", next, delay)
 	}
 	t.jobs.Add(e, delay, t.events)
 	return
