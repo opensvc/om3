@@ -350,10 +350,10 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	}
 	idx := stringslice.Index(nodename, nodes)
 	ipsPerNode, err := t.IPsPerNode()
-	ipsPerNode = 1 << bits.Len(uint(ipsPerNode)-1)
 	if err != nil {
 		return nil, err
 	}
+	ipsPerNode = 1 << bits.Len(uint(ipsPerNode)-1)
 	ipnet, err := t.IPNet()
 	if err != nil {
 		return nil, err

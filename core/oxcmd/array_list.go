@@ -1,29 +1,27 @@
-package omcmd
+package oxcmd
 
 import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
-	CmdArrayLs struct {
+	CmdArrayList struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdArrayLs) Run() error {
+func (t *CmdArrayList) Run() error {
 	var (
 		data []string
 		err  error
 	)
-	if t.Local {
-		data, err = t.extractLocal()
-	} else {
-		data, err = t.extractDaemon()
+	data, err = t.extractDaemon()
+	if err != nil {
+		return err
 	}
 	output.Renderer{
 		Output: t.Output,
@@ -38,18 +36,10 @@ func (t *CmdArrayLs) Run() error {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return err
+	return nil
 }
 
-func (t *CmdArrayLs) extractLocal() ([]string, error) {
-	n, err := object.NewNode()
-	if err != nil {
-		return []string{}, err
-	}
-	return n.ListArrays(), nil
-}
-
-func (t *CmdArrayLs) extractDaemon() ([]string, error) {
+func (t *CmdArrayList) extractDaemon() ([]string, error) {
 	var (
 		c   *client.T
 		err error

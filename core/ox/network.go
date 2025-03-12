@@ -23,10 +23,10 @@ func init() {
 	)
 	cmdNetwork.AddCommand(
 		cmdNetworkIP,
-		newCmdNetworkLs(),
+		newCmdNetworkList(),
 		newCmdNetworkSetup(),
 	)
 	cmdNetworkIP.AddCommand(
-		newCmdNetworkIPLs(),
+		newCmdNetworkIPList(),
 	)
 }

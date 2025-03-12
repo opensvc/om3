@@ -19,7 +19,7 @@ import (
 )
 
 type (
-	CmdObjectPrintStatus struct {
+	CmdObjectInstanceStatus struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		NodeSelector string
@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
@@ -55,7 +55,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.D
 	return data, nil
 }
 
-func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
+func (t *CmdObjectInstanceStatus) getNodenames(c *client.T) ([]string, error) {
 	if t.NodeSelector != "" {
 		if nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
@@ -73,7 +73,7 @@ func (t *CmdObjectPrintStatus) getNodenames(c *client.T) ([]string, error) {
 	return []string{}, nil
 }
 
-func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
+func (t *CmdObjectInstanceStatus) Run(selector, kind string) error {
 	var (
 		data []object.Digest
 		err  error

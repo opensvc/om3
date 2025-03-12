@@ -1,4 +1,4 @@
-package oxcmd
+package omcmd
 
 import (
 	"context"
@@ -11,30 +11,30 @@ import (
 )
 
 type (
-	CmdNetworkIPLs struct {
+	CmdNetworkList struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdNetworkIPLs) Run() error {
+func (t *CmdNetworkList) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	params := api.GetNetworkIPParams{}
+	params := api.GetNetworksParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetNetworkIPWithResponse(context.Background(), &params)
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
 	if err != nil {
-		return fmt.Errorf("api: %w", err)
+		return err
 	}
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,

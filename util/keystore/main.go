@@ -1,9 +1,20 @@
 package keystore
 
-import "path/filepath"
+import (
+	"path/filepath"
 
-func FileToKey(path, prefix string) (string, error) {
+	"github.com/opensvc/om3/util/file"
+)
+
+func FileToKey(path, prefix, from string) (string, error) {
 	if path == "" {
+		if prefix == "" && from != "" {
+			if v, err := file.ExistsAndRegular(from); err != nil {
+				return "", err
+			} else if v {
+				return filepath.Base(from), nil
+			}
+		}
 		return prefix, nil
 	}
 	path = filepath.Clean(path)

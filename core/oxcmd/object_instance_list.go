@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
@@ -11,42 +11,46 @@ import (
 )
 
 type (
-	CmdNetworkIPLs struct {
+	CmdObjectInstanceList struct {
 		OptsGlobal
-		Name string
+		NodeSelector string
 	}
 )
 
-func (t *CmdNetworkIPLs) Run() error {
+func (t *CmdObjectInstanceList) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "*/"+kind+"/*")
+
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	params := api.GetNetworkIPParams{}
-	if t.Name != "" {
-		params.Name = &t.Name
+	params := api.GetInstancesParams{Path: &mergedSelector}
+	if t.NodeSelector != "" {
+		params.Node = &t.NodeSelector
 	}
-	resp, err := c.GetNetworkIPWithResponse(context.Background(), &params)
+	resp, err := c.GetInstancesWithResponse(context.Background(), &params)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
-	var pb api.Problem
+	var pb *api.Problem
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
+			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil
+	case 400:
+		pb = resp.JSON400
 	case 401:
-		pb = *resp.JSON401
+		pb = resp.JSON401
 	case 403:
-		pb = *resp.JSON403
+		pb = resp.JSON403
 	case 500:
-		pb = *resp.JSON500
+		pb = resp.JSON500
 	}
 	return fmt.Errorf("%s", pb)
 }

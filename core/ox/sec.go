@@ -34,7 +34,7 @@ func init() {
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
-		newCmdObjectLs(kind),
+		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectStatus(kind),
@@ -56,7 +56,7 @@ func init() {
 		newCmdObjectEditConfig(kind),
 	)
 	cmdObjectInstance.AddCommand(
-		newCmdObjectInstanceLs(kind),
+		newCmdObjectInstanceList(kind),
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,

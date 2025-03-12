@@ -12,13 +12,13 @@ import (
 )
 
 type (
-	CmdObjectPushResourceInfo struct {
+	CmdObjectResourceInfoPush struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPushResourceInfo) Run(selector, kind string) error {
+func (t *CmdObjectResourceInfoPush) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

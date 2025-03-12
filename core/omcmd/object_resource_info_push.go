@@ -16,14 +16,14 @@ import (
 )
 
 type (
-	CmdObjectPushResourceInfo struct {
+	CmdObjectResourceInfoPush struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoList, error) {
+func (t *CmdObjectResourceInfoPush) doLocal(selector string) (api.ResourceInfoList, error) {
 	data := api.ResourceInfoList{
 		Kind: "ResourceInfoList",
 	}
@@ -61,7 +61,7 @@ func (t *CmdObjectPushResourceInfo) doLocal(selector string) (api.ResourceInfoLi
 	return data, errs
 }
 
-func (t *CmdObjectPushResourceInfo) Run(selector, kind string) error {
+func (t *CmdObjectResourceInfoPush) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	data, err := t.doLocal(mergedSelector)
 	if err != nil {

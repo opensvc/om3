@@ -30,7 +30,7 @@ func init() {
 		cmdArray,
 	)
 	cmdArray.AddCommand(
-		newCmdArrayLs(),
+		newCmdArrayList(),
 	)
 	cmdArray.PersistentFlags().StringVar(&arrayName, "array", "", "the section name or index identifying the array")
 }

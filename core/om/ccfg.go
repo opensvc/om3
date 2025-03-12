@@ -32,7 +32,7 @@ func init() {
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
-		newCmdObjectLs(kind),
+		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
@@ -50,7 +50,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectPrintConfig.AddCommand(
 		newCmdObjectPrintConfigMtime(kind),

@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	CmdObjectPrintResourceInfo struct {
+	CmdObjectResourceInfoList struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		NodeSelector string
@@ -41,7 +41,7 @@ func resourceInfosToAPI(infos resource.Infos, path, nodename string) api.Resourc
 	return data
 }
 
-func (t *CmdObjectPrintResourceInfo) extractLocal(selector string) (api.ResourceInfoList, error) {
+func (t *CmdObjectResourceInfoList) extractLocal(selector string) (api.ResourceInfoList, error) {
 	data := api.ResourceInfoList{
 		Kind: "ResourceInfoList",
 	}
@@ -78,7 +78,7 @@ func (t *CmdObjectPrintResourceInfo) extractLocal(selector string) (api.Resource
 	return data, errs
 }
 
-func (t *CmdObjectPrintResourceInfo) Run(selector, kind string) error {
+func (t *CmdObjectResourceInfoList) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	data, err := t.extractLocal(mergedSelector)
 	if err != nil {

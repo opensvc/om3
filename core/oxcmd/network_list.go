@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
@@ -11,29 +11,30 @@ import (
 )
 
 type (
-	CmdPoolVolumeLs struct {
+	CmdNetworkList struct {
 		OptsGlobal
 		Name string
 	}
 )
 
-func (t *CmdPoolVolumeLs) Run() error {
+func (t *CmdNetworkList) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	params := api.GetPoolVolumesParams{}
+	params := api.GetNetworksParams{}
 	if t.Name != "" {
 		params.Name = &t.Name
 	}
-	resp, err := c.GetPoolVolumesWithResponse(context.Background(), &params)
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
+	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,
@@ -41,12 +42,11 @@ func (t *CmdPoolVolumeLs) Run() error {
 		}.Print()
 		return nil
 	case 401:
-		return fmt.Errorf("%s", resp.JSON401)
+		pb = *resp.JSON401
 	case 403:
-		return fmt.Errorf("%s", resp.JSON403)
+		pb = *resp.JSON403
 	case 500:
-		return fmt.Errorf("%s", resp.JSON500)
-	default:
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+		pb = *resp.JSON500
 	}
+	return fmt.Errorf("%s", pb)
 }

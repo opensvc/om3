@@ -154,8 +154,8 @@ func (t T) allocateSubnets() error {
 	ones, bits := network.Mask.Size()
 	maxIPs := 1 << (bits - ones)
 	maxIPsPerNodes := maxIPs / len(nodes)
-	subnetOnes := int(math.Log2(float64(maxIPsPerNodes)))
-	maxIPsPerNodes = 1 << subnetOnes
+	minSubnetOnes := int(math.Log2(float64(maxIPsPerNodes)))
+	maxIPsPerNodes = 1 << minSubnetOnes
 	if ipsPerNode > maxIPsPerNodes {
 		return fmt.Errorf("ips_per_node=%d must be <=%d (%s has %d ips to distribute to %d nodes)", ipsPerNode, maxIPsPerNodes, network, maxIPs, len(nodes))
 	}
@@ -163,6 +163,7 @@ func (t T) allocateSubnets() error {
 	if err != nil {
 		return err
 	}
+	subnetOnes := int(math.Log2(float64(ipsPerNode)))
 
 	kops := make([]keyop.T, 0)
 	for _, nodename := range nodes {

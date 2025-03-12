@@ -44,7 +44,7 @@ func (t *CmdKeystoreChange) Run(selector, kind string) error {
 				return nil, err
 			}
 			for path, b := range m {
-				k, err := keystore.FileToKey(path, t.Key)
+				k, err := keystore.FileToKey(path, t.Key, *t.From)
 				if err != nil {
 					return nil, err
 				}

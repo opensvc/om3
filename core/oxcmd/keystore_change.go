@@ -41,7 +41,7 @@ func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEn
 		return data, err
 	}
 	for path, b := range m {
-		k, err := keystore.FileToKey(path, key)
+		k, err := keystore.FileToKey(path, key, *from)
 		if err != nil {
 			return nil, err
 		}

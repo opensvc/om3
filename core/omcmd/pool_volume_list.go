@@ -1,4 +1,4 @@
-package oxcmd
+package omcmd
 
 import (
 	"context"
@@ -11,41 +11,35 @@ import (
 )
 
 type (
-	CmdObjectLs struct {
+	CmdPoolVolumeList struct {
 		OptsGlobal
+		Name string
 	}
 )
 
-func (t *CmdObjectLs) Run(selector, kind string) error {
-	defaultSelector := ""
-	if kind != "" {
-		defaultSelector = fmt.Sprintf("*/%s/*", kind)
-	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
-
+func (t *CmdPoolVolumeList) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	params := api.GetObjectsParams{Path: &mergedSelector}
-	resp, err := c.GetObjectsWithResponse(context.Background(), &params)
+	params := api.GetPoolVolumesParams{}
+	if t.Name != "" {
+		params.Name = &t.Name
+	}
+	resp, err := c.GetPoolVolumesWithResponse(context.Background(), &params)
 	if err != nil {
-		return fmt.Errorf("api: %w", err)
+		return err
 	}
 	switch resp.StatusCode() {
 	case 200:
-		if len(resp.JSON200.Items) == 0 {
-			return fmt.Errorf("%s: no such object", mergedSelector)
-		}
 		output.Renderer{
-			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
+			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-	case 400:
-		return fmt.Errorf("%s", resp.JSON400)
+		return nil
 	case 401:
 		return fmt.Errorf("%s", resp.JSON401)
 	case 403:
@@ -55,5 +49,4 @@ func (t *CmdObjectLs) Run(selector, kind string) error {
 	default:
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	return nil
 }
