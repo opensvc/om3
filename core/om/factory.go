@@ -1794,9 +1794,10 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	var options commands.CmdObjectCertificatePKCS
 	cmd := &cobra.Command{
-		Use:   "pkcs",
-		Short: "dump the private key and certificate chain in PKCS#12 format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
+		Aliases: []string{"pkcs"},
+		Use:     "pkcs12",
+		Short:   "dump the private key and certificate chain in PKCS#12 format",
+		Long:    "A sec can contain a certificate, created by the `certificate create` command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs12 command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -3499,7 +3500,7 @@ func newCmdKeystoreChange(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Key)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
@@ -3517,7 +3518,7 @@ func newCmdKeystoreDecode(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Key)
 	return cmd
 }
 

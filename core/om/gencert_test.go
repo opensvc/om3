@@ -81,7 +81,7 @@ func TestGenCert(t *testing.T) {
 			t.Logf("out:\n%s", out)
 			require.Nilf(t, err, string(out))
 
-			args = []string{name, "gencert"}
+			args = []string{name, "certificate", "create"}
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd = exec.Command(os.Args[0], args...)
 			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
