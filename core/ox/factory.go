@@ -3407,7 +3407,7 @@ func newCmdKeystoreChange(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Key)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
@@ -3425,7 +3425,7 @@ func newCmdKeystoreDecode(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Key)
 	return cmd
 }
 
