@@ -25,6 +25,8 @@ type (
 )
 
 var (
+	LogLevel = zerolog.InfoLevel
+
 	// logRequestLevelPerPath defines logRequestMiddleWare log level per path.
 	// The default value is LevelInfo
 	logRequestLevelPerPath = map[string]zerolog.Level{
@@ -52,7 +54,8 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 				Attr("request_uuid", requestUUID.String()).
 				Attr("request_method", r.Method).
 				Attr("request_path", r.URL.Path).
-				WithPrefix(fmt.Sprintf("%s%s %s: ", log.Prefix(), r.Method, r.URL.Path))
+				WithPrefix(fmt.Sprintf("%s%s %s: ", log.Prefix(), r.Method, r.URL.Path)).
+				Level(LogLevel)
 			c.Set("logger", log)
 			c.Set("uuid", requestUUID)
 			return next(c)

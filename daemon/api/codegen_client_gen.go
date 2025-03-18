@@ -116,10 +116,10 @@ type ClientInterface interface {
 	// PostDaemonLeave request
 	PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonLogsControlWithBody request with any body
-	PostDaemonLogsControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonLogControlWithBody request with any body
+	PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDaemonLogsControl(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonStatus request
 	GetDaemonStatus(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -233,6 +233,11 @@ type ClientInterface interface {
 	// PostDaemonListenerStop request
 	PostDaemonListenerStop(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostDaemonListenerLogControlWithBody request with any body
+	PostDaemonListenerLogControlWithBody(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -267,6 +272,9 @@ type ClientInterface interface {
 
 	// PostInstanceActionPRStop request
 	PostInstanceActionPRStop(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPRStopParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInstanceActionPushResourceInfo request
+	PostInstanceActionPushResourceInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceActionRestart request
 	PostInstanceActionRestart(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionRestartParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -304,15 +312,6 @@ type ClientInterface interface {
 	// GetInstanceConfigFile request
 	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostInstanceStateFileWithBody request with any body
-	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetNodeLogs request
-	GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostInstanceActionPushResourceInfo request
-	PostInstanceActionPushResourceInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetInstanceLogs request
 	GetInstanceLogs(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -321,6 +320,12 @@ type ClientInterface interface {
 
 	// GetInstanceSchedule request
 	GetInstanceSchedule(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInstanceStateFileWithBody request with any body
+	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeLogs request
+	GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodePing request
 	GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -604,8 +609,8 @@ func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeavePar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLogsControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogsControlRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -616,8 +621,8 @@ func (c *Client) PostDaemonLogsControlWithBody(ctx context.Context, contentType 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLogsControl(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogsControlRequest(c.Server, body)
+func (c *Client) PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1084,6 +1089,30 @@ func (c *Client) PostDaemonListenerStop(ctx context.Context, nodename InPathNode
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostDaemonListenerLogControlWithBody(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerLogControlRequestWithBody(c.Server, nodename, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerLogControlRequest(c.Server, nodename, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeDRBDAllocationRequest(c.Server, nodename)
 	if err != nil {
@@ -1218,6 +1247,18 @@ func (c *Client) PostInstanceActionPRStart(ctx context.Context, nodename InPathN
 
 func (c *Client) PostInstanceActionPRStop(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPRStopParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionPRStopRequest(c.Server, nodename, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceActionPushResourceInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionPushResourceInfoRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1372,42 +1413,6 @@ func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeN
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostInstanceStateFileRequestWithBody(c.Server, nodename, namespace, kind, name, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeLogsRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostInstanceActionPushResourceInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostInstanceActionPushResourceInfoRequest(c.Server, nodename, namespace, kind, name, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetInstanceLogs(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceLogsRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
@@ -1434,6 +1439,30 @@ func (c *Client) GetInstanceResourceInfo(ctx context.Context, nodename InPathNod
 
 func (c *Client) GetInstanceSchedule(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceScheduleRequest(c.Server, nodename, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceStateFileRequestWithBody(c.Server, nodename, namespace, kind, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeLogsRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2503,19 +2532,19 @@ func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*h
 	return req, nil
 }
 
-// NewPostDaemonLogsControlRequest calls the generic PostDaemonLogsControl builder with application/json body
-func NewPostDaemonLogsControlRequest(server string, body PostDaemonLogsControlJSONRequestBody) (*http.Request, error) {
+// NewPostDaemonLogControlRequest calls the generic PostDaemonLogControl builder with application/json body
+func NewPostDaemonLogControlRequest(server string, body PostDaemonLogControlJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostDaemonLogsControlRequestWithBody(server, "application/json", bodyReader)
+	return NewPostDaemonLogControlRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewPostDaemonLogsControlRequestWithBody generates requests for PostDaemonLogsControl with any type of body
-func NewPostDaemonLogsControlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostDaemonLogControlRequestWithBody generates requests for PostDaemonLogControl with any type of body
+func NewPostDaemonLogControlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -4397,6 +4426,60 @@ func NewPostDaemonListenerStopRequest(server string, nodename InPathNodeName, na
 	return req, nil
 }
 
+// NewPostDaemonListenerLogControlRequest calls the generic PostDaemonListenerLogControl builder with application/json body
+func NewPostDaemonListenerLogControlRequest(server string, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostDaemonListenerLogControlRequestWithBody(server, nodename, name, "application/json", bodyReader)
+}
+
+// NewPostDaemonListenerLogControlRequestWithBody generates requests for PostDaemonListenerLogControl with any type of body
+func NewPostDaemonListenerLogControlRequestWithBody(server string, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/log/control", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetNodeDRBDAllocationRequest generates requests for GetNodeDRBDAllocation
 func NewGetNodeDRBDAllocationRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -5443,6 +5526,83 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 		if params.To != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostInstanceActionPushResourceInfoRequest generates requests for PostInstanceActionPushResourceInfo
+func NewPostInstanceActionPushResourceInfoRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/push/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.RequesterSid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -7051,6 +7211,225 @@ func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, nam
 	return req, nil
 }
 
+// NewGetInstanceLogsRequest generates requests for GetInstanceLogs
+func NewGetInstanceLogsRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/log", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Follow != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "follow", runtime.ParamLocationQuery, *params.Follow); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Lines != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "lines", runtime.ParamLocationQuery, *params.Lines); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetInstanceResourceInfoRequest generates requests for GetInstanceResourceInfo
+func NewGetInstanceResourceInfoRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetInstanceScheduleRequest generates requests for GetInstanceSchedule
+func NewGetInstanceScheduleRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceStateFileRequestWithBody generates requests for PostInstanceStateFile with any type of body
 func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -7202,302 +7581,6 @@ func NewGetNodeLogsRequest(server string, nodename InPathNodeName, params *GetNo
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostInstanceActionPushResourceInfoRequest generates requests for PostInstanceActionPushResourceInfo
-func NewPostInstanceActionPushResourceInfoRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/object/path/%s/%s/%s/action/push/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.RequesterSid != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetInstanceLogsRequest generates requests for GetInstanceLogs
-func NewGetInstanceLogsRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/object/path/%s/%s/%s/log", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Filter != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Follow != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "follow", runtime.ParamLocationQuery, *params.Follow); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Lines != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "lines", runtime.ParamLocationQuery, *params.Lines); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetInstanceResourceInfoRequest generates requests for GetInstanceResourceInfo
-func NewGetInstanceResourceInfoRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/object/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetInstanceScheduleRequest generates requests for GetInstanceSchedule
-func NewGetInstanceScheduleRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/object/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -10414,10 +10497,10 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonLeaveWithResponse request
 	PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
 
-	// PostDaemonLogsControlWithBodyWithResponse request with any body
-	PostDaemonLogsControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error)
+	// PostDaemonLogControlWithBodyWithResponse request with any body
+	PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
-	PostDaemonLogsControlWithResponse(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error)
+	PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
 	// GetDaemonStatusWithResponse request
 	GetDaemonStatusWithResponse(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*GetDaemonStatusResponse, error)
@@ -10531,6 +10614,11 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonListenerStopWithResponse request
 	PostDaemonListenerStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStopResponse, error)
 
+	// PostDaemonListenerLogControlWithBodyWithResponse request with any body
+	PostDaemonListenerLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
+
+	PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
+
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
 
@@ -10565,6 +10653,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostInstanceActionPRStopWithResponse request
 	PostInstanceActionPRStopWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPRStopParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPRStopResponse, error)
+
+	// PostInstanceActionPushResourceInfoWithResponse request
+	PostInstanceActionPushResourceInfoWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPushResourceInfoResponse, error)
 
 	// PostInstanceActionRestartWithResponse request
 	PostInstanceActionRestartWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionRestartParams, reqEditors ...RequestEditorFn) (*PostInstanceActionRestartResponse, error)
@@ -10602,15 +10693,6 @@ type ClientWithResponsesInterface interface {
 	// GetInstanceConfigFileWithResponse request
 	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
 
-	// PostInstanceStateFileWithBodyWithResponse request with any body
-	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
-
-	// GetNodeLogsWithResponse request
-	GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error)
-
-	// PostInstanceActionPushResourceInfoWithResponse request
-	PostInstanceActionPushResourceInfoWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPushResourceInfoResponse, error)
-
 	// GetInstanceLogsWithResponse request
 	GetInstanceLogsWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
 
@@ -10619,6 +10701,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetInstanceScheduleWithResponse request
 	GetInstanceScheduleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceScheduleResponse, error)
+
+	// PostInstanceStateFileWithBodyWithResponse request with any body
+	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
+
+	// GetNodeLogsWithResponse request
+	GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error)
 
 	// GetNodePingWithResponse request
 	GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error)
@@ -11028,7 +11116,7 @@ func (r PostDaemonLeaveResponse) StatusCode() int {
 	return 0
 }
 
-type PostDaemonLogsControlResponse struct {
+type PostDaemonLogControlResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *N200
@@ -11039,7 +11127,7 @@ type PostDaemonLogsControlResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonLogsControlResponse) Status() string {
+func (r PostDaemonLogControlResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11047,7 +11135,7 @@ func (r PostDaemonLogsControlResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonLogsControlResponse) StatusCode() int {
+func (r PostDaemonLogControlResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11981,6 +12069,32 @@ func (r PostDaemonListenerStopResponse) StatusCode() int {
 	return 0
 }
 
+type PostDaemonListenerLogControlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonListenerLogControlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonListenerLogControlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeDRBDAllocationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12258,6 +12372,31 @@ func (r PostInstanceActionPRStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostInstanceActionPRStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInstanceActionPushResourceInfoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionPushResourceInfoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionPushResourceInfoResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12574,82 +12713,6 @@ func (r GetInstanceConfigFileResponse) StatusCode() int {
 	return 0
 }
 
-type PostInstanceStateFileResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON404      *N404
-	JSON409      *N409
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostInstanceStateFileResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostInstanceStateFileResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetNodeLogsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetNodeLogsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeLogsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostInstanceActionPushResourceInfoResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *InstanceActionAccepted
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostInstanceActionPushResourceInfoResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostInstanceActionPushResourceInfoResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetInstanceLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12722,6 +12785,57 @@ func (r GetInstanceScheduleResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetInstanceScheduleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInstanceStateFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceStateFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceStateFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeLogsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14258,21 +14372,21 @@ func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, p
 	return ParsePostDaemonLeaveResponse(rsp)
 }
 
-// PostDaemonLogsControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogsControlResponse
-func (c *ClientWithResponses) PostDaemonLogsControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error) {
-	rsp, err := c.PostDaemonLogsControlWithBody(ctx, contentType, body, reqEditors...)
+// PostDaemonLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogControlResponse
+func (c *ClientWithResponses) PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControlWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLogsControlResponse(rsp)
+	return ParsePostDaemonLogControlResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDaemonLogsControlWithResponse(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error) {
-	rsp, err := c.PostDaemonLogsControl(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControl(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLogsControlResponse(rsp)
+	return ParsePostDaemonLogControlResponse(rsp)
 }
 
 // GetDaemonStatusWithResponse request returning *GetDaemonStatusResponse
@@ -14615,6 +14729,23 @@ func (c *ClientWithResponses) PostDaemonListenerStopWithResponse(ctx context.Con
 	return ParsePostDaemonListenerStopResponse(rsp)
 }
 
+// PostDaemonListenerLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonListenerLogControlResponse
+func (c *ClientWithResponses) PostDaemonListenerLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error) {
+	rsp, err := c.PostDaemonListenerLogControlWithBody(ctx, nodename, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerLogControlResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error) {
+	rsp, err := c.PostDaemonListenerLogControl(ctx, nodename, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerLogControlResponse(rsp)
+}
+
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
 func (c *ClientWithResponses) GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error) {
 	rsp, err := c.GetNodeDRBDAllocation(ctx, nodename, reqEditors...)
@@ -14720,6 +14851,15 @@ func (c *ClientWithResponses) PostInstanceActionPRStopWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParsePostInstanceActionPRStopResponse(rsp)
+}
+
+// PostInstanceActionPushResourceInfoWithResponse request returning *PostInstanceActionPushResourceInfoResponse
+func (c *ClientWithResponses) PostInstanceActionPushResourceInfoWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPushResourceInfoResponse, error) {
+	rsp, err := c.PostInstanceActionPushResourceInfo(ctx, nodename, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionPushResourceInfoResponse(rsp)
 }
 
 // PostInstanceActionRestartWithResponse request returning *PostInstanceActionRestartResponse
@@ -14830,33 +14970,6 @@ func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Cont
 	return ParseGetInstanceConfigFileResponse(rsp)
 }
 
-// PostInstanceStateFileWithBodyWithResponse request with arbitrary body returning *PostInstanceStateFileResponse
-func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
-	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostInstanceStateFileResponse(rsp)
-}
-
-// GetNodeLogsWithResponse request returning *GetNodeLogsResponse
-func (c *ClientWithResponses) GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error) {
-	rsp, err := c.GetNodeLogs(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetNodeLogsResponse(rsp)
-}
-
-// PostInstanceActionPushResourceInfoWithResponse request returning *PostInstanceActionPushResourceInfoResponse
-func (c *ClientWithResponses) PostInstanceActionPushResourceInfoWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPushResourceInfoParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPushResourceInfoResponse, error) {
-	rsp, err := c.PostInstanceActionPushResourceInfo(ctx, nodename, namespace, kind, name, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostInstanceActionPushResourceInfoResponse(rsp)
-}
-
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
 func (c *ClientWithResponses) GetInstanceLogsWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error) {
 	rsp, err := c.GetInstanceLogs(ctx, nodename, namespace, kind, name, params, reqEditors...)
@@ -14882,6 +14995,24 @@ func (c *ClientWithResponses) GetInstanceScheduleWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetInstanceScheduleResponse(rsp)
+}
+
+// PostInstanceStateFileWithBodyWithResponse request with arbitrary body returning *PostInstanceStateFileResponse
+func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
+	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceStateFileResponse(rsp)
+}
+
+// GetNodeLogsWithResponse request returning *GetNodeLogsResponse
+func (c *ClientWithResponses) GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error) {
+	rsp, err := c.GetNodeLogs(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeLogsResponse(rsp)
 }
 
 // GetNodePingWithResponse request returning *GetNodePingResponse
@@ -15897,15 +16028,15 @@ func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse,
 	return response, nil
 }
 
-// ParsePostDaemonLogsControlResponse parses an HTTP response from a PostDaemonLogsControlWithResponse call
-func ParsePostDaemonLogsControlResponse(rsp *http.Response) (*PostDaemonLogsControlResponse, error) {
+// ParsePostDaemonLogControlResponse parses an HTTP response from a PostDaemonLogControlWithResponse call
+func ParsePostDaemonLogControlResponse(rsp *http.Response) (*PostDaemonLogControlResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonLogsControlResponse{
+	response := &PostDaemonLogControlResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17832,6 +17963,60 @@ func ParsePostDaemonListenerStopResponse(rsp *http.Response) (*PostDaemonListene
 	return response, nil
 }
 
+// ParsePostDaemonListenerLogControlResponse parses an HTTP response from a PostDaemonListenerLogControlWithResponse call
+func ParsePostDaemonListenerLogControlResponse(rsp *http.Response) (*PostDaemonListenerLogControlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonListenerLogControlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodeDRBDAllocationResponse parses an HTTP response from a GetNodeDRBDAllocationWithResponse call
 func ParseGetNodeDRBDAllocationResponse(rsp *http.Response) (*GetNodeDRBDAllocationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -18378,6 +18563,53 @@ func ParsePostInstanceActionPRStopResponse(rsp *http.Response) (*PostInstanceAct
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceActionPushResourceInfoResponse parses an HTTP response from a PostInstanceActionPushResourceInfoWithResponse call
+func ParsePostInstanceActionPushResourceInfoResponse(rsp *http.Response) (*PostInstanceActionPushResourceInfoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionPushResourceInfoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
@@ -19039,154 +19271,6 @@ func ParseGetInstanceConfigFileResponse(rsp *http.Response) (*GetInstanceConfigF
 	return response, nil
 }
 
-// ParsePostInstanceStateFileResponse parses an HTTP response from a PostInstanceStateFileWithResponse call
-func ParsePostInstanceStateFileResponse(rsp *http.Response) (*PostInstanceStateFileResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostInstanceStateFileResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest N404
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetNodeLogsResponse parses an HTTP response from a GetNodeLogsWithResponse call
-func ParseGetNodeLogsResponse(rsp *http.Response) (*GetNodeLogsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetNodeLogsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostInstanceActionPushResourceInfoResponse parses an HTTP response from a PostInstanceActionPushResourceInfoWithResponse call
-func ParsePostInstanceActionPushResourceInfoResponse(rsp *http.Response) (*PostInstanceActionPushResourceInfoResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostInstanceActionPushResourceInfoResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest InstanceActionAccepted
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetInstanceLogsResponse parses an HTTP response from a GetInstanceLogsWithResponse call
 func ParseGetInstanceLogsResponse(rsp *http.Response) (*GetInstanceLogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -19336,6 +19420,107 @@ func ParseGetInstanceScheduleResponse(rsp *http.Response) (*GetInstanceScheduleR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceStateFileResponse parses an HTTP response from a PostInstanceStateFileWithResponse call
+func ParsePostInstanceStateFileResponse(rsp *http.Response) (*PostInstanceStateFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceStateFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeLogsResponse parses an HTTP response from a GetNodeLogsWithResponse call
+func ParseGetNodeLogsResponse(rsp *http.Response) (*GetNodeLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

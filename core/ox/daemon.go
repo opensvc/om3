@@ -59,6 +59,7 @@ func init() {
 	)
 
 	cmdDaemonListener.AddCommand(
+		newCmdDaemonListenerLog(),
 		newCmdDaemonListenerRestart(),
 		newCmdDaemonListenerStart(),
 		newCmdDaemonListenerStop(),

@@ -2,11 +2,13 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.4
+  version: 3.12.5
 
 paths:
   /auth/info:
     get:
+      description: |
+        List the authentication methods supported by the server.
       operationId: GetAuthInfo
       responses:
         200:
@@ -15,6 +17,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthInfo'
+      tags:
+        - auth
 
   /auth/token:
     post:
@@ -239,6 +243,8 @@ paths:
   /daemon/action/join:
     post:
       description: |
+        For internal use only.
+
         Add a new node to the cluster of the requested api node.
 
         The requester must be granted the 'root' or 'join' roles.
@@ -277,7 +283,8 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - internal
+        - daemon
+      x-internal: true
 
   /daemon/action/leave:
     post:
@@ -313,7 +320,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - internal
+        - daemon
 
   /node/name/{nodename}/capabilities:
     get:
@@ -372,7 +379,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node / daemon
 
   /node/name/{nodename}/daemon/action/shutdown:
     post:
@@ -402,7 +409,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
       tags:
-        - daemon
+        - node / daemon
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -437,7 +444,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node / daemon
 
   /node/name/{nodename}/daemon/event:
     get:
@@ -470,7 +477,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node / daemon
 
   /node/name/{nodename}/daemon/hb/name/{name}/action/restart:
     post:
@@ -481,7 +488,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -506,7 +513,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -531,7 +538,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -556,7 +563,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -581,10 +588,41 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /node/name/{nodename}/daemon/listener/name/{name}/log/control:
+    post:
+      operationId: PostDaemonListenerLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: |
+          Set a daemon listener log level.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -606,7 +644,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node / daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -754,7 +792,7 @@ paths:
 
   /daemon/log/control:
     post:
-      operationId: PostDaemonLogsControl
+      operationId: PostDaemonLogControl
       tags:
         - daemon
       security:
@@ -766,7 +804,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostDaemonLogsControl'
+              $ref: '#/components/schemas/LogControlBody'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -1554,11 +1592,11 @@ paths:
         500:
           $ref: '#/components/responses/500'
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/boot:
     post:
@@ -1593,8 +1631,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/delete:
     post:
@@ -1625,11 +1663,11 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / sec
-        - instance / cfg
-        - instance / usr
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / sec
+        - node / instance / cfg
+        - node / instance / usr
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/freeze:
     post:
@@ -1660,8 +1698,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision:
     post:
@@ -1696,13 +1734,13 @@ paths:
         500:
           $ref: '#/components/responses/500'
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/action/push/resource/info:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/push/resource/info:
     post:
       operationId: PostInstanceActionPushResourceInfo
       description: Refresh and send to the collector the object instance resource information.
@@ -1729,8 +1767,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/restart:
     post:
@@ -1767,8 +1805,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/run:
     post:
@@ -1806,8 +1844,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
@@ -1844,8 +1882,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/startstandby:
     post:
@@ -1882,8 +1920,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/status:
     post:
@@ -1914,8 +1952,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/shutdown:
     post:
@@ -1951,8 +1989,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/stop:
     post:
@@ -1988,8 +2026,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/ingest:
     post:
@@ -2023,8 +2061,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
@@ -2055,8 +2093,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unprovision:
     post:
@@ -2093,8 +2131,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/file:
     get:
@@ -2102,11 +2140,11 @@ paths:
         Return the object configuration file from nodename. If nodename is not the local node, do proxy.
       operationId: GetInstanceConfigFile
       tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2162,11 +2200,11 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
 
   /node/name/{nodename}/log:
     get:
@@ -2198,7 +2236,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/resource/info:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/info:
     get:
       operationId: GetInstanceResourceInfo
       description: |
@@ -2227,10 +2265,10 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/schedule:
     get:
       operationId: GetInstanceSchedule
       description: |
@@ -2261,18 +2299,18 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/log:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/log:
     get:
       operationId: GetInstanceLogs
       tags:
-        - instance / svc
-        - instance / vol
-        - instance / cfg
-        - instance / sec
-        - instance / usr
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2324,7 +2362,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - node
 
   /node/name/{nodename}/system/disk:
     get:
@@ -2598,9 +2636,13 @@ paths:
 
   /instance/path/{namespace}/{kind}/{name}/progress:
     post:
+      description: |
+        For internal use only.
+
+        Used by the CRM to annonce to the daemon the action it is starting to process, if this action was not triggered by the daemon.
       operationId: PostInstanceProgress
       tags:
-        - internal
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2626,12 +2668,17 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      x-internal: true
 
   /instance/path/{namespace}/{kind}/{name}/status:
     post:
+      description: |
+        For internal use only.
+
+        Used by the CRM to annonce to the daemon the status of the instance at the end of an action.
       operationId: PostInstanceStatus
       tags:
-        - internal
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2948,6 +2995,8 @@ paths:
  
   /object/path/{namespace}/{kind}/{name}/kvstore/keys:
     get:
+      description: |
+        List the keys in the key-value store.
       operationId: GetObjectKVStoreKeys
       tags:
         - object / cfg
@@ -2979,6 +3028,8 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/kvstore/entry:
     get:
+      description: |
+        Return a single key value as the response body.
       operationId: GetObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3011,6 +3062,8 @@ paths:
           $ref: '#/components/responses/500'
 
     delete:
+      description: |
+        Delete a key from the key-value store.
       operationId: DeleteObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3037,6 +3090,8 @@ paths:
           $ref: '#/components/responses/500'
 
     post:
+      description: |
+        Create a new key in the key-value store.
       operationId: PostObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3070,6 +3125,8 @@ paths:
           $ref: '#/components/responses/500'
 
     put:
+      description: |
+        Change the value of an existing key in the key-value store.
       operationId: PutObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3104,6 +3161,8 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/kvstore:
     get:
+      description: |
+        Return a structured list of key and values objects.
       operationId: GetObjectKVStore
       tags:
         - object / cfg
@@ -3132,6 +3191,8 @@ paths:
         500:
           $ref: '#/components/responses/500'
     patch:
+      description: |
+        A single-transaction combination of add, change or delete operations on the key-value store keys.
       operationId: PatchObjectKVStore
       tags:
         - object / cfg
@@ -3194,8 +3255,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - object / svc
+        - object / vol
 
   /object/path/{namespace}/{kind}/{name}/schedule:
     get:
@@ -3227,12 +3288,13 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - object / svc
+        - object / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
-      description: Start the object instance with a reservation.
+      description: |
+        Register and reserve the instance scsi devices using the node key.
       operationId: PostInstanceActionPRStart
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -3265,12 +3327,13 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstop:
     post:
-      description: Stop the object instance with a reservation.
+      description: |
+        Drop reservations and registrations held by the node key on the instance scsi devices.
       operationId: PostInstanceActionPRStop
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -3303,12 +3366,16 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - node / instance / svc
+        - node / instance / vol
 
 
   /object/path/{namespace}/{kind}/{name}/action/purge:
     post:
+      description: |
+        Unprovision resources and delete the object.
+        Disk and fs resources hold data. Beware, unprovision usually deletes the data.
+        Purging a svc does not purge the vol objects used by the svc.
       operationId: PostObjectActionPurge
       tags:
         - object / svc
@@ -3492,6 +3559,10 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
+      description: |
+        Allow automatic failover of svc with `orchestrate=ha`.
+        Allow the quorum vote for this node.
+        Allow the monitor action when `monitor=true` resources are degraded and not restartable.
       operationId: PostObjectActionUnfreeze
       tags:
         - object / svc
@@ -3527,6 +3598,10 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/action/unprovision:
     post:
+      description: |
+        Unprovision resources and keep the object configuration.
+        Disk and fs resources hold data. Beware, unprovision usually deletes the data.
+        Unprovisioning a svc does not unprovision the vol objects used by the svc.
       operationId: PostObjectActionUnprovision
       tags:
         - object / svc
@@ -3780,8 +3855,8 @@ paths:
     post:
       operationId: PostInstanceStateFile
       tags:
-        - object / svc
-        - object / vol
+        - node / instance / svc
+        - node / instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -5724,8 +5799,9 @@ components:
         - n/a
         - undef
 
-    PostDaemonLogsControl:
+    LogControlBody:
       type: object
+      x-go-type: LogControl
       required:
         - level
       properties:

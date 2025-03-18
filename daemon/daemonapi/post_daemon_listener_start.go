@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PostDaemonListenerStart(ctx echo.Context, nodename api.InPathNodeName, name api.InPathHeartbeatName) error {
+func (a *DaemonAPI) PostDaemonListenerStart(ctx echo.Context, nodename api.InPathNodeName, name api.InPathListenerName) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
