@@ -19,10 +19,17 @@ func (a *DaemonAPI) postDaemonSubAction(ctx echo.Context, nodename api.InPathNod
 	case "restart":
 	case "start":
 	case "stop":
+	case "log-level-panic":
+	case "log-level-fatal":
+	case "log-level-error":
+	case "log-level-warn":
+	case "log-level-info":
+	case "log-level-debug":
+	case "log-level-trace":
 	default:
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "unexpected 'action': %s", action)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "unexpected action: %s", action)
 	}
-	if nodename == a.localhost {
+	if nodename == a.localhost || nodename == "localhost" {
 		log := LogHandler(ctx, "postDaemonSubAction")
 		log.Infof("ask to %s component: %s", action, localName)
 		a.Publisher.Pub(&msgbus.DaemonCtl{Component: localName, Action: action}, pubsub.Label{"id", localName}, labelOriginAPI)

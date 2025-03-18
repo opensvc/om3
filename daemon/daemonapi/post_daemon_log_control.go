@@ -9,13 +9,13 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PostDaemonLogsControl(ctx echo.Context) error {
+func (a *DaemonAPI) PostDaemonLogControl(ctx echo.Context) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 
 	var (
-		payload api.PostDaemonLogsControl
+		payload api.LogControl
 	)
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "error: %s", err)

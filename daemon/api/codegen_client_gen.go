@@ -116,10 +116,10 @@ type ClientInterface interface {
 	// PostDaemonLeave request
 	PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonLogsControlWithBody request with any body
-	PostDaemonLogsControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostDaemonLogControlWithBody request with any body
+	PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDaemonLogsControl(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonStatus request
 	GetDaemonStatus(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -232,6 +232,11 @@ type ClientInterface interface {
 
 	// PostDaemonListenerStop request
 	PostDaemonListenerStop(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonListenerLogControlWithBody request with any body
+	PostDaemonListenerLogControlWithBody(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -604,8 +609,8 @@ func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeavePar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLogsControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogsControlRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -616,8 +621,8 @@ func (c *Client) PostDaemonLogsControlWithBody(ctx context.Context, contentType 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLogsControl(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogsControlRequest(c.Server, body)
+func (c *Client) PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1074,6 +1079,30 @@ func (c *Client) PostDaemonListenerStart(ctx context.Context, nodename InPathNod
 
 func (c *Client) PostDaemonListenerStop(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonListenerStopRequest(c.Server, nodename, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonListenerLogControlWithBody(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerLogControlRequestWithBody(c.Server, nodename, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonListenerLogControlRequest(c.Server, nodename, name, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2503,19 +2532,19 @@ func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*h
 	return req, nil
 }
 
-// NewPostDaemonLogsControlRequest calls the generic PostDaemonLogsControl builder with application/json body
-func NewPostDaemonLogsControlRequest(server string, body PostDaemonLogsControlJSONRequestBody) (*http.Request, error) {
+// NewPostDaemonLogControlRequest calls the generic PostDaemonLogControl builder with application/json body
+func NewPostDaemonLogControlRequest(server string, body PostDaemonLogControlJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostDaemonLogsControlRequestWithBody(server, "application/json", bodyReader)
+	return NewPostDaemonLogControlRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewPostDaemonLogsControlRequestWithBody generates requests for PostDaemonLogsControl with any type of body
-func NewPostDaemonLogsControlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostDaemonLogControlRequestWithBody generates requests for PostDaemonLogControl with any type of body
+func NewPostDaemonLogControlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -4393,6 +4422,60 @@ func NewPostDaemonListenerStopRequest(server string, nodename InPathNodeName, na
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostDaemonListenerLogControlRequest calls the generic PostDaemonListenerLogControl builder with application/json body
+func NewPostDaemonListenerLogControlRequest(server string, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostDaemonListenerLogControlRequestWithBody(server, nodename, name, "application/json", bodyReader)
+}
+
+// NewPostDaemonListenerLogControlRequestWithBody generates requests for PostDaemonListenerLogControl with any type of body
+func NewPostDaemonListenerLogControlRequestWithBody(server string, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/log/control", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10414,10 +10497,10 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonLeaveWithResponse request
 	PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
 
-	// PostDaemonLogsControlWithBodyWithResponse request with any body
-	PostDaemonLogsControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error)
+	// PostDaemonLogControlWithBodyWithResponse request with any body
+	PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
-	PostDaemonLogsControlWithResponse(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error)
+	PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
 	// GetDaemonStatusWithResponse request
 	GetDaemonStatusWithResponse(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*GetDaemonStatusResponse, error)
@@ -10530,6 +10613,11 @@ type ClientWithResponsesInterface interface {
 
 	// PostDaemonListenerStopWithResponse request
 	PostDaemonListenerStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerStopResponse, error)
+
+	// PostDaemonListenerLogControlWithBodyWithResponse request with any body
+	PostDaemonListenerLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
+
+	PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -11028,7 +11116,7 @@ func (r PostDaemonLeaveResponse) StatusCode() int {
 	return 0
 }
 
-type PostDaemonLogsControlResponse struct {
+type PostDaemonLogControlResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *N200
@@ -11039,7 +11127,7 @@ type PostDaemonLogsControlResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonLogsControlResponse) Status() string {
+func (r PostDaemonLogControlResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11047,7 +11135,7 @@ func (r PostDaemonLogsControlResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonLogsControlResponse) StatusCode() int {
+func (r PostDaemonLogControlResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11975,6 +12063,32 @@ func (r PostDaemonListenerStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonListenerStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonListenerLogControlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonListenerLogControlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonListenerLogControlResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14258,21 +14372,21 @@ func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, p
 	return ParsePostDaemonLeaveResponse(rsp)
 }
 
-// PostDaemonLogsControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogsControlResponse
-func (c *ClientWithResponses) PostDaemonLogsControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error) {
-	rsp, err := c.PostDaemonLogsControlWithBody(ctx, contentType, body, reqEditors...)
+// PostDaemonLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogControlResponse
+func (c *ClientWithResponses) PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControlWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLogsControlResponse(rsp)
+	return ParsePostDaemonLogControlResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDaemonLogsControlWithResponse(ctx context.Context, body PostDaemonLogsControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogsControlResponse, error) {
-	rsp, err := c.PostDaemonLogsControl(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControl(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLogsControlResponse(rsp)
+	return ParsePostDaemonLogControlResponse(rsp)
 }
 
 // GetDaemonStatusWithResponse request returning *GetDaemonStatusResponse
@@ -14613,6 +14727,23 @@ func (c *ClientWithResponses) PostDaemonListenerStopWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePostDaemonListenerStopResponse(rsp)
+}
+
+// PostDaemonListenerLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonListenerLogControlResponse
+func (c *ClientWithResponses) PostDaemonListenerLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error) {
+	rsp, err := c.PostDaemonListenerLogControlWithBody(ctx, nodename, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerLogControlResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error) {
+	rsp, err := c.PostDaemonListenerLogControl(ctx, nodename, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonListenerLogControlResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -15897,15 +16028,15 @@ func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse,
 	return response, nil
 }
 
-// ParsePostDaemonLogsControlResponse parses an HTTP response from a PostDaemonLogsControlWithResponse call
-func ParsePostDaemonLogsControlResponse(rsp *http.Response) (*PostDaemonLogsControlResponse, error) {
+// ParsePostDaemonLogControlResponse parses an HTTP response from a PostDaemonLogControlWithResponse call
+func ParsePostDaemonLogControlResponse(rsp *http.Response) (*PostDaemonLogControlResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonLogsControlResponse{
+	response := &PostDaemonLogControlResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17787,6 +17918,60 @@ func ParsePostDaemonListenerStopResponse(rsp *http.Response) (*PostDaemonListene
 	}
 
 	response := &PostDaemonListenerStopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonListenerLogControlResponse parses an HTTP response from a PostDaemonListenerLogControlWithResponse call
+func ParsePostDaemonListenerLogControlResponse(rsp *http.Response) (*PostDaemonListenerLogControlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonListenerLogControlResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

@@ -179,13 +179,13 @@ const (
 
 // Defines values for PlacementPolicy.
 const (
-	PlacementPolicyLastStart  PlacementPolicy = "last start"
-	PlacementPolicyLoadAvg    PlacementPolicy = "load avg"
-	PlacementPolicyNodesOrder PlacementPolicy = "nodes order"
-	PlacementPolicyNone       PlacementPolicy = "none"
-	PlacementPolicyScore      PlacementPolicy = "score"
-	PlacementPolicyShift      PlacementPolicy = "shift"
-	PlacementPolicySpread     PlacementPolicy = "spread"
+	LastStart  PlacementPolicy = "last start"
+	LoadAvg    PlacementPolicy = "load avg"
+	NodesOrder PlacementPolicy = "nodes order"
+	None       PlacementPolicy = "none"
+	Score      PlacementPolicy = "score"
+	Shift      PlacementPolicy = "shift"
+	Spread     PlacementPolicy = "spread"
 )
 
 // Defines values for PlacementState.
@@ -204,17 +204,6 @@ const (
 // Defines values for PoolVolumeListKind.
 const (
 	PoolVolumeListKindPoolVolumeList PoolVolumeListKind = "PoolVolumeList"
-)
-
-// Defines values for PostDaemonLogsControlLevel.
-const (
-	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
-	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
-	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
-	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
-	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
-	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
-	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
 )
 
 // Defines values for PropertyListKind.
@@ -714,6 +703,9 @@ type KeywordMeta struct {
 // Kind defines model for Kind.
 type Kind = naming.Kind
 
+// LogControlBody defines model for LogControlBody.
+type LogControlBody = LogControl
+
 // LogList responseLogList is a list of sse
 type LogList = openapi_types.File
 
@@ -1032,14 +1024,6 @@ type PoolVolumeList struct {
 
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
-
-// PostDaemonLogsControl defines model for PostDaemonLogsControl.
-type PostDaemonLogsControl struct {
-	Level PostDaemonLogsControlLevel `json:"level"`
-}
-
-// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
-type PostDaemonLogsControlLevel string
 
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
@@ -2034,14 +2018,17 @@ type GetResourcesParams struct {
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
 
-// PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
-type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControl
+// PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
+type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
+
+// PostDaemonListenerLogControlJSONRequestBody defines body for PostDaemonListenerLogControl for application/json ContentType.
+type PostDaemonListenerLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

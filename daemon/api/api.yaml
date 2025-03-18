@@ -601,6 +601,37 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/daemon/listener/name/{name}/log/control:
+    post:
+      operationId: PostDaemonListenerLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: |
+          Set a daemon listener log level.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /node/name/{nodename}/daemon/listener/name/{name}/action/stop:
     post:
       description: |
@@ -758,7 +789,7 @@ paths:
 
   /daemon/log/control:
     post:
-      operationId: PostDaemonLogsControl
+      operationId: PostDaemonLogControl
       tags:
         - daemon
       security:
@@ -770,7 +801,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostDaemonLogsControl'
+              $ref: '#/components/schemas/LogControlBody'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -5760,8 +5791,9 @@ components:
         - n/a
         - undef
 
-    PostDaemonLogsControl:
+    LogControlBody:
       type: object
+      x-go-type: LogControl
       required:
         - level
       properties:
