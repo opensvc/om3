@@ -109,6 +109,11 @@ func (t *Logger) Attr(k string, v any) *Logger {
 	return &logger
 }
 
+func (t *Logger) Level(level zerolog.Level) *Logger {
+	t.logger = t.logger.Level(level)
+	return t
+}
+
 func (t *Logger) GetLevel() zerolog.Level {
 	return t.logger.GetLevel()
 }
