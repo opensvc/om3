@@ -7,6 +7,8 @@ info:
 paths:
   /auth/info:
     get:
+      description: |
+        List the authentication methods supported by the server.
       operationId: GetAuthInfo
       responses:
         200:
@@ -15,6 +17,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthInfo'
+      tags:
+        - auth
 
   /auth/token:
     post:
@@ -372,7 +376,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node daemon
 
   /node/name/{nodename}/daemon/action/shutdown:
     post:
@@ -402,7 +406,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
       tags:
-        - daemon
+        - node daemon
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -437,7 +441,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node daemon
 
   /node/name/{nodename}/daemon/event:
     get:
@@ -470,7 +474,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - daemon
+        - node daemon
 
   /node/name/{nodename}/daemon/hb/name/{name}/action/restart:
     post:
@@ -481,7 +485,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -506,7 +510,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -531,7 +535,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -556,7 +560,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -581,7 +585,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -606,7 +610,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathListenerName'
       tags:
-        - internal
+        - node daemon
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
@@ -2324,7 +2328,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - node
 
   /node/name/{nodename}/system/disk:
     get:
@@ -2598,6 +2602,8 @@ paths:
 
   /instance/path/{namespace}/{kind}/{name}/progress:
     post:
+      description: |
+        Used by the CRM to annonce to the daemon the action it is starting to process, if this action was not triggered by the daemon.
       operationId: PostInstanceProgress
       tags:
         - internal
@@ -2629,6 +2635,8 @@ paths:
 
   /instance/path/{namespace}/{kind}/{name}/status:
     post:
+      description: |
+        Used by the CRM to annonce to the daemon the status of the instance at the end of an action.
       operationId: PostInstanceStatus
       tags:
         - internal
@@ -2948,6 +2956,8 @@ paths:
  
   /object/path/{namespace}/{kind}/{name}/kvstore/keys:
     get:
+      description: |
+        List the keys in the key-value store.
       operationId: GetObjectKVStoreKeys
       tags:
         - object / cfg
@@ -2979,6 +2989,8 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/kvstore/entry:
     get:
+      description: |
+        Return a single key value as the response body.
       operationId: GetObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3011,6 +3023,8 @@ paths:
           $ref: '#/components/responses/500'
 
     delete:
+      description: |
+        Delete a key from the key-value store.
       operationId: DeleteObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3037,6 +3051,8 @@ paths:
           $ref: '#/components/responses/500'
 
     post:
+      description: |
+        Create a new key in the key-value store.
       operationId: PostObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3070,6 +3086,8 @@ paths:
           $ref: '#/components/responses/500'
 
     put:
+      description: |
+        Change the value of an existing key in the key-value store.
       operationId: PutObjectKVStoreEntry
       tags:
         - object / cfg
@@ -3104,6 +3122,8 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/kvstore:
     get:
+      description: |
+        Return a structured list of key and values objects.
       operationId: GetObjectKVStore
       tags:
         - object / cfg
@@ -3132,6 +3152,8 @@ paths:
         500:
           $ref: '#/components/responses/500'
     patch:
+      description: |
+        A single-transaction combination of add, change or delete operations on the key-value store keys.
       operationId: PatchObjectKVStore
       tags:
         - object / cfg
@@ -3232,7 +3254,8 @@ paths:
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
-      description: Start the object instance with a reservation.
+      description: |
+        Register and reserve the instance scsi devices using the node key.
       operationId: PostInstanceActionPRStart
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -3270,7 +3293,8 @@ paths:
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstop:
     post:
-      description: Stop the object instance with a reservation.
+      description: |
+        Drop reservations and registrations held by the node key on the instance scsi devices.
       operationId: PostInstanceActionPRStop
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -3309,6 +3333,10 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/action/purge:
     post:
+      description: |
+        Unprovision resources and delete the object.
+        Disk and fs resources hold data. Beware, unprovision usually deletes the data.
+        Purging a svc does not purge the vol objects used by the svc.
       operationId: PostObjectActionPurge
       tags:
         - object / svc
@@ -3492,6 +3520,10 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
+      description: |
+        Allow automatic failover of svc with `orchestrate=ha`.
+        Allow the quorum vote for this node.
+        Allow the monitor action when `monitor=true` resources are degraded and not restartable.
       operationId: PostObjectActionUnfreeze
       tags:
         - object / svc
@@ -3527,6 +3559,10 @@ paths:
 
   /object/path/{namespace}/{kind}/{name}/action/unprovision:
     post:
+      description: |
+        Unprovision resources and keep the object configuration.
+        Disk and fs resources hold data. Beware, unprovision usually deletes the data.
+        Unprovisioning a svc does not unprovision the vol objects used by the svc.
       operationId: PostObjectActionUnprovision
       tags:
         - object / svc
