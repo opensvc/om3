@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.4
+  version: 3.12.5
 
 paths:
   /auth/info:
@@ -1737,7 +1737,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/action/push/resource/info:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/push/resource/info:
     post:
       operationId: PostInstanceActionPushResourceInfo
       description: Refresh and send to the collector the object instance resource information.
@@ -2137,11 +2137,11 @@ paths:
         Return the object configuration file from nodename. If nodename is not the local node, do proxy.
       operationId: GetInstanceConfigFile
       tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
+        - instance / svc
+        - instance / vol
+        - instance / cfg
+        - instance / sec
+        - instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2233,7 +2233,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/resource/info:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/info:
     get:
       operationId: GetInstanceResourceInfo
       description: |
@@ -2265,7 +2265,7 @@ paths:
         - instance / svc
         - instance / vol
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/schedule:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/schedule:
     get:
       operationId: GetInstanceSchedule
       description: |
@@ -2299,7 +2299,7 @@ paths:
         - instance / svc
         - instance / vol
 
-  /node/name/{nodename}/object/path/{namespace}/{kind}/{name}/log:
+  /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/log:
     get:
       operationId: GetInstanceLogs
       tags:
@@ -3247,8 +3247,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - object / svc
+        - object / vol
 
   /object/path/{namespace}/{kind}/{name}/schedule:
     get:
@@ -3280,8 +3280,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - instance / svc
-        - instance / vol
+        - object / svc
+        - object / vol
 
   /node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
@@ -3847,8 +3847,8 @@ paths:
     post:
       operationId: PostInstanceStateFile
       tags:
-        - object / svc
-        - object / vol
+        - instance / svc
+        - instance / vol
       security:
         - basicAuth: []
         - bearerAuth: []

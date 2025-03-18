@@ -1773,6 +1773,11 @@ type PostInstanceActionPRStopParams struct {
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
+type PostInstanceActionPushResourceInfoParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // PostInstanceActionRestartParams defines parameters for PostInstanceActionRestart.
 type PostInstanceActionRestartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
@@ -1867,6 +1872,18 @@ type PostInstanceActionUnprovisionParams struct {
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// GetInstanceLogsParams defines parameters for GetInstanceLogs.
+type GetInstanceLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
 // GetNodeLogsParams defines parameters for GetNodeLogs.
 type GetNodeLogsParams struct {
 	// Filter list of log filter
@@ -1880,23 +1897,6 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
-}
-
-// PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
-type PostInstanceActionPushResourceInfoParams struct {
-	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
-}
-
-// GetInstanceLogsParams defines parameters for GetInstanceLogs.
-type GetInstanceLogsParams struct {
-	// Filter list of log filter
-	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
-
-	// Follow follow the logs
-	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
-
-	// Lines report this number of past last log entries
-	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.
