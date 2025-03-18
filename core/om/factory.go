@@ -337,6 +337,24 @@ func newCmdDaemonLeave() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonListenerLog() *cobra.Command {
+	options := commands.CmdDaemonListenerLog{}
+	cmd := &cobra.Command{
+		Use:   "log",
+		Short: fmt.Sprintf("configure the daemon listener logger"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDaemonListenerName(flags, &options.Name)
+	commoncmd.FlagDaemonLogLevel(flags, &options.Level)
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
 func newCmdDaemonListenerRestart() *cobra.Command {
 	options := commands.CmdDaemonListenerRestart{}
 	cmd := &cobra.Command{

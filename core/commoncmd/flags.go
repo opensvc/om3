@@ -92,6 +92,10 @@ func FlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "name", "", "listener name (ex: http-inet)")
 }
 
+func FlagDaemonLogLevel(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic")
+}
+
 func FlagDepth(flagSet *pflag.FlagSet, p *int) {
 	flagSet.IntVar(p, "depth", 0, "format markdown titles so they can be rooted inside a chapter nested at the specified depth")
 }
