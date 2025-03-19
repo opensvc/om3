@@ -565,14 +565,6 @@ func (t *BT) Stop(ctx context.Context) error {
 	}
 
 	if inspect.Running() {
-		if t.StopTimeout != nil && *t.StopTimeout > 0 {
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, *t.StopTimeout)
-			defer cancel()
-			log.Debugf("stopping with timeout %s", *t.StopTimeout)
-		} else {
-			log.Debugf("stopping")
-		}
 		defer func() {
 			_, _ = t.executer.InspectRefresh(ctx)
 		}()
