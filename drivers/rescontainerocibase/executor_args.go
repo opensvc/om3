@@ -104,6 +104,13 @@ func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 		a.Append("--privileged")
 	}
 
+	if bt.ReadOnly != "" {
+		runArgs.DropOption("--read-only")
+		if bt.ReadOnly == "true" {
+			a.Append("--read-only")
+		}
+	}
+
 	if len(bt.User) > 0 {
 		runArgs.DropOptionAndAnyValue("--user")
 		runArgs.DropOptionAndAnyValue("-u")

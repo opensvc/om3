@@ -77,6 +77,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			PIDNS:                     t.PIDNS,
 			IPCNS:                     t.IPCNS,
 			UTSNS:                     t.UTSNS,
+			ReadOnly:                  t.ReadOnly,
 			RegistryCreds:             t.RegistryCreds,
 			PullTimeout:               t.PullTimeout,
 			StartTimeout:              startTimeout,
