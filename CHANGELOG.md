@@ -123,14 +123,29 @@
         
     * `om node abort`
         Replaced by `om cluster abort` to abort the pending cluster action orchestration.
-        
 
- * **Flags Added:**
+* **Moved** (with backward compatibility)
+    * `om xx edit` => `om xx config edit`
+    * `om xx set` => `om xx config set`
+    * `om xx unset` => `om xx config unset`
+    * `om xx eval` => `om xx config eval`
+    * `om xx get` => `om xx config get`
+    * `om xx update` => `om xx config update`
+    * `om xx validate` => `om xx config validate`
+    * `om xx print schedule` => `om xx instance schedule`
+    * `om xx print status` => `om xx instance status`
+    * `om xx print config` => `om xx config show`
+    * `om xx print config mtime` => `om xx config mtime`
+    * `om xx print devs` => `om xx instance device`
+    * `om xx print resinfo` => `om xx resource info list`
+    * `om xx push resinfo` => `om xx resource info push`
+
+* **Flags Added:**
 
     * `om <selector> <action> --local -q|--quiet`
         Don't print the logs on the console.
 
- * **Flags Removed:**
+* **Flags Removed:**
 
     * `om get --eval`
         Replaced by `om eval`
@@ -152,7 +167,7 @@
 	--time=10      ->  --time=10s
     ```
     
-* **`print status`**:
+* **`instance status`**:
     Change the instance-level errors and warnings (to no-whitespace words):
     ```
 	part provisioned  ->  mix-provisioned
@@ -205,7 +220,7 @@
     The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
 
 
-* **`om <kvstore> change`:**
+* **`om <kvstore> key change`:**
     This action is no longer failing if the key does not exist. The key is added instead.
 
 * **`om node freeze`:**
@@ -217,7 +232,7 @@
     Now display only local logs.
     A new `om cluster logs` command displays all cluster nodes logs.
 
-* **`om <sel> unset`:**
+* **`om <sel> config unset`:**
     Now accepts `--section <name>` to remove a cluster, node or object configuration section.
 
 * **`om monitor`:**
@@ -333,7 +348,7 @@
 
 * **Removed actions:**
     * `om sec fullpem`
-        The `fullpem` key is added to the sec on `gencert` action.
+        The `fullpem` key is added to the sec by the `certificate create` action, in addition to `certificate`, `private_key` and `certificate_chain`.
 
 ### Logging
 
