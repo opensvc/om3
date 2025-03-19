@@ -45,7 +45,6 @@ func init() {
 		newCmdObjectPurge(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectGenCert(kind),
 		newCmdObjectPKCS(kind),
 	)
 	cmdObjectCertificate.AddCommand(

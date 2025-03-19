@@ -3517,6 +3517,7 @@ func newCmdKeystoreRename(kind string) *cobra.Command {
 
 func newCmdObjectGenCert(kind string) *cobra.Command {
 	cmd := newCmdObjectCertificateCreate(kind)
+	cmd.Use = "cert"
 	cmd.Hidden = true
 	cmd.Aliases = []string{"crt"}
 	return cmd

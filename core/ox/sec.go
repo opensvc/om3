@@ -46,7 +46,6 @@ func init() {
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
-		newCmdObjectGenCert(kind),
 		newCmdObjectPKCS(kind),
 		newCmdTUI(kind),
 	)
