@@ -116,6 +116,13 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 			Text:      keywords.NewText(fs, "text/kw/rm"),
 		},
 		keywords.Keyword{
+			Option:    "read_only",
+			Attr:      "ReadOnly",
+			Scopable:  true,
+			Converter: converters.Tristate,
+			Text:      keywords.NewText(fs, "text/kw/read_only"),
+		},
+		keywords.Keyword{
 			Option:    "privileged",
 			Attr:      "Privileged",
 			Scopable:  true,

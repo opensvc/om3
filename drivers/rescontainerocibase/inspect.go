@@ -28,13 +28,14 @@ type (
 	InspectDataConfigEntrypoint []string
 
 	InspectDataHostConfig struct {
-		AutoRemove  bool
-		IpcMode     string
-		Privileged  bool
-		NetworkMode string
-		PidMode     string
-		UsernsMode  string
-		UTSMode     string
+		AutoRemove     bool
+		IpcMode        string
+		Privileged     bool
+		NetworkMode    string
+		PidMode        string
+		ReadonlyRootfs bool
+		UsernsMode     string
+		UTSMode        string
 	}
 
 	InspectDataState struct {

@@ -78,6 +78,7 @@ type (
 		PIDNS           string         `json:"pidns"`
 		IPCNS           string         `json:"ipcns"`
 		UTSNS           string         `json:"utsns"`
+		ReadOnly        string         `json:"read_only"`
 		RegistryCreds   string         `json:"registry_creds"`
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		StartTimeout    *time.Duration `json:"start_timeout"`
@@ -638,6 +639,9 @@ func (t *BT) Status(ctx context.Context) status.T {
 	if inspectHostConfig := inspect.HostConfig(); inspectHostConfig != nil {
 		if inspectHostConfig.Privileged != t.Privileged {
 			t.warnAttrDiff("privileged", fmt.Sprint(inspectHostConfig.Privileged), fmt.Sprint(t.Privileged))
+		}
+		if t.ReadOnly != "" && fmt.Sprint(inspectHostConfig.ReadonlyRootfs) != t.ReadOnly {
+			t.warnAttrDiff("read_only", fmt.Sprint(inspectHostConfig.ReadonlyRootfs), t.ReadOnly)
 		}
 		t.statusInspectNS(ctx, "netns", inspectHostConfig.NetworkMode, t.NetNS)
 		t.statusInspectNS(ctx, "pidns", inspectHostConfig.PidMode, t.PIDNS)
