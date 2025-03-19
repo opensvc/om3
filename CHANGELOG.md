@@ -126,8 +126,9 @@
 
 * **Moved** (with backward compatibility)
     * `om xx edit` => `om xx config edit`
-    * `om xx set` => `om xx config set`
-    * `om xx unset` => `om xx config unset`
+    * `om xx set` => `om xx config update --set`
+    * `om xx unset` => `om xx config update --unset`
+    * `om xx delete --section` => `om xx config update --delete`
     * `om xx eval` => `om xx config eval`
     * `om xx get` => `om xx config get`
     * `om xx update` => `om xx config update`
