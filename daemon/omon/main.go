@@ -406,7 +406,7 @@ func (t *Manager) updateStatus() {
 				t.status.PlacementState = placement.NonOptimal
 				break
 			}
-			if !instMonitor.IsHALeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
+			if !instMonitor.IsHALeader && !instStatus.Avail.Is(status.Down, status.StandbyUp, status.StandbyDown, status.NotApplicable) {
 				t.status.PlacementState = placement.NonOptimal
 				break
 			}
