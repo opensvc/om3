@@ -19,8 +19,6 @@ OX := bin/ox
 COMPOBJ := bin/compobj
 COMPOBJ_D := share/opensvc/compliance
 
-VERSION := $(shell git describe --tags --abbrev)
-
 .PHONY: version dist
 
 all: clean vet test race build dist
@@ -68,7 +66,7 @@ install:
 	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
 
 version:
-	echo $(VERSION) >util/version/text/VERSION
+	git describe --tags --abbrev >util/version/text/VERSION
 
 dist:
 	$(MKDIR) -p $(DIST)/bin
@@ -78,6 +76,6 @@ dist:
 	$(INSTALL) -m 755 $(COMPOBJ) $(DIST)/$(COMPOBJ)
 	$(DIST)/$(COMPOBJ) -r -i $(DIST)/$(COMPOBJ_D)
 	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
-	cd $(DIST) && tar czvf opensvc-$(VERSION).tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
+	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
 
 
