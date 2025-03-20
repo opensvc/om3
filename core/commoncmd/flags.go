@@ -133,8 +133,8 @@ func FlagEnv(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "env", "", "export the variable in the action environment")
 }
 
-func FlagCreateEnv(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "env", "", "set a env section parameter in the service configuration file")
+func FlagCreateEnv(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "env", []string{}, "set a env section parameter in the service configuration file")
 }
 
 func FlagEval(flagSet *pflag.FlagSet, p *bool) {
