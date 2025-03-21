@@ -52,6 +52,7 @@ type (
 
 	// HeartbeatStreamPeerStatus status of the communication with a specific peer node.
 	HeartbeatStreamPeerStatus struct {
+		Desc      string    `json:"desc"`
 		IsBeating bool      `json:"is_beating"`
 		LastAt    time.Time `json:"last_at"`
 	}

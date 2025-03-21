@@ -63,6 +63,15 @@ func (t *rx) Stop() error {
 	return nil
 }
 
+func (t *rx) streamPeerDesc() string {
+	if t.intf != nil {
+		return fmt.Sprintf("%s@%s ← *", t.udpAddr, t.intf)
+	} else {
+		return fmt.Sprintf("%s ← *", t.udpAddr)
+	}
+	return ""
+}
+
 // Start implements the Start function of the Receiver interface for rx
 // TODO need purge too old or dropped node assembly ?
 func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
@@ -88,6 +97,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
+				Desc:     t.streamPeerDesc(),
 			}
 		}
 		listener, err := net.ListenMulticastUDP("udp", t.intf, t.udpAddr)

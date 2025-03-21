@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -74,6 +75,23 @@ func (t *rx) Stop() error {
 	return nil
 }
 
+func (t *rx) streamPeerDesc(addr string) string {
+	if len(t.addr) > 0 {
+		if t.intf != "" {
+			return fmt.Sprintf("%s:%s@%s ← %s", t.addr, t.port, t.intf, addr)
+		} else {
+			return fmt.Sprintf("%s:%s ← %s", t.addr, t.port, addr)
+		}
+	} else {
+		if t.intf != "" {
+			return fmt.Sprintf(":%s@%s ← %s", t.port, t.intf, addr)
+		} else {
+			return fmt.Sprintf(":%s ← %s", t.port, addr)
+		}
+	}
+	return ""
+}
+
 // Start implements the Start function of the Receiver interface for rx
 //
 // message from unexpected source addr connection are dropped (we only take care
@@ -103,6 +121,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
+				Desc:     t.streamPeerDesc(addr),
 			}
 			addrs, err := resolver.LookupHost(ctx, addr)
 			if err != nil {

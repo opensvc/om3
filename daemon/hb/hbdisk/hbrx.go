@@ -67,6 +67,14 @@ func (t *rx) Stop() error {
 	return nil
 }
 
+func (t *rx) streamPeerDesc(node string) string {
+	if slot, ok := t.base.nodeSlot[node]; ok {
+		return fmt.Sprintf("← %s[%d]", t.base.device.file.Name(), slot)
+	} else {
+		return fmt.Sprintf("← %s[?]", t.base.device.file.Name())
+	}
+}
+
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, SlotSize)
@@ -101,6 +109,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 			Nodename: node,
 			Ctx:      ctx,
 			Timeout:  t.timeout,
+			Desc:     t.streamPeerDesc(node),
 		}
 	}
 
