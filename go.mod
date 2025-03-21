@@ -30,7 +30,7 @@ require (
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
