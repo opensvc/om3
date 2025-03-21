@@ -56,7 +56,62 @@ type (
 		IsBeating bool      `json:"is_beating"`
 		LastAt    time.Time `json:"last_at"`
 	}
+
+	HeartbeatStreamPeerStatusTable      []HeartbeatStreamPeerStatusTableEntry
+	HeartbeatStreamPeerStatusTableEntry struct {
+		Node string `json:"node"`
+		Peer string `json:"peer"`
+		Status
+		Type   string  `json:"type"`
+		Alerts []Alert `json:"alerts"`
+		HeartbeatStreamPeerStatus
+	}
 )
+
+func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
+	var isBeatingIcon string
+	var hasAlertsIcon string
+	if t.IsBeating {
+		isBeatingIcon = "🟢"
+	} else {
+		isBeatingIcon = "🔴"
+	}
+	if len(t.Alerts) > 0 {
+		hasAlertsIcon = "⚠️ "
+	}
+	return map[string]any{
+		"node":          t.Node,
+		"peer":          t.Peer,
+		"type":          t.Type,
+		"alerts":        t.Alerts,
+		"id":            t.Status.ID,
+		"state":         t.Status.State,
+		"configured_at": t.Status.ConfiguredAt,
+		"updated_at":    t.Status.UpdatedAt,
+		"created_at":    t.Status.CreatedAt,
+		"desc":          t.Desc,
+		"last_at":       t.LastAt,
+		"is_beating":    t.IsBeating,
+		"icon":          isBeatingIcon + hasAlertsIcon,
+	}
+}
+
+func (c *Heartbeat) Table(nodeName string) HeartbeatStreamPeerStatusTable {
+	table := make(HeartbeatStreamPeerStatusTable, 0)
+	for _, stream := range c.Streams {
+		for peerName, peerStatus := range stream.Peers {
+			table = append(table, HeartbeatStreamPeerStatusTableEntry{
+				Node:                      nodeName,
+				Peer:                      peerName,
+				Status:                    stream.Status,
+				Type:                      stream.Type,
+				Alerts:                    append([]Alert{}, stream.Alerts...),
+				HeartbeatStreamPeerStatus: peerStatus,
+			})
+		}
+	}
+	return table
+}
 
 func (c *Heartbeat) DeepCopy() *Heartbeat {
 	streams := make([]HeartbeatStream, 0, len(c.Streams))

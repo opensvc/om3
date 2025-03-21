@@ -84,8 +84,12 @@ func FlagCron(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "cron", false, "run the action as if executed by the daemon")
 }
 
+func FlagDaemonHeartbeatFilter(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "name", "", "filter on heartbeat name or stream name (ex: hb#1, hb#1.rx, 1, 1.rx)")
+}
+
 func FlagDaemonHeartbeatName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "heartbeat name (ex: 1.rx)")
+	flagSet.StringVar(p, "name", "", "stream name (ex: 1.rx)")
 }
 
 func FlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
@@ -191,6 +195,10 @@ func FlagNetworkStatusName(flagSet *pflag.FlagSet, p *string) {
 
 func FlagNetworkStatusExtended(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVarP(p, "extended", "x", false, "include network addresses")
+}
+
+func FlagNodeSelectorFilter(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "node", "", "filter on a list of nodes (ex: *, az=fr1)")
 }
 
 func FlagNodeSelector(flagSet *pflag.FlagSet, p *string) {

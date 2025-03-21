@@ -264,6 +264,22 @@ func newCmdDaemonHeartbeatStart() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonHeartbeatStatus() *cobra.Command {
+	options := commands.CmdDaemonHeartbeatStatus{}
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: fmt.Sprintf("daemon heartbeat status"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelectorFilter(flags, &options.NodeSelector)
+	commoncmd.FlagDaemonHeartbeatFilter(flags, &options.Name)
+	return cmd
+}
+
 func newCmdDaemonHeartbeatStop() *cobra.Command {
 	options := commands.CmdDaemonHeartbeatStop{}
 	cmd := &cobra.Command{
