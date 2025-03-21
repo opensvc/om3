@@ -65,7 +65,7 @@ func (t *rx) Stop() error {
 
 func (t *rx) streamPeerDesc() string {
 	if t.intf != nil {
-		return fmt.Sprintf("%s@%s ← *", t.udpAddr, t.intf)
+		return fmt.Sprintf("%s@%s ← *", t.udpAddr, t.intf.Name)
 	} else {
 		return fmt.Sprintf("%s ← *", t.udpAddr)
 	}
