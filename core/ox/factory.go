@@ -274,6 +274,7 @@ func newCmdDaemonHeartbeatStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelectorFilter(flags, &options.NodeSelector)
+	commoncmd.FlagPeerSelectorFilter(flags, &options.PeerSelector)
 	commoncmd.FlagDaemonHeartbeatFilter(flags, &options.Name)
 	return cmd
 }

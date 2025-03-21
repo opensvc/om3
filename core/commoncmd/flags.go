@@ -201,6 +201,10 @@ func FlagNodeSelectorFilter(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "node", "", "filter on a list of nodes (ex: *, az=fr1)")
 }
 
+func FlagPeerSelectorFilter(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "peer", "", "filter on a list of remote nodes (ex: *, az=fr1)")
+}
+
 func FlagNodeSelector(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "node", "", "execute on a list of nodes")
 }

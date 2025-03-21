@@ -9,6 +9,7 @@ type (
 	CmdDaemonHeartbeatStatus struct {
 		OptsGlobal
 		NodeSelector string
+		PeerSelector string
 		Name         string
 	}
 )
@@ -20,6 +21,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 			Output: t.Output,
 		},
 		NodeSelector: t.NodeSelector,
+		PeerSelector: t.PeerSelector,
 		Name:         t.Name,
 	}
 	if t.NodeSelector == "" {

@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
@@ -17,14 +16,12 @@ type (
 	CmdDaemonHeartbeatStatus struct {
 		OptsGlobal
 		NodeSelector string
+		PeerSelector string
 		Name         string
 	}
 )
 
 func (t *CmdDaemonHeartbeatStatus) Run() error {
-	if t.NodeSelector == "" {
-		return fmt.Errorf("--node is empty")
-	}
 	cli, err := client.New()
 	if err != nil {
 		return err
@@ -38,12 +35,17 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}
-	nodeMap := make(map[string]any)
-	if nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(cli)).Expand(); err != nil {
-		return err
-	} else {
-		for _, nodename := range nodenames {
-			nodeMap[nodename] = nil
+	var peerMap, nodeMap map[string]any
+	if t.NodeSelector != "" {
+		nodeMap, err = nodeselector.New(t.NodeSelector, nodeselector.WithClient(cli)).ExpandMap()
+		if err != nil {
+			return err
+		}
+	}
+	if t.PeerSelector != "" {
+		peerMap, err = nodeselector.New(t.PeerSelector, nodeselector.WithClient(cli)).ExpandMap()
+		if err != nil {
+			return err
 		}
 	}
 	if t.Name != "" && !strings.HasPrefix(t.Name, "hb#") {
@@ -51,10 +53,17 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	}
 	table := make(daemonsubsystem.HeartbeatStreamPeerStatusTable, 0)
 	for nodename, nodeData := range data.Cluster.Node {
-		if _, ok := nodeMap[nodename]; !ok {
-			continue
+		if nodeMap != nil {
+			if _, ok := nodeMap[nodename]; !ok {
+				continue
+			}
 		}
 		for _, e := range nodeData.Daemon.Heartbeat.Table(nodename) {
+			if peerMap != nil {
+				if _, ok := peerMap[e.Peer]; !ok {
+					continue
+				}
+			}
 			if t.Name != "" {
 				if strings.HasSuffix(t.Name, ".tx") || strings.HasSuffix(t.Name, ".rx") {
 					if t.Name != e.ID {
