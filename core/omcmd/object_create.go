@@ -34,7 +34,7 @@ type (
 		commoncmd.OptsLock
 		Config    string
 		Keywords  []string
-		Env       string
+		Env       []string
 		Provision bool
 		Restore   bool
 		Force     bool
@@ -53,6 +53,9 @@ var (
 )
 
 func (t *CmdObjectCreate) Run(selector, kind string) error {
+	for _, e := range t.Env {
+		t.Keywords = append(t.Keywords, "env."+e)
+	}
 	if p, err := t.parseSelector(selector, kind); err != nil {
 		return err
 	} else {

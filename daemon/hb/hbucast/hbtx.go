@@ -56,6 +56,23 @@ func (t *tx) Stop() error {
 	return nil
 }
 
+func (t *tx) streamPeerDesc(addr string) string {
+	if len(t.localIP) > 0 {
+		if t.intf != "" {
+			return fmt.Sprintf("%s@%s → %s:%s", t.localIP, t.intf, addr, t.port)
+		} else {
+			return fmt.Sprintf("%s → %s:%s", t.localIP, addr, t.port)
+		}
+	} else {
+		if t.intf != "" {
+			return fmt.Sprintf("@%s → %s:%s", t.intf, addr, t.port)
+		} else {
+			return fmt.Sprintf("→ %s:%s", addr, t.port)
+		}
+	}
+	return ""
+}
+
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	started := make(chan bool)
@@ -67,12 +84,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	go func() {
 		defer t.Done()
 		t.log.Infof("starting: timeout %s, interval: %s", t.timeout, t.interval)
-		for node := range t.nodes {
+		for node, addr := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbID:     t.id,
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
+				Desc:     t.streamPeerDesc(addr),
 			}
 		}
 		started <- true

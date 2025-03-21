@@ -3,6 +3,7 @@ package hbmcast
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -58,6 +59,14 @@ func (t *tx) Stop() error {
 	return nil
 }
 
+func (t *tx) streamPeerDesc() string {
+	if t.laddr == nil {
+		return fmt.Sprintf("→ %s", t.udpAddr)
+	} else {
+		return fmt.Sprintf("%s → %s", t.laddr, t.udpAddr)
+	}
+}
+
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	started := make(chan bool)
@@ -83,6 +92,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				Nodename: node,
 				Ctx:      ctx,
 				Timeout:  t.timeout,
+				Desc:     t.streamPeerDesc(),
 			}
 		}
 		started <- true

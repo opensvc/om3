@@ -117,6 +117,7 @@ type (
 	CmdAddWatcher struct {
 		HbID     string
 		Nodename string
+		Desc     string
 		Ctx      context.Context
 		Timeout  time.Duration
 	}
@@ -338,7 +339,9 @@ func (c *C) run() {
 					continue
 				}
 				if _, ok := heartbeat[hbID]; ok {
-					heartbeat[hbID].Peers[peerNode] = daemonsubsystem.HeartbeatStreamPeerStatus{}
+					heartbeat[hbID].Peers[peerNode] = daemonsubsystem.HeartbeatStreamPeerStatus{
+						Desc: o.Desc,
+					}
 				} else {
 					c.log.Warnf("watcher skipped: called before register %s -> %s", hbID, peerNode)
 					continue
@@ -354,7 +357,7 @@ func (c *C) run() {
 					remote.txCount++
 				}
 				remotes[peerNode] = remote
-				c.peerWatch(beatingCtx, beatingC, o.HbID, peerNode, o.Timeout)
+				c.peerWatch(beatingCtx, beatingC, o.HbID, peerNode, o.Desc, o.Timeout)
 			case CmdDelWatcher:
 				hbID := o.HbID
 				peerNode := o.Nodename

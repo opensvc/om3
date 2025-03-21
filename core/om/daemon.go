@@ -60,6 +60,7 @@ func init() {
 	cmdDaemonHeartbeat.AddCommand(
 		newCmdDaemonHeartbeatRestart(),
 		newCmdDaemonHeartbeatStart(),
+		newCmdDaemonHeartbeatStatus(),
 		newCmdDaemonHeartbeatStop(),
 	)
 

@@ -3,6 +3,7 @@ package hbrelay
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -62,6 +63,10 @@ func (t *rx) Stop() error {
 	return nil
 }
 
+func (t *rx) streamPeerDesc() string {
+	return fmt.Sprintf("← %s@%s", t.username, t.relay)
+}
+
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	ctx, cancel := context.WithCancel(t.ctx)
@@ -83,6 +88,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 			Nodename: node,
 			Ctx:      ctx,
 			Timeout:  t.timeout,
+			Desc:     t.streamPeerDesc(),
 		}
 	}
 
