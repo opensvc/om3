@@ -168,7 +168,7 @@ func (t T) allocateSubnets() error {
 	kops := make([]keyop.T, 0)
 	for _, nodename := range nodes {
 		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
-		for i := 0; i < maxIPsPerNodes; i++ {
+		for i := 0; i < ipsPerNode; i++ {
 			addr = addr.Next()
 		}
 		kops = append(kops, keyop.T{
