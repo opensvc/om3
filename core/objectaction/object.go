@@ -1007,7 +1007,13 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		}
 	case instance.MonitorGlobalExpectProvisioned:
 		checkFunc = func() error {
-			return assertProvisioned(p, provisioned.True, provisioned.NotApplicable)
+			if err := assertProvisioned(p, provisioned.True, provisioned.NotApplicable); err != nil {
+				return err
+			}
+			if err := assertAvail(p, status.Up, status.NotApplicable); err != nil {
+				return err
+			}
+			return assertFrozen(p, "unfrozen")
 		}
 	case instance.MonitorGlobalExpectRestarted:
 		checkFunc = func() error {
