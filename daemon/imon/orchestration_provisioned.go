@@ -16,11 +16,15 @@ func (t *Manager) orchestrateProvisioned() {
 		instance.MonitorStateUnfreezeSuccess,
 		instance.MonitorStateUnprovisionFailure:
 		t.provisionedFromIdle()
+	case instance.MonitorStateStartSuccess:
+		t.provisionedFromProvisioned()
 	case instance.MonitorStateProvisionSuccess:
 		t.provisionedFromProvisioned()
 	case instance.MonitorStateWaitLeader:
 		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailure:
+		t.provisionedFromProvisionFailed()
+	case instance.MonitorStateStartFailure:
 		t.provisionedFromProvisionFailed()
 	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateUnfreezeFailure:
@@ -43,7 +47,11 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
+		if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+			t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
+		} else {
+			t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
+		}
 		return
 	} else {
 		t.transitionTo(instance.MonitorStateWaitLeader)
@@ -58,7 +66,11 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
+	if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+		t.queueAction(t.crmStartStandby, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
+	} else {
+		t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
+	}
 	return
 }
 
@@ -80,11 +92,18 @@ func (t *Manager) provisionedClearIfReached() bool {
 		t.done()
 		return true
 	}
-	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+	if t.instStatus[t.localhost].Provisioned == provisioned.True {
 		return reached("provisioned orchestration: instance is provisioned -> set reached")
 	}
 	if t.instStatus[t.localhost].Avail == status.NotApplicable {
 		return reached("provisioned orchestration: instance availability is n/a -> set reached, clear local expect")
+	}
+	if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+		if t.isProvisioningLeader() && t.instStatus[t.localhost].Avail.Is(status.Up) {
+			return reached("provisioned orchestration: unprovisionable leader instance is up -> set reached, clear local expect")
+		} else if !t.isProvisioningLeader() && t.instStatus[t.localhost].Avail.Is(status.Down, status.StandbyUp, status.StandbyUpWithDown, status.StandbyUpWithUp) {
+			return reached("provisioned orchestration: unprovisionable leader instance is up -> set reached, clear local expect")
+		}
 	}
 	return false
 }
