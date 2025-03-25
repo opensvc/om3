@@ -68,7 +68,9 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	}
 	errC := make(chan error)
 	if t.Provision {
-		if err := cmd.WaitInstanceMonitor(context.Background(), t.client, t.path, t.Time, errC); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
+		defer cancel()
+		if err := cmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
 			return err
 		}
 	}

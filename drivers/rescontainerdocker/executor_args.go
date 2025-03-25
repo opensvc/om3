@@ -11,8 +11,8 @@ import (
 )
 
 // RunArgsBase append extra args for docker
-func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
-	a, err := ea.ExecutorArg.RunArgsBase()
+func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
+	a, err := ea.ExecutorArg.RunArgsBase(ctx)
 	if err != nil {
 		return nil, err
 	}

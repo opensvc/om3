@@ -1,10 +1,12 @@
 package resapp
 
 import (
+	"context"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/envprovider"
@@ -26,7 +28,7 @@ type BaseT struct {
 	ObjectID     uuid.UUID      `json:"objectID"`
 }
 
-func (t *T) getEnv() (env []string, err error) {
+func (t *T) getEnv(ctx context.Context) (env []string, err error) {
 	var tempEnv []string
 	env = []string{
 		"OPENSVC_RID=" + t.RID(),
@@ -46,5 +48,6 @@ func (t *T) getEnv() (env []string, err error) {
 		return nil, err
 	}
 	env = append(env, tempEnv...)
+	env = append(env, actioncontext.Env(ctx)...)
 	return env, nil
 }

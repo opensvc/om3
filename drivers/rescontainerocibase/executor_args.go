@@ -70,7 +70,7 @@ func (ea *ExecutorArg) RemoveArgs() *args.T {
 	return args.New("container", "rm", ea.BT.ContainerName())
 }
 
-func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
+func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	bt := ea.BT
 	runArgs := args.New(bt.RunArgs...)
 
@@ -168,7 +168,7 @@ func (ea *ExecutorArg) RunArgsBase() (*args.T, error) {
 			a.Append("--volume", v)
 		}
 	}
-	if mounts, err := ea.runArgsEnv(); err != nil {
+	if mounts, err := ea.runArgsEnv(ctx); err != nil {
 		return a, err
 	} else {
 		for _, v := range mounts {
@@ -283,8 +283,8 @@ func (ea *ExecutorArg) runArgsDNSSearch() []string {
 	return a
 }
 
-func (ea *ExecutorArg) runArgsEnv() ([]string, error) {
-	if l, m, err := ea.BT.GenEnv(); err != nil {
+func (ea *ExecutorArg) runArgsEnv(ctx context.Context) ([]string, error) {
+	if l, m, err := ea.BT.GenEnv(ctx); err != nil {
 		return nil, err
 	} else {
 		ea.runArgsEnvM = m

@@ -1,6 +1,7 @@
 package rescontainerocibase
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	base, err := ea.RunArgsBase()
+	base, err := ea.RunArgsBase(context.Background())
 	if err != nil {
 		require.NoError(t, err)
 	}

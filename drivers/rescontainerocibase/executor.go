@@ -157,7 +157,7 @@ func (e *Executor) Remove(ctx context.Context) error {
 }
 
 func (e *Executor) Run(ctx context.Context) error {
-	if a, err := e.args.RunArgsBase(); err != nil {
+	if a, err := e.args.RunArgsBase(ctx); err != nil {
 		return fmt.Errorf("can't prepare base args for run command: %s", err)
 	} else if environ, err := e.args.RunCmdEnv(); err != nil {
 		return fmt.Errorf("can't prepare run command environ: %s", err)

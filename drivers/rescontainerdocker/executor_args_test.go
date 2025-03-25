@@ -1,6 +1,7 @@
 package rescontainerdocker
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -160,7 +161,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 
 			tc.res.configure(ea)
 
-			runArgsBase, err := ea.RunArgsBase()
+			runArgsBase, err := ea.RunArgsBase(context.Background())
 			if err != nil {
 				require.NoError(t, err)
 			}

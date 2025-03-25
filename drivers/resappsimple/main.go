@@ -39,7 +39,7 @@ func (t *T) loggerWithProc(p proc.T) *plog.Logger {
 // Start the Resource
 func (t *T) Start(ctx context.Context) (err error) {
 	var opts []funcopt.O
-	if opts, err = t.GetFuncOpts(t.StartCmd, "start"); err != nil {
+	if opts, err = t.GetFuncOpts(ctx, t.StartCmd, "start"); err != nil {
 		return err
 	}
 	if len(opts) == 0 {
