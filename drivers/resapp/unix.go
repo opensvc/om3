@@ -65,7 +65,7 @@ func (t *T) SortKey() string {
 // CommonStop stops the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	var opts []funcopt.O
-	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
+	if opts, err = t.GetFuncOpts(ctx, t.StopCmd, "stop"); err != nil {
 		t.Log().Errorf("prepare 'stop' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
@@ -155,7 +155,7 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 func (t *T) CommonStatus(ctx context.Context) status.T {
 	var opts []funcopt.O
 	var err error
-	if opts, err = t.GetFuncOpts(t.CheckCmd, "check"); err != nil {
+	if opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "check"); err != nil {
 		t.Log().Errorf("prepare 'status' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
@@ -249,12 +249,12 @@ func (t *T) CmdArgs(s string, action string) ([]string, error) {
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
-func (t *T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
+func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt.O, error) {
 	cmdArgs, err := t.CmdArgs(s, action)
 	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
-	env, err := t.getEnv()
+	env, err := t.getEnv(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	)
 	var opts []funcopt.O
 	var err error
-	if opts, err = t.GetFuncOpts(t.InfoCmd, "info"); err != nil {
+	if opts, err = t.GetFuncOpts(ctx, t.InfoCmd, "info"); err != nil {
 		t.Log().Errorf("prepare 'info' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)

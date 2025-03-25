@@ -3025,6 +3025,7 @@ func newCmdObjectRun(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagConfirm(flags, &options.Confirm)
 	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagEnv(flags, &options.Env)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

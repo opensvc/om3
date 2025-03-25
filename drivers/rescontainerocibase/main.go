@@ -22,6 +22,7 @@ import (
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/sys/unix"
 
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -149,7 +150,7 @@ type (
 		EnterCmdArgs() []string
 		EnterCmdCheckArgs() []string
 		RemoveArgs() *args.T
-		RunArgsBase() (*args.T, error)
+		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)
 		RunArgsCommand() (*args.T, error)
 		RunCmdEnv() (map[string]string, error)
@@ -333,7 +334,7 @@ func (t *BT) FormatNS(s string) (string, error) {
 // secret var names from its SecretsEnv are added to the list: "SECRETVAR1", "SECRETVAR2",...
 // values for secrets are added to the returned envM: {"SECRETVAR1":"SECRETVALUE1", ...}
 // It may be used by executorArgser to prepare run args and run command environment.
-func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
+func (t *BT) GenEnv(ctx context.Context) (envL []string, envM map[string]string, err error) {
 	envM = make(map[string]string)
 	envL = []string{
 		"OPENSVC_RID=" + t.RID(),
@@ -362,6 +363,10 @@ func (t *BT) GenEnv() (envL []string, envM map[string]string, err error) {
 			envL = append(envL, kv[0])
 		}
 	}
+
+	// add environment variables from the "task run" commandline (--env)
+	envL = append(envL, actioncontext.Env(ctx)...)
+
 	return envL, envM, nil
 }
 

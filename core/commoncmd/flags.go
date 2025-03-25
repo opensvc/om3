@@ -133,8 +133,8 @@ func FlagDuration(flagSet *pflag.FlagSet, p *time.Duration) {
 	flagSet.DurationVar(p, "duration", 0*time.Second, "duration")
 }
 
-func FlagEnv(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "env", "", "export the variable in the action environment")
+func FlagEnv(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "env", []string{}, "export the variable in the action environment")
 }
 
 func FlagCreateEnv(flagSet *pflag.FlagSet, p *[]string) {

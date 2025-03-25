@@ -15,6 +15,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		Env          []string
 		NodeSelector string
 		Cron         bool
 		Confirm      bool
@@ -41,6 +42,7 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithCron(ctx, t.Cron)
 			ctx = actioncontext.WithConfirm(ctx, t.Confirm)
+			ctx = actioncontext.WithEnv(ctx, t.Env)
 			return nil, o.Run(ctx)
 		}),
 	).Do()

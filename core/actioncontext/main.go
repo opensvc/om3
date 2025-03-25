@@ -15,6 +15,7 @@ type (
 const (
 	confirmKey key = iota
 	cronKey
+	envKey
 	forceKey
 	leaderKey
 	lockTimeoutKey
@@ -128,6 +129,16 @@ func RID(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+func WithEnv(ctx context.Context, s []string) context.Context {
+	return context.WithValue(ctx, envKey, s)
+}
+func Env(ctx context.Context) []string {
+	if i := ctx.Value(envKey); i != nil {
+		return i.([]string)
+	}
+	return []string{}
 }
 
 func WithTag(ctx context.Context, s string) context.Context {

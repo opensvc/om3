@@ -100,7 +100,7 @@ func (t *T) loggerWithCmd(cmd *command.T) *plog.Logger {
 func (t *T) lockedRun(ctx context.Context) (err error) {
 	var opts []funcopt.O
 	app := t.App()
-	if opts, err = app.GetFuncOpts(t.RunCmd, "run"); err != nil {
+	if opts, err = app.GetFuncOpts(ctx, t.RunCmd, "run"); err != nil {
 		return err
 	}
 	if len(opts) == 0 {
@@ -125,7 +125,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	}
 	if err != nil {
 		t.Log().Errorf("write last run: %s", err)
-		if err := t.onError(); err != nil {
+		if err := t.onError(ctx); err != nil {
 			t.Log().Warnf("on error: %s", err)
 		}
 	}
@@ -137,9 +137,9 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *T) onError() error {
+func (t *T) onError(ctx context.Context) error {
 	app := t.App()
-	opts, err := app.GetFuncOpts(t.OnErrorCmd, "on_error")
+	opts, err := app.GetFuncOpts(ctx, t.OnErrorCmd, "on_error")
 	if err != nil {
 		return err
 	}
