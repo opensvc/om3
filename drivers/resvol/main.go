@@ -372,12 +372,7 @@ func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
 	}
 	p := filepath.Join(volume.Path().VarDir(), "create_volume.lock")
 	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
-	timeout, err := time.ParseDuration("20s")
-	if err != nil {
-		return nil, err
-	}
-	err = lock.Lock(timeout, "")
-	if err != nil {
+	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return nil, err
 	}
 	defer func() { _ = lock.UnLock() }()

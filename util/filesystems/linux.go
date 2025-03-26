@@ -11,7 +11,6 @@ import (
 )
 
 func (t T) Mount(dev string, mnt string, options string) error {
-	timeout, _ := time.ParseDuration("1m")
 	args := []string{"-t", t.Type()}
 	if len(options) > 0 {
 		args = append(args, "-o", options)
@@ -21,7 +20,7 @@ func (t T) Mount(dev string, mnt string, options string) error {
 		command.WithName("mount"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
-		command.WithTimeout(timeout),
+		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -35,12 +34,11 @@ func (t T) Mount(dev string, mnt string, options string) error {
 }
 
 func (t T) Umount(mnt string) error {
-	timeout, _ := time.ParseDuration("1m")
 	cmd := command.New(
 		command.WithName("umount"),
 		command.WithVarArgs(mnt),
 		command.WithLogger(t.Log()),
-		command.WithTimeout(timeout),
+		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),

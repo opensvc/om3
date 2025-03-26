@@ -215,12 +215,7 @@ func (t T) HasBlockDev(path string) (bool, error) {
 func (t T) Bind(bDevPath string) (int, error) {
 	p := "/var/lock/opensvc.raw.lock"
 	lock := flock.New(p, "", fcntllock.New)
-	timeout, err := time.ParseDuration("20s")
-	if err != nil {
-		return 0, err
-	}
-	err = lock.Lock(timeout, "")
-	if err != nil {
+	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return 0, err
 	}
 	defer func() { _ = lock.UnLock() }()

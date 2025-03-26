@@ -191,7 +191,6 @@ func (t *T) mountWithLegacy(legacy bool) error {
 }
 
 func (t *T) mountLegacy() error {
-	timeout, _ := time.ParseDuration("1m")
 	a := args.New()
 	a.Append("-t", "zfs")
 	mountOptions := t.mountOptions()
@@ -204,7 +203,7 @@ func (t *T) mountLegacy() error {
 		command.WithName("mount"),
 		command.WithArgs(a.Get()),
 		command.WithLogger(t.Log()),
-		command.WithTimeout(timeout),
+		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -218,12 +217,11 @@ func (t *T) mountLegacy() error {
 }
 
 func (t *T) umountLegacy() error {
-	timeout, _ := time.ParseDuration("1m")
 	cmd := command.New(
 		command.WithName("umount"),
 		command.WithVarArgs(t.MountPoint),
 		command.WithLogger(t.Log()),
-		command.WithTimeout(timeout),
+		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
