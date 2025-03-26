@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -48,15 +49,15 @@ type (
 
 		pid           int
 		commandString string
-		done          chan string
-		goroutine     []func()
-		cancel        func()
-		ctx           context.Context
 		stdout        []byte
 		stderr        []byte
 		started       bool // Prevent relaunch
 		waited        bool // Prevent relaunch
 		promptReader  *bufio.Reader
+		wg            sync.WaitGroup
+
+		ctx    context.Context
+		cancel context.CancelFunc
 	}
 
 	ErrExitCode struct {
@@ -74,6 +75,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
+		ctx:             context.Background(),
 		stdoutLogLevel:  zerolog.Disabled,
 		stderrLogLevel:  zerolog.Disabled,
 		logLevel:        zerolog.DebugLevel,
@@ -81,6 +83,10 @@ func New(opts ...funcopt.O) *T {
 		okExitCodes:     []int{0},
 	}
 	_ = funcopt.Apply(t, opts...)
+	if t.timeout > 0 {
+		t.ctx, t.cancel = context.WithTimeout(t.ctx, t.timeout)
+	}
+	t.cmd = exec.CommandContext(t.ctx, t.name, t.args...)
 	return t
 }
 
@@ -132,7 +138,6 @@ func (t *T) Start() (err error) {
 	if !t.prompt() {
 		return ErrPromptAbort
 	}
-	cmd := t.Cmd()
 	if err = t.update(); err != nil {
 		return err
 	}
@@ -172,9 +177,9 @@ func (t *T) Start() (err error) {
 
 	if t.stdoutLogLevel != zerolog.Disabled || t.bufferStdout || t.onStdoutLine != nil {
 		var r io.ReadCloser
-		if r, err = cmd.StdoutPipe(); err != nil {
+		if r, err = t.cmd.StdoutPipe(); err != nil {
 			if t.log != nil {
-				t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command.Start() -> StdoutPipe(): %s", err)
+				t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command.Start() -> StdoutPipe(): %s", err)
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -189,23 +194,24 @@ func (t *T) Start() (err error) {
 			}
 		}
 
-		t.goroutine = append(t.goroutine, func() {
+		t.wg.Add(1)
+		go func() {
+			defer t.wg.Done()
 			if err := parseLines(r, onLine, &t.stdout); err != nil {
 				if t.log != nil {
-					t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command parse stdout lines: %s", err)
+					t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command parse stdout lines: %s", err)
 				}
 			}
-			// explicit close call for situation where cmd.Wait() is not called
+			// explicit close call for situation where t.cmd.Wait() is not called
 			_ = r.Close()
-			t.done <- "stdout"
-		})
+		}()
 	}
 
 	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
 		var r io.ReadCloser
-		if r, err = cmd.StderrPipe(); err != nil {
+		if r, err = t.cmd.StderrPipe(); err != nil {
 			if t.log != nil {
-				t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command.Start() -> StderrPipe(): %s", err)
+				t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command.Start() -> StderrPipe(): %s", err)
 			}
 			return fmt.Errorf("%w", err)
 		}
@@ -222,70 +228,20 @@ func (t *T) Start() (err error) {
 			}
 		}
 
-		t.goroutine = append(t.goroutine, func() {
+		t.wg.Add(1)
+		go func() {
+			defer t.wg.Done()
 			if err := parseLines(r, onLine, &t.stderr); err != nil {
 				if t.log != nil {
-					t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "command parse stderr lines: %s", err)
+					t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command parse stderr lines: %s", err)
 				}
 			}
 
-			// explicit close call for situation where cmd.Wait() is not called
+			// explicit close call for situation where t.cmd.Wait() is not called
 			_ = r.Close()
-			t.done <- "stderr"
-		})
+		}()
 	}
 
-	if t.timeout > 0 {
-		var ctx context.Context
-		if t.ctx != nil {
-			ctx = t.ctx
-		} else {
-			ctx = context.Background()
-		}
-		ctx, cancel := context.WithTimeout(ctx, t.timeout)
-		t.ctx = ctx
-		t.cancel = cancel
-		if t.log != nil {
-			t.log.Levelf(t.logLevel, "use context %v", ctx)
-		}
-		t.goroutine = append(t.goroutine, func() {
-			select {
-			case <-ctx.Done():
-				err := ctx.Err()
-				if err == context.DeadlineExceeded {
-					if cmd.Process == nil {
-						if t.log != nil {
-							t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "deadlineExceeded, but cmd.Process is nil")
-						}
-						// don't need to wait on other go routines
-						for i := 0; i < len(t.goroutine); i++ {
-							t.done <- "ctx"
-						}
-						return
-					}
-					if t.onStderrLine != nil {
-						t.onStderrLine("DeadlineExceeded")
-					}
-					if t.stderrLogLevel != zerolog.Disabled {
-						t.log.Attr("pid", t.pid).Levelf(t.stderrLogLevel, "deadlineExceeded, pid is %d", t.pid)
-					} else if t.log != nil {
-						t.log.Attr("pid", t.pid).Levelf(t.logLevel, "deadlineExceeded, pid is %d", t.pid)
-					}
-					if t.log != nil {
-						t.log.Attr("cmd", t.cmd.String()).Attr("pid", t.pid).Levelf(t.logLevel, "kill deadline exceeded pid %d", t.pid)
-					}
-					err := cmd.Process.Kill()
-					if err != nil && t.log != nil {
-						t.log.Attr("cmd", t.cmd.String()).Attr("pid", t.pid).Levelf(t.logLevel, "kill deadline exceeded pid %d: %s", t.pid, err)
-					}
-				}
-			}
-			// don't need to wait on other go routines
-			for i := 0; i < len(t.goroutine); i++ {
-				t.done <- "ctx"
-			}
-		})
-	}
 	if t.log != nil {
 		if t.commandLogLevel != zerolog.Disabled && t.commandLogLevel > t.logLevel {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.commandLogLevel, "run %s", t.cmd)
@@ -294,32 +250,19 @@ func (t *T) Start() (err error) {
 		}
 	}
 	t.started = true
-	if err = cmd.Start(); err != nil {
+	if err = t.cmd.Start(); err != nil {
 		if t.log != nil {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s: %s", t.cmd, err)
 		}
 		return fmt.Errorf("%w", err)
 	}
-	if cmd.Process != nil {
-		t.pid = cmd.Process.Pid
-	}
-	if len(t.goroutine) > 0 {
-		t.done = make(chan string, len(t.goroutine))
-		for _, f := range t.goroutine {
-			go f()
-		}
+	if t.cmd.Process != nil {
+		t.pid = t.cmd.Process.Pid
 	}
 	return nil
 }
 
 func (t *T) Cmd() *exec.Cmd {
-	if t.cmd == nil {
-		if t.ctx == nil {
-			t.cmd = exec.Command(t.name, t.args...)
-		} else {
-			t.cmd = exec.CommandContext(t.ctx, t.name, t.args...)
-		}
-	}
 	return t.cmd
 }
 
@@ -332,29 +275,18 @@ func (t *T) Wait() (err error) {
 		return ErrAlreadyWaited
 	}
 	t.waited = true
-	waitCount := len(t.goroutine)
-	if t.cancel != nil {
-		// we have started a wait for done goroutine, no need to wait for it
-		waitCount = waitCount - 1
-		defer t.cancel()
-	}
-	// wait for of goroutines
-	for i := 0; i < waitCount; i++ {
-		if t.log != nil {
-			t.log.Levelf(t.logLevel, "end of goroutine %v", <-t.done)
-		} else {
-			<-t.done
-		}
-	}
-	cmd := t.cmd
-	if err := cmd.Wait(); err != nil {
+	t.wg.Wait()
+	if err := t.cmd.Wait(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return t.checkExitCode(exitError.ExitCode())
 		}
 		if t.log != nil {
-			t.log.Attr("cmd", cmd.String()).Levelf(t.logLevel, "cmd.Wait(): %s", err)
+			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
 		}
 		return err
+	}
+	if t.cancel != nil {
+		t.cancel()
 	}
 	return t.checkExitCode(t.ExitCode())
 }
