@@ -12,10 +12,14 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
+	"github.com/opensvc/om3/daemon/daemonapi"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -24,6 +28,7 @@ type (
 		log      *plog.Logger
 		addr     string
 		wg       sync.WaitGroup
+		server   *http.Server
 	}
 )
 
@@ -43,7 +48,7 @@ func (t *T) Start(ctx context.Context) error {
 	ctx = daemonctx.WithLsnrType(ctx, "ux")
 
 	errC := make(chan error)
-	t.log.Infof("starting")
+	t.log.Debugf("starting")
 	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Errorf("remove file: %s", err)
 		return err
@@ -60,17 +65,21 @@ func (t *T) Start(ctx context.Context) error {
 		ctx = daemonctx.WithListenAddr(ctx, t.addr)
 
 		s := &http2.Server{}
-		server := http.Server{
+		t.server = &http.Server{
 			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
 			ErrorLog: golog.New(t.log.Logger(), "", 0),
 		}
 		t.log.Infof("started")
 		errC <- nil
-		if err := server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+		if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 			t.log.Debugf("serve ends with unexpected error: %s", err)
 		}
-		t.log.Infof("serve stopped")
+		t.log.Infof("stopped")
 	}(errC)
+
+	go func(ctx context.Context, errC chan error) {
+		t.janitor(ctx, errC)
+	}(ctx, errC)
 
 	return <-errC
 }
@@ -88,4 +97,58 @@ func (t *T) Stop() error {
 	}
 	t.wg.Wait()
 	return err
+}
+
+// janitor startup initial http ux listener, then watch events to stop, start or restart listener.
+// events are: DaemonCtl,name=lsnr-http-ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
+// TODO: also watch for tls setting changed
+func (t *T) janitor(ctx context.Context, errC chan<- error) {
+	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-ux"})
+	sub.Start()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			t.log.Errorf("subscription stop: %s", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case e := <-sub.C:
+			switch m := e.(type) {
+			case *msgbus.DaemonCtl:
+				t.log.Infof("daemon control %s asked", m.Action)
+				switch m.Action {
+				case "log-level-panic":
+					t.log.Level(zerolog.PanicLevel)
+					daemonapi.LogLevel = zerolog.PanicLevel
+				case "log-level-fatal":
+					t.log.Level(zerolog.FatalLevel)
+					daemonapi.LogLevel = zerolog.FatalLevel
+				case "log-level-error":
+					t.log.Level(zerolog.ErrorLevel)
+					daemonapi.LogLevel = zerolog.ErrorLevel
+				case "log-level-warn":
+					t.log.Level(zerolog.WarnLevel)
+					daemonapi.LogLevel = zerolog.WarnLevel
+				case "log-level-info":
+					t.log.Level(zerolog.InfoLevel)
+					daemonapi.LogLevel = zerolog.InfoLevel
+				case "log-level-debug":
+					t.log.Level(zerolog.DebugLevel)
+					daemonapi.LogLevel = zerolog.DebugLevel
+				case "log-level-trace":
+					t.log.Level(zerolog.TraceLevel)
+					daemonapi.LogLevel = zerolog.TraceLevel
+				default:
+					continue
+				}
+				if t.server != nil {
+					t.server.ErrorLog = golog.New(t.log.Logger(), "", 0)
+				}
+			}
+		}
+	}
 }

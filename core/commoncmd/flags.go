@@ -93,7 +93,7 @@ func FlagDaemonHeartbeatName(flagSet *pflag.FlagSet, p *string) {
 }
 
 func FlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "listener name (ex: http-inet)")
+	flagSet.StringVar(p, "name", "", "listener name http-inet|http-ux")
 }
 
 func FlagDaemonLogLevel(flagSet *pflag.FlagSet, p *string) {
