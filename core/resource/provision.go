@@ -145,12 +145,9 @@ func provision(ctx context.Context, t Driver, leader bool) error {
 	return nil
 }
 
-func isFollower(t Driver, leader bool) bool {
-	return !t.IsStandby() && !leader && t.IsShared()
-}
-
 func startLeader(ctx context.Context, t Driver, leader bool) error {
-	if isFollower(t, leader) {
+	if !t.IsStandby() && !leader {
+		t.Log().Debugf("skip provision-start because resource is neither standby or leader")
 		return nil
 	}
 	switch o := t.(type) {
