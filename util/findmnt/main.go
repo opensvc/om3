@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/util/file"
@@ -27,7 +28,7 @@ const (
 	PathNfsSeparator = ':'
 )
 
-// Has return True when {dev} is mounted on {mnt} using the findmnt command
+// Has returns true when {dev} is mounted on {mnt} using the findmnt command
 func Has(dev string, mnt string) (bool, error) {
 	l, err := List(dev, mnt)
 	if err != nil {
@@ -36,7 +37,21 @@ func Has(dev string, mnt string) (bool, error) {
 	return len(l) > 0, nil
 }
 
-// HasFromMount return True when {dev} is mounted on {mnt} using the mount command
+// HasMntWithTypes returns true when a fs with type matching one of {fsTypes} is mounted on {mnt} using the findmnt command
+func HasMntWithTypes(fsTypes []string, mnt string) (bool, error) {
+	l, err := List("", mnt)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range l {
+		if slices.Contains(fsTypes, m.FsType) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// HasFromMount returns true when {dev} is mounted on {mnt} using the mount command
 func HasFromMount(dev string, mnt string) (bool, error) {
 	cmd := mountCmd()
 	output, err := cmd.CombinedOutput()
@@ -78,10 +93,12 @@ func List(dev string, mnt string) (mounts []MountInfo, err error) {
 		return
 	}
 
-	if devIsDir, err = file.ExistsAndDir(dev); err != nil {
-		return
-	} else if !devIsDir {
-		devIsNfs = isNfsPath(dev)
+	if dev != "" {
+		if devIsDir, err = file.ExistsAndDir(dev); err != nil {
+			return
+		} else if !devIsDir {
+			devIsNfs = isNfsPath(dev)
+		}
 	}
 
 	args := findMntArgs(dev, mnt, devIsDir, devIsNfs)
@@ -120,7 +137,7 @@ func List(dev string, mnt string) (mounts []MountInfo, err error) {
 func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
 	opts := []string{"-J"}
 
-	if !devIsDir {
+	if !devIsDir && dev != "" {
 		opts = append(opts, "-S", dev)
 	}
 	if mnt != "" && !devIsNfs {
