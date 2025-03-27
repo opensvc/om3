@@ -107,12 +107,7 @@ func (t T) Data() (InfoEntries, error) {
 func (t T) Add(filePath string) error {
 	p := "/var/lock/opensvc.losetup.lock"
 	lock := flock.New(p, "", fcntllock.New)
-	timeout, err := time.ParseDuration("20s")
-	if err != nil {
-		return err
-	}
-	err = lock.Lock(timeout, "")
-	if err != nil {
+	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return err
 	}
 	defer func() { _ = lock.UnLock() }()

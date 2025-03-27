@@ -20,7 +20,6 @@ import (
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resip"
@@ -383,18 +382,6 @@ func (t *T) Label(ctx context.Context) string {
 		s = fmt.Sprintf("%s in %s", t.Network, t.NetNS)
 	}
 	return s
-}
-
-func (t *T) Provision(ctx context.Context) error {
-	return nil
-}
-
-func (t *T) Unprovision(ctx context.Context) error {
-	return nil
-}
-
-func (t *T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
 }
 
 func (t *T) LinkTo() string {

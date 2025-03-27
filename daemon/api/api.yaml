@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.5
+  version: 3.12.6
 
 paths:
   /auth/info:
@@ -71,6 +71,24 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      tags:
+        - auth
+
+  /auth/whoami:
+    get:
+      operationId: GetAuthWhoAmI
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+        401:
+          $ref: '#/components/responses/401'
       tags:
         - auth
 
@@ -4074,22 +4092,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
-  /whoami:
-    get:
-      operationId: Getwhoami
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserIdentity'
-        401:
-          $ref: '#/components/responses/401'
 
 components:
   schemas:

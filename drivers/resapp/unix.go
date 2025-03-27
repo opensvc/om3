@@ -4,6 +4,7 @@ package resapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -187,6 +188,9 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		return status.Undef
 	}
 	if err = cmd.Wait(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			t.StatusLog().Warn("%s", err)
+		}
 		t.Log().Debugf("status is down")
 		return status.Down
 	}

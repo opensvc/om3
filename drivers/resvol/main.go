@@ -313,7 +313,7 @@ func (t *T) claim(volume object.Vol) error {
 		if l := t.incompatibleClaims(volumeChildren); len(l) > 0 {
 			return fmt.Errorf("shared %s children %v must be local parents of %s to preserve placement affinity", volume.Path(), l, t.Path)
 		}
-		t.Log().Infof("shared volume %s current claims are compatible: %v", volumeChildren)
+		t.Log().Infof("shared volume %s current claims are compatible: %v", volume.Path(), volumeChildren)
 	} else {
 		if v, err := volumeChildren.HasPath(t.Path); err != nil {
 			return err
@@ -372,12 +372,7 @@ func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
 	}
 	p := filepath.Join(volume.Path().VarDir(), "create_volume.lock")
 	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
-	timeout, err := time.ParseDuration("20s")
-	if err != nil {
-		return nil, err
-	}
-	err = lock.Lock(timeout, "")
-	if err != nil {
+	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return nil, err
 	}
 	defer func() { _ = lock.UnLock() }()
@@ -474,6 +469,23 @@ func (t *T) ValidateNodesAndName() error {
 		}
 	}
 	return nil
+}
+
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
+	volume, err := t.Volume()
+	if err != nil {
+		return err
+	}
+	if !volume.Path().Exists() {
+		return fmt.Errorf("volume %s does not exist", t.Path)
+	}
+	if volumeStatus, err := volume.Status(ctx); err != nil {
+		return err
+	} else if volumeStatus.Provisioned == provisioned.True {
+		t.Log().Infof("volume %s is already provisioned", volume.Path())
+		return nil
+	}
+	return volume.Provision(ctx)
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {

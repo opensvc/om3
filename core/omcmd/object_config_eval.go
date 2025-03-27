@@ -95,11 +95,7 @@ func (t *CmdObjectConfigEval) doObjectAction(mergedSelector string) error {
 			}
 			for _, s := range t.Keywords {
 				kw := key.Parse(s)
-				if t.Impersonate != "" {
-					return c.EvalAs(kw, t.Impersonate)
-				} else {
-					return c.Eval(kw)
-				}
+				return c.EvalAs(kw, t.Impersonate)
 			}
 			return nil, nil
 		}),

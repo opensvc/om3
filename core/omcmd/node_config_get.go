@@ -110,11 +110,7 @@ func (t *CmdNodeConfigGet) doNodeAction() error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			for _, s := range t.Keywords {
 				if t.Eval {
-					if t.Impersonate != "" {
-						return n.EvalAs(ctx, s, t.Impersonate)
-					} else {
-						return n.Eval(ctx, s)
-					}
+					return n.EvalAs(ctx, s, t.Impersonate)
 				} else {
 					return n.Get(ctx, s)
 				}

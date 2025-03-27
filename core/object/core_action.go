@@ -309,23 +309,28 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 }
 
 func instanceStatusIcon(avail, overall status.T) string {
+	var a, b string
 	switch avail {
-	case status.Undef, status.NotApplicable:
-		return "⚪"
-	case status.Up, status.StandbyUp:
-		switch overall {
-		case status.Warn:
-			return "🟢⚠️"
-		default:
-			return "🟢"
-		}
-	case status.Down, status.StandbyDown:
-		return "🔴"
+	case status.Undef:
+		a = "?"
+	case status.NotApplicable:
+		a = "/"
+	case status.Up:
+		a = "O"
+	case status.StandbyUp:
+		a = "o"
+	case status.Down:
+		a = "X"
+	case status.StandbyDown:
+		a = "x"
 	case status.Warn:
-		return "🟠"
-	default:
-		return ""
+		a = "!"
 	}
+	switch overall {
+	case status.Warn:
+		b = "!"
+	}
+	return fmt.Sprintf("%s%s", a, b)
 }
 
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
@@ -350,14 +355,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("action", action.Name).
 		Attr("origin", env.Origin()).
 		Attr("crm", "true")
-	logger.Infof("do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.ID)
+	logger.Infof("▶ do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.ID)
 	beginTime := time.Now()
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer func() {
 		sb := statusbus.FromContext(ctx)
 		statusIcon := instanceStatusIcon(sb.Get("avail"), sb.Get("overall"))
-		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("%s done %s %s in %s", statusIcon, action.Name, os.Args, time.Now().Sub(beginTime))
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("■ done %s %s in %s, instance status is now %s", action.Name, os.Args, time.Now().Sub(beginTime), statusIcon)
 	}()
 
 	// daemon instance monitor updates

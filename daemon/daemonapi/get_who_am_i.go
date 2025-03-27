@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) Getwhoami(ctx echo.Context) error {
+func (a *DaemonAPI) GetAuthWhoAmI(ctx echo.Context) error {
 	pts := func(s string) *string { return &s }
 	user := userFromContext(ctx)
 	extensions := user.GetExtensions()

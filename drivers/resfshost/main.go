@@ -368,6 +368,9 @@ func (t *T) isMounted() (bool, error) {
 	if t.hasMountOption("loop") {
 		return findmnt.HasFromMount(t.devpath(), t.mountPoint())
 	}
+	if t.Type == "tmpfs" {
+		return findmnt.HasMntWithTypes([]string{"tmpfs"}, t.mountPoint())
+	}
 	return findmnt.Has(t.devpath(), t.mountPoint())
 }
 
