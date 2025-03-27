@@ -59,27 +59,13 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.listener = &listener
 	}
+	ctx = daemonctx.WithListenAddr(ctx, t.addr)
+
 	t.wg.Add(1)
-	go func(errC chan<- error) {
-		defer t.wg.Done()
-		ctx = daemonctx.WithListenAddr(ctx, t.addr)
+	go t.serve(ctx, errC)
 
-		s := &http2.Server{}
-		t.server = &http.Server{
-			Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
-			ErrorLog: golog.New(t.log.Logger(), "", 0),
-		}
-		t.log.Infof("started")
-		errC <- nil
-		if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-			t.log.Debugf("serve ends with unexpected error: %s", err)
-		}
-		t.log.Infof("stopped")
-	}(errC)
-
-	go func(ctx context.Context, errC chan error) {
-		t.janitor(ctx, errC)
-	}(ctx, errC)
+	t.wg.Add(1)
+	go t.janitor(ctx, errC)
 
 	return <-errC
 }
@@ -99,10 +85,27 @@ func (t *T) Stop() error {
 	return err
 }
 
+func (t *T) serve(ctx context.Context, errC chan<- error) {
+	defer t.wg.Done()
+
+	s := &http2.Server{}
+	t.server = &http.Server{
+		Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
+		ErrorLog: golog.New(t.log.Logger(), "", 0),
+	}
+	t.log.Infof("started")
+	errC <- nil
+	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+		t.log.Debugf("serve ends with unexpected error: %s", err)
+	}
+	t.log.Infof("stopped")
+}
+
 // janitor startup initial http ux listener, then watch events to stop, start or restart listener.
 // events are: DaemonCtl,name=lsnr-http-ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
+	defer t.wg.Done()
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-ux"})
 	sub.Start()
