@@ -24,7 +24,7 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 		},
 		"app#1": {},
 		"app#2": {
-			{"warn", "DeadlineExceeded"},
+			{"warn", "context deadline exceeded"},
 		},
 		"app#3": {
 			{"warn", "line1"},

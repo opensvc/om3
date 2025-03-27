@@ -270,13 +270,21 @@ func (t *T) ExitCode() int {
 	return t.cmd.ProcessState.ExitCode()
 }
 
-func (t *T) Wait() (err error) {
+func (t *T) Wait() error {
 	if t.waited {
 		return ErrAlreadyWaited
 	}
 	t.waited = true
+	if t.cancel != nil {
+		defer t.cancel()
+	}
 	t.wg.Wait()
-	if err := t.cmd.Wait(); err != nil {
+	err := t.cmd.Wait()
+	if t.ctx.Err() == context.DeadlineExceeded {
+		t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
+		return context.DeadlineExceeded
+	}
+	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return t.checkExitCode(exitError.ExitCode())
 		}
@@ -284,9 +292,6 @@ func (t *T) Wait() (err error) {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
 		}
 		return err
-	}
-	if t.cancel != nil {
-		t.cancel()
 	}
 	return t.checkExitCode(t.ExitCode())
 }
