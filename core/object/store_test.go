@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/hostname"
@@ -36,14 +37,14 @@ func TestNewStore(t *testing.T) {
 	clientObj, err := NewSvc(clientObjPath, WithConfigData(volConf))
 	assert.NoError(t, err)
 
-	t.Logf("Commit %s object", clientObjPath)
+	t.Logf("commit %s object", clientObjPath)
 	assert.NoError(t, clientObj.Config().Recommit())
 
 	t.Logf("provision %s object to create the volumes", clientObjPath)
-	assert.NoError(t, clientObj.Provision(context.Background()))
-
-	t.Logf("start %s object to have volumes up", clientObjPath)
-	assert.NoError(t, clientObj.Start(context.Background()))
+	provisionCtx := context.Background()
+	provisionCtx = actioncontext.WithLeader(provisionCtx, true)
+	provisionCtx = actioncontext.WithRollbackDisabled(provisionCtx, true)
+	assert.NoError(t, clientObj.Provision(provisionCtx))
 
 	for _, c := range []naming.Kind{naming.KindCfg, naming.KindSec} {
 		t.Run(c.String(), func(t *testing.T) {
