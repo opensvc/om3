@@ -131,6 +131,7 @@ func (t T) Stderr() []byte {
 // Start prepare command, then call underlying cmd.Start()
 // it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
+	var readOut, readErr func()
 	if t.started {
 		return fmt.Errorf("%w", ErrAlreadyStarted)
 	}
@@ -195,7 +196,7 @@ func (t *T) Start() (err error) {
 		}
 
 		t.wg.Add(1)
-		go func() {
+		readOut = func() {
 			defer t.wg.Done()
 			if err := parseLines(r, onLine, &t.stdout); err != nil {
 				if t.log != nil {
@@ -204,7 +205,7 @@ func (t *T) Start() (err error) {
 			}
 			// explicit close call for situation where t.cmd.Wait() is not called
 			_ = r.Close()
-		}()
+		}
 	}
 
 	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
@@ -229,7 +230,7 @@ func (t *T) Start() (err error) {
 		}
 
 		t.wg.Add(1)
-		go func() {
+		readErr = func() {
 			defer t.wg.Done()
 			if err := parseLines(r, onLine, &t.stderr); err != nil {
 				if t.log != nil {
@@ -239,7 +240,7 @@ func (t *T) Start() (err error) {
 
 			// explicit close call for situation where t.cmd.Wait() is not called
 			_ = r.Close()
-		}()
+		}
 	}
 
 	if t.log != nil {
@@ -258,6 +259,12 @@ func (t *T) Start() (err error) {
 	}
 	if t.cmd.Process != nil {
 		t.pid = t.cmd.Process.Pid
+	}
+	if readOut != nil {
+		go readOut()
+	}
+	if readErr != nil {
+		go readErr()
 	}
 	return nil
 }
