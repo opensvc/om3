@@ -696,7 +696,10 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 		return nil, errors.New("unreadable config")
 	}
 	switch k.Section {
-	case "data", "env", "labels":
+	case "env":
+		// forge a Keyword to satisfy the descoping algo requirements
+		return t.EvalKeywordAs(k, keywords.Keyword{Option: k.Option, Scopable: true}, impersonate)
+	case "data", "labels":
 		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
 	}
 	sectionType := t.SectionType(k)
