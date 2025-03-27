@@ -420,7 +420,7 @@ func (t *App) listContexts() {
 		os.Setenv("OSVC_CONTEXT", c)
 		if cli, err := client.New(); err != nil {
 			t.errorf("%s", err)
-		} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+		} else if resp, err := cli.GetAuthWhoAmIWithResponse(context.Background()); err != nil {
 			t.errorf("%s", err)
 			t.listContexts()
 		} else if resp.StatusCode() == http.StatusOK {
@@ -460,7 +460,7 @@ func (t *App) Run() error {
 func (t *App) initContext() {
 	if cli, err := client.New(); err != nil {
 		t.errorf("%s", err)
-	} else if resp, err := cli.GetwhoamiWithResponse(context.Background()); err != nil {
+	} else if resp, err := cli.GetAuthWhoAmIWithResponse(context.Background()); err != nil {
 		t.errorf("%s", err)
 		t.listContexts()
 	} else if resp.StatusCode() == http.StatusOK {
