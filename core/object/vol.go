@@ -123,7 +123,7 @@ func (t *vol) Device() *device.T {
 	return nil
 }
 
-func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error) {
+func (t *vol) HoldersExcept(ctx context.Context, exceptPath naming.Path) (naming.Paths, error) {
 	l := make(naming.Paths, 0)
 	type volNamer interface {
 		VolName() string
@@ -136,6 +136,9 @@ func (t *vol) HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, e
 		p, node, err := rel.Split()
 		if err != nil {
 			t.log.Errorf("%s", err)
+			continue
+		}
+		if p == exceptPath {
 			continue
 		}
 		if node != "" && node != hostname.Hostname() {

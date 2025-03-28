@@ -52,10 +52,18 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
+	hasGrant := func(namespace string) bool {
+		wantGrant := rbac.Grants{
+			rbac.NewGrant(rbac.RoleGuest, namespace),
+			rbac.NewGrant(rbac.RoleOperator, namespace),
+			rbac.NewGrant(rbac.RoleAdmin, namespace),
+		}
+		return userGrants.HasGrant(wantGrant...)
+	}
 
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
-		if !hasRoot && !userGrants.Has(rbac.RoleGuest, p.Namespace) {
+		if !hasRoot && !hasGrant(p.Namespace) {
 			continue
 		}
 		ostat := object.StatusData.GetByPath(p)
