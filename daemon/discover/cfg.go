@@ -791,7 +791,7 @@ func peerURL(s string) string {
 		if lsnr.Port != "" {
 			port = lsnr.Port
 		}
-		if lsnr.Addr != "::" && lsnr.Addr != "" {
+		if lsnr.Addr != "::" && lsnr.Addr != "" && lsnr.Addr != "0.0.0.0" {
 			addr = lsnr.Addr
 		}
 	}
