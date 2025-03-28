@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -28,6 +29,7 @@ type (
 	}
 
 	KVInstall struct {
+		Required      bool
 		ToHead        string
 		ToPath        string
 		FromPattern   string
@@ -45,6 +47,10 @@ type (
 const (
 	vKeyFile vKeyType = iota
 	vKeyDir
+)
+
+var (
+	ErrKeyNotFound = errors.New("key not found")
 )
 
 func (t KVInstall) IsEmpty() bool {
@@ -308,7 +314,11 @@ func (t *keystore) InstallKeyTo(opt KVInstall) error {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("resolve %s key %s: no key found", t.path, opt.FromPattern)
+		if opt.Required {
+			return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, ErrKeyNotFound)
+		} else {
+			return nil
+		}
 	}
 	if err := t.makedirs(opt); err != nil {
 		return err
