@@ -30,7 +30,7 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 	userGrants := grantsFromContext(ctx)
 
 	for _, path := range matchedPaths {
-		if !hasRoot && !userGrants.Has(rbac.RoleGuest, path.Namespace) {
+		if !hasRoot && !hasRoleGuestOn(userGrants, path.Namespace) {
 			continue
 		}
 		result = append(result, path.String())

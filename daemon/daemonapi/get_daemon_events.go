@@ -217,7 +217,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		}
 		labels := msg.GetLabels()
 		if namespace, ok := labels["namespace"]; ok {
-			return userGrants.Has(rbac.RoleGuest, namespace)
+			return hasRoleGuestOn(userGrants, namespace)
 		}
 		return true
 	}

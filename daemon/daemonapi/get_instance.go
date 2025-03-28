@@ -35,7 +35,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		if !hasRoot && !userGrants.Has(rbac.RoleGuest, config.Path.Namespace) {
+		if !hasRoot && !hasRoleGuestOn(userGrants, config.Path.Namespace) {
 			continue
 		}
 
