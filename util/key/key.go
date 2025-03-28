@@ -38,6 +38,10 @@ func ParseStrings(l []string) L {
 // Parse function construct key T from the parsed string s.
 // On invalid string s the zero key is returned.
 func Parse(s string) T {
+	return ParseWithDefaultSection(s, "DEFAULT")
+}
+
+func ParseWithDefaultSection(s, defaultSection string) T {
 	if s == "" || strings.ContainsAny(s, " \t") {
 		return T{}
 	}
@@ -47,7 +51,7 @@ func Parse(s string) T {
 		if strings.Index(s, "#") >= 0 {
 			return T{s, ""}
 		}
-		return T{"DEFAULT", s}
+		return T{defaultSection, s}
 	case 2:
 		return T{l[0], l[1]}
 	default:
