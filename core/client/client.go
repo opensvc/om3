@@ -227,7 +227,7 @@ func (t *T) newRequester() (err error) {
 		if !strings.Contains(t.url, ":") {
 			if nodesInfo, err := nodesinfo.Load(); err == nil {
 				addr := nodesInfo[t.url].Lsnr.Addr
-				if addr == "::" || addr == "" {
+				if addr == "::" || addr == "" || addr == "0.0.0.0" {
 					addr = t.url
 				}
 				port := nodesInfo[t.url].Lsnr.Port
