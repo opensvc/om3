@@ -196,6 +196,8 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 	logf("stopping")
 	t.Run("stopping", func(t *testing.T) {
 		t.Run("daemoncli stop", func(t *testing.T) {
+			// delay next stop to avoid kill
+			time.Sleep(time.Second)
 			logf("daemonCli.Stop...")
 			// Use UrlInetHttp to avoid failed stop because of still running handler
 			// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
