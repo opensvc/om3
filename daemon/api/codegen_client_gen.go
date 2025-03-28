@@ -158,6 +158,9 @@ type ClientInterface interface {
 	// PostPeerActionAbort request
 	PostPeerActionAbort(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionClear request
+	PostNodeActionClear(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostPeerActionDrain request
 	PostPeerActionDrain(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -371,9 +374,6 @@ type ClientInterface interface {
 
 	// GetNodeSystemUser request
 	GetNodeSystemUser(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeActionClear request
-	PostNodeActionClear(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjects request
 	GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -779,6 +779,18 @@ func (c *Client) GetNodesInfo(ctx context.Context, reqEditors ...RequestEditorFn
 
 func (c *Client) PostPeerActionAbort(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostPeerActionAbortRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionClear(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionClearRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -1643,18 +1655,6 @@ func (c *Client) GetNodeSystemSANPath(ctx context.Context, nodename InPathNodeNa
 
 func (c *Client) GetNodeSystemUser(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeSystemUserRequest(c.Server, nodename)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeActionClear(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeActionClearRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -3069,6 +3069,40 @@ func NewPostPeerActionAbortRequest(server string, nodename InPathNodeName) (*htt
 	}
 
 	operationPath := fmt.Sprintf("/node/name/%s/action/abort", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionClearRequest generates requests for PostNodeActionClear
+func NewPostNodeActionClearRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/action/clear", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8101,40 +8135,6 @@ func NewGetNodeSystemUserRequest(server string, nodename InPathNodeName) (*http.
 	return req, nil
 }
 
-// NewPostNodeActionClearRequest generates requests for PostNodeActionClear
-func NewPostNodeActionClearRequest(server string, nodename InPathNodeName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/node/%s/action/clear", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetObjectsRequest generates requests for GetObjects
 func NewGetObjectsRequest(server string, params *GetObjectsParams) (*http.Request, error) {
 	var err error
@@ -10546,6 +10546,9 @@ type ClientWithResponsesInterface interface {
 	// PostPeerActionAbortWithResponse request
 	PostPeerActionAbortWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostPeerActionAbortResponse, error)
 
+	// PostNodeActionClearWithResponse request
+	PostNodeActionClearWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostNodeActionClearResponse, error)
+
 	// PostPeerActionDrainWithResponse request
 	PostPeerActionDrainWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostPeerActionDrainResponse, error)
 
@@ -10759,9 +10762,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeSystemUserWithResponse request
 	GetNodeSystemUserWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemUserResponse, error)
-
-	// PostNodeActionClearWithResponse request
-	PostNodeActionClearWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostNodeActionClearResponse, error)
 
 	// GetObjectsWithResponse request
 	GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error)
@@ -11421,6 +11421,32 @@ func (r PostPeerActionAbortResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostPeerActionAbortResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionClearResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionClearResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionClearResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13231,32 +13257,6 @@ func (r GetNodeSystemUserResponse) StatusCode() int {
 	return 0
 }
 
-type PostNodeActionClearResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *N200
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeActionClearResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeActionClearResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14511,6 +14511,15 @@ func (c *ClientWithResponses) PostPeerActionAbortWithResponse(ctx context.Contex
 	return ParsePostPeerActionAbortResponse(rsp)
 }
 
+// PostNodeActionClearWithResponse request returning *PostNodeActionClearResponse
+func (c *ClientWithResponses) PostNodeActionClearWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostNodeActionClearResponse, error) {
+	rsp, err := c.PostNodeActionClear(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionClearResponse(rsp)
+}
+
 // PostPeerActionDrainWithResponse request returning *PostPeerActionDrainResponse
 func (c *ClientWithResponses) PostPeerActionDrainWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostPeerActionDrainResponse, error) {
 	rsp, err := c.PostPeerActionDrain(ctx, nodename, reqEditors...)
@@ -15155,15 +15164,6 @@ func (c *ClientWithResponses) GetNodeSystemUserWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetNodeSystemUserResponse(rsp)
-}
-
-// PostNodeActionClearWithResponse request returning *PostNodeActionClearResponse
-func (c *ClientWithResponses) PostNodeActionClearWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostNodeActionClearResponse, error) {
-	rsp, err := c.PostNodeActionClear(ctx, nodename, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeActionClearResponse(rsp)
 }
 
 // GetObjectsWithResponse request returning *GetObjectsResponse
@@ -16614,6 +16614,60 @@ func ParsePostPeerActionAbortResponse(rsp *http.Response) (*PostPeerActionAbortR
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionClearResponse parses an HTTP response from a PostNodeActionClearWithResponse call
+func ParsePostNodeActionClearResponse(rsp *http.Response) (*PostNodeActionClearResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionClearResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
@@ -20257,60 +20311,6 @@ func ParseGetNodeSystemUserResponse(rsp *http.Response) (*GetNodeSystemUserRespo
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest UserList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeActionClearResponse parses an HTTP response from a PostNodeActionClearWithResponse call
-func ParsePostNodeActionClearResponse(rsp *http.Response) (*PostNodeActionClearResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeActionClearResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

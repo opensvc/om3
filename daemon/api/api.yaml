@@ -976,7 +976,7 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /node/node/{nodename}/action/clear:
+  /node/name/{nodename}/action/clear:
     post:
       description: |
         Clears errors (for example, failed) in the node monitor state.
