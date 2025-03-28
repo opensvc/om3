@@ -354,10 +354,9 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	w.Flush()
 
 	sseWriter := sseevent.NewWriter(w)
-	evCounter := uint64(0)
 
 	doEvent := func(i any) error {
-		ev := event.ToEvent(i, evCounter)
+		ev := event.ToEvent(i, eventCount)
 		if ev != nil {
 			if dataFilter, ok := dataFiltersByKind[ev.Kind]; ok {
 				v := make(map[string]any)
@@ -369,7 +368,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				}
 			}
 		}
-		evCounter++
+		eventCount++
 		if _, err := sseWriter.Write(ev); err != nil {
 			log.Debugf("write event %s: %s", ev.Kind, err)
 			return err
@@ -396,6 +395,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				}
 				w.Flush()
 				if limit > 0 && eventCount >= limit {
+					log.Debugf("reach event count limit")
 					return nil
 				}
 			}
@@ -485,6 +485,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				return nil
 			}
 			if limit > 0 && eventCount >= limit {
+				log.Debugf("reach event count limit")
 				return nil
 			}
 		}
