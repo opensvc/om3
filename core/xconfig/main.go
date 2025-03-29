@@ -1171,11 +1171,6 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}
-	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
-		return v, nil
-	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
-		return "", err
-	}
 	switch ref {
 	case "dns_janitor_major":
 		return "3", nil
@@ -1212,6 +1207,11 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 		} else if !errors.Is(err, ErrUnknownReference) {
 			return v, err
 		}
+	}
+	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
+		return v, nil
+	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
+		return "", err
 	}
 	if v, err := t.evalAsNoConv(key.New(section, ref), impersonate, trace); err == nil {
 		return v, nil
