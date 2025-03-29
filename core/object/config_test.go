@@ -62,3 +62,18 @@ b = {a}
 	_, err = o.Config().Eval(key.Parse("env.a"))
 	require.ErrorIs(t, err, xconfig.ErrInfiniteDeferenceRecursion)
 }
+
+func TestConfigDerefName(t *testing.T) {
+	cf := []byte(`
+[env]
+name = {name}
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	value, err := o.Config().Eval(key.Parse("env.name"))
+	require.NoError(t, err)
+	require.Equal(t, "svc1", value)
+}
