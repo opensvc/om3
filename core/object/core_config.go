@@ -414,7 +414,7 @@ func (t *core) Dereference(ref string) (string, error) {
 	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
 		return t.dereferenceVolumeHead(ref)
 	}
-	return ref, fmt.Errorf("%w: %s", ref, xconfig.ErrUnknownReference)
+	return ref, fmt.Errorf("%w: %s", xconfig.ErrUnknownReference, ref)
 }
 
 func (t *core) Nodes() ([]string, error) {
