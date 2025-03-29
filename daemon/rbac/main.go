@@ -80,6 +80,15 @@ func (t Grants) HasRole(roles ...Role) bool {
 	return matchRoles(t, roles...)
 }
 
+// HasRoleOn checks if any of the specified roles with the given scope exist in the Grants.
+func (t Grants) HasRoleOn(scope string, roles ...Role) bool {
+	grants := make(Grants, len(roles))
+	for i, role := range roles {
+		grants[i] = NewGrant(role, scope)
+	}
+	return matchGrants(t, grants...)
+}
+
 func (t Grants) Has(role Role, scope string) bool {
 	return match(t, role, scope)
 }

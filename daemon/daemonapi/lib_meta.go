@@ -38,7 +38,7 @@ func (m *Meta) HasPath(s string) bool {
 		return false
 	}
 	grants := m.Grants()
-	return grants.Has(rbac.RoleGuest, p.Namespace) || grants.Has(rbac.RoleAdmin, p.Namespace) || grants.HasRole(rbac.RoleRoot)
+	return hasRoleGuestOn(grants, p.Namespace) || grants.HasRole(rbac.RoleRoot)
 }
 
 func (m *Meta) Grants() rbac.Grants {

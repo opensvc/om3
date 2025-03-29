@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -431,8 +431,8 @@ func (t *T) stopFromManager() error {
 			command.WithName(os.Args[0]),
 			command.WithVarArgs("daemon", "shutdown"),
 		)
-		cmd.Cmd().Stdout = ioutil.Discard
-		cmd.Cmd().Stderr = ioutil.Discard
+		cmd.Cmd().Stdout = io.Discard
+		cmd.Cmd().Stderr = io.Discard
 		return cmd.Run()
 	}
 	return t.StopWithoutManager()
