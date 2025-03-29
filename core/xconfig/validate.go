@@ -294,7 +294,7 @@ func (t T) Validate() (Alerts, error) {
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
 				alerts = append(alerts, t.NewAlertScoping(k, did))
 			}
-			v, err := t.evalStringAs(k, kw, "", nil)
+			v, err := t.evalStringAs(k, kw, "", newDereferenceTrace())
 			if err != nil {
 				alerts = append(alerts, t.NewAlertEval(k, did, fmt.Sprint(err)))
 				continue

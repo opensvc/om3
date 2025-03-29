@@ -78,6 +78,7 @@ var (
 	ErrNoKeyword                  = errors.New("keyword does not exist")
 	ErrType                       = errors.New("type error")
 	ErrInfiniteDeferenceRecursion = errors.New("infinite dereference recursion")
+	ErrUnknownReference           = errors.New("unknown reference")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
@@ -1170,11 +1171,6 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}
-	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
-		return v, nil
-	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
-		return "", err
-	}
 	switch ref {
 	case "dns_janitor_major":
 		return "3", nil
@@ -1208,12 +1204,19 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 	if t.Referrer != nil {
 		if v, err := t.Referrer.Dereference(ref); err == nil {
 			return v, nil
+		} else if !errors.Is(err, ErrUnknownReference) {
+			return v, err
 		}
+	}
+	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
+		return v, nil
+	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
+		return "", err
 	}
 	if v, err := t.evalAsNoConv(key.New(section, ref), impersonate, trace); err == nil {
 		return v, nil
 	}
-	return ref, fmt.Errorf("unknown reference: %s", ref)
+	return ref, fmt.Errorf("%w: %s", ErrUnknownReference, ref)
 }
 
 func (t *T) LoadRaw(configData rawconfig.T) error {

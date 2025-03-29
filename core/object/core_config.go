@@ -386,7 +386,7 @@ func (t *core) Dereference(ref string) (string, error) {
 		l := make([]string, 0)
 		for _, ip := range ips {
 			if names, err := net.LookupAddr(ip); err != nil {
-				return "", err
+				continue
 			} else {
 				for _, name := range names {
 					name = strings.TrimSuffix(name, ".")
@@ -414,7 +414,7 @@ func (t *core) Dereference(ref string) (string, error) {
 	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
 		return t.dereferenceVolumeHead(ref)
 	}
-	return ref, fmt.Errorf("unknown reference: %s", ref)
+	return ref, fmt.Errorf("%w: %s", xconfig.ErrUnknownReference, ref)
 }
 
 func (t *core) Nodes() ([]string, error) {
