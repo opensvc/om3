@@ -108,3 +108,21 @@ a = {disk#1.exposed_devs[0]}
 	require.NoError(t, err)
 	require.Len(t, alerts, 0)
 }
+
+func TestConfigCountConverterList(t *testing.T) {
+	cf := []byte(`
+[DEFAULT]
+affinity = a b c
+
+[env]
+a = {#DEFAULT.affinity}
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	value, err := o.Config().Eval(key.Parse("env.a"))
+	require.NoError(t, err)
+	require.Equal(t, "3", value)
+}

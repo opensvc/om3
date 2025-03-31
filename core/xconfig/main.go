@@ -739,12 +739,33 @@ func (t *T) EvalNoConv(k key.T) (string, error) {
 	return t.evalAsNoConv(k, "", newDereferenceTrace())
 }
 
+func (t *T) evalAsCount(k key.T, impersonate string, trace *dereferenceTrace) (string, error) {
+	kw, err := t.getKeyword(k)
+	if err != nil {
+		return "", err
+	}
+	v, err := t.evalStringAs(k, kw, impersonate, false, trace)
+	if err != nil {
+		return "", err
+	}
+	i, err := t.convert(v, kw)
+	if err != nil {
+		return "", err
+	}
+	switch l := i.(type) {
+	case []string:
+		return fmt.Sprint(len(l)), nil
+	default:
+		return fmt.Sprint(len(strings.Fields(v))), nil
+	}
+}
+
 func (t *T) evalAsNoConv(k key.T, impersonate string, trace *dereferenceTrace) (string, error) {
 	kw, err := t.getKeyword(k)
 	if err != nil {
 		return "", err
 	}
-	return t.evalStringAs(k, kw, impersonate, trace)
+	return t.evalStringAs(k, kw, impersonate, false, trace)
 }
 
 func (t *T) SectionType(k key.T) string {
@@ -755,7 +776,7 @@ func (t *T) SectionType(k key.T) string {
 }
 
 func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (interface{}, error) {
-	v, err := t.evalStringAs(k, kw, impersonate, newDereferenceTrace())
+	v, err := t.evalStringAs(k, kw, impersonate, false, newDereferenceTrace())
 	if err != nil {
 		return nil, err
 	}
@@ -774,35 +795,35 @@ func getKeyword(k key.T, sectionType string, referrer Referrer) (keywords.Keywor
 	return kw, nil
 }
 
-func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	var (
 		v   string
 		err error
 	)
 	switch kw.Inherit {
 	case keywords.InheritLeaf2Head:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
 	case keywords.InheritHead2Leaf:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
 	case keywords.InheritLeaf:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
 	case keywords.InheritHead:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, trace); err == nil {
+		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
 			return v, nil
 		}
 	default:
@@ -814,7 +835,7 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, trace
 		case true:
 			return "", err
 		case false:
-			return t.replaceReferences(kw.Default, k.Section, impersonate, trace)
+			return t.replaceReferences(kw.Default, k.Section, impersonate, count, trace)
 		}
 	case err != nil:
 		return "", err
@@ -822,12 +843,12 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, trace
 	return v, nil
 }
 
-func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	v, err := t.mayDescope(k, kw, impersonate)
 	if err != nil {
 		return "", err
 	}
-	return t.replaceReferences(v, k.Section, impersonate, trace)
+	return t.replaceReferences(v, k.Section, impersonate, count, trace)
 }
 
 func (t *T) convert(v string, kw keywords.Keyword) (interface{}, error) {
@@ -859,23 +880,23 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 	return v, err
 }
 
-func (t *T) replaceReferences(v string, section string, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t *T) replaceReferences(v string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	if v == "" {
 		return "", nil
 	}
 	var errs error
 	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
-		s, err := t.dereference(ref, section, impersonate, trace.Clone())
+		s, err := t.dereference(ref, section, impersonate, count, trace.Clone())
+		if err == nil {
+			return s
+		}
 		if errors.Is(err, ErrInfiniteDeferenceRecursion) {
 			errs = errors.Join(errs, err)
-		} else if err != nil {
-			switch err.(type) {
-			case ErrPostponedRef:
-				errs = errors.Join(errs, err)
-			}
-			return ref
 		}
-		return s
+		if _, ok := err.(ErrPostponedRef); ok {
+			errs = errors.Join(errs, err)
+		}
+		return ref
 	})
 	return v, errs
 }
@@ -1051,12 +1072,11 @@ func (t *T) IsInEncapNodes(impersonate string) (bool, error) {
 	}
 }
 
-func (t T) dereference(ref string, section string, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t T) dereference(ref string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	type f func(string) string
 	var (
 		modifier f
 		err      error
-		count    bool
 	)
 	val := ""
 	ref = ref[1 : len(ref)-1]
@@ -1086,22 +1106,18 @@ func (t T) dereference(ref string, section string, impersonate string, trace *de
 	}
 	switch {
 	case strings.HasPrefix(ref, "node."):
-		if val, err = t.dereferenceNodeKey(ref, impersonate); err != nil {
+		if val, err = t.dereferenceNodeKey(ref, impersonate, count); err != nil {
 			return ref, err
 		}
 	default:
-		if val, err = t.dereferenceWellKnown(ref, section, impersonate, trace); err != nil {
+		if val, err = t.dereferenceWellKnown(ref, section, impersonate, count, trace); err != nil {
 			return ref, err
 		}
-	}
-	if count {
-		n := len(strings.Fields(val))
-		return fmt.Sprint(n), nil
 	}
 	return modifier(val), nil
 }
 
-func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
+func (t T) dereferenceNodeKey(ref string, impersonate string, count bool) (string, error) {
 	//
 	// Extract the key string relative to the node configuration
 	// Examples:
@@ -1133,7 +1149,7 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 		return ref, fmt.Errorf("denied reference to node key %s", ref)
 	}
 
-	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate, newDereferenceTrace())
+	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate, count, newDereferenceTrace())
 	if err != nil {
 		return ref, err
 	}
@@ -1176,18 +1192,21 @@ func (t *dereferenceTrace) Set(doneKey string) error {
 	return nil
 }
 
-func (t T) dereferenceKey(ref string, section string, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t T) dereferenceKey(ref string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	refKey := key.ParseWithDefaultSection(ref, section)
 
 	if err := trace.SetKey(refKey); err != nil {
 		return "", err
 	}
 
-	v, err := t.evalAsNoConv(refKey, impersonate, trace)
-	return v, err
+	if count {
+		return t.evalAsCount(refKey, impersonate, trace)
+	} else {
+		return t.evalAsNoConv(refKey, impersonate, trace)
+	}
 }
 
-func (t T) dereferenceWellKnown(ref string, section string, impersonate string, trace *dereferenceTrace) (string, error) {
+func (t T) dereferenceWellKnown(ref string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}
@@ -1222,11 +1241,21 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 		return rawconfig.Paths.Var, nil
 	}
 	if t.Referrer != nil {
-		if v, err := t.Referrer.Dereference(ref); err == nil {
+		v, err := t.Referrer.Dereference(ref)
+		if err == nil {
 			return v, nil
 		}
+		if _, ok := err.(ErrPostponedRef); ok {
+			return v, nil
+		}
+		if errors.Is(err, ErrUnknownReference) {
+			// let intra config dereference happen
+		} else {
+			// unexpected error
+			return v, err
+		}
 	}
-	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
+	if v, err := t.dereferenceKey(ref, section, impersonate, count, trace); err == nil {
 		return v, nil
 	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
 		return "", err
