@@ -283,6 +283,11 @@
     * `provisioner`
     * `dns_update`
    
+* **Removed feature:**
+    The interface aliasing mode is dropped from the `ip.host` driver.
+    The `alias=true` keyword is now ignored, and the ip stacking mode is always selected.
+    Users must migrate to `alias=false` before upgrading to om3.
+
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
