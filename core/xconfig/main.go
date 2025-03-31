@@ -75,9 +75,9 @@ type (
 var (
 	RegexpOperation               = regexp.MustCompile(`(\$\(\(.+\)\))`)
 	ErrExist                      = errors.New("configuration does not exist")
+	ErrInfiniteDeferenceRecursion = errors.New("infinite dereference recursion")
 	ErrNoKeyword                  = errors.New("keyword does not exist")
 	ErrType                       = errors.New("type error")
-	ErrInfiniteDeferenceRecursion = errors.New("infinite dereference recursion")
 	ErrUnknownReference           = errors.New("unknown reference")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
@@ -865,7 +865,7 @@ func (t *T) replaceReferences(v string, section string, impersonate string, trac
 	}
 	var errs error
 	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
-		s, err := t.dereference(ref, section, impersonate, trace)
+		s, err := t.dereference(ref, section, impersonate, trace.Clone())
 		if errors.Is(err, ErrInfiniteDeferenceRecursion) {
 			errs = errors.Join(errs, err)
 		} else if err != nil {
@@ -1146,10 +1146,30 @@ func newDereferenceTrace() *dereferenceTrace {
 	}
 }
 
-func (t *dereferenceTrace) Set(k key.T) error {
+func (t *dereferenceTrace) Map() map[string]any {
+	return t.m
+}
+
+func (t *dereferenceTrace) SetKey(k key.T) error {
 	doneKey := k.String()
+	return t.Set(doneKey)
+}
+
+func (t *dereferenceTrace) Unset(doneKey string) {
+	delete(t.m, doneKey)
+}
+
+func (t *dereferenceTrace) Clone() *dereferenceTrace {
+	trace := dereferenceTrace{m: make(map[string]any)}
+	for k := range t.m {
+		trace.m[k] = nil
+	}
+	return &trace
+}
+
+func (t *dereferenceTrace) Set(doneKey string) error {
 	if _, ok := t.m[doneKey]; ok {
-		return ErrInfiniteDeferenceRecursion
+		return fmt.Errorf("%w: %s", ErrInfiniteDeferenceRecursion, doneKey)
 	} else {
 		t.m[doneKey] = nil
 	}
@@ -1159,7 +1179,7 @@ func (t *dereferenceTrace) Set(k key.T) error {
 func (t T) dereferenceKey(ref string, section string, impersonate string, trace *dereferenceTrace) (string, error) {
 	refKey := key.ParseWithDefaultSection(ref, section)
 
-	if err := trace.Set(refKey); err != nil {
+	if err := trace.SetKey(refKey); err != nil {
 		return "", err
 	}
 
@@ -1212,9 +1232,6 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 		return v, nil
 	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
 		return "", err
-	}
-	if v, err := t.evalAsNoConv(key.New(section, ref), impersonate, trace); err == nil {
-		return v, nil
 	}
 	return ref, fmt.Errorf("%w: %s", ErrUnknownReference, ref)
 }
