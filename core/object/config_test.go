@@ -93,3 +93,18 @@ b = {a} {a}
 	require.NoError(t, err)
 	require.Equal(t, "foo foo", value)
 }
+
+func TestConfigValidateExposedDev(t *testing.T) {
+	cf := []byte(`
+[env]
+a = {disk#1.exposed_devs[0]}
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	alerts, err := o.Config().Validate()
+	require.NoError(t, err)
+	require.Len(t, alerts, 0)
+}

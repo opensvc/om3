@@ -1224,8 +1224,6 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 	if t.Referrer != nil {
 		if v, err := t.Referrer.Dereference(ref); err == nil {
 			return v, nil
-		} else if !errors.Is(err, ErrUnknownReference) {
-			return v, err
 		}
 	}
 	if v, err := t.dereferenceKey(ref, section, impersonate, trace); err == nil {
