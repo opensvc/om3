@@ -77,3 +77,19 @@ name = {name}
 	require.NoError(t, err)
 	require.Equal(t, "svc1", value)
 }
+
+func TestConfigDerefWithRepeatedRef(t *testing.T) {
+	cf := []byte(`
+[env]
+a = foo
+b = {a} {a}
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	value, err := o.Config().Eval(key.Parse("env.b"))
+	require.NoError(t, err)
+	require.Equal(t, "foo foo", value)
+}
