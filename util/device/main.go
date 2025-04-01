@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"slices"
 	"syscall"
 
 	"github.com/opensvc/om3/util/funcopt"
@@ -115,4 +116,32 @@ func (t L) SCSIPaths() (L, error) {
 		}
 	}
 	return l, errs
+}
+
+func recurse(l L, dev T) (L, error) {
+	slaves, err := dev.Slaves()
+	if err != nil {
+		return l, err
+	}
+	for _, slave := range slaves {
+		l = slices.DeleteFunc(l, func(e T) bool {
+			return e.path == slave.path
+		})
+		l, err = recurse(l, slave)
+		if err != nil {
+			return l, err
+		}
+	}
+	return l, nil
+}
+
+func (t L) HolderEndpoints() (L, error) {
+	var err error
+	l := slices.Clone(t)
+	for _, dev := range t {
+		if l, err = recurse(l, dev); err != nil {
+			return l, err
+		}
+	}
+	return l, nil
 }
