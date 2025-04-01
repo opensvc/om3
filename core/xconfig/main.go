@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,7 +74,9 @@ type (
 )
 
 var (
-	RegexpOperation               = regexp.MustCompile(`(\$\(\(.+\)\))`)
+	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
+	RegexpIndex     = regexp.MustCompile(`.+\[(?P<Index>[0-9]+)\]`)
+
 	ErrExist                      = errors.New("configuration does not exist")
 	ErrInfiniteDeferenceRecursion = errors.New("infinite dereference recursion")
 	ErrNoKeyword                  = errors.New("keyword does not exist")
@@ -1104,6 +1107,18 @@ func (t T) dereference(ref string, section string, impersonate string, count boo
 		count = true
 		ref = ref[1:]
 	}
+
+	var index *int
+	matches := RegexpIndex.FindStringSubmatch(ref)
+	if len(matches) == 2 {
+		if i, err := strconv.Atoi(matches[1]); err != nil {
+			return ref, fmt.Errorf("error parsing %s index: %w", ref, err)
+		} else {
+			index = &i
+			ref = ref[:strings.Index(ref, "[")]
+		}
+	}
+
 	switch {
 	case strings.HasPrefix(ref, "node."):
 		if val, err = t.dereferenceNodeKey(ref, impersonate, count); err != nil {
@@ -1113,6 +1128,13 @@ func (t T) dereference(ref string, section string, impersonate string, count boo
 		if val, err = t.dereferenceWellKnown(ref, section, impersonate, count, trace); err != nil {
 			return ref, err
 		}
+	}
+	if index != nil {
+		l := strings.Fields(val)
+		if *index > len(l)-1 {
+			return "", fmt.Errorf("ref %s index %d out of range", ref, *index)
+		}
+		val = l[*index]
 	}
 	return modifier(val), nil
 }

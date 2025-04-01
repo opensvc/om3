@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -24,8 +23,7 @@ import (
 )
 
 var (
-	regexpScalerPrefix        = regexp.MustCompile(`^[0-9]+\.`)
-	regexpExposedDevicesIndex = regexp.MustCompile(`^exposed_devs\[([0-9]+)\]`)
+	regexpScalerPrefix = regexp.MustCompile(`^[0-9]+\.`)
 )
 
 func (t *core) reloadConfig() error {
@@ -277,30 +275,12 @@ func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	if !ok {
 		return ref, fmt.Errorf("resource referenced by %s has no exposed devices", ref)
 	}
-	re := regexp.MustCompile(`exposed_devs\[(?P<Index>[0-9]+)\]`)
-	var s string
-	matches := re.FindStringSubmatch(l[1])
-	if len(matches) == 2 {
-		s = matches[1]
-	}
-	if s == "" {
-		xdevs := o.ExposedDevices()
-		ls := make([]string, len(xdevs))
-		for i, xd := range xdevs {
-			ls[i] = xd.String()
-		}
-		return strings.Join(ls, " "), nil
-	}
-	idx, err := strconv.Atoi(s)
-	if err != nil {
-		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
-	}
 	xdevs := o.ExposedDevices()
-	n := len(xdevs)
-	if idx > n-1 {
-		return ref, fmt.Errorf("ref %s index error: the referenced resource has only %d exposed devices", ref, n)
+	ls := make([]string, len(xdevs))
+	for i, xd := range xdevs {
+		ls[i] = xd.String()
 	}
-	return xdevs[idx].String(), nil
+	return strings.Join(ls, " "), nil
 }
 
 func (t *core) Dereference(ref string) (string, error) {

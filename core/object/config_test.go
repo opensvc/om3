@@ -126,3 +126,21 @@ a = {#DEFAULT.affinity}
 	require.NoError(t, err)
 	require.Equal(t, "3", value)
 }
+
+func TestConfigDerefFromEnvList(t *testing.T) {
+	cf := []byte(`
+[DEFAULT]
+affinity = {env.l[0]} {env.l[1]}
+
+[env]
+l = a b
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	value, err := o.Config().Eval(key.Parse("affinity"))
+	require.NoError(t, err)
+	require.Equal(t, []string{"a", "b"}, value)
+}
