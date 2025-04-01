@@ -225,7 +225,7 @@ func (t *App) updateObjects() {
 		nodesHbCells(row)
 
 		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
-			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + monitor.StrThreadAlerts(hbStatus.Alerts)
+			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + tview.TranslateANSI(monitor.StrThreadAlerts(hbStatus.Alerts))
 			row++
 			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
