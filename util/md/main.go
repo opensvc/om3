@@ -243,15 +243,18 @@ func (t T) Devices() (device.L, error) {
 			line := strings.TrimSpace(scanner.Text())
 			words := strings.SplitN(line, "devices=", 2)
 			if len(words) != 2 {
-				return l, nil
+				break
 			}
 			for _, d := range strings.Split(words[1], ",") {
 				l = append(l, device.New(d, device.WithLogger(t.log)))
 			}
-			return l, nil
+			break
 		}
 	}
-	return l, nil
+	// The `mdadm -E --scan -v` command can return a list with duplicates,
+	// like /dev/mpath0 /dev/sda /dev/sdb, where sda and sdb are paths of mpath0.
+	// In this case we want to return only the top holders of the list.
+	return l.HolderEndpoints()
 }
 
 func (t T) UUID() string {

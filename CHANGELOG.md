@@ -1,5 +1,11 @@
 # OpenSVC Agent v3 Changelog
 
+## Migration Prerequisites
+
+* Upgrade to the latest v2.1 before installing v3. The preinst, postinst, prerm, postrm scripts are received patches to make the 2-to-3 transition safer:
+
+    * [2.1-1890] Don't purge /etc/opensvc and /var/lib/opensvc on `apt [auto]remove --purge`
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration
@@ -283,6 +289,11 @@
     * `provisioner`
     * `dns_update`
    
+* **Removed feature:**
+    The interface aliasing mode is dropped from the `ip.host` driver.
+    The `alias=true` keyword is now ignored, and the ip stacking mode is always selected.
+    Users must migrate to `alias=false` before upgrading to om3.
+
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
