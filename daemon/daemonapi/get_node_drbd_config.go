@@ -22,6 +22,7 @@ func (a *DaemonAPI) GetNodeDRBDConfig(ctx echo.Context, nodename string, params 
 		log.Warnf("invalid file name: %s", params.Name)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid file name: %s", params.Name)
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalDRBDConfig(ctx, params)
 	}

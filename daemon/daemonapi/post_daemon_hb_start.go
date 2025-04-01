@@ -14,6 +14,7 @@ func (a *DaemonAPI) PostDaemonHeartbeatStart(ctx echo.Context, nodename api.InPa
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	return a.postDaemonSubAction(ctx, nodename, "start", fmt.Sprintf("hb#%s", name), func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonHeartbeatStart(ctx.Request().Context(), nodename, name)
 	})

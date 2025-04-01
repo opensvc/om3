@@ -15,6 +15,7 @@ func (a *DaemonAPI) GetNodeDriver(ctx echo.Context, nodename api.InPathNodeName)
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeDriver(ctx)
 	}

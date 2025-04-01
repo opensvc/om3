@@ -25,6 +25,7 @@ func (a *DaemonAPI) PostDaemonListenerLogControl(ctx echo.Context, nodename api.
 	if payload.Level != "none" {
 		level = string(payload.Level)
 	}
+	nodename = a.parseNodename(nodename)
 	_, err := zerolog.ParseLevel(level)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing the level: %s", err)

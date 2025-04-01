@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionUnprovision(ctx echo.Context, nodename, na
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionUnprovision(ctx, namespace, kind, name, params)
 	}

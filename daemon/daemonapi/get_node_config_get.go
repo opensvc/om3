@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetNodeConfigGet(ctx echo.Context, nodename string, params a
 	if params.Kw == nil {
 		return ctx.JSON(http.StatusOK, r)
 	}
-
+	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
 		oc, err := object.NewNode()
 		if err != nil {

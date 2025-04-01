@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		logName := "GetNodeConfigFile"
 		log := LogHandler(ctx, logName)

@@ -24,6 +24,7 @@ func (a *DaemonAPI) PostDaemonShutdown(ctx echo.Context, nodename string, params
 		return err
 	}
 
+	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
 		return a.localPostDaemonShutdown(ctx, params)
 	} else if !clusternode.Has(nodename) {

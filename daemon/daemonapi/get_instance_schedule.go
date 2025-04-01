@@ -15,6 +15,7 @@ func (a *DaemonAPI) GetInstanceSchedule(ctx echo.Context, nodename, namespace st
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalInstanceSchedule(ctx, namespace, kind, name)
 	}

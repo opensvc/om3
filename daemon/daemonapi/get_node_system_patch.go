@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetNodeSystemPatch(ctx echo.Context, nodename api.InPathNode
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemPatch(ctx)
 	}

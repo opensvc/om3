@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionDelete(ctx echo.Context, nodename, namespa
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionDelete(ctx, namespace, kind, name, params)
 	}

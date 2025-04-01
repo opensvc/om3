@@ -18,6 +18,7 @@ func (a *DaemonAPI) GetInstanceResourceInfo(ctx echo.Context, nodename, namespac
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalInstanceResourceInfo(ctx, namespace, kind, name)
 	}

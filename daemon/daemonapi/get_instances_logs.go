@@ -13,6 +13,7 @@ func (a *DaemonAPI) GetInstanceLogs(ctx echo.Context, nodename string, namespace
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)

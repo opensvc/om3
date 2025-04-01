@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		logName := "GetInstanceConfigFile"
 		log := LogHandler(ctx, logName)

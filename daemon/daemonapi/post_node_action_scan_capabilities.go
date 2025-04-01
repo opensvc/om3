@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename st
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
 		return a.localNodeActionScanCapabilities(ctx, params)
 	}

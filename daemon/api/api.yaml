@@ -6862,6 +6862,9 @@ components:
       required: true
       schema:
         type: string
+        description: |
+            The cluster node to relay the request to. `_` and `localhost` refer tp
+            the node that received the request.
         example: localhost
 
     inPathKind:

@@ -57,7 +57,8 @@ type (
 
 // GetDaemonEvents feeds node daemon event publications in rss format.
 func (a *DaemonAPI) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
-	if nodename == a.localhost || nodename == "localhost" {
+	nodename = a.parseNodename(nodename)
+	if nodename == a.localhost {
 		return a.getLocalDaemonEvents(ctx, params)
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
