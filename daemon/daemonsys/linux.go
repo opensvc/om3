@@ -50,18 +50,25 @@ func (t *T) Close() error {
 	return nil
 }
 
-// Defined verify if opensvc systemd unit exists
-func (t *T) Defined(ctx context.Context) (bool, error) {
+// Defined verify if opensvc systemd unit exists and returns true and job type
+// when unit is loaded
+func (t *T) Defined(ctx context.Context) (loaded bool, unitType string, err error) {
 	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{UnitName})
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	for _, v := range units {
 		if v.LoadState == "loaded" {
-			return true, nil
+			prop, err := t.conn.GetServicePropertyContext(ctx, UnitName, "Type")
+			if err == nil && prop != nil {
+				unitType = strings.Trim(prop.Value.String(), "\"")
+				return true, unitType, err
+			} else {
+				return true, "", err
+			}
 		}
 	}
-	return false, nil
+	return false, "", nil
 }
 
 // NotifyWatchdog sends watch dog notify to systemd
@@ -70,6 +77,22 @@ func (t *T) NotifyWatchdog() (bool, error) {
 		return false, nil
 	}
 	return sddaemon.SdNotify(false, sddaemon.SdNotifyWatchdog)
+}
+
+// NotifyReady sends NotifyReady to systemd
+func (t *T) NotifyReady() (bool, error) {
+	if t.conn == nil {
+		return false, nil
+	}
+	return sddaemon.SdNotify(false, sddaemon.SdNotifyReady)
+}
+
+// NotifyStopping sends NotifyStopping to systemd
+func (t *T) NotifyStopping() (bool, error) {
+	if t.conn == nil {
+		return false, nil
+	}
+	return sddaemon.SdNotify(false, sddaemon.SdNotifyStopping)
 }
 
 // Restart restarts the opensvc systemd unit
