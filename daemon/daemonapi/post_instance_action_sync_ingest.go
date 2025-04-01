@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionSyncIngest(ctx echo.Context, nodename, nam
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionSyncIngest(ctx, namespace, kind, name, params)
 	}

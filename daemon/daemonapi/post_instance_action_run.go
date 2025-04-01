@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionRun(ctx echo.Context, nodename, namespace 
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionRun(ctx, namespace, kind, name, params)
 	}

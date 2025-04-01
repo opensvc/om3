@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, p
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
 		return a.localNodeActionSysreport(ctx, params)
 	}

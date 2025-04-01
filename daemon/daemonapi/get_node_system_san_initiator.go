@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetNodeSystemSANInitiator(ctx echo.Context, nodename api.InP
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemSANInitiator(ctx)
 	}

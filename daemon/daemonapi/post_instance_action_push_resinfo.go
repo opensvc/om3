@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionPushResourceInfo(ctx echo.Context, nodenam
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionPushResourceInfo(ctx, namespace, kind, name, params)
 	}

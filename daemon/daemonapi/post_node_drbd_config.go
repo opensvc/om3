@@ -21,6 +21,7 @@ func (a *DaemonAPI) PostNodeDRBDConfig(ctx echo.Context, nodename string, params
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalDRBDConfig(ctx, params, payload)
 	}

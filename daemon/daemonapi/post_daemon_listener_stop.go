@@ -14,6 +14,7 @@ func (a *DaemonAPI) PostDaemonListenerStop(ctx echo.Context, nodename api.InPath
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	return a.postDaemonSubAction(ctx, nodename, "stop", fmt.Sprintf("lsnr-%s", name), func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonListenerStop(ctx.Request().Context(), nodename, name)
 	})

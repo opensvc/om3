@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetNodeSystemDisk(ctx echo.Context, nodename api.InPathNodeN
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemDisk(ctx)
 	}

@@ -16,6 +16,7 @@ func (a *DaemonAPI) GetNodeSystemIPAddress(ctx echo.Context, nodename api.InPath
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeSystemIPAddress(ctx)
 	}

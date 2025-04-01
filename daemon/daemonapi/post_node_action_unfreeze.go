@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostPeerActionUnfreeze(ctx echo.Context, nodename string, pa
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
 		return a.localNodeActionUnfreeze(ctx, params)
 	}

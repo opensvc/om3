@@ -60,6 +60,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 
 func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "GetInstance")
+	nodename = a.parseNodename(nodename)
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Errorf("GetInstance: %s", err)

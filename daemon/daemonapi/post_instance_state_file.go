@@ -21,7 +21,8 @@ func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace 
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
-	if nodename == a.localhost || nodename == "localhost" {
+	nodename = a.parseNodename(nodename)
+	if nodename == a.localhost {
 		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
 	}
 	relativePath := ctx.Request().Header.Get("x-relative-path")

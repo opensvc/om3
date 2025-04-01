@@ -15,6 +15,7 @@ func (a *DaemonAPI) GetNodeSchedule(ctx echo.Context, nodename string) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalSchedule(ctx)
 	}

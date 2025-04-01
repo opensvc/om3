@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionUnfreeze(ctx echo.Context, nodename, names
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionUnfreeze(ctx, namespace, kind, name, params)
 	}

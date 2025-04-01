@@ -15,6 +15,7 @@ func (a *DaemonAPI) PostInstanceActionStartStandby(ctx echo.Context, nodename, n
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionStartStandby(ctx, namespace, kind, name, params)
 	}

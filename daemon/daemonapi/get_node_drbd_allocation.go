@@ -77,6 +77,7 @@ func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeDRBDAllocation(ctx)
 	}
