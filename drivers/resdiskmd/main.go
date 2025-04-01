@@ -255,7 +255,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("driver does not implement the provisioner interface")
 	}
-	if err := devIntf.Remove(); err != nil {
+	if err := devIntf.Wipe(); err != nil {
 		return err
 	}
 	if err := t.UnsetUUID(ctx); err != nil {
