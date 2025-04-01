@@ -242,6 +242,7 @@ var (
 		Attr:     "SCSIPersistentReservation.Key",
 		Option:   "prkey",
 		Scopable: true,
+		Default:  "{node.node.prkey}",
 		Text:     keywords.NewText(fs, "text/kw/prkey"),
 	}
 
