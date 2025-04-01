@@ -130,7 +130,7 @@ a = {#DEFAULT.affinity}
 func TestConfigDerefFromEnvList(t *testing.T) {
 	cf := []byte(`
 [DEFAULT]
-affinity = {env.l[0]} {env.l[1]}
+affinity = {env.l[1]} {env.l[0]}
 
 [env]
 l = a b
@@ -142,5 +142,5 @@ l = a b
 
 	value, err := o.Config().Eval(key.Parse("affinity"))
 	require.NoError(t, err)
-	require.Equal(t, []string{"a", "b"}, value)
+	require.Equal(t, []string{"b", "a"}, value)
 }
