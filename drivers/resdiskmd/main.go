@@ -200,8 +200,8 @@ func (t *T) uuidKey() key.T {
 		Section: t.RID(),
 		Option:  "uuid",
 	}
-	if t.Shared {
-		k.Section = k.Section + "@" + hostname.Hostname()
+	if !t.Shared {
+		k.Option = k.Option + "@" + hostname.Hostname()
 	}
 	return k
 }
