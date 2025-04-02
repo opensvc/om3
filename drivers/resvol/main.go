@@ -51,22 +51,26 @@ import (
 type (
 	T struct {
 		resource.T
-		Name        string       `json:"name"`
-		Access      string       `json:"access"`
-		Pool        string       `json:"pool"`
-		PoolType    string       `json:"type"`
-		Size        *int64       `json:"size"`
-		Format      bool         `json:"format"`
-		Configs     []string     `json:"configs"`
-		Secrets     []string     `json:"secrets"`
-		Directories []string     `json:"directories"`
-		User        string       `json:"user"`
-		Group       string       `json:"group"`
-		Perm        *os.FileMode `json:"perm"`
-		DirPerm     *os.FileMode `json:"dirperm"`
-		Signal      string       `json:"signal"`
-		VolNodes    []string
+		Name      string       `json:"name"`
+		Access    string       `json:"access"`
+		Pool      string       `json:"pool"`
+		PoolType  string       `json:"type"`
+		Size      *int64       `json:"size"`
+		Format    bool         `json:"format"`
+		ToInstall []string     `json:"install"`
+		User      string       `json:"user"`
+		Group     string       `json:"group"`
+		Perm      *os.FileMode `json:"perm"`
+		DirPerm   *os.FileMode `json:"dirperm"`
+		Signal    string       `json:"signal"`
+		VolNodes  []string
 
+		// Deprecated
+		Configs     []string `json:"configs"`
+		Secrets     []string `json:"secrets"`
+		Directories []string `json:"directories"`
+
+		// Context
 		Path          naming.Path
 		Topology      topology.T
 		Nodes         []string
