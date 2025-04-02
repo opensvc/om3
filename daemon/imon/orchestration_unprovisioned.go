@@ -15,11 +15,16 @@ func (t *Manager) orchestrateUnprovisioned() {
 		t.UnprovisionedFromIdle()
 	case instance.MonitorStateWaitNonLeader:
 		t.UnprovisionedFromWaitNonLeader()
+	case instance.MonitorStateWaitChildren:
+		t.setWaitChildren()
 	}
 }
 
 func (t *Manager) UnprovisionedFromIdle() {
 	if t.unprovisionedClearIfReached() {
+		return
+	}
+	if t.setWaitChildren() {
 		return
 	}
 	if t.isUnprovisionLeader() {
