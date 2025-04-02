@@ -50,6 +50,8 @@ func (t *T) getRefsByKind(filter naming.Kind) []string {
 
 func (t *T) getMetadata() []object.KVInstall {
 	l := make([]object.KVInstall, 0)
+	_, files := t.getInstallMetadata()
+	l = append(l, files...)
 	l = append(l, t.getMetadataByKind(naming.KindSec)...)
 	l = append(l, t.getMetadataByKind(naming.KindCfg)...)
 	return l
@@ -186,6 +188,11 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
 		}
+		shares := keystore.Shares()
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+			t.StatusLog().Warn("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
+			continue
+		}
 		matches, err := keystore.MatchingKeys(md.FromPattern)
 		if err != nil {
 			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromPattern, err)
@@ -197,21 +204,62 @@ func (t *T) statusData() {
 	}
 }
 
+type dirDefinition struct {
+	Path     string
+	Perm     *os.FileMode
+	User     string
+	Group    string
+	Required bool
+}
+
 func (t *T) install(ctx context.Context) (bool, error) {
-	type dirDefinition struct {
-		Path     string
-		Perm     *os.FileMode
-		User     string
-		Group    string
-		Required bool
+	changed := false
+	head := t.Head()
+	if head == "" {
+		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
 
-	changed := false
+	dirs, files := t.getInstallMetadata()
+
+	for _, dir := range dirs {
+		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
+			return false, err
+		}
+	}
+
+	for _, md := range files {
+		if !md.FromStore.Exists() {
+			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
+			if md.Required {
+				return false, err
+			} else {
+				t.Log().Warnf("%s", err)
+				continue
+			}
+		}
+		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
+		if err != nil {
+			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
+		}
+		shares := keystore.Shares()
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+			return false, fmt.Errorf("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
+		}
+		if err = keystore.InstallKeyTo(md); err != nil && md.Required {
+			return false, err
+		}
+		changed = true
+	}
+
+	return changed, nil
+}
+
+func (t *T) getInstallMetadata() ([]dirDefinition, []object.KVInstall) {
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
 	head := t.Head()
 	if head == "" {
-		return false, fmt.Errorf("refuse to install in empty (ie /) head")
+		return dirs, files
 	}
 
 	isSep := func(word string, i int) bool {
@@ -393,34 +441,7 @@ func (t *T) install(ctx context.Context) (bool, error) {
 			parseDir(line)
 		}
 	}
-
-	for _, dir := range dirs {
-		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
-			return false, err
-		}
-	}
-
-	for _, file := range files {
-		if !file.FromStore.Exists() {
-			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", file.FromStore, file.FromPattern)
-			if file.Required {
-				return false, err
-			} else {
-				t.Log().Warnf("%s", err)
-				continue
-			}
-		}
-		keystore, err := object.NewKeystore(file.FromStore, object.WithVolatile(true))
-		if err != nil {
-			t.Log().Warnf("store %s init error: %s", file.FromStore, err)
-		}
-		if err = keystore.InstallKeyTo(file); err != nil && file.Required {
-			return false, err
-		}
-		changed = true
-	}
-
-	return changed, nil
+	return dirs, files
 }
 
 func (t *T) installData(ctx context.Context) error {
@@ -494,6 +515,10 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
+		}
+		shares := keystore.Shares()
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+			return false, fmt.Errorf("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
 		}
 		if err = keystore.InstallKeyTo(md); err != nil {
 			return changed, err
