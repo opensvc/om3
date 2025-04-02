@@ -27,6 +27,8 @@ func (t *Manager) orchestratePurged() {
 		instance.MonitorStateDeleteProgress,
 		instance.MonitorStateRunning,
 		instance.MonitorStateStopProgress:
+	case instance.MonitorStateWaitChildren:
+		t.setWaitChildren()
 	default:
 		t.log.Warnf("orchestratePurged has no solution from state %s", t.state.State)
 	}
@@ -71,6 +73,9 @@ func (t *Manager) purgedFromUnprovisioned() {
 }
 
 func (t *Manager) purgedFromIdleUp() {
+	if t.setWaitChildren() {
+		return
+	}
 	t.disableMonitor("orchestrate purged stopping")
 	t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStatePurgeFailed)
 }
