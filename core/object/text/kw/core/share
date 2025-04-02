@@ -1,0 +1,6 @@
+A list of namespaces that objects are allowed to decode this keystore keys.
+
+The `*` special value means `all`.
+
+By default a keystore only shares to its own namespace.
+

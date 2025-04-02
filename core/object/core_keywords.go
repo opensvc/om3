@@ -390,6 +390,18 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/parallel"),
 	},
 
+	// Keystores
+	{
+		Converter: converters.List,
+		Default:   "{namespace}",
+		Example:   "ns1 ns2",
+		Kind:      naming.NewKinds(naming.KindSec, naming.KindCfg),
+		Option:    "share",
+		Scopable:  false,
+		Section:   "DEFAULT",
+		Text:      keywords.NewText(fs, "text/kw/core/share"),
+	},
+
 	// Secrets
 	{
 		Example:  "test.opensvc.com",
