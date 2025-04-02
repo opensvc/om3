@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -160,10 +161,15 @@ func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVI
 			FromPattern: l[1], // k[12]
 			FromStore:   p,    // <volns>/sec/s1
 			AccessControl: object.KVInstallAccessControl{
-				User:    t.User,
-				Group:   t.Group,
-				Perm:    perm,
-				DirPerm: t.getDirPerm(),
+				User:         t.User,
+				Group:        t.Group,
+				Perm:         perm,
+				DirUser:      t.User,
+				DirGroup:     t.Group,
+				DirPerm:      t.getDirPerm(),
+				MakedirUser:  t.User,
+				MakedirGroup: t.Group,
+				MakedirPerm:  t.getDirPerm(),
 			},
 		}
 	}
@@ -191,8 +197,239 @@ func (t *T) statusData() {
 	}
 }
 
+func (t *T) install(ctx context.Context) (bool, error) {
+	type dirDefinition struct {
+		Path     string
+		Perm     *os.FileMode
+		User     string
+		Group    string
+		Required bool
+	}
+
+	changed := false
+	files := make([]object.KVInstall, 0)
+	dirs := make([]dirDefinition, 0)
+	head := t.Head()
+	if head == "" {
+		return false, fmt.Errorf("refuse to install in empty (ie /) head")
+	}
+
+	isSep := func(word string, i int) bool {
+		if !strings.HasPrefix(word, "/") {
+			return false
+		}
+		return i < 1 || t.ToInstall[i-1] != "key"
+	}
+
+	split := func() [][]string {
+		var line []string
+		lines := make([][]string, 0)
+		in := false
+		for i, word := range t.ToInstall {
+			if isSep(word, i) {
+				if in {
+					lines = append(lines, line)
+					line = []string{word}
+				} else {
+					line = []string{word}
+					in = true
+				}
+			} else {
+				if in {
+					line = append(line, word)
+				} else {
+					// ignore heading garbage
+				}
+			}
+		}
+		if len(line) >= 1 {
+			lines = append(lines, line)
+		}
+		return lines
+	}
+
+	parseFileMode := func(s string) (*os.FileMode, error) {
+		mode, err := strconv.ParseUint(s, 8, 32)
+		if err != nil {
+			return nil, err
+		}
+		fileMode := os.FileMode(mode)
+		return &fileMode, nil
+	}
+
+	pop := func(words []string) (string, []string) {
+		if len(words) == 0 {
+			return "", words
+		}
+		return words[0], words[1:]
+	}
+
+	parseDir := func(line []string) {
+		item := dirDefinition{
+			User:  t.User,
+			Group: t.Group,
+			Perm:  t.getDirPerm(),
+		}
+		var word string
+
+		word, line = pop(line)
+		item.Path = word
+
+		for {
+			word, line = pop(line)
+			if word == "" {
+				break
+			}
+			switch word {
+			case "user":
+				word, line = pop(line)
+				item.User = word
+			case "group":
+				word, line = pop(line)
+				item.Group = word
+			case "mode", "perm":
+				word, line = pop(line)
+				perm, _ := parseFileMode(word)
+				if perm != nil {
+					item.Perm = perm
+				}
+			case "required":
+				item.Required = true
+			}
+		}
+		dirs = append(dirs, item)
+	}
+
+	parseFile := func(line []string) {
+		item := object.KVInstall{
+			Required:    false,
+			ToHead:      head,
+			ToPath:      head,
+			FromPattern: "",
+			AccessControl: object.KVInstallAccessControl{
+				User:         t.User,
+				Group:        t.Group,
+				MakedirUser:  t.User,
+				MakedirGroup: t.Group,
+				MakedirPerm:  t.getDirPerm(),
+			},
+		}
+
+		var word string
+		var kind naming.Kind
+
+		word, line = pop(line)
+		item.ToPath = filepath.Join(head, word)
+		if strings.HasSuffix(word, "/") {
+			item.ToPath += "/"
+		}
+
+		word, line = pop(line)
+		if word != "from" {
+			return
+		}
+
+		word, line = pop(line)
+		switch word {
+		case "sec":
+			kind = naming.KindSec
+			item.AccessControl.Perm = &defaultSecPerm
+		case "cfg":
+			kind = naming.KindCfg
+			item.AccessControl.Perm = &defaultCfgPerm
+		default:
+			return
+		}
+
+		name, line := pop(line)
+		namespace := t.Path.Namespace
+
+		item.FromStore = naming.Path{
+			Name:      name,
+			Namespace: namespace,
+			Kind:      kind,
+		}
+
+		for {
+			word, line = pop(line)
+			if word == "" {
+				break
+			}
+			switch word {
+			case "namespace":
+				word, line = pop(line)
+				item.FromStore = naming.Path{
+					Name:      name,
+					Namespace: word,
+					Kind:      kind,
+				}
+			case "key":
+				word, line = pop(line)
+				item.FromPattern = word
+			case "user":
+				word, line = pop(line)
+				item.AccessControl.User = word
+			case "group":
+				word, line = pop(line)
+				item.AccessControl.Group = word
+			case "mode", "perm":
+				word, line = pop(line)
+				perm, _ := parseFileMode(word)
+				if perm != nil {
+					item.AccessControl.Perm = perm
+				}
+			case "required":
+				item.Required = true
+			}
+		}
+
+		files = append(files, item)
+	}
+
+	for _, line := range split() {
+		if slices.Contains(line, "from") {
+			parseFile(line)
+		} else {
+			parseDir(line)
+		}
+	}
+
+	for _, dir := range dirs {
+		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
+			return false, err
+		}
+	}
+
+	for _, file := range files {
+		if !file.FromStore.Exists() {
+			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", file.FromStore, file.FromPattern)
+			if file.Required {
+				return false, err
+			} else {
+				t.Log().Warnf("%s", err)
+				continue
+			}
+		}
+		keystore, err := object.NewKeystore(file.FromStore, object.WithVolatile(true))
+		if err != nil {
+			t.Log().Warnf("store %s init error: %s", file.FromStore, err)
+		}
+		if err = keystore.InstallKeyTo(file); err != nil && file.Required {
+			return false, err
+		}
+		changed = true
+	}
+
+	return changed, nil
+}
+
 func (t *T) installData(ctx context.Context) error {
 	changed := false
+	if v, err := t.install(ctx); err != nil {
+		return err
+	} else {
+		changed = v || changed
+	}
 	if err := t.installDirs(); err != nil {
 		return err
 	}
@@ -273,16 +510,15 @@ func (t *T) chmod(p string, mode *os.FileMode) error {
 	return os.Chmod(p, *mode)
 }
 
-func (t *T) chown(p string, usr, grp string) error {
-	uid := -1
-	gid := -1
+func (t *T) chown(p string, usr, grp string, info os.FileInfo) error {
+	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
 			uid = i
 		} else if u, err := user.Lookup(usr); err == nil {
 			uid, _ = strconv.Atoi(u.Uid)
 		} else {
-			return fmt.Errorf("user %s is not integer and not resolved", usr)
+			return fmt.Errorf("user %s is not numeric and not resolved", usr)
 		}
 	}
 	if grp != "" {
@@ -291,24 +527,40 @@ func (t *T) chown(p string, usr, grp string) error {
 		} else if g, err := user.LookupGroup(grp); err == nil {
 			gid, _ = strconv.Atoi(g.Gid)
 		} else {
-			return fmt.Errorf("group %s is not integer and not resolved", grp)
+			return fmt.Errorf("group %s is not numeric and not resolved", grp)
 		}
 	}
+
+	if info != nil {
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+			currentUID := int(stat.Uid)
+			currentGID := int(stat.Gid)
+
+			if uid != currentUID || gid != currentGID {
+				t.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
+				return os.Chown(p, uid, gid)
+			} else {
+				return nil
+			}
+		}
+	}
+
 	return os.Chown(p, uid, gid)
 }
 
-func (t *T) installDir(dir string, head string, perm os.FileMode) error {
+func (t *T) installDir(path string, head string, perm os.FileMode, user, group string) error {
 	if head == "" {
-		return fmt.Errorf("refuse to install dir %s in /", dir)
+		return fmt.Errorf("refuse to install dir %s in /", path)
 	}
-	p := filepath.Join(head, dir)
+	p := filepath.Join(head, path)
 	info, err := os.Stat(p)
 	switch {
 	case os.IsNotExist(err):
+		t.Log().Infof("install directory %s with ower %s:%s and perm %s", p, user, group, perm)
 		if err := os.MkdirAll(p, perm); err != nil {
 			return err
 		}
-		if err := t.chown(p, t.User, t.Group); err != nil {
+		if err := t.chown(p, user, group, nil); err != nil {
 			return err
 		}
 	case err != nil:
@@ -317,10 +569,13 @@ func (t *T) installDir(dir string, head string, perm os.FileMode) error {
 		if !info.IsDir() {
 			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
 		}
-		if err := t.chmod(p, &perm); err != nil {
-			return err
+		if info.Mode().Perm() != perm {
+			t.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+			if err := t.chmod(p, &perm); err != nil {
+				return err
+			}
 		}
-		if err := t.chown(p, t.User, t.Group); err != nil {
+		if err := t.chown(p, user, group, info); err != nil {
 			return err
 		}
 	}
@@ -337,7 +592,7 @@ func (t *T) installDirs() error {
 	}
 	dirPerm := t.getDirPerm()
 	for _, dir := range t.Directories {
-		if err := t.installDir(dir, head, *dirPerm); err != nil {
+		if err := t.installDir(dir, head, *dirPerm, t.User, t.Group); err != nil {
 			return err
 		}
 	}

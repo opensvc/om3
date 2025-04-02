@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/danwakefield/fnmatch"
 
@@ -37,10 +38,19 @@ type (
 		AccessControl KVInstallAccessControl
 	}
 	KVInstallAccessControl struct {
-		User    string
-		Group   string
-		Perm    *os.FileMode
-		DirPerm *os.FileMode
+		User  string
+		Group string
+		Perm  *os.FileMode
+
+		// always align dir access
+		DirUser  string
+		DirGroup string
+		DirPerm  *os.FileMode
+
+		// only align dir access on makedir
+		MakedirUser  string
+		MakedirGroup string
+		MakedirPerm  *os.FileMode
 	}
 )
 
@@ -116,7 +126,7 @@ func (t *keystore) _install(k string, dst string) error {
 		return err
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key=%s not found", t.path, k)
+		return fmt.Errorf("%s key %s not found", t.path, k)
 	}
 	for _, vk := range keys {
 		opt := KVInstall{
@@ -161,9 +171,9 @@ func (t *keystore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		return false, err
 	}
 	if v, err := file.ExistsAndDir(opt.ToPath); err != nil {
-		t.Log().Errorf("install %s key=%s directory at location %s: %s", t.path, vk.Key, opt.ToPath, err)
+		t.Log().Errorf("install key %s directory at location %s: %s", vk.Key, opt.ToPath, err)
 	} else if v {
-		t.Log().Infof("remove %s key=%s directory at location %s", t.path, vk.Key, opt.ToPath)
+		t.Log().Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
 		if err := os.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
@@ -172,7 +182,7 @@ func (t *keystore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	info, err := os.Stat(vdir)
 	switch {
 	case os.IsNotExist(err):
-		t.Log().Infof("create directory %s to host %s key=%s", vdir, t.path, vk.Key)
+		t.Log().Infof("create directory %s to host key %s", vdir, vk.Key)
 		if err := t.makedir(vdir, opt.AccessControl); err != nil {
 			return false, err
 		}
@@ -180,7 +190,7 @@ func (t *keystore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	case err != nil:
 		return false, err
 	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
-		t.Log().Infof("remove %s key=%s file at parent location %s", t.path, vk.Key, vdir)
+		t.Log().Infof("remove key %s file at parent location %s", vk.Key, vdir)
 		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
@@ -208,24 +218,33 @@ func (t *keystore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
-func (t *keystore) chmod(p string, mode *os.FileMode) error {
+func (t *keystore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
 	if mode == nil {
 		return nil
+	}
+	if info != nil {
+		if *mode == info.Mode().Perm() {
+			return nil
+		}
+		t.Log().Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), mode)
+	} else {
+		t.Log().Debugf("set %s permissions to %s", p, mode)
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t *keystore) chown(p string, usr, grp string) error {
-	uid := -1
-	gid := -1
+func (t *keystore) chown(p string, usr, grp string, info os.FileInfo) error {
+	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
 			uid = i
 		} else if u, err := user.Lookup(usr); err == nil {
 			uid, _ = strconv.Atoi(u.Uid)
 		} else {
-			return fmt.Errorf("user %s is not integer and not resolved", usr)
+			return fmt.Errorf("user %s is not numeric and not resolved", usr)
 		}
+	} else {
+		uid = -1
 	}
 	if grp != "" {
 		if i, err := strconv.Atoi(grp); err == nil {
@@ -233,48 +252,75 @@ func (t *keystore) chown(p string, usr, grp string) error {
 		} else if g, err := user.LookupGroup(grp); err == nil {
 			gid, _ = strconv.Atoi(g.Gid)
 		} else {
-			return fmt.Errorf("group %s is not integer and not resolved", grp)
+			return fmt.Errorf("group %s is not numeric and not resolved", grp)
 		}
+	} else {
+		gid = -1
 	}
-	return os.Chown(p, uid, gid)
+	if info != nil {
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+			currentUID := int(stat.Uid)
+			currentGID := int(stat.Gid)
+			if uid < 0 {
+				uid = currentUID
+			}
+			if gid < 0 {
+				gid = currentGID
+			}
+			if uid != currentUID || gid != currentGID {
+				t.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
+				return os.Chown(p, uid, gid)
+			} else {
+				return nil
+			}
+		}
+	} else if uid > 0 || gid > 0 {
+		t.Log().Debugf("set %s owner to %d:%d", p, uid, gid)
+		return os.Chown(p, uid, gid)
+	}
+	return nil
 }
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
 func (t *keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
 	mtime := t.configModTime()
-	if file.Exists(dst) {
-		if err := t.chmod(dst, mode); err != nil {
-			return false, err
+	info, err := os.Stat(dst)
+	if errors.Is(err, os.ErrNotExist) {
+		perm := os.ModePerm
+		if mode != nil {
+			perm = *mode
 		}
-		if err := t.chown(dst, usr, grp); err != nil {
-			return false, err
+		t.log.Infof("install key %s to %s with owner %s:%s perm %v", vk.Key, dst, usr, grp, perm)
+		if err := os.WriteFile(dst, b, perm); err != nil {
+			return true, err
 		}
-		if mtime == file.ModTime(dst) {
-			return false, nil
+		if err := t.chown(dst, usr, grp, nil); err != nil {
+			return true, err
 		}
-		targetMD5 := md5.New().Sum(b)
-		currentMD5, err := file.MD5(dst)
-		if err != nil {
-			return false, err
-		}
-		if string(currentMD5) == string(targetMD5) {
-			t.log.Debugf("%s/%s in %s already installed and same md5: set access and modification times to %s", t.path.Name, vk.Key, dst, mtime)
-			return false, os.Chtimes(dst, mtime, mtime)
-		}
-	}
-	perm := os.ModePerm
-	if mode != nil {
-		perm = *mode
-	}
-	t.log.Infof("install %s/%s in %s with perm %v", t.path.Name, vk.Key, dst, perm)
-	if err := os.WriteFile(dst, b, perm); err != nil {
-		return true, err
-	}
-	if err := t.chown(dst, usr, grp); err != nil {
+		return true, os.Chtimes(dst, mtime, mtime)
+	} else if err != nil {
 		return false, err
 	}
-	return true, os.Chtimes(dst, mtime, mtime)
+	if err := t.chmod(dst, mode, info); err != nil {
+		return false, err
+	}
+	if err := t.chown(dst, usr, grp, info); err != nil {
+		return false, err
+	}
+	if mtime == file.ModTime(dst) {
+		return false, nil
+	}
+	targetMD5 := md5.New().Sum(b)
+	currentMD5, err := file.MD5(dst)
+	if err != nil {
+		return false, err
+	}
+	if string(currentMD5) == string(targetMD5) {
+		t.log.Debugf("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
+		return false, os.Chtimes(dst, mtime, mtime)
+	}
+	return false, nil
 }
 
 func (t *keystore) InstallKey(keyName string) error {
@@ -282,14 +328,23 @@ func (t *keystore) InstallKey(keyName string) error {
 }
 
 func (t *keystore) makedir(path string, opt KVInstallAccessControl) error {
-	if err := os.MkdirAll(path, *opt.DirPerm); err != nil {
-		return err
-	}
-	if err := t.chmod(path, opt.DirPerm); err != nil {
-		return err
-	}
-	if err := t.chown(path, opt.User, opt.Group); err != nil {
-		return err
+	info, err := os.Stat(path)
+	if err == nil {
+		if err := t.chmod(path, opt.DirPerm, info); err != nil {
+			return err
+		}
+		if err := t.chown(path, opt.DirUser, opt.DirGroup, info); err != nil {
+			return err
+		}
+		return nil
+	} else {
+		t.log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, *opt.MakedirPerm)
+		if err := os.MkdirAll(path, *opt.MakedirPerm); err != nil {
+			return err
+		}
+		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -308,7 +363,7 @@ func (t *keystore) makedirs(opt KVInstall) error {
 }
 
 func (t *keystore) InstallKeyTo(opt KVInstall) error {
-	t.log.Debugf("install %s key %s to %s", t.path, opt.FromPattern, opt.ToPath)
+	t.log.Debugf("install key %s to %s", opt.FromPattern, opt.ToPath)
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
@@ -325,7 +380,7 @@ func (t *keystore) InstallKeyTo(opt KVInstall) error {
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, opt); err != nil {
-			return fmt.Errorf("install key %s at path %s: %w", vk.Key, t.path, err)
+			return fmt.Errorf("install key %s to %s: %w", vk.Key, t.path, err)
 		}
 	}
 	return nil
@@ -384,7 +439,7 @@ func (t *keystore) postInstall(k string) error {
 			if _, ok := changedVolumes[vol.Path()]; !ok {
 				continue
 			}
-			t.log.Debugf("signal %s %s referrer: %s (%s)", t.path, k, p, r.RID())
+			t.log.Debugf("signal key %s referrer: %s (%s)", k, p, r.RID())
 			if err := v.SendSignals(ctx); err != nil {
 				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
