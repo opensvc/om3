@@ -13,6 +13,7 @@ type (
 		RejoinGracePeriod      time.Duration `json:"rejoin_grace_period"`
 		SplitAction            string        `json:"split_action"`
 		SSHKey                 string        `json:"sshkey"`
+		PRKey                  string        `json:"pr_key"`
 	}
 )
 
@@ -33,5 +34,6 @@ func (t *Config) Unstructured() map[string]any {
 		"rejoin_grace_period":      t.RejoinGracePeriod,
 		"split_action":             t.SplitAction,
 		"sshkey":                   t.SSHKey,
+		"pr_key":                   t.PRKey,
 	}
 }
