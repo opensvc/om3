@@ -205,6 +205,11 @@ func (t *Manager) Start(parent context.Context) error {
 		t.cacheNodesInfo = data
 	}
 
+	// bootstrap initial node config
+	if err := t.bootstrapConfig(); err != nil {
+		return fmt.Errorf("bootstrap initial node config: %w", err)
+	}
+
 	// we are responsible for publication or node config, don't wait for
 	// first ConfigFileUpdated event to do the job.
 	if err := t.loadConfigAndPublish(); err != nil {
@@ -706,6 +711,27 @@ func (t *Manager) saveNodesInfo() {
 func (t *Manager) publishNodeStatus() {
 	node.StatusData.Set(t.localhost, t.nodeStatus.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeStatusUpdated{Node: t.localhost, Value: *t.nodeStatus.DeepCopy()}, t.labelLocalhost)
+}
+
+// bootstrapConfig initializes the node configuration and generates or retrieves
+// the node persistent reservation key if necessary.
+func (t *Manager) bootstrapConfig() error {
+	n, err := object.NewNode(object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+	t.config = n.MergedConfig()
+	nodeConfig := t.getNodeConfig()
+	if nodeConfig.PRKey != "" {
+		t.log.Debugf("node prkey %s", nodeConfig.PRKey)
+		return nil
+	}
+	prKey, err := n.PRKey()
+	if err != nil {
+		return fmt.Errorf("unable to initialize node prkey, %w", err)
+	}
+	t.log.Infof("initialized node prkey: %s", prKey)
+	return nil
 }
 
 func (t *Manager) loadConfig() error {

@@ -78,6 +78,7 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyEnv                    = key.New("node", "env")
 		keySplitAction            = key.New("node", "split_action")
 		keySSHKey                 = key.New("node", "sshkey")
+		keyPRKey                  = key.New("node", "prkey")
 		keyMinAvailMemPct         = key.New("node", "min_avail_mem_pct")
 		keyMinAvailSwapPct        = key.New("node", "min_avail_swap_pct")
 	)
@@ -97,6 +98,7 @@ func (t *Manager) getNodeConfig() node.Config {
 	cfg.Env = t.config.GetString(keyEnv)
 	cfg.SplitAction = t.config.GetString(keySplitAction)
 	cfg.SSHKey = t.config.GetString(keySSHKey)
+	cfg.PRKey = t.config.GetString(keyPRKey)
 
 	if cfg.MaxParallel == 0 {
 		cfg.MaxParallel = runtime.NumCPU()
