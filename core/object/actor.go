@@ -264,15 +264,15 @@ func (t *actor) ConfigureResources() {
 		}
 		driverGroup := rid.DriverGroup()
 		if driverGroup == driver.GroupUnknown {
-			t.log.Attr("rid", k).Attr("f", "listResources").Debugf("unknown driver group in rid %s", k)
+			t.log.Attr("rid", k).Debugf("unknown driver group in rid %s", k)
 			continue
 		}
 		typeKey := key.New(k, "type")
-		driverName := t.config.Get(typeKey)
+		driverName := t.config.GetString(typeKey)
 		driverID := driver.NewID(driverGroup, driverName)
 		factory := resource.NewResourceFunc(driverID)
 		if factory == nil {
-			t.log.Attr("driver", driverID.String()).Debugf("unknown driver %s", driverID)
+			t.log.Debugf("unknown driver %s", driverID)
 			continue
 		}
 		r := factory()
