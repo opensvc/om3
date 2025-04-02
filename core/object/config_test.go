@@ -144,3 +144,22 @@ l = a b
 	require.NoError(t, err)
 	require.Equal(t, []string{"b", "a"}, value)
 }
+
+func TestConfigDerefResourceType(t *testing.T) {
+	cf := []byte(`
+[fs#1]
+type = {env.fstype}
+
+[env]
+fstype = flag
+`)
+
+	p, _ := naming.ParsePath("test/svc/svc1")
+	o, err := NewSvc(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	_, err = SetClusterConfig()
+	o.ConfigureResources()
+	r := o.ResourceByID("fs#1")
+	require.NotNil(t, r)
+}
