@@ -40,7 +40,6 @@ func init() {
 		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectPurge(kind),
-		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
 		newCmdObjectGenCert(kind),
@@ -77,7 +76,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-		newCmdObjectPrintStatus(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
