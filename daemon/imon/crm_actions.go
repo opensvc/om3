@@ -9,6 +9,9 @@ import (
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/util/command"
@@ -20,6 +23,8 @@ var (
 
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
+
+	kindWithNotApplicableStatus = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func init() {
@@ -58,6 +63,18 @@ func (t *Manager) queueFreeze() error {
 }
 
 func (t *Manager) queueStatus() error {
+	if !kindWithNotApplicableStatus.Has(t.path.Kind) {
+		// no need for crm status action, intead simulate status with post status event
+		naStatus := instance.Status{
+			Avail:       status.NotApplicable,
+			Optional:    status.NotApplicable,
+			Overall:     status.NotApplicable,
+			Provisioned: provisioned.NotApplicable,
+			UpdatedAt:   time.Now(),
+		}
+		t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: naStatus}, t.pubLabels...)
+		return nil
+	}
 	return runner.Run(t.instConfig.Priority, func() error {
 		return t.crmStatus()
 	})
