@@ -2,7 +2,12 @@ package imon
 
 import (
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/provisioned"
+)
+
+var (
+	kindWithImmediatePurge = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func (t *Manager) orchestratePurged() {
@@ -31,6 +36,10 @@ func (t *Manager) orchestratePurged() {
 }
 
 func (t *Manager) purgedFromIdle() {
+	if !kindWithImmediatePurge.Has(t.path.Kind) {
+		t.transitionTo(instance.MonitorStateUnprovisionSuccess)
+		return
+	}
 	if t.setWaitChildren() {
 		return
 	}
