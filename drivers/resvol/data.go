@@ -190,7 +190,8 @@ func (t *T) statusData() {
 		}
 		shares := keystore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
-			t.StatusLog().Warn("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
+			path := strings.TrimPrefix(md.ToPath, md.ToHead)
+			t.StatusLog().Warn("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 			continue
 		}
 		matches, err := keystore.MatchingKeys(md.FromPattern)
@@ -243,7 +244,8 @@ func (t *T) install(ctx context.Context) (bool, error) {
 		}
 		shares := keystore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
-			return false, fmt.Errorf("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
+			path := strings.TrimPrefix(md.ToPath, md.ToHead)
+			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		if err = keystore.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
@@ -518,7 +520,8 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 		}
 		shares := keystore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
-			return false, fmt.Errorf("unauthorized install %s from %s key %s", md.ToPath, md.FromStore, md.FromPattern)
+			path := strings.TrimPrefix(md.ToPath, md.ToHead)
+			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		if err = keystore.InstallKeyTo(md); err != nil {
 			return changed, err
