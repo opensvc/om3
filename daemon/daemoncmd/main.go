@@ -57,11 +57,15 @@ type (
 		Activated(ctx context.Context) (bool, error)
 		CalledFromManager() bool
 		Close() error
-		Defined(ctx context.Context) (bool, error)
+		Defined(ctx context.Context) (bool, string, error)
 		Start(ctx context.Context) error
 		Restart() error
 		Stop(context.Context) error
 		IsSystemStopping() (bool, error)
+	}
+
+	starter interface {
+		Start(context.Context) error
 	}
 )
 
@@ -171,7 +175,7 @@ func (t *T) Restart(ctx context.Context, profile string) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, _, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.restartWithoutManager(profile)
 	}
 	// note: always ask manager for restart (during POST /daemon/restart handler
@@ -246,38 +250,23 @@ func (t *T) Start(ctx context.Context, profile string) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, unitType, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.startWithoutManager(profile)
-	}
-	if t.daemonsys.CalledFromManager() {
-		return t.startFromManager(profile)
+	} else if t.daemonsys.CalledFromManager() {
+		return t.startFromManager(profile, unitType)
 	} else {
 		return t.startWithManager(ctx)
 	}
 }
 
-func (t *T) startFromManager(profile string) error {
+func (t *T) startFromManager(profile string, unitType string) error {
 	if isRunning, err := t.isRunning(); err != nil {
 		return err
 	} else if isRunning {
 		return nil
 	}
 	log.Infof("exec run (origin manager)")
-	args := []string{"daemon", "run"}
-	if profile != "" {
-		args = append(args, "--cpuprofile", profile)
-	}
-	cmd := command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs(args),
-	)
-	checker := func() error {
-		if err := t.WaitRunning(); err != nil {
-			return fmt.Errorf("start checker wait running failed: %w", err)
-		}
-		return nil
-	}
-	return lockCmdCheck(cmd, checker, "daemon start")
+	return t.start(profile, unitType)
 }
 
 // Stop handle daemon stop from command origin.
@@ -290,7 +279,7 @@ func (t *T) Stop(ctx context.Context) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, _, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.StopWithoutManager()
 	}
 	if t.daemonsys.CalledFromManager() {
@@ -344,6 +333,25 @@ func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
 	return nil
 }
 
+// lockFuncAndCheck starts cmd, then call checker() with cli lock protection
+func lockFuncAndCheck(ctx context.Context, starter starter, checker func() error, desc string) error {
+	f := func() error {
+		if err := starter.Start(ctx); err != nil {
+			return err
+		}
+		if checker != nil {
+			if err := checker(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := lock.Func(lockPath+"-cli", 60*time.Second, desc, f); err != nil {
+		return err
+	}
+	return nil
+}
+
 // StopWithoutManager function will stop daemon with internal lock protection
 func (t *T) StopWithoutManager() error {
 	release, err := getLock("Stop")
@@ -354,37 +362,59 @@ func (t *T) StopWithoutManager() error {
 	return t.stop()
 }
 
-func (t *T) startWithoutManager(profile string) error {
-	isRunning, err := t.isRunning()
-	if err != nil {
+func (t *T) start(profile string, unitType string) error {
+	if isRunning, err := t.isRunning(); err != nil {
 		return err
-	}
-	if isRunning {
+	} else if isRunning {
 		return ErrAlreadyRunning
 	}
 	checker := func() error {
 		if err := t.WaitRunning(); err != nil {
-			err := fmt.Errorf("start checker wait running failed: %w", err)
-			return err
+			return fmt.Errorf("start checker wait running failed: %w", err)
 		}
 		return nil
 	}
-	args := []string{"daemon", "run"}
-	if profile != "" {
-		args = append(args, "--cpuprofile", profile)
+	if unitType == "notify" {
+		if profile != "" {
+			if stopProfile, err := t.startProfile(profile); err != nil {
+				return err
+			} else {
+				defer stopProfile()
+			}
+		}
+		d := daemon.New()
+		d.SetUnitType(unitType)
+		if err := lockFuncAndCheck(context.Background(), d, checker, "daemon start"); err != nil {
+			return err
+		}
+		d.Wait()
+		return nil
+	} else {
+		args := []string{"daemon", "run"}
+		if profile != "" {
+			args = append(args, "--cpuprofile", profile)
+		}
+		cmd := command.New(
+			command.WithName(os.Args[0]),
+			command.WithArgs(args),
+		)
+		checker := func() error {
+			if err := t.WaitRunning(); err != nil {
+				return fmt.Errorf("start checker wait running failed: %w", err)
+			}
+			return nil
+		}
+		return lockCmdCheck(cmd, checker, "daemon start")
 	}
-	cmd := command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs(args),
-	)
-	return lockCmdCheck(cmd, checker, "daemon start")
 }
 
-func (t *T) restartWithManager() error {
-	if err := t.daemonsys.Restart(); err != nil {
-		return fmt.Errorf("daemonsys restart: %w", err)
+func (t *T) startWithoutManager(profile string) error {
+	if isRunning, err := t.isRunning(); err != nil {
+		return err
+	} else if isRunning {
+		return nil
 	}
-	return nil
+	return t.start(profile, "forking")
 }
 
 func (t *T) startWithManager(ctx context.Context) error {
@@ -398,6 +428,20 @@ func (t *T) startWithManager(ctx context.Context) error {
 	}
 	if err := t.WaitRunning(); err != nil {
 		return fmt.Errorf("wait running: %w", err)
+	}
+	return nil
+}
+
+func (t *T) restartWithoutManager(profile string) error {
+	if err := t.StopWithoutManager(); err != nil {
+		return err
+	}
+	return t.startWithoutManager(profile)
+}
+
+func (t *T) restartWithManager() error {
+	if err := t.daemonsys.Restart(); err != nil {
+		return fmt.Errorf("daemonsys restart: %w", err)
 	}
 	return nil
 }
@@ -438,13 +482,6 @@ func (t *T) stopFromManager() error {
 	return t.StopWithoutManager()
 }
 
-func (t *T) restartWithoutManager(profile string) error {
-	if err := t.StopWithoutManager(); err != nil {
-		return err
-	}
-	return t.startWithoutManager(profile)
-}
-
 func (t *T) stop() error {
 	log := logger("stop: ")
 	resp, err := t.client.PostDaemonStopWithResponse(context.Background(), hostname.Hostname())
@@ -482,19 +519,31 @@ func (t *T) stop() error {
 	return nil
 }
 
+func (t *T) startProfile(profile string) (func(), error) {
+	f, err := os.Create(profile)
+	if err != nil {
+		return nil, fmt.Errorf("create CPU profile: %w", err)
+	}
+	stop := func() {
+		_ = f.Close()
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		return stop, fmt.Errorf("start CPU profile: %w", err)
+	}
+	stop = func() {
+		pprof.StopCPUProfile()
+		_ = f.Close()
+	}
+	return stop, nil
+}
+
 func (t *T) Run(ctx context.Context, profile string) error {
 	if profile != "" {
-		f, err := os.Create(profile)
-		if err != nil {
-			return fmt.Errorf("create CPU profile: %w", err)
+		if stopProfile, err := t.startProfile(profile); err != nil {
+			return err
+		} else {
+			defer stopProfile()
 		}
-		defer func() {
-			_ = f.Close()
-		}()
-		if err := pprof.StartCPUProfile(f); err != nil {
-			return fmt.Errorf("start CPU profile: %w", err)
-		}
-		defer pprof.StopCPUProfile()
 	}
 	if err := t.run(); err != nil {
 		return err

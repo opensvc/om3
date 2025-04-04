@@ -56,12 +56,22 @@ type (
 
 		stopFuncs []func() error
 		wg        sync.WaitGroup
+
+		// unitType defines the daemon unit type during startup from the daemonsys
+		unitType string
 	}
 
 	startStopper interface {
 		Start(ctx context.Context) error
 		Stop() error
 	}
+
+	daemonSysManager uint
+)
+
+const (
+	daemonSysManagerReady daemonSysManager = iota + 1
+	daemonSysManagerStopping
 )
 
 var (
@@ -82,7 +92,11 @@ func New() *T {
 	}
 }
 
-// Start is used to startup mandatory daemon components
+func (t *T) SetUnitType(s string) {
+	t.unitType = s
+}
+
+// Start initializes and starts the daemon process, setting up necessary resources and subsystems.
 func (t *T) Start(ctx context.Context) error {
 	var (
 		qsSmall  = pubsub.WithQueueSize(daemonenv.SubQSSmall)
@@ -213,6 +227,16 @@ func (t *T) Start(ctx context.Context) error {
 		Version: version.Version(),
 		Status:  "started",
 	}, labelLocalhost)
+
+	if t.unitType == "notify" {
+		if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerReady); err != nil {
+			t.log.Warnf("notifyDaemonSys ready: %s", err)
+		} else if !ok {
+			t.log.Warnf("notifyDaemonSys ready not delivered")
+		} else {
+			t.log.Debugf("notifyDaemonSys ready delivered")
+		}
+	}
 	return nil
 }
 
@@ -223,6 +247,15 @@ func (t *T) Stop() error {
 	var errs error
 	// stop goroutines without cancel context
 	t.logTransition("stopping 🟡")
+	if t.unitType == "notify" {
+		if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerStopping); err != nil {
+			t.log.Warnf("notifyDaemonSys stopping: %s", err)
+		} else if !ok {
+			t.log.Warnf("notifyDaemonSys stopping not delivered")
+		} else {
+			t.log.Debugf("notifyDaemonSys stopping delivered")
+		}
+	}
 	localhost := hostname.Hostname()
 	t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
 	time.Sleep(300 * time.Millisecond)
@@ -401,6 +434,50 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// notifyDaemonSys interacts with the system daemon manager to send ready or
+// stopping notifications based on the state.
+// It initializes a connection to the system daemon, delegates notification
+// responsibilities to specific interfaces, and ensures proper closure of the
+// connection.
+// Returns a boolean indicating success and any errors encountered.
+func (t *T) notifyDaemonSys(ctx context.Context, state daemonSysManager) (bool, error) {
+	var (
+		i   interface{}
+		err error
+	)
+	type (
+		closer interface {
+			Close() error
+		}
+		notifyReadier interface {
+			NotifyReady() (bool, error)
+		}
+		NotifyStoppinger interface {
+			NotifyStopping() (bool, error)
+		}
+	)
+	i, err = daemonsys.New(ctx)
+	if err != nil {
+		return false, nil
+	}
+	if s, ok := i.(closer); ok {
+		defer func() {
+			_ = s.Close()
+		}()
+	}
+	switch state {
+	case daemonSysManagerReady:
+		if notifier, ok := i.(notifyReadier); ok {
+			return notifier.NotifyReady()
+		}
+	case daemonSysManagerStopping:
+		if notifier, ok := i.(NotifyStoppinger); ok {
+			return notifier.NotifyStopping()
+		}
+	}
+	return false, nil
 }
 
 func startProfiling() {
