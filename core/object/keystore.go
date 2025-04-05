@@ -35,6 +35,7 @@ type (
 		RemoveKey(name string) error
 		RenameKey(name, to string) error
 
+		Shares() []string
 		HasKey(name string) bool
 		AllKeys() ([]string, error)
 		MatchingKeys(string) ([]string, error)
@@ -54,6 +55,10 @@ type (
 
 func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
+}
+
+func (t *keystore) Shares() []string {
+	return t.config.GetStrings(key.Parse("share"))
 }
 
 func (t *keystore) HasKey(name string) bool {

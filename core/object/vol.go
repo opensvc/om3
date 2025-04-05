@@ -32,6 +32,7 @@ type (
 		Actor
 		Head() string
 		Device() *device.T
+		Devices() device.L
 		HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error)
 		Access() (volaccess.T, error)
 		Children() (naming.Relations, error)
@@ -87,6 +88,32 @@ func (t *vol) Head() string {
 		head = heads[0]
 	}
 	return head
+}
+
+func (t *vol) Devices() device.L {
+	type devicer interface {
+		ExposedDevices() device.L
+	}
+	rids := t.config.GetStrings(key.Parse("devices_from"))
+	devs := make(device.L, 0)
+	if len(rids) == 0 {
+		dev := t.Device()
+		if dev != nil {
+			devs = append(devs, *dev)
+		}
+		return devs
+	}
+	t.ConfigureResources()
+	for _, rid := range rids {
+		r := t.ResourceByID(rid)
+		if r == nil {
+			continue
+		}
+		if d, ok := r.(devicer); ok {
+			devs = append(devs, d.ExposedDevices()...)
+		}
+	}
+	return devs
 }
 
 func (t *vol) Device() *device.T {

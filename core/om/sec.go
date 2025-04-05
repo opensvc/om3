@@ -43,7 +43,6 @@ func init() {
 		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
 		newCmdObjectPurge(kind),
-		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectPKCS(kind),
 	)

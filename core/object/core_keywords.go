@@ -390,6 +390,18 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/parallel"),
 	},
 
+	// Keystores
+	{
+		Converter: converters.List,
+		Default:   "{namespace}",
+		Example:   "ns1 ns2",
+		Kind:      naming.NewKinds(naming.KindSec, naming.KindCfg),
+		Option:    "share",
+		Scopable:  false,
+		Section:   "DEFAULT",
+		Text:      keywords.NewText(fs, "text/kw/core/share"),
+	},
+
 	// Secrets
 	{
 		Example:  "test.opensvc.com",
@@ -626,6 +638,14 @@ var keywordStore = keywords.Store{
 		Option:     "access",
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/core/access"),
+	},
+	{
+		Attr:      "DevicesFrom",
+		Inherit:   keywords.InheritHead,
+		Kind:      naming.NewKinds(naming.KindVol),
+		Option:    "devices_from",
+		Converter: converters.List,
+		Text:      keywords.NewText(fs, "text/kw/core/devices_from"),
 	},
 	{
 		Attr:      "Size",
