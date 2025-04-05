@@ -262,7 +262,12 @@ func (t *T) installFlag() error {
 }
 
 func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+	for _, dev := range t.ExposedDevices() {
+		if err := dev.RemoveHolders(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *T) unclaim(volume object.Vol) error {
@@ -563,11 +568,11 @@ func (t *T) exposedDevice() *device.T {
 }
 
 func (t *T) ExposedDevices() device.L {
-	dev := t.exposedDevice()
-	if dev == nil {
-		return device.L{}
+	volume, err := t.Volume()
+	if err != nil {
+		return nil
 	}
-	return device.L{*dev}
+	return volume.Devices()
 }
 
 // getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw

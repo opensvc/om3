@@ -640,6 +640,14 @@ var keywordStore = keywords.Store{
 		Text:       keywords.NewText(fs, "text/kw/core/access"),
 	},
 	{
+		Attr:      "DevicesFrom",
+		Inherit:   keywords.InheritHead,
+		Kind:      naming.NewKinds(naming.KindVol),
+		Option:    "devices_from",
+		Converter: converters.List,
+		Text:      keywords.NewText(fs, "text/kw/core/devices_from"),
+	},
+	{
 		Attr:      "Size",
 		Converter: converters.Size,
 		Inherit:   keywords.InheritHead,
