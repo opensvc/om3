@@ -186,6 +186,15 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 		template.MaxPathLen = 2
 		template.KeyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage |= x509.KeyUsageCRLSign
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		}
+	}
+	if t.path.Kind == naming.KindUsr {
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+		}
 	}
 	return template, nil
 }
