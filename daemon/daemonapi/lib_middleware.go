@@ -160,6 +160,9 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 			}
 			if level != zerolog.NoLevel {
 				userDesc := userFromContext(c).GetUserName()
+				if strategy, ok := c.Get("strategy").(string); ok && strategy != "" {
+					userDesc += " strategy " + strategy
+				}
 				if iss, ok := c.Get("iss").(string); ok && iss != "" {
 					userDesc += " iss " + iss
 				}

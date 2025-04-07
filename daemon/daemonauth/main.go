@@ -38,6 +38,7 @@ const (
 	StrategyJWT  = "jwt"
 	StrategyNode = "node"
 	StrategyUser = "user"
+	StrategyX509 = "x509"
 )
 
 // authenticatedExtensions returns extensions with grants and used strategy

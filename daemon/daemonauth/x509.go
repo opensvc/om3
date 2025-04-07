@@ -1,9 +1,11 @@
 package daemonauth
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/shaj13/go-guardian/v2/auth"
@@ -15,7 +17,25 @@ type (
 	X509CACertFiler interface {
 		X509CACertFile() string
 	}
+
+	X509Strategy struct {
+		baseStrategy auth.Strategy
+		userDB       UserGranter
+	}
 )
+
+func (s *X509Strategy) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
+	authInfo, err := s.baseStrategy.Authenticate(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	username := authInfo.GetUserName()
+	grants, err := s.userDB.GrantsFromUsername(username)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user %s: %w", username, err)
+	}
+	return auth.NewUserInfo(username, "", nil, *authenticatedExtensions(StrategyX509, "", grants...)), nil
+}
 
 func initX509(i interface{}) (string, auth.Strategy, error) {
 	name := "x509"
@@ -34,7 +54,18 @@ func initX509(i interface{}) (string, auth.Strategy, error) {
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		Roots:     roots,
 	}
-	return name, x509Strategy.New(opts), nil
+	userDB, ok := i.(UserGranter)
+	if !ok {
+		return name, nil, fmt.Errorf("UserGranter interface is not implemented")
+	}
+
+	x509Strategy := &X509Strategy{
+		baseStrategy: x509Strategy.New(opts),
+		userDB:       userDB,
+	}
+
+	return name, x509Strategy, nil
+
 }
 
 func x509CertificateFromFile(s string) (*x509.Certificate, error) {
