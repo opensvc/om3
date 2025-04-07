@@ -405,7 +405,7 @@ var keywordStore = keywords.Store{
 	// Secrets
 	{
 		Example:  "test.opensvc.com",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "cn",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -413,7 +413,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "FR",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "c",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -424,12 +424,12 @@ var keywordStore = keywords.Store{
 		Option:   "st",
 		Scopable: true,
 		Example:  "Oise",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Text:     keywords.NewText(fs, "text/kw/core/st"),
 	},
 	{
 		Example:  "Gouvieux",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "l",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -437,7 +437,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "OpenSVC",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "o",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -445,7 +445,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "Lab",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "ou",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -453,7 +453,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "test@opensvc.com",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "email",
 		Scopable: true,
 		Section:  "DEFAULT",
@@ -462,7 +462,7 @@ var keywordStore = keywords.Store{
 	{
 		Converter: converters.List,
 		Example:   "www.opensvc.com opensvc.com",
-		Kind:      naming.NewKinds(naming.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:    "alt_names",
 		Scopable:  true,
 		Section:   "DEFAULT",
@@ -472,7 +472,7 @@ var keywordStore = keywords.Store{
 		Converter: converters.Size,
 		Default:   "4kib",
 		Example:   "8192",
-		Kind:      naming.NewKinds(naming.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:    "bits",
 		Scopable:  true,
 		Section:   "DEFAULT",
@@ -503,7 +503,7 @@ var keywordStore = keywords.Store{
 		Converter: converters.Duration,
 		Default:   "1y",
 		Example:   "10y",
-		Kind:      naming.NewKinds(naming.KindSec),
+		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:    "validity",
 		Scopable:  true,
 		Section:   "DEFAULT",
@@ -511,7 +511,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "ca",
-		Kind:     naming.NewKinds(naming.KindSec),
+		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:   "ca",
 		Scopable: true,
 		Section:  "DEFAULT",
