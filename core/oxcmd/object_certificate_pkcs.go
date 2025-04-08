@@ -36,7 +36,7 @@ func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
 		return err
 	}
 	if len(paths) != 1 {
-		return fmt.Errorf("the pkcs command must be executed on a single object, %s selected", len(paths))
+		return fmt.Errorf("the pkcs command must be executed on a single object, %d selected", len(paths))
 	}
 
 	path := paths[0]
