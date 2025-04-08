@@ -90,7 +90,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/client-go v0.28.0
 	sigs.k8s.io/yaml v1.3.0
-	software.sslmate.com/src/go-pkcs12 v0.2.0
+	software.sslmate.com/src/go-pkcs12 v0.5.0
 )
 
 require (

@@ -1,12 +1,11 @@
 package object
 
 import (
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 
-	p12 "software.sslmate.com/src/go-pkcs12"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 // PKCS returns the PKCS#12 format bytes of the private key and certificate
@@ -25,7 +24,10 @@ func (t *sec) PKCS() ([]byte, error) {
 	}
 	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if !t.HasKey("certificate_chain") {
@@ -56,5 +58,5 @@ func (t *sec) PKCS() ([]byte, error) {
 	if len(l) < 1 {
 		return nil, fmt.Errorf("certificate_chain has no valid certificate")
 	}
-	return p12.Encode(rand.Reader, privateKey, l[0], l[1:], "foo")
+	return pkcs12.Modern.Encode(privateKey, l[0], l[1:], "foo")
 }
