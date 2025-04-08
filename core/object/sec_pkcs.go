@@ -10,14 +10,25 @@ import (
 
 // PKCS returns the PKCS#12 format bytes of the private key and certificate
 // chain stored in this secure keystore
-func (t *sec) PKCS(password string) ([]byte, error) {
+func (t *sec) PKCS(password []byte) ([]byte, error) {
 	if !t.HasKey("private_key") {
 		return nil, fmt.Errorf("private_key does not exist")
+	}
+	if !t.HasKey("certificate_chain") {
+		return nil, fmt.Errorf("certificate_chain does not exist")
 	}
 	privateKeyBytes, err := t.DecodeKey("private_key")
 	if err != nil {
 		return nil, err
 	}
+	certificateChainBytes, err := t.DecodeKey("certificate_chain")
+	if err != nil {
+		return nil, err
+	}
+	return PKCS(privateKeyBytes, certificateChainBytes, password)
+}
+
+func PKCS(privateKeyBytes, certificateChainBytes, passwordBytes []byte) ([]byte, error) {
 	block, rest := pem.Decode(privateKeyBytes)
 	if block == nil || block.Type != "PRIVATE KEY" {
 		return nil, fmt.Errorf("failed to decode PEM block containing private key")
@@ -30,13 +41,6 @@ func (t *sec) PKCS(password string) ([]byte, error) {
 		}
 	}
 
-	if !t.HasKey("certificate_chain") {
-		return nil, fmt.Errorf("certificate_chain does not exist")
-	}
-	certificateChainBytes, err := t.DecodeKey("certificate_chain")
-	if err != nil {
-		return nil, err
-	}
 	l := make([]*x509.Certificate, 0)
 	for {
 		block, certificateChainBytes = pem.Decode(certificateChainBytes)
@@ -58,5 +62,5 @@ func (t *sec) PKCS(password string) ([]byte, error) {
 	if len(l) < 1 {
 		return nil, fmt.Errorf("certificate_chain has no valid certificate")
 	}
-	return pkcs12.Modern.Encode(privateKey, l[0], l[1:], password)
+	return pkcs12.Modern.Encode(privateKey, l[0], l[1:], string(passwordBytes))
 }
