@@ -10,7 +10,7 @@ import (
 
 // PKCS returns the PKCS#12 format bytes of the private key and certificate
 // chain stored in this secure keystore
-func (t *sec) PKCS() ([]byte, error) {
+func (t *sec) PKCS(password string) ([]byte, error) {
 	if !t.HasKey("private_key") {
 		return nil, fmt.Errorf("private_key does not exist")
 	}
@@ -58,5 +58,5 @@ func (t *sec) PKCS() ([]byte, error) {
 	if len(l) < 1 {
 		return nil, fmt.Errorf("certificate_chain has no valid certificate")
 	}
-	return pkcs12.Modern.Encode(privateKey, l[0], l[1:], "foo")
+	return pkcs12.Modern.Encode(privateKey, l[0], l[1:], password)
 }
