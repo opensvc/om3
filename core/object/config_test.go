@@ -171,7 +171,9 @@ func TestConfigUsrBits(t *testing.T) {
 bits = 1kib
 `)
 
-	clusterConfig := cluster.Config{}
+	clusterConfig := cluster.Config{
+		Name: "cluster1",
+	}
 	clusterConfig.SetSecret("9ceab2da-a126-4187-83f2-4900da8a6825")
 	cluster.ConfigData.Set(&clusterConfig)
 
