@@ -1,7 +1,19 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/core/objectaction"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -11,11 +23,66 @@ type (
 )
 
 func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithColor(t.Color),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithObjectSelector(mergedSelector),
-	).Do()
+	ctx := context.Background()
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	paths, err := objectselector.New(
+		selector,
+		objectselector.WithClient(c),
+	).Expand()
+	if err != nil {
+		return err
+	}
+	if len(paths) != 1 {
+		return fmt.Errorf("the pkcs command must be executed on a single object, %d selected", len(paths))
+	}
+
+	path := paths[0]
+
+	password, err := commoncmd.ReadPasswordFromStdinOrPrompt("Password: ")
+	if err != nil {
+		return err
+	}
+
+	privateKeyBytes, err := decode(ctx, c, path, "private_key")
+	if err != nil {
+		return err
+	}
+
+	certificateChainBytes, err := decode(ctx, c, path, "certificate_chain")
+	if err != nil {
+		return err
+	}
+
+	b, err := object.PKCS(privateKeyBytes, certificateChainBytes, password)
+	_, err = io.Copy(os.Stdout, bytes.NewReader(b))
+	return err
+}
+
+func decode(ctx context.Context, c *client.T, path naming.Path, key string) ([]byte, error) {
+	params := api.GetObjectKVStoreEntryParams{
+		Key: key,
+	}
+	response, err := c.GetObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	if err != nil {
+		return nil, err
+	}
+	switch response.StatusCode() {
+	case http.StatusOK:
+		return response.Body, err
+	case http.StatusBadRequest:
+		return nil, fmt.Errorf("%s: %s", path, *response.JSON400)
+	case http.StatusUnauthorized:
+		return nil, fmt.Errorf("%s: %s", path, *response.JSON401)
+	case http.StatusForbidden:
+		return nil, fmt.Errorf("%s: %s", path, *response.JSON403)
+	case http.StatusInternalServerError:
+		return nil, fmt.Errorf("%s: %s", path, *response.JSON500)
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("%s: %s", path, *response.JSON404)
+	default:
+		return nil, fmt.Errorf("%s: unexpected response: %s", path, response.Status())
+	}
 }

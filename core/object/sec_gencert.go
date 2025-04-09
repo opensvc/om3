@@ -186,6 +186,15 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 		template.MaxPathLen = 2
 		template.KeyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage |= x509.KeyUsageCRLSign
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		}
+	}
+	if t.path.Kind == naming.KindUsr {
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+		}
 	}
 	return template, nil
 }
@@ -296,7 +305,7 @@ func (t *sec) getPriv() (*rsa.PrivateKey, error) {
 
 func (t *sec) genPriv() (*rsa.PrivateKey, error) {
 	bits := t.CertInfoBits()
-	t.log.Attr("bits", bits).Infof("generate new private key")
+	t.log.Infof("generate a new %d bits private key", bits)
 	priv, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err

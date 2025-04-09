@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -32,7 +33,12 @@ func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a secure keystore", o)
 			}
-			return store.PKCS()
+
+			b, err := commoncmd.ReadPasswordFromStdinOrPrompt("Password: ")
+			if err != nil {
+				return nil, err
+			}
+			return store.PKCS(b)
 		}),
 	).Do()
 }

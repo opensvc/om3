@@ -103,7 +103,7 @@ func (t *BaseTask) StatusInfo(ctx context.Context) map[string]any {
 }
 
 func (t *BaseTask) statusLastRunWarn(ctx context.Context) status.T {
-	if err := resource.StatusCheckRequires(ctx, t); err != nil {
+	if err := resource.StatusCheckRequires(ctx, actioncontext.Run.Name, t); err != nil {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}
@@ -123,7 +123,7 @@ func (t *BaseTask) statusLastRunWarn(ctx context.Context) status.T {
 }
 
 func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
-	if err := resource.StatusCheckRequires(ctx, t); err != nil {
+	if err := resource.StatusCheckRequires(ctx, actioncontext.Run.Name, t); err != nil {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}

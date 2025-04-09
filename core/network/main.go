@@ -425,6 +425,12 @@ func Networks(noder Noder) []Networker {
 		if p.Name() == "default" {
 			hasDefault = true
 		}
+		switch p.Network() {
+		case "none", "None":
+			// used to disable the default network
+			p.Log().Infof("skip, disabled by network=none")
+			continue
+		}
 		l = append(l, p)
 	}
 	if !hasLO {

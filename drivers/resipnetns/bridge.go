@@ -44,8 +44,10 @@ func (t *T) startBridge(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDel(hostDev)
 		})
-		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
-			return err
+		if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
+			if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
+				return err
+			}
 		}
 		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
 			t.linkDel(tmpGuestDev)

@@ -51,22 +51,26 @@ import (
 type (
 	T struct {
 		resource.T
-		Name        string       `json:"name"`
-		Access      string       `json:"access"`
-		Pool        string       `json:"pool"`
-		PoolType    string       `json:"type"`
-		Size        *int64       `json:"size"`
-		Format      bool         `json:"format"`
-		Configs     []string     `json:"configs"`
-		Secrets     []string     `json:"secrets"`
-		Directories []string     `json:"directories"`
-		User        string       `json:"user"`
-		Group       string       `json:"group"`
-		Perm        *os.FileMode `json:"perm"`
-		DirPerm     *os.FileMode `json:"dirperm"`
-		Signal      string       `json:"signal"`
-		VolNodes    []string
+		Name      string       `json:"name"`
+		Access    string       `json:"access"`
+		Pool      string       `json:"pool"`
+		PoolType  string       `json:"type"`
+		Size      *int64       `json:"size"`
+		Format    bool         `json:"format"`
+		ToInstall []string     `json:"install"`
+		User      string       `json:"user"`
+		Group     string       `json:"group"`
+		Perm      *os.FileMode `json:"perm"`
+		DirPerm   *os.FileMode `json:"dirperm"`
+		Signal    string       `json:"signal"`
+		VolNodes  []string
 
+		// Deprecated
+		Configs     []string `json:"configs"`
+		Secrets     []string `json:"secrets"`
+		Directories []string `json:"directories"`
+
+		// Context
 		Path          naming.Path
 		Topology      topology.T
 		Nodes         []string
@@ -258,7 +262,12 @@ func (t *T) installFlag() error {
 }
 
 func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+	for _, dev := range t.ExposedDevices() {
+		if err := dev.RemoveHolders(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *T) unclaim(volume object.Vol) error {
@@ -559,11 +568,11 @@ func (t *T) exposedDevice() *device.T {
 }
 
 func (t *T) ExposedDevices() device.L {
-	dev := t.exposedDevice()
-	if dev == nil {
-		return device.L{}
+	volume, err := t.Volume()
+	if err != nil {
+		return nil
 	}
-	return device.L{*dev}
+	return volume.Devices()
 }
 
 // getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw

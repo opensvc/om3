@@ -3,6 +3,7 @@ package object
 import (
 	"testing"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
@@ -162,4 +163,25 @@ fstype = flag
 	o.ConfigureResources()
 	r := o.ResourceByID("fs#1")
 	require.NotNil(t, r)
+}
+
+func TestConfigUsrBits(t *testing.T) {
+	cf := []byte(`
+[DEFAULT]
+bits = 1kib
+`)
+
+	clusterConfig := cluster.Config{
+		Name: "cluster1",
+	}
+	clusterConfig.SetSecret("9ceab2da-a126-4187-83f2-4900da8a6825")
+	cluster.ConfigData.Set(&clusterConfig)
+
+	p, _ := naming.ParsePath("test/usr/usr1")
+	o, err := NewUsr(p, WithConfigData(cf))
+	require.NoError(t, err)
+
+	value := o.Config().GetSize(key.Parse("bits"))
+	require.NotNil(t, value)
+	require.Equal(t, int64(1024), *value)
 }

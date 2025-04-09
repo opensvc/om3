@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/keywords"
@@ -49,24 +48,23 @@ type (
 	}
 )
 
-var (
-	secEncryptDecrypterMutex sync.Mutex
-	secEncryptDecrypterCache encryptDecrypter
-)
-
 func GetSecEncryptDecrypter() (encryptDecrypter, error) {
-	secEncryptDecrypterMutex.Lock()
-	defer secEncryptDecrypterMutex.Unlock()
-	if secEncryptDecrypterCache != nil {
-		return secEncryptDecrypterCache, nil
-	}
 	clusterConfig := cluster.ConfigData.Get()
-	secEncryptDecrypterCache = &omcrypto.Factory{
+	factory := &omcrypto.Factory{
 		NodeName:    hostname.Hostname(),
 		ClusterName: clusterConfig.Name,
 		Key:         clusterConfig.Secret(),
 	}
-	return secEncryptDecrypterCache, nil
+	if factory.NodeName == "" {
+		return nil, fmt.Errorf("crypto: node name is empty")
+	}
+	if factory.ClusterName == "" {
+		return nil, fmt.Errorf("crypto: cluster name is empty")
+	}
+	if factory.Key == "" {
+		return nil, fmt.Errorf("crypto: key is empty")
+	}
+	return factory, nil
 }
 
 // NewSec allocates a sec kind object.

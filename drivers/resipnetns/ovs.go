@@ -79,8 +79,10 @@ func (t *T) startOVS(ctx context.Context) error {
 		if err := t.makeVethPair(hostDev, tmpGuestDev, mtu); err != nil {
 			return err
 		}
-		if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
-			return err
+		if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
+			if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
+				return err
+			}
 		}
 		if err := t.linkSetNsPid(tmpGuestDev, pid); err != nil {
 			t.linkDel(guestDev)

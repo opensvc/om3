@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/daemon/daemonapi"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
@@ -21,7 +23,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -105,9 +106,18 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		Addr:    t.addr,
 		Handler: routehttp.New(ctx, true),
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.NoClientCert,
+			ClientAuth:       tls.RequestClientCert,
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
 		},
-		ErrorLog: golog.New(t.log.Logger(), "", 0),
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		ErrorLog:     golog.New(t.log.Logger(), "", 0),
 	}
 
 	lsnr, err := net.Listen("tcp", t.addr)
