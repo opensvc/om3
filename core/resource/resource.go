@@ -668,9 +668,8 @@ func Setenv(r Driver) {
 	}
 }
 
-func StatusCheckRequires(ctx context.Context, r Driver) error {
-	props := actioncontext.Props(ctx)
-	reqs := r.Requires(props.Name)
+func StatusCheckRequires(ctx context.Context, action string, r Driver) error {
+	reqs := r.Requires(action)
 	sb := statusbus.FromContext(ctx)
 	for rid, reqStates := range reqs.Requirements() {
 		state := sb.Get(rid)
@@ -680,7 +679,7 @@ func StatusCheckRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
+		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, action, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met
 	return nil
