@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"golang.org/x/net/http2"
 )
 
 type (
@@ -103,7 +101,7 @@ func server() {
 }
 
 func newClient(o Options) (cli *http.Client, err error) {
-	tp := &http2.Transport{
+	tp := &http.Transport{
 		TLSClientConfig: &tls.Config{},
 	}
 	if o.CertFile != "" && o.KeyFile != "" {
