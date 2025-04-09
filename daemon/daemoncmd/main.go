@@ -57,7 +57,7 @@ type (
 		Activated(ctx context.Context) (bool, error)
 		CalledFromManager() bool
 		Close() error
-		Defined(ctx context.Context) (bool, string, error)
+		Defined(ctx context.Context) (bool, error)
 		Start(ctx context.Context) error
 		Restart() error
 		Stop(context.Context) error
@@ -175,7 +175,7 @@ func (t *T) Restart(ctx context.Context, profile string) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, _, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.restartWithoutManager(profile)
 	}
 	// note: always ask manager for restart (during POST /daemon/restart handler
@@ -250,23 +250,23 @@ func (t *T) Start(ctx context.Context, profile string) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, unitType, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.startWithoutManager(profile)
 	} else if t.daemonsys.CalledFromManager() {
-		return t.startFromManager(profile, unitType)
+		return t.startFromManager(profile)
 	} else {
 		return t.startWithManager(ctx)
 	}
 }
 
-func (t *T) startFromManager(profile string, unitType string) error {
+func (t *T) startFromManager(profile string) error {
 	if isRunning, err := t.isRunning(); err != nil {
 		return err
 	} else if isRunning {
 		return nil
 	}
 	log.Infof("exec run (origin manager)")
-	return t.start(profile, unitType)
+	return t.start(profile)
 }
 
 // Stop handle daemon stop from command origin.
@@ -279,7 +279,7 @@ func (t *T) Stop(ctx context.Context) error {
 	defer func() {
 		_ = t.daemonsys.Close()
 	}()
-	if ok, _, err := t.daemonsys.Defined(ctx); err != nil || !ok {
+	if ok, err := t.daemonsys.Defined(ctx); err != nil || !ok {
 		return t.StopWithoutManager()
 	}
 	if t.daemonsys.CalledFromManager() {
@@ -362,7 +362,7 @@ func (t *T) StopWithoutManager() error {
 	return t.stop()
 }
 
-func (t *T) start(profile string, unitType string) error {
+func (t *T) start(profile string) error {
 	if isRunning, err := t.isRunning(); err != nil {
 		return err
 	} else if isRunning {
@@ -374,38 +374,15 @@ func (t *T) start(profile string, unitType string) error {
 		}
 		return nil
 	}
-	if unitType == "notify" {
-		if profile != "" {
-			if stopProfile, err := t.startProfile(profile); err != nil {
-				return err
-			} else {
-				defer stopProfile()
-			}
-		}
-		d := daemon.New()
-		d.SetUnitType(unitType)
-		if err := lockFuncAndCheck(context.Background(), d, checker, "daemon start"); err != nil {
-			return err
-		}
-		d.Wait()
-		return nil
-	} else {
-		args := []string{"daemon", "run"}
-		if profile != "" {
-			args = append(args, "--cpuprofile", profile)
-		}
-		cmd := command.New(
-			command.WithName(os.Args[0]),
-			command.WithArgs(args),
-		)
-		checker := func() error {
-			if err := t.WaitRunning(); err != nil {
-				return fmt.Errorf("start checker wait running failed: %w", err)
-			}
-			return nil
-		}
-		return lockCmdCheck(cmd, checker, "daemon start")
+	args := []string{"daemon", "run"}
+	if profile != "" {
+		args = append(args, "--cpuprofile", profile)
 	}
+	cmd := command.New(
+		command.WithName(os.Args[0]),
+		command.WithArgs(args),
+	)
+	return lockCmdCheck(cmd, checker, "daemon start")
 }
 
 func (t *T) startWithoutManager(profile string) error {
@@ -414,7 +391,7 @@ func (t *T) startWithoutManager(profile string) error {
 	} else if isRunning {
 		return nil
 	}
-	return t.start(profile, "forking")
+	return t.start(profile)
 }
 
 func (t *T) startWithManager(ctx context.Context) error {
@@ -489,7 +466,7 @@ func (t *T) stop() error {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
 			!strings.Contains(err.Error(), "unexpected end of JSON input") {
-			log.Debugf("post daemon stop: %s... kill", err)
+			log.Errorf("post daemon stop: %s, kill", err)
 			return t.kill()
 		}
 		return err
@@ -502,17 +479,18 @@ func (t *T) stop() error {
 			return t.hasProcFile(pid)
 		}
 		if ok, err := waitfor.FalseNoError(WaitStoppedTimeout, WaitStoppedDelay, hasProcfile); err != nil {
-			log.Debugf("daemon pid %d wait not running: %s, try kill", pid, err)
+			log.Warnf("daemon pid %d wait not running: %s, kill", pid, err)
 			return t.kill()
 		} else if !ok {
-			log.Debugf("daemon pid %d still running after stop: try kill", pid)
+			log.Warnf("daemon pid %d still running after stop request, kill", pid)
 			return t.kill()
 		}
 		log.Debugf("stopped")
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		log.Debugf("unexpected status code: %s... kill", resp.Status())
+		log.Warnf("unexpected status code: %s body: %s, kill", resp.Status(), string(resp.Body))
+		time.Sleep(WaitStoppedDelay)
 		return t.kill()
 	}
 

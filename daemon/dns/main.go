@@ -131,7 +131,6 @@ func (t *Manager) Start(parent context.Context) error {
 
 	t.wg.Add(1)
 	go func() {
-		t.wg.Done()
 		defer func() {
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				t.log.Errorf("subscription stop: %s", err)
@@ -139,6 +138,7 @@ func (t *Manager) Start(parent context.Context) error {
 			t.status.State = ""
 			t.publishSubsystemDnsUpdated()
 			draincommand.Do(t.cmdC, t.drainDuration)
+			t.wg.Done()
 		}()
 		t.worker()
 	}()

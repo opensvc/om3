@@ -52,23 +52,17 @@ func (t *T) Close() error {
 
 // Defined verify if opensvc systemd unit exists and returns true and job type
 // when unit is loaded
-func (t *T) Defined(ctx context.Context) (loaded bool, unitType string, err error) {
+func (t *T) Defined(ctx context.Context) (loaded bool, err error) {
 	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{UnitName})
 	if err != nil {
-		return false, "", err
+		return false, err
 	}
 	for _, v := range units {
 		if v.LoadState == "loaded" {
-			prop, err := t.conn.GetServicePropertyContext(ctx, UnitName, "Type")
-			if err == nil && prop != nil {
-				unitType = strings.Trim(prop.Value.String(), "\"")
-				return true, unitType, err
-			} else {
-				return true, "", err
-			}
+			return true, nil
 		}
 	}
-	return false, "", nil
+	return false, nil
 }
 
 // NotifyWatchdog sends watch dog notify to systemd
