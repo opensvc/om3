@@ -251,7 +251,7 @@ func (t *Manager) startUDSListener() error {
 	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
 		t.log.Debugf("%d: >>> %s", id, string(b))
-		if err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
+		if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
 		for {
@@ -298,7 +298,12 @@ func (t *Manager) startUDSListener() error {
 		defer conn.Close()
 		t.log.Debugf("%d: new connection", id)
 		for {
-			if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			select {
+			case <-t.ctx.Done():
+				return
+			default:
+			}
+			if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 				t.log.Infof("%d: can't set client read deadline: %s", id, err)
 			}
 			buffer := make([]byte, 1024)
