@@ -199,8 +199,10 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 	if isUp {
 		return nil
 	}
-	if err := t.sysctlEnableIPV6In(guestDev, netns.Path()); err != nil {
-		return err
+	if ipnet != nil && ipnet.IP != nil && ipnet.IP.To4() == nil {
+		if err := t.sysctlEnableIPV6In(guestDev, netns.Path()); err != nil {
+			return err
+		}
 	}
 	if err := t.addrAddIn(ipnet.String(), guestDev, netns.Path()); err != nil {
 		return err
