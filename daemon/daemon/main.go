@@ -56,9 +56,6 @@ type (
 
 		stopFuncs []func() error
 		wg        sync.WaitGroup
-
-		// unitType defines the daemon unit type during startup from the daemonsys
-		unitType string
 	}
 
 	startStopper interface {
@@ -90,10 +87,6 @@ func New() *T {
 			WithPrefix("daemon: main: "),
 		stopFuncs: make([]func() error, 0),
 	}
-}
-
-func (t *T) SetUnitType(s string) {
-	t.unitType = s
 }
 
 // Start initializes and starts the daemon process, setting up necessary resources and subsystems.
@@ -228,14 +221,12 @@ func (t *T) Start(ctx context.Context) error {
 		Status:  "started",
 	}, labelLocalhost)
 
-	if t.unitType == "notify" {
-		if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerReady); err != nil {
-			t.log.Warnf("notifyDaemonSys ready: %s", err)
-		} else if !ok {
-			t.log.Warnf("notifyDaemonSys ready not delivered")
-		} else {
-			t.log.Debugf("notifyDaemonSys ready delivered")
-		}
+	if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerReady); err != nil {
+		t.log.Warnf("sd notify ready: %s", err)
+	} else if !ok {
+		t.log.Debugf("sd notify ready delivery not needed")
+	} else {
+		t.log.Infof("sd notify ready delivered")
 	}
 	return nil
 }
@@ -247,14 +238,12 @@ func (t *T) Stop() error {
 	var errs error
 	// stop goroutines without cancel context
 	t.logTransition("stopping 🟡")
-	if t.unitType == "notify" {
-		if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerStopping); err != nil {
-			t.log.Warnf("notifyDaemonSys stopping: %s", err)
-		} else if !ok {
-			t.log.Warnf("notifyDaemonSys stopping not delivered")
-		} else {
-			t.log.Debugf("notifyDaemonSys stopping delivered")
-		}
+	if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerStopping); err != nil {
+		t.log.Warnf("sd notify stopping: %s", err)
+	} else if !ok {
+		t.log.Debugf("sd notify ready delivery not needed")
+	} else {
+		t.log.Infof("sd notify stopping delivered")
 	}
 	localhost := hostname.Hostname()
 	t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
@@ -390,13 +379,13 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 	}
 	i, err = converters.Duration.Convert(s + "us")
 	if err != nil {
-		t.log.Warnf("disable notify watchdog invalid %s value: %s", WatchdogUsecEnv, s)
+		t.log.Warnf("sd-watchdog: disable due to invalid %s value: %s", WatchdogUsecEnv, s)
 		return
 	}
 	d := i.(*time.Duration)
 	watchdogTimeout := *d
 	if watchdogTimeout < WatchdogMinInterval {
-		t.log.Warnf("notify watchdog sys: %s timeout %s is below the allowed minimum %s; resetting to %s.",
+		t.log.Warnf("sd-watchdog: %s timeout %s is below the allowed minimum %s, adjust to %s",
 			WatchdogUsecEnv, watchdogTimeout, WatchdogMinInterval, WatchdogMinInterval)
 		watchdogTimeout = WatchdogMinInterval
 	}
@@ -414,10 +403,10 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 		return
 	}
 	defer func() {
-		t.log.Infof("notify watchdog sys done")
+		t.log.Infof("sd-watchdog: stopped")
 		_ = o.Close()
 	}()
-	t.log.Infof("notify watchdog sys started with interval %s", interval)
+	t.log.Infof("sd-watchdog: started with interval %s", interval)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -426,11 +415,11 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if ok, err := o.NotifyWatchdog(); err != nil {
-				t.log.Warnf("notifyWatchDogSys: %s", err)
+				t.log.Warnf("sd-watchdog: %s", err)
 			} else if !ok {
-				t.log.Warnf("notifyWatchDogSys not delivered")
+				t.log.Debugf("sd-watchdog: delivery not needed")
 			} else {
-				t.log.Debugf("notifyWatchDogSys delivered")
+				t.log.Debugf("sd-watchdog: delivered")
 			}
 		}
 	}
