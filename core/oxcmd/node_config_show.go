@@ -22,6 +22,7 @@ type (
 		Eval         bool
 		Impersonate  string
 		NodeSelector string
+		Sections     []string
 	}
 )
 
@@ -117,7 +118,7 @@ func (t *CmdNodeConfigShow) extract(nodenames []string, c *client.T) (result, er
 				errC <- err
 				return
 			} else {
-				data[nodename] = d
+				data[nodename] = d.Filter(t.Sections)
 			}
 		}(nodename)
 	}

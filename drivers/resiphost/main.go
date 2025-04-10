@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
+	"github.com/vishvananda/netlink"
 
 	"github.com/go-ping/ping"
 )
@@ -71,18 +72,43 @@ func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	return data
 }
 
+func (t *T) getDevAndLabel() (string, string, error) {
+	dev, idx := resip.SplitDevLabel(t.Dev)
+	label := ""
+	if idx == "" {
+		if !t.Alias {
+			// ip#0.dev = eth0
+			// ip#0.alias = false
+			// => allocate a label
+			if s, err := resip.AllocateDevLabel(dev); err != nil {
+				return "", "", err
+			} else {
+				label = s
+			}
+		}
+	} else {
+		// ip#0.dev = eth0:0
+		label = t.Dev
+	}
+	return dev, label, nil
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		t.Log().Infof("%s is already up on %s", t.Name, t.Dev)
 		return nil
 	}
-	if err := t.start(); err != nil {
+	dev, label, err := t.getDevAndLabel()
+	if err != nil {
+		return err
+	}
+	if err := t.start(dev, label); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stop()
 	})
-	if err := t.arpAnnounce(); err != nil {
+	if err := t.arpAnnounce(dev); err != nil {
 		return err
 	}
 	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
@@ -92,8 +118,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	dev, _ := resip.SplitDevLabel(t.Dev)
 	if initialStatus := t.Status(ctx); initialStatus == status.Down {
-		t.Log().Infof("%s is already down on %s", t.Name, t.Dev)
+		t.Log().Infof("%s is already down on %s", t.Name, dev)
 		return nil
 	}
 	if err := t.stop(); err != nil {
@@ -118,9 +145,10 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("dev not set")
 		return status.NotApplicable
 	}
-	if i, err = t.netInterface(); err != nil {
+	dev, _ := resip.SplitDevLabel(t.Dev)
+	if i, err = net.InterfaceByName(dev); err != nil {
 		if fmt.Sprint(err.(*net.OpError).Unwrap()) == "no such network interface" {
-			t.StatusLog().Warn("interface %s not found", t.Dev)
+			t.StatusLog().Warn("interface %s not found", dev)
 		} else {
 			t.StatusLog().Error("%s", err)
 		}
@@ -128,7 +156,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if t.CheckCarrier {
 		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", t.Dev)
+			t.StatusLog().Error("interface %s no-carrier.", dev)
 			return status.Down
 		}
 	}
@@ -146,7 +174,34 @@ func (t *T) Status(ctx context.Context) status.T {
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
-	return fmt.Sprintf("%s %s", t.ipnet(), t.Dev)
+	dev, idx := resip.SplitDevLabel(t.Dev)
+	s := fmt.Sprintf("%s %s", t.ipnet(), dev)
+	if t.Alias && idx == "" {
+		// no label to search
+		return s
+	}
+	if idx != "" {
+		// forced label
+		return fmt.Sprintf("%s label %s", s, t.Dev)
+	}
+	// lookup the allocated label
+	link, err := netlink.LinkByName(dev)
+	if err != nil {
+		return s
+	}
+
+	addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
+	if err != nil {
+		return s
+	}
+
+	ip := t.ipaddr()
+	for _, addr := range addrs {
+		if addr.IP.Equal(ip) {
+			return fmt.Sprintf("%s label %s", s, addr.Label)
+		}
+	}
+	return s
 }
 
 func (t *T) Provision(ctx context.Context) error {
@@ -250,7 +305,7 @@ func (t *T) getIPMask() net.IPMask {
 }
 
 func (t *T) defaultMask() (net.IPMask, error) {
-	intf, err := t.netInterface()
+	intf, err := net.InterfaceByName(t.Dev)
 	if err != nil {
 		return nil, err
 	}
@@ -293,10 +348,6 @@ func (t *T) getIPAddr() net.IP {
 	default:
 		return net.ParseIP(t.Name)
 	}
-}
-
-func (t *T) netInterface() (*net.Interface, error) {
-	return net.InterfaceByName(t.Dev)
 }
 
 func (t Addrs) Has(ip net.IP) bool {
@@ -354,7 +405,7 @@ func getIPBits(ip net.IP) (bits int) {
 	return
 }
 
-func (t *T) arpAnnounce() error {
+func (t *T) arpAnnounce(dev string) error {
 	ip := t.ipaddr()
 	if ip.IsLoopback() {
 		t.Log().Debugf("skip arp announce on loopback address %s", ip)
@@ -368,32 +419,25 @@ func (t *T) arpAnnounce() error {
 		t.Log().Debugf("skip arp announce on non-ip4 address %s", ip)
 		return nil
 	}
-	if i, err := t.netInterface(); err == nil && i.Flags&net.FlagLoopback != 0 {
+	if i, err := net.InterfaceByName(dev); err == nil && i.Flags&net.FlagLoopback != 0 {
 		t.Log().Debugf("skip arp announce on loopback interface %s", t.Dev)
 		return nil
 	}
-	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), t.Dev)
-	return t.arpGratuitous()
+	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
+	return t.arpGratuitous(dev)
 }
 
-func (t *T) start() error {
-	ipnet := t.ipnet()
-	if ipnet.Mask == nil {
-		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Errorf("%s", err)
-		return err
-	}
-	t.Log().Infof("add %s to %s", ipnet, t.Dev)
-	return netif.AddAddr(t.Dev, ipnet)
+func (t *T) ipmaskOnes() int {
+	ones, _ := t.ipmask().Size()
+	return ones
+}
+
+func (t *T) start(dev, label string) error {
+	addr := fmt.Sprintf("%s/%d", t.ipaddr(), t.ipmaskOnes())
+	return t.addrAdd(addr, dev, label)
 }
 
 func (t *T) stop() error {
-	ipnet := t.ipnet()
-	if ipnet.Mask == nil {
-		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Errorf("%s", err)
-		return err
-	}
-	t.Log().Infof("delete %s from %s", t.ipnet(), t.Dev)
-	return netif.DelAddr(t.Dev, t.ipnet())
+	addr := fmt.Sprintf("%s/%d", t.ipaddr(), t.ipmaskOnes())
+	return t.addrDel(addr, t.Dev)
 }

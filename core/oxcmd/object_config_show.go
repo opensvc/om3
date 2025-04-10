@@ -21,6 +21,7 @@ type (
 		OptsGlobal
 		Eval        bool
 		Impersonate string
+		Sections    []string
 	}
 )
 
@@ -43,7 +44,7 @@ func (t *CmdObjectConfigShow) extract(selector string) (result, error) {
 		if d, err := t.extractFromDaemon(p, c); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
 		} else {
-			data[p.String()] = d
+			data[p.String()] = d.Filter(t.Sections)
 		}
 	}
 	return data, nil
