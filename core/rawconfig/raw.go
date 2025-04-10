@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,19 @@ func (t *T) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (t T) Filter(keys []string) T {
+	if len(keys) == 0 {
+		return t
+	}
+	ks := append([]string{}, t.Data.Keys()...)
+	for _, k := range ks {
+		if !slices.Contains(keys, k) {
+			t.Data.Delete(k)
+		}
+	}
+	return t
 }
 
 // IsZero returns true if the Raw data has not been initialized

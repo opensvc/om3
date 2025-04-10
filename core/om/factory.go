@@ -1441,6 +1441,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
+	commoncmd.FlagSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -2646,6 +2647,7 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
+	commoncmd.FlagSections(flags, &options.Sections)
 	return cmd
 }
 

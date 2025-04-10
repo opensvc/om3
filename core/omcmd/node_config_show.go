@@ -3,6 +3,7 @@ package omcmd
 import (
 	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
@@ -11,6 +12,7 @@ type (
 		Eval         bool
 		Impersonate  string
 		NodeSelector string
+		Sections     []string
 	}
 )
 
@@ -25,12 +27,17 @@ func (t *CmdNodeConfigShow) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			data := rawconfig.New()
 			switch {
 			case t.Eval:
-				return n.EvalConfigAs(t.Impersonate)
+				data, err = n.EvalConfigAs(t.Impersonate)
 			default:
-				return n.RawConfig()
+				data, err = n.RawConfig()
 			}
+			if err != nil {
+				return nil, err
+			}
+			return data.Filter(t.Sections), nil
 		}),
 	).Do()
 }
