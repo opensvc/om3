@@ -290,9 +290,11 @@
     * `dns_update`
    
 * **Removed feature:**
-    The interface aliasing mode is dropped from the `ip.host` driver.
-    The `alias=true` keyword is now ignored, and the ip stacking mode is always selected.
-    Users must migrate to `alias=false` before upgrading to om3.
+    The interface macvtap mode is dropped from the `ip.host` driver (ie the `dev=eth0@foo` syntax).
+
+* **Changed default:**
+    The `alias` keyword default value is now `true`, activating the ip stacking behaviour.
+    Setting `dev=eth0:0` still forces the address labelling mode.
 
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
