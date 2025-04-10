@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
@@ -74,20 +75,46 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 }
 
 func (t *CmdDaemonCommon) deleteLocalConfig() error {
-	pathEtc := rawconfig.Paths.Etc
-	if v, err := file.ExistsAndDir(pathEtc); err != nil {
-		return err
-	} else if v {
-		cmd := command.New(
-			command.WithName(os.Args[0]),
-			command.WithArgs([]string{"**", "delete", "--local"}),
-		)
-		_, _ = fmt.Fprintf(os.Stdout, "Delete all config\n")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("%s: %w", cmd, err)
-		}
-	} else {
-		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip delete local config\n", pathEtc)
+	if err := t.cleanupEtcDir(); err != nil {
+		return fmt.Errorf("cleanup opensvc etc dir: %w", err)
 	}
+
+	if err := t.cleanupVarDir(); err != nil {
+		return fmt.Errorf("cleanup opensvc var dir: %w", err)
+	}
+
 	return rawconfig.CreateMandatoryDirectories()
+}
+
+func (t *CmdDaemonCommon) cleanupEtcDir() error {
+	etcDir := rawconfig.Paths.Etc
+	if ok, err := file.ExistsAndDir(etcDir); err != nil {
+		return err
+	} else if ok {
+		return os.RemoveAll(etcDir)
+	}
+	return nil
+}
+
+// cleanupVarDir removes all entries in the opensvc var directory except for
+// the backup directory.
+func (t *CmdDaemonCommon) cleanupVarDir() error {
+	varDir := rawconfig.Paths.Var
+	backupName := filepath.Base(rawconfig.Paths.Backup)
+
+	files, err := os.ReadDir(varDir)
+	if err != nil {
+		return fmt.Errorf("unable to read base directory: %w", err)
+	}
+
+	for _, file := range files {
+		if file.Name() == backupName {
+			continue
+		}
+		path := filepath.Join(varDir, file.Name())
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("unable to remove path %s: %w", path, err)
+		}
+	}
+	return nil
 }
