@@ -288,7 +288,9 @@ func (t *T) Wait() error {
 	t.wg.Wait()
 	err := t.cmd.Wait()
 	if t.ctx.Err() == context.DeadlineExceeded {
-		t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
+		if t.log != nil {
+			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
+		}
 		return context.DeadlineExceeded
 	}
 	if err != nil {
