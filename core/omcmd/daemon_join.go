@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -203,6 +204,7 @@ func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error)
 		}
 	}(downloadedFiles)
 
+	fetchObjectConfigData := make(map[naming.Path][]byte)
 	for _, p := range toFetch {
 		var file string
 		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
@@ -211,6 +213,10 @@ func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error)
 			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
 		}
 		downloadedFiles = append(downloadedFiles, file)
+		fetchObjectConfigData[p], err = os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
+		}
 		filePaths[file] = p
 	}
 
@@ -234,8 +240,12 @@ func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error)
 
 	for fileName, p := range filePaths {
 		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s\n", p)
-		err := os.Rename(fileName, p.ConfigFile())
-		if err != nil {
+		configFile := p.ConfigFile()
+		dir := filepath.Dir(configFile)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return fmt.Errorf("%w: config %s from file %s: %w", ErrInstallFile, p, fileName, err)
+		}
+		if err := os.WriteFile(configFile, fetchObjectConfigData[p], 0600); err != nil {
 			return fmt.Errorf("%w: config %s from file %s: %w", ErrInstallFile, p, fileName, err)
 		}
 	}
