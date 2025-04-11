@@ -31,7 +31,7 @@ func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
 			}
 			store, ok := o.(object.KeyStore)
 			if !ok {
-				return nil, fmt.Errorf("%s is not a secure keystore", o)
+				return nil, fmt.Errorf("%s is not a keystore", o)
 			}
 
 			b, err := commoncmd.ReadPasswordFromStdinOrPrompt("Password: ")

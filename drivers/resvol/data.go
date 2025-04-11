@@ -183,18 +183,18 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
-		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
+		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
 		}
-		shares := keystore.Shares()
+		shares := dataStore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			t.StatusLog().Warn("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 			continue
 		}
-		matches, err := keystore.MatchingKeys(md.FromPattern)
+		matches, err := dataStore.MatchingKeys(md.FromPattern)
 		if err != nil {
 			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromPattern, err)
 			continue
@@ -238,16 +238,16 @@ func (t *T) install(ctx context.Context) (bool, error) {
 				continue
 			}
 		}
-		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
+		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
-		shares := keystore.Shares()
+		shares := dataStore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		if err = keystore.InstallKeyTo(md); err != nil && md.Required {
+		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
 		changed = true
@@ -514,16 +514,16 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 			t.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
-		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
+		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
-		shares := keystore.Shares()
+		shares := dataStore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		if err = keystore.InstallKeyTo(md); err != nil {
+		if err = dataStore.InstallKeyTo(md); err != nil {
 			return changed, err
 		}
 		changed = true

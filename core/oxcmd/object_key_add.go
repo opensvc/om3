@@ -17,7 +17,7 @@ type (
 	CmdObjectKeyAdd struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
@@ -28,7 +28,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 		s := ""
 		t.Value = &s
 	}
-	data, err := makeDataPatch(t.Key, t.Value, t.From, api.Add)
+	data, err := makeDataPatch(t.Name, t.Value, t.From, api.Add)
 	if err != nil {
 		return err
 	}

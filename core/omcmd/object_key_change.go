@@ -14,7 +14,7 @@ import (
 type (
 	CmdObjectKeyChange struct {
 		OptsGlobal
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
@@ -34,7 +34,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 				return nil, err
 			}
 			if t.Value != nil {
-				return nil, store.ChangeKey(t.Key, []byte(*t.Value))
+				return nil, store.ChangeKey(t.Name, []byte(*t.Value))
 			}
 			if t.From == nil {
 				return nil, fmt.Errorf("value or value source mut be specified for a change action")
@@ -44,7 +44,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 				return nil, err
 			}
 			for path, b := range m {
-				k, err := datastore.FileToKey(path, t.Key, *t.From)
+				k, err := datastore.FileToKey(path, t.Name, *t.From)
 				if err != nil {
 					return nil, err
 				}

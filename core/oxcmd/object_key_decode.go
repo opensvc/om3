@@ -18,7 +18,7 @@ import (
 type (
 	CmdObjectKeyDecode struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -48,7 +48,7 @@ func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 
 func (t *CmdObjectKeyDecode) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
 	params := api.GetObjectDataKeyParams{
-		Name: t.Key,
+		Name: t.Name,
 	}
 	response, err := c.GetObjectDataKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {

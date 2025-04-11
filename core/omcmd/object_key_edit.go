@@ -18,7 +18,7 @@ import (
 type (
 	CmdObjectKeyEdit struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -39,7 +39,7 @@ func (t *CmdObjectKeyEdit) do(selector string, c *client.T) error {
 			ok bool
 		)
 		if ks, ok = obj.(object.DataStore); !ok {
-			fmt.Fprintf(os.Stderr, "skip %s: not a keystore\n", p)
+			fmt.Fprintf(os.Stderr, "skip %s: not a datastore\n", p)
 			continue
 		}
 		if p.Exists() {
@@ -56,7 +56,7 @@ func (t *CmdObjectKeyEdit) do(selector string, c *client.T) error {
 }
 
 func (t *CmdObjectKeyEdit) doLocal(obj object.DataStore, c *client.T) error {
-	return obj.EditKey(t.Key)
+	return obj.EditKey(t.Name)
 }
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
@@ -99,7 +99,7 @@ func (t *CmdObjectKeyEdit) doRemote(p naming.Path, c *client.T) error {
 		buff   []byte
 		f      *os.File
 	)
-	if buff, err = fetchKey(p, t.Key, c); err != nil {
+	if buff, err = fetchKey(p, t.Name, c); err != nil {
 		return err
 	}
 	if f, err = os.CreateTemp("", ".opensvc.edit.key.*"); err != nil {
@@ -120,7 +120,7 @@ func (t *CmdObjectKeyEdit) doRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = pushKey(p, t.Key, fName, c); err != nil {
+	if err = pushKey(p, t.Name, fName, c); err != nil {
 		return err
 	}
 	return nil

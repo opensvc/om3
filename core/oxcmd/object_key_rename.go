@@ -15,15 +15,15 @@ import (
 type (
 	CmdObjectKeyRename struct {
 		OptsGlobal
-		Key string
-		To  string
+		Name string
+		To   string
 	}
 )
 
 func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 	data := api.PatchObjectDataJSONRequestBody{
 		api.PatchDataKey{
-			Name:   t.Key,
+			Name:   t.Name,
 			To:     &t.To,
 			Action: api.Rename,
 		},

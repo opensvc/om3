@@ -11,7 +11,7 @@ import (
 type (
 	CmdObjectKeyDecode struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -28,7 +28,7 @@ func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return store.DecodeKey(t.Key)
+			return store.DecodeKey(t.Name)
 		}),
 	).Do()
 }

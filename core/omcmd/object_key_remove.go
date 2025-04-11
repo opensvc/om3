@@ -11,7 +11,7 @@ import (
 type (
 	CmdObjectKeyRemove struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -28,7 +28,7 @@ func (t *CmdObjectKeyRemove) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.RemoveKey(t.Key)
+			return nil, store.RemoveKey(t.Name)
 		}),
 	).Do()
 }

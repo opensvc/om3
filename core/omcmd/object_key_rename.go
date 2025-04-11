@@ -11,8 +11,8 @@ import (
 type (
 	CmdObjectKeyRename struct {
 		OptsGlobal
-		Key string
-		To  string
+		Name string
+		To   string
 	}
 )
 
@@ -29,7 +29,7 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.RenameKey(t.Key, t.To)
+			return nil, store.RenameKey(t.Name, t.To)
 		}),
 	).Do()
 }

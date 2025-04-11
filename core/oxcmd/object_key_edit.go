@@ -17,7 +17,7 @@ import (
 type (
 	CmdObjectKeyEdit struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -79,7 +79,7 @@ func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 		buff   []byte
 		f      *os.File
 	)
-	if buff, err = fetchKey(p, t.Key, c); err != nil {
+	if buff, err = fetchKey(p, t.Name, c); err != nil {
 		return err
 	}
 	if f, err = os.CreateTemp("", ".opensvc.edit.key.*"); err != nil {
@@ -100,7 +100,7 @@ func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = pushKey(p, t.Key, fName, c); err != nil {
+	if err = pushKey(p, t.Name, fName, c); err != nil {
 		return err
 	}
 	return nil

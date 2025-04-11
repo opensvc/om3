@@ -19,7 +19,7 @@ type (
 	CmdObjectKeyChange struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
@@ -58,7 +58,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	if t.Value == nil && t.From == nil {
 		return fmt.Errorf("a value or value source mut be specified for a change action")
 	}
-	data, err := makeDataPatch(t.Key, t.Value, t.From, api.Change)
+	data, err := makeDataPatch(t.Name, t.Value, t.From, api.Change)
 	if err != nil {
 		return err
 	}

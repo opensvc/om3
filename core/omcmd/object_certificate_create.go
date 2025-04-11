@@ -30,7 +30,7 @@ func (t *CmdObjectCertificateCreate) Run(selector, kind string) error {
 			}
 			store, ok := o.(object.KeyStore)
 			if !ok {
-				return nil, fmt.Errorf("%s is not a secure keystore", o)
+				return nil, fmt.Errorf("%s is not a keystore", o)
 			}
 			return nil, store.GenCert()
 		}),

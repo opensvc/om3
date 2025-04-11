@@ -1646,7 +1646,7 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 		switch {
 		case !t.viewPath.IsZero() && t.viewKey != "":
 			cmd := oxcmd.CmdObjectKeyEdit{
-				Key: t.viewKey,
+				Name: t.viewKey,
 			}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)

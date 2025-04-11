@@ -12,7 +12,7 @@ type (
 	CmdObjectKeyInstall struct {
 		OptsGlobal
 		NodeSelector string
-		Key          string
+		Name         string
 	}
 )
 
@@ -30,7 +30,7 @@ func (t *CmdObjectKeyInstall) Run(selector, kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.InstallKey(t.Key)
+			return nil, store.InstallKey(t.Name)
 		}),
 	).Do()
 }
