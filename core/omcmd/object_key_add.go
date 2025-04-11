@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/util/kvstore"
+	"github.com/opensvc/om3/util/datastore"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -45,7 +45,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 				return nil, err
 			}
 			for path, b := range m {
-				k, err := kvstore.FileToKey(path, t.Key, *t.From)
+				k, err := datastore.FileToKey(path, t.Key, *t.From)
 				if err != nil {
 					return nil, err
 				}

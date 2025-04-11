@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/kvstore"
+	"github.com/opensvc/om3/util/datastore"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -41,7 +41,7 @@ func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEn
 		return data, err
 	}
 	for path, b := range m {
-		k, err := kvstore.FileToKey(path, key, *from)
+		k, err := datastore.FileToKey(path, key, *from)
 		if err != nil {
 			return nil, err
 		}

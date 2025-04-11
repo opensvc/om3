@@ -1,4 +1,4 @@
-package kvstore
+package datastore
 
 import (
 	"path/filepath"
