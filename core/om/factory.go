@@ -573,7 +573,7 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
@@ -598,7 +598,7 @@ func newCmdObjectKeyChange(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
@@ -615,7 +615,7 @@ func newCmdObjectKeyDecode(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	return cmd
 }
 
@@ -631,7 +631,7 @@ func newCmdObjectKeyEdit(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	return cmd
 }
 
@@ -648,7 +648,7 @@ func newCmdObjectKeyInstall(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	return cmd
 }
 
@@ -679,7 +679,7 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	return cmd
 }
 
@@ -694,7 +694,7 @@ func newCmdObjectKeyRename(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Key)
+	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
 	return cmd
 }
@@ -2050,7 +2050,7 @@ func newCmdObjectInstanceDevice(kind string) *cobra.Command {
 func newCmdObjectKey(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "key",
-		Short: "keystore entry commands",
+		Short: "data key commands",
 	}
 }
 
@@ -2074,11 +2074,11 @@ func newCmdObjectEdit(kind string) *cobra.Command {
 	var optionsKey commands.CmdObjectKeyEdit
 	cmd := &cobra.Command{
 		Use:     "edit",
-		Short:   "edit object configuration or keystore key",
+		Short:   "edit object configuration or data key",
 		Hidden:  true,
 		Aliases: []string{"ed"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if optionsKey.Key != "" {
+			if optionsKey.Name != "" {
 				optionsKey.OptsGlobal = optionsGlobal
 				return optionsKey.Run(selectorFlag, kind)
 			} else {
@@ -2091,7 +2091,7 @@ func newCmdObjectEdit(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &optionsGlobal)
 	commoncmd.FlagDiscard(flags, &optionsConfig.Discard)
 	commoncmd.FlagRecover(flags, &optionsConfig.Recover)
-	commoncmd.FlagKey(flags, &optionsKey.Key)
+	commoncmd.FlagKey(flags, &optionsKey.Name)
 	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
 	cmd.MarkFlagsMutuallyExclusive("discard", "key")
 	cmd.MarkFlagsMutuallyExclusive("recover", "key")
@@ -3492,7 +3492,7 @@ func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdKeystoreAdd(kind string) *cobra.Command {
+func newCmdDataStoreAdd(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyAdd
 	var from, value string
 	cmd := &cobra.Command{
@@ -3513,13 +3513,13 @@ func newCmdKeystoreAdd(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
 
-func newCmdKeystoreChange(kind string) *cobra.Command {
+func newCmdDataStoreChange(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyChange
 	var from, value string
 	cmd := &cobra.Command{
@@ -3539,13 +3539,13 @@ func newCmdKeystoreChange(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
 }
 
-func newCmdKeystoreDecode(kind string) *cobra.Command {
+func newCmdDataStoreDecode(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyDecode
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -3557,11 +3557,11 @@ func newCmdKeystoreDecode(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	return cmd
 }
 
-func newCmdKeystoreInstall(kind string) *cobra.Command {
+func newCmdDataStoreInstall(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyInstall
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -3575,11 +3575,11 @@ func newCmdKeystoreInstall(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	return cmd
 }
 
-func newCmdKeystoreKeys(kind string) *cobra.Command {
+func newCmdDataStoreKeys(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyList
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -3595,7 +3595,7 @@ func newCmdKeystoreKeys(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdKeystoreRemove(kind string) *cobra.Command {
+func newCmdDataStoreRemove(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyRemove
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -3607,11 +3607,11 @@ func newCmdKeystoreRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	return cmd
 }
 
-func newCmdKeystoreRename(kind string) *cobra.Command {
+func newCmdDataStoreRename(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyRename
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -3623,7 +3623,7 @@ func newCmdKeystoreRename(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Key)
+	commoncmd.FlagKey(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
 	return cmd
 }

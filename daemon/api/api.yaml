@@ -3016,11 +3016,11 @@ paths:
         500:
           $ref: '#/components/responses/500'
  
-  /object/path/{namespace}/{kind}/{name}/kvstore/keys:
+  /object/path/{namespace}/{kind}/{name}/data/keys:
     get:
       description: |
         List the keys in the key-value store.
-      operationId: GetObjectKVStoreKeys
+      operationId: GetObjectDataKeys
       tags:
         - object / cfg
         - object / sec
@@ -3037,7 +3037,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/KVStoreKeyList'
+                $ref: '#/components/schemas/DataKeyList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3049,11 +3049,11 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /object/path/{namespace}/{kind}/{name}/kvstore/entry:
+  /object/path/{namespace}/{kind}/{name}/data/key:
     get:
       description: |
         Return a single key value as the response body.
-      operationId: GetObjectKVStoreEntry
+      operationId: GetObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3065,7 +3065,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       responses:
         200:
           content:
@@ -3087,7 +3087,7 @@ paths:
     delete:
       description: |
         Delete a key from the key-value store.
-      operationId: DeleteObjectKVStoreEntry
+      operationId: DeleteObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3099,7 +3099,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -3115,7 +3115,7 @@ paths:
     post:
       description: |
         Create a new key in the key-value store.
-      operationId: PostObjectKVStoreEntry
+      operationId: PostObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3127,7 +3127,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       requestBody:
         required: true
         content:
@@ -3150,7 +3150,7 @@ paths:
     put:
       description: |
         Change the value of an existing key in the key-value store.
-      operationId: PutObjectKVStoreEntry
+      operationId: PutObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3162,7 +3162,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       requestBody:
         required: true
         content:
@@ -3182,11 +3182,11 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /object/path/{namespace}/{kind}/{name}/kvstore:
+  /object/path/{namespace}/{kind}/{name}/data:
     get:
       description: |
         Return a structured list of key and values objects.
-      operationId: GetObjectKVStore
+      operationId: GetObjectData
       tags:
         - object / cfg
         - object / sec
@@ -3198,13 +3198,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeys'
+        - $ref: '#/components/parameters/inQueryKeyNames'
       responses:
         200:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/KVStoreEntries'
+                $ref: '#/components/schemas/DataKeys'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3216,7 +3216,7 @@ paths:
     patch:
       description: |
         A single-transaction combination of add, change or delete operations on the key-value store keys.
-      operationId: PatchObjectKVStore
+      operationId: PatchObjectData
       tags:
         - object / cfg
         - object / sec
@@ -3226,7 +3226,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchKVStoreEntries'
+              $ref: '#/components/schemas/PatchDataKeys'
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -6352,24 +6352,24 @@ components:
         value:
           type: string
 
-    KVStoreEntries:
+    DataKeys:
         type: array
         items:
-          $ref: '#/components/schemas/KVStoreEntry'
+          $ref: '#/components/schemas/DataKey'
 
-    KVStoreEntry:
+    DataKey:
       type: object
       required:
-        - key
+        - name
         - bytes
       properties:
-        key:
+        name:
           type: string
         bytes:
           type: string
           format: byte
 
-    KVStoreKeyList:
+    DataKeyList:
       type: object
       required:
         - kind
@@ -6378,42 +6378,42 @@ components:
         kind:
           type: string
           enum:
-            - KVStoreKeyList
+            - DataKeyList
         items:
-          $ref: '#/components/schemas/KVStoreKeyListItems'
+          $ref: '#/components/schemas/DataKeyListItems'
 
-    KVStoreKeyListItems:
+    DataKeyListItems:
         type: array
         items:
-          $ref: '#/components/schemas/KVStoreKeyListItem'
+          $ref: '#/components/schemas/DataKeyListItem'
 
-    KVStoreKeyListItem:
+    DataKeyListItem:
       type: object
       required:
         - node
         - object
-        - key
+        - name
         - size
       properties:
         node:
           type: string
         object:
           type: string
-        key:
+        name:
           type: string
         size:
           type: integer
 
-    PatchKVStoreEntries:
+    PatchDataKeys:
         type: array
         items:
-          $ref: '#/components/schemas/PatchKVStoreEntry'
+          $ref: '#/components/schemas/PatchDataKey'
 
-    PatchKVStoreEntry:
+    PatchDataKey:
       type: object
       required:
         - action
-        - key
+        - name
       properties:
         action:
           type: string
@@ -6422,9 +6422,9 @@ components:
             - change
             - remove
             - rename
-        key:
-          type: string
         name:
+          type: string
+        to:
           type: string
         string:
           type: string
@@ -6928,23 +6928,23 @@ components:
       schema:
         type: string
 
-    inQueryKey:
+    inQueryKeyName:
       in: query
-      name: key
+      name: name
       required: true
       schema:
         type: string
-        description: A kvstore key name
+        description: A datastore key name
 
-    inQueryKeys:
+    inQueryKeyNames:
       in: query
-      name: key
-      x-go-name: Keys
+      name: name
+      x-go-name: Names
       schema:
         type: array
         items:
           type: string
-          description: A kvstore key name
+          description: A datastore key name
 
     inQuerySets:
       in: query

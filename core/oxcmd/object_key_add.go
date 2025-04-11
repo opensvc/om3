@@ -17,7 +17,7 @@ type (
 	CmdObjectKeyAdd struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
@@ -28,7 +28,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 		s := ""
 		t.Value = &s
 	}
-	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Add)
+	data, err := makeDataPatch(t.Name, t.Value, t.From, api.Add)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if err := t.RunForPath(ctx, c, path, data); err != nil {
@@ -56,8 +56,8 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataJSONRequestBody) error {
+	response, err := c.PatchObjectDataWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

@@ -17,7 +17,7 @@ import (
 
 type (
 	sec struct {
-		keystore
+		dataStore
 	}
 
 	secEncodeDecode struct {
@@ -38,8 +38,8 @@ type (
 	// changes.
 	//
 	Sec interface {
-		Keystore
-		SecureKeystore
+		DataStore
+		KeyStore
 	}
 
 	encryptDecrypter interface {

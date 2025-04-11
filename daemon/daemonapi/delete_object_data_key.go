@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectKVStoreEntryParams) error {
-	log := LogHandler(ctx, "DeleteObjectKVStoreEntry")
+func (a *DaemonAPI) DeleteObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectDataKeyParams) error {
+	log := LogHandler(ctx, "DeleteObjectDataKey")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
@@ -28,23 +28,23 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		err = ks.RemoveKey(params.Key)
+		err = ks.RemoveKey(params.Name)
 		switch {
-		case errors.Is(err, object.KeystoreErrNotExist):
+		case errors.Is(err, object.ErrKeyNotExist):
 			return ctx.NoContent(http.StatusNoContent)
-		case errors.Is(err, object.KeystoreErrKeyEmpty):
-			return JSONProblemf(ctx, http.StatusBadRequest, "RemoveKey", "%s: %s", params.Key, err)
+		case errors.Is(err, object.ErrKeyEmpty):
+			return JSONProblemf(ctx, http.StatusBadRequest, "RemoveKey", "%s: %s", params.Name, err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", params.Name, err)
 		default:
 			return ctx.NoContent(http.StatusNoContent)
 		}
@@ -55,7 +55,7 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.DeleteObjectKVStoreEntryWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.DeleteObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

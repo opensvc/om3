@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectKVStoreEntryParams) error {
-	log := LogHandler(ctx, "GetObjectKVStoreEntry")
+func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectDataKeyParams) error {
+	log := LogHandler(ctx, "GetObjectDataKey")
 
 	if kind == naming.KindSec {
 		if v, err := assertAdmin(ctx, namespace); !v {
@@ -35,16 +35,16 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		b, err := ks.DecodeKey(params.Key)
+		b, err := ks.DecodeKey(params.Name)
 		switch {
 		case err == nil:
 			var contentType string
@@ -54,12 +54,12 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 				contentType = "application/octet-stream"
 			}
 			return ctx.Blob(http.StatusOK, contentType, b)
-		case errors.Is(err, object.KeystoreErrKeyEmpty):
+		case errors.Is(err, object.ErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "DecodeKey", "%s", err)
-		case errors.Is(err, object.KeystoreErrNotExist):
+		case errors.Is(err, object.ErrKeyNotExist):
 			return JSONProblemf(ctx, http.StatusNotFound, "DecodeKey", "%s", err)
 		default:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Name, err)
 		}
 	}
 
@@ -68,7 +68,7 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.GetObjectKVStoreEntryWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.GetObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

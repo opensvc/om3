@@ -16,7 +16,7 @@ import (
 )
 
 // TestNewStore validates the creation, configuration, provisioning,
-// and correctness of keystores and volumes in the system.
+// and correctness of key-value stores and volumes in the system.
 func TestNewStore(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
@@ -50,7 +50,7 @@ func TestNewStore(t *testing.T) {
 		t.Run(c.String(), func(t *testing.T) {
 			storePath := naming.Path{Name: "store", Kind: c, Namespace: "root"}
 			t.Logf("%s create config: %s", storePath, storePath.ConfigFile())
-			o, err := NewKeystore(storePath)
+			o, err := NewDataStore(storePath)
 			require.NoError(t, err)
 
 			t.Logf("%s add key foo", storePath)

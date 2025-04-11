@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) GetObjectKVStore(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectKVStoreParams) error {
-	log := LogHandler(ctx, "GetObjectKVStore")
+func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectDataParams) error {
+	log := LogHandler(ctx, "GetObjectData")
 
 	if kind == naming.KindSec {
 		if v, err := assertAdmin(ctx, namespace); !v {
@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetObjectKVStore(ctx echo.Context, namespace string, kind na
 		}
 	}
 
-	result := make(api.KVStoreEntries, 0)
+	result := make(api.DataKeys, 0)
 
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
@@ -36,24 +36,24 @@ func (a *DaemonAPI) GetObjectKVStore(ctx echo.Context, namespace string, kind na
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		if params.Keys == nil {
+		if params.Names == nil {
 			return ctx.JSON(http.StatusOK, result)
 		}
 
-		for _, key := range *params.Keys {
-			if b, err := ks.DecodeKey(key); err != nil {
-				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", key, err)
+		for _, name := range *params.Names {
+			if b, err := ks.DecodeKey(name); err != nil {
+				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", name, err)
 			} else {
-				result = append(result, api.KVStoreEntry{Key: key, Bytes: b})
+				result = append(result, api.DataKey{Name: name, Bytes: b})
 			}
 		}
 		return ctx.JSON(http.StatusOK, result)
@@ -64,7 +64,7 @@ func (a *DaemonAPI) GetObjectKVStore(ctx echo.Context, namespace string, kind na
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.GetObjectKVStoreWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.GetObjectDataWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

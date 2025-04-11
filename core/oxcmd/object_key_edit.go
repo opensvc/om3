@@ -17,7 +17,7 @@ import (
 type (
 	CmdObjectKeyEdit struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -40,10 +40,10 @@ func (t *CmdObjectKeyEdit) do(selector string, c *client.T) error {
 }
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
-	params := api.GetObjectKVStoreEntryParams{
-		Key: key,
+	params := api.GetObjectDataKeyParams{
+		Name: key,
 	}
-	resp, err := c.GetObjectKVStoreEntryWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+	resp, err := c.GetObjectDataKeyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -59,10 +59,10 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 		return err
 	}
 	defer r.Close()
-	params := api.PutObjectKVStoreEntryParams{
-		Key: key,
+	params := api.PutObjectDataKeyParams{
+		Name: key,
 	}
-	resp, err := c.PutObjectKVStoreEntryWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
+	resp, err := c.PutObjectDataKeyWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 		buff   []byte
 		f      *os.File
 	)
-	if buff, err = fetchKey(p, t.Key, c); err != nil {
+	if buff, err = fetchKey(p, t.Name, c); err != nil {
 		return err
 	}
 	if f, err = os.CreateTemp("", ".opensvc.edit.key.*"); err != nil {
@@ -100,7 +100,7 @@ func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = pushKey(p, t.Key, fName, c); err != nil {
+	if err = pushKey(p, t.Name, fName, c); err != nil {
 		return err
 	}
 	return nil

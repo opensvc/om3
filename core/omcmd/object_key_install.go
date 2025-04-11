@@ -12,7 +12,7 @@ type (
 	CmdObjectKeyInstall struct {
 		OptsGlobal
 		NodeSelector string
-		Key          string
+		Name         string
 	}
 )
 
@@ -26,11 +26,11 @@ func (t *CmdObjectKeyInstall) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			store, err := object.NewKeystore(p)
+			store, err := object.NewDataStore(p)
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.InstallKey(t.Key)
+			return nil, store.InstallKey(t.Name)
 		}),
 	).Do()
 }

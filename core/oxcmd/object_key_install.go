@@ -8,7 +8,7 @@ type (
 	CmdObjectKeyInstall struct {
 		OptsGlobal
 		NodeSelector string
-		Key          string
+		Name         string
 	}
 )
 

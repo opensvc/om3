@@ -8,7 +8,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 )
 
-func (t *keystore) EditKey(keyName string) (err error) {
+func (t *dataStore) EditKey(keyName string) (err error) {
 	var (
 		refSum []byte
 		f      *os.File

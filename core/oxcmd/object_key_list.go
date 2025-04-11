@@ -34,12 +34,12 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	result := api.KVStoreKeyList{
-		Kind:  "KVStoreKeyList",
-		Items: make(api.KVStoreKeyListItems, 0),
+	result := api.DataKeyList{
+		Kind:  "DataKeyList",
+		Items: make(api.DataKeyListItems, 0),
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if moreKeys, err := t.RunForPath(ctx, c, path); err != nil {
@@ -49,7 +49,7 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 		}
 	}
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:object,NODE:node,KEY:key,SIZE:size",
+		DefaultOutput: "tab=OBJECT:object,NODE:node,NAME:name,SIZE:size",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          result,
@@ -58,8 +58,8 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.KVStoreKeyListItems, error) {
-	response, err := c.GetObjectKVStoreKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
+func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.DataKeyListItems, error) {
+	response, err := c.GetObjectDataKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return nil, err
 	}

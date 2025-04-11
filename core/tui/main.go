@@ -255,8 +255,8 @@ func (t *App) updateKeyTextView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}
-	resp, err := t.client.GetObjectKVStoreEntryWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectKVStoreEntryParams{
-		Key: t.viewKey,
+	resp, err := t.client.GetObjectDataKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataKeyParams{
+		Name: t.viewKey,
 	})
 	if err != nil {
 		t.errorf("%s", err)
@@ -1646,7 +1646,7 @@ func (t *App) onRuneE(event *tcell.EventKey) {
 		switch {
 		case !t.viewPath.IsZero() && t.viewKey != "":
 			cmd := oxcmd.CmdObjectKeyEdit{
-				Key: t.viewKey,
+				Name: t.viewKey,
 			}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)

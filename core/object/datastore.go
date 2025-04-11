@@ -17,13 +17,13 @@ type (
 		Decode(string) ([]byte, error)
 	}
 
-	keystore struct {
+	dataStore struct {
 		core
 		encodeDecoder encodeDecoder
 	}
 
-	// Keystore is the base interface of sec, cfg and usr objects
-	Keystore interface {
+	// DataStore is the base interface of sec, cfg and usr objects
+	DataStore interface {
 		Core
 
 		AddKey(name string, b []byte) error
@@ -46,8 +46,8 @@ type (
 		TransactionRenameKey(name, to string) error
 	}
 
-	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).
-	SecureKeystore interface {
+	// KeyStore is implemented by encrypting KeyStore object kinds (usr, sec).
+	KeyStore interface {
 		GenCert() error
 		PKCS(password []byte) ([]byte, error)
 	}
@@ -57,16 +57,16 @@ func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
 }
 
-func (t *keystore) Shares() []string {
+func (t *dataStore) Shares() []string {
 	return t.config.GetStrings(key.Parse("share"))
 }
 
-func (t *keystore) HasKey(name string) bool {
+func (t *dataStore) HasKey(name string) bool {
 	k := keyFromName(name)
 	return t.config.HasKey(k)
 }
 
-func (t *keystore) temporaryKeyFile(name string) (f *os.File, err error) {
+func (t *dataStore) temporaryKeyFile(name string) (f *os.File, err error) {
 	var (
 		b []byte
 	)
@@ -82,6 +82,6 @@ func (t *keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	return
 }
 
-func (t *keystore) postCommit() error {
+func (t *dataStore) postCommit() error {
 	return t.postInstall("")
 }

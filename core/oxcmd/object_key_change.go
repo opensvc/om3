@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/keystore"
+	"github.com/opensvc/om3/util/datastore"
 	"github.com/opensvc/om3/util/uri"
 )
 
@@ -19,18 +19,18 @@ type (
 	CmdObjectKeyChange struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
 )
 
-func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
-	data := make(api.PatchObjectKVStoreJSONRequestBody, 0)
+func makeDataPatch(name string, value, from *string, action api.PatchDataKeyAction) (api.PatchObjectDataJSONRequestBody, error) {
+	data := make(api.PatchObjectDataJSONRequestBody, 0)
 
 	if value != nil {
-		data = append(data, api.PatchKVStoreEntry{
-			Key:    key,
+		data = append(data, api.PatchDataKey{
+			Name:   name,
 			String: value,
 			Action: action,
 		})
@@ -41,12 +41,12 @@ func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEn
 		return data, err
 	}
 	for path, b := range m {
-		k, err := keystore.FileToKey(path, key, *from)
+		k, err := datastore.FileToKey(path, name, *from)
 		if err != nil {
 			return nil, err
 		}
-		data = append(data, api.PatchKVStoreEntry{
-			Key:    k,
+		data = append(data, api.PatchDataKey{
+			Name:   k,
 			Bytes:  &b,
 			Action: action,
 		})
@@ -58,7 +58,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	if t.Value == nil && t.From == nil {
 		return fmt.Errorf("a value or value source mut be specified for a change action")
 	}
-	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Change)
+	data, err := makeDataPatch(t.Name, t.Value, t.From, api.Change)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if err := t.RunForPath(ctx, c, path, data); err != nil {
@@ -86,8 +86,8 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataJSONRequestBody) error {
+	response, err := c.PatchObjectDataWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

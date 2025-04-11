@@ -1,4 +1,4 @@
-package keystore
+package datastore
 
 import (
 	"path/filepath"

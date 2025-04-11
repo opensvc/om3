@@ -7,14 +7,14 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
-	"github.com/opensvc/om3/util/keystore"
+	"github.com/opensvc/om3/util/datastore"
 	"github.com/opensvc/om3/util/uri"
 )
 
 type (
 	CmdObjectKeyChange struct {
 		OptsGlobal
-		Key   string
+		Name  string
 		From  *string
 		Value *string
 	}
@@ -29,12 +29,12 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			store, err := object.NewKeystore(p)
+			store, err := object.NewDataStore(p)
 			if err != nil {
 				return nil, err
 			}
 			if t.Value != nil {
-				return nil, store.ChangeKey(t.Key, []byte(*t.Value))
+				return nil, store.ChangeKey(t.Name, []byte(*t.Value))
 			}
 			if t.From == nil {
 				return nil, fmt.Errorf("value or value source mut be specified for a change action")
@@ -44,7 +44,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 				return nil, err
 			}
 			for path, b := range m {
-				k, err := keystore.FileToKey(path, t.Key, *t.From)
+				k, err := datastore.FileToKey(path, t.Name, *t.From)
 				if err != nil {
 					return nil, err
 				}

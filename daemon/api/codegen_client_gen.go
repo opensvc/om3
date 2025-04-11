@@ -448,28 +448,28 @@ type ClientInterface interface {
 	// PostObjectConfigUpdate request
 	PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetObjectKVStore request
-	GetObjectKVStore(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetObjectData request
+	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PatchObjectKVStoreWithBody request with any body
-	PatchObjectKVStoreWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PatchObjectDataWithBody request with any body
+	PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PatchObjectKVStore(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKVStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteObjectKVStoreEntry request
-	DeleteObjectKVStoreEntry(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteObjectDataKey request
+	DeleteObjectDataKey(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetObjectKVStoreEntry request
-	GetObjectKVStoreEntry(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetObjectDataKey request
+	GetObjectDataKey(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostObjectKVStoreEntryWithBody request with any body
-	PostObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostObjectDataKeyWithBody request with any body
+	PostObjectDataKeyWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutObjectKVStoreEntryWithBody request with any body
-	PutObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PutObjectDataKeyWithBody request with any body
+	PutObjectDataKeyWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetObjectKVStoreKeys request
-	GetObjectKVStoreKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetObjectDataKeys request
+	GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectResourceInfo request
 	GetObjectResourceInfo(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1965,8 +1965,8 @@ func (c *Client) PostObjectConfigUpdate(ctx context.Context, namespace InPathNam
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectKVStore(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectKVStoreRequest(c.Server, namespace, kind, name, params)
+func (c *Client) GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectDataRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1977,8 +1977,8 @@ func (c *Client) GetObjectKVStore(ctx context.Context, namespace InPathNamespace
 	return c.Client.Do(req)
 }
 
-func (c *Client) PatchObjectKVStoreWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPatchObjectKVStoreRequestWithBody(c.Server, namespace, kind, name, contentType, body)
+func (c *Client) PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectDataRequestWithBody(c.Server, namespace, kind, name, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1989,8 +1989,8 @@ func (c *Client) PatchObjectKVStoreWithBody(ctx context.Context, namespace InPat
 	return c.Client.Do(req)
 }
 
-func (c *Client) PatchObjectKVStore(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKVStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPatchObjectKVStoreRequest(c.Server, namespace, kind, name, body)
+func (c *Client) PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectDataRequest(c.Server, namespace, kind, name, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2001,8 +2001,8 @@ func (c *Client) PatchObjectKVStore(ctx context.Context, namespace InPathNamespa
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteObjectKVStoreEntry(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteObjectKVStoreEntryRequest(c.Server, namespace, kind, name, params)
+func (c *Client) DeleteObjectDataKey(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteObjectDataKeyRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2013,8 +2013,8 @@ func (c *Client) DeleteObjectKVStoreEntry(ctx context.Context, namespace InPathN
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectKVStoreEntry(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectKVStoreEntryRequest(c.Server, namespace, kind, name, params)
+func (c *Client) GetObjectDataKey(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectDataKeyRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2025,8 +2025,8 @@ func (c *Client) GetObjectKVStoreEntry(ctx context.Context, namespace InPathName
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectKVStoreEntryRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
+func (c *Client) PostObjectDataKeyWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectDataKeyRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2037,8 +2037,8 @@ func (c *Client) PostObjectKVStoreEntryWithBody(ctx context.Context, namespace I
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutObjectKVStoreEntryWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutObjectKVStoreEntryRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
+func (c *Client) PutObjectDataKeyWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutObjectDataKeyRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2049,8 +2049,8 @@ func (c *Client) PutObjectKVStoreEntryWithBody(ctx context.Context, namespace In
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectKVStoreKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectKVStoreKeysRequest(c.Server, namespace, kind, name)
+func (c *Client) GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectDataKeysRequest(c.Server, namespace, kind, name)
 	if err != nil {
 		return nil, err
 	}
@@ -9507,8 +9507,8 @@ func NewPostObjectConfigUpdateRequest(server string, namespace InPathNamespace, 
 	return req, nil
 }
 
-// NewGetObjectKVStoreRequest generates requests for GetObjectKVStore
-func NewGetObjectKVStoreRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreParams) (*http.Request, error) {
+// NewGetObjectDataRequest generates requests for GetObjectData
+func NewGetObjectDataRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9537,7 +9537,7 @@ func NewGetObjectKVStoreRequest(server string, namespace InPathNamespace, kind I
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9550,9 +9550,9 @@ func NewGetObjectKVStoreRequest(server string, namespace InPathNamespace, kind I
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Keys != nil {
+		if params.Names != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "key", runtime.ParamLocationQuery, *params.Keys); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, *params.Names); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -9577,19 +9577,19 @@ func NewGetObjectKVStoreRequest(server string, namespace InPathNamespace, kind I
 	return req, nil
 }
 
-// NewPatchObjectKVStoreRequest calls the generic PatchObjectKVStore builder with application/json body
-func NewPatchObjectKVStoreRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKVStoreJSONRequestBody) (*http.Request, error) {
+// NewPatchObjectDataRequest calls the generic PatchObjectData builder with application/json body
+func NewPatchObjectDataRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPatchObjectKVStoreRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
+	return NewPatchObjectDataRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
 }
 
-// NewPatchObjectKVStoreRequestWithBody generates requests for PatchObjectKVStore with any type of body
-func NewPatchObjectKVStoreRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+// NewPatchObjectDataRequestWithBody generates requests for PatchObjectData with any type of body
+func NewPatchObjectDataRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9618,7 +9618,7 @@ func NewPatchObjectKVStoreRequestWithBody(server string, namespace InPathNamespa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9638,8 +9638,8 @@ func NewPatchObjectKVStoreRequestWithBody(server string, namespace InPathNamespa
 	return req, nil
 }
 
-// NewDeleteObjectKVStoreEntryRequest generates requests for DeleteObjectKVStoreEntry
-func NewDeleteObjectKVStoreEntryRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectKVStoreEntryParams) (*http.Request, error) {
+// NewDeleteObjectDataKeyRequest generates requests for DeleteObjectDataKey
+func NewDeleteObjectDataKeyRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9668,7 +9668,7 @@ func NewDeleteObjectKVStoreEntryRequest(server string, namespace InPathNamespace
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/entry", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9681,7 +9681,7 @@ func NewDeleteObjectKVStoreEntryRequest(server string, namespace InPathNamespace
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "key", runtime.ParamLocationQuery, params.Key); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -9704,8 +9704,8 @@ func NewDeleteObjectKVStoreEntryRequest(server string, namespace InPathNamespace
 	return req, nil
 }
 
-// NewGetObjectKVStoreEntryRequest generates requests for GetObjectKVStoreEntry
-func NewGetObjectKVStoreEntryRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreEntryParams) (*http.Request, error) {
+// NewGetObjectDataKeyRequest generates requests for GetObjectDataKey
+func NewGetObjectDataKeyRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeyParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9734,7 +9734,7 @@ func NewGetObjectKVStoreEntryRequest(server string, namespace InPathNamespace, k
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/entry", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9747,7 +9747,7 @@ func NewGetObjectKVStoreEntryRequest(server string, namespace InPathNamespace, k
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "key", runtime.ParamLocationQuery, params.Key); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -9770,8 +9770,8 @@ func NewGetObjectKVStoreEntryRequest(server string, namespace InPathNamespace, k
 	return req, nil
 }
 
-// NewPostObjectKVStoreEntryRequestWithBody generates requests for PostObjectKVStoreEntry with any type of body
-func NewPostObjectKVStoreEntryRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectKVStoreEntryParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostObjectDataKeyRequestWithBody generates requests for PostObjectDataKey with any type of body
+func NewPostObjectDataKeyRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectDataKeyParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9800,7 +9800,7 @@ func NewPostObjectKVStoreEntryRequestWithBody(server string, namespace InPathNam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/entry", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9813,7 +9813,7 @@ func NewPostObjectKVStoreEntryRequestWithBody(server string, namespace InPathNam
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "key", runtime.ParamLocationQuery, params.Key); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -9838,8 +9838,8 @@ func NewPostObjectKVStoreEntryRequestWithBody(server string, namespace InPathNam
 	return req, nil
 }
 
-// NewPutObjectKVStoreEntryRequestWithBody generates requests for PutObjectKVStoreEntry with any type of body
-func NewPutObjectKVStoreEntryRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewPutObjectDataKeyRequestWithBody generates requests for PutObjectDataKey with any type of body
+func NewPutObjectDataKeyRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9868,7 +9868,7 @@ func NewPutObjectKVStoreEntryRequestWithBody(server string, namespace InPathName
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/entry", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9881,7 +9881,7 @@ func NewPutObjectKVStoreEntryRequestWithBody(server string, namespace InPathName
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "key", runtime.ParamLocationQuery, params.Key); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -9906,8 +9906,8 @@ func NewPutObjectKVStoreEntryRequestWithBody(server string, namespace InPathName
 	return req, nil
 }
 
-// NewGetObjectKVStoreKeysRequest generates requests for GetObjectKVStoreKeys
-func NewGetObjectKVStoreKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+// NewGetObjectDataKeysRequest generates requests for GetObjectDataKeys
+func NewGetObjectDataKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9936,7 +9936,7 @@ func NewGetObjectKVStoreKeysRequest(server string, namespace InPathNamespace, ki
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/kvstore/keys", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/keys", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10836,28 +10836,28 @@ type ClientWithResponsesInterface interface {
 	// PostObjectConfigUpdateWithResponse request
 	PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error)
 
-	// GetObjectKVStoreWithResponse request
-	GetObjectKVStoreWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreParams, reqEditors ...RequestEditorFn) (*GetObjectKVStoreResponse, error)
+	// GetObjectDataWithResponse request
+	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
 
-	// PatchObjectKVStoreWithBodyWithResponse request with any body
-	PatchObjectKVStoreWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectKVStoreResponse, error)
+	// PatchObjectDataWithBodyWithResponse request with any body
+	PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
 
-	PatchObjectKVStoreWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKVStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectKVStoreResponse, error)
+	PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
 
-	// DeleteObjectKVStoreEntryWithResponse request
-	DeleteObjectKVStoreEntryWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*DeleteObjectKVStoreEntryResponse, error)
+	// DeleteObjectDataKeyWithResponse request
+	DeleteObjectDataKeyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*DeleteObjectDataKeyResponse, error)
 
-	// GetObjectKVStoreEntryWithResponse request
-	GetObjectKVStoreEntryWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*GetObjectKVStoreEntryResponse, error)
+	// GetObjectDataKeyWithResponse request
+	GetObjectDataKeyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeyParams, reqEditors ...RequestEditorFn) (*GetObjectDataKeyResponse, error)
 
-	// PostObjectKVStoreEntryWithBodyWithResponse request with any body
-	PostObjectKVStoreEntryWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectKVStoreEntryResponse, error)
+	// PostObjectDataKeyWithBodyWithResponse request with any body
+	PostObjectDataKeyWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectDataKeyResponse, error)
 
-	// PutObjectKVStoreEntryWithBodyWithResponse request with any body
-	PutObjectKVStoreEntryWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectKVStoreEntryResponse, error)
+	// PutObjectDataKeyWithBodyWithResponse request with any body
+	PutObjectDataKeyWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectDataKeyResponse, error)
 
-	// GetObjectKVStoreKeysWithResponse request
-	GetObjectKVStoreKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectKVStoreKeysResponse, error)
+	// GetObjectDataKeysWithResponse request
+	GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error)
 
 	// GetObjectResourceInfoWithResponse request
 	GetObjectResourceInfoWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectResourceInfoResponse, error)
@@ -13887,10 +13887,10 @@ func (r PostObjectConfigUpdateResponse) StatusCode() int {
 	return 0
 }
 
-type GetObjectKVStoreResponse struct {
+type GetObjectDataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *KVStoreEntries
+	JSON200      *DataKeys
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13898,7 +13898,7 @@ type GetObjectKVStoreResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetObjectKVStoreResponse) Status() string {
+func (r GetObjectDataResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13906,14 +13906,14 @@ func (r GetObjectKVStoreResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetObjectKVStoreResponse) StatusCode() int {
+func (r GetObjectDataResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PatchObjectKVStoreResponse struct {
+type PatchObjectDataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -13925,7 +13925,7 @@ type PatchObjectKVStoreResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PatchObjectKVStoreResponse) Status() string {
+func (r PatchObjectDataResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13933,14 +13933,14 @@ func (r PatchObjectKVStoreResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PatchObjectKVStoreResponse) StatusCode() int {
+func (r PatchObjectDataResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteObjectKVStoreEntryResponse struct {
+type DeleteObjectDataKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -13950,7 +13950,7 @@ type DeleteObjectKVStoreEntryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteObjectKVStoreEntryResponse) Status() string {
+func (r DeleteObjectDataKeyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13958,14 +13958,14 @@ func (r DeleteObjectKVStoreEntryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteObjectKVStoreEntryResponse) StatusCode() int {
+func (r DeleteObjectDataKeyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetObjectKVStoreEntryResponse struct {
+type GetObjectDataKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -13976,7 +13976,7 @@ type GetObjectKVStoreEntryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetObjectKVStoreEntryResponse) Status() string {
+func (r GetObjectDataKeyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13984,14 +13984,14 @@ func (r GetObjectKVStoreEntryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetObjectKVStoreEntryResponse) StatusCode() int {
+func (r GetObjectDataKeyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostObjectKVStoreEntryResponse struct {
+type PostObjectDataKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -14001,7 +14001,7 @@ type PostObjectKVStoreEntryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostObjectKVStoreEntryResponse) Status() string {
+func (r PostObjectDataKeyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -14009,14 +14009,14 @@ func (r PostObjectKVStoreEntryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectKVStoreEntryResponse) StatusCode() int {
+func (r PostObjectDataKeyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PutObjectKVStoreEntryResponse struct {
+type PutObjectDataKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -14026,7 +14026,7 @@ type PutObjectKVStoreEntryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PutObjectKVStoreEntryResponse) Status() string {
+func (r PutObjectDataKeyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -14034,17 +14034,17 @@ func (r PutObjectKVStoreEntryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutObjectKVStoreEntryResponse) StatusCode() int {
+func (r PutObjectDataKeyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetObjectKVStoreKeysResponse struct {
+type GetObjectDataKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *KVStoreKeyList
+	JSON200      *DataKeyList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -14053,7 +14053,7 @@ type GetObjectKVStoreKeysResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetObjectKVStoreKeysResponse) Status() string {
+func (r GetObjectDataKeysResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -14061,7 +14061,7 @@ func (r GetObjectKVStoreKeysResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetObjectKVStoreKeysResponse) StatusCode() int {
+func (r GetObjectDataKeysResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15389,75 +15389,75 @@ func (c *ClientWithResponses) PostObjectConfigUpdateWithResponse(ctx context.Con
 	return ParsePostObjectConfigUpdateResponse(rsp)
 }
 
-// GetObjectKVStoreWithResponse request returning *GetObjectKVStoreResponse
-func (c *ClientWithResponses) GetObjectKVStoreWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreParams, reqEditors ...RequestEditorFn) (*GetObjectKVStoreResponse, error) {
-	rsp, err := c.GetObjectKVStore(ctx, namespace, kind, name, params, reqEditors...)
+// GetObjectDataWithResponse request returning *GetObjectDataResponse
+func (c *ClientWithResponses) GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error) {
+	rsp, err := c.GetObjectData(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetObjectKVStoreResponse(rsp)
+	return ParseGetObjectDataResponse(rsp)
 }
 
-// PatchObjectKVStoreWithBodyWithResponse request with arbitrary body returning *PatchObjectKVStoreResponse
-func (c *ClientWithResponses) PatchObjectKVStoreWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectKVStoreResponse, error) {
-	rsp, err := c.PatchObjectKVStoreWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+// PatchObjectDataWithBodyWithResponse request with arbitrary body returning *PatchObjectDataResponse
+func (c *ClientWithResponses) PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
+	rsp, err := c.PatchObjectDataWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePatchObjectKVStoreResponse(rsp)
+	return ParsePatchObjectDataResponse(rsp)
 }
 
-func (c *ClientWithResponses) PatchObjectKVStoreWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectKVStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectKVStoreResponse, error) {
-	rsp, err := c.PatchObjectKVStore(ctx, namespace, kind, name, body, reqEditors...)
+func (c *ClientWithResponses) PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
+	rsp, err := c.PatchObjectData(ctx, namespace, kind, name, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePatchObjectKVStoreResponse(rsp)
+	return ParsePatchObjectDataResponse(rsp)
 }
 
-// DeleteObjectKVStoreEntryWithResponse request returning *DeleteObjectKVStoreEntryResponse
-func (c *ClientWithResponses) DeleteObjectKVStoreEntryWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*DeleteObjectKVStoreEntryResponse, error) {
-	rsp, err := c.DeleteObjectKVStoreEntry(ctx, namespace, kind, name, params, reqEditors...)
+// DeleteObjectDataKeyWithResponse request returning *DeleteObjectDataKeyResponse
+func (c *ClientWithResponses) DeleteObjectDataKeyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*DeleteObjectDataKeyResponse, error) {
+	rsp, err := c.DeleteObjectDataKey(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteObjectKVStoreEntryResponse(rsp)
+	return ParseDeleteObjectDataKeyResponse(rsp)
 }
 
-// GetObjectKVStoreEntryWithResponse request returning *GetObjectKVStoreEntryResponse
-func (c *ClientWithResponses) GetObjectKVStoreEntryWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectKVStoreEntryParams, reqEditors ...RequestEditorFn) (*GetObjectKVStoreEntryResponse, error) {
-	rsp, err := c.GetObjectKVStoreEntry(ctx, namespace, kind, name, params, reqEditors...)
+// GetObjectDataKeyWithResponse request returning *GetObjectDataKeyResponse
+func (c *ClientWithResponses) GetObjectDataKeyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeyParams, reqEditors ...RequestEditorFn) (*GetObjectDataKeyResponse, error) {
+	rsp, err := c.GetObjectDataKey(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetObjectKVStoreEntryResponse(rsp)
+	return ParseGetObjectDataKeyResponse(rsp)
 }
 
-// PostObjectKVStoreEntryWithBodyWithResponse request with arbitrary body returning *PostObjectKVStoreEntryResponse
-func (c *ClientWithResponses) PostObjectKVStoreEntryWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectKVStoreEntryResponse, error) {
-	rsp, err := c.PostObjectKVStoreEntryWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
+// PostObjectDataKeyWithBodyWithResponse request with arbitrary body returning *PostObjectDataKeyResponse
+func (c *ClientWithResponses) PostObjectDataKeyWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectDataKeyResponse, error) {
+	rsp, err := c.PostObjectDataKeyWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostObjectKVStoreEntryResponse(rsp)
+	return ParsePostObjectDataKeyResponse(rsp)
 }
 
-// PutObjectKVStoreEntryWithBodyWithResponse request with arbitrary body returning *PutObjectKVStoreEntryResponse
-func (c *ClientWithResponses) PutObjectKVStoreEntryWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectKVStoreEntryParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectKVStoreEntryResponse, error) {
-	rsp, err := c.PutObjectKVStoreEntryWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
+// PutObjectDataKeyWithBodyWithResponse request with arbitrary body returning *PutObjectDataKeyResponse
+func (c *ClientWithResponses) PutObjectDataKeyWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectDataKeyResponse, error) {
+	rsp, err := c.PutObjectDataKeyWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutObjectKVStoreEntryResponse(rsp)
+	return ParsePutObjectDataKeyResponse(rsp)
 }
 
-// GetObjectKVStoreKeysWithResponse request returning *GetObjectKVStoreKeysResponse
-func (c *ClientWithResponses) GetObjectKVStoreKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectKVStoreKeysResponse, error) {
-	rsp, err := c.GetObjectKVStoreKeys(ctx, namespace, kind, name, reqEditors...)
+// GetObjectDataKeysWithResponse request returning *GetObjectDataKeysResponse
+func (c *ClientWithResponses) GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error) {
+	rsp, err := c.GetObjectDataKeys(ctx, namespace, kind, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetObjectKVStoreKeysResponse(rsp)
+	return ParseGetObjectDataKeysResponse(rsp)
 }
 
 // GetObjectResourceInfoWithResponse request returning *GetObjectResourceInfoResponse
@@ -21815,22 +21815,22 @@ func ParsePostObjectConfigUpdateResponse(rsp *http.Response) (*PostObjectConfigU
 	return response, nil
 }
 
-// ParseGetObjectKVStoreResponse parses an HTTP response from a GetObjectKVStoreWithResponse call
-func ParseGetObjectKVStoreResponse(rsp *http.Response) (*GetObjectKVStoreResponse, error) {
+// ParseGetObjectDataResponse parses an HTTP response from a GetObjectDataWithResponse call
+func ParseGetObjectDataResponse(rsp *http.Response) (*GetObjectDataResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetObjectKVStoreResponse{
+	response := &GetObjectDataResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest KVStoreEntries
+		var dest DataKeys
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -21869,15 +21869,15 @@ func ParseGetObjectKVStoreResponse(rsp *http.Response) (*GetObjectKVStoreRespons
 	return response, nil
 }
 
-// ParsePatchObjectKVStoreResponse parses an HTTP response from a PatchObjectKVStoreWithResponse call
-func ParsePatchObjectKVStoreResponse(rsp *http.Response) (*PatchObjectKVStoreResponse, error) {
+// ParsePatchObjectDataResponse parses an HTTP response from a PatchObjectDataWithResponse call
+func ParsePatchObjectDataResponse(rsp *http.Response) (*PatchObjectDataResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PatchObjectKVStoreResponse{
+	response := &PatchObjectDataResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21930,15 +21930,15 @@ func ParsePatchObjectKVStoreResponse(rsp *http.Response) (*PatchObjectKVStoreRes
 	return response, nil
 }
 
-// ParseDeleteObjectKVStoreEntryResponse parses an HTTP response from a DeleteObjectKVStoreEntryWithResponse call
-func ParseDeleteObjectKVStoreEntryResponse(rsp *http.Response) (*DeleteObjectKVStoreEntryResponse, error) {
+// ParseDeleteObjectDataKeyResponse parses an HTTP response from a DeleteObjectDataKeyWithResponse call
+func ParseDeleteObjectDataKeyResponse(rsp *http.Response) (*DeleteObjectDataKeyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteObjectKVStoreEntryResponse{
+	response := &DeleteObjectDataKeyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21977,15 +21977,15 @@ func ParseDeleteObjectKVStoreEntryResponse(rsp *http.Response) (*DeleteObjectKVS
 	return response, nil
 }
 
-// ParseGetObjectKVStoreEntryResponse parses an HTTP response from a GetObjectKVStoreEntryWithResponse call
-func ParseGetObjectKVStoreEntryResponse(rsp *http.Response) (*GetObjectKVStoreEntryResponse, error) {
+// ParseGetObjectDataKeyResponse parses an HTTP response from a GetObjectDataKeyWithResponse call
+func ParseGetObjectDataKeyResponse(rsp *http.Response) (*GetObjectDataKeyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetObjectKVStoreEntryResponse{
+	response := &GetObjectDataKeyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -22031,15 +22031,15 @@ func ParseGetObjectKVStoreEntryResponse(rsp *http.Response) (*GetObjectKVStoreEn
 	return response, nil
 }
 
-// ParsePostObjectKVStoreEntryResponse parses an HTTP response from a PostObjectKVStoreEntryWithResponse call
-func ParsePostObjectKVStoreEntryResponse(rsp *http.Response) (*PostObjectKVStoreEntryResponse, error) {
+// ParsePostObjectDataKeyResponse parses an HTTP response from a PostObjectDataKeyWithResponse call
+func ParsePostObjectDataKeyResponse(rsp *http.Response) (*PostObjectDataKeyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostObjectKVStoreEntryResponse{
+	response := &PostObjectDataKeyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -22078,15 +22078,15 @@ func ParsePostObjectKVStoreEntryResponse(rsp *http.Response) (*PostObjectKVStore
 	return response, nil
 }
 
-// ParsePutObjectKVStoreEntryResponse parses an HTTP response from a PutObjectKVStoreEntryWithResponse call
-func ParsePutObjectKVStoreEntryResponse(rsp *http.Response) (*PutObjectKVStoreEntryResponse, error) {
+// ParsePutObjectDataKeyResponse parses an HTTP response from a PutObjectDataKeyWithResponse call
+func ParsePutObjectDataKeyResponse(rsp *http.Response) (*PutObjectDataKeyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutObjectKVStoreEntryResponse{
+	response := &PutObjectDataKeyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -22125,22 +22125,22 @@ func ParsePutObjectKVStoreEntryResponse(rsp *http.Response) (*PutObjectKVStoreEn
 	return response, nil
 }
 
-// ParseGetObjectKVStoreKeysResponse parses an HTTP response from a GetObjectKVStoreKeysWithResponse call
-func ParseGetObjectKVStoreKeysResponse(rsp *http.Response) (*GetObjectKVStoreKeysResponse, error) {
+// ParseGetObjectDataKeysResponse parses an HTTP response from a GetObjectDataKeysWithResponse call
+func ParseGetObjectDataKeysResponse(rsp *http.Response) (*GetObjectDataKeysResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetObjectKVStoreKeysResponse{
+	response := &GetObjectDataKeysResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest KVStoreKeyList
+		var dest DataKeyList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -15,16 +15,16 @@ import (
 type (
 	CmdObjectKeyRename struct {
 		OptsGlobal
-		Key string
-		To  string
+		Name string
+		To   string
 	}
 )
 
 func (t *CmdObjectKeyRename) Run(selector, kind string) error {
-	data := api.PatchObjectKVStoreJSONRequestBody{
-		api.PatchKVStoreEntry{
-			Key:    t.Key,
-			Name:   &t.To,
+	data := api.PatchObjectDataJSONRequestBody{
+		api.PatchDataKey{
+			Name:   t.Name,
+			To:     &t.To,
 			Action: api.Rename,
 		},
 	}
@@ -42,7 +42,7 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if err := t.RunForPath(ctx, c, path, data); err != nil {
@@ -52,8 +52,8 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyRename) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyRename) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataJSONRequestBody) error {
+	response, err := c.PatchObjectDataWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

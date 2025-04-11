@@ -46,8 +46,13 @@ var (
 		string(KindNscfg): nil,
 	}
 
-	KindKVStore = []Kind{
+	KindDataStore = []Kind{
 		KindCfg,
+		KindSec,
+		KindUsr,
+	}
+
+	KindKeyStore = []Kind{
 		KindSec,
 		KindUsr,
 	}

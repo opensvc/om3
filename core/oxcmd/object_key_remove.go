@@ -15,7 +15,7 @@ import (
 type (
 	CmdObjectKeyRemove struct {
 		OptsGlobal
-		Key string
+		Name string
 	}
 )
 
@@ -33,7 +33,7 @@ func (t *CmdObjectKeyRemove) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if err := t.RunForPath(ctx, c, path); err != nil {
@@ -44,10 +44,10 @@ func (t *CmdObjectKeyRemove) Run(selector, kind string) error {
 }
 
 func (t *CmdObjectKeyRemove) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
-	params := api.DeleteObjectKVStoreEntryParams{
-		Key: t.Key,
+	params := api.DeleteObjectDataKeyParams{
+		Name: t.Name,
 	}
-	response, err := c.DeleteObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	response, err := c.DeleteObjectDataKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {
 		return err
 	}

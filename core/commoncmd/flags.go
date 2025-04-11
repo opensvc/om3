@@ -158,11 +158,11 @@ func FlagImpersonate(flagSet *pflag.FlagSet, p *string) {
 }
 
 func FlagKey(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "key", "", "a keystore key name")
+	flagSet.StringVar(p, "key", "", "a data key name")
 }
 
 func FlagKeyTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "the new key name")
+	flagSet.StringVar(p, "to", "", "the new data key name")
 }
 
 func FlagKeyword(flagSet *pflag.FlagSet, p *string) {
