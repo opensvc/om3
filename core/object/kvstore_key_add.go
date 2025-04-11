@@ -7,21 +7,21 @@ import (
 )
 
 var (
-	KeystoreErrExist    = errors.New("key already exists")
-	KeystoreErrKeyEmpty = errors.New("key name is empty")
-	KeystoreErrNotExist = errors.New("key does not exist")
+	ErrKeyExist    = errors.New("key already exists")
+	ErrKeyEmpty    = errors.New("key name is empty")
+	ErrKeyNotExist = errors.New("key does not exist")
 )
 
 // TransactionAddKey sets a new key
-func (t *keystore) TransactionAddKey(name string, b []byte) error {
+func (t *kvStore) TransactionAddKey(name string, b []byte) error {
 	if t.HasKey(name) {
-		return KeystoreErrExist
+		return ErrKeyExist
 	}
 	return t.addKey(name, b)
 }
 
 // AddKey sets a new key and commits immediately
-func (t *keystore) AddKey(name string, b []byte) error {
+func (t *kvStore) AddKey(name string, b []byte) error {
 	if err := t.TransactionAddKey(name, b); err != nil {
 		return err
 	}
@@ -29,12 +29,12 @@ func (t *keystore) AddKey(name string, b []byte) error {
 }
 
 // TransactionChangeKey inserts or updates the value of a existing key
-func (t *keystore) TransactionChangeKey(name string, b []byte) error {
+func (t *kvStore) TransactionChangeKey(name string, b []byte) error {
 	return t.addKey(name, b)
 }
 
 // ChangeKey changes the value of a existing key and commits immediately
-func (t *keystore) ChangeKey(name string, b []byte) error {
+func (t *kvStore) ChangeKey(name string, b []byte) error {
 	if err := t.TransactionChangeKey(name, b); err != nil {
 		return err
 	}
@@ -42,9 +42,9 @@ func (t *keystore) ChangeKey(name string, b []byte) error {
 }
 
 // Note: addKey does not commit, so it can be used multiple times efficiently.
-func (t *keystore) addKey(name string, b []byte) error {
+func (t *kvStore) addKey(name string, b []byte) error {
 	if name == "" {
-		return KeystoreErrKeyEmpty
+		return ErrKeyEmpty
 	}
 	if b == nil {
 		b = []byte{}

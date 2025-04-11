@@ -56,13 +56,13 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 	}
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewKVStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
 		}
 
 		for _, patch := range patches {

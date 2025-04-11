@@ -29,13 +29,13 @@ func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, k
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewKVStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
 		}
 
 		b, err := ioutil.ReadAll(ctx.Request().Body)
@@ -44,9 +44,9 @@ func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, k
 		}
 		err = ks.AddKey(params.Key, b)
 		switch {
-		case errors.Is(err, object.KeystoreErrExist):
+		case errors.Is(err, object.ErrKeyExist):
 			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Key, err)
-		case errors.Is(err, object.KeystoreErrKeyEmpty):
+		case errors.Is(err, object.ErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "AddKey", "%s: %s", params.Key, err)
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Key, err)

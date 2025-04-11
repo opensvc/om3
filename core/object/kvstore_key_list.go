@@ -26,7 +26,7 @@ func pathChain(k string) []string {
 // hosting keys in the store's virtual filesystem.
 //
 // Example: []key{"a/b/c", "a/c/b"} => []dir{"a", "a/b", "a/c"}
-func (t *keystore) MatchingDirs(pattern string) ([]string, error) {
+func (t *kvStore) MatchingDirs(pattern string) ([]string, error) {
 	m := make(map[string]any)
 	keys, err := t.MatchingKeys(pattern)
 	if err != nil {
@@ -46,15 +46,15 @@ func (t *keystore) MatchingDirs(pattern string) ([]string, error) {
 	return dirs, nil
 }
 
-func (t *keystore) AllDirs() ([]string, error) {
+func (t *kvStore) AllDirs() ([]string, error) {
 	return t.MatchingDirs("")
 }
 
-func (t *keystore) AllKeys() ([]string, error) {
+func (t *kvStore) AllKeys() ([]string, error) {
 	return t.MatchingKeys("")
 }
 
-func (t *keystore) MatchingKeys(pattern string) ([]string, error) {
+func (t *kvStore) MatchingKeys(pattern string) ([]string, error) {
 	data := make([]string, 0)
 	f := fnmatch.FNM_PATHNAME | fnmatch.FNM_LEADING_DIR
 

@@ -35,13 +35,13 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewKVStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
 		}
 
 		b, err := ks.DecodeKey(params.Key)
@@ -54,9 +54,9 @@ func (a *DaemonAPI) GetObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 				contentType = "application/octet-stream"
 			}
 			return ctx.Blob(http.StatusOK, contentType, b)
-		case errors.Is(err, object.KeystoreErrKeyEmpty):
+		case errors.Is(err, object.ErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "DecodeKey", "%s", err)
-		case errors.Is(err, object.KeystoreErrNotExist):
+		case errors.Is(err, object.ErrKeyNotExist):
 			return JSONProblemf(ctx, http.StatusNotFound, "DecodeKey", "%s", err)
 		default:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Key, err)

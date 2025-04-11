@@ -29,13 +29,13 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewKVStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
 		}
 
 		if names, err := ks.AllKeys(); err != nil {

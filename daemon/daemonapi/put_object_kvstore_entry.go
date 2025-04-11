@@ -30,13 +30,13 @@ func (a *DaemonAPI) PutObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKeystore(p)
+		ks, err := object.NewKVStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKeystore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
 		}
 
 		keys, err := ks.AllKeys()
@@ -52,7 +52,7 @@ func (a *DaemonAPI) PutObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 		}
 		err = ks.ChangeKey(params.Key, b)
 		switch {
-		case errors.Is(err, object.KeystoreErrKeyEmpty):
+		case errors.Is(err, object.ErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "ChangeKey", "%s: %s", params.Key, err)
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", params.Key, err)

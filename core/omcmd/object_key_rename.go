@@ -25,7 +25,7 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			store, err := object.NewKeystore(p)
+			store, err := object.NewKVStore(p)
 			if err != nil {
 				return nil, err
 			}
