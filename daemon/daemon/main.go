@@ -154,12 +154,28 @@ func (t *T) Start(ctx context.Context) error {
 
 	defer t.stopWatcher()
 
-	go t.notifyWatchDogSys(t.ctx)
+	sdWatchDogInterval := t.sdWatchDogInterval()
+	if sdWatchDogInterval > 0 {
+		t.wg.Add(1)
+		go func(ctx context.Context) {
+			defer t.wg.Done()
+			t.sdWatchDogFromPubsubWatchDog(ctx)
+		}(t.ctx)
+	}
 
 	t.wg.Add(1)
 	go func(ctx context.Context) {
 		defer t.wg.Done()
-		t.notifyWatchDogBus(ctx, "daemon")
+		// A systemd watchdog notification is sent whenever a WatchDog message is
+		// received via pubsub.
+		// By default, pubsub emits a WatchDog message every 4 seconds, or every
+		// sdWatchDogInterval / 2 if sdWatchDogInterval is set, to ensure
+		// systemd's watchdog expectations are met.
+		pubsubWatchDogInterval := 4 * time.Second
+		if sdWatchDogInterval > 0 {
+			pubsubWatchDogInterval = sdWatchDogInterval / 2
+		}
+		t.pubsubWatchDogLoop(ctx, pubsubWatchDogInterval, "daemon")
 	}(t.ctx)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration, qsHuge)
@@ -345,9 +361,12 @@ func (t *T) startComponent(ctx context.Context, a startStopper) error {
 	return nil
 }
 
-func (t *T) notifyWatchDogBus(ctx context.Context, busName string) (err error) {
-	defer t.log.Infof("watch dog bus done")
-	ticker := time.NewTicker(4 * time.Second)
+// pubsubWatchDogLoop periodically publishes WatchDog messages to a pubsub system
+// until the context is canceled.
+func (t *T) pubsubWatchDogLoop(ctx context.Context, interval time.Duration, busName string) {
+	defer t.log.Infof("pubsub-watchdog-loop: done")
+	t.log.Infof("pubsub-watchdog-loop: started with interval %s", interval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	labels := []pubsub.Label{{"node", hostname.Hostname()}}
 	msg := msgbus.WatchDog{Bus: busName}
@@ -361,60 +380,39 @@ func (t *T) notifyWatchDogBus(ctx context.Context, busName string) (err error) {
 	}
 }
 
-// notifyWatchDogSys is a notify watch dog loop that send notify watch dog
-//
-// It does nothing when:
-//   - env var WATCHDOG_USEC is empty
-//   - if there is no daemon sysmanager (daemonsys.New returns error)
-//
-// The lowest watchdog interval is WatchdogMinInterval
-func (t *T) notifyWatchDogSys(ctx context.Context) {
-	var (
-		i   interface{}
-		err error
-	)
-	s := os.Getenv(WatchdogUsecEnv)
-	if s == "" {
-		return
-	}
-	i, err = converters.Duration.Convert(s + "us")
-	if err != nil {
-		t.log.Warnf("sd-watchdog: disable due to invalid %s value: %s", WatchdogUsecEnv, s)
-		return
-	}
-	d := i.(*time.Duration)
-	watchdogTimeout := *d
-	if watchdogTimeout < WatchdogMinInterval {
-		t.log.Warnf("sd-watchdog: %s timeout %s is below the allowed minimum %s, adjust to %s",
-			WatchdogUsecEnv, watchdogTimeout, WatchdogMinInterval, WatchdogMinInterval)
-		watchdogTimeout = WatchdogMinInterval
-	}
-	interval := watchdogTimeout / 2
-	i, err = daemonsys.New(ctx)
+// sdWatchDogFromPubsubWatchDog manages the systemd watchdog notification cycle based
+// on WatchDog messages received from a pubsub system.
+func (t *T) sdWatchDogFromPubsubWatchDog(ctx context.Context) {
+	sd, err := daemonsys.New(ctx)
 	if err != nil {
 		return
-	}
-	type notifyWatchDogCloser interface {
-		NotifyWatchdog() (bool, error)
-		Close() error
-	}
-	o, ok := i.(notifyWatchDogCloser)
-	if !ok {
+	} else if sd == nil {
 		return
+	} else {
+		defer func() {
+			_ = sd.Close()
+			t.log.Infof("sd-watchdog: stopped")
+		}()
 	}
+
+	sub := t.bus.Sub("sd-watchdog")
+	sub.AddFilter(&msgbus.WatchDog{}, pubsub.Label{"node", hostname.Hostname()})
+	sub.Start()
 	defer func() {
-		t.log.Infof("sd-watchdog: stopped")
-		_ = o.Close()
+		go func() {
+			if err := sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				t.log.Warnf("sd-watchdog: subcription stop: %s", err)
+			}
+		}()
 	}()
-	t.log.Infof("sd-watchdog: started with interval %s", interval)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+
+	t.log.Infof("sd-watchdog: started")
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if ok, err := o.NotifyWatchdog(); err != nil {
+		case <-sub.C:
+			if ok, err := sd.NotifyWatchdog(); err != nil {
 				t.log.Warnf("sd-watchdog: %s", err)
 			} else if !ok {
 				t.log.Debugf("sd-watchdog: delivery not needed")
@@ -425,46 +423,43 @@ func (t *T) notifyWatchDogSys(ctx context.Context) {
 	}
 }
 
-// notifyDaemonSys interacts with the system daemon manager to send ready or
-// stopping notifications based on the state.
-// It initializes a connection to the system daemon, delegates notification
-// responsibilities to specific interfaces, and ensures proper closure of the
-// connection.
-// Returns a boolean indicating success and any errors encountered.
+// sdWatchDogInterval determines the systemd watchdog interval based on the WATCHDOG_USEC environment variable.
+// Returns the interval duration after validation against minimum allowed duration.
+// Logs warnings for invalid or below-minimum values and disables the watchdog if WATCHDOG_USEC is empty.
+func (t *T) sdWatchDogInterval() (interval time.Duration) {
+	s := os.Getenv(WatchdogUsecEnv)
+	if s == "" {
+		return
+	}
+	if i, err := converters.Duration.Convert(s + "us"); err != nil {
+		t.log.Warnf("sd-watchdog: disable due to invalid %s value: %s", WatchdogUsecEnv, s)
+		return
+	} else {
+		interval = *i.(*time.Duration)
+	}
+	if interval < WatchdogMinInterval {
+		t.log.Warnf("sd-watchdog: %s timeout %s is below the allowed minimum %s, adjust to %s",
+			WatchdogUsecEnv, interval, WatchdogMinInterval, WatchdogMinInterval)
+		interval = WatchdogMinInterval
+	}
+	return
+}
+
+// notifyDaemonSys manages the communication with the systemd daemon using the given context and state.
+// Supported states are daemonSysManagerReady and daemonSysManagerStopping, invoking corresponding systemd notifications.
 func (t *T) notifyDaemonSys(ctx context.Context, state daemonSysManager) (bool, error) {
-	var (
-		i   interface{}
-		err error
-	)
-	type (
-		closer interface {
-			Close() error
-		}
-		notifyReadier interface {
-			NotifyReady() (bool, error)
-		}
-		NotifyStoppinger interface {
-			NotifyStopping() (bool, error)
-		}
-	)
-	i, err = daemonsys.New(ctx)
+	sd, err := daemonsys.New(ctx)
 	if err != nil {
 		return false, nil
 	}
-	if s, ok := i.(closer); ok {
-		defer func() {
-			_ = s.Close()
-		}()
-	}
+	defer func() {
+		_ = sd.Close()
+	}()
 	switch state {
 	case daemonSysManagerReady:
-		if notifier, ok := i.(notifyReadier); ok {
-			return notifier.NotifyReady()
-		}
+		return sd.NotifyReady()
 	case daemonSysManagerStopping:
-		if notifier, ok := i.(NotifyStoppinger); ok {
-			return notifier.NotifyStopping()
-		}
+		return sd.NotifyStopping()
 	}
 	return false, nil
 }
