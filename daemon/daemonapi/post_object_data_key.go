@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"errors"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -10,13 +11,12 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonAPI) GetObjectDataStoreKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	log := LogHandler(ctx, "GetObjectDataStore")
+func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectDataKeyParams) error {
+	log := LogHandler(ctx, "PostObjectDataKey")
 
-	if v, err := assertGuest(ctx, namespace); !v {
+	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 
@@ -38,27 +38,20 @@ func (a *DaemonAPI) GetObjectDataStoreKeys(ctx echo.Context, namespace string, k
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		if names, err := ks.AllKeys(); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Keys", "%s", err)
-		} else {
-			items := make(api.DataStoreKeyListItems, 0)
-			for _, name := range names {
-				configKey := key.T{
-					Section: "data",
-					Option:  name,
-				}
-				size := len(ks.Config().GetString(configKey))
-				items = append(items, api.DataStoreKeyListItem{
-					Object: p.String(),
-					Node:   a.localhost,
-					Name:   name,
-					Size:   size,
-				})
-			}
-			return ctx.JSON(http.StatusOK, api.DataStoreKeyList{
-				Kind:  "DataStoreKeyList",
-				Items: items,
-			})
+		b, err := ioutil.ReadAll(ctx.Request().Body)
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
+		}
+		err = ks.AddKey(params.Name, b)
+		switch {
+		case errors.Is(err, object.ErrKeyExist):
+			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Name, err)
+		case errors.Is(err, object.ErrKeyEmpty):
+			return JSONProblemf(ctx, http.StatusBadRequest, "AddKey", "%s: %s", params.Name, err)
+		case err != nil:
+			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Name, err)
+		default:
+			return ctx.NoContent(http.StatusNoContent)
 		}
 	}
 
@@ -67,7 +60,7 @@ func (a *DaemonAPI) GetObjectDataStoreKeys(ctx echo.Context, namespace string, k
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.GetObjectDataStoreKeysWithResponse(ctx.Request().Context(), namespace, kind, name); err != nil {
+		if resp, err := c.PostObjectDataKeyWithBodyWithResponse(ctx.Request().Context(), namespace, kind, name, &params, "application/octet-stream", ctx.Request().Body); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

@@ -10,22 +10,15 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonAPI) GetObjectDataStore(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectDataStoreParams) error {
-	log := LogHandler(ctx, "GetObjectDataStore")
+func (a *DaemonAPI) GetObjectDataKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "GetObjectData")
 
-	if kind == naming.KindSec {
-		if v, err := assertAdmin(ctx, namespace); !v {
-			return err
-		}
-	} else {
-		if v, err := assertGuest(ctx, namespace); !v {
-			return err
-		}
+	if v, err := assertGuest(ctx, namespace); !v {
+		return err
 	}
-
-	result := make(api.DataStoreKeys, 0)
 
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
@@ -45,18 +38,28 @@ func (a *DaemonAPI) GetObjectDataStore(ctx echo.Context, namespace string, kind 
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		if params.Names == nil {
-			return ctx.JSON(http.StatusOK, result)
-		}
-
-		for _, name := range *params.Names {
-			if b, err := ks.DecodeKey(name); err != nil {
-				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", name, err)
-			} else {
-				result = append(result, api.DataStoreKey{Name: name, Bytes: b})
+		if names, err := ks.AllKeys(); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Keys", "%s", err)
+		} else {
+			items := make(api.DataKeyListItems, 0)
+			for _, name := range names {
+				configKey := key.T{
+					Section: "data",
+					Option:  name,
+				}
+				size := len(ks.Config().GetString(configKey))
+				items = append(items, api.DataKeyListItem{
+					Object: p.String(),
+					Node:   a.localhost,
+					Name:   name,
+					Size:   size,
+				})
 			}
+			return ctx.JSON(http.StatusOK, api.DataKeyList{
+				Kind:  "DataKeyList",
+				Items: items,
+			})
 		}
-		return ctx.JSON(http.StatusOK, result)
 	}
 
 	for nodename := range instanceConfigData {
@@ -64,7 +67,7 @@ func (a *DaemonAPI) GetObjectDataStore(ctx echo.Context, namespace string, kind 
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.GetObjectDataStoreWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.GetObjectDataKeysWithResponse(ctx.Request().Context(), namespace, kind, name); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

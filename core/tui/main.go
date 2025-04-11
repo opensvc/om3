@@ -255,7 +255,7 @@ func (t *App) updateKeyTextView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}
-	resp, err := t.client.GetObjectDataStoreKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataStoreKeyParams{
+	resp, err := t.client.GetObjectDataKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataKeyParams{
 		Name: t.viewKey,
 	})
 	if err != nil {

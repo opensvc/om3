@@ -2,8 +2,8 @@ package daemonapi
 
 import (
 	"errors"
-	"io/ioutil"
 	"net/http"
+	"unicode/utf8"
 
 	"github.com/labstack/echo/v4"
 
@@ -13,11 +13,17 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PostObjectDataStoreKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectDataStoreKeyParams) error {
-	log := LogHandler(ctx, "PostObjectDataStoreKey")
+func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectDataKeyParams) error {
+	log := LogHandler(ctx, "GetObjectDataKey")
 
-	if v, err := assertAdmin(ctx, namespace); !v {
-		return err
+	if kind == naming.KindSec {
+		if v, err := assertAdmin(ctx, namespace); !v {
+			return err
+		}
+	} else {
+		if v, err := assertGuest(ctx, namespace); !v {
+			return err
+		}
 	}
 
 	p, err := naming.NewPath(namespace, kind, name)
@@ -38,20 +44,22 @@ func (a *DaemonAPI) PostObjectDataStoreKey(ctx echo.Context, namespace string, k
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		b, err := ioutil.ReadAll(ctx.Request().Body)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
-		}
-		err = ks.AddKey(params.Name, b)
+		b, err := ks.DecodeKey(params.Name)
 		switch {
-		case errors.Is(err, object.ErrKeyExist):
-			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Name, err)
+		case err == nil:
+			var contentType string
+			if utf8.Valid(b) {
+				contentType = "text/plain"
+			} else {
+				contentType = "application/octet-stream"
+			}
+			return ctx.Blob(http.StatusOK, contentType, b)
 		case errors.Is(err, object.ErrKeyEmpty):
-			return JSONProblemf(ctx, http.StatusBadRequest, "AddKey", "%s: %s", params.Name, err)
-		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Name, err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "DecodeKey", "%s", err)
+		case errors.Is(err, object.ErrKeyNotExist):
+			return JSONProblemf(ctx, http.StatusNotFound, "DecodeKey", "%s", err)
 		default:
-			return ctx.NoContent(http.StatusNoContent)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Name, err)
 		}
 	}
 
@@ -60,7 +68,7 @@ func (a *DaemonAPI) PostObjectDataStoreKey(ctx echo.Context, namespace string, k
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PostObjectDataStoreKeyWithBodyWithResponse(ctx.Request().Context(), namespace, kind, name, &params, "application/octet-stream", ctx.Request().Body); err != nil {
+		if resp, err := c.GetObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

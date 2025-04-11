@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) DeleteObjectDataStoreKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectDataStoreKeyParams) error {
-	log := LogHandler(ctx, "DeleteObjectDataStoreKey")
+func (a *DaemonAPI) DeleteObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectDataKeyParams) error {
+	log := LogHandler(ctx, "DeleteObjectDataKey")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
@@ -55,7 +55,7 @@ func (a *DaemonAPI) DeleteObjectDataStoreKey(ctx echo.Context, namespace string,
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.DeleteObjectDataStoreKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.DeleteObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

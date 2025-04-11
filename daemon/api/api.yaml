@@ -3020,7 +3020,7 @@ paths:
     get:
       description: |
         List the keys in the key-value store.
-      operationId: GetObjectDataStoreKeys
+      operationId: GetObjectDataKeys
       tags:
         - object / cfg
         - object / sec
@@ -3037,7 +3037,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataStoreKeyList'
+                $ref: '#/components/schemas/DataKeyList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3053,7 +3053,7 @@ paths:
     get:
       description: |
         Return a single key value as the response body.
-      operationId: GetObjectDataStoreKey
+      operationId: GetObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3087,7 +3087,7 @@ paths:
     delete:
       description: |
         Delete a key from the key-value store.
-      operationId: DeleteObjectDataStoreKey
+      operationId: DeleteObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3115,7 +3115,7 @@ paths:
     post:
       description: |
         Create a new key in the key-value store.
-      operationId: PostObjectDataStoreKey
+      operationId: PostObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3150,7 +3150,7 @@ paths:
     put:
       description: |
         Change the value of an existing key in the key-value store.
-      operationId: PutObjectDataStoreKey
+      operationId: PutObjectDataKey
       tags:
         - object / cfg
         - object / sec
@@ -3186,7 +3186,7 @@ paths:
     get:
       description: |
         Return a structured list of key and values objects.
-      operationId: GetObjectDataStore
+      operationId: GetObjectData
       tags:
         - object / cfg
         - object / sec
@@ -3204,7 +3204,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataStoreKeys'
+                $ref: '#/components/schemas/DataKeys'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3216,7 +3216,7 @@ paths:
     patch:
       description: |
         A single-transaction combination of add, change or delete operations on the key-value store keys.
-      operationId: PatchObjectDataStore
+      operationId: PatchObjectData
       tags:
         - object / cfg
         - object / sec
@@ -3226,7 +3226,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchDataStoreKeys'
+              $ref: '#/components/schemas/PatchDataKeys'
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -6352,12 +6352,12 @@ components:
         value:
           type: string
 
-    DataStoreKeys:
+    DataKeys:
         type: array
         items:
-          $ref: '#/components/schemas/DataStoreKey'
+          $ref: '#/components/schemas/DataKey'
 
-    DataStoreKey:
+    DataKey:
       type: object
       required:
         - name
@@ -6369,7 +6369,7 @@ components:
           type: string
           format: byte
 
-    DataStoreKeyList:
+    DataKeyList:
       type: object
       required:
         - kind
@@ -6378,16 +6378,16 @@ components:
         kind:
           type: string
           enum:
-            - DataStoreKeyList
+            - DataKeyList
         items:
-          $ref: '#/components/schemas/DataStoreKeyListItems'
+          $ref: '#/components/schemas/DataKeyListItems'
 
-    DataStoreKeyListItems:
+    DataKeyListItems:
         type: array
         items:
-          $ref: '#/components/schemas/DataStoreKeyListItem'
+          $ref: '#/components/schemas/DataKeyListItem'
 
-    DataStoreKeyListItem:
+    DataKeyListItem:
       type: object
       required:
         - node
@@ -6404,12 +6404,12 @@ components:
         size:
           type: integer
 
-    PatchDataStoreKeys:
+    PatchDataKeys:
         type: array
         items:
-          $ref: '#/components/schemas/PatchDataStoreKey'
+          $ref: '#/components/schemas/PatchDataKey'
 
-    PatchDataStoreKey:
+    PatchDataKey:
       type: object
       required:
         - action

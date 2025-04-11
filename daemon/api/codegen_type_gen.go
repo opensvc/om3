@@ -37,9 +37,9 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
-// Defines values for DataStoreKeyListKind.
+// Defines values for DataKeyListKind.
 const (
-	DataStoreKeyListKindDataStoreKeyList DataStoreKeyListKind = "DataStoreKeyList"
+	DataKeyListKindDataKeyList DataKeyListKind = "DataKeyList"
 )
 
 // Defines values for DiskItemKind.
@@ -159,12 +159,12 @@ const (
 	PackageListKindPackageList PackageListKind = "PackageList"
 )
 
-// Defines values for PatchDataStoreKeyAction.
+// Defines values for PatchDataKeyAction.
 const (
-	Add    PatchDataStoreKeyAction = "add"
-	Change PatchDataStoreKeyAction = "change"
-	Remove PatchDataStoreKeyAction = "remove"
-	Rename PatchDataStoreKeyAction = "rename"
+	Add    PatchDataKeyAction = "add"
+	Change PatchDataKeyAction = "change"
+	Remove PatchDataKeyAction = "remove"
+	Rename PatchDataKeyAction = "rename"
 )
 
 // Defines values for PatchItemKind.
@@ -429,34 +429,34 @@ type DaemonStatus struct {
 	Daemon  DaemonLocal `json:"daemon"`
 }
 
-// DataStoreKey defines model for DataStoreKey.
-type DataStoreKey struct {
+// DataKey defines model for DataKey.
+type DataKey struct {
 	Bytes []byte `json:"bytes"`
 	Name  string `json:"name"`
 }
 
-// DataStoreKeyList defines model for DataStoreKeyList.
-type DataStoreKeyList struct {
-	Items DataStoreKeyListItems `json:"items"`
-	Kind  DataStoreKeyListKind  `json:"kind"`
+// DataKeyList defines model for DataKeyList.
+type DataKeyList struct {
+	Items DataKeyListItems `json:"items"`
+	Kind  DataKeyListKind  `json:"kind"`
 }
 
-// DataStoreKeyListKind defines model for DataStoreKeyList.Kind.
-type DataStoreKeyListKind string
+// DataKeyListKind defines model for DataKeyList.Kind.
+type DataKeyListKind string
 
-// DataStoreKeyListItem defines model for DataStoreKeyListItem.
-type DataStoreKeyListItem struct {
+// DataKeyListItem defines model for DataKeyListItem.
+type DataKeyListItem struct {
 	Name   string `json:"name"`
 	Node   string `json:"node"`
 	Object string `json:"object"`
 	Size   int    `json:"size"`
 }
 
-// DataStoreKeyListItems defines model for DataStoreKeyListItems.
-type DataStoreKeyListItems = []DataStoreKeyListItem
+// DataKeyListItems defines model for DataKeyListItems.
+type DataKeyListItems = []DataKeyListItem
 
-// DataStoreKeys defines model for DataStoreKeys.
-type DataStoreKeys = []DataStoreKey
+// DataKeys defines model for DataKeys.
+type DataKeys = []DataKey
 
 // Disk defines model for Disk.
 type Disk struct {
@@ -936,20 +936,20 @@ type Patch struct {
 	Revision    string    `json:"revision"`
 }
 
-// PatchDataStoreKey defines model for PatchDataStoreKey.
-type PatchDataStoreKey struct {
-	Action PatchDataStoreKeyAction `json:"action"`
-	Bytes  *[]byte                 `json:"bytes,omitempty"`
-	Name   string                  `json:"name"`
-	String *string                 `json:"string,omitempty"`
-	To     *string                 `json:"to,omitempty"`
+// PatchDataKey defines model for PatchDataKey.
+type PatchDataKey struct {
+	Action PatchDataKeyAction `json:"action"`
+	Bytes  *[]byte            `json:"bytes,omitempty"`
+	Name   string             `json:"name"`
+	String *string            `json:"string,omitempty"`
+	To     *string            `json:"to,omitempty"`
 }
 
-// PatchDataStoreKeyAction defines model for PatchDataStoreKey.Action.
-type PatchDataStoreKeyAction string
+// PatchDataKeyAction defines model for PatchDataKey.Action.
+type PatchDataKeyAction string
 
-// PatchDataStoreKeys defines model for PatchDataStoreKeys.
-type PatchDataStoreKeys = []PatchDataStoreKey
+// PatchDataKeys defines model for PatchDataKeys.
+type PatchDataKeys = []PatchDataKey
 
 // PatchItem defines model for PatchItem.
 type PatchItem struct {
@@ -1949,28 +1949,28 @@ type PostObjectConfigUpdateParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
-// GetObjectDataStoreParams defines parameters for GetObjectDataStore.
-type GetObjectDataStoreParams struct {
+// GetObjectDataParams defines parameters for GetObjectData.
+type GetObjectDataParams struct {
 	Names *Names `form:"name,omitempty" json:"name,omitempty"`
 }
 
-// DeleteObjectDataStoreKeyParams defines parameters for DeleteObjectDataStoreKey.
-type DeleteObjectDataStoreKeyParams struct {
+// DeleteObjectDataKeyParams defines parameters for DeleteObjectDataKey.
+type DeleteObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`
 }
 
-// GetObjectDataStoreKeyParams defines parameters for GetObjectDataStoreKey.
-type GetObjectDataStoreKeyParams struct {
+// GetObjectDataKeyParams defines parameters for GetObjectDataKey.
+type GetObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`
 }
 
-// PostObjectDataStoreKeyParams defines parameters for PostObjectDataStoreKey.
-type PostObjectDataStoreKeyParams struct {
+// PostObjectDataKeyParams defines parameters for PostObjectDataKey.
+type PostObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`
 }
 
-// PutObjectDataStoreKeyParams defines parameters for PutObjectDataStoreKey.
-type PutObjectDataStoreKeyParams struct {
+// PutObjectDataKeyParams defines parameters for PutObjectDataKey.
+type PutObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`
 }
 
@@ -2040,8 +2040,8 @@ type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PatchObjectDataStoreJSONRequestBody defines body for PatchObjectDataStore for application/json ContentType.
-type PatchObjectDataStoreJSONRequestBody = PatchDataStoreKeys
+// PatchObjectDataJSONRequestBody defines body for PatchObjectData for application/json ContentType.
+type PatchObjectDataJSONRequestBody = PatchDataKeys
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

@@ -25,11 +25,11 @@ type (
 	}
 )
 
-func makeDataStorePatch(name string, value, from *string, action api.PatchDataStoreKeyAction) (api.PatchObjectDataStoreJSONRequestBody, error) {
-	data := make(api.PatchObjectDataStoreJSONRequestBody, 0)
+func makeDataPatch(name string, value, from *string, action api.PatchDataKeyAction) (api.PatchObjectDataJSONRequestBody, error) {
+	data := make(api.PatchObjectDataJSONRequestBody, 0)
 
 	if value != nil {
-		data = append(data, api.PatchDataStoreKey{
+		data = append(data, api.PatchDataKey{
 			Name:   name,
 			String: value,
 			Action: action,
@@ -45,7 +45,7 @@ func makeDataStorePatch(name string, value, from *string, action api.PatchDataSt
 		if err != nil {
 			return nil, err
 		}
-		data = append(data, api.PatchDataStoreKey{
+		data = append(data, api.PatchDataKey{
 			Name:   k,
 			Bytes:  &b,
 			Action: action,
@@ -58,7 +58,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	if t.Value == nil && t.From == nil {
 		return fmt.Errorf("a value or value source mut be specified for a change action")
 	}
-	data, err := makeDataStorePatch(t.Key, t.Value, t.From, api.Change)
+	data, err := makeDataPatch(t.Key, t.Value, t.From, api.Change)
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataStoreJSONRequestBody) error {
-	response, err := c.PatchObjectDataStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataJSONRequestBody) error {
+	response, err := c.PatchObjectDataWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

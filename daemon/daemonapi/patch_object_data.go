@@ -12,15 +12,15 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	log := LogHandler(ctx, "PatchObjectDataStore")
+func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "PatchObjectData")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 
 	var (
-		patches api.PatchDataStoreKeys
+		patches api.PatchDataKeys
 	)
 
 	if err := ctx.Bind(&patches); err != nil {
@@ -39,7 +39,7 @@ func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kin
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	getBytes := func(patch api.PatchDataStoreKey) ([]byte, error) {
+	getBytes := func(patch api.PatchDataKey) ([]byte, error) {
 		switch {
 		case patch.Bytes == nil && patch.String == nil:
 			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "bytes or string is required to add or change key %s", patch.Name)
@@ -110,7 +110,7 @@ func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kin
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PatchObjectDataStoreWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
+		if resp, err := c.PatchObjectDataWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

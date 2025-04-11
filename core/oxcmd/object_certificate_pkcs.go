@@ -62,10 +62,10 @@ func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
 }
 
 func decode(ctx context.Context, c *client.T, path naming.Path, key string) ([]byte, error) {
-	params := api.GetObjectDataStoreKeyParams{
+	params := api.GetObjectDataKeyParams{
 		Name: key,
 	}
-	response, err := c.GetObjectDataStoreKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	response, err := c.GetObjectDataKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {
 		return nil, err
 	}
