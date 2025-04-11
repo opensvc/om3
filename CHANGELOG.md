@@ -281,7 +281,25 @@
     curl -o- -X GET -H "Content-Type: application/json" --unix-socket /var/lib/opensvc/lsnr/http.sock http://localhost/daemon/status
     ```
 
-   
+### Driver: disk.lvm
+
+* **Removed feature:**
+
+    The `disk.lvm` driver no longer automatically converts regular files into loopback devices for use as physical volumes (pvs). The pvs parameter must now explicitly reference actual block devices.
+    `exposed_devs` can be used as replacement.
+
+    Example:
+
+        [disk#0]
+        type = loop
+        file = /files/disk0.img
+        ...
+        [disk#1]
+        type = lvm
+        vgname = vg1
+        # pvs = {disk#0.file}            <- ⛔️: pvs evaluation is not a block device
+        pvs = {disk#0.exposed_devs[0]}   <- ✅: pvs evaluation is /dev/loop... block device
+
 ### Driver: ip
 
 * **Removed keywords:**
