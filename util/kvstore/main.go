@@ -1,4 +1,4 @@
-package keystore
+package kvstore
 
 import (
 	"path/filepath"
