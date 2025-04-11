@@ -26,7 +26,7 @@ func (t *CmdObjectKeyInstall) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			store, err := object.NewKVStore(p)
+			store, err := object.NewDataStore(p)
 			if err != nil {
 				return nil, err
 			}

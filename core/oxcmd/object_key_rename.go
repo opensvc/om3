@@ -42,7 +42,7 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 		return err
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if err := t.RunForPath(ctx, c, path, data); err != nil {

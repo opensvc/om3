@@ -13,7 +13,7 @@ import (
 
 type (
 	cfg struct {
-		kvStore
+		dataStore
 	}
 
 	cfgEncodeDecode struct{}
@@ -32,7 +32,7 @@ type (
 	// changes.
 	//
 	Cfg interface {
-		KVStore
+		DataStore
 	}
 )
 

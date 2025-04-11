@@ -56,7 +56,7 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 	}
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKVStore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):

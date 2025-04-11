@@ -17,13 +17,13 @@ type (
 		Decode(string) ([]byte, error)
 	}
 
-	kvStore struct {
+	dataStore struct {
 		core
 		encodeDecoder encodeDecoder
 	}
 
-	// KVStore is the base interface of sec, cfg and usr objects
-	KVStore interface {
+	// DataStore is the base interface of sec, cfg and usr objects
+	DataStore interface {
 		Core
 
 		AddKey(name string, b []byte) error
@@ -57,16 +57,16 @@ func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
 }
 
-func (t *kvStore) Shares() []string {
+func (t *dataStore) Shares() []string {
 	return t.config.GetStrings(key.Parse("share"))
 }
 
-func (t *kvStore) HasKey(name string) bool {
+func (t *dataStore) HasKey(name string) bool {
 	k := keyFromName(name)
 	return t.config.HasKey(k)
 }
 
-func (t *kvStore) temporaryKeyFile(name string) (f *os.File, err error) {
+func (t *dataStore) temporaryKeyFile(name string) (f *os.File, err error) {
 	var (
 		b []byte
 	)
@@ -82,6 +82,6 @@ func (t *kvStore) temporaryKeyFile(name string) (f *os.File, err error) {
 	return
 }
 
-func (t *kvStore) postCommit() error {
+func (t *dataStore) postCommit() error {
 	return t.postInstall("")
 }

@@ -30,7 +30,7 @@ func (a *DaemonAPI) PutObjectKVStoreEntry(ctx echo.Context, namespace string, ki
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKVStore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):

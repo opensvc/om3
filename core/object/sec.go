@@ -17,7 +17,7 @@ import (
 
 type (
 	sec struct {
-		kvStore
+		dataStore
 	}
 
 	secEncodeDecode struct {
@@ -38,7 +38,7 @@ type (
 	// changes.
 	//
 	Sec interface {
-		KVStore
+		DataStore
 		KeyStore
 	}
 

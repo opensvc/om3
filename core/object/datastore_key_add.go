@@ -13,7 +13,7 @@ var (
 )
 
 // TransactionAddKey sets a new key
-func (t *kvStore) TransactionAddKey(name string, b []byte) error {
+func (t *dataStore) TransactionAddKey(name string, b []byte) error {
 	if t.HasKey(name) {
 		return ErrKeyExist
 	}
@@ -21,7 +21,7 @@ func (t *kvStore) TransactionAddKey(name string, b []byte) error {
 }
 
 // AddKey sets a new key and commits immediately
-func (t *kvStore) AddKey(name string, b []byte) error {
+func (t *dataStore) AddKey(name string, b []byte) error {
 	if err := t.TransactionAddKey(name, b); err != nil {
 		return err
 	}
@@ -29,12 +29,12 @@ func (t *kvStore) AddKey(name string, b []byte) error {
 }
 
 // TransactionChangeKey inserts or updates the value of a existing key
-func (t *kvStore) TransactionChangeKey(name string, b []byte) error {
+func (t *dataStore) TransactionChangeKey(name string, b []byte) error {
 	return t.addKey(name, b)
 }
 
 // ChangeKey changes the value of a existing key and commits immediately
-func (t *kvStore) ChangeKey(name string, b []byte) error {
+func (t *dataStore) ChangeKey(name string, b []byte) error {
 	if err := t.TransactionChangeKey(name, b); err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (t *kvStore) ChangeKey(name string, b []byte) error {
 }
 
 // Note: addKey does not commit, so it can be used multiple times efficiently.
-func (t *kvStore) addKey(name string, b []byte) error {
+func (t *dataStore) addKey(name string, b []byte) error {
 	if name == "" {
 		return ErrKeyEmpty
 	}

@@ -67,7 +67,7 @@ func (t KVInstall) IsEmpty() bool {
 	return t.ToPath == "" && t.FromPattern == ""
 }
 
-func (t *kvStore) resolveKey(k string) ([]vKey, error) {
+func (t *dataStore) resolveKey(k string) ([]vKey, error) {
 	var (
 		dirs, keys []string
 		err        error
@@ -120,7 +120,7 @@ func mergeMapsets(m1 map[string]interface{}, m2 map[string]interface{}) map[stri
 	return m2
 }
 
-func (t *kvStore) _install(k string, dst string) error {
+func (t *dataStore) _install(k string, dst string) error {
 	keys, err := t.resolveKey(k)
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func (t *kvStore) _install(k string, dst string) error {
 }
 
 // keyPath returns the full path to host's file containing the key decoded data.
-func (t *kvStore) keyPath(vk vKey, dst string) string {
+func (t *dataStore) keyPath(vk vKey, dst string) string {
 	if strings.HasSuffix(dst, "/") {
 		name := filepath.Base(strings.TrimRight(vk.Key, "/"))
 		return filepath.Join(dst, name)
@@ -148,7 +148,7 @@ func (t *kvStore) keyPath(vk vKey, dst string) string {
 	return dst
 }
 
-func (t *kvStore) installKey(vk vKey, opt KVInstall) (bool, error) {
+func (t *dataStore) installKey(vk vKey, opt KVInstall) (bool, error) {
 	switch vk.Type {
 	case vKeyFile:
 		opt.ToPath = t.keyPath(vk, opt.ToPath)
@@ -161,7 +161,7 @@ func (t *kvStore) installKey(vk vKey, opt KVInstall) (bool, error) {
 }
 
 // installFileKey installs a key content in the host storage
-func (t *kvStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
+func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	if strings.Contains(opt.ToPath, "..") {
 		// paranoid checks before RemoveAll() and Remove()
 		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", opt.ToPath)
@@ -199,7 +199,7 @@ func (t *kvStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 }
 
 // installDirKey creates a directory to host projected keys
-func (t *kvStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
+func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	if strings.HasSuffix(opt.ToPath, "/") {
 		dirname := filepath.Base(vk.Key)
 		opt.ToPath = filepath.Join(opt.ToPath, dirname) + "/"
@@ -218,7 +218,7 @@ func (t *kvStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
-func (t *kvStore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
+func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
 	if mode == nil {
 		return nil
 	}
@@ -233,7 +233,7 @@ func (t *kvStore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
 	return os.Chmod(p, *mode)
 }
 
-func (t *kvStore) chown(p string, usr, grp string, info os.FileInfo) error {
+func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo) error {
 	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
@@ -283,7 +283,7 @@ func (t *kvStore) chown(p string, usr, grp string, info os.FileInfo) error {
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
-func (t *kvStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
+func (t *dataStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
 	mtime := t.configModTime()
 	info, err := os.Stat(dst)
 	if errors.Is(err, os.ErrNotExist) {
@@ -323,11 +323,11 @@ func (t *kvStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 	return false, nil
 }
 
-func (t *kvStore) InstallKey(keyName string) error {
+func (t *dataStore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t *kvStore) makedir(path string, opt KVInstallAccessControl) error {
+func (t *dataStore) makedir(path string, opt KVInstallAccessControl) error {
 	info, err := os.Stat(path)
 	if err == nil {
 		if err := t.chmod(path, opt.DirPerm, info); err != nil {
@@ -349,7 +349,7 @@ func (t *kvStore) makedir(path string, opt KVInstallAccessControl) error {
 	return nil
 }
 
-func (t *kvStore) makedirs(opt KVInstall) error {
+func (t *dataStore) makedirs(opt KVInstall) error {
 	if opt.ToHead == "" || !strings.HasSuffix(opt.ToPath, "/") {
 		return nil
 	}
@@ -362,7 +362,7 @@ func (t *kvStore) makedirs(opt KVInstall) error {
 	return nil
 }
 
-func (t *kvStore) InstallKeyTo(opt KVInstall) error {
+func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 	t.log.Debugf("install key %s to %s", opt.FromPattern, opt.ToPath)
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
@@ -386,7 +386,7 @@ func (t *kvStore) InstallKeyTo(opt KVInstall) error {
 	return nil
 }
 
-func (t *kvStore) postInstall(k string) error {
+func (t *dataStore) postInstall(k string) error {
 	changedVolumes := make(map[naming.Path]interface{})
 	type resvoler interface {
 		InstallDataByKind(naming.Kind) (bool, error)

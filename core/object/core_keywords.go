@@ -390,7 +390,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/parallel"),
 	},
 
-	// KVStores
+	// DataStores
 	{
 		Converter: converters.List,
 		Default:   "{namespace}",

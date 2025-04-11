@@ -183,7 +183,7 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
-		keystore, err := object.NewKVStore(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
@@ -238,7 +238,7 @@ func (t *T) install(ctx context.Context) (bool, error) {
 				continue
 			}
 		}
-		keystore, err := object.NewKVStore(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
@@ -514,7 +514,7 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 			t.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
-		keystore, err := object.NewKVStore(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}

@@ -28,7 +28,7 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		ks, err := object.NewKVStore(p)
+		ks, err := object.NewDataStore(p)
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):

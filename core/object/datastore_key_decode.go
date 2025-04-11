@@ -5,7 +5,7 @@ import (
 )
 
 // decode returns a keyword value
-func (t *kvStore) decode(keyname string) ([]byte, error) {
+func (t *dataStore) decode(keyname string) ([]byte, error) {
 	var (
 		s   string
 		err error
@@ -24,6 +24,6 @@ func (t *kvStore) decode(keyname string) ([]byte, error) {
 }
 
 // DecodeKey returns the decoded bytes of the key value
-func (t *kvStore) DecodeKey(keyname string) ([]byte, error) {
+func (t *dataStore) DecodeKey(keyname string) ([]byte, error) {
 	return t.decode(keyname)
 }

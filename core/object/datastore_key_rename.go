@@ -8,7 +8,7 @@ import (
 )
 
 // TransactionRenameKey changes the key name and return uncommitted
-func (t *kvStore) TransactionRenameKey(name, to string) error {
+func (t *dataStore) TransactionRenameKey(name, to string) error {
 	if t.HasKey(to) {
 		return fmt.Errorf("%w: %s", ErrKeyExist, to)
 	}
@@ -30,7 +30,7 @@ func (t *kvStore) TransactionRenameKey(name, to string) error {
 }
 
 // RenameKey changes the key name and commits immediately
-func (t *kvStore) RenameKey(name, to string) error {
+func (t *dataStore) RenameKey(name, to string) error {
 	if err := t.TransactionRenameKey(name, to); err != nil {
 		return err
 	}

@@ -50,7 +50,7 @@ func TestNewStore(t *testing.T) {
 		t.Run(c.String(), func(t *testing.T) {
 			storePath := naming.Path{Name: "store", Kind: c, Namespace: "root"}
 			t.Logf("%s create config: %s", storePath, storePath.ConfigFile())
-			o, err := NewKVStore(storePath)
+			o, err := NewDataStore(storePath)
 			require.NoError(t, err)
 
 			t.Logf("%s add key foo", storePath)

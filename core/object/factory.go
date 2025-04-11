@@ -140,11 +140,11 @@ func NewActor(p naming.Path, opts ...funcopt.O) (Actor, error) {
 	}
 }
 
-// NewKVStore returns a KVStore interface from an object path
-func NewKVStore(p naming.Path, opts ...funcopt.O) (KVStore, error) {
+// NewDataStore returns a DataStore interface from an object path
+func NewDataStore(p naming.Path, opts ...funcopt.O) (DataStore, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
-	} else if i, ok := o.(KVStore); ok {
+	} else if i, ok := o.(DataStore); ok {
 		return i, nil
 	} else {
 		return nil, ErrWrongType

@@ -39,7 +39,7 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 		Items: make(api.KVStoreKeyListItems, 0),
 	}
 	for _, path := range paths {
-		if !slices.Contains(naming.KindKVStore, path.Kind) {
+		if !slices.Contains(naming.KindDataStore, path.Kind) {
 			continue
 		}
 		if moreKeys, err := t.RunForPath(ctx, c, path); err != nil {
