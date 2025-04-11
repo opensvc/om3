@@ -43,19 +43,19 @@ func (a *DaemonAPI) PutObjectDataStoreKey(ctx echo.Context, namespace string, ki
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "AllKeys", "%s", err)
 		}
-		if !slices.Contains(keys, params.Key) {
-			return JSONProblemf(ctx, http.StatusNotFound, "ChangeKey", "%s: %s. consider using the POST method.", params.Key, err)
+		if !slices.Contains(keys, params.Name) {
+			return JSONProblemf(ctx, http.StatusNotFound, "ChangeKey", "%s: %s. consider using the POST method.", params.Name, err)
 		}
 		b, err := ioutil.ReadAll(ctx.Request().Body)
 		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
 		}
-		err = ks.ChangeKey(params.Key, b)
+		err = ks.ChangeKey(params.Name, b)
 		switch {
 		case errors.Is(err, object.ErrKeyEmpty):
-			return JSONProblemf(ctx, http.StatusBadRequest, "ChangeKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "ChangeKey", "%s: %s", params.Name, err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", params.Name, err)
 		default:
 			return ctx.NoContent(http.StatusNoContent)
 		}

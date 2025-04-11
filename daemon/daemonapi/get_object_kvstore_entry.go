@@ -44,7 +44,7 @@ func (a *DaemonAPI) GetObjectDataStoreKey(ctx echo.Context, namespace string, ki
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		b, err := ks.DecodeKey(params.Key)
+		b, err := ks.DecodeKey(params.Name)
 		switch {
 		case err == nil:
 			var contentType string
@@ -59,7 +59,7 @@ func (a *DaemonAPI) GetObjectDataStoreKey(ctx echo.Context, namespace string, ki
 		case errors.Is(err, object.ErrKeyNotExist):
 			return JSONProblemf(ctx, http.StatusNotFound, "DecodeKey", "%s", err)
 		default:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", params.Name, err)
 		}
 	}
 

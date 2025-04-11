@@ -45,15 +45,15 @@ func (a *DaemonAPI) GetObjectDataStore(ctx echo.Context, namespace string, kind 
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		if params.Keys == nil {
+		if params.Names == nil {
 			return ctx.JSON(http.StatusOK, result)
 		}
 
-		for _, key := range *params.Keys {
-			if b, err := ks.DecodeKey(key); err != nil {
-				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", key, err)
+		for _, name := range *params.Names {
+			if b, err := ks.DecodeKey(name); err != nil {
+				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", name, err)
 			} else {
-				result = append(result, api.DataStoreKey{Name: key, Bytes: b})
+				result = append(result, api.DataStoreKey{Name: name, Bytes: b})
 			}
 		}
 		return ctx.JSON(http.StatusOK, result)

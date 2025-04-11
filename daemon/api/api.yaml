@@ -3065,7 +3065,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       responses:
         200:
           content:
@@ -3099,7 +3099,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -3127,7 +3127,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       requestBody:
         required: true
         content:
@@ -3162,7 +3162,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKey'
+        - $ref: '#/components/parameters/inQueryKeyName'
       requestBody:
         required: true
         content:
@@ -3198,7 +3198,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeys'
+        - $ref: '#/components/parameters/inQueryKeyNames'
       responses:
         200:
           content:
@@ -6928,18 +6928,18 @@ components:
       schema:
         type: string
 
-    inQueryKey:
+    inQueryKeyName:
       in: query
-      name: key
+      name: name
       required: true
       schema:
         type: string
         description: A datastore key name
 
-    inQueryKeys:
+    inQueryKeyNames:
       in: query
-      name: key
-      x-go-name: Keys
+      name: name
+      x-go-name: Names
       schema:
         type: array
         items:

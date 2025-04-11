@@ -61,7 +61,7 @@ func (t *CmdObjectKeyEdit) doLocal(obj object.DataStore, c *client.T) error {
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
 	params := api.GetObjectDataStoreKeyParams{
-		Key: key,
+		Name: key,
 	}
 	resp, err := c.GetObjectDataStoreKeyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
@@ -80,7 +80,7 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 	}
 	defer r.Close()
 	params := api.PutObjectDataStoreKeyParams{
-		Key: key,
+		Name: key,
 	}
 	resp, err := c.PutObjectDataStoreKeyWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
 	if err != nil {

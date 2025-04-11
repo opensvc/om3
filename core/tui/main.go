@@ -256,7 +256,7 @@ func (t *App) updateKeyTextView() {
 		return
 	}
 	resp, err := t.client.GetObjectDataStoreKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataStoreKeyParams{
-		Key: t.viewKey,
+		Name: t.viewKey,
 	})
 	if err != nil {
 		t.errorf("%s", err)

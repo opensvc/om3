@@ -40,16 +40,16 @@ func (a *DaemonAPI) PostObjectDataStoreKey(ctx echo.Context, namespace string, k
 
 		b, err := ioutil.ReadAll(ctx.Request().Body)
 		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
 		}
-		err = ks.AddKey(params.Key, b)
+		err = ks.AddKey(params.Name, b)
 		switch {
 		case errors.Is(err, object.ErrKeyExist):
-			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Key, err)
+			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Name, err)
 		case errors.Is(err, object.ErrKeyEmpty):
-			return JSONProblemf(ctx, http.StatusBadRequest, "AddKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "AddKey", "%s: %s", params.Name, err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Name, err)
 		default:
 			return ctx.NoContent(http.StatusNoContent)
 		}

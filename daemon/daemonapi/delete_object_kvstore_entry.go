@@ -37,14 +37,14 @@ func (a *DaemonAPI) DeleteObjectDataStoreKey(ctx echo.Context, namespace string,
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
-		err = ks.RemoveKey(params.Key)
+		err = ks.RemoveKey(params.Name)
 		switch {
 		case errors.Is(err, object.ErrKeyNotExist):
 			return ctx.NoContent(http.StatusNoContent)
 		case errors.Is(err, object.ErrKeyEmpty):
-			return JSONProblemf(ctx, http.StatusBadRequest, "RemoveKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "RemoveKey", "%s: %s", params.Name, err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", params.Key, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", params.Name, err)
 		default:
 			return ctx.NoContent(http.StatusNoContent)
 		}

@@ -48,7 +48,7 @@ func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 
 func (t *CmdObjectKeyDecode) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
 	params := api.GetObjectDataStoreKeyParams{
-		Key: t.Key,
+		Name: t.Key,
 	}
 	response, err := c.GetObjectDataStoreKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {

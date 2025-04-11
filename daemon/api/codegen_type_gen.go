@@ -1498,11 +1498,11 @@ type InQueryForce = bool
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
-// InQueryKey A datastore key name
-type InQueryKey = string
+// InQueryKeyName A datastore key name
+type InQueryKeyName = string
 
-// Keys defines model for inQueryKeys.
-type Keys = []string
+// Names defines model for inQueryKeyNames.
+type Names = []string
 
 // InQueryKeywords defines model for inQueryKeywords.
 type InQueryKeywords = []string
@@ -1951,27 +1951,27 @@ type PostObjectConfigUpdateParams struct {
 
 // GetObjectDataStoreParams defines parameters for GetObjectDataStore.
 type GetObjectDataStoreParams struct {
-	Keys *Keys `form:"key,omitempty" json:"key,omitempty"`
+	Names *Names `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // DeleteObjectDataStoreKeyParams defines parameters for DeleteObjectDataStoreKey.
 type DeleteObjectDataStoreKeyParams struct {
-	Key InQueryKey `form:"key" json:"key"`
+	Name InQueryKeyName `form:"name" json:"name"`
 }
 
 // GetObjectDataStoreKeyParams defines parameters for GetObjectDataStoreKey.
 type GetObjectDataStoreKeyParams struct {
-	Key InQueryKey `form:"key" json:"key"`
+	Name InQueryKeyName `form:"name" json:"name"`
 }
 
 // PostObjectDataStoreKeyParams defines parameters for PostObjectDataStoreKey.
 type PostObjectDataStoreKeyParams struct {
-	Key InQueryKey `form:"key" json:"key"`
+	Name InQueryKeyName `form:"name" json:"name"`
 }
 
 // PutObjectDataStoreKeyParams defines parameters for PutObjectDataStoreKey.
 type PutObjectDataStoreKeyParams struct {
-	Key InQueryKey `form:"key" json:"key"`
+	Name InQueryKeyName `form:"name" json:"name"`
 }
 
 // GetPoolsParams defines parameters for GetPools.
