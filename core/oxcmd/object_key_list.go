@@ -49,7 +49,7 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 		}
 	}
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:object,NODE:node,KEY:key,SIZE:size",
+		DefaultOutput: "tab=OBJECT:object,NODE:node,NAME:name,SIZE:size",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          result,

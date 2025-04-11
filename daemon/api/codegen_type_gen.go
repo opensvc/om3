@@ -432,7 +432,7 @@ type DaemonStatus struct {
 // DataStoreKey defines model for DataStoreKey.
 type DataStoreKey struct {
 	Bytes []byte `json:"bytes"`
-	Key   string `json:"key"`
+	Name  string `json:"name"`
 }
 
 // DataStoreKeyList defines model for DataStoreKeyList.
@@ -446,7 +446,7 @@ type DataStoreKeyListKind string
 
 // DataStoreKeyListItem defines model for DataStoreKeyListItem.
 type DataStoreKeyListItem struct {
-	Key    string `json:"key"`
+	Name   string `json:"name"`
 	Node   string `json:"node"`
 	Object string `json:"object"`
 	Size   int    `json:"size"`
@@ -940,9 +940,9 @@ type Patch struct {
 type PatchDataStoreKey struct {
 	Action PatchDataStoreKeyAction `json:"action"`
 	Bytes  *[]byte                 `json:"bytes,omitempty"`
-	Key    string                  `json:"key"`
-	Name   *string                 `json:"name,omitempty"`
+	Name   string                  `json:"name"`
 	String *string                 `json:"string,omitempty"`
+	To     *string                 `json:"to,omitempty"`
 }
 
 // PatchDataStoreKeyAction defines model for PatchDataStoreKey.Action.

@@ -53,7 +53,7 @@ func (a *DaemonAPI) GetObjectDataStore(ctx echo.Context, namespace string, kind 
 			if b, err := ks.DecodeKey(key); err != nil {
 				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", key, err)
 			} else {
-				result = append(result, api.DataStoreKey{Key: key, Bytes: b})
+				result = append(result, api.DataStoreKey{Name: key, Bytes: b})
 			}
 		}
 		return ctx.JSON(http.StatusOK, result)

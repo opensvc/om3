@@ -6360,10 +6360,10 @@ components:
     DataStoreKey:
       type: object
       required:
-        - key
+        - name
         - bytes
       properties:
-        key:
+        name:
           type: string
         bytes:
           type: string
@@ -6392,14 +6392,14 @@ components:
       required:
         - node
         - object
-        - key
+        - name
         - size
       properties:
         node:
           type: string
         object:
           type: string
-        key:
+        name:
           type: string
         size:
           type: integer
@@ -6413,7 +6413,7 @@ components:
       type: object
       required:
         - action
-        - key
+        - name
       properties:
         action:
           type: string
@@ -6422,9 +6422,9 @@ components:
             - change
             - remove
             - rename
-        key:
-          type: string
         name:
+          type: string
+        to:
           type: string
         string:
           type: string

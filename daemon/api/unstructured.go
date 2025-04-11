@@ -517,7 +517,7 @@ func (t DataStoreKeyListItem) Unstructured() map[string]any {
 	return map[string]any{
 		"node":   t.Node,
 		"object": t.Object,
-		"key":    t.Key,
+		"name":   t.Name,
 		"size":   t.Size,
 	}
 }

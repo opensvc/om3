@@ -61,7 +61,7 @@ func (t *App) updateKeysView() {
 	t.keys.SetCell(0, 1, tview.NewTableCell("SIZE").SetTextColor(colorTitle).SetSelectable(false))
 	for i, key := range resp.JSON200.Items {
 		row := 1 + i
-		t.keys.SetCell(row, 0, tview.NewTableCell(key.Key).SetSelectable(true))
+		t.keys.SetCell(row, 0, tview.NewTableCell(key.Name).SetSelectable(true))
 		t.keys.SetCell(row, 1, tview.NewTableCell(sizeconv.BSizeCompact(float64(key.Size))).SetSelectable(false))
 	}
 }

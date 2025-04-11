@@ -42,9 +42,9 @@ func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kin
 	getBytes := func(patch api.PatchDataStoreKey) ([]byte, error) {
 		switch {
 		case patch.Bytes == nil && patch.String == nil:
-			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "bytes or string is required to add or change key %s", patch.Key)
+			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "bytes or string is required to add or change key %s", patch.Name)
 		case patch.Bytes != nil && patch.String != nil:
-			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "only one of bytes or string is allowed to add or change key %s", patch.Key)
+			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "only one of bytes or string is allowed to add or change key %s", patch.Name)
 		case patch.Bytes != nil:
 			return *patch.Bytes, nil
 		case patch.String != nil:
@@ -72,30 +72,30 @@ func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kin
 				if err != nil {
 					return err
 				}
-				if err := ks.TransactionAddKey(patch.Key, b); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", patch.Key, err)
+				if err := ks.TransactionAddKey(patch.Name, b); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", patch.Name, err)
 				}
 			case "change":
 				b, err := getBytes(patch)
 				if err != nil {
 					return err
 				}
-				if err := ks.TransactionChangeKey(patch.Key, b); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", patch.Key, err)
+				if err := ks.TransactionChangeKey(patch.Name, b); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", patch.Name, err)
 				}
 			case "remove":
-				if err := ks.TransactionRemoveKey(patch.Key); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", patch.Key, err)
+				if err := ks.TransactionRemoveKey(patch.Name); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveKey", "%s: %s", patch.Name, err)
 				}
 			case "rename":
-				if patch.Name == nil {
-					JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: rename with no target name", patch.Key)
+				if patch.To == nil {
+					JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: rename with no target name", patch.Name)
 				}
-				if err := ks.TransactionRenameKey(patch.Key, *patch.Name); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "RenameKey", "%s: %s", patch.Key, err)
+				if err := ks.TransactionRenameKey(patch.Name, *patch.To); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "RenameKey", "%s: %s", patch.Name, err)
 				}
 			default:
-				return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: action %s is not supported, use add, change or remove", patch.Key, patch.Action)
+				return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: action %s is not supported, use add, change or remove", patch.Name, patch.Action)
 			}
 		}
 

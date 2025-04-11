@@ -23,8 +23,8 @@ type (
 func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 	data := api.PatchObjectDataStoreJSONRequestBody{
 		api.PatchDataStoreKey{
-			Key:    t.Key,
-			Name:   &t.To,
+			Name:   t.Key,
+			To:     &t.To,
 			Action: api.Rename,
 		},
 	}

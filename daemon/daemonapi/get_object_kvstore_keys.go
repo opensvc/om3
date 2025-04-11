@@ -51,7 +51,7 @@ func (a *DaemonAPI) GetObjectDataStoreKeys(ctx echo.Context, namespace string, k
 				items = append(items, api.DataStoreKeyListItem{
 					Object: p.String(),
 					Node:   a.localhost,
-					Key:    name,
+					Name:   name,
 					Size:   size,
 				})
 			}

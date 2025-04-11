@@ -25,12 +25,12 @@ type (
 	}
 )
 
-func makeDataStorePatch(key string, value, from *string, action api.PatchDataStoreKeyAction) (api.PatchObjectDataStoreJSONRequestBody, error) {
+func makeDataStorePatch(name string, value, from *string, action api.PatchDataStoreKeyAction) (api.PatchObjectDataStoreJSONRequestBody, error) {
 	data := make(api.PatchObjectDataStoreJSONRequestBody, 0)
 
 	if value != nil {
 		data = append(data, api.PatchDataStoreKey{
-			Key:    key,
+			Name:   name,
 			String: value,
 			Action: action,
 		})
@@ -41,12 +41,12 @@ func makeDataStorePatch(key string, value, from *string, action api.PatchDataSto
 		return data, err
 	}
 	for path, b := range m {
-		k, err := datastore.FileToKey(path, key, *from)
+		k, err := datastore.FileToKey(path, name, *from)
 		if err != nil {
 			return nil, err
 		}
 		data = append(data, api.PatchDataStoreKey{
-			Key:    k,
+			Name:   k,
 			Bytes:  &b,
 			Action: action,
 		})
