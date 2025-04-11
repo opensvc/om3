@@ -3539,7 +3539,7 @@ func newCmdDataStoreChange(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
-	commoncmd.FlagKeyName(flags, &options.Name)
+	commoncmd.FlagKey(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
 	return cmd
