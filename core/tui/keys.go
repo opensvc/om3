@@ -48,7 +48,7 @@ func (t *App) updateKeysView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}
-	resp, err := t.client.GetObjectKVStoreKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
+	resp, err := t.client.GetObjectDataStoreKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
 	if err != nil {
 		return
 	}

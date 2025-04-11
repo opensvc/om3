@@ -509,11 +509,11 @@ func (t PoolVolume) Unstructured() map[string]any {
 	}
 }
 
-func (t KVStoreKeyList) GetItems() any {
+func (t DataStoreKeyList) GetItems() any {
 	return t.Items
 }
 
-func (t KVStoreKeyListItem) Unstructured() map[string]any {
+func (t DataStoreKeyListItem) Unstructured() map[string]any {
 	return map[string]any{
 		"node":   t.Node,
 		"object": t.Object,

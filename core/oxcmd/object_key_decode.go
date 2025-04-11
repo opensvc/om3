@@ -47,10 +47,10 @@ func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
 }
 
 func (t *CmdObjectKeyDecode) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
-	params := api.GetObjectKVStoreEntryParams{
+	params := api.GetObjectDataStoreKeyParams{
 		Key: t.Key,
 	}
-	response, err := c.GetObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	response, err := c.GetObjectDataStoreKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {
 		return err
 	}

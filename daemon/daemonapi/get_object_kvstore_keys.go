@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	log := LogHandler(ctx, "GetObjectKVStore")
+func (a *DaemonAPI) GetObjectDataStoreKeys(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "GetObjectDataStore")
 
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
@@ -33,30 +33,30 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
 		if names, err := ks.AllKeys(); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Keys", "%s", err)
 		} else {
-			items := make(api.KVStoreKeyListItems, 0)
+			items := make(api.DataStoreKeyListItems, 0)
 			for _, name := range names {
 				configKey := key.T{
 					Section: "data",
 					Option:  name,
 				}
 				size := len(ks.Config().GetString(configKey))
-				items = append(items, api.KVStoreKeyListItem{
+				items = append(items, api.DataStoreKeyListItem{
 					Object: p.String(),
 					Node:   a.localhost,
 					Key:    name,
 					Size:   size,
 				})
 			}
-			return ctx.JSON(http.StatusOK, api.KVStoreKeyList{
-				Kind:  "KVStoreKeyList",
+			return ctx.JSON(http.StatusOK, api.DataStoreKeyList{
+				Kind:  "DataStoreKeyList",
 				Items: items,
 			})
 		}
@@ -67,7 +67,7 @@ func (a *DaemonAPI) GetObjectKVStoreKeys(ctx echo.Context, namespace string, kin
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.GetObjectKVStoreKeysWithResponse(ctx.Request().Context(), namespace, kind, name); err != nil {
+		if resp, err := c.GetObjectDataStoreKeysWithResponse(ctx.Request().Context(), namespace, kind, name); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

@@ -34,9 +34,9 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	result := api.KVStoreKeyList{
-		Kind:  "KVStoreKeyList",
-		Items: make(api.KVStoreKeyListItems, 0),
+	result := api.DataStoreKeyList{
+		Kind:  "DataStoreKeyList",
+		Items: make(api.DataStoreKeyListItems, 0),
 	}
 	for _, path := range paths {
 		if !slices.Contains(naming.KindDataStore, path.Kind) {
@@ -58,8 +58,8 @@ func (t *CmdObjectKeyList) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.KVStoreKeyListItems, error) {
-	response, err := c.GetObjectKVStoreKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
+func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.DataStoreKeyListItems, error) {
+	response, err := c.GetObjectDataStoreKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return nil, err
 	}

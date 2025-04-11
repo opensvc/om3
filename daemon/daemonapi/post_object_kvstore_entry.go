@@ -13,8 +13,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectKVStoreEntryParams) error {
-	log := LogHandler(ctx, "PostObjectKVStoreEntry")
+func (a *DaemonAPI) PostObjectDataStoreKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectDataStoreKeyParams) error {
+	log := LogHandler(ctx, "PostObjectDataStoreKey")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
@@ -33,9 +33,9 @@ func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, k
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
 		b, err := ioutil.ReadAll(ctx.Request().Body)
@@ -60,7 +60,7 @@ func (a *DaemonAPI) PostObjectKVStoreEntry(ctx echo.Context, namespace string, k
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PostObjectKVStoreEntryWithBodyWithResponse(ctx.Request().Context(), namespace, kind, name, &params, "application/octet-stream", ctx.Request().Body); err != nil {
+		if resp, err := c.PostObjectDataStoreKeyWithBodyWithResponse(ctx.Request().Context(), namespace, kind, name, &params, "application/octet-stream", ctx.Request().Body); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

@@ -21,8 +21,8 @@ type (
 )
 
 func (t *CmdObjectKeyRename) Run(selector, kind string) error {
-	data := api.PatchObjectKVStoreJSONRequestBody{
-		api.PatchKVStoreEntry{
+	data := api.PatchObjectDataStoreJSONRequestBody{
+		api.PatchDataStoreKey{
 			Key:    t.Key,
 			Name:   &t.To,
 			Action: api.Rename,
@@ -52,8 +52,8 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyRename) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyRename) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataStoreJSONRequestBody) error {
+	response, err := c.PatchObjectDataStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

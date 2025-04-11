@@ -12,15 +12,15 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	log := LogHandler(ctx, "PatchObjectKVStore")
+func (a *DaemonAPI) PatchObjectDataStore(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "PatchObjectDataStore")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 
 	var (
-		patches api.PatchKVStoreEntries
+		patches api.PatchDataStoreKeys
 	)
 
 	if err := ctx.Bind(&patches); err != nil {
@@ -39,7 +39,7 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	getBytes := func(patch api.PatchKVStoreEntry) ([]byte, error) {
+	getBytes := func(patch api.PatchDataStoreKey) ([]byte, error) {
 		switch {
 		case patch.Bytes == nil && patch.String == nil:
 			return nil, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "bytes or string is required to add or change key %s", patch.Key)
@@ -60,9 +60,9 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
 		for _, patch := range patches {
@@ -110,7 +110,7 @@ func (a *DaemonAPI) PatchObjectKVStore(ctx echo.Context, namespace string, kind 
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PatchObjectKVStoreWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
+		if resp, err := c.PatchObjectDataStoreWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

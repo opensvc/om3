@@ -40,10 +40,10 @@ func (t *CmdObjectKeyEdit) do(selector string, c *client.T) error {
 }
 
 func fetchKey(p naming.Path, key string, c *client.T) (s []byte, err error) {
-	params := api.GetObjectKVStoreEntryParams{
+	params := api.GetObjectDataStoreKeyParams{
 		Key: key,
 	}
-	resp, err := c.GetObjectKVStoreEntryWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+	resp, err := c.GetObjectDataStoreKeyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -59,10 +59,10 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 		return err
 	}
 	defer r.Close()
-	params := api.PutObjectKVStoreEntryParams{
+	params := api.PutObjectDataStoreKeyParams{
 		Key: key,
 	}
-	resp, err := c.PutObjectKVStoreEntryWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
+	resp, err := c.PutObjectDataStoreKeyWithBody(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", r)
 	if err != nil {
 		return err
 	}

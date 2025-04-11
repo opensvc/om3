@@ -37,6 +37,11 @@ const (
 	CapabilityListKindCapabilityList CapabilityListKind = "CapabilityList"
 )
 
+// Defines values for DataStoreKeyListKind.
+const (
+	DataStoreKeyListKindDataStoreKeyList DataStoreKeyListKind = "DataStoreKeyList"
+)
+
 // Defines values for DiskItemKind.
 const (
 	DiskItemKindDiskItem DiskItemKind = "DiskItem"
@@ -97,11 +102,6 @@ const (
 	InstanceListKindInstanceList InstanceListKind = "InstanceList"
 )
 
-// Defines values for KVStoreKeyListKind.
-const (
-	KVStoreKeyListKindKVStoreKeyList KVStoreKeyListKind = "KVStoreKeyList"
-)
-
 // Defines values for KeywordItemKind.
 const (
 	KeywordItemKindKeywordItem KeywordItemKind = "KeywordItem"
@@ -159,17 +159,17 @@ const (
 	PackageListKindPackageList PackageListKind = "PackageList"
 )
 
+// Defines values for PatchDataStoreKeyAction.
+const (
+	Add    PatchDataStoreKeyAction = "add"
+	Change PatchDataStoreKeyAction = "change"
+	Remove PatchDataStoreKeyAction = "remove"
+	Rename PatchDataStoreKeyAction = "rename"
+)
+
 // Defines values for PatchItemKind.
 const (
 	PacthItem PatchItemKind = "PacthItem"
-)
-
-// Defines values for PatchKVStoreEntryAction.
-const (
-	Add    PatchKVStoreEntryAction = "add"
-	Change PatchKVStoreEntryAction = "change"
-	Remove PatchKVStoreEntryAction = "remove"
-	Rename PatchKVStoreEntryAction = "rename"
 )
 
 // Defines values for PatchListKind.
@@ -429,6 +429,35 @@ type DaemonStatus struct {
 	Daemon  DaemonLocal `json:"daemon"`
 }
 
+// DataStoreKey defines model for DataStoreKey.
+type DataStoreKey struct {
+	Bytes []byte `json:"bytes"`
+	Key   string `json:"key"`
+}
+
+// DataStoreKeyList defines model for DataStoreKeyList.
+type DataStoreKeyList struct {
+	Items DataStoreKeyListItems `json:"items"`
+	Kind  DataStoreKeyListKind  `json:"kind"`
+}
+
+// DataStoreKeyListKind defines model for DataStoreKeyList.Kind.
+type DataStoreKeyListKind string
+
+// DataStoreKeyListItem defines model for DataStoreKeyListItem.
+type DataStoreKeyListItem struct {
+	Key    string `json:"key"`
+	Node   string `json:"node"`
+	Object string `json:"object"`
+	Size   int    `json:"size"`
+}
+
+// DataStoreKeyListItems defines model for DataStoreKeyListItems.
+type DataStoreKeyListItems = []DataStoreKeyListItem
+
+// DataStoreKeys defines model for DataStoreKeys.
+type DataStoreKeys = []DataStoreKey
+
 // Disk defines model for Disk.
 type Disk struct {
 	Devpath string   `json:"devpath"`
@@ -634,35 +663,6 @@ type InstanceMonitor = instance.Monitor
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
-
-// KVStoreEntries defines model for KVStoreEntries.
-type KVStoreEntries = []KVStoreEntry
-
-// KVStoreEntry defines model for KVStoreEntry.
-type KVStoreEntry struct {
-	Bytes []byte `json:"bytes"`
-	Key   string `json:"key"`
-}
-
-// KVStoreKeyList defines model for KVStoreKeyList.
-type KVStoreKeyList struct {
-	Items KVStoreKeyListItems `json:"items"`
-	Kind  KVStoreKeyListKind  `json:"kind"`
-}
-
-// KVStoreKeyListKind defines model for KVStoreKeyList.Kind.
-type KVStoreKeyListKind string
-
-// KVStoreKeyListItem defines model for KVStoreKeyListItem.
-type KVStoreKeyListItem struct {
-	Key    string `json:"key"`
-	Node   string `json:"node"`
-	Object string `json:"object"`
-	Size   int    `json:"size"`
-}
-
-// KVStoreKeyListItems defines model for KVStoreKeyListItems.
-type KVStoreKeyListItems = []KVStoreKeyListItem
 
 // KeywordData defines model for KeywordData.
 type KeywordData struct {
@@ -936,6 +936,21 @@ type Patch struct {
 	Revision    string    `json:"revision"`
 }
 
+// PatchDataStoreKey defines model for PatchDataStoreKey.
+type PatchDataStoreKey struct {
+	Action PatchDataStoreKeyAction `json:"action"`
+	Bytes  *[]byte                 `json:"bytes,omitempty"`
+	Key    string                  `json:"key"`
+	Name   *string                 `json:"name,omitempty"`
+	String *string                 `json:"string,omitempty"`
+}
+
+// PatchDataStoreKeyAction defines model for PatchDataStoreKey.Action.
+type PatchDataStoreKeyAction string
+
+// PatchDataStoreKeys defines model for PatchDataStoreKeys.
+type PatchDataStoreKeys = []PatchDataStoreKey
+
 // PatchItem defines model for PatchItem.
 type PatchItem struct {
 	Data Patch         `json:"data"`
@@ -948,21 +963,6 @@ type PatchItemKind string
 
 // PatchItems defines model for PatchItems.
 type PatchItems = []PatchItem
-
-// PatchKVStoreEntries defines model for PatchKVStoreEntries.
-type PatchKVStoreEntries = []PatchKVStoreEntry
-
-// PatchKVStoreEntry defines model for PatchKVStoreEntry.
-type PatchKVStoreEntry struct {
-	Action PatchKVStoreEntryAction `json:"action"`
-	Bytes  *[]byte                 `json:"bytes,omitempty"`
-	Key    string                  `json:"key"`
-	Name   *string                 `json:"name,omitempty"`
-	String *string                 `json:"string,omitempty"`
-}
-
-// PatchKVStoreEntryAction defines model for PatchKVStoreEntry.Action.
-type PatchKVStoreEntryAction string
 
 // PatchList defines model for PatchList.
 type PatchList struct {
@@ -1473,7 +1473,8 @@ type InPathName = string
 // InPathNamespace defines model for inPathNamespace.
 type InPathNamespace = string
 
-// InPathNodeName defines model for inPathNodeName.
+// InPathNodeName The cluster node to relay the request to. `_` and `localhost` refer tp
+// the node that received the request.
 type InPathNodeName = string
 
 // InQueryConfirm defines model for inQueryConfirm.
@@ -1497,7 +1498,7 @@ type InQueryForce = bool
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
-// InQueryKey A kvstore key name
+// InQueryKey A datastore key name
 type InQueryKey = string
 
 // Keys defines model for inQueryKeys.
@@ -1948,28 +1949,28 @@ type PostObjectConfigUpdateParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
-// GetObjectKVStoreParams defines parameters for GetObjectKVStore.
-type GetObjectKVStoreParams struct {
+// GetObjectDataStoreParams defines parameters for GetObjectDataStore.
+type GetObjectDataStoreParams struct {
 	Keys *Keys `form:"key,omitempty" json:"key,omitempty"`
 }
 
-// DeleteObjectKVStoreEntryParams defines parameters for DeleteObjectKVStoreEntry.
-type DeleteObjectKVStoreEntryParams struct {
+// DeleteObjectDataStoreKeyParams defines parameters for DeleteObjectDataStoreKey.
+type DeleteObjectDataStoreKeyParams struct {
 	Key InQueryKey `form:"key" json:"key"`
 }
 
-// GetObjectKVStoreEntryParams defines parameters for GetObjectKVStoreEntry.
-type GetObjectKVStoreEntryParams struct {
+// GetObjectDataStoreKeyParams defines parameters for GetObjectDataStoreKey.
+type GetObjectDataStoreKeyParams struct {
 	Key InQueryKey `form:"key" json:"key"`
 }
 
-// PostObjectKVStoreEntryParams defines parameters for PostObjectKVStoreEntry.
-type PostObjectKVStoreEntryParams struct {
+// PostObjectDataStoreKeyParams defines parameters for PostObjectDataStoreKey.
+type PostObjectDataStoreKeyParams struct {
 	Key InQueryKey `form:"key" json:"key"`
 }
 
-// PutObjectKVStoreEntryParams defines parameters for PutObjectKVStoreEntry.
-type PutObjectKVStoreEntryParams struct {
+// PutObjectDataStoreKeyParams defines parameters for PutObjectDataStoreKey.
+type PutObjectDataStoreKeyParams struct {
 	Key InQueryKey `form:"key" json:"key"`
 }
 
@@ -2039,8 +2040,8 @@ type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
-// PatchObjectKVStoreJSONRequestBody defines body for PatchObjectKVStore for application/json ContentType.
-type PatchObjectKVStoreJSONRequestBody = PatchKVStoreEntries
+// PatchObjectDataStoreJSONRequestBody defines body for PatchObjectDataStore for application/json ContentType.
+type PatchObjectDataStoreJSONRequestBody = PatchDataStoreKeys
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

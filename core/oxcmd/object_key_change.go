@@ -25,11 +25,11 @@ type (
 	}
 )
 
-func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEntryAction) (api.PatchObjectKVStoreJSONRequestBody, error) {
-	data := make(api.PatchObjectKVStoreJSONRequestBody, 0)
+func makeDataStorePatch(key string, value, from *string, action api.PatchDataStoreKeyAction) (api.PatchObjectDataStoreJSONRequestBody, error) {
+	data := make(api.PatchObjectDataStoreJSONRequestBody, 0)
 
 	if value != nil {
-		data = append(data, api.PatchKVStoreEntry{
+		data = append(data, api.PatchDataStoreKey{
 			Key:    key,
 			String: value,
 			Action: action,
@@ -45,7 +45,7 @@ func makeKVStorePatch(key string, value, from *string, action api.PatchKVStoreEn
 		if err != nil {
 			return nil, err
 		}
-		data = append(data, api.PatchKVStoreEntry{
+		data = append(data, api.PatchDataStoreKey{
 			Key:    k,
 			Bytes:  &b,
 			Action: action,
@@ -58,7 +58,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	if t.Value == nil && t.From == nil {
 		return fmt.Errorf("a value or value source mut be specified for a change action")
 	}
-	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Change)
+	data, err := makeDataStorePatch(t.Key, t.Value, t.From, api.Change)
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataStoreJSONRequestBody) error {
+	response, err := c.PatchObjectDataStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}

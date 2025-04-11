@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectKVStoreEntryParams) error {
-	log := LogHandler(ctx, "DeleteObjectKVStoreEntry")
+func (a *DaemonAPI) DeleteObjectDataStoreKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.DeleteObjectDataStoreKeyParams) error {
+	log := LogHandler(ctx, "DeleteObjectDataStoreKey")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
@@ -32,9 +32,9 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 
 		switch {
 		case errors.Is(err, object.ErrWrongType):
-			return JSONProblemf(ctx, http.StatusBadRequest, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewKVStore", "%s", err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
 		err = ks.RemoveKey(params.Key)
@@ -55,7 +55,7 @@ func (a *DaemonAPI) DeleteObjectKVStoreEntry(ctx echo.Context, namespace string,
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.DeleteObjectKVStoreEntryWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.DeleteObjectDataStoreKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)

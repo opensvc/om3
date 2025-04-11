@@ -44,10 +44,10 @@ func (t *CmdObjectKeyRemove) Run(selector, kind string) error {
 }
 
 func (t *CmdObjectKeyRemove) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
-	params := api.DeleteObjectKVStoreEntryParams{
+	params := api.DeleteObjectDataStoreKeyParams{
 		Key: t.Key,
 	}
-	response, err := c.DeleteObjectKVStoreEntryWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	response, err := c.DeleteObjectDataStoreKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
 	if err != nil {
 		return err
 	}

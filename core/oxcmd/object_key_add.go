@@ -28,7 +28,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 		s := ""
 		t.Value = &s
 	}
-	data, err := makeKVStorePatch(t.Key, t.Value, t.From, api.Add)
+	data, err := makeDataStorePatch(t.Key, t.Value, t.From, api.Add)
 	if err != nil {
 		return err
 	}
@@ -56,8 +56,8 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 	return nil
 }
 
-func (t *CmdObjectKeyAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectKVStoreJSONRequestBody) error {
-	response, err := c.PatchObjectKVStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
+func (t *CmdObjectKeyAdd) RunForPath(ctx context.Context, c *client.T, path naming.Path, data api.PatchObjectDataStoreJSONRequestBody) error {
+	response, err := c.PatchObjectDataStoreWithResponse(ctx, path.Namespace, path.Kind, path.Name, data)
 	if err != nil {
 		return err
 	}
