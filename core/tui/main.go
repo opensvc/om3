@@ -1228,8 +1228,8 @@ func (t *App) actionResourceEnable(keys map[[3]string]any) {
 		for i, rid := range rids {
 			unset[i] = rid + ".disable"
 		}
-		params := api.PostObjectConfigUpdateParams{Unset: &unset}
-		_, _ = t.client.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+		params := api.PatchObjectConfigParams{Unset: &unset}
+		_, _ = t.client.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
@@ -1245,8 +1245,8 @@ func (t *App) actionResourceDisable(keys map[[3]string]any) {
 		for i, rid := range rids {
 			set[i] = rid + ".disable=true"
 		}
-		params := api.PostObjectConfigUpdateParams{Set: &set}
-		_, _ = t.client.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+		params := api.PatchObjectConfigParams{Set: &set}
+		_, _ = t.client.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 

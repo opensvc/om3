@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.6
+  version: 3.13.6
 
 paths:
   /auth/info:
@@ -1275,6 +1275,35 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchNodeConfig
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the node configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /node/name/{nodename}/config/file:
     get:
@@ -1362,36 +1391,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/config/update:
-    post:
-      operationId: PostNodeConfigUpdate
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Delete sections, unset and set keywords in the node configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryDeletes'
-        - $ref: '#/components/parameters/inQueryUnsets'
-        - $ref: '#/components/parameters/inQuerySets'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3691,6 +3690,37 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchObjectConfig
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /object/path/{namespace}/{kind}/{name}/config/file:
     get:
@@ -3833,38 +3863,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /object/path/{namespace}/{kind}/{name}/config/update:
-    post:
-      operationId: PostObjectConfigUpdate
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Delete sections, unset and set keywords in the object configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryDeletes'
-        - $ref: '#/components/parameters/inQueryUnsets'
-        - $ref: '#/components/parameters/inQuerySets'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
         400:
           $ref: '#/components/responses/400'
         401:

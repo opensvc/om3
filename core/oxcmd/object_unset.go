@@ -44,10 +44,10 @@ func (t *CmdObjectUnset) Run(selector, kind string) error {
 	for _, path := range paths {
 		go func(p naming.Path) {
 			defer func() { doneC <- p.String() }()
-			params := api.PostObjectConfigUpdateParams{}
+			params := api.PatchObjectConfigParams{}
 			params.Unset = &t.Keywords
 			params.Delete = &t.Sections
-			response, err := c.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				errC <- err
 				return

@@ -194,6 +194,9 @@ type ClientInterface interface {
 	// GetNodeConfig request
 	GetNodeConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchNodeConfig request
+	PatchNodeConfig(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeConfigFile request
 	GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -202,9 +205,6 @@ type ClientInterface interface {
 
 	// GetNodeConfigGet request
 	GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeConfigUpdate request
-	PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -433,6 +433,9 @@ type ClientInterface interface {
 	// GetObjectConfig request
 	GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchObjectConfig request
+	PatchObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObjectConfigFile request
 	GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -444,9 +447,6 @@ type ClientInterface interface {
 
 	// GetObjectConfigGet request
 	GetObjectConfigGet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostObjectConfigUpdate request
-	PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectData request
 	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -933,6 +933,18 @@ func (c *Client) GetNodeConfig(ctx context.Context, nodename InPathNodeName, par
 	return c.Client.Do(req)
 }
 
+func (c *Client) PatchNodeConfig(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchNodeConfigRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigFileRequest(c.Server, nodename)
 	if err != nil {
@@ -959,18 +971,6 @@ func (c *Client) PutNodeConfigFileWithBody(ctx context.Context, nodename InPathN
 
 func (c *Client) GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigGetRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeConfigUpdateRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1905,6 +1905,18 @@ func (c *Client) GetObjectConfig(ctx context.Context, namespace InPathNamespace,
 	return c.Client.Do(req)
 }
 
+func (c *Client) PatchObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectConfigRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigFileRequest(c.Server, namespace, kind, name)
 	if err != nil {
@@ -1943,18 +1955,6 @@ func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPa
 
 func (c *Client) GetObjectConfigGet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigGetRequest(c.Server, namespace, kind, name, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectConfigUpdateRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3724,6 +3724,94 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 	return req, nil
 }
 
+// NewPatchNodeConfigRequest generates requests for PatchNodeConfig
+func NewPatchNodeConfigRequest(server string, nodename InPathNodeName, params *PatchNodeConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeConfigFileRequest generates requests for GetNodeConfigFile
 func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -3875,94 +3963,6 @@ func NewGetNodeConfigGetRequest(server string, nodename InPathNodeName, params *
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostNodeConfigUpdateRequest generates requests for PostNodeConfigUpdate
-func NewPostNodeConfigUpdateRequest(server string, nodename InPathNodeName, params *PostNodeConfigUpdateParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/config/update", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Delete != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Unset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Set != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -9155,6 +9155,108 @@ func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind In
 	return req, nil
 }
 
+// NewPatchObjectConfigRequest generates requests for PatchObjectConfig
+func NewPatchObjectConfigRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetObjectConfigFileRequest generates requests for GetObjectConfigFile
 func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -9398,108 +9500,6 @@ func NewGetObjectConfigGetRequest(server string, namespace InPathNamespace, kind
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostObjectConfigUpdateRequest generates requests for PostObjectConfigUpdate
-func NewPostObjectConfigUpdateRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/update", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Delete != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Unset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Set != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10582,6 +10582,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeConfigWithResponse request
 	GetNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*GetNodeConfigResponse, error)
 
+	// PatchNodeConfigWithResponse request
+	PatchNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*PatchNodeConfigResponse, error)
+
 	// GetNodeConfigFileWithResponse request
 	GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error)
 
@@ -10590,9 +10593,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeConfigGetWithResponse request
 	GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error)
-
-	// PostNodeConfigUpdateWithResponse request
-	PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error)
 
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
@@ -10821,6 +10821,9 @@ type ClientWithResponsesInterface interface {
 	// GetObjectConfigWithResponse request
 	GetObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error)
 
+	// PatchObjectConfigWithResponse request
+	PatchObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*PatchObjectConfigResponse, error)
+
 	// GetObjectConfigFileWithResponse request
 	GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error)
 
@@ -10832,9 +10835,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectConfigGetWithResponse request
 	GetObjectConfigGetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*GetObjectConfigGetResponse, error)
-
-	// PostObjectConfigUpdateWithResponse request
-	PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error)
 
 	// GetObjectDataWithResponse request
 	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
@@ -11736,6 +11736,32 @@ func (r GetNodeConfigResponse) StatusCode() int {
 	return 0
 }
 
+type PatchNodeConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Committed
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchNodeConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchNodeConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11808,32 +11834,6 @@ func (r GetNodeConfigGetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeConfigGetResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodeConfigUpdateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Committed
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeConfigUpdateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeConfigUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13757,6 +13757,31 @@ func (r GetObjectConfigResponse) StatusCode() int {
 	return 0
 }
 
+type PatchObjectConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchObjectConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchObjectConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetObjectConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13856,31 +13881,6 @@ func (r GetObjectConfigGetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetObjectConfigGetResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostObjectConfigUpdateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostObjectConfigUpdateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectConfigUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14619,6 +14619,15 @@ func (c *ClientWithResponses) GetNodeConfigWithResponse(ctx context.Context, nod
 	return ParseGetNodeConfigResponse(rsp)
 }
 
+// PatchNodeConfigWithResponse request returning *PatchNodeConfigResponse
+func (c *ClientWithResponses) PatchNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*PatchNodeConfigResponse, error) {
+	rsp, err := c.PatchNodeConfig(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchNodeConfigResponse(rsp)
+}
+
 // GetNodeConfigFileWithResponse request returning *GetNodeConfigFileResponse
 func (c *ClientWithResponses) GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error) {
 	rsp, err := c.GetNodeConfigFile(ctx, nodename, reqEditors...)
@@ -14644,15 +14653,6 @@ func (c *ClientWithResponses) GetNodeConfigGetWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetNodeConfigGetResponse(rsp)
-}
-
-// PostNodeConfigUpdateWithResponse request returning *PostNodeConfigUpdateResponse
-func (c *ClientWithResponses) PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error) {
-	rsp, err := c.PostNodeConfigUpdate(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeConfigUpdateResponse(rsp)
 }
 
 // PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
@@ -15344,6 +15344,15 @@ func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, n
 	return ParseGetObjectConfigResponse(rsp)
 }
 
+// PatchObjectConfigWithResponse request returning *PatchObjectConfigResponse
+func (c *ClientWithResponses) PatchObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*PatchObjectConfigResponse, error) {
+	rsp, err := c.PatchObjectConfig(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectConfigResponse(rsp)
+}
+
 // GetObjectConfigFileWithResponse request returning *GetObjectConfigFileResponse
 func (c *ClientWithResponses) GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error) {
 	rsp, err := c.GetObjectConfigFile(ctx, namespace, kind, name, reqEditors...)
@@ -15378,15 +15387,6 @@ func (c *ClientWithResponses) GetObjectConfigGetWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetObjectConfigGetResponse(rsp)
-}
-
-// PostObjectConfigUpdateWithResponse request returning *PostObjectConfigUpdateResponse
-func (c *ClientWithResponses) PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error) {
-	rsp, err := c.PostObjectConfigUpdate(ctx, namespace, kind, name, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectConfigUpdateResponse(rsp)
 }
 
 // GetObjectDataWithResponse request returning *GetObjectDataResponse
@@ -17254,6 +17254,60 @@ func ParseGetNodeConfigResponse(rsp *http.Response) (*GetNodeConfigResponse, err
 	return response, nil
 }
 
+// ParsePatchNodeConfigResponse parses an HTTP response from a PatchNodeConfigWithResponse call
+func ParsePatchNodeConfigResponse(rsp *http.Response) (*PatchNodeConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchNodeConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Committed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodeConfigFileResponse parses an HTTP response from a GetNodeConfigFileWithResponse call
 func ParseGetNodeConfigFileResponse(rsp *http.Response) (*GetNodeConfigFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -17378,60 +17432,6 @@ func ParseGetNodeConfigGetResponse(rsp *http.Response) (*GetNodeConfigGetRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest KeywordList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeConfigUpdateResponse parses an HTTP response from a PostNodeConfigUpdateWithResponse call
-func ParsePostNodeConfigUpdateResponse(rsp *http.Response) (*PostNodeConfigUpdateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeConfigUpdateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Committed
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -21545,6 +21545,53 @@ func ParseGetObjectConfigResponse(rsp *http.Response) (*GetObjectConfigResponse,
 	return response, nil
 }
 
+// ParsePatchObjectConfigResponse parses an HTTP response from a PatchObjectConfigWithResponse call
+func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchObjectConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetObjectConfigFileResponse parses an HTTP response from a GetObjectConfigFileWithResponse call
 func ParseGetObjectConfigFileResponse(rsp *http.Response) (*GetObjectConfigFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -21735,53 +21782,6 @@ func ParseGetObjectConfigGetResponse(rsp *http.Response) (*GetObjectConfigGetRes
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostObjectConfigUpdateResponse parses an HTTP response from a PostObjectConfigUpdateWithResponse call
-func ParsePostObjectConfigUpdateResponse(rsp *http.Response) (*PostObjectConfigUpdateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostObjectConfigUpdateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

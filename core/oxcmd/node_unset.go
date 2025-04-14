@@ -34,7 +34,7 @@ func (t *CmdNodeUnset) doRemote() error {
 	if err != nil {
 		return err
 	}
-	params := api.PostNodeConfigUpdateParams{}
+	params := api.PatchNodeConfigParams{}
 	params.Unset = &t.Keywords
 	params.Delete = &t.Sections
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
@@ -53,7 +53,7 @@ func (t *CmdNodeUnset) doRemote() error {
 	for _, nodename := range nodenames {
 		go func(nodename string) {
 			defer func() { doneC <- nodename }()
-			response, err := c.PostNodeConfigUpdateWithResponse(ctx, nodename, &params)
+			response, err := c.PatchNodeConfigWithResponse(ctx, nodename, &params)
 			if err != nil {
 				errC <- err
 				return

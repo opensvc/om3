@@ -12,20 +12,20 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func (a *DaemonAPI) PostNodeConfigUpdate(ctx echo.Context, nodename string, params api.PostNodeConfigUpdateParams) error {
+func (a *DaemonAPI) PatchNodeConfig(ctx echo.Context, nodename string, params api.PatchNodeConfigParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
-		return a.postLocalNodeConfigUpdate(ctx, params)
+		return a.patchLocalNodeConfig(ctx, params)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.PostNodeConfigUpdate(ctx.Request().Context(), nodename, &params)
+		return c.PatchNodeConfig(ctx.Request().Context(), nodename, &params)
 	})
 }
 
-func (a *DaemonAPI) postLocalNodeConfigUpdate(ctx echo.Context, params api.PostNodeConfigUpdateParams) error {
+func (a *DaemonAPI) patchLocalNodeConfig(ctx echo.Context, params api.PatchNodeConfigParams) error {
 	sets := make(keyop.L, 0)
 	unsets := make(key.L, 0)
 	deletes := make([]string, 0)

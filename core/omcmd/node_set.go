@@ -37,14 +37,14 @@ func (t *CmdNodeSet) doRemote() error {
 	if err != nil {
 		return err
 	}
-	params := api.PostNodeConfigUpdateParams{}
+	params := api.PatchNodeConfigParams{}
 	params.Set = &t.KeywordOps
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
 	}
 	for _, nodename := range nodenames {
-		response, err := c.PostNodeConfigUpdateWithResponse(context.Background(), nodename, &params)
+		response, err := c.PatchNodeConfigWithResponse(context.Background(), nodename, &params)
 		if err != nil {
 			return err
 		}

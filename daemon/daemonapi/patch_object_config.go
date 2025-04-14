@@ -18,8 +18,8 @@ var (
 	priorityKey = key.Parse("priority")
 )
 
-func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigUpdateParams) error {
-	log := LogHandler(ctx, "PostObjectConfigUpdate")
+func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PatchObjectConfigParams) error {
+	log := LogHandler(ctx, "patchObjectConfig")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
@@ -106,7 +106,7 @@ func (a *DaemonAPI) PostObjectConfigUpdate(ctx echo.Context, namespace string, k
 			log.Warnf("new client for %s@%s: %s", p, nodename, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PostObjectConfigUpdateWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+		if resp, err := c.PatchObjectConfigWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			log.Warnf("request proxy %s@%s: %s", p, nodename, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else {

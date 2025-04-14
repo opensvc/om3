@@ -40,7 +40,7 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 	if err != nil {
 		return err
 	}
-	params := api.PostNodeConfigUpdateParams{}
+	params := api.PatchNodeConfigParams{}
 	params.Set = &t.Set
 	params.Unset = &t.Unset
 	params.Delete = &t.Delete
@@ -49,7 +49,7 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 		return err
 	}
 	for _, nodename := range nodenames {
-		response, err := c.PostNodeConfigUpdateWithResponse(context.Background(), nodename, &params)
+		response, err := c.PatchNodeConfigWithResponse(context.Background(), nodename, &params)
 		if err != nil {
 			return err
 		}
