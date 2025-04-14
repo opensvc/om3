@@ -101,9 +101,9 @@ func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	} {
 		name, s, err := fn(i)
 		if err != nil {
-			log.Errorf("init strategy %s error: %s", name, err)
-		} else {
-			log.Infof("init strategy %s", name)
+			log.Warnf("ignored authentication strategy %s: %s", name, err)
+		} else if s != nil {
+			log.Infof("initialized authentication strategy %s", name)
 			if name == "jwt" {
 				log.Infof("jwt verify key sig: %s", jwtVerifyKeySign)
 			}
