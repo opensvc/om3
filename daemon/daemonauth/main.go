@@ -34,11 +34,12 @@ var (
 )
 
 const (
-	StrategyUX   = "ux"
-	StrategyJWT  = "jwt"
-	StrategyNode = "node"
-	StrategyUser = "user"
-	StrategyX509 = "x509"
+	StrategyUX        = "ux"
+	StrategyJWT       = "jwt"
+	StrategyJWTOpenID = "jwt-openid"
+	StrategyNode      = "node"
+	StrategyUser      = "user"
+	StrategyX509      = "x509"
 )
 
 // authenticatedExtensions returns extensions with grants and used strategy
@@ -95,6 +96,7 @@ func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	for _, fn := range []func(i interface{}) (string, auth.Strategy, error){
 		initUX,
 		initJWT,
+		initJWTOpenID,
 		initX509,
 		initBasicNode,
 		initBasicUser,
