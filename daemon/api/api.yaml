@@ -920,6 +920,8 @@ paths:
 
   /node:
     get:
+      description: |
+        Return the monitor, status and config data of all nodes.
       operationId: GetNodes
       tags:
         - node
@@ -930,7 +932,6 @@ paths:
         - $ref: '#/components/parameters/NodeOptional'
       responses:
         200:
-          description: get node config, monitor and status
           content:
             application/json:
               schema:
@@ -2700,6 +2701,8 @@ paths:
 
   /object/path:
     get:
+      description: |
+        Return the list of object paths matching the selector expression given by the path parameter.
       operationId: GetObjectPaths
       tags:
         - object
